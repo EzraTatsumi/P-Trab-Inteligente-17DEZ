@@ -780,7 +780,7 @@ export default function ClasseIForm() {
               </div>
             </div>
 
-            {/* Preview dos Cálculos (MOVIDO PARA DENTRO DO FORM) */}
+            {/* Preview dos Cálculos */}
             {efetivo > 0 && diasOperacao > 0 && (
               <div className="space-y-6 mt-6">
                 {/* Informações de Ciclo */}
@@ -904,9 +904,9 @@ export default function ClasseIForm() {
                     <table className="w-full table-fixed">
                       <thead className="bg-muted">
                         <tr>
-                          <th className="text-left p-3 font-semibold text-sm w-[12%]">OM Destino (QR)</th>
+                          <th className="text-left p-3 font-semibold text-sm w-[10%]">OM Destino (QR)</th>
                           <th className="text-center p-3 font-semibold text-sm w-[9%]">UG (QR)</th>
-                          <th className="text-left p-3 font-semibold text-sm w-[12%]">RM QS</th>
+                          <th className="text-left p-3 font-semibold text-sm w-[10%]">RM QS</th>
                           <th className="text-center p-3 font-semibold text-sm w-[10%]">CODUG RM QS</th>
                           <th className="text-center p-3 font-semibold text-sm w-[8%]">Efetivo</th>
                           <th className="text-center p-3 font-semibold text-sm w-[8%]">Dias</th>
