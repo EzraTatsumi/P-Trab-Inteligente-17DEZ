@@ -161,24 +161,20 @@ export default function PTrabForm() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="font-medium">Comando Militar de Área:</p>
-              <p>{ptrab.comando_militar_area}</p>
+              <p className="font-medium">{ptrab.comando_militar_area}</p>
             </div>
             <div>
-              <p className="font-medium">OM:</p>
-              <p>{ptrab.nome_om} ({ptrab.codug_om})</p>
+              <p className="font-medium">{ptrab.nome_om} ({ptrab.codug_om})</p>
             </div>
             <div>
-              <p className="font-medium">Período:</p>
-              <p>
+              <p className="font-medium">
                 {new Date(ptrab.periodo_inicio).toLocaleDateString('pt-BR')} a{" "}
                 {new Date(ptrab.periodo_fim).toLocaleDateString('pt-BR')} (
                 {calculateDays(ptrab.periodo_inicio, ptrab.periodo_fim)} dias)
               </p>
             </div>
             <div>
-              <p className="font-medium">Efetivo Empregado:</p>
-              <p>{ptrab.efetivo_empregado}</p>
+              <p className="font-medium">Efetivo: {ptrab.efetivo_empregado}</p>
             </div>
             <div className="md:col-span-2 border-t pt-4 mt-4">
               <p className="font-medium text-lg">Totais do P Trab:</p>
@@ -220,7 +216,6 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe I - Subsistência</CardTitle>
-                    {/* <DollarSign className="h-8 w-8 text-green-500" /> */}
                   </CardHeader>
                   <CardContent>
                     {/* Conteúdo removido */}
@@ -233,7 +228,6 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe II - Material de Intendência</CardTitle>
-                    {/* <ClipboardList className="h-8 w-8 text-yellow-500" /> */}
                   </CardHeader>
                   <CardContent>
                     {/* Conteúdo removido */}
@@ -247,7 +241,6 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe III - Combustíveis e Lubrificantes</CardTitle>
-                    {/* <Fuel className="h-8 w-8 text-orange-500" /> */}
                   </CardHeader>
                   <CardContent>
                     {/* Conteúdo removido */}
@@ -260,7 +253,6 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe V - Armamento e Munição</CardTitle>
-                    {/* <ClipboardList className="h-8 w-8 text-red-500" /> */}
                   </CardHeader>
                   <CardContent>
                     {/* Conteúdo removido */}
@@ -273,7 +265,6 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe VI - Material de Comunicações</CardTitle>
-                    {/* <Plane className="h-8 w-8 text-blue-500" /> */}
                   </CardHeader>
                   <CardContent>
                     {/* Conteúdo removido */}
@@ -286,7 +277,6 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe VII - Material de Engenharia</CardTitle>
-                    {/* <Wrench className="h-8 w-8 text-gray-500" /> */}
                   </CardHeader>
                   <CardContent>
                     {/* Conteúdo removido */}
@@ -299,7 +289,6 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe VIII - Material de Saúde</CardTitle>
-                    {/* <ClipboardList className="h-8 w-8 text-pink-500" /> */}
                   </CardHeader>
                   <CardContent>
                     {/* Conteúdo removido */}
@@ -312,7 +301,6 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe IX - Motomecanização</CardTitle>
-                    {/* <Wrench className="h-8 w-8 text-purple-500" /> */}
                   </CardHeader>
                   <CardContent>
                     {/* Conteúdo removido */}
