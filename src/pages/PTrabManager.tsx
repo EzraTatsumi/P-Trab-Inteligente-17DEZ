@@ -818,7 +818,7 @@ const PTrabManager = () => {
           <div className="flex items-center gap-4"> {/* Grupo da esquerda: Título */}
             <div>
               <h1 className="text-3xl font-bold">Planos de Trabalho</h1>
-              <p className="text-muted-foreground">Gerencie seus PTrabs</p>
+              <p className="text-muted-foreground">Gerencie seus P Trab</p>
             </div>
           </div>
 
@@ -1003,14 +1003,14 @@ const PTrabManager = () => {
                       onKeyDown={handleEnterToNextField}
                     />
                   </div>
-                  <div className="flex justify-end gap-2">
+                  <DialogFooter>
                     <Button type="submit" disabled={loading}>
                       {loading ? "Aguarde..." : (editingId ? "Atualizar" : "Criar")}
                     </Button>
                     <Button variant="outline" type="button" onClick={() => setDialogOpen(false)}>
                       Cancelar
                     </Button>
-                  </div>
+                  </DialogFooter>
                 </form>
               </DialogContent>
             </Dialog>
