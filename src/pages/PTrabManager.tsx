@@ -1345,8 +1345,8 @@ const PTrabManager = () => {
               Cancelar
             </Button>
           </DialogFooter>
-        </DialogFooter>
-      </DialogContent>
+        </DialogContent>
+      </Dialog>
 
       {/* Diálogo de Consolidação */}
       <PTrabConsolidationDialog
