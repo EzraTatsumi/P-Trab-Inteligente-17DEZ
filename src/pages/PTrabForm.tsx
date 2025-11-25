@@ -190,7 +190,7 @@ export default function PTrabForm() {
             <TabsTrigger value="logistica" className="py-2">Aba Logística</TabsTrigger>
             <TabsTrigger value="operacao" className="py-2">Aba Operação</TabsTrigger>
             <TabsTrigger value="racao" className="py-2">Aba Ração Operacional</TabsTrigger>
-            <TabsTrigger value="permanente" className="py-2">Mat Permanente</TabsTrigger>
+            <TabsTrigger value="permanente" className="py-2">Aba Mat Permanente</TabsTrigger>
             <TabsTrigger value="aviacao" className="py-2">Aba Ap Av Ex</TabsTrigger>
           </TabsList>
 
@@ -288,7 +288,7 @@ export default function PTrabForm() {
             <Card className="p-6">
               <CardTitle className="text-xl font-bold mb-2 flex items-center gap-2">
                 <ClipboardList className="h-6 w-6 text-primary" />
-                Aba Material Permanente
+                Aba Mat Permanente
               </CardTitle>
               <CardDescription>
                 Gerenciamento de custos de Material Permanente (Classe IV, VII, etc.). (Em desenvolvimento)
