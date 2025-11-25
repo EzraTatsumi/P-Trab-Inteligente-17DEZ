@@ -3,8 +3,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, FileText, Fuel, DollarSign, ClipboardList, Check } from "lucide-react";
+import { ArrowLeft, FileText, Fuel, DollarSign, ClipboardList, Check, Wrench, Plane } from "lucide-react";
 import { formatCurrency } from "@/lib/formatUtils";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils"; // Importar a nova função
 
@@ -184,65 +185,130 @@ export default function PTrabForm() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card
-            className="cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`)}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xl font-bold">Classe I - Alimentação</CardTitle>
-              <DollarSign className="h-8 w-8 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Gerencie os registros de custeio para alimentação (QS e QR).
-              </CardDescription>
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="logistica" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 h-auto">
+            <TabsTrigger value="logistica" className="py-2">Aba Logística</TabsTrigger>
+            <TabsTrigger value="operacao" className="py-2">Aba Operação</TabsTrigger>
+            <TabsTrigger value="racao" className="py-2">Aba Ração Operacional</TabsTrigger>
+            <TabsTrigger value="permanente" className="py-2">Aba Material Permanente</TabsTrigger>
+            <TabsTrigger value="aviacao" className="py-2">Aba Ap Aviação do Exército</TabsTrigger>
+          </TabsList>
 
-          <Card
-            className="cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`)}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xl font-bold">Classe III - Combustíveis</CardTitle>
-              <Fuel className="h-8 w-8 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Gerencie os registros de custeio para combustíveis (viaturas, geradores, embarcações).
-              </CardDescription>
-            </CardContent>
-          </Card>
+          {/* Aba Logística (Classes I, III, V, IX) */}
+          <TabsContent value="logistica" className="mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`)}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xl font-bold">Classe I - Alimentação</CardTitle>
+                  <DollarSign className="h-8 w-8 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Gerencie os registros de custeio para alimentação (QS e QR).
+                  </CardDescription>
+                </CardContent>
+              </Card>
 
-          <Card
-            className="opacity-50 cursor-not-allowed"
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xl font-bold">Classe V - Munição</CardTitle>
-              <ClipboardList className="h-8 w-8 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Em breve: Gerencie os registros de custeio para munição.
-              </CardDescription>
-            </CardContent>
-          </Card>
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`)}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xl font-bold">Classe III - Combustíveis</CardTitle>
+                  <Fuel className="h-8 w-8 text-orange-500" />
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Gerencie os registros de custeio para combustíveis (viaturas, geradores, embarcações).
+                  </CardDescription>
+                </CardContent>
+              </Card>
 
-          <Card
-            className="opacity-50 cursor-not-allowed"
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xl font-bold">Classe IX - Material de Saúde</CardTitle>
-              <ClipboardList className="h-8 w-8 text-blue-500" />
-            </CardHeader>
-            <CardContent>
+              <Card
+                className="opacity-50 cursor-not-allowed"
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xl font-bold">Classe V - Munição</CardTitle>
+                  <ClipboardList className="h-8 w-8 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Em breve: Gerencie os registros de custeio para munição.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              <Card
+                className="opacity-50 cursor-not-allowed"
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xl font-bold">Classe IX - Material de Saúde</CardTitle>
+                  <ClipboardList className="h-8 w-8 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Em breve: Gerencie os registros de custeio para material de saúde.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Aba Operação */}
+          <TabsContent value="operacao" className="mt-4">
+            <Card className="p-6">
+              <CardTitle className="text-xl font-bold mb-2 flex items-center gap-2">
+                <Wrench className="h-6 w-6 text-primary" />
+                Aba Operação
+              </CardTitle>
               <CardDescription>
-                Em breve: Gerencie os registros de custeio para material de saúde.
+                Esta seção será dedicada a custos operacionais diretos e específicos da missão. (Em desenvolvimento)
               </CardDescription>
-            </CardContent>
-          </Card>
-        </div>
+            </Card>
+          </TabsContent>
+
+          {/* Aba Ração Operacional */}
+          <TabsContent value="racao" className="mt-4">
+            <Card className="p-6">
+              <CardTitle className="text-xl font-bold mb-2 flex items-center gap-2">
+                <DollarSign className="h-6 w-6 text-primary" />
+                Aba Ração Operacional
+              </CardTitle>
+              <CardDescription>
+                Gerenciamento de custos e quantidades de Ração Operacional (RO). (Em desenvolvimento)
+              </CardDescription>
+            </Card>
+          </TabsContent>
+
+          {/* Aba Material Permanente */}
+          <TabsContent value="permanente" className="mt-4">
+            <Card className="p-6">
+              <CardTitle className="text-xl font-bold mb-2 flex items-center gap-2">
+                <ClipboardList className="h-6 w-6 text-primary" />
+                Aba Material Permanente
+              </CardTitle>
+              <CardDescription>
+                Gerenciamento de custos de Material Permanente (Classe IV, VII, etc.). (Em desenvolvimento)
+              </CardDescription>
+            </Card>
+          </TabsContent>
+
+          {/* Aba Ap Aviação do Exército */}
+          <TabsContent value="aviacao" className="mt-4">
+            <Card className="p-6">
+              <CardTitle className="text-xl font-bold mb-2 flex items-center gap-2">
+                <Plane className="h-6 w-6 text-primary" />
+                Aba Ap Aviação do Exército
+              </CardTitle>
+              <CardDescription>
+                Custos específicos de apoio à Aviação do Exército. (Em desenvolvimento)
+              </CardDescription>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
