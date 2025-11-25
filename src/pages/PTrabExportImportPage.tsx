@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Download, Upload, Lock, AlertCircle } from "lucide-react";
 import { ExportPasswordDialog } from "@/components/ExportPasswordDialog";
 import { ImportPTrabOptionsDialog } from "@/components/ImportPTrabOptionsDialog";
-import { encryptData, decryptData } from "@/lib/encryption";
+import { encryptData, decryptData } from "@/lib/cryptoUtils";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
