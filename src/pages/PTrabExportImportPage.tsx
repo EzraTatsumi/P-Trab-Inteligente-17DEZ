@@ -145,7 +145,7 @@ export default function PTrabExportImportPage() {
       
       const { data: insertedPTrab, error: insertPTrabError } = await supabase
         .from("p_trab")
-        .insert([{ ...restOfPTrab, user_id: user.id, status: 'aberto' }]) // Always start as 'aberto'
+        .insert([{ ...restOfPTrab, user_id: user.id, status: 'aberto', origem: 'importado' }]) // Define origem como 'importado'
         .select()
         .single();
 

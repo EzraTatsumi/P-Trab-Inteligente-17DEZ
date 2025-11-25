@@ -40,6 +40,7 @@ import { formatCurrency } from "@/lib/formatUtils"; // Importar formatCurrency
 import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils"; // Importar utilitários
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog"; // Importar novo componente
 import { Tables } from "@/integrations/supabase/types"; // Importar Tables
+import { Badge } from "@/components/ui/badge"; // Importar Badge
 
 interface PTrab {
   id: string;
@@ -62,6 +63,7 @@ interface PTrab {
   totalOperacional?: number;
   updated_at: string;
   comentario?: string;
+  origem: 'original' | 'importado' | 'consolidado'; // Novo campo
 }
 
 const PTrabManager = () => {
@@ -121,6 +123,7 @@ const PTrabManager = () => {
     nome_cmt_om: "",
     local_om: "",
     status: "aberto",
+    origem: "original", // Adicionado campo origem
   });
 
   const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
@@ -204,7 +207,7 @@ const PTrabManager = () => {
             ...ptrab,
             totalLogistica: totalLogisticaCalculado,
             totalOperacional: totalOperacionalCalculado, // Mantido como 0 até a implementação da Aba Operacional
-          };
+          } as PTrab; // Cast para garantir o tipo PTrab com 'origem'
         })
       );
 
@@ -409,6 +412,7 @@ const PTrabManager = () => {
       const ptrabData = {
         ...formData,
         user_id: user.id,
+        origem: editingId ? pTrabs.find(p => p.id === editingId)?.origem || 'original' : 'original', // Mantém a origem na edição, define como 'original' na criação
       };
 
       if (editingId) {
@@ -450,6 +454,7 @@ const PTrabManager = () => {
       nome_cmt_om: ptrab.nome_cmt_om || "",
       local_om: ptrab.local_om || "",
       status: ptrab.status,
+      origem: ptrab.origem, // Carrega a origem
     });
     setDialogOpen(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -489,6 +494,7 @@ const PTrabManager = () => {
         numero_ptrab: newNumeroPTrab,
         status: "aberto", // Cloned PTrab starts as 'aberto'
         user_id: originalPTrab.user_id, // Keep the same user_id
+        origem: 'original', // Clonagem é considerada um novo PTrab original
       };
 
       const { data: newPTrab, error: insertPTrabError } = await supabase
@@ -677,6 +683,7 @@ const PTrabManager = () => {
       nome_cmt_om: "",
       local_om: "",
       status: "aberto",
+      origem: "original",
     });
   };
 
@@ -726,6 +733,7 @@ const PTrabManager = () => {
           status: "aberto",
           user_id: (await supabase.auth.getUser()).data.user?.id,
           nome_operacao: `CONSOLIDADO - ${templatePTrab.nome_operacao}`, // Sugestão de nome
+          origem: 'consolidado', // Define a origem como consolidado
         };
 
         const { data: newPTrab, error: insertPTrabError } = await supabase
@@ -742,6 +750,11 @@ const PTrabManager = () => {
         finalTargetPTrabId = targetPTrabId;
         targetPTrab = pTrabs.find(p => p.id === finalTargetPTrabId);
         if (!targetPTrab) throw new Error("PTrab de destino existente não encontrado.");
+        
+        // Se for um PTrab existente, atualiza a origem para 'consolidado' se for 'original'
+        if (targetPTrab.origem === 'original') {
+            await supabase.from("p_trab").update({ origem: 'consolidado' }).eq("id", finalTargetPTrabId);
+        }
       }
 
       // 2. Clonar e Inserir Registros de Classe I e Classe III
@@ -808,6 +821,18 @@ const PTrabManager = () => {
       toast.error(sanitizeError(error));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getOrigemBadge = (origem: PTrab['origem']) => {
+    switch (origem) {
+      case 'importado':
+        return <Badge variant="secondary" className="bg-purple-100 text-purple-800 hover:bg-purple-200 text-xs font-medium">IMPORTADO</Badge>;
+      case 'consolidado':
+        return <Badge variant="secondary" className="bg-orange-100 text-orange-800 hover:bg-orange-200 text-xs font-medium">CONSOLIDADO</Badge>;
+      case 'original':
+      default:
+        return <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-200 text-xs font-medium">ORIGINAL</Badge>;
     }
   };
 
@@ -1083,7 +1108,14 @@ const PTrabManager = () => {
               <TableBody>
                 {pTrabs.map((ptrab) => (
                   <TableRow key={ptrab.id}>
-                    <TableCell className="font-medium">{ptrab.numero_ptrab}</TableCell>
+                    <TableCell className="font-medium">
+                        <div className="flex flex-col items-center">
+                            {ptrab.numero_ptrab}
+                            <div className="mt-1">
+                                {getOrigemBadge(ptrab.origem)}
+                            </div>
+                        </div>
+                    </TableCell>
                     <TableCell>{ptrab.nome_operacao}</TableCell>
                     {/* <TableCell>{ptrab.nome_om}</TableCell> */} {/* Removido */}
                     <TableCell className="text-center"> {/* Centralizado */}
