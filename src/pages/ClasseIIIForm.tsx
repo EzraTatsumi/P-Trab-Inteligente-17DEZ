@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check } from "lucide-react"; // Adicionado Sparkles, ClipboardList e Check
+import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check, Plus } from "lucide-react"; // Adicionado Plus
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
@@ -30,7 +30,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"; // Adicionado importação do Dialog
+} from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Adicionado Table components
 
 type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
 
@@ -1832,8 +1833,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
             <p className="text-sm text-muted-foreground mb-4">
               Informe os dados da consulta de preços de combustíveis para o período do PTrab.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+              <div className="space-y-2 lg:col-span-1">
                 <Label htmlFor="data_inicio_consulta">Data Início Consulta *</Label>
                 <Input
                   id="data_inicio_consulta"
@@ -1844,7 +1845,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 lg:col-span-1">
                 <Label htmlFor="data_fim_consulta">Data Fim Consulta *</Label>
                 <Input
                   id="data_fim_consulta"
@@ -1855,7 +1856,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 lg:col-span-1">
                 <Label htmlFor="ambito">Âmbito da Consulta *</Label>
                 <Select
                   value={formLPC.ambito}
@@ -1872,7 +1873,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 </Select>
               </div>
               {formLPC.ambito !== 'Nacional' && (
-                <div className="space-y-2">
+                <div className="space-y-2 lg:col-span-1">
                   <Label htmlFor="nome_local">{formLPC.ambito === 'Estadual' ? 'Estado' : 'Município'} *</Label>
                   <Input
                     id="nome_local"
@@ -1884,7 +1885,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   />
                 </div>
               )}
-              <div className="space-y-2">
+              <div className="space-y-2 lg:col-span-1">
                 <Label htmlFor="preco_diesel">Preço Diesel (R$/L) *</Label>
                 <Input
                   id="preco_diesel"
@@ -1896,7 +1897,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 lg:col-span-1">
                 <Label htmlFor="preco_gasolina">Preço Gasolina (R$/L) *</Label>
                 <Input
                   id="preco_gasolina"
