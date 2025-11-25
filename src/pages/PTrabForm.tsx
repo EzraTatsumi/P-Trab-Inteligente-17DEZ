@@ -164,18 +164,9 @@ export default function PTrabForm() {
               <p className="font-medium">Efetivo Empregado:</p>
               <p>{ptrab.efetivo_empregado}</p>
             </div>
-            <div className="md:col-span-2">
-              <p className="font-medium">Ações:</p>
-              <p className="whitespace-pre-wrap">{ptrab.acoes || "N/A"}</p>
-            </div>
-            <div className="md:col-span-2">
-              <p className="font-medium">Status:</p>
-              <p className="capitalize">{ptrab.status}</p>
-            </div>
-            <div className="md:col-span-2">
-              <p className="font-medium">Última Atualização:</p>
-              <p>{new Date(ptrab.updated_at).toLocaleDateString('pt-BR')} {new Date(ptrab.updated_at).toLocaleTimeString('pt-BR')}</p>
-            </div>
+            {/* Removido: Ações */}
+            {/* Removido: Status */}
+            {/* Removido: Última Atualização */}
             <div className="md:col-span-2 border-t pt-4 mt-4">
               <p className="font-medium text-lg">Totais do PTrab:</p>
               <div className="flex flex-col md:flex-row md:justify-between md:items-center mt-2">
