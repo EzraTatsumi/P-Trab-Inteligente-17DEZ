@@ -883,36 +883,6 @@ export default function ClasseIForm() {
                     </span>
                   </div>
                 </div>
-
-                {/* Memória de Cálculo */}
-                <div className="p-6 bg-muted/50 rounded-lg">
-                  <h3 className="font-semibold text-lg mb-4">Memória de Cálculo</h3>
-                  <div className="space-y-4 text-sm">
-                    <div>
-                      <p className="font-semibold mb-2">QS - Quantitativo de Subsistência:</p>
-                      <p className="text-muted-foreground">
-                        • Complemento: [{efetivo} militares x {nrRefInt} Ref Int x (R$ {valorQS.toFixed(2)}/3) x {diasOperacao} dias] = {formatCurrency(calculos.complementoQS)}
-                      </p>
-                      <p className="text-muted-foreground">
-                        • Etapa: [{efetivo} militares x R$ {valorQS.toFixed(2)} x {calculos.diasEtapaSolicitada} dias] = {formatCurrency(calculos.etapaQS)}
-                      </p>
-                      <p className="font-semibold mt-2">Total QS: {formatCurrency(calculos.totalQS)}</p>
-                    </div>
-                    
-                    <div className="h-px bg-border" />
-                    
-                    <div>
-                      <p className="font-semibold mb-2">QR - Quantitativo de Rancho:</p>
-                      <p className="text-muted-foreground">
-                        • Complemento: [{efetivo} militares x {nrRefInt} Ref Int x (R$ {valorQR.toFixed(2)}/3) x {diasOperacao} dias] = {formatCurrency(calculos.complementoQR)}
-                      </p>
-                      <p className="text-muted-foreground">
-                        • Etapa: [{efetivo} militares x R$ {valorQR.toFixed(2)} x {calculos.diasEtapaSolicitada} dias] = {formatCurrency(calculos.etapaQR)}
-                      </p>
-                      <p className="font-semibold mt-2">Total QR: {formatCurrency(calculos.totalQR)}</p>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
 
