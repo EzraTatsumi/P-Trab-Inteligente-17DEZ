@@ -11,6 +11,7 @@ import { sanitizeAuthError } from "@/lib/errorUtils";
 import { loginSchema } from "@/lib/validationSchemas";
 import { Eye, EyeOff } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
+import { EmailVerificationDialog } from "@/components/EmailVerificationDialog"; // Importar o novo diálogo
 
 const Login = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState<"login" | "signup">("login");
   const [showPassword, setShowPassword] = useState(false);
+  const [showEmailVerificationDialog, setShowEmailVerificationDialog] = useState(false); // Novo estado para o diálogo
   const { handleEnterToNextField } = useFormNavigation();
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -42,24 +44,24 @@ const Login = () => {
           }
         });
         if (error) throw error;
-        toast.success("Conta criada com sucesso! Verifique seu email para confirmar e faça login.");
-        setSelectedTab("login");
+        
+        // Em vez de um toast, abre o diálogo de verificação
+        setShowEmailVerificationDialog(true);
+        setSelectedTab("login"); // Sugere que o usuário volte para a aba de login após a verificação
       } else { // Login tab
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) {
-          // Se o erro for de credenciais inválidas, sugere criar uma conta e muda para a aba de cadastro
           if (error.message === "Invalid login credentials") {
             toast.error("Email ou senha incorretos. Se você não tem uma conta, por favor, crie uma.");
-            setSelectedTab("signup"); // Muda para a aba de cadastro
-            return; // Interrompe a execução para não prosseguir com o login
+            setSelectedTab("signup");
+            return;
           }
-          throw error; // Para outros erros, lança para o tratamento genérico
+          throw error;
         }
-        toast.success("Login realizado com sucesso!");
-        navigate("/ptrab");
+        // O SessionContextProvider agora lida com o redirecionamento e o toast de sucesso
       }
     } catch (error: any) {
       toast.error(sanitizeAuthError(error));
@@ -188,6 +190,12 @@ const Login = () => {
           </Tabs>
         </CardContent>
       </Card>
+
+      <EmailVerificationDialog
+        open={showEmailVerificationDialog}
+        onOpenChange={setShowEmailVerificationDialog}
+        email={email}
+      />
     </div>
   );
 };
