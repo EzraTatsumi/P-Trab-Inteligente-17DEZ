@@ -854,12 +854,12 @@ const PTrabManager = () => {
               <DialogTrigger asChild>
                 <Button onClick={() => { resetForm(); setDialogOpen(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Novo PTrab
+                  Novo P Trab
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>{editingId ? "Editar PTrab" : "Novo PTrab"}</DialogTitle>
+                  <DialogTitle>{editingId ? "Editar PTrab" : "Novo P Trab"}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1016,17 +1016,6 @@ const PTrabManager = () => {
                         onKeyDown={handleEnterToNextField}
                       />
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="acoes">Ações realizadas ou a serem realizadas</Label> {/* Rótulo ajustado */}
-                    <Textarea
-                      id="acoes"
-                      value={formData.acoes}
-                      onChange={(e) => setFormData({ ...formData, acoes: e.target.value })}
-                      rows={4}
-                      maxLength={2000}
-                      onKeyDown={handleEnterToNextField}
-                    />
                   </div>
                   <DialogFooter>
                     <Button type="submit" disabled={loading}>
