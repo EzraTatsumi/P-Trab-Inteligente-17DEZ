@@ -194,9 +194,10 @@ export default function PTrabForm() {
             <TabsTrigger value="aviacao" className="py-2">Aba Ap Av Ex</TabsTrigger>
           </TabsList>
 
-          {/* Aba Logística (Classes I, III, V, IX) */}
+          {/* Aba Logística (Classes I, II, III, V, VI, VII, VIII, IX) */}
           <TabsContent value="logistica" className="mt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Classe I - Alimentação (Active) */}
               <Card
                 className="cursor-pointer hover:shadow-lg transition-shadow"
                 onClick={() => navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`)}
@@ -212,6 +213,22 @@ export default function PTrabForm() {
                 </CardContent>
               </Card>
 
+              {/* Classe II - Material de Intendência (Placeholder) */}
+              <Card
+                className="opacity-50 cursor-not-allowed"
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xl font-bold">Classe II - Material de Intendência</CardTitle>
+                  <ClipboardList className="h-8 w-8 text-yellow-500" />
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Em breve: Gerencie os registros de custeio para material de intendência (fardamento, acampamento, etc.).
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              {/* Classe III - Combustíveis (Active) */}
               <Card
                 className="cursor-pointer hover:shadow-lg transition-shadow"
                 onClick={() => navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`)}
@@ -227,6 +244,7 @@ export default function PTrabForm() {
                 </CardContent>
               </Card>
 
+              {/* Classe V - Munição (Placeholder) */}
               <Card
                 className="opacity-50 cursor-not-allowed"
               >
@@ -240,17 +258,63 @@ export default function PTrabForm() {
                   </CardDescription>
                 </CardContent>
               </Card>
-
+              
+              {/* Classe VI - Material de Aviação (Placeholder) */}
               <Card
                 className="opacity-50 cursor-not-allowed"
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-xl font-bold">Classe IX - Material de Saúde</CardTitle>
-                  <ClipboardList className="h-8 w-8 text-blue-500" />
+                  <CardTitle className="text-xl font-bold">Classe VI - Material de Aviação</CardTitle>
+                  <Plane className="h-8 w-8 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Em breve: Gerencie os registros de custeio para material de aviação.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              {/* Classe VII - Material de Engenharia (Placeholder) */}
+              <Card
+                className="opacity-50 cursor-not-allowed"
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xl font-bold">Classe VII - Material de Engenharia</CardTitle>
+                  <Wrench className="h-8 w-8 text-gray-500" />
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Em breve: Gerencie os registros de custeio para material de engenharia.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              {/* Classe VIII - Material de Saúde (Placeholder) */}
+              <Card
+                className="opacity-50 cursor-not-allowed"
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xl font-bold">Classe VIII - Material de Saúde</CardTitle>
+                  <ClipboardList className="h-8 w-8 text-pink-500" />
                 </CardHeader>
                 <CardContent>
                   <CardDescription>
                     Em breve: Gerencie os registros de custeio para material de saúde.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              {/* Classe IX - Material de Manutenção (Placeholder) */}
+              <Card
+                className="opacity-50 cursor-not-allowed"
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xl font-bold">Classe IX - Material de Manutenção</CardTitle>
+                  <Wrench className="h-8 w-8 text-purple-500" />
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Em breve: Gerencie os registros de custeio para material de manutenção e reparo.
                   </CardDescription>
                 </CardContent>
               </Card>
