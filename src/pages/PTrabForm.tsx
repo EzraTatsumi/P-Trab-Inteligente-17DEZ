@@ -188,7 +188,7 @@ export default function PTrabForm() {
         <Tabs defaultValue="logistica" className="w-full">
           <TabsList className="grid w-full grid-cols-5 h-auto">
             <TabsTrigger value="logistica" className="py-2">Aba Logística</TabsTrigger>
-            <TabsTrigger value="operacao" className="py-2">Aba Operação</TabsTrigger>
+            <TabsTrigger value="operacao" className="py-2">Aba Operacional</TabsTrigger>
             <TabsTrigger value="racao" className="py-2">Aba Ração Operacional</TabsTrigger>
             <TabsTrigger value="permanente" className="py-2">Aba Mat Permanente</TabsTrigger>
             <TabsTrigger value="aviacao" className="py-2">Aba Ap Av Ex</TabsTrigger>
@@ -262,7 +262,7 @@ export default function PTrabForm() {
             <Card className="p-6">
               <CardTitle className="text-xl font-bold mb-2 flex items-center gap-2">
                 <Wrench className="h-6 w-6 text-primary" />
-                Aba Operação
+                Aba Operacional
               </CardTitle>
               <CardDescription>
                 Esta seção será dedicada a custos operacionais diretos e específicos da missão. (Em desenvolvimento)
