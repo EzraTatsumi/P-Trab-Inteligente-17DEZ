@@ -29,6 +29,12 @@ interface OmSelectorProps {
   omsList?: OMData[]; // Novo prop: lista de OMs pré-carregada
 }
 
+// Função auxiliar para limpar o nome da OM para fins de busca
+const cleanOmNameForSearch = (name: string) => {
+  // Remove o caractere 'ª' e converte para minúsculas
+  return name.replace(/ª/g, 'a').toLowerCase();
+};
+
 export function OmSelector({
   selectedOmId,
   onChange,
@@ -136,8 +142,8 @@ export function OmSelector({
               {oms.map((om) => (
                 <CommandItem
                   key={om.id}
-                  // Alterado o valor para incluir nome e CODUG, melhorando a busca do cmdk
-                  value={`${om.nome_om} ${om.codug_om} ${om.rm_vinculacao} ${om.id}`} 
+                  // Usar o nome limpo para o valor de busca, mas manter o nome original para exibição
+                  value={`${cleanOmNameForSearch(om.nome_om)} ${om.codug_om} ${om.rm_vinculacao} ${om.id}`} 
                   onSelect={(currentValue) => {
                     // O currentValue agora é a string completa, precisamos encontrar o ID
                     const selected = oms.find(o => o.id === om.id); // Usamos o om.id do loop para garantir a seleção correta
