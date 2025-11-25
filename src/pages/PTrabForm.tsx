@@ -190,7 +190,7 @@ export default function PTrabForm() {
             <TabsTrigger value="logistica" className="py-2">Aba Logística</TabsTrigger>
             <TabsTrigger value="operacao" className="py-2">Aba Operação</TabsTrigger>
             <TabsTrigger value="racao" className="py-2">Aba Ração Operacional</TabsTrigger>
-            <TabsTrigger value="permanente" className="py-2">Aba Material Permanente</TabsTrigger>
+            <TabsTrigger value="permanente" className="py-2">Mat Permanente</TabsTrigger>
             <TabsTrigger value="aviacao" className="py-2">Aba Ap Av Ex</TabsTrigger>
           </TabsList>
 
