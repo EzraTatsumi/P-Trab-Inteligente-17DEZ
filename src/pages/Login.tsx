@@ -44,12 +44,20 @@ const Login = () => {
         if (error) throw error;
         toast.success("Conta criada com sucesso! Verifique seu email para confirmar e faça login.");
         setSelectedTab("login");
-      } else {
+      } else { // Login tab
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (error) throw error;
+        if (error) {
+          // Se o erro for de credenciais inválidas, sugere criar uma conta e muda para a aba de cadastro
+          if (error.message === "Invalid login credentials") {
+            toast.error("Email ou senha incorretos. Se você não tem uma conta, por favor, crie uma.");
+            setSelectedTab("signup"); // Muda para a aba de cadastro
+            return; // Interrompe a execução para não prosseguir com o login
+          }
+          throw error; // Para outros erros, lança para o tratamento genérico
+        }
         toast.success("Login realizado com sucesso!");
         navigate("/ptrab");
       }
