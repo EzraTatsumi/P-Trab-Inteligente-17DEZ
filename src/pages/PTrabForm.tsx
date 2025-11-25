@@ -164,11 +164,8 @@ export default function PTrabForm() {
               <p className="font-medium">Efetivo Empregado:</p>
               <p>{ptrab.efetivo_empregado}</p>
             </div>
-            {/* Removido: Ações */}
-            {/* Removido: Status */}
-            {/* Removido: Última Atualização */}
             <div className="md:col-span-2 border-t pt-4 mt-4">
-              <p className="font-medium text-lg">Totais do PTrab:</p>
+              <p className="font-medium text-lg">Totais do P Trab:</p>
               <div className="flex flex-col md:flex-row md:justify-between md:items-center mt-2">
                 <div className="flex items-center gap-2 text-orange-600">
                   <DollarSign className="h-5 w-5" />
