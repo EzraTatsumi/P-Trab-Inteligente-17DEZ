@@ -1020,7 +1020,7 @@ const PTrabManager = () => {
                   
                   {/* NOVO CAMPO: Ações */}
                   <div className="space-y-2">
-                    <Label htmlFor="acoes">Ações realizadas ou a serem realizadas</Label>
+                    <Label htmlFor="acoes">Ações realizadas ou a realizar</Label>
                     <Textarea
                       id="acoes"
                       value={formData.acoes}
