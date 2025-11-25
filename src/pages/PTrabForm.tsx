@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,9 @@ export default function PTrabForm() {
   const [ptrab, setPTrab] = useState<PTrab | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("logistica"); // Novo estado para a aba ativa
+  
+  // Ref para o conteúdo da Aba Logística
+  const logisticaContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (ptrabId) {
@@ -51,12 +54,11 @@ export default function PTrabForm() {
     }
   }, [ptrabId, navigate]);
 
-  // Efeito para rolar para o topo da seção de classes quando a aba 'logistica' é ativada
+  // Efeito para rolar para o conteúdo da Aba Logística quando ela é ativada
   useEffect(() => {
-    if (activeTab === 'logistica') {
-      // Rola para o topo da janela, pois a seção de classes é a primeira coisa
-      // abaixo dos detalhes do PTrab.
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (activeTab === 'logistica' && logisticaContentRef.current) {
+      // Rola para o topo do elemento TabsContent da Aba Logística
+      logisticaContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [activeTab]);
 
@@ -205,7 +207,7 @@ export default function PTrabForm() {
           </TabsList>
 
           {/* Aba Logística (Classes I, II, III, V, VI, VII, VIII, IX) */}
-          <TabsContent value="logistica" className="mt-4">
+          <TabsContent value="logistica" className="mt-4" ref={logisticaContentRef}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Classe I - Alimentação (Active) */}
               <Card
