@@ -213,13 +213,13 @@ export default function PTrabForm() {
           {activeTab === 'logistica' && (
             <TabsContent value="logistica" className="mt-4" ref={logisticaContentRef}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Classe I - Alimentação (Active) */}
+                {/* Classe I - Subsistência (Active) */}
                 <Card
                   className="cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`)}
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xl font-bold">Classe I - Alimentação</CardTitle>
+                    <CardTitle className="text-xl font-bold">Classe I - Subsistência</CardTitle>
                     <DollarSign className="h-8 w-8 text-green-500" />
                   </CardHeader>
                   <CardContent>
@@ -244,13 +244,13 @@ export default function PTrabForm() {
                   </CardContent>
                 </Card>
 
-                {/* Classe III - Combustíveis (Active) */}
+                {/* Classe III - Combustíveis e Lubrificantes (Active) */}
                 <Card
                   className="cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`)}
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xl font-bold">Classe III - Combustíveis</CardTitle>
+                    <CardTitle className="text-xl font-bold">Classe III - Combustíveis e Lubrificantes</CardTitle>
                     <Fuel className="h-8 w-8 text-orange-500" />
                   </CardHeader>
                   <CardContent>
@@ -260,32 +260,32 @@ export default function PTrabForm() {
                   </CardContent>
                 </Card>
 
-                {/* Classe V - Munição (Placeholder) */}
+                {/* Classe V - Armamento e Munição (Placeholder) */}
                 <Card
                   className="opacity-50 cursor-not-allowed"
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xl font-bold">Classe V - Munição</CardTitle>
+                    <CardTitle className="text-xl font-bold">Classe V - Armamento e Munição</CardTitle>
                     <ClipboardList className="h-8 w-8 text-red-500" />
                   </CardHeader>
                   <CardContent>
                     <CardDescription>
-                      Em breve: Gerencie os registros de custeio para munição.
+                      Em breve: Gerencie os registros de custeio para armamento e munição.
                     </CardDescription>
                   </CardContent>
                 </Card>
                 
-                {/* Classe VI - Material de Aviação (Placeholder) */}
+                {/* Classe VI - Material de Comunicações (Placeholder) */}
                 <Card
                   className="opacity-50 cursor-not-allowed"
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xl font-bold">Classe VI - Material de Aviação</CardTitle>
+                    <CardTitle className="text-xl font-bold">Classe VI - Material de Comunicações</CardTitle>
                     <Plane className="h-8 w-8 text-blue-500" />
                   </CardHeader>
                   <CardContent>
                     <CardDescription>
-                      Em breve: Gerencie os registros de custeio para material de aviação.
+                      Em breve: Gerencie os registros de custeio para material de comunicações.
                     </CardDescription>
                   </CardContent>
                 </Card>
@@ -320,17 +320,17 @@ export default function PTrabForm() {
                   </CardContent>
                 </Card>
 
-                {/* Classe IX - Material de Manutenção (Placeholder) */}
+                {/* Classe IX - Motomecanização (Placeholder) */}
                 <Card
                   className="opacity-50 cursor-not-allowed"
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xl font-bold">Classe IX - Material de Manutenção</CardTitle>
+                    <CardTitle className="text-xl font-bold">Classe IX - Motomecanização</CardTitle>
                     <Wrench className="h-8 w-8 text-purple-500" />
                   </CardHeader>
                   <CardContent>
                     <CardDescription>
-                      Em breve: Gerencie os registros de custeio para material de manutenção e reparo.
+                      Em breve: Gerencie os registros de custeio para motomecanização.
                     </CardDescription>
                   </CardContent>
                 </Card>
