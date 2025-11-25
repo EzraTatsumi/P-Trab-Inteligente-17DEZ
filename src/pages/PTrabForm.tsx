@@ -220,12 +220,10 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe I - Subsistência</CardTitle>
-                    <DollarSign className="h-8 w-8 text-green-500" />
+                    {/* <DollarSign className="h-8 w-8 text-green-500" /> */}
                   </CardHeader>
                   <CardContent>
-                    {/* <CardDescription>
-                      Gerencie os registros de custeio para alimentação (QS e QR).
-                    </CardDescription> */}
+                    {/* Conteúdo removido */}
                   </CardContent>
                 </Card>
 
@@ -235,12 +233,10 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe II - Material de Intendência</CardTitle>
-                    <ClipboardList className="h-8 w-8 text-yellow-500" />
+                    {/* <ClipboardList className="h-8 w-8 text-yellow-500" /> */}
                   </CardHeader>
                   <CardContent>
-                    {/* <CardDescription>
-                      Em breve: Gerencie os registros de custeio para material de intendência (fardamento, acampamento, etc.).
-                    </CardDescription> */}
+                    {/* Conteúdo removido */}
                   </CardContent>
                 </Card>
 
@@ -251,12 +247,10 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe III - Combustíveis e Lubrificantes</CardTitle>
-                    <Fuel className="h-8 w-8 text-orange-500" />
+                    {/* <Fuel className="h-8 w-8 text-orange-500" /> */}
                   </CardHeader>
                   <CardContent>
-                    {/* <CardDescription>
-                      Gerencie os registros de custeio para combustíveis (viaturas, geradores, embarcações).
-                    </CardDescription> */}
+                    {/* Conteúdo removido */}
                   </CardContent>
                 </Card>
 
@@ -266,12 +260,10 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe V - Armamento e Munição</CardTitle>
-                    <ClipboardList className="h-8 w-8 text-red-500" />
+                    {/* <ClipboardList className="h-8 w-8 text-red-500" /> */}
                   </CardHeader>
                   <CardContent>
-                    {/* <CardDescription>
-                      Em breve: Gerencie os registros de custeio para armamento e munição.
-                    </CardDescription> */}
+                    {/* Conteúdo removido */}
                   </CardContent>
                 </Card>
                 
@@ -281,12 +273,10 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe VI - Material de Comunicações</CardTitle>
-                    <Plane className="h-8 w-8 text-blue-500" />
+                    {/* <Plane className="h-8 w-8 text-blue-500" /> */}
                   </CardHeader>
                   <CardContent>
-                    {/* <CardDescription>
-                      Em breve: Gerencie os registros de custeio para material de comunicações.
-                    </CardDescription> */}
+                    {/* Conteúdo removido */}
                   </CardContent>
                 </Card>
 
@@ -296,12 +286,10 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe VII - Material de Engenharia</CardTitle>
-                    <Wrench className="h-8 w-8 text-gray-500" />
+                    {/* <Wrench className="h-8 w-8 text-gray-500" /> */}
                   </CardHeader>
                   <CardContent>
-                    {/* <CardDescription>
-                      Em breve: Gerencie os registros de custeio para material de engenharia.
-                    </CardDescription> */}
+                    {/* Conteúdo removido */}
                   </CardContent>
                 </Card>
 
@@ -311,12 +299,10 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe VIII - Material de Saúde</CardTitle>
-                    <ClipboardList className="h-8 w-8 text-pink-500" />
+                    {/* <ClipboardList className="h-8 w-8 text-pink-500" /> */}
                   </CardHeader>
                   <CardContent>
-                    {/* <CardDescription>
-                      Em breve: Gerencie os registros de custeio para material de saúde.
-                    </CardDescription> */}
+                    {/* Conteúdo removido */}
                   </CardContent>
                 </Card>
 
@@ -326,12 +312,10 @@ export default function PTrabForm() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">Classe IX - Motomecanização</CardTitle>
-                    <Wrench className="h-8 w-8 text-purple-500" />
+                    {/* <Wrench className="h-8 w-8 text-purple-500" /> */}
                   </CardHeader>
                   <CardContent>
-                    {/* <CardDescription>
-                      Em breve: Gerencie os registros de custeio para motomecanização.
-                    </CardDescription> */}
+                    {/* Conteúdo removido */}
                   </CardContent>
                 </Card>
               </div>
