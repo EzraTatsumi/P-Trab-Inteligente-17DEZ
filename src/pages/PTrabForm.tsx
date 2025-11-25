@@ -130,7 +130,6 @@ export default function PTrabForm() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar para Gerenciamento de P Trab
           </Button>
-          <h1 className="text-3xl font-bold text-center flex-grow">Preencher PTrab</h1>
           <div className="w-fit"></div> {/* Placeholder para alinhar o título */}
         </div>
 
