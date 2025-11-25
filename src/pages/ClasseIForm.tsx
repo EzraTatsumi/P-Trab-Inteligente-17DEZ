@@ -780,31 +780,7 @@ export default function ClasseIForm() {
               </div>
             </div>
 
-            {/* Botão Cadastrar/Atualizar e Cancelar */}
-            <div className="flex justify-end gap-2">
-              {editingRegistroId && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={resetFormFields}
-                  className="gap-2"
-                >
-                  <XCircle className="h-4 w-4" />
-                  Cancelar Edição
-                </Button>
-              )}
-              <Button
-                type="submit"
-                className="gap-2"
-                disabled={loading || !om || !ug || !omQS || !ugQS || efetivo <= 0 || diasOperacao <= 0 || (!displayFases)}
-              >
-                <Plus className="h-4 w-4" />
-                {loading ? "Aguarde..." : (editingRegistroId ? "Atualizar OM" : "Cadastrar OM")}
-              </Button>
-            </div>
-          </form>
-
-            {/* Preview dos Cálculos */}
+            {/* Preview dos Cálculos (MOVIDO PARA DENTRO DO FORM) */}
             {efetivo > 0 && diasOperacao > 0 && (
               <div className="space-y-6 mt-6">
                 {/* Informações de Ciclo */}
@@ -885,6 +861,30 @@ export default function ClasseIForm() {
                 </div>
               </div>
             )}
+
+            {/* Botão Cadastrar/Atualizar e Cancelar (MOVIDO PARA O FINAL) */}
+            <div className="flex justify-end gap-2 mt-4">
+              {editingRegistroId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={resetFormFields}
+                  className="gap-2"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Cancelar Edição
+                </Button>
+              )}
+              <Button
+                type="submit"
+                className="gap-2"
+                disabled={loading || !om || !ug || !omQS || !ugQS || efetivo <= 0 || diasOperacao <= 0 || (!displayFases)}
+              >
+                <Plus className="h-4 w-4" />
+                {loading ? "Aguarde..." : (editingRegistroId ? "Atualizar OM" : "Cadastrar OM")}
+              </Button>
+            </div>
+          </form>
 
             {/* Tabela de Registros */}
             {registros.length > 0 && (
