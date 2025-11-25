@@ -1,0 +1,2 @@
+ALTER TABLE public.organizacoes_militares
+DROP CONSTRAINT organizacoes_militares_user_id_codug_om_key;

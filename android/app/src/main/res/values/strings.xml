@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ptrab-inteligente-caa3b2db</string>
+    <string name="title_activity_main">ptrab-inteligente-caa3b2db</string>
+    <string name="package_name">com.example.ptrabinteligentecaa3b2db</string>
+    <string name="custom_url_scheme">com.example.ptrabinteligentecaa3b2db</string>
+</resources>

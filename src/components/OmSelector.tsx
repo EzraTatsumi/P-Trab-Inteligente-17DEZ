@@ -1,0 +1,137 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { supabase } from "@/integrations/supabase/client";
+import { OMData } from "@/lib/omUtils"; // Certifique-se de que OMData está corretamente importado
+
+interface OmSelectorProps {
+  selectedOmId?: string; // Agora recebe o ID da OM selecionada
+  onChange: (omData: OMData | undefined) => void; // Passa o objeto OMData completo
+  filterByRM?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  omsList?: OMData[]; // Novo prop: lista de OMs pré-carregada
+}
+
+export function OmSelector({
+  selectedOmId,
+  onChange,
+  filterByRM,
+  placeholder = "Selecione uma OM...",
+  disabled = false,
+  omsList, // Usar a lista passada se existir
+}: OmSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const [oms, setOms] = useState<OMData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Se omsList for fornecido, usa ele. Caso contrário, carrega do Supabase.
+  useEffect(() => {
+    if (omsList) {
+      setOms(omsList);
+      setLoading(false);
+    } else {
+      loadOMs();
+    }
+  }, [filterByRM, omsList]);
+
+  const loadOMs = async () => {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from('organizacoes_militares')
+        .select('*')
+        .eq('ativo', true)
+        .order('nome_om');
+
+      if (filterByRM) {
+        query = query.eq('rm_vinculacao', filterByRM);
+      }
+
+      const { data } = await query;
+      setOms((data || []) as OMData[]);
+    } catch (error) {
+      console.error('Erro ao carregar OMs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectedOM = oms.find(om => om.id === selectedOmId);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between"
+          disabled={disabled || loading}
+        >
+          {loading ? (
+            "Carregando..."
+          ) : selectedOM ? (
+            // Exibe apenas o nome da OM (sigla)
+            <span className="truncate">{selectedOM.nome_om}</span>
+          ) : (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] max-w-[400px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Buscar OM..." />
+          <CommandList>
+            <CommandEmpty>Nenhuma OM encontrada.</CommandEmpty>
+            <CommandGroup>
+              {oms.map((om) => (
+                <CommandItem
+                  key={om.id}
+                  // Alterado o valor para incluir nome e CODUG, melhorando a busca do cmdk
+                  value={`${om.nome_om} ${om.codug_om} ${om.rm_vinculacao} ${om.id}`} 
+                  onSelect={(currentValue) => {
+                    // O currentValue agora é a string completa, precisamos encontrar o ID
+                    const selected = oms.find(o => o.id === om.id); // Usamos o om.id do loop para garantir a seleção correta
+                    onChange(selected?.id === selectedOmId ? undefined : selected); // Passa o objeto completo ou undefined
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      selectedOmId === om.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <div className="flex flex-col">
+                    <span>{om.nome_om}</span>
+                    <span className="text-xs text-muted-foreground">
+                      CODUG: {om.codug_om} | {om.rm_vinculacao}
+                    </span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
