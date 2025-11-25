@@ -34,7 +34,11 @@ const cleanOmNameForSearch = (name: string) => {
   // 1. Normaliza para remover acentos (NFD) e remove caracteres diacríticos ([\u0300-\u036f])
   const normalized = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   // 2. Remove caracteres não alfanuméricos (exceto espaços) e converte para minúsculas
-  return normalized.replace(/[^a-zA-Z0-9\s]/g, '').toLowerCase();
+  const cleanedWithSpaces = normalized.replace(/[^a-zA-Z0-9\s]/g, '').toLowerCase();
+  // 3. Versão sem espaços para busca de substrings
+  const cleanedWithoutSpaces = cleanedWithSpaces.replace(/\s/g, '');
+  
+  return { cleanedWithSpaces, cleanedWithoutSpaces };
 };
 
 export function OmSelector({
@@ -141,32 +145,35 @@ export function OmSelector({
           <CommandList>
             <CommandEmpty>Nenhuma OM encontrada.</CommandEmpty>
             <CommandGroup>
-              {oms.map((om) => (
-                <CommandItem
-                  key={om.id}
-                  // Inclui o nome original, o nome limpo, CODUG e RM para busca
-                  value={`${om.nome_om} ${cleanOmNameForSearch(om.nome_om)} ${om.codug_om} ${om.rm_vinculacao} ${om.id}`} 
-                  onSelect={(currentValue) => {
-                    // O currentValue agora é a string completa, precisamos encontrar o ID
-                    const selected = oms.find(o => o.id === om.id); // Usamos o om.id do loop para garantir a seleção correta
-                    onChange(selected?.id === selectedOmId ? undefined : selected); // Passa o objeto completo ou undefined
-                    setOpen(false);
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      selectedOmId === om.id ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <div className="flex flex-col">
-                    <span>{om.nome_om}</span>
-                    <span className="text-xs text-muted-foreground">
-                      CODUG: {om.codug_om} | {om.rm_vinculacao}
-                    </span>
-                  </div>
-                </CommandItem>
-              ))}
+              {oms.map((om) => {
+                const { cleanedWithSpaces, cleanedWithoutSpaces } = cleanOmNameForSearch(om.nome_om);
+                return (
+                  <CommandItem
+                    key={om.id}
+                    // Inclui o nome original, a versão limpa com espaços, a versão limpa sem espaços, CODUG e RM para busca
+                    value={`${om.nome_om} ${cleanedWithSpaces} ${cleanedWithoutSpaces} ${om.codug_om} ${om.rm_vinculacao} ${om.id}`} 
+                    onSelect={(currentValue) => {
+                      // O currentValue agora é a string completa, precisamos encontrar o ID
+                      const selected = oms.find(o => o.id === om.id); // Usamos o om.id do loop para garantir a seleção correta
+                      onChange(selected?.id === selectedOmId ? undefined : selected); // Passa o objeto completo ou undefined
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        selectedOmId === om.id ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <div className="flex flex-col">
+                      <span>{om.nome_om}</span>
+                      <span className="text-xs text-muted-foreground">
+                        CODUG: {om.codug_om} | {om.rm_vinculacao}
+                      </span>
+                    </div>
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
           </CommandList>
         </Command>

@@ -1017,6 +1017,21 @@ const PTrabManager = () => {
                       />
                     </div>
                   </div>
+                  
+                  {/* NOVO CAMPO: Ações */}
+                  <div className="space-y-2">
+                    <Label htmlFor="acoes">Ações realizadas ou a serem realizadas</Label>
+                    <Textarea
+                      id="acoes"
+                      value={formData.acoes}
+                      onChange={(e) => setFormData({ ...formData, acoes: e.target.value })}
+                      placeholder="Descreva as ações..."
+                      rows={4}
+                      maxLength={2000}
+                      onKeyDown={handleEnterToNextField}
+                    />
+                  </div>
+
                   <DialogFooter>
                     <Button type="submit" disabled={loading}>
                       {loading ? "Aguarde..." : (editingId ? "Atualizar" : "Criar")}
