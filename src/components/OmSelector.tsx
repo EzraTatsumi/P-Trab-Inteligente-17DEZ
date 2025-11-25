@@ -29,10 +29,12 @@ interface OmSelectorProps {
   omsList?: OMData[]; // Novo prop: lista de OMs pré-carregada
 }
 
-// Função auxiliar para limpar o nome da OM para fins de busca
+// Função auxiliar para limpar o nome da OM para fins de busca (remove acentos e caracteres não alfanuméricos)
 const cleanOmNameForSearch = (name: string) => {
-  // Remove o caractere 'ª' e converte para minúsculas
-  return name.replace(/ª/g, 'a').toLowerCase();
+  // 1. Normaliza para remover acentos (NFD) e remove caracteres diacríticos ([\u0300-\u036f])
+  const normalized = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  // 2. Remove caracteres não alfanuméricos (exceto espaços) e converte para minúsculas
+  return normalized.replace(/[^a-zA-Z0-9\s]/g, '').toLowerCase();
 };
 
 export function OmSelector({
@@ -142,8 +144,8 @@ export function OmSelector({
               {oms.map((om) => (
                 <CommandItem
                   key={om.id}
-                  // Usar o nome limpo para o valor de busca, mas manter o nome original para exibição
-                  value={`${cleanOmNameForSearch(om.nome_om)} ${om.codug_om} ${om.rm_vinculacao} ${om.id}`} 
+                  // Inclui o nome original, o nome limpo, CODUG e RM para busca
+                  value={`${om.nome_om} ${cleanOmNameForSearch(om.nome_om)} ${om.codug_om} ${om.rm_vinculacao} ${om.id}`} 
                   onSelect={(currentValue) => {
                     // O currentValue agora é a string completa, precisamos encontrar o ID
                     const selected = oms.find(o => o.id === om.id); // Usamos o om.id do loop para garantir a seleção correta
