@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,9 @@ export function OmSelector({
   const [open, setOpen] = useState(false);
   const [oms, setOms] = useState<OMData[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Ref para o CommandInput
+  const inputRef = useRef<HTMLInputElement>(null); 
 
   // Se omsList for fornecido, usa ele. Caso contrário, carrega do Supabase.
   useEffect(() => {
@@ -50,6 +53,17 @@ export function OmSelector({
       loadOMs();
     }
   }, [filterByRM, omsList]);
+
+  // Efeito para focar o input quando o popover abre
+  useEffect(() => {
+    if (open) {
+      // Pequeno delay para garantir que o PopoverContent esteja montado
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 10); 
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   const loadOMs = async () => {
     setLoading(true);
@@ -75,6 +89,22 @@ export function OmSelector({
 
   const selectedOM = oms.find(om => om.id === selectedOmId);
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    // Se o popover já estiver aberto, não precisamos fazer nada aqui.
+    if (open) return;
+
+    // Verifica se a tecla pressionada é um caractere de pesquisa (letra, número, etc.)
+    const isSearchKey = e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey;
+
+    if (isSearchKey) {
+      // Previne o comportamento padrão do botão (como o Enter ou Space)
+      e.preventDefault(); 
+      
+      // Abre o popover
+      setOpen(true);
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -84,6 +114,7 @@ export function OmSelector({
           aria-expanded={open}
           className="w-full justify-between"
           disabled={disabled || loading}
+          onKeyDown={handleKeyDown} // Adiciona o handler de teclado
         >
           {loading ? (
             "Carregando..."
@@ -98,7 +129,7 @@ export function OmSelector({
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] max-w-[400px] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Buscar OM..." />
+          <CommandInput ref={inputRef} placeholder="Buscar OM..." />
           <CommandList>
             <CommandEmpty>Nenhuma OM encontrada.</CommandEmpty>
             <CommandGroup>
