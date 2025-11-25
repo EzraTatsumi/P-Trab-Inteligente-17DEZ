@@ -223,9 +223,9 @@ export default function PTrabForm() {
                     <DollarSign className="h-8 w-8 text-green-500" />
                   </CardHeader>
                   <CardContent>
-                    <CardDescription>
+                    {/* <CardDescription>
                       Gerencie os registros de custeio para alimentação (QS e QR).
-                    </CardDescription>
+                    </CardDescription> */}
                   </CardContent>
                 </Card>
 
@@ -238,9 +238,9 @@ export default function PTrabForm() {
                     <ClipboardList className="h-8 w-8 text-yellow-500" />
                   </CardHeader>
                   <CardContent>
-                    <CardDescription>
+                    {/* <CardDescription>
                       Em breve: Gerencie os registros de custeio para material de intendência (fardamento, acampamento, etc.).
-                    </CardDescription>
+                    </CardDescription> */}
                   </CardContent>
                 </Card>
 
@@ -254,9 +254,9 @@ export default function PTrabForm() {
                     <Fuel className="h-8 w-8 text-orange-500" />
                   </CardHeader>
                   <CardContent>
-                    <CardDescription>
+                    {/* <CardDescription>
                       Gerencie os registros de custeio para combustíveis (viaturas, geradores, embarcações).
-                    </CardDescription>
+                    </CardDescription> */}
                   </CardContent>
                 </Card>
 
@@ -269,9 +269,9 @@ export default function PTrabForm() {
                     <ClipboardList className="h-8 w-8 text-red-500" />
                   </CardHeader>
                   <CardContent>
-                    <CardDescription>
+                    {/* <CardDescription>
                       Em breve: Gerencie os registros de custeio para armamento e munição.
-                    </CardDescription>
+                    </CardDescription> */}
                   </CardContent>
                 </Card>
                 
@@ -284,9 +284,9 @@ export default function PTrabForm() {
                     <Plane className="h-8 w-8 text-blue-500" />
                   </CardHeader>
                   <CardContent>
-                    <CardDescription>
+                    {/* <CardDescription>
                       Em breve: Gerencie os registros de custeio para material de comunicações.
-                    </CardDescription>
+                    </CardDescription> */}
                   </CardContent>
                 </Card>
 
@@ -299,9 +299,9 @@ export default function PTrabForm() {
                     <Wrench className="h-8 w-8 text-gray-500" />
                   </CardHeader>
                   <CardContent>
-                    <CardDescription>
+                    {/* <CardDescription>
                       Em breve: Gerencie os registros de custeio para material de engenharia.
-                    </CardDescription>
+                    </CardDescription> */}
                   </CardContent>
                 </Card>
 
@@ -314,9 +314,9 @@ export default function PTrabForm() {
                     <ClipboardList className="h-8 w-8 text-pink-500" />
                   </CardHeader>
                   <CardContent>
-                    <CardDescription>
+                    {/* <CardDescription>
                       Em breve: Gerencie os registros de custeio para material de saúde.
-                    </CardDescription>
+                    </CardDescription> */}
                   </CardContent>
                 </Card>
 
@@ -329,9 +329,9 @@ export default function PTrabForm() {
                     <Wrench className="h-8 w-8 text-purple-500" />
                   </CardHeader>
                   <CardContent>
-                    <CardDescription>
+                    {/* <CardDescription>
                       Em breve: Gerencie os registros de custeio para motomecanização.
-                    </CardDescription>
+                    </CardDescription> */}
                   </CardContent>
                 </Card>
               </div>
