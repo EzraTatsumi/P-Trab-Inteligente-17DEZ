@@ -23,6 +23,14 @@ import { formatCurrency, formatNumber } from "@/lib/formatUtils"; // Importar fo
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"; // Adicionado importação do Dialog
 
 type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
 
@@ -2011,7 +2019,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   <div className="space-y-2">
                     <Label htmlFor="rm_fornecimento_gerador">RM de Fornecimento de Combustível *</Label>
                     <RmSelector
-                      selectedRmName={rmFornecimento}
+                      value={rmFornecimento}
                       onChange={handleRMFornecimentoChange}
                       placeholder="Selecione a RM..."
                       disabled={loading}
@@ -2257,7 +2265,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   <div className="space-y-2">
                     <Label htmlFor="rm_fornecimento_viatura">RM de Fornecimento de Combustível *</Label>
                     <RmSelector
-                      selectedRmName={rmFornecimento}
+                      value={rmFornecimento}
                       onChange={handleRMFornecimentoChange}
                       placeholder="Selecione a RM..."
                       disabled={loading}
@@ -2516,7 +2524,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   <div className="space-y-2">
                     <Label htmlFor="rm_fornecimento_embarcacao">RM de Fornecimento de Combustível *</Label>
                     <RmSelector
-                      selectedRmName={rmFornecimento}
+                      value={rmFornecimento}
                       onChange={handleRMFornecimentoChange}
                       placeholder="Selecione a RM..."
                       disabled={loading}
@@ -2725,68 +2733,6 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     {loading ? "Salvando..." : (editingId ? "Atualizar Registros" : "Salvar Registros")}
                   </Button>
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-medium flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-primary" />
-              Registros de Classe III Cadastrados
-            </CardTitle>
-            <CardDescription>
-              Visualize e gerencie os registros de consumo de combustível para este PTrab.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {registros.length === 0 ? (
-              <p className="text-muted-foreground">Nenhum registro de Classe III cadastrado para este PTrab.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>OM</TableHead>
-                      <TableHead>Qtd</TableHead>
-                      <TableHead>Dias</TableHead>
-                      <TableHead>Combustível</TableHead>
-                      <TableHead>Litros (c/ 30%)</TableHead>
-                      <TableHead>Valor Total</TableHead>
-                      <TableHead>Fase</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {registros.map((registro) => (
-                      <TableRow key={registro.id}>
-                        <TableCell className="font-medium">
-                          {registro.tipo_equipamento_detalhe || getTipoLabel(registro.tipo_equipamento)}
-                        </TableCell>
-                        <TableCell>{registro.organizacao} ({registro.ug})</TableCell>
-                        <TableCell>{registro.quantidade}</TableCell>
-                        <TableCell>{registro.dias_operacao}</TableCell>
-                        <TableCell>{registro.tipo_combustivel}</TableCell>
-                        <TableCell>{formatNumber(registro.total_litros)} L</TableCell>
-                        <TableCell className="font-semibold">{formatCurrency(registro.valor_total)}</TableCell>
-                        <TableCell>{formatFasesParaTexto(registro.fase_atividade)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => handleIniciarEdicaoMemoria(registro)}>
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleEditar(registro)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeletar(registro.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
               </div>
             )}
           </CardContent>
