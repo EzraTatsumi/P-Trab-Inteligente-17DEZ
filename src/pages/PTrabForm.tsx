@@ -38,6 +38,7 @@ export default function PTrabForm() {
   const ptrabId = searchParams.get("ptrabId");
   const [ptrab, setPTrab] = useState<PTrab | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("logistica"); // Novo estado para a aba ativa
 
   useEffect(() => {
     if (ptrabId) {
@@ -49,6 +50,15 @@ export default function PTrabForm() {
       navigate("/ptrab");
     }
   }, [ptrabId, navigate]);
+
+  // Efeito para rolar para o topo da seção de classes quando a aba 'logistica' é ativada
+  useEffect(() => {
+    if (activeTab === 'logistica') {
+      // Rola para o topo da janela, pois a seção de classes é a primeira coisa
+      // abaixo dos detalhes do PTrab.
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [activeTab]);
 
   const fetchPTrabDetails = async () => {
     setLoading(true);
@@ -185,7 +195,7 @@ export default function PTrabForm() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="logistica" className="w-full">
+        <Tabs defaultValue="logistica" className="w-full" onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-5 h-auto">
             <TabsTrigger value="logistica" className="py-2">Aba Logística</TabsTrigger>
             <TabsTrigger value="operacao" className="py-2">Aba Operacional</TabsTrigger>
