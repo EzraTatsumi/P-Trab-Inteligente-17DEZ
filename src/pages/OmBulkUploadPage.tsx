@@ -46,28 +46,49 @@ const OmBulkUploadPage = () => {
 
   const removeDuplicates = (oms: Partial<OMData>[]) => {
     const uniqueOms = new Map<string, Partial<OMData>>();
+    const codugSet = new Set<string>();
+    let removedCount = 0;
     
     oms.forEach(om => {
-      // Criar chave única baseada em todos os campos
-      const key = `${om.nome_om}|${om.codug_om}|${om.rm_vinculacao}|${om.codug_rm_vinculacao}`;
-      if (!uniqueOms.has(key)) {
-        uniqueOms.set(key, om);
+      // Chave de unicidade baseada no CODUG, que é a restrição do banco
+      const codugKey = om.codug_om!; 
+      
+      // Chave de unicidade baseada em todos os campos (para contar duplicatas exatas)
+      const exactKey = `${om.nome_om}|${om.codug_om}|${om.rm_vinculacao}|${om.codug_rm_vinculacao}`;
+
+      if (!codugSet.has(codugKey)) {
+        codugSet.add(codugKey);
+        uniqueOms.set(codugKey, om);
+      } else {
+        // Se o CODUG já existe, verifica se é uma duplicata exata
+        const existingOm = uniqueOms.get(codugKey);
+        const existingExactKey = `${existingOm?.nome_om}|${existingOm?.codug_om}|${existingOm?.rm_vinculacao}|${existingOm?.codug_rm_vinculacao}`;
+        
+        if (exactKey === existingExactKey) {
+          removedCount++;
+        } else {
+          // Se o CODUG já existe, mas os outros dados são diferentes, 
+          // mantemos o primeiro registro encontrado para esse CODUG, mas contamos como duplicata de CODUG.
+          // A lógica de 'multipleCodugs' abaixo tratará isso.
+        }
       }
     });
     
-    return Array.from(uniqueOms.values());
+    return {
+      uniqueOmsByCodug: Array.from(uniqueOms.values()),
+      removedExactDuplicates: removedCount
+    };
   };
 
   const analyzeOmData = (parsedOms: Partial<OMData>[]) => {
     const totalOriginal = parsedOms.length;
     
-    // 1. Remover duplicatas exatas primeiro
-    const deduplicatedOms = removeDuplicates(parsedOms);
-    const duplicatasRemovidas = totalOriginal - deduplicatedOms.length;
+    // 1. Remover duplicatas exatas e obter lista única por CODUG
+    const { uniqueOmsByCodug, removedExactDuplicates } = removeDuplicates(parsedOms);
     
-    // 2. Agrupar por nome
+    // 2. Agrupar por nome para identificar OMs com múltiplos CODUGs (características especiais)
     const groupedByName = new Map<string, Partial<OMData>[]>();
-    deduplicatedOms.forEach(om => {
+    uniqueOmsByCodug.forEach(om => {
       const existing = groupedByName.get(om.nome_om!) || [];
       existing.push(om);
       groupedByName.set(om.nome_om!, existing);
@@ -77,22 +98,27 @@ const OmBulkUploadPage = () => {
     const unique: Partial<OMData>[] = [];
     const multipleCodugs: { nome: string; registros: Partial<OMData>[] }[] = [];
     
+    const finalOmsForUpload: Partial<OMData>[] = [];
+
     groupedByName.forEach((oms, nome) => {
       if (oms.length === 1) {
         unique.push(oms[0]);
+        finalOmsForUpload.push(oms[0]);
       } else {
         // OMs com mesmo nome mas CODUGs diferentes (características especiais)
         multipleCodugs.push({ nome, registros: oms });
+        // Incluímos todos os registros com CODUGs diferentes, pois eles são válidos
+        finalOmsForUpload.push(...oms);
       }
     });
     
     return { 
       total: totalOriginal,
-      totalAposDeduplicacao: deduplicatedOms.length,
-      duplicatasRemovidas,
+      totalAposDeduplicacao: finalOmsForUpload.length,
+      duplicatasRemovidas: totalOriginal - finalOmsForUpload.length, // Recalcula com base no resultado final
       unique, 
       multipleCodugs,
-      deduplicatedOms // Retornar os dados limpos para o upload
+      deduplicatedOms: finalOmsForUpload // Retornar os dados limpos para o upload
     };
   };
 
@@ -133,7 +159,7 @@ const OmBulkUploadPage = () => {
       if (analysis.duplicatasRemovidas > 0) {
         toast({
           title: "Duplicatas removidas",
-          description: `${analysis.duplicatasRemovidas} registros idênticos foram automaticamente removidos.`,
+          description: `${analysis.duplicatasRemovidas} registro(s) idêntico(s) ou com CODUG duplicado foi(foram) automaticamente removido(s).`,
         });
       }
 
