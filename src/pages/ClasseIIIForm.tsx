@@ -1811,9 +1811,9 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
-          <Button variant="outline" onClick={() => navigate("/ptrab")}>
+          <Button variant="outline" onClick={() => navigate(`/ptrab/form?id=${ptrabId}`)}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar para PTrabs
+            VOLTAR
           </Button>
           <h1 className="text-3xl font-bold text-center flex-grow">Classe III - Combustíveis</h1>
           <div className="w-fit"></div> {/* Placeholder para alinhar o título */}
