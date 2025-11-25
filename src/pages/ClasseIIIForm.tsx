@@ -251,8 +251,8 @@ export default function ClasseIIIForm() {
 
   const [itemGeradorTemp, setItemGeradorTemp] = useState({
     tipo_equipamento_especifico: "",
-    quantidade: 0,
-    horas_dia: 0,
+    quantidade: 0, // Alterado para 0
+    horas_dia: 0, // Alterado para 0
     consumo_fixo: 0,
     tipo_combustivel: "DIESEL" as 'GASOLINA' | 'DIESEL',
   });
@@ -270,9 +270,9 @@ export default function ClasseIIIForm() {
 
   const [itemViaturaTemp, setItemViaturaTemp] = useState({
     tipo_equipamento_especifico: "",
-    quantidade: 0,
+    quantidade: 0, // Alterado para 0
     distancia_percorrida: 0,
-    quantidade_deslocamentos: 0,
+    quantidade_deslocamentos: 0, // Alterado para 0
     consumo_fixo: 0,
     tipo_combustivel: "DIESEL" as 'GASOLINA' | 'DIESEL',
   });
@@ -290,8 +290,8 @@ export default function ClasseIIIForm() {
 
   const [itemEmbarcacaoTemp, setItemEmbarcacaoTemp] = useState({
     tipo_equipamento_especifico: "",
-    quantidade: 0,
-    horas_dia: 0,
+    quantidade: 0, // Alterado para 0
+    horas_dia: 0, // Alterado para 0
     consumo_fixo: 0,
     tipo_combustivel: "DIESEL" as 'GASOLINA' | 'DIESEL',
   });
@@ -302,7 +302,7 @@ export default function ClasseIIIForm() {
 
   useEffect(() => {
     if (!ptrabId) {
-      toast.error("ID do P Trab não encontrado");
+      toast.error("ID do PTrab não encontrado");
       navigate("/ptrab");
       return;
     }
@@ -1642,7 +1642,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
         totalLitrosSemMargem += litrosItem;
         
         const unidade = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
-        detalhes.push(`- ${item.quantidade} ${item.tipo_equipamento_especifico}: (${formatNumber(item.distancia_percorrida)} km x ${item.quantidade} vtr x ${item.quantidade_deslocamentos} desloc) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L = ${formatNumber(litrosItem)} L ${unidade}.`);
+        detalhes.push(`- ${item.quantidade} ${item.tipo_equipamento_especifico}: (${formatNumber(item.distancia_percorrida)} km x ${item.quantidade} vtr x ${item.quantidade_deslocamentos} deslocamentos) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L = ${formatNumber(litrosItem)} L ${unidade}.`);
       });
 
       const totalLitros = totalLitrosSemMargem * 1.3;
@@ -1673,12 +1673,12 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       const detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalViaturas} viaturas, durante ${formViatura.dias_operacao} dias de ${faseFormatada}, para ${formViatura.organizacao}.
 Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
 
-Rendimento das viaturas:
+Cálculo:
 ${itensGrupo.map(item => `- ${item.tipo_equipamento_especifico}: ${formatNumber(item.consumo_fixo, 1)} km/L.`).join('\n')}
 
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${combustivelLabel} - ${formatCurrency(preco)}.
 
-Fórmula: (Distância a percorrer × Nr Viaturas × Nr Deslocamentos) ÷ Rendimento (km/L).
+Fórmula: (Nr Viaturas x Nr Km percorridos/dia ÷ Consumo km/L) x Nr dias de operação.
 ${detalhes.join('\n')}
 
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}.
@@ -1798,1609 +1798,1031 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
     }
   };
 
-  if (!tipoSelecionado) {
-    return (
-      <div className="min-h-screen bg-background p-4 md:p-8">
-        <div className="max-w-6xl mx-auto">
-          <Button
-            variant="ghost"
-            onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)}
-            className="mb-4"
-          >
+  return (
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex justify-between items-center">
+          <Button variant="outline" onClick={() => navigate("/ptrab")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
+            Voltar para PTrabs
           </Button>
+          <h1 className="text-3xl font-bold text-center flex-grow">Classe III - Combustíveis</h1>
+          <div className="w-fit"></div> {/* Placeholder para alinhar o título */}
+        </div>
 
-          <Card className="mb-6 border-2 border-primary/20" ref={lpcRef}>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Fuel className="h-5 w-5" />
-                  Referência de Preços - Consulta LPC
-                </CardTitle>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => setIsLPCFormExpanded(!isLPCFormExpanded)}
-                >
-                  {isLPCFormExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </Button>
+        <Card ref={lpcRef}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-lg font-medium flex items-center gap-2">
+              <Fuel className="h-5 w-5 text-primary" />
+              Referência LPC (Levantamento de Preços de Combustíveis)
+            </CardTitle>
+            <Button variant="ghost" size="icon" onClick={() => setIsLPCFormExpanded(!isLPCFormExpanded)}>
+              {isLPCFormExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CardHeader>
+          <CardContent className={isLPCFormExpanded ? "block" : "hidden"}>
+            <p className="text-sm text-muted-foreground mb-4">
+              Informe os dados da consulta de preços de combustíveis para o período do PTrab.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="data_inicio_consulta">Data Início Consulta *</Label>
+                <Input
+                  id="data_inicio_consulta"
+                  type="date"
+                  value={formLPC.data_inicio_consulta}
+                  onChange={(e) => setFormLPC({ ...formLPC, data_inicio_consulta: e.target.value })}
+                  required
+                  onKeyDown={handleEnterToNextField}
+                />
               </div>
-            </CardHeader>
-            {isLPCFormExpanded && (
-              <CardContent>
-                {!refLPC && (
-                  <Alert className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Configure a referência de preços LPC para este P Trab antes de adicionar registros de Classe III.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                
-                <form onSubmit={(e) => { e.preventDefault(); handleSalvarRefLPC(); }}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="data_fim_consulta">Data Fim Consulta *</Label>
+                <Input
+                  id="data_fim_consulta"
+                  type="date"
+                  value={formLPC.data_fim_consulta}
+                  onChange={(e) => setFormLPC({ ...formLPC, data_fim_consulta: e.target.value })}
+                  required
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ambito">Âmbito da Consulta *</Label>
+                <Select
+                  value={formLPC.ambito}
+                  onValueChange={(value: 'Nacional' | 'Estadual' | 'Municipal') => setFormLPC({ ...formLPC, ambito: value, nome_local: value === 'Nacional' ? '' : formLPC.nome_local })}
+                >
+                  <SelectTrigger id="ambito">
+                    <SelectValue placeholder="Selecione o âmbito" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Nacional">Nacional</SelectItem>
+                    <SelectItem value="Estadual">Estadual</SelectItem>
+                    <SelectItem value="Municipal">Municipal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {formLPC.ambito !== 'Nacional' && (
+                <div className="space-y-2">
+                  <Label htmlFor="nome_local">{formLPC.ambito === 'Estadual' ? 'Estado' : 'Município'} *</Label>
+                  <Input
+                    id="nome_local"
+                    value={formLPC.nome_local}
+                    onChange={(e) => setFormLPC({ ...formLPC, nome_local: e.target.value })}
+                    placeholder={formLPC.ambito === 'Estadual' ? 'Ex: Amazonas' : 'Ex: Manaus'}
+                    required
+                    onKeyDown={handleEnterToNextField}
+                  />
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="preco_diesel">Preço Diesel (R$/L) *</Label>
+                <Input
+                  id="preco_diesel"
+                  type="number"
+                  step="0.01"
+                  value={formLPC.preco_diesel}
+                  onChange={(e) => setFormLPC({ ...formLPC, preco_diesel: parseFloat(e.target.value) || 0 })}
+                  required
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="preco_gasolina">Preço Gasolina (R$/L) *</Label>
+                <Input
+                  id="preco_gasolina"
+                  type="number"
+                  step="0.01"
+                  value={formLPC.preco_gasolina}
+                  onChange={(e) => setFormLPC({ ...formLPC, preco_gasolina: parseFloat(e.target.value) || 0 })}
+                  required
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end mt-4">
+              <Button onClick={handleSalvarRefLPC} disabled={loading}>
+                {loading ? "Salvando..." : "Salvar Referência LPC"}
+              </Button>
+            </div>
+          </CardContent>
+          {refLPC && !isLPCFormExpanded && (
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-muted-foreground">
+                <div>
+                  <p className="font-medium text-foreground">Período:</p>
+                  <p>{new Date(refLPC.data_inicio_consulta).toLocaleDateString('pt-BR')} a {new Date(refLPC.data_fim_consulta).toLocaleDateString('pt-BR')}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Âmbito:</p>
+                  <p>{refLPC.ambito} {refLPC.nome_local ? `(${refLPC.nome_local})` : ''}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Preço Diesel:</p>
+                  <p>{formatCurrency(refLPC.preco_diesel)}/L</p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Preço Gasolina:</p>
+                  <p>{formatCurrency(refLPC.preco_gasolina)}/L</p>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-medium flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Adicionar Novo Registro de Classe III
+            </CardTitle>
+            <CardDescription>
+              Selecione o tipo de equipamento para adicionar um novo registro de consumo de combustível.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Button
+                variant={tipoSelecionado === 'GERADOR' ? 'default' : 'outline'}
+                onClick={() => handleSelectEquipmentType('GERADOR')}
+                className="flex flex-col h-auto py-4"
+              >
+                <Zap className="h-6 w-6 mb-2" />
+                Gerador
+              </Button>
+              <Button
+                variant={tipoSelecionado === 'MOTOMECANIZACAO' ? 'default' : 'outline'}
+                onClick={() => handleSelectEquipmentType('MOTOMECANIZACAO')}
+                className="flex flex-col h-auto py-4"
+              >
+                <Truck className="h-6 w-6 mb-2" />
+                Motomecanização
+              </Button>
+              <Button
+                variant={tipoSelecionado === 'EMBARCACAO' ? 'default' : 'outline'}
+                onClick={() => handleSelectEquipmentType('EMBARCACAO')}
+                className="flex flex-col h-auto py-4"
+              >
+                <Ship className="h-6 w-6 mb-2" />
+                Embarcação
+              </Button>
+              {/* <Button
+                variant={tipoSelecionado === 'EQUIPAMENTO_ENGENHARIA' ? 'default' : 'outline'}
+                onClick={() => handleSelectEquipmentType('EQUIPAMENTO_ENGENHARIA')}
+                className="flex flex-col h-auto py-4"
+              >
+                <Wrench className="h-6 w-6 mb-2" />
+                Equip. Engenharia
+              </Button> */}
+            </div>
+
+            {tipoSelecionado === 'GERADOR' && (
+              <div className="mt-6 border p-4 rounded-lg space-y-4" ref={addGeradorRef}>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Zap className="h-5 w-5" />
+                  Adicionar Gerador
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="om-gerador">OM *</Label>
+                    <OmSelector
+                      selectedOmId={formGerador.selectedOmId}
+                      onChange={handleOMGeradorChange}
+                      placeholder="Selecione a OM..."
+                      disabled={loading}
+                    />
+                    {formGerador.ug && (
+                      <p className="text-xs text-muted-foreground">UG: {formGerador.ug}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dias_operacao_gerador">Dias de Operação *</Label>
+                    <Input
+                      id="dias_operacao_gerador"
+                      type="number"
+                      value={formGerador.dias_operacao}
+                      onChange={(e) => setFormGerador({ ...formGerador, dias_operacao: parseInt(e.target.value) || 0 })}
+                      min={1}
+                      required
+                      onKeyDown={handleEnterToNextField}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rm_fornecimento_gerador">RM de Fornecimento de Combustível *</Label>
+                    <RmSelector
+                      selectedRmName={rmFornecimento}
+                      onChange={handleRMFornecimentoChange}
+                      placeholder="Selecione a RM..."
+                      disabled={loading}
+                    />
+                    {codugRmFornecimento && (
+                      <p className="text-xs text-muted-foreground">CODUG: {codugRmFornecimento}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fase_atividade_gerador">Fase da Atividade *</Label>
+                    <Popover open={isPopoverOpenGerador} onOpenChange={setIsPopoverOpenGerador}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          {fasesAtividadeGerador.length > 0 ? fasesAtividadeGerador.join(', ') : "Selecione as fases"}
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandGroup>
+                            {FASES_PADRAO.map((fase) => (
+                              <CommandItem key={fase} className="flex items-center space-x-2 p-2">
+                                <Checkbox
+                                  id={`fase-gerador-${fase}`}
+                                  checked={fasesAtividadeGerador.includes(fase)}
+                                  onCheckedChange={(checked) => handleFaseChangeGerador(fase, checked as boolean)}
+                                />
+                                <Label htmlFor={`fase-gerador-${fase}`} className="font-normal cursor-pointer">
+                                  {fase}
+                                </Label>
+                              </CommandItem>
+                            ))}
+                            <div className="flex items-center space-x-2 p-2">
+                              <Input
+                                placeholder="Outra fase..."
+                                value={customFaseAtividadeGerador}
+                                onChange={(e) => setCustomFaseAtividadeGerador(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && customFaseAtividadeGerador.trim()) {
+                                    e.preventDefault();
+                                    if (!fasesAtividadeGerador.includes(customFaseAtividadeGerador.trim())) {
+                                      setFasesAtividadeGerador([...fasesAtividadeGerador, customFaseAtividadeGerador.trim()]);
+                                      setCustomFaseAtividadeGerador("");
+                                    }
+                                  }
+                                }}
+                              />
+                              {customFaseAtividadeGerador.trim() && !fasesAtividadeGerador.includes(customFaseAtividadeGerador.trim()) && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => {
+                                    setFasesAtividadeGerador([...fasesAtividadeGerador, customFaseAtividadeGerador.trim()]);
+                                    setCustomFaseAtividadeGerador("");
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4 mt-4 space-y-4">
+                  <h4 className="text-md font-semibold">Itens de Gerador</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label>Data Início Consulta</Label>
-                      <Input
-                        type="date"
-                        value={formLPC.data_inicio_consulta}
-                        onChange={(e) => setFormLPC({...formLPC, data_inicio_consulta: e.target.value})}
-                        onKeyDown={handleEnterToNextField}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Data Fim Consulta</Label>
-                      <Input
-                        type="date"
-                        value={formLPC.data_fim_consulta}
-                        onChange={(e) => setFormLPC({...formLPC, data_fim_consulta: e.target.value})}
-                        onKeyDown={handleEnterToNextField}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Âmbito da Pesquisa</Label>
+                      <Label htmlFor="tipo_equipamento_especifico_gerador">Tipo de Gerador *</Label>
                       <Select
-                        value={formLPC.ambito}
-                        onValueChange={(val) => setFormLPC({...formLPC, ambito: val as 'Nacional' | 'Estadual' | 'Municipal'})}
+                        value={itemGeradorTemp.tipo_equipamento_especifico}
+                        onValueChange={handleTipoGeradorChange}
                       >
-                        <SelectTrigger>
-                          <SelectValue />
+                        <SelectTrigger id="tipo_equipamento_especifico_gerador">
+                          <SelectValue placeholder="Selecione o tipo" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Nacional">Nacional</SelectItem>
-                          <SelectItem value="Estadual">Estadual</SelectItem>
-                          <SelectItem value="Municipal">Municipal</SelectItem>
+                          {equipamentosDisponiveis.map((eq) => (
+                            <SelectItem key={eq.nome} value={eq.nome}>
+                              {eq.nome} ({eq.consumo} L/h - {eq.combustivel === 'GAS' ? 'Gasolina' : 'Diesel'})
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    
-                    {formLPC.ambito !== 'Nacional' && (
-                      <div className="space-y-2">
-                        <Label>{formLPC.ambito === 'Estadual' ? 'Estado' : 'Município'}</Label>
-                        <Input
-                          value={formLPC.nome_local || ''}
-                          onChange={(e) => setFormLPC({...formLPC, nome_local: e.target.value})}
-                          placeholder={formLPC.ambito === 'Estadual' ? 'Ex: Rio de Janeiro' : 'Ex: Niterói'}
-                          onKeyDown={handleEnterToNextField}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div className="space-y-2">
-                      <Label>Preço Diesel</Label>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-20"
-                          value={formLPC.preco_diesel.toFixed(2)}
-                          onChange={(e) => setFormLPC({...formLPC, preco_diesel: parseFloat(e.target.value) || 0})}
-                          onKeyDown={handleEnterToNextField}
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                          R$/litro
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Preço Gasolina</Label>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-20"
-                          value={formLPC.preco_gasolina.toFixed(2)}
-                          onChange={(e) => setFormLPC({...formLPC, preco_gasolina: parseFloat(e.target.value) || 0})}
-                          onKeyDown={handleEnterToNextField}
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                          R$/litro
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-end mt-4">
-                    <Button type="submit">
-                      {refLPC ? "Atualizar Referência LPC" : "Salvar Referência LPC"}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            )}
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Classe III - Combustíveis e Lubrificantes</CardTitle>
-              <CardDescription>
-                Selecione o tipo de equipamento para cadastrar as necessidades
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {!refLPC && (
-                <Alert className="mb-4">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Configure a referência LPC antes de adicionar equipamentos.
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button
-                  variant="outline"
-                  className="h-24 text-lg"
-                  onClick={() => handleSelectEquipmentType('GERADOR')}
-                  disabled={!refLPC}
-                >
-                  <Zap className="mr-3 h-6 w-6" />
-                  Gerador
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-24 text-lg"
-                  onClick={() => handleSelectEquipmentType('EMBARCACAO')}
-                  disabled={!refLPC}
-                >
-                  <Ship className="mr-3 h-6 w-6" />
-                  Embarcação
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-24 text-lg"
-                  onClick={() => handleSelectEquipmentType('EQUIPAMENTO_ENGENHARIA')}
-                  disabled={!refLPC}
-                >
-                  <Truck className="mr-3 h-6 w-6" />
-                  Equipamento de Engenharia
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-24 text-lg"
-                  onClick={() => handleSelectEquipmentType('MOTOMECANIZACAO')}
-                  disabled={!refLPC}
-                >
-                  <Fuel className="mr-3 h-6 w-6" />
-                  Motomecanização
-                </Button>
-              </div>
-
-              {registros.length > 0 && (
-                <>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xl font-bold flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-accent" /> {/* Ícone de estrela */}
-                        OMs Cadastradas
-                      </h3>
-                      <Badge variant="secondary" className="text-sm">
-                        {registros.length} {registros.length === 1 ? 'registro' : 'registros'}
-                      </Badge>
-                    </div>
-                    
-                    <div className="border rounded-lg overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full table-fixed">
-                          <thead className="bg-muted">
-                            <tr>
-                              <th className="text-left p-3 font-semibold text-sm w-[20%]">OM</th>
-                              <th className="text-left p-3 font-semibold text-sm w-[12%]">UG</th>
-                              <th className="text-left p-3 font-semibold text-sm w-[15%]">Tipo</th>
-                              <th className="text-left p-3 font-semibold text-sm w-[12%]">Combustível</th>
-                              <th className="text-right p-3 font-semibold text-sm w-[13%]">Total Litros</th>
-                              <th className="text-right p-3 font-semibold text-sm w-[13%]">Valor Total</th>
-                              <th className="text-center p-3 font-semibold text-sm w-[15%]">Ações</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {registros.map((registro) => (
-                              <tr key={registro.id} className="border-t hover:bg-muted/50 transition-colors">
-                                <td className="p-3 text-sm">{registro.organizacao}</td>
-                                <td className="p-3 text-sm">{registro.ug}</td>
-                                <td className="p-3 text-sm">{getTipoLabel(registro.tipo_equipamento)}</td>
-                                <td className="p-3 text-sm">
-                                  <Badge variant={registro.tipo_combustivel === 'DIESEL' ? 'default' : 'secondary'}>
-                                    {registro.tipo_combustivel}
-                                  </Badge>
-                                </td>
-                                <td className="p-3 text-sm text-right font-medium">{formatNumber(registro.total_litros)} L</td>
-                                <td className="p-3 text-sm text-right font-medium">{formatCurrency(registro.valor_total)}</td>
-                                <td className="p-3 text-sm">
-                                  <div className="flex gap-1 justify-center">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      onClick={() => handleEditar(registro)}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleDeletar(registro.id)}
-                                      disabled={loading}
-                                      className="h-8 w-8 text-destructive hover:text-destructive/10"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                          <tfoot className="bg-muted/50 border-t-2">
-                            <tr>
-                              <td colSpan={4} className="p-3 text-sm font-semibold">TOTAL DIESEL</td>
-                              <td className="p-3 text-sm text-right font-bold">
-                                {formatNumber(registros.filter(r => r.tipo_combustivel === 'DIESEL').reduce((sum, r) => sum + r.total_litros, 0))} L
-                              </td>
-                              <td className="p-3 text-sm text-right font-bold text-primary">
-                                {formatCurrency(registros.filter(r => r.tipo_combustivel === 'DIESEL').reduce((sum, r) => sum + r.valor_total, 0))}
-                              </td>
-                              <td></td>
-                            </tr>
-                            <tr>
-                              <td colSpan={4} className="p-3 text-sm font-semibold">TOTAL GASOLINA</td>
-                              <td className="p-3 text-sm text-right font-bold">
-                                {formatNumber(registros.filter(r => r.tipo_combustivel === 'GASOLINA').reduce((sum, r) => sum + r.total_litros, 0))} L
-                              </td>
-                              <td className="p-3 text-sm text-right font-bold text-primary">
-                                {formatCurrency(registros.filter(r => r.tipo_combustivel === 'GASOLINA').reduce((sum, r) => sum + r.valor_total, 0))}
-                              </td>
-                              <td></td>
-                            </tr>
-                            <tr className="bg-primary/10 border-t-2">
-                              <td colSpan={4} className="p-3 text-sm font-bold text-primary">
-                                CUSTO TOTAL DE COMBUSTÍVEL
-                              </td>
-                              <td className="p-3 text-sm text-right font-bold">
-                              </td>
-                              <td className="p-3 text-sm text-right font-extrabold text-primary text-base">
-                                {formatCurrency(registros.reduce((sum, r) => sum + r.valor_total, 0))}
-                              </td>
-                              <td></td>
-                            </tr>
-              </tfoot>
-            </table>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 mt-8">
-                    <h3 className="text-xl font-bold flex items-center gap-2">
-                      📋 Memórias de Cálculo Detalhadas
-                    </h3>
-                    
-                    {registros.map((registro) => {
-                      const isEditing = editingMemoriaId === registro.id;
-                      const hasCustomMemoria = !!registro.detalhamento_customizado;
-                      const memoriaExibida = registro.detalhamento_customizado || registro.detalhamento || "";
-
-                      return (
-                        <Card key={`memoria-${registro.id}`} className="p-6 bg-muted/30">
-                          {/* LINHA 1: Título + Badge Combustível */}
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-lg font-semibold text-foreground">
-                                {registro.organizacao} (UG: {registro.ug})
-                              </h4>
-                              {hasCustomMemoria && !isEditing && (
-                                <Badge variant="outline" className="text-xs">
-                                  Editada manualmente
-                                </Badge>
-                              )}
-                            </div>
-                            <Badge 
-                              variant="default" 
-                              className={registro.tipo_combustivel === 'DIESEL' 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'bg-secondary text-secondary-foreground'}
-                            >
-                              {registro.tipo_combustivel}
-                            </Badge>
-                          </div>
-                          
-                          <div className="h-px bg-border my-4" />
-                          
-                          {/* LINHA 2: Botões de Edição */}
-                          <div className="flex items-center justify-end gap-2 mb-4">
-                            {!isEditing ? (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleIniciarEdicaoMemoria(registro)}
-                                  disabled={loading}
-                                  className="gap-2"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                  Editar Memória
-                                </Button>
-                                
-                                {hasCustomMemoria && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
-                                    disabled={loading}
-                                    className="gap-2 text-muted-foreground"
-                                  >
-                                    <XCircle className="h-4 w-4" />
-                                    Restaurar Automática
-                                  </Button>
-                                )}
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
-                                  disabled={loading}
-                                  className="gap-2"
-                                >
-                                  <Check className="h-4 w-4" />
-                                  Salvar
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={handleCancelarEdicaoMemoria}
-                                  disabled={loading}
-                                  className="gap-2"
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                  Cancelar
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                          
-                          {/* ÁREA DA MEMÓRIA */}
-                          <Card className="p-4 bg-background rounded-lg border">
-                            {isEditing ? (
-                              <Textarea
-                                value={memoriaEdit}
-                                onChange={(e) => setMemoriaEdit(e.target.value)}
-                                className="min-h-[300px] font-mono text-sm"
-                                placeholder="Digite a memória de cálculo..."
-                              />
-                            ) : (
-                              <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
-                                {memoriaExibida}
-                              </pre>
-                            )}
-                          </Card>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  if (tipoSelecionado === 'GERADOR') {
-    return (
-      <div className="min-h-screen bg-background p-4 md:p-8">
-        <div className="max-w-4xl mx-auto">
-          <Button
-            variant="ghost"
-            onClick={handleCancelEdit}
-            className="mb-4"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Button>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Grupo Gerador - Entrada por OM</CardTitle>
-              <CardDescription>
-                Configure os geradores por Organização Militar
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <form onSubmit={(e) => { e.preventDefault(); salvarRegistrosConsolidadosGerador(); }}>
-                <div className="space-y-3"> {/* Alterado de space-y-4 para space-y-3 */}
-                  <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Organização Militar (OM) *</Label>
-                      <OmSelector
-                        selectedOmId={formGerador.selectedOmId}
-                        onChange={handleOMGeradorChange}
-                        placeholder="Selecione a OM..."
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>UG</Label>
-                      <Input value={formGerador.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
-                    </div>
-                  </div>
-
-                  {/* Campos de RM e CODUG de Fornecimento lado a lado */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="rmFornecimentoGerador">RM de Fornecimento de Combustível *</Label>
-                      <RmSelector
-                        value={rmFornecimento}
-                        onChange={handleRMFornecimentoChange}
-                        placeholder="Selecione a RM de fornecimento..."
-                        disabled={!formGerador.organizacao}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>CODUG da RM de Fornecimento</Label>
-                      <Input value={codugRmFornecimento} readOnly disabled onKeyDown={handleEnterToNextField} />
-                    </div>
-                  </div>
-
-                  {/* Dias de Atividade e Fase da Atividade lado a lado */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Dias de Atividade *</Label>
+                      <Label htmlFor="quantidade_gerador">Quantidade *</Label>
                       <Input
+                        id="quantidade_gerador"
                         type="number"
-                        min="1"
-                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
-                        value={formGerador.dias_operacao || ""}
-                        onChange={(e) => setFormGerador({ ...formGerador, dias_operacao: parseInt(e.target.value) || 0 })}
-                        placeholder="Ex: 7"
+                        value={itemGeradorTemp.quantidade}
+                        onChange={(e) => setItemGeradorTemp({ ...itemGeradorTemp, quantidade: parseInt(e.target.value) || 0 })}
+                        min={1}
+                        required
                         onKeyDown={handleEnterToNextField}
                       />
                     </div>
-
                     <div className="space-y-2">
-                      <Label>Fase da Atividade *</Label>
-                      <Popover open={isPopoverOpenGerador} onOpenChange={setIsPopoverOpenGerador}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            type="button"
-                            className="w-full justify-between max-w-xs"
-                          >
-                            {fasesAtividadeGerador.length === 0 && !customFaseAtividadeGerador.trim()
-                              ? "Selecione as fases..."
-                              : [...fasesAtividadeGerador, customFaseAtividadeGerador.trim()].filter(f => f).join(', ')}
-                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0" align="start">
-                          <Command>
-                            <CommandGroup>
-                              {FASES_PADRAO.map((fase) => (
-                                <CommandItem
-                                  key={fase}
-                                  value={fase}
-                                  onSelect={() => handleFaseChangeGerador(fase, !fasesAtividadeGerador.includes(fase))}
-                                  className="flex items-center justify-between cursor-pointer"
-                                >
-                                  <span>{fase}</span>
-                                  <Checkbox
-                                    checked={fasesAtividadeGerador.includes(fase)}
-                                    onCheckedChange={(checked) => handleFaseChangeGerador(fase, !!checked)}
-                                  />
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                            <div className="p-2 border-t">
-                              <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade (Opcional)</Label>
-                              <Input
-                                value={customFaseAtividadeGerador}
-                                onChange={(e) => setCustomFaseAtividadeGerador(e.target.value)}
-                                placeholder="Ex: Patrulhamento"
-                                onKeyDown={handleEnterToNextField}
-                              />
-                            </div>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <Label htmlFor="horas_dia_gerador">Horas/dia *</Label>
+                      <Input
+                        id="horas_dia_gerador"
+                        type="number"
+                        value={itemGeradorTemp.horas_dia}
+                        onChange={(e) => setItemGeradorTemp({ ...itemGeradorTemp, horas_dia: parseFloat(e.target.value) || 0 })}
+                        min={0.1}
+                        max={24}
+                        step="0.1"
+                        required
+                        onKeyDown={handleEnterToNextField}
+                      />
                     </div>
                   </div>
-                </div>
-                {/* Linha em branco adicionada aqui */}
-                <div className="mb-6" /> 
-
-                {formGerador.organizacao && (
-                  <div className="space-y-4 border-t pt-6" ref={addGeradorRef}>
-                    <h3 className="text-lg font-semibold">2. Adicionar Geradores</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
-                      <div className="space-y-2">
-                        <Label>Tipo de Gerador *</Label>
-                        <Select 
-                          value={itemGeradorTemp.tipo_equipamento_especifico}
-                          onValueChange={handleTipoGeradorChange}
-                          disabled={!refLPC}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {equipamentosDisponiveis.map(eq => (
-                              <SelectItem key={eq.nome} value={eq.nome}>
-                                {eq.nome}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Quantidade *</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemGeradorTemp.quantidade === 0 ? "" : itemGeradorTemp.quantidade.toString()}
-                          onChange={(e) => setItemGeradorTemp({ ...itemGeradorTemp, quantidade: parseInt(e.target.value) || 0 })}
-                          placeholder="Ex: 2"
-                          disabled={!refLPC}
-                          onKeyDown={handleEnterToNextField}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Horas/dia *</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemGeradorTemp.horas_dia === 0 ? "" : itemGeradorTemp.horas_dia.toString()}
-                          onChange={(e) => setItemGeradorTemp({ ...itemGeradorTemp, horas_dia: parseFloat(e.target.value) || 0 })}
-                          placeholder="Ex: 8"
-                          disabled={!refLPC}
-                          onKeyDown={handleEnterToNextField}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>&nbsp;</Label>
-                        <Button type="button" onClick={adicionarOuAtualizarItemGerador} className="w-full" disabled={!refLPC}>
-                          {editingGeradorItemIndex !== null ? "Atualizar Item" : "Adicionar"}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {itemGeradorTemp.consumo_fixo > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">
-                          Consumo: {formatNumber(itemGeradorTemp.consumo_fixo, 1)} L/h
-                        </Badge>
-                        <Badge variant="secondary">
-                          Combustível: {itemGeradorTemp.tipo_combustivel}
-                        </Badge>
-                      </div>
-                    )}
+                  <div className="flex justify-end gap-2">
                     {editingGeradorItemIndex !== null && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCancelEditGeradorItem}
-                        className="mt-2"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Cancelar Edição do Item
+                      <Button variant="outline" onClick={handleCancelEditGeradorItem}>
+                        Cancelar Edição
                       </Button>
                     )}
+                    <Button onClick={adicionarOuAtualizarItemGerador}>
+                      {editingGeradorItemIndex !== null ? "Atualizar Item" : "Adicionar Item"}
+                    </Button>
                   </div>
-                )}
+                </div>
 
                 {formGerador.itens.length > 0 && (
-                  <div className="space-y-4 border-t pt-6">
-                    <h3 className="text-lg font-semibold">3. Geradores Configurados</h3>
-                    
-                    <div className="space-y-2">
-                      {formGerador.itens.map((item, index) => (
-                        <Card key={index} className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <p className="font-medium">{item.tipo_equipamento_especifico}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {item.quantidade} unidade(s) • {formatNumber(item.horas_dia, 1)}h/dia • {formatNumber(item.consumo_fixo, 1)} L/h • {item.tipo_combustivel}
-                              </p>
-                            </div>
-                            <div className="flex gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditGeradorItem(item, index)}
-                                disabled={!refLPC}
-                              >
+                  <div className="mt-4">
+                    <h4 className="text-md font-semibold mb-2">Geradores Adicionados</h4>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Qtd</TableHead>
+                          <TableHead>Horas/dia</TableHead>
+                          <TableHead>Consumo (L/h)</TableHead>
+                          <TableHead>Combustível</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formGerador.itens.map((item, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{item.tipo_equipamento_especifico}</TableCell>
+                            <TableCell>{item.quantidade}</TableCell>
+                            <TableCell>{formatNumber(item.horas_dia, 1)}</TableCell>
+                            <TableCell>{formatNumber(item.consumo_fixo, 1)}</TableCell>
+                            <TableCell>{item.tipo_combustivel}</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="icon" onClick={() => handleEditGeradorItem(item, index)}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removerItemGerador(index)}
-                                disabled={!refLPC}
-                              >
-                                <Trash2 className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" onClick={() => removerItemGerador(index)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
 
                 {consolidadosGerador.length > 0 && (
-                  <div className="space-y-4 border-t pt-6">
-                    <h3 className="text-lg font-semibold">4. Consolidação por Combustível</h3>
-                    
+                  <div className="mt-6 border-t pt-4 space-y-4">
+                    <h4 className="text-md font-semibold">Prévia do Cálculo Consolidado</h4>
                     {consolidadosGerador.map((consolidado, index) => (
-                      <Card key={index} className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-lg">
-                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}
-                            </h4>
-                            <div className="text-right">
-                              <p className="text-sm text-muted-foreground">Total com 30%</p>
-                              <p className="text-lg font-bold">{formatCurrency(consolidado.valor_total)}</p>
-                            </div>
+                      <Card key={index} className="bg-muted/50">
+                        <CardHeader>
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <Fuel className="h-4 w-4" />
+                            {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="font-medium">Total Litros (sem 30%):</p>
+                            <p>{formatNumber(consolidado.total_litros_sem_margem)} L</p>
                           </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                            <div>
-                              <p className="text-muted-foreground">Geradores</p>
-                              <p className="font-medium">{consolidado.itens.reduce((sum, item) => sum + item.quantidade, 0)} unidades</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Sem margem</p>
-                              <p className="font-medium">{formatNumber(consolidado.total_litros_sem_margem)} L</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Com margem (30%)</p>
-                              <p className="font-medium">{formatNumber(consolidado.total_litros)} L</p>
-                            </div>
+                          <div>
+                            <p className="font-medium">Total Litros (com 30%):</p>
+                            <p>{formatNumber(consolidado.total_litros)} L</p>
                           </div>
-
-                          <div className="space-y-2">
-                            <Label>Memória de Cálculo</Label>
-                            <Textarea
-                              value={consolidado.detalhamento}
-                              readOnly
-                              rows={6}
-                              className="font-mono text-xs"
-                              onKeyDown={handleEnterToNextField}
-                            />
+                          <div>
+                            <p className="font-medium">Valor Total:</p>
+                            <p className="text-lg font-bold text-primary">{formatCurrency(consolidado.valor_total)}</p>
                           </div>
-                        </div>
+                          <div className="col-span-full">
+                            <p className="font-medium mb-1">Detalhamento da Memória de Cálculo:</p>
+                            <pre className="whitespace-pre-wrap text-xs bg-background p-3 rounded-md border">
+                              {consolidado.detalhamento}
+                            </pre>
+                          </div>
+                        </CardContent>
                       </Card>
                     ))}
-
-                    <div className="flex gap-3 pt-4">
-                      {editingId && (
-                        <Button
-                          variant="outline"
-                          type="button"
-                          onClick={handleCancelEdit}
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Cancelar Edição
-                        </Button>
-                      )}
-                      <Button type="submit" disabled={!refLPC || loading}>
-                        {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")} ({consolidadosGerador.length} {consolidadosGerador.length === 1 ? 'tipo' : 'tipos'} de combustível)
-                      </Button>
-                    </div>
                   </div>
                 )}
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
-  if (tipoSelecionado === 'MOTOMECANIZACAO') {
-    return (
-      <div className="min-h-screen bg-background p-4 md:p-8">
-        <div className="max-w-4xl mx-auto">
-          <Button
-            variant="ghost"
-            onClick={handleCancelEdit}
-            className="mb-4"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Button>
+                <div className="flex justify-end gap-2 mt-6">
+                  <Button variant="outline" onClick={handleCancelEdit}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={salvarRegistrosConsolidadosGerador} disabled={loading || formGerador.itens.length === 0}>
+                    {loading ? "Salvando..." : (editingId ? "Atualizar Registros" : "Salvar Registros")}
+                  </Button>
+                </div>
+              </div>
+            )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Motomecanização - Entrada por OM</CardTitle>
-              <CardDescription>
-                Configure as viaturas por Organização Militar
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <form onSubmit={(e) => { e.preventDefault(); salvarRegistrosConsolidadosViatura(); }}>
-                <div className="space-y-3"> {/* Alterado de space-y-4 para space-y-3 */}
-                  <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Organização Militar (OM) *</Label>
-                      <OmSelector
-                        selectedOmId={formViatura.selectedOmId}
-                        onChange={handleOMViaturaChange}
-                        placeholder="Selecione a OM..."
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>UG</Label>
-                      <Input value={formViatura.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
-                    </div>
+            {tipoSelecionado === 'MOTOMECANIZACAO' && (
+              <div className="mt-6 border p-4 rounded-lg space-y-4" ref={addViaturaRef}>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Truck className="h-5 w-5" />
+                  Adicionar Viatura
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="om-viatura">OM *</Label>
+                    <OmSelector
+                      selectedOmId={formViatura.selectedOmId}
+                      onChange={handleOMViaturaChange}
+                      placeholder="Selecione a OM..."
+                      disabled={loading}
+                    />
+                    {formViatura.ug && (
+                      <p className="text-xs text-muted-foreground">UG: {formViatura.ug}</p>
+                    )}
                   </div>
-
-                  {/* Campos de RM e CODUG de Fornecimento lado a lado */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="rmFornecimentoViatura">RM de Fornecimento de Combustível *</Label>
-                      <RmSelector
-                        value={rmFornecimento}
-                        onChange={handleRMFornecimentoChange}
-                        placeholder="Selecione a RM de fornecimento..."
-                        disabled={!formViatura.organizacao}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>CODUG da RM de Fornecimento</Label>
-                      <Input value={codugRmFornecimento} readOnly disabled onKeyDown={handleEnterToNextField} />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dias_operacao_viatura">Dias de Operação *</Label>
+                    <Input
+                      id="dias_operacao_viatura"
+                      type="number"
+                      value={formViatura.dias_operacao}
+                      onChange={(e) => setFormViatura({ ...formViatura, dias_operacao: parseInt(e.target.value) || 0 })}
+                      min={1}
+                      required
+                      onKeyDown={handleEnterToNextField}
+                    />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rm_fornecimento_viatura">RM de Fornecimento de Combustível *</Label>
+                    <RmSelector
+                      selectedRmName={rmFornecimento}
+                      onChange={handleRMFornecimentoChange}
+                      placeholder="Selecione a RM..."
+                      disabled={loading}
+                    />
+                    {codugRmFornecimento && (
+                      <p className="text-xs text-muted-foreground">CODUG: {codugRmFornecimento}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fase_atividade_viatura">Fase da Atividade *</Label>
+                    <Popover open={isPopoverOpenViatura} onOpenChange={setIsPopoverOpenViatura}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          {fasesAtividadeViatura.length > 0 ? fasesAtividadeViatura.join(', ') : "Selecione as fases"}
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandGroup>
+                            {FASES_PADRAO.map((fase) => (
+                              <CommandItem key={fase} className="flex items-center space-x-2 p-2">
+                                <Checkbox
+                                  id={`fase-viatura-${fase}`}
+                                  checked={fasesAtividadeViatura.includes(fase)}
+                                  onCheckedChange={(checked) => handleFaseChangeViatura(fase, checked as boolean)}
+                                />
+                                <Label htmlFor={`fase-viatura-${fase}`} className="font-normal cursor-pointer">
+                                  {fase}
+                                </Label>
+                              </CommandItem>
+                            ))}
+                            <div className="flex items-center space-x-2 p-2">
+                              <Input
+                                placeholder="Outra fase..."
+                                value={customFaseAtividadeViatura}
+                                onChange={(e) => setCustomFaseAtividadeViatura(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && customFaseAtividadeViatura.trim()) {
+                                    e.preventDefault();
+                                    if (!fasesAtividadeViatura.includes(customFaseAtividadeViatura.trim())) {
+                                      setFasesAtividadeViatura([...fasesAtividadeViatura, customFaseAtividadeViatura.trim()]);
+                                      setCustomFaseAtividadeViatura("");
+                                    }
+                                  }
+                                }}
+                              />
+                              {customFaseAtividadeViatura.trim() && !fasesAtividadeViatura.includes(customFaseAtividadeViatura.trim()) && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => {
+                                    setFasesAtividadeViatura([...fasesAtividadeViatura, customFaseAtividadeViatura.trim()]);
+                                    setCustomFaseAtividadeViatura("");
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
 
-                  {/* Dias de Atividade e Fase da Atividade lado a lado */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="border-t pt-4 mt-4 space-y-4">
+                  <h4 className="text-md font-semibold">Itens de Viatura</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label>Dias de Atividade *</Label>
+                      <Label htmlFor="tipo_equipamento_especifico_viatura">Tipo de Viatura *</Label>
+                      <Select
+                        value={itemViaturaTemp.tipo_equipamento_especifico}
+                        onValueChange={handleTipoViaturaChange}
+                      >
+                        <SelectTrigger id="tipo_equipamento_especifico_viatura">
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {equipamentosDisponiveis.map((eq) => (
+                            <SelectItem key={eq.nome} value={eq.nome}>
+                              {eq.nome} ({eq.consumo} km/L - {eq.combustivel === 'GAS' ? 'Gasolina' : 'Diesel'})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="quantidade_viatura">Quantidade *</Label>
                       <Input
+                        id="quantidade_viatura"
                         type="number"
-                        min="1"
-                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        value={formViatura.dias_operacao || ""}
-                        onChange={(e) => setFormViatura({ ...formViatura, dias_operacao: parseInt(e.target.value) || 0 })}
-                        placeholder="Ex: 7"
+                        value={itemViaturaTemp.quantidade}
+                        onChange={(e) => setItemViaturaTemp({ ...itemViaturaTemp, quantidade: parseInt(e.target.value) || 0 })}
+                        min={1}
+                        required
                         onKeyDown={handleEnterToNextField}
                       />
                     </div>
-
                     <div className="space-y-2">
-                      <Label>Fase da Atividade *</Label>
-                      <Popover open={isPopoverOpenViatura} onOpenChange={setIsPopoverOpenViatura}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            type="button"
-                            className="w-full justify-between"
-                          >
-                            {fasesAtividadeViatura.length === 0 && !customFaseAtividadeViatura.trim()
-                              ? "Selecione as fases..."
-                              : [...fasesAtividadeViatura, customFaseAtividadeViatura.trim()].filter(f => f).join(', ')}
-                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0" align="start">
-                          <Command>
-                            <CommandGroup>
-                              {FASES_PADRAO.map((fase) => (
-                                <CommandItem
-                                  key={fase}
-                                  value={fase}
-                                  onSelect={() => handleFaseChangeViatura(fase, !fasesAtividadeViatura.includes(fase))}
-                                  className="flex items-center justify-between cursor-pointer"
-                                >
-                                  <span>{fase}</span>
-                                  <Checkbox
-                                    checked={fasesAtividadeViatura.includes(fase)}
-                                    onCheckedChange={(checked) => handleFaseChangeViatura(fase, !!checked)}
-                                  />
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                            <div className="p-2 border-t">
-                              <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade (Opcional)</Label>
-                              <Input
-                                value={customFaseAtividadeViatura}
-                                onChange={(e) => setCustomFaseAtividadeViatura(e.target.value)}
-                                placeholder="Ex: Patrulhamento"
-                                onKeyDown={handleEnterToNextField}
-                              />
-                            </div>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <Label htmlFor="distancia_percorrida_viatura">Distância Percorrida (km/dia) *</Label>
+                      <Input
+                        id="distancia_percorrida_viatura"
+                        type="number"
+                        value={itemViaturaTemp.distancia_percorrida}
+                        onChange={(e) => setItemViaturaTemp({ ...itemViaturaTemp, distancia_percorrida: parseFloat(e.target.value) || 0 })}
+                        min={0.1}
+                        step="0.1"
+                        required
+                        onKeyDown={handleEnterToNextField}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="quantidade_deslocamentos_viatura">Qtd Deslocamentos/dia *</Label>
+                      <Input
+                        id="quantidade_deslocamentos_viatura"
+                        type="number"
+                        value={itemViaturaTemp.quantidade_deslocamentos}
+                        onChange={(e) => setItemViaturaTemp({ ...itemViaturaTemp, quantidade_deslocamentos: parseInt(e.target.value) || 0 })}
+                        min={1}
+                        required
+                        onKeyDown={handleEnterToNextField}
+                      />
                     </div>
                   </div>
-                </div>
-                {/* Linha em branco adicionada aqui */}
-                <div className="mb-6" />
-
-                {formViatura.organizacao && (
-                  <div className="space-y-4 border-t pt-6" ref={addViaturaRef}>
-                    <h3 className="text-lg font-semibold">2. Adicionar Viaturas</h3>
-                    
-                    <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="space-y-2">
-                          <Label>Tipo de Viatura *</Label>
-                          <Select 
-                            value={itemViaturaTemp.tipo_equipamento_especifico}
-                            onValueChange={handleTipoViaturaChange}
-                            disabled={!refLPC}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {equipamentosDisponiveis.map(eq => (
-                                <SelectItem key={eq.nome} value={eq.nome}>
-                                  {eq.nome}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Distância a ser percorrida (km) *</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.1"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            value={itemViaturaTemp.distancia_percorrida === 0 ? "" : itemViaturaTemp.distancia_percorrida.toString()}
-                            onChange={(e) => setItemViaturaTemp({ ...itemViaturaTemp, distancia_percorrida: parseFloat(e.target.value) || 0 })}
-                            placeholder="Ex: 150"
-                            disabled={!refLPC}
-                            onKeyDown={handleEnterToNextField}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Quantidade de Deslocamentos *</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            value={itemViaturaTemp.quantidade_deslocamentos === 0 ? "" : itemViaturaTemp.quantidade_deslocamentos.toString()}
-                            onChange={(e) => setItemViaturaTemp({ ...itemViaturaTemp, quantidade_deslocamentos: parseInt(e.target.value) || 0 })}
-                            placeholder="Ex: 5"
-                            disabled={!refLPC}
-                            onKeyDown={handleEnterToNextField}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Quantidade de Viaturas *</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            value={itemViaturaTemp.quantidade === 0 ? "" : itemViaturaTemp.quantidade.toString()}
-                            onChange={(e) => setItemViaturaTemp({ ...itemViaturaTemp, quantidade: parseInt(e.target.value) || 0 })}
-                            placeholder="Ex: 3"
-                            disabled={!refLPC}
-                            onKeyDown={handleEnterToNextField}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>&nbsp;</Label>
-                          <Button type="button" onClick={adicionarOuAtualizarItemViatura} className="w-full" disabled={!refLPC}>
-                            {editingViaturaItemIndex !== null ? "Atualizar Viatura" : "Adicionar Viatura"}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {itemViaturaTemp.consumo_fixo > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">
-                          Consumo: {formatNumber(itemViaturaTemp.consumo_fixo, 1)} km/L
-                        </Badge>
-                        <Badge variant="secondary">
-                          Combustível: {itemViaturaTemp.tipo_combustivel}
-                        </Badge>
-                      </div>
-                    )}
+                  <div className="flex justify-end gap-2">
                     {editingViaturaItemIndex !== null && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCancelEditViaturaItem}
-                        className="mt-2"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Cancelar Edição do Item
+                      <Button variant="outline" onClick={handleCancelEditViaturaItem}>
+                        Cancelar Edição
                       </Button>
                     )}
+                    <Button onClick={adicionarOuAtualizarItemViatura}>
+                      {editingViaturaItemIndex !== null ? "Atualizar Item" : "Adicionar Item"}
+                    </Button>
                   </div>
-                )}
+                </div>
 
                 {formViatura.itens.length > 0 && (
-                  <div className="space-y-4 border-t pt-6">
-                    <h3 className="text-lg font-semibold">3. Viaturas Configuradas</h3>
-                    
-                    <div className="space-y-2">
-                      {formViatura.itens.map((item, index) => (
-                        <Card key={index} className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <p className="font-medium">{item.tipo_equipamento_especifico}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {item.quantidade} vtr • {formatNumber(item.distancia_percorrida)} km • {item.quantidade_deslocamentos} desloc • {formatNumber(item.consumo_fixo, 1)} km/L • {item.tipo_combustivel}
-                              </p>
-                            </div>
-                            <div className="flex gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditViaturaItem(item, index)}
-                                disabled={!refLPC}
-                              >
+                  <div className="mt-4">
+                    <h4 className="text-md font-semibold mb-2">Viaturas Adicionadas</h4>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Qtd</TableHead>
+                          <TableHead>Km/dia</TableHead>
+                          <TableHead>Desloc./dia</TableHead>
+                          <TableHead>Consumo (km/L)</TableHead>
+                          <TableHead>Combustível</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formViatura.itens.map((item, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{item.tipo_equipamento_especifico}</TableCell>
+                            <TableCell>{item.quantidade}</TableCell>
+                            <TableCell>{formatNumber(item.distancia_percorrida, 1)}</TableCell>
+                            <TableCell>{item.quantidade_deslocamentos}</TableCell>
+                            <TableCell>{formatNumber(item.consumo_fixo, 1)}</TableCell>
+                            <TableCell>{item.tipo_combustivel}</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="icon" onClick={() => handleEditViaturaItem(item, index)}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removerItemViatura(index)}
-                                disabled={!refLPC}
-                              >
-                                <Trash2 className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" onClick={() => removerItemViatura(index)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
 
                 {consolidadosViatura.length > 0 && (
-                  <div className="space-y-4 border-t pt-6">
-                    <h3 className="text-lg font-semibold">4. Consolidação por Combustível</h3>
-                    
+                  <div className="mt-6 border-t pt-4 space-y-4">
+                    <h4 className="text-md font-semibold">Prévia do Cálculo Consolidado</h4>
                     {consolidadosViatura.map((consolidado, index) => (
-                      <Card key={index} className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-lg">
-                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}
-                            </h4>
-                            <div className="text-right">
-                              <p className="text-sm text-muted-foreground">Total com 30%</p>
-                              <p className="text-lg font-bold">{formatCurrency(consolidado.valor_total)}</p>
-                            </div>
+                      <Card key={index} className="bg-muted/50">
+                        <CardHeader>
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <Fuel className="h-4 w-4" />
+                            {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="font-medium">Total Litros (sem 30%):</p>
+                            <p>{formatNumber(consolidado.total_litros_sem_margem)} L</p>
                           </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                            <div>
-                              <p className="text-muted-foreground">Viaturas</p>
-                              <p className="font-medium">{consolidado.itens.reduce((sum, item) => sum + item.quantidade, 0)} unidades</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Sem margem</p>
-                              <p className="font-medium">{formatNumber(consolidado.total_litros_sem_margem)} L</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Com margem (30%)</p>
-                              <p className="font-medium">{formatNumber(consolidado.total_litros)} L</p>
-                            </div>
+                          <div>
+                            <p className="font-medium">Total Litros (com 30%):</p>
+                            <p>{formatNumber(consolidado.total_litros)} L</p>
                           </div>
-
-                          <div className="space-y-2">
-                            <Label>Memória de Cálculo</Label>
-                            <Textarea
-                              value={consolidado.detalhamento}
-                              readOnly
-                              rows={6}
-                              className="font-mono text-xs"
-                              onKeyDown={handleEnterToNextField}
-                            />
+                          <div>
+                            <p className="font-medium">Valor Total:</p>
+                            <p className="text-lg font-bold text-primary">{formatCurrency(consolidado.valor_total)}</p>
                           </div>
-                        </div>
+                          <div className="col-span-full">
+                            <p className="font-medium mb-1">Detalhamento da Memória de Cálculo:</p>
+                            <pre className="whitespace-pre-wrap text-xs bg-background p-3 rounded-md border">
+                              {consolidado.detalhamento}
+                            </pre>
+                          </div>
+                        </CardContent>
                       </Card>
                     ))}
-
-                    <div className="flex gap-3 pt-4">
-                      {editingId && (
-                        <Button
-                          variant="outline"
-                          type="button"
-                          onClick={handleCancelEdit}
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Cancelar Edição
-                        </Button>
-                      )}
-                      <Button type="submit" disabled={!refLPC || loading}>
-                        {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")} ({consolidadosViatura.length} {consolidadosViatura.length === 1 ? 'tipo' : 'tipos'} de combustível)
-                      </Button>
-                    </div>
                   </div>
                 )}
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
-  if (tipoSelecionado === 'EMBARCACAO') {
-    return (
-      <div className="min-h-screen bg-background p-4 md:p-8">
-        <div className="max-w-4xl mx-auto">
-          <Button
-            variant="ghost"
-            onClick={handleCancelEdit}
-            className="mb-4"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Button>
+                <div className="flex justify-end gap-2 mt-6">
+                  <Button variant="outline" onClick={handleCancelEdit}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={salvarRegistrosConsolidadosViatura} disabled={loading || formViatura.itens.length === 0}>
+                    {loading ? "Salvando..." : (editingId ? "Atualizar Registros" : "Salvar Registros")}
+                  </Button>
+                </div>
+              </div>
+            )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Tipo de Embarcação - Entrada por OM</CardTitle>
-              <CardDescription>
-                Configure as embarcações por Organização Militar
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <form onSubmit={(e) => { e.preventDefault(); salvarRegistrosConsolidadosEmbarcacao(); }}>
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Organização Militar (OM) *</Label>
-                      <OmSelector
-                        selectedOmId={formEmbarcacao.selectedOmId}
-                        onChange={handleOMEmbarcacaoChange}
-                        placeholder="Selecione a OM..."
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>UG</Label>
-                      <Input value={formEmbarcacao.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
-                    </div>
+            {tipoSelecionado === 'EMBARCACAO' && (
+              <div className="mt-6 border p-4 rounded-lg space-y-4" ref={addEmbarcacaoRef}>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Ship className="h-5 w-5" />
+                  Adicionar Embarcação
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="om-embarcacao">OM *</Label>
+                    <OmSelector
+                      selectedOmId={formEmbarcacao.selectedOmId}
+                      onChange={handleOMEmbarcacaoChange}
+                      placeholder="Selecione a OM..."
+                      disabled={loading}
+                    />
+                    {formEmbarcacao.ug && (
+                      <p className="text-xs text-muted-foreground">UG: {formEmbarcacao.ug}</p>
+                    )}
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="rmFornecimentoEmbarcacao">RM de Fornecimento de Combustível *</Label>
-                      <RmSelector
-                        value={rmFornecimento}
-                        onChange={handleRMFornecimentoChange}
-                        placeholder="Selecione a RM de fornecimento..."
-                        disabled={!formEmbarcacao.organizacao}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>CODUG da RM de Fornecimento</Label>
-                      <Input value={codugRmFornecimento} readOnly disabled onKeyDown={handleEnterToNextField} />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dias_operacao_embarcacao">Dias de Operação *</Label>
+                    <Input
+                      id="dias_operacao_embarcacao"
+                      type="number"
+                      value={formEmbarcacao.dias_operacao}
+                      onChange={(e) => setFormEmbarcacao({ ...formEmbarcacao, dias_operacao: parseInt(e.target.value) || 0 })}
+                      min={1}
+                      required
+                      onKeyDown={handleEnterToNextField}
+                    />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rm_fornecimento_embarcacao">RM de Fornecimento de Combustível *</Label>
+                    <RmSelector
+                      selectedRmName={rmFornecimento}
+                      onChange={handleRMFornecimentoChange}
+                      placeholder="Selecione a RM..."
+                      disabled={loading}
+                    />
+                    {codugRmFornecimento && (
+                      <p className="text-xs text-muted-foreground">CODUG: {codugRmFornecimento}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fase_atividade_embarcacao">Fase da Atividade *</Label>
+                    <Popover open={isPopoverOpenEmbarcacao} onOpenChange={setIsPopoverOpenEmbarcacao}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          {fasesAtividadeEmbarcacao.length > 0 ? fasesAtividadeEmbarcacao.join(', ') : "Selecione as fases"}
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandGroup>
+                            {FASES_PADRAO.map((fase) => (
+                              <CommandItem key={fase} className="flex items-center space-x-2 p-2">
+                                <Checkbox
+                                  id={`fase-embarcacao-${fase}`}
+                                  checked={fasesAtividadeEmbarcacao.includes(fase)}
+                                  onCheckedChange={(checked) => handleFaseChangeEmbarcacao(fase, checked as boolean)}
+                                />
+                                <Label htmlFor={`fase-embarcacao-${fase}`} className="font-normal cursor-pointer">
+                                  {fase}
+                                </Label>
+                              </CommandItem>
+                            ))}
+                            <div className="flex items-center space-x-2 p-2">
+                              <Input
+                                placeholder="Outra fase..."
+                                value={customFaseAtividadeEmbarcacao}
+                                onChange={(e) => setCustomFaseAtividadeEmbarcacao(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && customFaseAtividadeEmbarcacao.trim()) {
+                                    e.preventDefault();
+                                    if (!fasesAtividadeEmbarcacao.includes(customFaseAtividadeEmbarcacao.trim())) {
+                                      setFasesAtividadeEmbarcacao([...fasesAtividadeEmbarcacao, customFaseAtividadeEmbarcacao.trim()]);
+                                      setCustomFaseAtividadeEmbarcacao("");
+                                    }
+                                  }
+                                }}
+                              />
+                              {customFaseAtividadeEmbarcacao.trim() && !fasesAtividadeEmbarcacao.includes(customFaseAtividadeEmbarcacao.trim()) && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => {
+                                    setFasesAtividadeEmbarcacao([...fasesAtividadeEmbarcacao, customFaseAtividadeEmbarcacao.trim()]);
+                                    setCustomFaseAtividadeEmbarcacao("");
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
 
-                  {/* Dias de Atividade e Fase da Atividade lado a lado */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="border-t pt-4 mt-4 space-y-4">
+                  <h4 className="text-md font-semibold">Itens de Embarcação</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label>Dias de Atividade *</Label>
+                      <Label htmlFor="tipo_equipamento_especifico_embarcacao">Tipo de Embarcação *</Label>
+                      <Select
+                        value={itemEmbarcacaoTemp.tipo_equipamento_especifico}
+                        onValueChange={handleTipoEmbarcacaoChange}
+                      >
+                        <SelectTrigger id="tipo_equipamento_especifico_embarcacao">
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {equipamentosDisponiveis.map((eq) => (
+                            <SelectItem key={eq.nome} value={eq.nome}>
+                              {eq.nome} ({eq.consumo} L/h - {eq.combustivel === 'GAS' ? 'Gasolina' : 'Diesel'})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="quantidade_embarcacao">Quantidade *</Label>
                       <Input
+                        id="quantidade_embarcacao"
                         type="number"
-                        min="1"
-                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        value={formEmbarcacao.dias_operacao || ""}
-                        onChange={(e) => setFormEmbarcacao({ ...formEmbarcacao, dias_operacao: parseInt(e.target.value) || 0 })}
-                        placeholder="Ex: 7"
+                        value={itemEmbarcacaoTemp.quantidade}
+                        onChange={(e) => setItemEmbarcacaoTemp({ ...itemEmbarcacaoTemp, quantidade: parseInt(e.target.value) || 0 })}
+                        min={1}
+                        required
                         onKeyDown={handleEnterToNextField}
                       />
                     </div>
-
                     <div className="space-y-2">
-                      <Label>Fase da Atividade *</Label>
-                      <Popover open={isPopoverOpenEmbarcacao} onOpenChange={setIsPopoverOpenEmbarcacao}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            type="button"
-                            className="w-full justify-between"
-                          >
-                            {fasesAtividadeEmbarcacao.length === 0 && !customFaseAtividadeEmbarcacao.trim()
-                              ? "Selecione as fases..."
-                              : [...fasesAtividadeEmbarcacao, customFaseAtividadeEmbarcacao.trim()].filter(f => f).join(', ')}
-                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0" align="start">
-                          <Command>
-                            <CommandGroup>
-                              {FASES_PADRAO.map((fase) => (
-                                <CommandItem
-                                  key={fase}
-                                  value={fase}
-                                  onSelect={() => handleFaseChangeEmbarcacao(fase, !fasesAtividadeEmbarcacao.includes(fase))}
-                                  className="flex items-center justify-between cursor-pointer"
-                                >
-                                  <span>{fase}</span>
-                                  <Checkbox
-                                    checked={fasesAtividadeEmbarcacao.includes(fase)}
-                                    onCheckedChange={(checked) => handleFaseChangeEmbarcacao(fase, !!checked)}
-                                  />
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                            <div className="p-2 border-t">
-                              <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade (Opcional)</Label>
-                              <Input
-                                value={customFaseAtividadeEmbarcacao}
-                                onChange={(e) => setCustomFaseAtividadeEmbarcacao(e.target.value)}
-                                placeholder="Ex: Patrulhamento"
-                                onKeyDown={handleEnterToNextField}
-                              />
-                            </div>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <Label htmlFor="horas_dia_embarcacao">Horas/dia *</Label>
+                      <Input
+                        id="horas_dia_embarcacao"
+                        type="number"
+                        value={itemEmbarcacaoTemp.horas_dia}
+                        onChange={(e) => setItemEmbarcacaoTemp({ ...itemEmbarcacaoTemp, horas_dia: parseFloat(e.target.value) || 0 })}
+                        min={0.1}
+                        max={24}
+                        step="0.1"
+                        required
+                        onKeyDown={handleEnterToNextField}
+                      />
                     </div>
                   </div>
-                </div>
-                <div className="mb-6" />
-
-                {formEmbarcacao.organizacao && (
-                  <div className="space-y-4 border-t pt-6" ref={addEmbarcacaoRef}>
-                    <h3 className="text-lg font-semibold">2. Adicionar Embarcações</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
-                      <div className="space-y-2">
-                        <Label>Tipo de Embarcação *</Label>
-                        <Select 
-                          value={itemEmbarcacaoTemp.tipo_equipamento_especifico}
-                          onValueChange={handleTipoEmbarcacaoChange}
-                          disabled={!refLPC}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {equipamentosDisponiveis.map(eq => (
-                              <SelectItem key={eq.nome} value={eq.nome}>
-                                {eq.nome}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Quantidade *</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemEmbarcacaoTemp.quantidade === 0 ? "" : itemEmbarcacaoTemp.quantidade.toString()}
-                          onChange={(e) => setItemEmbarcacaoTemp({ ...itemEmbarcacaoTemp, quantidade: parseInt(e.target.value) || 0 })}
-                          placeholder="Ex: 2"
-                          disabled={!refLPC}
-                          onKeyDown={handleEnterToNextField}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Horas/dia *</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemEmbarcacaoTemp.horas_dia === 0 ? "" : itemEmbarcacaoTemp.horas_dia.toString()}
-                          onChange={(e) => setItemEmbarcacaoTemp({ ...itemEmbarcacaoTemp, horas_dia: parseFloat(e.target.value) || 0 })}
-                          placeholder="Ex: 6"
-                          disabled={!refLPC}
-                          onKeyDown={handleEnterToNextField}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>&nbsp;</Label>
-                        <Button type="button" onClick={adicionarOuAtualizarItemEmbarcacao} className="w-full" disabled={!refLPC}>
-                          {editingEmbarcacaoItemIndex !== null ? "Atualizar Item" : "Adicionar"}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {itemEmbarcacaoTemp.consumo_fixo > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">
-                          Consumo: {formatNumber(itemEmbarcacaoTemp.consumo_fixo, 1)} L/h
-                        </Badge>
-                        <Badge variant="secondary">
-                          Combustível: {itemEmbarcacaoTemp.tipo_combustivel}
-                        </Badge>
-                      </div>
-                    )}
+                  <div className="flex justify-end gap-2">
                     {editingEmbarcacaoItemIndex !== null && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCancelEditEmbarcacaoItem}
-                        className="mt-2"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Cancelar Edição do Item
+                      <Button variant="outline" onClick={handleCancelEditEmbarcacaoItem}>
+                        Cancelar Edição
                       </Button>
                     )}
+                    <Button onClick={adicionarOuAtualizarItemEmbarcacao}>
+                      {editingEmbarcacaoItemIndex !== null ? "Atualizar Item" : "Adicionar Item"}
+                    </Button>
                   </div>
-                )}
+                </div>
 
                 {formEmbarcacao.itens.length > 0 && (
-                  <div className="space-y-4 border-t pt-6">
-                    <h3 className="text-lg font-semibold">3. Embarcações Configuradas</h3>
-                    
-                    <div className="space-y-2">
-                      {formEmbarcacao.itens.map((item, index) => (
-                        <Card key={index} className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <p className="font-medium">{item.tipo_equipamento_especifico}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {item.quantidade} unidade(s) • {formatNumber(item.horas_dia, 1)}h/dia • {formatNumber(item.consumo_fixo, 1)} L/h • {item.tipo_combustivel}
-                              </p>
-                            </div>
-                            <div className="flex gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditEmbarcacaoItem(item, index)}
-                                disabled={!refLPC}
-                              >
+                  <div className="mt-4">
+                    <h4 className="text-md font-semibold mb-2">Embarcações Adicionadas</h4>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Qtd</TableHead>
+                          <TableHead>Horas/dia</TableHead>
+                          <TableHead>Consumo (L/h)</TableHead>
+                          <TableHead>Combustível</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formEmbarcacao.itens.map((item, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{item.tipo_equipamento_especifico}</TableCell>
+                            <TableCell>{item.quantidade}</TableCell>
+                            <TableCell>{formatNumber(item.horas_dia, 1)}</TableCell>
+                            <TableCell>{formatNumber(item.consumo_fixo, 1)}</TableCell>
+                            <TableCell>{item.tipo_combustivel}</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="icon" onClick={() => handleEditEmbarcacaoItem(item, index)}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removerItemEmbarcacao(index)}
-                                disabled={!refLPC}
-                              >
-                                <Trash2 className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" onClick={() => removerItemEmbarcacao(index)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
 
                 {consolidadosEmbarcacao.length > 0 && (
-                  <div className="space-y-4 border-t pt-6">
-                    <h3 className="text-lg font-semibold">4. Consolidação por Combustível</h3>
-                    
+                  <div className="mt-6 border-t pt-4 space-y-4">
+                    <h4 className="text-md font-semibold">Prévia do Cálculo Consolidado</h4>
                     {consolidadosEmbarcacao.map((consolidado, index) => (
-                      <Card key={index} className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-lg">
-                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}
-                            </h4>
-                            <div className="text-right">
-                              <p className="text-sm text-muted-foreground">Total com 30%</p>
-                              <p className="text-lg font-bold">{formatCurrency(consolidado.valor_total)}</p>
-                            </div>
+                      <Card key={index} className="bg-muted/50">
+                        <CardHeader>
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <Fuel className="h-4 w-4" />
+                            {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="font-medium">Total Litros (sem 30%):</p>
+                            <p>{formatNumber(consolidado.total_litros_sem_margem)} L</p>
                           </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                            <div>
-                              <p className="text-muted-foreground">Embarcações</p>
-                              <p className="font-medium">{consolidado.itens.reduce((sum, item) => sum + item.quantidade, 0)} unidades</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Sem margem</p>
-                              <p className="font-medium">{formatNumber(consolidado.total_litros_sem_margem)} L</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Com margem (30%)</p>
-                              <p className="font-medium">{formatNumber(consolidado.total_litros)} L</p>
-                            </div>
+                          <div>
+                            <p className="font-medium">Total Litros (com 30%):</p>
+                            <p>{formatNumber(consolidado.total_litros)} L</p>
                           </div>
-
-                          <div className="space-y-2">
-                            <Label>Memória de Cálculo</Label>
-                            <Textarea
-                              value={consolidado.detalhamento}
-                              readOnly
-                              rows={6}
-                              className="font-mono text-xs"
-                              onKeyDown={handleEnterToNextField}
-                            />
+                          <div>
+                            <p className="font-medium">Valor Total:</p>
+                            <p className="text-lg font-bold text-primary">{formatCurrency(consolidado.valor_total)}</p>
                           </div>
-                        </div>
+                          <div className="col-span-full">
+                            <p className="font-medium mb-1">Detalhamento da Memória de Cálculo:</p>
+                            <pre className="whitespace-pre-wrap text-xs bg-background p-3 rounded-md border">
+                              {consolidado.detalhamento}
+                            </pre>
+                          </div>
+                        </CardContent>
                       </Card>
                     ))}
-
-                    <div className="flex gap-3 pt-4">
-                      {editingId && (
-                        <Button
-                          variant="outline"
-                          type="button"
-                          onClick={handleCancelEdit}
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Cancelar Edição
-                        </Button>
-                      )}
-                      <Button type="submit" disabled={!refLPC || loading}>
-                        {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")} ({consolidadosEmbarcacao.length} {consolidadosEmbarcacao.length === 1 ? 'tipo' : 'tipos'} de combustível)
-                      </Button>
-                    </div>
                   </div>
                 )}
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
-  if (tipoSelecionado === 'EQUIPAMENTO_ENGENHARIA') {
-    return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        <Button
-          variant="ghost"
-          onClick={handleCancelEdit}
-          className="mb-4"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
+                <div className="flex justify-end gap-2 mt-6">
+                  <Button variant="outline" onClick={handleCancelEdit}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={salvarRegistrosConsolidadosEmbarcacao} disabled={loading || formEmbarcacao.itens.length === 0}>
+                    {loading ? "Salvando..." : (editingId ? "Atualizar Registros" : "Salvar Registros")}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Equipamento de Engenharia</CardTitle>
+            <CardTitle className="text-lg font-medium flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-primary" />
+              Registros de Classe III Cadastrados
+            </CardTitle>
             <CardDescription>
-              {editingId ? "Editar registro" : "Preencha os dados para calcular as necessidades"}
+              Visualize e gerencie os registros de consumo de combustível para este PTrab.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <form onSubmit={(e) => { e.preventDefault(); handleSalvar(); }}>
-              <div className="space-y-2">
-                <Label>Tipo de Equipamento *</Label>
-                <Select 
-                  value={formData.tipo_equipamento_especifico}
-                  onValueChange={handleTipoEspecificoChange}
-                  disabled={!refLPC}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {equipamentosDisponiveis.map(eq => (
-                      <SelectItem key={eq.nome} value={eq.nome}>
-                        {eq.nome} - {eq.combustivel} ({formatNumber(eq.consumo, 1)} {eq.unidade})
-                      </SelectItem>
+          <CardContent>
+            {registros.length === 0 ? (
+              <p className="text-muted-foreground">Nenhum registro de Classe III cadastrado para este PTrab.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>OM</TableHead>
+                      <TableHead>Qtd</TableHead>
+                      <TableHead>Dias</TableHead>
+                      <TableHead>Combustível</TableHead>
+                      <TableHead>Litros (c/ 30%)</TableHead>
+                      <TableHead>Valor Total</TableHead>
+                      <TableHead>Fase</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {registros.map((registro) => (
+                      <TableRow key={registro.id}>
+                        <TableCell className="font-medium">
+                          {registro.tipo_equipamento_detalhe || getTipoLabel(registro.tipo_equipamento)}
+                        </TableCell>
+                        <TableCell>{registro.organizacao} ({registro.ug})</TableCell>
+                        <TableCell>{registro.quantidade}</TableCell>
+                        <TableCell>{registro.dias_operacao}</TableCell>
+                        <TableCell>{registro.tipo_combustivel}</TableCell>
+                        <TableCell>{formatNumber(registro.total_litros)} L</TableCell>
+                        <TableCell className="font-semibold">{formatCurrency(registro.valor_total)}</TableCell>
+                        <TableCell>{formatFasesParaTexto(registro.fase_atividade)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => handleIniciarEdicaoMemoria(registro)}>
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleEditar(registro)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeletar(registro.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </TableBody>
+                </Table>
               </div>
-
-              {formData.consumo_fixo > 0 && (
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">
-                    Consumo: {formatNumber(formData.consumo_fixo, 1)} L/h
-                  </Badge>
-                  <Badge variant="secondary">
-                    Combustível: {formData.tipo_combustivel}
-                  </Badge>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label>Organização Militar (OM) *</Label>
-                <OmSelector
-                  selectedOmId={formData.selectedOmId}
-                  onChange={handleOMChange}
-                  placeholder="Selecione a OM..."
-                  disabled={!refLPC}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>UG</Label>
-                <Input value={formData.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
-              </div>
-
-              {/* Campos de RM e CODUG de Fornecimento lado a lado */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="rmFornecimentoPadrao">RM de Fornecimento de Combustível *</Label>
-                  <RmSelector
-                    value={rmFornecimento}
-                    onChange={handleRMFornecimentoChange}
-                    placeholder="Selecione a RM de fornecimento..."
-                    disabled={!formData.organizacao}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>CODUG da RM de Fornecimento</Label>
-                  <Input value={codugRmFornecimento} readOnly disabled onKeyDown={handleEnterToNextField} />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Quantidade *</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={formData.quantidade === 0 ? "" : formData.quantidade.toString()}
-                  onChange={(e) => setFormData({ ...formData, quantidade: parseInt(e.target.value) || 1 })}
-                  placeholder="Ex: 1"
-                  disabled={!refLPC}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Horas por Dia *</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={formData.horas_dia === 0 ? "" : formData.horas_dia?.toString() || ""}
-                  onChange={(e) => setFormData({ ...formData, horas_dia: parseFloat(e.target.value) || undefined })}
-                  placeholder="Ex: 8"
-                  disabled={!refLPC}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Dias de Operação *</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={formData.dias_operacao === 0 ? "" : formData.dias_operacao.toString()}
-                  onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 1 })}
-                  placeholder="Ex: 7"
-                  disabled={!refLPC}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label>Preço por Litro (R$) *</Label>
-                  {refLPC && (
-                    <Badge variant="secondary" className="text-xs">
-                      Ref. LPC {refLPC.ambito}
-                    </Badge>
-                  )}
-                </div>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={formData.preco_litro === 0 ? "" : formData.preco_litro.toFixed(2)}
-                  onChange={(e) => setFormData({ ...formData, preco_litro: parseFloat(e.target.value) || 0 })}
-                  placeholder="Ex: 5.50"
-                  disabled={!refLPC}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-
-              {calculoPreview.total_litros > 0 && (
-                <div className="border-t pt-4 space-y-3">
-                  <h3 className="font-semibold">Resultado do Cálculo</h3>
-                  <p className="text-sm">
-                    <span className="font-medium">Consumo/hora:</span> {formatNumber(calculoPreview.consumo_hora, 2)} L/h
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Total de Litros (com 30%):</span> {formatNumber(calculoPreview.total_litros)} L
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Valor Total:</span> {formatCurrency(calculoPreview.valor_total)}
-                  </p>
-                  
-                  <div className="space-y-2">
-                    <Label>Detalhamento (Memória de Cálculo)</Label>
-                    <Textarea
-                      value={calculoPreview.detalhamento}
-                      disabled
-                      rows={4}
-                      className="font-mono text-xs"
-                      onKeyDown={handleEnterToNextField}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-4">
-                {editingId && (
-                  <Button
-                    variant="outline"
-                    type="button"
-                    onClick={handleCancelEdit}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Cancelar Edição
-                  </Button>
-                )}
-                <Button type="submit" disabled={loading || !refLPC}>
-                  {loading ? "Aguarde..." : (editingId ? "Atualizar Registro" : "Salvar Registro")}
-                </Button>
-              </div>
-            </form>
+            )}
           </CardContent>
         </Card>
+
+        {/* Diálogo de Edição de Memória de Cálculo */}
+        <Dialog open={editingMemoriaId !== null} onOpenChange={handleCancelarEdicaoMemoria}>
+          <DialogContent className="sm:max-w-[800px]">
+            <DialogHeader>
+              <DialogTitle>Editar Memória de Cálculo</DialogTitle>
+              <DialogDescription>
+                Edite o detalhamento da memória de cálculo para este registro.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <Textarea
+                value={memoriaEdit}
+                onChange={(e) => setMemoriaEdit(e.target.value)}
+                rows={15}
+                className="font-mono text-xs"
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => handleRestaurarMemoriaAutomatica(editingMemoriaId!)} disabled={loading}>
+                Restaurar Padrão
+              </Button>
+              <Button onClick={() => handleSalvarMemoriaCustomizada(editingMemoriaId!)} disabled={loading}>
+                {loading ? "Salvando..." : "Salvar Alterações"}
+              </Button>
+              <Button variant="ghost" onClick={handleCancelarEdicaoMemoria}>
+                Cancelar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
-  }
-
-  return null;
 }

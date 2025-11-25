@@ -178,7 +178,7 @@ const PTrabManager = () => {
           let totalLogisticaCalculado = 0;
           let totalOperacionalCalculado = 0; // Por enquanto, sempre zero
 
-          // Fetch Classe I totals (contribuem para o P Trab Logístico)
+          // Fetch Classe I totals (contribuem para o PTrab Logístico)
           const { data: classeIData, error: classeIError } = await supabase
             .from('classe_i_registros')
             .select('total_qs, total_qr')
@@ -189,7 +189,7 @@ const PTrabManager = () => {
             totalLogisticaCalculado += (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
           }
 
-          // Fetch Classe III totals (contribuem para o P Trab Logístico)
+          // Fetch Classe III totals (contribuem para o PTrab Logístico)
           const { data: classeIIIData, error: classeIIIError } = await supabase
             .from('classe_iii_registros')
             .select('valor_total')
@@ -229,7 +229,7 @@ const PTrabManager = () => {
       }
 
     } catch (error: any) {
-      toast.error("Erro ao carregar P Trabs e seus totais");
+      toast.error("Erro ao carregar PTrabs e seus totais");
       console.error(error);
     } finally {
       setLoading(false);
@@ -247,14 +247,14 @@ const PTrabManager = () => {
 
       if (error) throw error;
 
-      toast.success(`P Trab ${ptrabToArchiveName} arquivado com sucesso!`);
+      toast.success(`PTrab ${ptrabToArchiveName} arquivado com sucesso!`);
       setShowArchiveStatusDialog(false);
       setPtrabToArchiveId(null);
       setPtrabToArchiveName(null);
       loadPTrabs(); // Recarrega a lista para refletir a mudança
     } catch (error) {
-      console.error("Erro ao arquivar P Trab:", error);
-      toast.error("Erro ao arquivar P Trab.");
+      console.error("Erro ao arquivar PTrab:", error);
+      toast.error("Erro ao arquivar PTrab.");
     }
   };
 
@@ -325,14 +325,14 @@ const PTrabManager = () => {
 
       if (error) throw error;
 
-      toast.success(`P Trab ${ptrabToReactivateName} reativado para "Em Andamento"!`);
+      toast.success(`PTrab ${ptrabToReactivateName} reativado para "Em Andamento"!`);
       setShowReactivateStatusDialog(false);
       setPtrabToReactivateId(null);
       setPtrabToReactivateName(null);
       loadPTrabs();
     } catch (error) {
-      console.error("Erro ao reativar P Trab:", error);
-      toast.error("Erro ao reativar P Trab.");
+      console.error("Erro ao reativar PTrab:", error);
+      toast.error("Erro ao reativar PTrab.");
     }
   };
 
@@ -394,14 +394,14 @@ const PTrabManager = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Validação de número de P Trab único
+      // Validação de número de PTrab único
       // Compara o formData.numero_ptrab (já formatado como NUMERO/ANO)
       // com os números existentes. Exclui o próprio PTrab se estiver em modo de edição.
       const isDuplicate = isPTrabNumberDuplicate(formData.numero_ptrab, existingPTrabNumbers) && 
                          formData.numero_ptrab !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
 
       if (isDuplicate) {
-        toast.error("Já existe um P Trab com este número. Por favor, proponha outro.");
+        toast.error("Já existe um PTrab com este número. Por favor, proponha outro.");
         setLoading(false);
         return;
       }
@@ -414,11 +414,11 @@ const PTrabManager = () => {
       if (editingId) {
         const { error } = await supabase.from("p_trab").update(ptrabData).eq("id", editingId);
         if (error) throw error;
-        toast.success("P Trab atualizado!");
+        toast.success("PTrab atualizado!");
       } else {
         const { error } = await supabase.from("p_trab").insert([ptrabData]);
         if (error) throw error;
-        toast.success("P Trab criado!");
+        toast.success("PTrab criado!");
       }
 
       setDialogOpen(false);
@@ -459,7 +459,7 @@ const PTrabManager = () => {
     if (!confirm("Tem certeza?")) return;
     try {
       await supabase.from("p_trab").delete().eq("id", id);
-      toast.success("P Trab excluído!");
+      toast.success("PTrab excluído!");
       loadPTrabs();
     } catch (error: any) {
       toast.error("Erro ao excluir");
@@ -478,8 +478,8 @@ const PTrabManager = () => {
         .single();
 
       if (fetchPTrabError || !originalPTrab) {
-        console.error("ERRO AO CARREGAR P TRAB ORIGINAL:", fetchPTrabError);
-        throw new Error("Erro ao carregar o P Trab original.");
+        console.error("ERRO AO CARREGAR PTrab ORIGINAL:", fetchPTrabError);
+        throw new Error("Erro ao carregar o PTrab original.");
       }
 
       // 2. Create the new PTrab object
@@ -498,8 +498,8 @@ const PTrabManager = () => {
         .single();
 
       if (insertPTrabError || !newPTrab) {
-        console.error("ERRO DE INSERÇÃO P TRAB:", insertPTrabError);
-        throw new Error("Erro ao criar o novo P Trab.");
+        console.error("ERRO DE INSERÇÃO PTrab:", insertPTrabError);
+        throw new Error("Erro ao criar o novo PTrab.");
       }
 
       const newPTrabId = newPTrab.id;
@@ -604,7 +604,7 @@ const PTrabManager = () => {
         }
       }
 
-      toast.success(`P Trab ${newNumeroPTrab} clonado com sucesso!`);
+      toast.success(`PTrab ${newNumeroPTrab} clonado com sucesso!`);
       await loadPTrabs(); // Reload all PTrabs to show the new one and update existingPTrabNumbers
       
       // Limpar todos os estados relacionados ao diálogo de clonagem
@@ -614,7 +614,7 @@ const PTrabManager = () => {
       setCustomCloneNumber("");
       setShowCloneOptionsDialog(false);
     } catch (error: any) {
-      console.error("ERRO GERAL AO CLONAR P TRAB (RAW):", error);
+      console.error("ERRO GERAL AO CLONAR PTrab (RAW):", error);
       toast.error(sanitizeError(error));
     } finally {
       setLoading(false);
@@ -632,15 +632,15 @@ const PTrabManager = () => {
   // Função para confirmar a clonagem a partir do diálogo
   const handleConfirmClone = async () => {
     if (!ptrabToClone || !customCloneNumber.trim()) {
-      toast.error("Número do P Trab para o clone é obrigatório.");
+      toast.error("Número do PTrab para o clone é obrigatório.");
       return;
     }
 
-    // Validação de número de P Trab único para o novo clone
+    // Validação de número de PTrab único para o novo clone
     const isDuplicate = isPTrabNumberDuplicate(customCloneNumber, existingPTrabNumbers);
 
     if (isDuplicate) {
-      toast.error("Já existe um P Trab com este número. Por favor, proponha outro.");
+      toast.error("Já existe um PTrab com este número. Por favor, proponha outro.");
       return;
     }
 
@@ -709,13 +709,13 @@ const PTrabManager = () => {
     let targetPTrab: PTrab | undefined;
 
     try {
-      // 1. Determinar ou Criar o P Trab de Destino
+      // 1. Determinar ou Criar o PTrab de Destino
       if (targetPTrabId === 'new') {
         if (!newPTrabNumber || !templatePTrabId) throw new Error("Dados de criação incompletos.");
         
         // Usar o PTrab selecionado como template
         const templatePTrab = pTrabs.find(p => p.id === templatePTrabId);
-        if (!templatePTrab) throw new Error("P Trab template não encontrado.");
+        if (!templatePTrab) throw new Error("PTrab template não encontrado.");
 
         // FIX: Explicitly exclude calculated fields and IDs
         const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = templatePTrab;
@@ -737,11 +737,11 @@ const PTrabManager = () => {
         if (insertPTrabError || !newPTrab) throw insertPTrabError;
         finalTargetPTrabId = newPTrab.id;
         targetPTrab = newPTrab as PTrab;
-        toast.success(`Novo P Trab ${newPTrabNumber} criado para consolidação.`);
+        toast.success(`Novo PTrab ${newPTrabNumber} criado para consolidação.`);
       } else {
         finalTargetPTrabId = targetPTrabId;
         targetPTrab = pTrabs.find(p => p.id === finalTargetPTrabId);
-        if (!targetPTrab) throw new Error("P Trab de destino existente não encontrado.");
+        if (!targetPTrab) throw new Error("PTrab de destino existente não encontrado.");
       }
 
       // 2. Clonar e Inserir Registros de Classe I e Classe III
@@ -818,29 +818,29 @@ const PTrabManager = () => {
           <div className="flex items-center gap-4"> {/* Grupo da esquerda: Título */}
             <div>
               <h1 className="text-3xl font-bold">Planos de Trabalho</h1>
-              <p className="text-muted-foreground">Gerencie seus P Trabs</p>
+              <p className="text-muted-foreground">Gerencie seus PTrabs</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4"> {/* Grupo da direita: Novo P Trab, Consolidação, Configurações, Sair */}
+          <div className="flex items-center gap-4"> {/* Grupo da direita: Novo PTrab, Consolidação, Configurações, Sair */}
             
-            {/* BOTÃO NOVO P TRAB */}
+            {/* BOTÃO NOVO PTrab */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => { resetForm(); setDialogOpen(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Novo P Trab
+                  Novo PTrab
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>{editingId ? "Editar P Trab" : "Novo P Trab"}</DialogTitle>
+                  <DialogTitle>{editingId ? "Editar PTrab" : "Novo PTrab"}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* L1L: Número do P Trab */}
+                    {/* L1L: Número do PTrab */}
                     <div className="space-y-2">
-                      <Label htmlFor="numero_ptrab">Número do P Trab *</Label>
+                      <Label htmlFor="numero_ptrab">Número do PTrab *</Label>
                       <Input
                         id="numero_ptrab"
                         value={formData.numero_ptrab}
@@ -889,7 +889,7 @@ const PTrabManager = () => {
                         onKeyDown={handleEnterToNextField}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Este nome será usado no cabeçalho do P Trab impresso
+                        Este nome será usado no cabeçalho do PTrab impresso
                       </p>
                     </div>
 
@@ -1022,7 +1022,7 @@ const PTrabManager = () => {
               disabled={pTrabs.length < 2}
             >
               <ArrowRight className="mr-2 h-4 w-4" />
-              Consolidar P Trab
+              Consolidar PTrab
             </Button>
 
             <DropdownMenu open={settingsDropdownOpen} onOpenChange={setSettingsDropdownOpen}>
@@ -1050,7 +1050,7 @@ const PTrabManager = () => {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/config/ptrab-export-import")}>
                   <Download className="mr-2 h-4 w-4" />
-                  Exportar/Importar P Trab
+                  Exportar/Importar PTrab
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1075,7 +1075,7 @@ const PTrabManager = () => {
                   {/* <TableHead className="text-center border-b border-border">OM</TableHead> */} {/* Removido */}
                   <TableHead className="text-center border-b border-border">Período</TableHead>
                   <TableHead className="text-center border-b border-border">Status</TableHead>
-                  <TableHead className="text-center border-b border-border">Valor P Trab</TableHead> {/* Nova coluna */}
+                  <TableHead className="text-center border-b border-border">Valor PTrab</TableHead> {/* Nova coluna */}
                   <TableHead className="text-center border-b border-border w-[50px]"></TableHead> {/* Coluna do ícone de comentário */}
                   <TableHead className="text-center border-b border-border">Ações</TableHead>
                 </TableRow>
@@ -1124,15 +1124,15 @@ const PTrabManager = () => {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center"> {/* Célula para os valores do P Trab */}
+                    <TableCell className="text-center"> {/* Célula para os valores do PTrab */}
                       <div className="flex flex-col items-center text-xs">
-                        {/* P Trab Logístico (Classe I + Classe III) */}
+                        {/* PTrab Logístico (Classe I + Classe III) */}
                         {ptrab.totalLogistica !== undefined && (
                           <span className="text-orange-600 font-medium">
                             {formatCurrency(ptrab.totalLogistica)}
                           </span>
                         )}
-                        {/* P Trab Operacional (atualmente 0) */}
+                        {/* PTrab Operacional (atualmente 0) */}
                         {ptrab.totalOperacional !== undefined && (
                           <span className="text-blue-600 font-medium">
                             {formatCurrency(ptrab.totalOperacional)}
@@ -1204,11 +1204,11 @@ const PTrabManager = () => {
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEdit(ptrab)}>
                               <Pencil className="mr-2 h-4 w-4" />
-                              Editar P Trab
+                              Editar PTrab
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleOpenCloneOptions(ptrab)}> {/* Chama o novo diálogo */}
                               <Copy className="mr-2 h-4 w-4" />
-                              Clonar P Trab
+                              Clonar PTrab
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
@@ -1233,9 +1233,9 @@ const PTrabManager = () => {
       <AlertDialog open={showArchiveStatusDialog} onOpenChange={setShowArchiveStatusDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Arquivar P Trab?</AlertDialogTitle>
+            <AlertDialogTitle>Arquivar PTrab?</AlertDialogTitle>
             <AlertDialogDescription>
-              O P Trab "{ptrabToArchiveName}" está com status "Completo" há mais de 10 dias. Deseja arquivá-lo?
+              O PTrab "{ptrabToArchiveName}" está com status "Completo" há mais de 10 dias. Deseja arquivá-lo?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1248,9 +1248,9 @@ const PTrabManager = () => {
       <AlertDialog open={showReactivateStatusDialog} onOpenChange={setShowReactivateStatusDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reativar P Trab?</AlertDialogTitle>
+            <AlertDialogTitle>Reativar PTrab?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja reativar o P Trab "{ptrabToReactivateName}" para "Em Andamento"? Isso permitirá novas edições.
+              Tem certeza que deseja reativar o PTrab "{ptrabToReactivateName}" para "Em Andamento"? Isso permitirá novas edições.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1282,7 +1282,7 @@ const PTrabManager = () => {
                 <RadioGroupItem id="clone-new" value="new" className="sr-only" />
                 <span className="mb-3 text-lg font-semibold">Novo Trabalho</span>
                 <p className="text-sm text-muted-foreground text-center">
-                  Cria um P Trab totalmente novo com o próximo número disponível.
+                  Cria um PTrab totalmente novo com o próximo número disponível.
                 </p>
               </Label>
               <Label
@@ -1292,13 +1292,13 @@ const PTrabManager = () => {
                 <RadioGroupItem id="clone-variation" value="variation" className="sr-only" />
                 <span className="mb-3 text-lg font-semibold">Variação do Trabalho</span>
                 <p className="text-sm text-muted-foreground text-center">
-                  Cria uma variação do P Trab atual (ex: {ptrabToClone?.numero_ptrab.split('/')[0]}.1/{currentYear}).
+                  Cria uma variação do PTrab atual (ex: {ptrabToClone?.numero_ptrab.split('/')[0]}.1/{currentYear}).
                 </p>
               </Label>
             </RadioGroup>
 
             <div className="space-y-2">
-              <Label htmlFor="clone-number">Número do Novo P Trab</Label>
+              <Label htmlFor="clone-number">Número do Novo PTrab</Label>
               <Input
                 id="clone-number"
                 value={customCloneNumber}
@@ -1322,7 +1322,7 @@ const PTrabManager = () => {
       <Dialog open={showComentarioDialog} onOpenChange={setShowComentarioDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Comentário do P Trab</DialogTitle>
+            <DialogTitle>Comentário do PTrab</DialogTitle>
             {ptrabComentario && (
               <p className="text-sm text-muted-foreground">
                 {ptrabComentario.numero_ptrab} - {ptrabComentario.nome_operacao}
@@ -1331,7 +1331,7 @@ const PTrabManager = () => {
           </DialogHeader>
           <div className="py-4">
             <Textarea
-              placeholder="Digite seu comentário sobre este P Trab..."
+              placeholder="Digite seu comentário sobre este PTrab..."
               value={comentarioText}
               onChange={(e) => setComentarioText(e.target.value)}
               className="min-h-[150px]"
@@ -1345,8 +1345,8 @@ const PTrabManager = () => {
               Cancelar
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </DialogFooter>
+      </DialogContent>
 
       {/* Diálogo de Consolidação */}
       <PTrabConsolidationDialog
