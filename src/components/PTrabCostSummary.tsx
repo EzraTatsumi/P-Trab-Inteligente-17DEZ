@@ -149,6 +149,11 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
 
   // Classe para garantir largura e alinhamento consistentes para os valores
   const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
+  
+  // Classes para a coluna de quantidade (ajustada para 1/3)
+  const quantityClasses = "text-right font-medium w-1/3";
+  // Classes para a coluna de descrição (ajustada para 1/3)
+  const descriptionClasses = "w-1/3";
 
   return (
     <Card className="shadow-lg">
@@ -190,8 +195,8 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                 <div className="space-y-1 pl-6 text-xs">
                   {/* Detalhe 1: Valor Complemento */}
                   <div className="flex justify-between text-muted-foreground">
-                    <span className="w-1/2">Valor Complemento (Ref. Intermediárias)</span>
-                    <span className="text-right font-medium w-1/4">
+                    <span className={descriptionClasses}>Valor Complemento (Ref. Intermediárias)</span>
+                    <span className={quantityClasses}>
                       {formatNumber(totals.totalRefeicoesIntermediarias)}
                     </span>
                     <span className={cn(valueClasses, "mr-6")}>
@@ -200,14 +205,15 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                   </div>
                   {/* Detalhe 2: Valor Etapa Solicitada */}
                   <div className="flex justify-between text-muted-foreground">
-                    <span className="w-1/2">Valor Etapa Solicitada</span>
-                    <span className="text-right font-medium w-1/4">
+                    <span className={descriptionClasses}>Valor Etapa Solicitada</span>
+                    <span className={quantityClasses}>
                       {formatNumber(totals.totalDiasEtapaSolicitada)} dias
                     </span>
                     <span className={cn(valueClasses, "mr-6")}>
                       {formatCurrency(totals.totalEtapaSolicitadaValor)}
                     </span>
                   </div>
+                  {/* Detalhe 3 e 4 removidos pois já estão implícitos nos detalhes 1 e 2 */}
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -231,8 +237,8 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                 <div className="space-y-1 pl-6 text-xs">
                   {/* Linha Óleo Diesel */}
                   <div className="flex justify-between text-muted-foreground">
-                    <span className="w-1/3">Óleo Diesel</span>
-                    <span className="text-right font-medium w-1/3">
+                    <span className={descriptionClasses}>Óleo Diesel</span>
+                    <span className={quantityClasses}>
                       {formatNumber(totals.totalDieselLitros)} L
                     </span>
                     <span className={cn(valueClasses, "mr-6")}>
@@ -241,8 +247,8 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                   </div>
                   {/* Linha Gasolina */}
                   <div className="flex justify-between text-muted-foreground">
-                    <span className="w-1/3">Gasolina</span>
-                    <span className="text-right font-medium w-1/3">
+                    <span className={descriptionClasses}>Gasolina</span>
+                    <span className={quantityClasses}>
                       {formatNumber(totals.totalGasolinaLitros)} L
                     </span>
                     <span className={cn(valueClasses, "mr-6")}>
