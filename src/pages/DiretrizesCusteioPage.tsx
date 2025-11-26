@@ -25,7 +25,7 @@ const defaultEmbarcacaoConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Motor de popa", tipo_combustivel: "GAS", consumo: 20, unidade: "L/h" },
   { nome_equipamento: "Emb Guardian 25", tipo_combustivel: "GAS", consumo: 100, unidade: "L/h" },
   { nome_equipamento: "Ferryboat", tipo_combustivel: "OD", consumo: 100, unidade: "L/h" },
-  { nome: "Emb Regional", tipo_combustivel: "OD", consumo: 50, unidade: "L/h" },
+  { nome_equipamento: "Emb Regional", tipo_combustivel: "OD", consumo: 50, unidade: "L/h" },
   { nome_equipamento: "Empurradores", tipo_combustivel: "OD", consumo: 80, unidade: "L/h" },
   { nome_equipamento: "Emb Manobra", tipo_combustivel: "OD", consumo: 30, unidade: "L/h" },
 ];
@@ -459,7 +459,7 @@ const DiretrizesCusteioPage = () => {
                               type="number"
                               step="0.01"
                               className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={gerador.consumo}
+                              value={gerador.consumo === 0 ? "" : gerador.consumo}
                               onChange={(e) => handleUpdateItem(geradorConfig, setGeradorConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
                               onKeyDown={handleEnterToNextField}
                             />
@@ -541,7 +541,7 @@ const DiretrizesCusteioPage = () => {
                               type="number"
                               step="0.01"
                               className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={embarcacao.consumo}
+                              value={embarcacao.consumo === 0 ? "" : embarcacao.consumo}
                               onChange={(e) => handleUpdateItem(embarcacaoConfig, setEmbarcacaoConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
                               onKeyDown={handleEnterToNextField}
                             />
@@ -623,7 +623,7 @@ const DiretrizesCusteioPage = () => {
                               type="number"
                               step="0.01"
                               className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={viatura.consumo}
+                              value={viatura.consumo === 0 ? "" : viatura.consumo}
                               onChange={(e) => handleUpdateItem(motomecanizacaoConfig, setMotomecanizacaoConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
                               onKeyDown={handleEnterToNextField}
                             />
