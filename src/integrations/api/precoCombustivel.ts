@@ -6,7 +6,6 @@ export interface PrecoCombustivelResult {
 
 /**
  * Busca preços de combustíveis em uma API externa.
- * Esta implementação simula uma chamada HTTP real para a API.
  * @param ambito O âmbito da consulta ('Nacional', 'Estadual', 'Municipal').
  * @param nomeLocal O nome do estado ou município (se aplicável).
  * @param dataInicio Data de início da consulta.
@@ -19,7 +18,7 @@ export async function fetchPrecosCombustivel(
   dataInicio: string,
   dataFim: string
 ): Promise<PrecoCombustivelResult> {
-  // URL base da API (ajuste conforme o endpoint real)
+  // URL base da API real
   const API_BASE_URL = 'https://api-preco-combustivel.onrender.com/api/v1/prices';
   
   // Construção dos parâmetros de consulta
@@ -36,43 +35,20 @@ export async function fetchPrecosCombustivel(
   const url = `${API_BASE_URL}?${params.toString()}`;
 
   try {
-    // Simulação de chamada fetch (substitua por fetch(url) para produção)
-    // const response = await fetch(url);
-    // if (!response.ok) {
-    //   throw new Error(`Erro HTTP: ${response.status}`);
-    // }
-    // const data = await response.json();
+    const response = await fetch(url);
     
-    // --- Lógica de Mock para simular a resposta da API real ---
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    let dieselPrice = 6.50;
-    let gasolinePrice = 5.80;
-    let source = "ANP - Nacional (Simulado)";
-
-    if (ambito === 'Estadual' && nomeLocal?.toLowerCase().includes('amazonas')) {
-      dieselPrice = 7.10;
-      gasolinePrice = 6.20;
-      source = "ANP - Estadual (Simulado)";
-    } else if (ambito === 'Municipal' && nomeLocal?.toLowerCase().includes('manaus')) {
-      dieselPrice = 7.25;
-      gasolinePrice = 6.35;
-      source = "ANP - Municipal (Simulado)";
-    } else if (ambito === 'Nacional') {
-      // Mantém os valores padrão
-    } else {
-      // Fallback para valores genéricos se o local não for reconhecido
-      dieselPrice = 6.80;
-      gasolinePrice = 6.00;
-      source = "ANP - Genérico (Simulado)";
+    if (!response.ok) {
+      // Tenta ler a mensagem de erro do corpo se disponível
+      const errorBody = await response.json().catch(() => ({ message: `Erro HTTP: ${response.status}` }));
+      throw new Error(errorBody.message || `Erro ao buscar preços. Status: ${response.status}`);
     }
     
-    const data = {
-        preco_diesel: dieselPrice,
-        preco_gasolina: gasolinePrice,
-        fonte: source,
-    };
-    // --- Fim da Lógica de Mock ---
+    const data = await response.json();
+
+    // Validação básica da resposta
+    if (typeof data.preco_diesel !== 'number' || typeof data.preco_gasolina !== 'number') {
+        throw new Error("Resposta da API inválida: Preços não são numéricos.");
+    }
 
     return {
       preco_diesel: data.preco_diesel,
@@ -81,6 +57,7 @@ export async function fetchPrecosCombustivel(
     };
   } catch (error) {
     console.error("Erro ao buscar preços de combustível:", error);
-    throw new Error("Falha ao conectar com a API de preços de combustível.");
+    // Lança um erro amigável para o usuário
+    throw new Error("Falha ao conectar ou obter dados da API de preços de combustível. Verifique os parâmetros de consulta.");
   }
 }
