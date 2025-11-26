@@ -10,8 +10,8 @@ export interface TipoEquipamentoDetalhado {
 // Valores padrão (fallback se não houver diretrizes)
 export const grupoGeradores: TipoEquipamentoDetalhado[] = [
   { nome: "Gerador até 15 kva GAS", combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
-  { nome: "Gerador até 15 kva OD", combustivel: "OD", consumo: 4.0, unidade: "L/h" },
-  { nome: "Gerador acima de 50 kva", combustivel: "OD", consumo: 20.0, unidade: "L/h" },
+  { nome: "Gerador até 15 kva OD", combustivel: "OD", consumo: 4.00, unidade: "L/h" },
+  { nome: "Gerador acima de 50kva", combustivel: "OD", consumo: 20.00, unidade: "L/h" },
 ];
 
 export const tipoEmbarcacoes: TipoEquipamentoDetalhado[] = [
