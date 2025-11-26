@@ -111,15 +111,15 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
 
         {/* Aba Logística */}
         <div className="space-y-3 border-l-4 border-orange-500 pl-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-orange-600">
+          <div className="flex items-center gap-2 text-sm font-semibold text-orange-600 mb-3">
             <Package className="h-4 w-4" />
             Aba Logística
           </div>
           
-          {/* Classe I */}
-          <div className="flex justify-between text-sm">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Utensils className="h-4 w-4" />
+          {/* Classe I - Subsistência */}
+          <div className="flex justify-between text-sm border-b pb-2 border-border/50">
+            <div className="flex items-center gap-2 text-foreground">
+              <Utensils className="h-4 w-4 text-orange-500" />
               Classe I (Subsistência)
             </div>
             <span className="font-medium text-foreground">
@@ -127,23 +127,28 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
             </span>
           </div>
 
-          {/* Classe III */}
-          <div className="space-y-2 pl-4 border-l border-border">
-            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Fuel className="h-4 w-4 text-orange-500" />
-              Classe III (Combustíveis)
+          {/* Classe III - Combustíveis */}
+          <div className="space-y-2 pt-2">
+            <div className="flex justify-between text-sm border-b pb-2 border-border/50">
+              <div className="flex items-center gap-2 text-foreground">
+                <Fuel className="h-4 w-4 text-orange-500" />
+                Classe III (Combustíveis)
+              </div>
+              <span className="font-medium text-foreground">
+                {formatCurrency(totals.totalLogisticoND39)}
+              </span>
             </div>
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Óleo Diesel (ND 39)</span>
-              <span className="font-medium">{formatCurrency(totals.totalDiesel)}</span>
-            </div>
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Gasolina (ND 39)</span>
-              <span className="font-medium">{formatCurrency(totals.totalGasolina)}</span>
-            </div>
-            <div className="flex justify-between text-sm font-bold pt-1 border-t border-border">
-              <span>Total ND 39</span>
-              <span className="text-orange-600">{formatCurrency(totals.totalLogisticoND39)}</span>
+            
+            {/* Detalhamento da Classe III (opcional, mas útil) */}
+            <div className="space-y-1 pl-6 text-xs">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Óleo Diesel (ND 39)</span>
+                <span className="font-medium">{formatCurrency(totals.totalDiesel)}</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Gasolina (ND 39)</span>
+                <span className="font-medium">{formatCurrency(totals.totalGasolina)}</span>
+              </div>
             </div>
           </div>
         </div>
