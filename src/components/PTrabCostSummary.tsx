@@ -259,7 +259,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
             </AccordionItem>
           </Accordion>
           
-          {/* NOVO: Subtotal Aba Logística */}
+          {/* SUBTOTAL LOGÍSTICA */}
           <div className="flex justify-between items-center pt-3 border-t border-border/50">
             <span className="font-bold text-sm text-foreground">SUBTOTAL LOGÍSTICA (ND 30 + ND 39)</span>
             <span className="font-bold text-lg text-orange-600">
@@ -277,6 +277,14 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Itens Operacionais (ND 39)</span>
             <span className={cn(valueClasses, "mr-6")}>
+              {formatCurrency(totals.totalOperacional)}
+            </span>
+          </div>
+          
+          {/* NOVO: SUBTOTAL OPERACIONAL */}
+          <div className="flex justify-between items-center pt-3 border-t border-border/50">
+            <span className="font-bold text-sm text-foreground">SUBTOTAL OPERACIONAL (ND 39)</span>
+            <span className="font-bold text-lg text-blue-600">
               {formatCurrency(totals.totalOperacional)}
             </span>
           </div>
