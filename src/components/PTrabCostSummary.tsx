@@ -101,10 +101,8 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
   
   const totals = data!;
 
-  // Classe para alinhar os valores à direita e dar espaço para a seta do Accordion
+  // Classe para garantir largura e alinhamento consistentes para os valores
   const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
-  // O AccordionTrigger já tem um padding interno que precisamos compensar.
-  // O AccordionTrigger tem um padding de 1.5rem (p-6) para a seta.
 
   return (
     <Card className="shadow-lg">
@@ -134,30 +132,27 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
               <Utensils className="h-4 w-4 text-orange-500" />
               Classe I (Subsistência)
             </div>
-            {/* Ajuste: Usar a classe de alinhamento e compensar o espaço da seta com pr-6 */}
-            <div className="flex items-center gap-1 pr-6"> 
-              <span className={valueClasses}>
-                {formatCurrency(totals.totalClasseI)}
-              </span>
-            </div>
+            {/* Removendo o pr-6 e usando a classe de largura fixa */}
+            <span className={valueClasses}>
+              {formatCurrency(totals.totalClasseI)}
+            </span>
           </div>
 
           {/* Classe III - Combustíveis (Item principal) */}
           <Accordion type="single" collapsible className="w-full pt-2">
             <AccordionItem value="item-1" className="border-b-0">
+              {/* Ajustando o AccordionTrigger para garantir que o valor fique alinhado com o Classe I */}
               <AccordionTrigger className="p-0 hover:no-underline">
                 <div className="flex justify-between items-center w-full text-sm border-b pb-2 border-border/50">
                   <div className="flex items-center gap-2 text-foreground">
                     <Fuel className="h-4 w-4 text-orange-500" />
                     Classe III (Combustíveis)
                   </div>
-                  {/* Ajuste: Usar a classe de alinhamento e compensar o espaço da seta com pr-6 */}
-                  <div className="flex items-center gap-1 pr-6">
-                    <span className={valueClasses}>
-                      {formatCurrency(totals.totalLogisticoND39)}
-                    </span>
-                    {/* A seta de expansão é adicionada automaticamente pelo AccordionTrigger */}
-                  </div>
+                  {/* Removendo o pr-6 e usando a classe de largura fixa */}
+                  <span className={valueClasses}>
+                    {formatCurrency(totals.totalLogisticoND39)}
+                  </span>
+                  {/* A seta de expansão é injetada aqui pelo Radix, fora do span de valor */}
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-1 pb-0">
@@ -182,15 +177,12 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
             <Briefcase className="h-4 w-4" />
             Aba Operacional
           </div>
-          {/* Aplicando a mesma estrutura flexível para alinhar o valor à direita */}
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Itens Operacionais (ND 39)</span>
-            {/* Ajuste: Usar a classe de alinhamento e compensar o espaço da seta com pr-6 */}
-            <div className="flex items-center gap-1 pr-6">
-              <span className={valueClasses}>
-                {formatCurrency(totals.totalOperacional)}
-              </span>
-            </div>
+            {/* Removendo o pr-6 e usando a classe de largura fixa */}
+            <span className={valueClasses}>
+              {formatCurrency(totals.totalOperacional)}
+            </span>
           </div>
         </div>
         
