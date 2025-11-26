@@ -1838,6 +1838,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
               Informe os dados da consulta de preços de combustíveis para o período do PTrab.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* LINHA 1: Datas */}
               <div className="space-y-2 lg:col-span-1">
                 <Label htmlFor="data_inicio_consulta">Data Início Consulta *</Label>
                 <Input
@@ -1860,6 +1861,34 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
+              
+              {/* LINHA 2: Preços */}
+              <div className="space-y-2 lg:col-span-1">
+                <Label htmlFor="preco_diesel">Preço Diesel (R$/L) *</Label>
+                <Input
+                  id="preco_diesel"
+                  type="number"
+                  step="0.01"
+                  value={formLPC.preco_diesel}
+                  onChange={(e) => setFormLPC({ ...formLPC, preco_diesel: parseFloat(e.target.value) || 0 })}
+                  required
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="space-y-2 lg:col-span-1">
+                <Label htmlFor="preco_gasolina">Preço Gasolina (R$/L) *</Label>
+                <Input
+                  id="preco_gasolina"
+                  type="number"
+                  step="0.01"
+                  value={formLPC.preco_gasolina}
+                  onChange={(e) => setFormLPC({ ...formLPC, preco_gasolina: parseFloat(e.target.value) || 0 })}
+                  required
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+
+              {/* LINHA 3: Âmbito e Local */}
               <div className="space-y-2 lg:col-span-1">
                 <Label htmlFor="ambito">Âmbito da Consulta *</Label>
                 <Select
@@ -1876,34 +1905,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   </SelectContent>
                 </Select>
               </div>
-              {formLPC.ambito === 'Nacional' ? (
-                <>
-                  <div className="space-y-2 lg:col-span-1">
-                    <Label htmlFor="preco_diesel">Preço Diesel (R$/L) *</Label>
-                    <Input
-                      id="preco_diesel"
-                      type="number"
-                      step="0.01"
-                      value={formLPC.preco_diesel}
-                      onChange={(e) => setFormLPC({ ...formLPC, preco_diesel: parseFloat(e.target.value) || 0 })}
-                      required
-                      onKeyDown={handleEnterToNextField}
-                    />
-                  </div>
-                  <div className="space-y-2 lg:col-span-1">
-                    <Label htmlFor="preco_gasolina">Preço Gasolina (R$/L) *</Label>
-                    <Input
-                      id="preco_gasolina"
-                      type="number"
-                      step="0.01"
-                      value={formLPC.preco_gasolina}
-                      onChange={(e) => setFormLPC({ ...formLPC, preco_gasolina: parseFloat(e.target.value) || 0 })}
-                      required
-                      onKeyDown={handleEnterToNextField}
-                    />
-                  </div>
-                </>
-              ) : (
+              {formLPC.ambito !== 'Nacional' && (
                 <div className="space-y-2 lg:col-span-2">
                   <Label htmlFor="nome_local">{formLPC.ambito === 'Estadual' ? 'Estado' : 'Município'} *</Label>
                   <Input
@@ -1915,34 +1917,6 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     onKeyDown={handleEnterToNextField}
                   />
                 </div>
-              )}
-              {formLPC.ambito !== 'Nacional' && (
-                <>
-                  <div className="space-y-2 lg:col-span-1">
-                    <Label htmlFor="preco_diesel">Preço Diesel (R$/L) *</Label>
-                    <Input
-                      id="preco_diesel"
-                      type="number"
-                      step="0.01"
-                      value={formLPC.preco_diesel}
-                      onChange={(e) => setFormLPC({ ...formLPC, preco_diesel: parseFloat(e.target.value) || 0 })}
-                      required
-                      onKeyDown={handleEnterToNextField}
-                    />
-                  </div>
-                  <div className="space-y-2 lg:col-span-1">
-                    <Label htmlFor="preco_gasolina">Preço Gasolina (R$/L) *</Label>
-                    <Input
-                      id="preco_gasolina"
-                      type="number"
-                      step="0.01"
-                      value={formLPC.preco_gasolina}
-                      onChange={(e) => setFormLPC({ ...formLPC, preco_gasolina: parseFloat(e.target.value) || 0 })}
-                      required
-                      onKeyDown={handleEnterToNextField}
-                    />
-                  </div>
-                </>
               )}
             </div>
             <div className="flex justify-end mt-4">
