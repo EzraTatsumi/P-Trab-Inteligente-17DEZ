@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { formatCurrency } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber } from "@/lib/formatUtils"; // Importar formatNumber
 import { Package, Briefcase, Fuel, Utensils, Loader2 } from "lucide-react";
 import {
   Accordion,
@@ -37,20 +37,28 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // 2. Fetch Classe III totals (33.90.39)
   const { data: classeIIIData, error: classeIIIError } = await supabase
     .from('classe_iii_registros')
-    .select('valor_total, tipo_combustivel')
+    .select('valor_total, tipo_combustivel, total_litros') // Adicionado total_litros
     .eq('p_trab_id', ptrabId);
 
   if (classeIIIError) throw classeIIIError;
 
-  const totalDiesel = (classeIIIData || [])
+  const totalDieselValor = (classeIIIData || [])
     .filter(r => r.tipo_combustivel === 'DIESEL' || r.tipo_combustivel === 'OD')
     .reduce((sum, record) => sum + record.valor_total, 0);
     
-  const totalGasolina = (classeIIIData || [])
+  const totalGasolinaValor = (classeIIIData || [])
     .filter(r => r.tipo_combustivel === 'GASOLINA' || r.tipo_combustivel === 'GAS')
     .reduce((sum, record) => sum + record.valor_total, 0);
+    
+  const totalDieselLitros = (classeIIIData || [])
+    .filter(r => r.tipo_combustivel === 'DIESEL' || r.tipo_combustivel === 'OD')
+    .reduce((sum, record) => sum + record.total_litros, 0);
+    
+  const totalGasolinaLitros = (classeIIIData || [])
+    .filter(r => r.tipo_combustivel === 'GASOLINA' || r.tipo_combustivel === 'GAS')
+    .reduce((sum, record) => sum + record.total_litros, 0);
 
-  const totalClasseIII = totalDiesel + totalGasolina;
+  const totalClasseIII = totalDieselValor + totalGasolinaValor;
 
   // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classe III (ND 39) + Classe III (ND 30)
   const totalLogisticoND30 = totalClasseI;
@@ -68,8 +76,10 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalClasseI,
     totalComplemento,
     totalEtapaSolicitada,
-    totalDiesel,
-    totalGasolina,
+    totalDieselValor,
+    totalGasolinaValor,
+    totalDieselLitros, // Novo
+    totalGasolinaLitros, // Novo
   };
 };
 
@@ -144,7 +154,6 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                     <Utensils className="h-4 w-4 text-orange-500" />
                     Classe I (Subsistência)
                   </div>
-                  {/* Adicionando mr-6 para afastar o valor da seta do trigger */}
                   <span className={cn(valueClasses, "mr-6")}>
                     {formatCurrency(totals.totalClasseI)}
                   </span>
@@ -174,7 +183,6 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                     <Fuel className="h-4 w-4 text-orange-500" />
                     Classe III (Combustíveis)
                   </div>
-                  {/* Adicionando mr-6 para afastar o valor da seta do trigger */}
                   <span className={cn(valueClasses, "mr-6")}>
                     {formatCurrency(totals.totalLogisticoND39)}
                   </span>
@@ -182,13 +190,19 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
               </AccordionTrigger>
               <AccordionContent className="pt-1 pb-0">
                 <div className="space-y-1 pl-6 text-xs">
+                  {/* Linha Óleo Diesel */}
                   <div className="flex justify-between text-muted-foreground">
                     <span>Óleo Diesel</span>
-                    <span className="font-medium">{formatCurrency(totals.totalDiesel)}</span>
+                    <span className="font-medium">
+                      {formatCurrency(totals.totalDieselValor)} ({formatNumber(totals.totalDieselLitros)} L)
+                    </span>
                   </div>
+                  {/* Linha Gasolina */}
                   <div className="flex justify-between text-muted-foreground">
                     <span>Gasolina</span>
-                    <span className="font-medium">{formatCurrency(totals.totalGasolina)}</span>
+                    <span className="font-medium">
+                      {formatCurrency(totals.totalGasolinaValor)} ({formatNumber(totals.totalGasolinaLitros)} L)
+                    </span>
                   </div>
                 </div>
               </AccordionContent>
