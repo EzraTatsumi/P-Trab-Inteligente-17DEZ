@@ -13,6 +13,7 @@ import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
+import { tipoViaturas } from "@/data/classeIIIData"; // Importar os defaults de viaturas
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -28,6 +29,13 @@ const defaultEmbarcacaoConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Empurradores", tipo_combustivel: "OD", consumo: 80, unidade: "L/h" },
   { nome_equipamento: "Emb Manobra", tipo_combustivel: "OD", consumo: 30, unidade: "L/h" },
 ];
+
+const defaultMotomecanizacaoConfig: DiretrizEquipamentoForm[] = tipoViaturas.map(v => ({
+  nome_equipamento: v.nome,
+  tipo_combustivel: v.combustivel,
+  consumo: v.consumo,
+  unidade: v.unidade,
+}));
 
 const defaultDiretrizes = (year: number) => ({
   ano_referencia: year,
@@ -45,9 +53,12 @@ const DiretrizesCusteioPage = () => {
   const [showClasseIAlimentacaoConfig, setShowClasseIAlimentacaoConfig] = useState(false);
   const [showClasseIIIGeradoresConfig, setShowClasseIIIGeradoresConfig] = useState(false);
   const [showClasseIIIEmbarcacoesConfig, setShowClasseIIIEmbarcacoesConfig] = useState(false);
+  const [showClasseIIIMotomecanizacaoConfig, setShowClasseIIIMotomecanizacaoConfig] = useState(false); // Novo estado
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
   const [embarcacaoConfig, setEmbarcacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultEmbarcacaoConfig);
+  const [motomecanizacaoConfig, setMotomecanizacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultMotomecanizacaoConfig); // Novo estado
+  
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -131,6 +142,7 @@ const DiretrizesCusteioPage = () => {
           observacoes: data.observacoes || "",
         });
 
+        // --- Carregar Geradores ---
         const { data: equipamentosData } = await supabase
           .from("diretrizes_equipamentos_classe_iii")
           .select("*")
@@ -150,7 +162,7 @@ const DiretrizesCusteioPage = () => {
           setGeradorConfig(defaultGeradorConfig);
         }
 
-        // Carregar embarcações
+        // --- Carregar Embarcações ---
         const { data: embarcacoesData } = await supabase
           .from("diretrizes_equipamentos_classe_iii")
           .select("*")
@@ -169,10 +181,32 @@ const DiretrizesCusteioPage = () => {
         } else {
           setEmbarcacaoConfig(defaultEmbarcacaoConfig);
         }
+        
+        // --- Carregar Motomecanização ---
+        const { data: motomecanizacaoData } = await supabase
+          .from("diretrizes_equipamentos_classe_iii")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("ano_referencia", data.ano_referencia)
+          .eq("categoria", "MOTOMECANIZACAO")
+          .eq("ativo", true);
+
+        if (motomecanizacaoData && motomecanizacaoData.length > 0) {
+          setMotomecanizacaoConfig(motomecanizacaoData.map(eq => ({
+            nome_equipamento: eq.nome_equipamento,
+            tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
+            consumo: Number(eq.consumo),
+            unidade: eq.unidade as 'L/h' | 'km/L',
+          })));
+        } else {
+          setMotomecanizacaoConfig(defaultMotomecanizacaoConfig);
+        }
+        
       } else {
         setDiretrizes(defaultDiretrizes(year));
         setGeradorConfig(defaultGeradorConfig);
         setEmbarcacaoConfig(defaultEmbarcacaoConfig);
+        setMotomecanizacaoConfig(defaultMotomecanizacaoConfig);
       }
     } catch (error: any) {
       console.error("Erro ao carregar diretrizes:", error);
@@ -210,6 +244,7 @@ const DiretrizesCusteioPage = () => {
         observacoes: diretrizes.observacoes,
       };
 
+      // 1. Salvar Diretrizes de Custeio (Valores e Fatores)
       if (diretrizes.id) {
         const { error } = await supabase
           .from("diretrizes_custeio")
@@ -225,52 +260,40 @@ const DiretrizesCusteioPage = () => {
         toast.success("Diretrizes criadas!");
       }
 
-      await supabase
-        .from("diretrizes_equipamentos_classe_iii")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ano_referencia", diretrizes.ano_referencia!)
-        .eq("categoria", "GERADOR");
+      // 2. Salvar Configurações de Equipamentos (Geradores, Embarcações, Motomecanização)
+      const categorias = ["GERADOR", "EMBARCACAO", "MOTOMECANIZACAO"];
+      const configs = {
+        "GERADOR": geradorConfig,
+        "EMBARCACAO": embarcacaoConfig,
+        "MOTOMECANIZACAO": motomecanizacaoConfig,
+      };
 
-      const equipamentosParaSalvar = geradorConfig
-        .filter(g => g.nome_equipamento && g.consumo > 0)
-        .map(g => ({
-          user_id: user.id,
-          ano_referencia: diretrizes.ano_referencia,
-          categoria: "GERADOR",
-          ...g,
-        }));
-
-      if (equipamentosParaSalvar.length > 0) {
-        const { error: eqError } = await supabase
+      for (const categoria of categorias) {
+        // Deletar registros antigos da categoria
+        await supabase
           .from("diretrizes_equipamentos_classe_iii")
-          .insert(equipamentosParaSalvar);
-        if (eqError) throw eqError;
-      }
+          .delete()
+          .eq("user_id", user.id)
+          .eq("ano_referencia", diretrizes.ano_referencia!)
+          .eq("categoria", categoria);
 
-      // Deletar embarcações antigas
-      await supabase
-        .from("diretrizes_equipamentos_classe_iii")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ano_referencia", diretrizes.ano_referencia!)
-        .eq("categoria", "EMBARCACAO");
+        // Inserir novos registros
+        const configList = configs[categoria as keyof typeof configs];
+        const equipamentosParaSalvar = configList
+          .filter(g => g.nome_equipamento && g.consumo > 0)
+          .map(g => ({
+            user_id: user.id,
+            ano_referencia: diretrizes.ano_referencia,
+            categoria: categoria,
+            ...g,
+          }));
 
-      // Inserir novas embarcações
-      const embarcacoesParaSalvar = embarcacaoConfig
-        .filter(e => e.nome_equipamento && e.consumo > 0)
-        .map(e => ({
-          user_id: user.id,
-          ano_referencia: diretrizes.ano_referencia,
-          categoria: "EMBARCACAO",
-          ...e,
-        }));
-
-      if (embarcacoesParaSalvar.length > 0) {
-        const { error: embError } = await supabase
-          .from("diretrizes_equipamentos_classe_iii")
-          .insert(embarcacoesParaSalvar);
-        if (embError) throw embError;
+        if (equipamentosParaSalvar.length > 0) {
+          const { error: eqError } = await supabase
+            .from("diretrizes_equipamentos_classe_iii")
+            .insert(equipamentosParaSalvar);
+          if (eqError) throw eqError;
+        }
       }
 
       await loadAvailableYears();
@@ -282,6 +305,27 @@ const DiretrizesCusteioPage = () => {
       }
     }
   };
+  
+  // Função genérica para adicionar item
+  const handleAddItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, unidade: 'L/h' | 'km/L') => {
+    setConfig([
+      ...config,
+      { nome_equipamento: "", tipo_combustivel: "OD", consumo: 0, unidade: unidade }
+    ]);
+  };
+
+  // Função genérica para remover item
+  const handleRemoveItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, index: number) => {
+    setConfig(config.filter((_, i) => i !== index));
+  };
+
+  // Função genérica para atualizar item
+  const handleUpdateItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, index: number, field: keyof DiretrizEquipamentoForm, value: any) => {
+    const novosItens = [...config];
+    novosItens[index] = { ...novosItens[index], [field]: value };
+    setConfig(novosItens);
+  };
+
 
   if (loading) {
     return (
@@ -294,7 +338,7 @@ const DiretrizesCusteioPage = () => {
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-3xl mx-auto space-y-6">
-        <Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2"> {/* Ajustado mb-4 para mb-2 */}
+        <Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar para Planos de Trabalho
         </Button>
@@ -305,8 +349,8 @@ const DiretrizesCusteioPage = () => {
             <CardDescription>Diretrizes de Custeio (COLOG)</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <form onSubmit={(e) => { e.preventDefault(); handleSaveDiretrizes(); }}> {/* Adicionado a tag form aqui */}
-              <div className="space-y-2 mb-6"> {/* Adicionado mb-6 aqui */}
+            <form onSubmit={(e) => { e.preventDefault(); handleSaveDiretrizes(); }}>
+              <div className="space-y-2 mb-6">
                 <Label>Ano de Referência</Label>
                 <Select
                   value={selectedYear.toString()}
@@ -325,7 +369,7 @@ const DiretrizesCusteioPage = () => {
                 </Select>
               </div>
 
-              <div className="border-t pt-4 mt-6"> {/* Adicionado mt-6 aqui */}
+              <div className="border-t pt-4 mt-6">
                 <div 
                   className="flex items-center justify-between cursor-pointer py-2" 
                   onClick={() => setShowClasseIAlimentacaoConfig(!showClasseIAlimentacaoConfig)}
@@ -335,7 +379,7 @@ const DiretrizesCusteioPage = () => {
                 </div>
                 
                 {showClasseIAlimentacaoConfig && (
-                  <div className="space-y-4 mt-2"> {/* Content of Classe I */}
+                  <div className="space-y-4 mt-2">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Valor QS</Label>
@@ -370,7 +414,8 @@ const DiretrizesCusteioPage = () => {
                 )}
               </div>
 
-              <div className="border-t pt-4 mt-6"> {/* Adicionado mt-6 aqui */}
+              {/* SEÇÃO CLASSE III - GERADORES */}
+              <div className="border-t pt-4 mt-6">
                 <div 
                   className="flex items-center justify-between cursor-pointer py-2" 
                   onClick={() => setShowClasseIIIGeradoresConfig(!showClasseIIIGeradoresConfig)}
@@ -381,18 +426,14 @@ const DiretrizesCusteioPage = () => {
                 
                 {showClasseIIIGeradoresConfig && (
                   <Card>
-                    <CardContent className="space-y-4 pt-4"> {/* Content of Classe III */}
+                    <CardContent className="space-y-4 pt-4">
                       {geradorConfig.map((gerador, index) => (
                         <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
                           <div className="col-span-5">
                             <Label className="text-xs">Nome do Gerador</Label>
                             <Input
                               value={gerador.nome_equipamento}
-                              onChange={(e) => {
-                                const novosGeradores = [...geradorConfig];
-                                novosGeradores[index] = { ...novosGeradores[index], nome_equipamento: e.target.value };
-                                setGeradorConfig(novosGeradores);
-                              }}
+                              onChange={(e) => handleUpdateItem(geradorConfig, setGeradorConfig, index, 'nome_equipamento', e.target.value)}
                               placeholder="Ex: Gerador até 15 kva GAS"
                               onKeyDown={handleEnterToNextField}
                             />
@@ -401,11 +442,7 @@ const DiretrizesCusteioPage = () => {
                             <Label className="text-xs">Combustível</Label>
                             <Select
                               value={gerador.tipo_combustivel}
-                              onValueChange={(val: 'GAS' | 'OD') => {
-                                const novosGeradores = [...geradorConfig];
-                                novosGeradores[index] = { ...novosGeradores[index], tipo_combustivel: val };
-                                setGeradorConfig(novosGeradores);
-                              }}
+                              onValueChange={(val: 'GAS' | 'OD') => handleUpdateItem(geradorConfig, setGeradorConfig, index, 'tipo_combustivel', val)}
                             >
                               <SelectTrigger>
                                 <SelectValue />
@@ -423,11 +460,7 @@ const DiretrizesCusteioPage = () => {
                               step="0.01"
                               className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               value={gerador.consumo}
-                              onChange={(e) => {
-                                const novosGeradores = [...geradorConfig];
-                                novosGeradores[index] = { ...novosGeradores[index], consumo: parseFloat(e.target.value) || 0 };
-                                setGeradorConfig(novosGeradores);
-                              }}
+                              onChange={(e) => handleUpdateItem(geradorConfig, setGeradorConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
                               onKeyDown={handleEnterToNextField}
                             />
                           </div>
@@ -439,7 +472,7 @@ const DiretrizesCusteioPage = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => setGeradorConfig(geradorConfig.filter((_, i) => i !== index))}
+                              onClick={() => handleRemoveItem(geradorConfig, setGeradorConfig, index)}
                               type="button"
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
@@ -451,10 +484,7 @@ const DiretrizesCusteioPage = () => {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => setGeradorConfig([
-                          ...geradorConfig,
-                          { nome_equipamento: "", tipo_combustivel: "GAS", consumo: 0, unidade: "L/h" }
-                        ])} 
+                        onClick={() => handleAddItem(geradorConfig, setGeradorConfig, 'L/h')} 
                         className="w-full"
                         type="button"
                       >
@@ -466,6 +496,7 @@ const DiretrizesCusteioPage = () => {
                 )}
               </div>
 
+              {/* SEÇÃO CLASSE III - EMBARCAÇÕES */}
               <div className="border-t pt-4 mt-6">
                 <div 
                   className="flex items-center justify-between cursor-pointer py-2" 
@@ -484,11 +515,7 @@ const DiretrizesCusteioPage = () => {
                             <Label className="text-xs">Tipo de Embarcação</Label>
                             <Input
                               value={embarcacao.nome_equipamento}
-                              onChange={(e) => {
-                                const novasEmbarcacoes = [...embarcacaoConfig];
-                                novasEmbarcacoes[index] = { ...novasEmbarcacoes[index], nome_equipamento: e.target.value };
-                                setEmbarcacaoConfig(novasEmbarcacoes);
-                              }}
+                              onChange={(e) => handleUpdateItem(embarcacaoConfig, setEmbarcacaoConfig, index, 'nome_equipamento', e.target.value)}
                               placeholder="Ex: Motor de popa"
                               onKeyDown={handleEnterToNextField}
                             />
@@ -497,11 +524,7 @@ const DiretrizesCusteioPage = () => {
                             <Label className="text-xs">Combustível</Label>
                             <Select
                               value={embarcacao.tipo_combustivel}
-                              onValueChange={(val: 'GAS' | 'OD') => {
-                                const novasEmbarcacoes = [...embarcacaoConfig];
-                                novasEmbarcacoes[index] = { ...novasEmbarcacoes[index], tipo_combustivel: val };
-                                setEmbarcacaoConfig(novasEmbarcacoes);
-                              }}
+                              onValueChange={(val: 'GAS' | 'OD') => handleUpdateItem(embarcacaoConfig, setEmbarcacaoConfig, index, 'tipo_combustivel', val)}
                             >
                               <SelectTrigger>
                                 <SelectValue />
@@ -519,11 +542,7 @@ const DiretrizesCusteioPage = () => {
                               step="0.01"
                               className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               value={embarcacao.consumo}
-                              onChange={(e) => {
-                                const novasEmbarcacoes = [...embarcacaoConfig];
-                                novasEmbarcacoes[index] = { ...novasEmbarcacoes[index], consumo: parseFloat(e.target.value) || 0 };
-                                setEmbarcacaoConfig(novasEmbarcacoes);
-                              }}
+                              onChange={(e) => handleUpdateItem(embarcacaoConfig, setEmbarcacaoConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
                               onKeyDown={handleEnterToNextField}
                             />
                           </div>
@@ -535,7 +554,7 @@ const DiretrizesCusteioPage = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => setEmbarcacaoConfig(embarcacaoConfig.filter((_, i) => i !== index))}
+                              onClick={() => handleRemoveItem(embarcacaoConfig, setEmbarcacaoConfig, index)}
                               type="button"
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
@@ -547,10 +566,7 @@ const DiretrizesCusteioPage = () => {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => setEmbarcacaoConfig([
-                          ...embarcacaoConfig,
-                          { nome_equipamento: "", tipo_combustivel: "GAS", consumo: 0, unidade: "L/h" }
-                        ])} 
+                        onClick={() => handleAddItem(embarcacaoConfig, setEmbarcacaoConfig, 'L/h')} 
                         className="w-full"
                         type="button"
                       >
@@ -561,8 +577,90 @@ const DiretrizesCusteioPage = () => {
                   </Card>
                 )}
               </div>
+              
+              {/* SEÇÃO CLASSE III - MOTOMECANIZAÇÃO (VIATURAS) */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseIIIMotomecanizacaoConfig(!showClasseIIIMotomecanizacaoConfig)}
+                >
+                  <h3 className="text-lg font-semibold">Classe III - Motomecanização (Viaturas)</h3>
+                  {showClasseIIIMotomecanizacaoConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseIIIMotomecanizacaoConfig && (
+                  <Card>
+                    <CardContent className="space-y-4 pt-4">
+                      {motomecanizacaoConfig.map((viatura, index) => (
+                        <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
+                          <div className="col-span-5">
+                            <Label className="text-xs">Tipo de Viatura</Label>
+                            <Input
+                              value={viatura.nome_equipamento}
+                              onChange={(e) => handleUpdateItem(motomecanizacaoConfig, setMotomecanizacaoConfig, index, 'nome_equipamento', e.target.value)}
+                              placeholder="Ex: Vtr Adm Pqn Porte - Adm Pqn"
+                              onKeyDown={handleEnterToNextField}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="text-xs">Combustível</Label>
+                            <Select
+                              value={viatura.tipo_combustivel}
+                              onValueChange={(val: 'GAS' | 'OD') => handleUpdateItem(motomecanizacaoConfig, setMotomecanizacaoConfig, index, 'tipo_combustivel', val)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="GAS">Gasolina</SelectItem>
+                                <SelectItem value="OD">Diesel</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="text-xs">Consumo (km/L)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              value={viatura.consumo}
+                              onChange={(e) => handleUpdateItem(motomecanizacaoConfig, setMotomecanizacaoConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
+                              onKeyDown={handleEnterToNextField}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="text-xs">Unidade</Label>
+                            <Input value="km/L" disabled className="bg-muted text-muted-foreground" onKeyDown={handleEnterToNextField} />
+                          </div>
+                          <div className="col-span-1 flex justify-end">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveItem(motomecanizacaoConfig, setMotomecanizacaoConfig, index)}
+                              type="button"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleAddItem(motomecanizacaoConfig, setMotomecanizacaoConfig, 'km/L')} 
+                        className="w-full"
+                        type="button"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Adicionar Viatura
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
 
-              <div className="space-y-2 border-t pt-4 mt-6"> {/* Adicionado mt-6 aqui */}
+              <div className="space-y-2 border-t pt-4 mt-6">
                 <Label>Observações</Label>
                 <Textarea
                   value={diretrizes.observacoes}
@@ -571,8 +669,8 @@ const DiretrizesCusteioPage = () => {
                 />
               </div>
 
-              <Button type="submit" className="w-full mt-6">Salvar Diretrizes</Button> {/* Botão de submit do formulário */}
-            </form> {/* Fechamento da tag form */}
+              <Button type="submit" className="w-full mt-6">Salvar Diretrizes</Button>
+            </form>
           </CardContent>
         </Card>
       </div>

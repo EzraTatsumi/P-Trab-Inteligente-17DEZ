@@ -45,7 +45,7 @@ export const tipoViaturas: TipoEquipamentoDetalhado[] = [
 ];
 
 // Função helper para retornar valores padrão
-function getFallbackEquipamentos(tipo: string): TipoEquipamentoDetalhado[] {
+export function getFallbackEquipamentos(tipo: string): TipoEquipamentoDetalhado[] {
   switch (tipo) {
     case 'GERADOR':
       return grupoGeradores;
