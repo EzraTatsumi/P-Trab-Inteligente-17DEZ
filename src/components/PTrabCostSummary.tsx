@@ -124,14 +124,18 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
           </div>
           
           {/* Classe I - Subsistência */}
+          {/* Aplicando a mesma estrutura flexível para alinhar o valor à direita */}
           <div className="flex justify-between text-sm border-b pb-2 border-border/50">
             <div className="flex items-center gap-2 text-foreground">
               <Utensils className="h-4 w-4 text-orange-500" />
               Classe I (Subsistência)
             </div>
-            <span className="font-medium text-foreground">
-              {formatCurrency(totals.totalClasseI)}
-            </span>
+            {/* Novo container para o valor, simulando o espaço ocupado pela seta */}
+            <div className="flex items-center gap-1 pr-6"> 
+              <span className="font-medium text-foreground">
+                {formatCurrency(totals.totalClasseI)}
+              </span>
+            </div>
           </div>
 
           {/* Classe III - Combustíveis (Item principal) */}
@@ -143,7 +147,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                     <Fuel className="h-4 w-4 text-orange-500" />
                     Classe III (Combustíveis)
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 pr-6">
                     <span className="font-medium text-foreground">
                       {formatCurrency(totals.totalLogisticoND39)}
                     </span>
@@ -173,9 +177,13 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
             <Briefcase className="h-4 w-4" />
             Aba Operacional
           </div>
+          {/* Aplicando a mesma estrutura flexível para alinhar o valor à direita */}
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Itens Operacionais (ND 39)</span>
-            <span className="font-medium">{formatCurrency(totals.totalOperacional)}</span>
+            {/* Novo container para o valor, simulando o espaço ocupado pela seta */}
+            <div className="flex items-center gap-1 pr-6">
+              <span className="font-medium">{formatCurrency(totals.totalOperacional)}</span>
+            </div>
           </div>
         </div>
         
