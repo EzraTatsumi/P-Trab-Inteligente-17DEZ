@@ -30,7 +30,7 @@ const PTrabForm = () => {
   const ptrabId = searchParams.get('ptrabId');
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
   const [selectedTab, setSelectedTab] = useState("logistica");
-  const [loading, setLoading] = true;
+  const [loading, setLoading] = useState(true); // CORRIGIDO: Usando useState(true)
 
   const classesLogistica = [
     { id: "classe-i", name: "Classe I - Subsistência" },
