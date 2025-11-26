@@ -15,23 +15,48 @@ interface PTrabCostSummaryProps {
   ptrabId: string;
 }
 
+// Helper function to calculate days of requested stage (diasEtapaSolicitada)
+const calculateDiasEtapaSolicitada = (diasOperacao: number): number => {
+  const diasRestantesNoCiclo = diasOperacao % 30;
+  const ciclosCompletos = Math.floor(diasOperacao / 30);
+  
+  if (diasRestantesNoCiclo <= 22 && diasOperacao >= 30) {
+    return ciclosCompletos * 8;
+  } else if (diasRestantesNoCiclo > 22) {
+    return (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
+  } else {
+    return 0;
+  }
+};
+
 const fetchPTrabTotals = async (ptrabId: string) => {
   // 1. Fetch Classe I totals (33.90.30)
   const { data: classeIData, error: classeIError } = await supabase
     .from('classe_i_registros')
-    .select('total_qs, total_qr, complemento_qs, etapa_qs, complemento_qr, etapa_qr')
+    .select('total_qs, total_qr, complemento_qs, etapa_qs, complemento_qr, etapa_qr, efetivo, dias_operacao, nr_ref_int')
     .eq('p_trab_id', ptrabId);
 
   if (classeIError) throw classeIError;
 
   let totalClasseI = 0;
   let totalComplemento = 0;
-  let totalEtapaSolicitada = 0;
+  let totalEtapaSolicitadaValor = 0;
+  let totalDiasEtapaSolicitada = 0;
+  let totalRefeicoesIntermediarias = 0;
 
   (classeIData || []).forEach(record => {
     totalClasseI += record.total_qs + record.total_qr;
     totalComplemento += record.complemento_qs + record.complemento_qr;
-    totalEtapaSolicitada += record.etapa_qs + record.etapa_qr;
+    totalEtapaSolicitadaValor += record.etapa_qs + record.etapa_qr;
+    
+    // Novos cálculos de quantidade
+    const diasEtapaSolicitada = calculateDiasEtapaSolicitada(record.dias_operacao);
+    totalDiasEtapaSolicitada += diasEtapaSolicitada;
+    
+    // Refeições Intermediárias (Complemento)
+    // O complemento é calculado sobre todos os dias de operação, mas o valor é dividido por 3 (valor_etapa/3)
+    // A quantidade total de refeições intermediárias é: Efetivo * Nr Ref Int * Dias Operação
+    totalRefeicoesIntermediarias += record.efetivo * record.nr_ref_int * record.dias_operacao;
   });
 
   // 2. Fetch Classe III totals (33.90.39)
@@ -75,7 +100,9 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalOperacional,
     totalClasseI,
     totalComplemento,
-    totalEtapaSolicitada,
+    totalEtapaSolicitadaValor,
+    totalDiasEtapaSolicitada,
+    totalRefeicoesIntermediarias,
     totalDieselValor,
     totalGasolinaValor,
     totalDieselLitros,
@@ -161,13 +188,25 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
               </AccordionTrigger>
               <AccordionContent className="pt-1 pb-0">
                 <div className="space-y-1 pl-6 text-xs">
+                  {/* Detalhe 1: Valor Complemento */}
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Complemento de Etapa</span>
+                    <span>Valor Complemento (Ref. Intermediárias)</span>
                     <span className="font-medium">{formatCurrency(totals.totalComplemento)}</span>
                   </div>
+                  {/* Detalhe 2: Valor Etapa Solicitada */}
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Etapa Solicitada</span>
-                    <span className="font-medium">{formatCurrency(totals.totalEtapaSolicitada)}</span>
+                    <span>Valor Etapa Solicitada</span>
+                    <span className="font-medium">{formatCurrency(totals.totalEtapaSolicitadaValor)}</span>
+                  </div>
+                  {/* Detalhe 3: Total de Dias de Etapa Solicitada (Quantidade) */}
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Total de Dias de Etapa Solicitada</span>
+                    <span className="font-medium">{formatNumber(totals.totalDiasEtapaSolicitada)} dias</span>
+                  </div>
+                  {/* Detalhe 4: Total de Refeições Intermediárias (Quantidade) */}
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Total de Refeições Intermediárias</span>
+                    <span className="font-medium">{formatNumber(totals.totalRefeicoesIntermediarias)}</span>
                   </div>
                 </div>
               </AccordionContent>
