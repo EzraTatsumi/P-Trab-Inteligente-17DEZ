@@ -135,41 +135,36 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
           </div>
 
           {/* Classe III - Combustíveis (Item principal) */}
-          <div className="space-y-2 pt-2">
-            <div className="flex justify-between text-sm border-b pb-2 border-border/50">
-              <div className="flex items-center gap-2 text-foreground">
-                <Fuel className="h-4 w-4 text-orange-500" />
-                Classe III (Combustíveis)
-              </div>
-              <span className="font-medium text-foreground">
-                {formatCurrency(totals.totalLogisticoND39)}
-              </span>
-            </div>
-            
-            {/* Detalhamento da Classe III - AGORA COLAPSÁVEL */}
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="item-1" className="border-b-0">
-                <AccordionTrigger className={cn(
-                  "py-1 text-xs text-muted-foreground hover:no-underline hover:text-foreground transition-colors",
-                  "flex justify-end w-full pr-0" // Alinha o trigger à direita
-                )}>
-                  {/* Seta de expansão */}
-                </AccordionTrigger>
-                <AccordionContent className="pt-1 pb-0">
-                  <div className="space-y-1 pl-6 text-xs">
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Óleo Diesel</span>
-                      <span className="font-medium">{formatCurrency(totals.totalDiesel)}</span>
-                    </div>
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Gasolina</span>
-                      <span className="font-medium">{formatCurrency(totals.totalGasolina)}</span>
-                    </div>
+          <Accordion type="single" collapsible className="w-full pt-2">
+            <AccordionItem value="item-1" className="border-b-0">
+              <AccordionTrigger className="p-0 hover:no-underline">
+                <div className="flex justify-between items-center w-full text-sm border-b pb-2 border-border/50">
+                  <div className="flex items-center gap-2 text-foreground">
+                    <Fuel className="h-4 w-4 text-orange-500" />
+                    Classe III (Combustíveis)
                   </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium text-foreground">
+                      {formatCurrency(totals.totalLogisticoND39)}
+                    </span>
+                    {/* A seta de expansão é adicionada automaticamente pelo AccordionTrigger */}
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pt-1 pb-0">
+                <div className="space-y-1 pl-6 text-xs">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Óleo Diesel</span>
+                    <span className="font-medium">{formatCurrency(totals.totalDiesel)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Gasolina</span>
+                    <span className="font-medium">{formatCurrency(totals.totalGasolina)}</span>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
 
         {/* Aba Operacional */}
