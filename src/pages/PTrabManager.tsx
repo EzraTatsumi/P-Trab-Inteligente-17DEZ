@@ -1121,9 +1121,6 @@ const PTrabManager = () => {
               <TableBody>
                 {pTrabs.map((ptrab) => {
                   const originBadge = getOriginBadge(ptrab.origem);
-                  const totalLogistica = (ptrab.totalClasseI || 0) + (ptrab.totalClasseIII || 0);
-                  const totalGeral = totalLogistica + (ptrab.totalOperacional || 0);
-                  
                   return (
                   <TableRow key={ptrab.id}>
                     <TableCell className="font-medium">
@@ -1178,31 +1175,36 @@ const PTrabManager = () => {
                     </TableCell>
                     <TableCell className="text-center"> {/* Célula para os valores do P Trab */}
                       <div className="flex flex-col items-center text-xs">
-                        {/* Total Logística (C I + C III) */}
-                        {totalLogistica > 0 && (
-                          <span className="text-foreground font-bold text-sm">
-                            Logística: {formatCurrency(totalLogistica)}
+                        {/* Classe I (ND 33.90.30) */}
+                        {(ptrab.totalClasseI || 0) > 0 && (
+                          <span className="text-blue-600 font-medium">
+                            C I: {formatCurrency(ptrab.totalClasseI || 0)}
                           </span>
                         )}
-                        
-                        {/* Total Operacional (C Op) */}
+                        {/* Classe III (ND 33.90.39) */}
+                        {(ptrab.totalClasseIII || 0) > 0 && (
+                          <span className="text-orange-600 font-medium">
+                            C III: {formatCurrency(ptrab.totalClasseIII || 0)}
+                          </span>
+                        )}
+                        {/* P Trab Operacional (atualmente 0) - Keep for future use, but hide if zero */}
                         {(ptrab.totalOperacional || 0) > 0 && (
-                          <span className="text-blue-600 font-bold text-sm">
-                            Operacional: {formatCurrency(ptrab.totalOperacional || 0)}
+                          <span className="text-green-600 font-medium">
+                            Op: {formatCurrency(ptrab.totalOperacional || 0)}
                           </span>
                         )}
                         
-                        {/* Separador e Total Geral (GND 3) */}
-                        {totalGeral > 0 && (
+                        {/* Separador e Total Geral */}
+                        {((ptrab.totalClasseI || 0) > 0 || (ptrab.totalClasseIII || 0) > 0 || (ptrab.totalOperacional || 0) > 0) && (
                           <>
                             <div className="w-full h-px bg-muted-foreground/30 my-1" /> {/* Separator */}
-                            <span className="font-extrabold text-base text-primary">
-                              Total: {formatCurrency(totalGeral)}
+                            <span className="font-bold text-sm text-foreground">
+                              {formatCurrency((ptrab.totalClasseI || 0) + (ptrab.totalClasseIII || 0) + (ptrab.totalOperacional || 0))}
                             </span>
                           </>
                         )}
                         {/* Caso não haja nenhum valor */}
-                        {totalGeral === 0 && (
+                        {((ptrab.totalClasseI || 0) === 0 && (ptrab.totalClasseIII || 0) === 0 && (ptrab.totalOperacional || 0) === 0) && (
                           <span className="text-muted-foreground">N/A</span>
                         )}
                       </div>
