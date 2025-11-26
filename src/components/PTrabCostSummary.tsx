@@ -2,7 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatUtils";
-import { Package, Briefcase, Fuel, Utensils, Loader2 } from "lucide-react";
+import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"; // Importar Accordion
 
 interface PTrabCostSummaryProps {
   ptrabId: string;
@@ -127,7 +133,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
             </span>
           </div>
 
-          {/* Classe III - Combustíveis */}
+          {/* Classe III - Combustíveis (Item principal) */}
           <div className="space-y-2 pt-2">
             <div className="flex justify-between text-sm border-b pb-2 border-border/50">
               <div className="flex items-center gap-2 text-foreground">
@@ -139,17 +145,29 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
               </span>
             </div>
             
-            {/* Detalhamento da Classe III (opcional, mas útil) */}
-            <div className="space-y-1 pl-6 text-xs">
-              <div className="flex justify-between text-muted-foreground">
-                <span>Óleo Diesel (ND 39)</span>
-                <span className="font-medium">{formatCurrency(totals.totalDiesel)}</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Gasolina (ND 39)</span>
-                <span className="font-medium">{formatCurrency(totals.totalGasolina)}</span>
-              </div>
-            </div>
+            {/* Detalhamento da Classe III - AGORA COLAPSÁVEL */}
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="item-1" className="border-b-0">
+                <AccordionTrigger className="py-1 text-xs text-muted-foreground hover:no-underline hover:text-foreground transition-colors">
+                  <span className="flex items-center gap-1">
+                    <ChevronDown className="h-3 w-3 transition-transform duration-200" />
+                    Ver Detalhes (ND 39)
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="pt-1 pb-0">
+                  <div className="space-y-1 pl-6 text-xs">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Óleo Diesel</span>
+                      <span className="font-medium">{formatCurrency(totals.totalDiesel)}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Gasolina</span>
+                      <span className="font-medium">{formatCurrency(totals.totalGasolina)}</span>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         </div>
 
