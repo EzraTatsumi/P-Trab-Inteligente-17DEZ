@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react-18";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -1824,7 +1824,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
         <Card ref={lpcRef}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-lg font-medium flex items-center gap-2">
+            <CardTitle className="text-2xl font-bold">
               Referência LPC (Levantamento de Preços de Combustíveis)
             </CardTitle>
             <Button variant="ghost" size="icon" onClick={() => setIsLPCFormExpanded(!isLPCFormExpanded)}>
@@ -1949,7 +1949,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-medium flex items-center gap-2">
+            <CardTitle className="text-2xl font-bold">
               Adicionar Novo Registro de Classe III
             </CardTitle>
             <CardDescription>
