@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatUtils";
-import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown } from "lucide-react";
+import { Package, Briefcase, Fuel, Utensils, Loader2 } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -153,9 +153,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                   "py-1 text-xs text-muted-foreground hover:no-underline hover:text-foreground transition-colors",
                   "flex justify-end w-full pr-0" // Alinha o trigger à direita
                 )}>
-                  <span className="flex items-center gap-1">
-                    Ver Detalhes (ND 39)
-                  </span>
+                  {/* Seta de expansão */}
                 </AccordionTrigger>
                 <AccordionContent className="pt-1 pb-0">
                   <div className="space-y-1 pl-6 text-xs">
