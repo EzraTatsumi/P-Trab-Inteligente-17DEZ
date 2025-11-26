@@ -162,14 +162,6 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
       </CardHeader>
       <CardContent className="space-y-4">
         
-        {/* Total Geral */}
-        <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20">
-          <span className="font-bold text-base text-primary">TOTAL GERAL (GND 3)</span>
-          <span className="font-extrabold text-xl text-primary">
-            {formatCurrency(totals.totalLogisticoGeral + totals.totalOperacional)}
-          </span>
-        </div>
-
         {/* Aba Logística */}
         <div className="space-y-3 border-l-4 border-orange-500 pl-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-orange-600 mb-3">
@@ -281,13 +273,21 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
             </span>
           </div>
           
-          {/* NOVO: SUBTOTAL OPERACIONAL */}
+          {/* SUBTOTAL OPERACIONAL */}
           <div className="flex justify-between items-center pt-3 border-t border-border/50">
             <span className="font-bold text-sm text-foreground">SUBTOTAL OPERACIONAL (ND 39)</span>
             <span className="font-bold text-lg text-blue-600">
               {formatCurrency(totals.totalOperacional)}
             </span>
           </div>
+        </div>
+        
+        {/* Total Geral (Movido para o final) */}
+        <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-6">
+          <span className="font-bold text-base text-primary">TOTAL GERAL (GND 3)</span>
+          <span className="font-extrabold text-xl text-primary">
+            {formatCurrency(totals.totalLogisticoGeral + totals.totalOperacional)}
+          </span>
         </div>
         
       </CardContent>
