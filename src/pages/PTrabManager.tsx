@@ -178,30 +178,35 @@ const PTrabManager = () => {
 
       const pTrabsWithTotals: PTrab[] = await Promise.all(
         (pTrabsData || []).map(async (ptrab) => {
-          let totalLogisticaCalculado = 0;
           let totalOperacionalCalculado = 0; // Por enquanto, sempre zero
 
-          // Fetch Classe I totals (contribuem para o P Trab Logístico)
+          // 1. Fetch Classe I totals (33.90.30)
           const { data: classeIData, error: classeIError } = await supabase
             .from('classe_i_registros')
             .select('total_qs, total_qr')
             .eq('p_trab_id', ptrab.id);
 
+          let totalClasseI = 0;
           if (classeIError) console.error("Erro ao carregar Classe I para PTrab", ptrab.id, classeIError);
           else {
-            totalLogisticaCalculado += (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
+            totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
           }
 
-          // Fetch Classe III totals (contribuem para o P Trab Logístico)
+          // 2. Fetch Classe III totals (33.90.39)
           const { data: classeIIIData, error: classeIIIError } = await supabase
             .from('classe_iii_registros')
             .select('valor_total')
             .eq('p_trab_id', ptrab.id);
 
+          let totalClasseIII = 0;
           if (classeIIIError) console.error("Erro ao carregar Classe III para PTrab", ptrab.id, classeIIIError);
           else {
-            totalLogisticaCalculado += (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+            totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
           }
+
+          // 3. Calcular totalLogistica para corresponder ao VALOR TOTAL da impressão:
+          // VALOR TOTAL = (Classe I + Classe III) + (Classe III)
+          const totalLogisticaCalculado = totalClasseI + (2 * totalClasseIII);
 
           return {
             ...ptrab,
@@ -1393,7 +1398,7 @@ const PTrabManager = () => {
         open={showConsolidationDialog}
         onOpenChange={setShowConsolidationDialog}
         pTrabsList={pTrabs.map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))}
-        existingPTrabNumbers={existingPTrabNumbers}
+        existingPTrabNumbers={existingPTrabsNumbers}
         onConfirm={handleConfirmConsolidation}
         loading={loading}
       />
