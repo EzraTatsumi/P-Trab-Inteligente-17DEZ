@@ -59,11 +59,13 @@ interface PTrab {
   status: string;
   nome_cmt_om?: string;
   local_om?: string;
-  totalLogistica?: number;
+  totalClasseI?: number; // Adicionado
+  totalClasseIII?: number; // Adicionado
+  totalLogistica?: number; // Mantido, mas agora é a soma de I e III
   totalOperacional?: number;
   updated_at: string;
   comentario?: string;
-  origem: 'original' | 'importado' | 'consolidado'; // Adicionado campo origem
+  origem: 'original' | 'importado' | 'consolidado';
 }
 
 const PTrabManager = () => {
@@ -178,7 +180,8 @@ const PTrabManager = () => {
 
       const pTrabsWithTotals: PTrab[] = await Promise.all(
         (pTrabsData || []).map(async (ptrab) => {
-          let totalLogisticaCalculado = 0;
+          let totalClasseI = 0; // Classe I (QS + QR) -> ND 33.90.30
+          let totalClasseIII = 0; // Classe III (Combustível) -> ND 33.90.39
           let totalOperacionalCalculado = 0; // Por enquanto, sempre zero
 
           // Fetch Classe I totals (contribuem para o P Trab Logístico)
@@ -189,7 +192,7 @@ const PTrabManager = () => {
 
           if (classeIError) console.error("Erro ao carregar Classe I para PTrab", ptrab.id, classeIError);
           else {
-            totalLogisticaCalculado += (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
+            totalClasseI += (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
           }
 
           // Fetch Classe III totals (contribuem para o P Trab Logístico)
@@ -200,13 +203,19 @@ const PTrabManager = () => {
 
           if (classeIIIError) console.error("Erro ao carregar Classe III para PTrab", ptrab.id, classeIIIError);
           else {
-            totalLogisticaCalculado += (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+            totalClasseIII += (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
           }
+          
+          const totalLogisticaCalculado = totalClasseI + totalClasseIII;
 
           return {
             ...ptrab,
+            totalClasseI: totalClasseI, // Novo campo
+            totalClasseIII: totalClasseIII, // Novo campo
             totalLogistica: totalLogisticaCalculado,
             totalOperacional: totalOperacionalCalculado, // Mantido como 0 até a implementação da Aba Operacional
+            updated_at: ptrab.updated_at,
+            comentario: ptrab.comentario,
             origem: ptrab.origem as 'original' | 'importado' | 'consolidado', // Garantir o tipo correto
           };
         })
@@ -739,7 +748,7 @@ const PTrabManager = () => {
         if (!templatePTrab) throw new Error("P Trab template não encontrado.");
 
         // FIX: Explicitly exclude calculated fields and IDs
-        const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = templatePTrab;
+        const { id, created_at, updated_at, totalLogistica, totalOperacional, totalClasseI, totalClasseIII, ...restOfPTrab } = templatePTrab;
         
         const newPTrabData = {
           ...restOfPTrab,
@@ -1166,29 +1175,36 @@ const PTrabManager = () => {
                     </TableCell>
                     <TableCell className="text-center"> {/* Célula para os valores do P Trab */}
                       <div className="flex flex-col items-center text-xs">
-                        {/* P Trab Logístico (Classe I + Classe III) */}
-                        {ptrab.totalLogistica !== undefined && (
-                          <span className="text-orange-600 font-medium">
-                            {formatCurrency(ptrab.totalLogistica)}
-                          </span>
-                        )}
-                        {/* P Trab Operacional (atualmente 0) */}
-                        {ptrab.totalOperacional !== undefined && (
+                        {/* Classe I (ND 33.90.30) */}
+                        {(ptrab.totalClasseI || 0) > 0 && (
                           <span className="text-blue-600 font-medium">
-                            {formatCurrency(ptrab.totalOperacional)}
+                            C I: {formatCurrency(ptrab.totalClasseI || 0)}
                           </span>
                         )}
+                        {/* Classe III (ND 33.90.39) */}
+                        {(ptrab.totalClasseIII || 0) > 0 && (
+                          <span className="text-orange-600 font-medium">
+                            C III: {formatCurrency(ptrab.totalClasseIII || 0)}
+                          </span>
+                        )}
+                        {/* P Trab Operacional (atualmente 0) - Keep for future use, but hide if zero */}
+                        {(ptrab.totalOperacional || 0) > 0 && (
+                          <span className="text-green-600 font-medium">
+                            Op: {formatCurrency(ptrab.totalOperacional || 0)}
+                          </span>
+                        )}
+                        
                         {/* Separador e Total Geral */}
-                        {((ptrab.totalLogistica || 0) > 0 || (ptrab.totalOperacional || 0) > 0) && (
+                        {((ptrab.totalClasseI || 0) > 0 || (ptrab.totalClasseIII || 0) > 0 || (ptrab.totalOperacional || 0) > 0) && (
                           <>
                             <div className="w-full h-px bg-muted-foreground/30 my-1" /> {/* Separator */}
                             <span className="font-bold text-sm text-foreground">
-                              {formatCurrency((ptrab.totalLogistica || 0) + (ptrab.totalOperacional || 0))}
+                              {formatCurrency((ptrab.totalClasseI || 0) + (ptrab.totalClasseIII || 0) + (ptrab.totalOperacional || 0))}
                             </span>
                           </>
                         )}
                         {/* Caso não haja nenhum valor */}
-                        {((ptrab.totalLogistica || 0) === 0 && (ptrab.totalOperacional || 0) === 0) && (
+                        {((ptrab.totalClasseI || 0) === 0 && (ptrab.totalClasseIII || 0) === 0 && (ptrab.totalOperacional || 0) === 0) && (
                           <span className="text-muted-foreground">N/A</span>
                         )}
                       </div>
