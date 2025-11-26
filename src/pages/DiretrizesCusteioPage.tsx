@@ -187,10 +187,11 @@ const DiretrizesCusteioPage = () => {
         }
 
       } else {
+        // Se não houver dados, carrega os defaults (sem ID)
         setDiretrizes(defaultDiretrizes(year));
         setGeradorConfig(defaultGeradorConfig);
         setEmbarcacaoConfig(defaultEmbarcacaoConfig);
-        setMotomecanizacaoConfig(defaultMotomecanizacaoConfig); // Reset Motomecanização
+        setMotomecanizacaoConfig(defaultMotomecanizacaoConfig);
       }
     } catch (error: any) {
       console.error("Erro ao carregar diretrizes:", error);
@@ -425,7 +426,7 @@ const DiretrizesCusteioPage = () => {
                               type="number"
                               step="0.01"
                               className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={gerador.consumo}
+                              value={gerador.consumo.toString()} // Usar toString()
                               onChange={(e) => {
                                 const novosGeradores = [...geradorConfig];
                                 novosGeradores[index] = { ...novosGeradores[index], consumo: parseFloat(e.target.value) || 0 };
@@ -521,7 +522,7 @@ const DiretrizesCusteioPage = () => {
                               type="number"
                               step="0.01"
                               className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={embarcacao.consumo}
+                              value={embarcacao.consumo.toString()} // Usar toString()
                               onChange={(e) => {
                                 const novasEmbarcacoes = [...embarcacaoConfig];
                                 novasEmbarcacoes[index] = { ...novasEmbarcacoes[index], consumo: parseFloat(e.target.value) || 0 };
@@ -618,7 +619,7 @@ const DiretrizesCusteioPage = () => {
                               type="number"
                               step="0.01"
                               className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={viatura.consumo}
+                              value={viatura.consumo.toString()} // Usar toString()
                               onChange={(e) => {
                                 const novasViaturas = [...motomecanizacaoConfig];
                                 novasViaturas[index] = { ...novasViaturas[index], consumo: parseFloat(e.target.value) || 0 };
