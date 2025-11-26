@@ -30,7 +30,7 @@ const PTrabForm = () => {
   const ptrabId = searchParams.get('ptrabId');
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
   const [selectedTab, setSelectedTab] = useState("logistica");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = true;
 
   const classesLogistica = [
     { id: "classe-i", name: "Classe I - Subsistência" },
@@ -149,7 +149,7 @@ const PTrabForm = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid md:grid-cols-1 gap-y-2 gap-x-4 mb-4">
+                <div className="grid grid-cols-2 gap-y-2 gap-x-4 mb-4">
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Número do PTrab</Label>
                     <p className="text-sm font-medium">{ptrabData?.numero_ptrab}</p>
@@ -175,6 +175,13 @@ const PTrabForm = () => {
                       Efetivo Empregado
                     </Label>
                     <p className="text-sm font-medium">{ptrabData?.efetivo_empregado}</p>
+                  </div>
+                  <div className="space-y-1 col-span-2">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      Local da OM
+                    </Label>
+                    <p className="text-sm font-medium">{ptrabData?.local_om || 'Não informado'}</p>
                   </div>
                 </div>
               </CardContent>
