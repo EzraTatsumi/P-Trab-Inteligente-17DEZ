@@ -1,15 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils"; // Importar formatNumber
+import { formatCurrency, formatNumber } from "@/lib/formatUtils";
 import { Package, Briefcase, Fuel, Utensils, Loader2 } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"; // Importar Accordion
-import { cn } from "@/lib/utils"; // Importar cn para estilização
+} from "@/components/ui/accordion";
+import { cn } from "@/lib/utils";
 
 interface PTrabCostSummaryProps {
   ptrabId: string;
@@ -37,7 +37,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // 2. Fetch Classe III totals (33.90.39)
   const { data: classeIIIData, error: classeIIIError } = await supabase
     .from('classe_iii_registros')
-    .select('valor_total, tipo_combustivel, total_litros') // Adicionado total_litros
+    .select('valor_total, tipo_combustivel, total_litros')
     .eq('p_trab_id', ptrabId);
 
   if (classeIIIError) throw classeIIIError;
@@ -78,8 +78,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalEtapaSolicitada,
     totalDieselValor,
     totalGasolinaValor,
-    totalDieselLitros, // Novo
-    totalGasolinaLitros, // Novo
+    totalDieselLitros,
+    totalGasolinaLitros,
   };
 };
 
@@ -145,7 +145,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
             Aba Logística
           </div>
           
-          {/* Classe I - Subsistência (AGORA É UM ACCORDION) */}
+          {/* Classe I - Subsistência */}
           <Accordion type="single" collapsible className="w-full pt-0">
             <AccordionItem value="item-classe-i" className="border-b-0">
               <AccordionTrigger className="p-0 hover:no-underline">
@@ -191,17 +191,23 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
               <AccordionContent className="pt-1 pb-0">
                 <div className="space-y-1 pl-6 text-xs">
                   {/* Linha Óleo Diesel */}
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Óleo Diesel</span>
-                    <span className="font-medium">
-                      {formatCurrency(totals.totalDieselValor)} ({formatNumber(totals.totalDieselLitros)} L)
+                  <div className="grid grid-cols-3 gap-2 text-muted-foreground">
+                    <span className="col-span-1">Óleo Diesel</span>
+                    <span className="col-span-1 text-right font-medium">
+                      {formatNumber(totals.totalDieselLitros)} L
+                    </span>
+                    <span className="col-span-1 text-right font-medium">
+                      {formatCurrency(totals.totalDieselValor)}
                     </span>
                   </div>
                   {/* Linha Gasolina */}
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Gasolina</span>
-                    <span className="font-medium">
-                      {formatCurrency(totals.totalGasolinaValor)} ({formatNumber(totals.totalGasolinaLitros)} L)
+                  <div className="grid grid-cols-3 gap-2 text-muted-foreground">
+                    <span className="col-span-1">Gasolina</span>
+                    <span className="col-span-1 text-right font-medium">
+                      {formatNumber(totals.totalGasolinaLitros)} L
+                    </span>
+                    <span className="col-span-1 text-right font-medium">
+                      {formatCurrency(totals.totalGasolinaValor)}
                     </span>
                   </div>
                 </div>
@@ -218,7 +224,6 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
           </div>
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Itens Operacionais (ND 39)</span>
-            {/* Aplicando mr-6 para alinhar com os itens do Accordion */}
             <span className={cn(valueClasses, "mr-6")}>
               {formatCurrency(totals.totalOperacional)}
             </span>
