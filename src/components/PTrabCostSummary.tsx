@@ -190,23 +190,23 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                 <div className="space-y-1 pl-6 text-xs">
                   {/* Detalhe 1: Valor Complemento */}
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Valor Complemento (Ref. Intermediárias)</span>
-                    <span className="font-medium">{formatCurrency(totals.totalComplemento)}</span>
+                    <span className="w-1/2">Valor Complemento (Ref. Intermediárias)</span>
+                    <span className="text-right font-medium w-1/4">
+                      {formatNumber(totals.totalRefeicoesIntermediarias)}
+                    </span>
+                    <span className={cn(valueClasses, "mr-6")}>
+                      {formatCurrency(totals.totalComplemento)}
+                    </span>
                   </div>
                   {/* Detalhe 2: Valor Etapa Solicitada */}
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Valor Etapa Solicitada</span>
-                    <span className="font-medium">{formatCurrency(totals.totalEtapaSolicitadaValor)}</span>
-                  </div>
-                  {/* Detalhe 3: Total de Dias de Etapa Solicitada (Quantidade) */}
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Total de Dias de Etapa Solicitada</span>
-                    <span className="font-medium">{formatNumber(totals.totalDiasEtapaSolicitada)} dias</span>
-                  </div>
-                  {/* Detalhe 4: Total de Refeições Intermediárias (Quantidade) */}
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Total de Refeições Intermediárias</span>
-                    <span className="font-medium">{formatNumber(totals.totalRefeicoesIntermediarias)}</span>
+                    <span className="w-1/2">Valor Etapa Solicitada</span>
+                    <span className="text-right font-medium w-1/4">
+                      {formatNumber(totals.totalDiasEtapaSolicitada)} dias
+                    </span>
+                    <span className={cn(valueClasses, "mr-6")}>
+                      {formatCurrency(totals.totalEtapaSolicitadaValor)}
+                    </span>
                   </div>
                 </div>
               </AccordionContent>
