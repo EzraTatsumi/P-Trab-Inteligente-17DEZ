@@ -1825,7 +1825,6 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
         <Card ref={lpcRef}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-lg font-medium flex items-center gap-2">
-              <Fuel className="h-5 w-5 text-primary" />
               Referência LPC (Levantamento de Preços de Combustíveis)
             </CardTitle>
             <Button variant="ghost" size="icon" onClick={() => setIsLPCFormExpanded(!isLPCFormExpanded)}>
@@ -1951,7 +1950,6 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg font-medium flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
               Adicionar Novo Registro de Classe III
             </CardTitle>
             <CardDescription>
