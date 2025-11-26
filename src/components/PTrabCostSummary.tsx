@@ -9,6 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"; // Importar Accordion
+import { cn } from "@/lib/utils"; // Importar cn para estilização
 
 interface PTrabCostSummaryProps {
   ptrabId: string;
@@ -148,9 +149,11 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
             {/* Detalhamento da Classe III - AGORA COLAPSÁVEL */}
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="item-1" className="border-b-0">
-                <AccordionTrigger className="py-1 text-xs text-muted-foreground hover:no-underline hover:text-foreground transition-colors">
+                <AccordionTrigger className={cn(
+                  "py-1 text-xs text-muted-foreground hover:no-underline hover:text-foreground transition-colors",
+                  "flex justify-end w-full pr-0" // Alinha o trigger à direita
+                )}>
                   <span className="flex items-center gap-1">
-                    <ChevronDown className="h-3 w-3 transition-transform duration-200" />
                     Ver Detalhes (ND 39)
                   </span>
                 </AccordionTrigger>
