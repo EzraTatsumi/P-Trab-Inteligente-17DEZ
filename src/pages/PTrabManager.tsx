@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -107,8 +107,32 @@ const PTrabManager = () => {
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
 
+  // Função de reset do formulário (usando useCallback para evitar recriação desnecessária)
+  const resetForm = useCallback(() => {
+    setEditingId(null);
+    setSelectedOmId(undefined);
+    setFormData({
+      numero_ptrab: generateUniquePTrabNumber(existingPTrabNumbers),
+      comando_militar_area: "",
+      nome_om: "",
+      nome_om_extenso: "",
+      codug_om: "",
+      rm_vinculacao: "",
+      codug_rm_vinculacao: "",
+      nome_operacao: "",
+      periodo_inicio: "",
+      periodo_fim: "",
+      efetivo_empregado: "",
+      acoes: "",
+      nome_cmt_om: "",
+      local_om: "",
+      status: "aberto",
+      origem: 'original', // Padrão para novo PTrab
+    });
+  }, [existingPTrabNumbers]); // Depende de existingPTrabNumbers
+
   const [formData, setFormData] = useState({
-    numero_ptrab: "",
+    numero_ptrab: generateUniquePTrabNumber(existingPTrabNumbers), // Inicializa com o valor padrão
     comando_militar_area: "",
     nome_om: "",
     nome_om_extenso: "",
@@ -123,7 +147,7 @@ const PTrabManager = () => {
     nome_cmt_om: "",
     local_om: "",
     status: "aberto",
-    origem: 'original' as 'original' | 'importado' | 'consolidado', // Adicionado origem ao formData
+    origem: 'original' as 'original' | 'importado' | 'consolidado',
   });
 
   const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
@@ -668,29 +692,6 @@ const PTrabManager = () => {
   const handleNavigateToPrintOrExport = (ptrabId: string) => {
     // Agora, esta função apenas navega para a página de visualização de impressão
     navigate(`/ptrab/print?ptrabId=${ptrabId}`);
-  };
-
-  const resetForm = () => {
-    setEditingId(null);
-    setSelectedOmId(undefined);
-    setFormData({
-      numero_ptrab: generateUniquePTrabNumber(existingPTrabNumbers),
-      comando_militar_area: "",
-      nome_om: "",
-      nome_om_extenso: "",
-      codug_om: "",
-      rm_vinculacao: "",
-      codug_rm_vinculacao: "",
-      nome_operacao: "",
-      periodo_inicio: "",
-      periodo_fim: "",
-      efetivo_empregado: "",
-      acoes: "",
-      nome_cmt_om: "",
-      local_om: "",
-      status: "aberto",
-      origem: 'original', // Padrão para novo PTrab
-    });
   };
 
   const formatDateTime = (isoString: string) => {
@@ -1398,7 +1399,7 @@ const PTrabManager = () => {
         open={showConsolidationDialog}
         onOpenChange={setShowConsolidationDialog}
         pTrabsList={pTrabs.map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))}
-        existingPTrabNumbers={existingPTrabsNumbers}
+        existingPTrabNumbers={existingPTrabNumbers}
         onConfirm={handleConfirmConsolidation}
         loading={loading}
       />
