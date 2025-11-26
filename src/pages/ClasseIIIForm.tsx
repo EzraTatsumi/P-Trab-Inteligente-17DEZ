@@ -359,27 +359,53 @@ export default function ClasseIIIForm() {
   };
 
   const handleFetchPrices = async () => {
-    if (!formLPC.data_inicio_consulta || !formLPC.data_fim_consulta) {
-        toast.error("Preencha as datas de início e fim da consulta para buscar preços.");
-        return;
+    setApiLoading(true);
+    setApiSource(null);
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    // 1. Determinar os parâmetros de busca
+    let ambitoBusca = formLPC.ambito;
+    let nomeLocalBusca = formLPC.nome_local;
+    let dataInicioBusca = formLPC.data_inicio_consulta || today;
+    let dataFimBusca = formLPC.data_fim_consulta || today;
+
+    // Se o âmbito não for Nacional, mas os campos de local estiverem vazios,
+    // ou se as datas estiverem vazias, forçamos a busca Nacional com a data atual.
+    if (ambitoBusca !== 'Nacional' && !nomeLocalBusca.trim()) {
+        ambitoBusca = 'Nacional';
+        nomeLocalBusca = '';
     }
-    if (formLPC.ambito !== 'Nacional' && !formLPC.nome_local) {
-        toast.error(`Preencha o nome do ${formLPC.ambito === 'Estadual' ? 'Estado' : 'Município'} para buscar preços.`);
+    
+    // Se as datas estiverem vazias, usamos a data atual
+    if (!formLPC.data_inicio_consulta) {
+        dataInicioBusca = today;
+    }
+    if (!formLPC.data_fim_consulta) {
+        dataFimBusca = today;
+    }
+
+    // 2. Validação final antes de buscar
+    if (ambitoBusca !== 'Nacional' && !nomeLocalBusca.trim()) {
+        toast.error(`Preencha o nome do ${ambitoBusca === 'Estadual' ? 'Estado' : 'Município'} para buscar preços.`);
+        setApiLoading(false);
         return;
     }
 
-    setApiLoading(true);
-    setApiSource(null);
     try {
         const result = await fetchPrecosCombustivel(
-            formLPC.ambito,
-            formLPC.nome_local,
-            formLPC.data_inicio_consulta,
-            formLPC.data_fim_consulta
+            ambitoBusca,
+            nomeLocalBusca,
+            dataInicioBusca,
+            dataFimBusca
         );
 
         setFormLPC(prev => ({
             ...prev,
+            ambito: ambitoBusca, // Atualiza o âmbito se foi forçado para Nacional
+            nome_local: nomeLocalBusca, // Atualiza o nome local se foi limpo
+            data_inicio_consulta: dataInicioBusca, // Preenche a data se estava vazia
+            data_fim_consulta: dataFimBusca, // Preenche a data se estava vazia
             preco_diesel: result.preco_diesel,
             preco_gasolina: result.preco_gasolina,
         }));
@@ -1967,9 +1993,9 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
             <div className="flex justify-end gap-2 mt-4">
               <Button 
-                type="button" // Adicionado type="button"
+                type="button"
                 onClick={handleFetchPrices} 
-                disabled={apiLoading || loading || !formLPC.data_inicio_consulta || !formLPC.data_fim_consulta}
+                disabled={apiLoading || loading}
                 variant="secondary"
               >
                 {apiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Fuel className="mr-2 h-4 w-4" />}
