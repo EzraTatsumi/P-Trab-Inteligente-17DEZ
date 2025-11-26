@@ -146,6 +146,34 @@ interface ConsolidadoEmbarcacao {
   detalhamento: string;
 }
 
+// NOVAS INTERFACES PARA EQUIPAMENTO DE ENGENHARIA
+interface ItemEngenharia {
+  tipo_equipamento_especifico: string;
+  quantidade: number;
+  horas_dia: number;
+  consumo_fixo: number;
+  tipo_combustivel: 'GASOLINA' | 'DIESEL';
+}
+
+interface FormDataEngenharia {
+  selectedOmId?: string;
+  organizacao: string;
+  ug: string;
+  dias_operacao: number;
+  itens: ItemEngenharia[];
+  fase_atividade?: string;
+}
+
+interface ConsolidadoEngenharia {
+  tipo_combustivel: 'GASOLINA' | 'DIESEL';
+  total_litros_sem_margem: number;
+  total_litros: number;
+  valor_total: number;
+  itens: ItemEngenharia[];
+  detalhamento: string;
+}
+// FIM NOVAS INTERFACES
+
 export default function ClasseIIIForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -175,6 +203,8 @@ export default function ClasseIIIForm() {
   const lpcRef = useRef<HTMLDivElement>(null);
   const addGeradorRef = useRef<HTMLDivElement>(null);
   const addViaturaRef = useRef<HTMLDivElement>(null);
+  const addEmbarcacaoRef = useRef<HTMLDivElement>(null);
+  const addEngenhariaRef = useRef<HTMLDivElement>(null); // Novo ref
   const { handleEnterToNextField } = useFormNavigation();
   
   // Estados para Fase da Atividade - Gerador
@@ -191,6 +221,11 @@ export default function ClasseIIIForm() {
   const [fasesAtividadeEmbarcacao, setFasesAtividadeEmbarcacao] = useState<string[]>(["Execução"]);
   const [customFaseAtividadeEmbarcacao, setCustomFaseAtividadeEmbarcacao] = useState<string>("");
   const [isPopoverOpenEmbarcacao, setIsPopoverOpenEmbarcacao] = useState(false);
+
+  // Estados para Fase da Atividade - Engenharia
+  const [fasesAtividadeEngenharia, setFasesAtividadeEngenharia] = useState<string[]>(["Execução"]);
+  const [customFaseAtividadeEngenharia, setCustomFaseAtividadeEngenharia] = useState<string>("");
+  const [isPopoverOpenEngenharia, setIsPopoverOpenEngenharia] = useState(false);
 
   // Handlers para mudança de fase - Gerador
   const handleFaseChangeGerador = (fase: string, checked: boolean) => {
@@ -219,6 +254,15 @@ export default function ClasseIIIForm() {
     }
   };
   
+  // Handlers para mudança de fase - Engenharia
+  const handleFaseChangeEngenharia = (fase: string, checked: boolean) => {
+    if (checked) {
+      setFasesAtividadeEngenharia([...fasesAtividadeEngenharia, fase]);
+    } else {
+      setFasesAtividadeEngenharia(fasesAtividadeEngenharia.filter(f => f !== fase));
+    }
+  };
+
   const [formData, setFormData] = useState<FormData>({
     selectedOmId: undefined,
     organizacao: "",
@@ -298,7 +342,27 @@ export default function ClasseIIIForm() {
 
   const [editingEmbarcacaoItemIndex, setEditingEmbarcacaoItemIndex] = useState<number | null>(null);
   const [consolidadosEmbarcacao, setConsolidadosEmbarcacao] = useState<ConsolidadoEmbarcacao[]>([]);
-  const addEmbarcacaoRef = useRef<HTMLDivElement>(null);
+  
+  // NOVOS ESTADOS PARA ENGENHARIA
+  const [formEngenharia, setFormEngenharia] = useState<FormDataEngenharia>({
+    selectedOmId: undefined,
+    organizacao: "",
+    ug: "",
+    dias_operacao: 0,
+    itens: [],
+  });
+
+  const [itemEngenhariaTemp, setItemEngenhariaTemp] = useState({
+    tipo_equipamento_especifico: "",
+    quantidade: 0,
+    horas_dia: 0,
+    consumo_fixo: 0,
+    tipo_combustivel: "DIESEL" as 'GASOLINA' | 'DIESEL',
+  });
+
+  const [editingEngenhariaItemIndex, setEditingEngenhariaItemIndex] = useState<number | null>(null);
+  const [consolidadosEngenharia, setConsolidadosEngenharia] = useState<ConsolidadoEngenharia[]>([]);
+  // FIM NOVOS ESTADOS
 
   useEffect(() => {
     if (!ptrabId) {
@@ -310,6 +374,38 @@ export default function ClasseIIIForm() {
     fetchRegistros();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId]);
+
+  useEffect(() => {
+    if (tipoSelecionado) {
+      carregarEquipamentos();
+    }
+  }, [tipoSelecionado]);
+
+  useEffect(() => {
+    if (tipoSelecionado === 'GERADOR' && formGerador.itens.length > 0) {
+      calcularConsolidadosGerador(formGerador.itens);
+    }
+  }, [formGerador.dias_operacao, refLPC, formGerador.itens, rmFornecimento, codugRmFornecimento]);
+
+  useEffect(() => {
+    if (tipoSelecionado === 'MOTOMECANIZACAO' && formViatura.itens.length > 0) {
+      calcularConsolidadosViatura(formViatura.itens);
+    }
+  }, [formViatura.dias_operacao, refLPC, formViatura.itens, rmFornecimento, codugRmFornecimento]);
+
+  useEffect(() => {
+    if (tipoSelecionado === 'EMBARCACAO' && formEmbarcacao.itens.length > 0) {
+      calcularConsolidadosEmbarcacao(formEmbarcacao.itens);
+    }
+  }, [formEmbarcacao.dias_operacao, refLPC, formEmbarcacao.itens, rmFornecimento, codugRmFornecimento]);
+  
+  // NOVO EFEITO PARA ENGENHARIA
+  useEffect(() => {
+    if (tipoSelecionado === 'EQUIPAMENTO_ENGENHARIA' && formEngenharia.itens.length > 0) {
+      calcularConsolidadosEngenharia(formEngenharia.itens);
+    }
+  }, [formEngenharia.dias_operacao, refLPC, formEngenharia.itens, rmFornecimento, codugRmFornecimento]);
+  // FIM NOVO EFEITO
 
   const loadRefLPC = async () => {
     try {
@@ -392,59 +488,12 @@ export default function ClasseIIIForm() {
     }
   };
 
-  useEffect(() => {
-    calcularTotais();
-  }, [formData, tipoSelecionado]);
-
-  useEffect(() => {
-    if (tipoSelecionado) {
-      carregarEquipamentos();
-    }
-  }, [tipoSelecionado]);
-
-  useEffect(() => {
-    if (tipoSelecionado === 'GERADOR' && formGerador.itens.length > 0) {
-      calcularConsolidadosGerador(formGerador.itens);
-    }
-  }, [formGerador.dias_operacao, refLPC, formGerador.itens, rmFornecimento, codugRmFornecimento]);
-
-  useEffect(() => {
-    if (tipoSelecionado === 'MOTOMECANIZACAO' && formViatura.itens.length > 0) {
-      calcularConsolidadosViatura(formViatura.itens);
-    }
-  }, [formViatura.dias_operacao, refLPC, formViatura.itens, rmFornecimento, codugRmFornecimento]);
-
-  useEffect(() => {
-    if (tipoSelecionado === 'EMBARCACAO' && formEmbarcacao.itens.length > 0) {
-      calcularConsolidadosEmbarcacao(formEmbarcacao.itens);
-    }
-  }, [formEmbarcacao.dias_operacao, refLPC, formEmbarcacao.itens, rmFornecimento, codugRmFornecimento]);
-
   const carregarEquipamentos = async () => {
     if (!tipoSelecionado) return;
     const equipamentos = await getEquipamentosPorTipo(tipoSelecionado);
     setEquipamentosDisponiveis(equipamentos);
   };
   
-  const handleTipoEspecificoChange = (tipoNome: string) => {
-    const equipamento = equipamentosDisponiveis.find(eq => eq.nome === tipoNome);
-    
-    if (equipamento) {
-      const novoCombustivel = equipamento.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL';
-      const novoPreco = novoCombustivel === 'DIESEL' 
-        ? (refLPC?.preco_diesel ?? 0)
-        : (refLPC?.preco_gasolina ?? 0);
-
-      setFormData({
-        ...formData,
-        tipo_equipamento_especifico: tipoNome,
-        tipo_combustivel: novoCombustivel,
-        consumo_fixo: equipamento.consumo,
-        preco_litro: novoPreco,
-      });
-    }
-  };
-
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
@@ -523,7 +572,7 @@ export default function ClasseIIIForm() {
   };
 
   // Função para formatar as fases de forma natural no texto
-  const formatFasesParaTexto = (faseCSV: string | undefined): string => {
+  const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
     if (!faseCSV) return 'operação';
     
     const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
@@ -551,124 +600,31 @@ export default function ClasseIIIForm() {
     return `${demaisFases} e ${ultimaFase}`;
   };
 
-  const gerarMemoriaCalculo = (): string => {
-    if (!refLPC || !formData.tipo_equipamento_especifico || !rmFornecimento) return "";
+  const handleDeletar = async (id: string) => {
+    if (!confirm("Deseja realmente deletar este registro?")) return;
 
-    const combustivelLabel = formData.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel';
-    const tipoEquipLabel = getTipoLabel(tipoSelecionado!);
-    
-    const formatarData = (data: string) => {
-      const [ano, mes, dia] = data.split('-');
-      return `${dia}/${mes}/${ano}`;
-    };
+    const { error } = await supabase
+      .from("classe_iii_registros")
+      .delete()
+      .eq("id", id);
 
-    const dataInicioFormatada = formatarData(refLPC.data_inicio_consulta);
-    const dataFimFormatada = formatarData(refLPC.data_fim_consulta);
-    
-    const localConsulta = refLPC.ambito === 'Nacional' 
-      ? '' 
-      : refLPC.nome_local ? `(${refLPC.nome_local})` : '';
-
-    let litrosSem30 = 0;
-    let formulaDetalhada = "";
-    let calculoPasso = "";
-
-    if (tipoSelecionado === 'MOTOMECANIZACAO') {
-      if (formData.km_dia) {
-        const litros_dia = formData.km_dia / formData.consumo_fixo;
-        litrosSem30 = formData.quantidade * litros_dia * formData.dias_operacao;
-        formulaDetalhada = `(Nr Viaturas x Nr Km percorridos/dia ÷ Consumo km/L) x Nr dias de operação.`;
-        calculoPasso = `- (${formData.quantidade} ${formData.tipo_equipamento_especifico} x ${formatNumber(formData.km_dia)} km/dia ÷ ${formatNumber(formData.consumo_fixo, 1)} km/L) x ${formData.dias_operacao} dias = ${formatNumber(litrosSem30)} L ${combustivelLabel}.`;
-      }
-    } else {
-      if (formData.horas_dia) {
-        litrosSem30 = formData.quantidade * formData.consumo_fixo * formData.horas_dia * formData.dias_operacao;
-        const unidadeEquip = tipoSelecionado === 'GERADOR' ? 'Geradores' : 
-                            tipoSelecionado === 'EMBARCACAO' ? 'Embarcações' : 
-                            'Equipamentos';
-        formulaDetalhada = `(Nr ${unidadeEquip} x Nr Horas utilizadas/dia x Consumo/hora) x Nr dias de operação.`;
-        calculoPasso = `- (${formData.quantidade} ${formData.tipo_equipamento_especifico} x ${formatNumber(formData.horas_dia, 1)} horas/dia x ${formatNumber(formData.consumo_fixo, 1)} L/h) x ${formData.dias_operacao} dias = ${formatNumber(litrosSem30)} L ${combustivelLabel}.`;
-      }
+    if (error) {
+      toast.error("Erro ao deletar registro");
+      console.error(error);
+      return;
     }
 
-    const litrosCom30 = litrosSem30 * 1.3;
-    const valorTotal = litrosCom30 * formData.preco_litro;
-    const precoFormatado = formatCurrency(formData.preco_litro);
-    const valorFormatado = formatCurrency(valorTotal);
-
-    const unidadeMedida = tipoSelecionado === 'MOTOMECANIZACAO' ? 'km/L' : 'L/h';
-    const contextoOperacao = "operação";
-
-    return `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${formData.quantidade} ${formData.tipo_equipamento_especifico}, durante ${formData.dias_operacao} dias de ${contextoOperacao}, para ${formData.organizacao}.
-Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
-
-Cálculo:
-- ${formData.tipo_equipamento_especifico}: ${formatNumber(formData.consumo_fixo, 1)} ${unidadeMedida}.
-- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${combustivelLabel} - ${precoFormatado}.
-
-Fórmula: ${formulaDetalhada}
-${calculoPasso}
-
-Total: ${formatNumber(litrosSem30)} L ${combustivelLabel} + 30% = ${formatNumber(litrosCom30)} L ${combustivelLabel}.
-Valor: ${formatNumber(litrosCom30)} L ${combustivelLabel} x ${precoFormatado} = ${valorFormatado}.`;
+    toast.success("Registro deletado!");
+    fetchRegistros();
   };
 
-  const calcularTotais = () => {
-    if (!tipoSelecionado || !formData.consumo_fixo) return;
-
-    let litrosSem30 = 0;
-    let detalhamento = "";
-
-    if (tipoSelecionado === 'MOTOMECANIZACAO') {
-      if (formData.km_dia) {
-        litrosSem30 = formData.quantidade * (formData.km_dia / formData.consumo_fixo) * formData.dias_operacao;
-      }
-    } else {
-      if (formData.horas_dia) {
-        litrosSem30 = formData.quantidade * formData.consumo_fixo * formData.horas_dia * formData.dias_operacao;
-      }
+  const getTipoLabel = (tipo: TipoEquipamento) => {
+    switch (tipo) {
+      case 'GERADOR': return 'Gerador';
+      case 'EMBARCACAO': return 'Embarcação';
+      case 'EQUIPAMENTO_ENGENHARIA': return 'Equipamento de Engenharia';
+      case 'MOTOMECANIZACAO': return 'Motomecanização';
     }
-
-    const total_litros = litrosSem30 * 1.3;
-    const valor_total = total_litros * formData.preco_litro;
-
-    const combustivelLabel = formData.tipo_combustivel === 'GASOLINA' ? 'Gas' : 'OD';
-    detalhamento = `Total base: ${formatNumber(litrosSem30)} L\nTotal com 30%: ${formatNumber(total_litros)} L ${combustivelLabel}\nValor: ${formatCurrency(valor_total)}`;
-
-    setCalculoPreview({
-      consumo_hora: tipoSelecionado !== 'MOTOMECANIZACAO' ? formData.consumo_fixo : 0,
-      total_litros,
-      valor_total,
-      detalhamento,
-    });
-  };
-
-  const handleOMChange = async (omData: OMData | undefined) => {
-    if (omData) {
-      setFormData({
-        ...formData,
-        selectedOmId: omData.id,
-        organizacao: omData.nome_om,
-        ug: omData.codug_om,
-      });
-      // Define a RM de vinculação da OM como padrão para a RM fornecedora
-      setRmFornecimento(omData.rm_vinculacao);
-      setCodugRmFornecimento(omData.codug_rm_vinculacao);
-    } else {
-      setFormData({
-        ...formData,
-        selectedOmId: undefined,
-        organizacao: "",
-        ug: "",
-      });
-      setRmFornecimento("");
-      setCodugRmFornecimento("");
-    }
-  };
-
-  const handleRMFornecimentoChange = (rmName: string, rmCodug: string) => {
-    setRmFornecimento(rmName);
-    setCodugRmFornecimento(rmCodug);
   };
 
   const resetFormFields = () => {
@@ -742,6 +698,24 @@ Valor: ${formatNumber(litrosCom30)} L ${combustivelLabel} x ${precoFormatado} = 
     setConsolidadosEmbarcacao([]);
     setEditingEmbarcacaoItemIndex(null);
     
+    // Reset Engenharia
+    setFormEngenharia({
+      selectedOmId: undefined,
+      organizacao: "",
+      ug: "",
+      dias_operacao: 0,
+      itens: [],
+    });
+    setItemEngenhariaTemp({
+      tipo_equipamento_especifico: "",
+      quantidade: 0,
+      horas_dia: 0,
+      consumo_fixo: 0,
+      tipo_combustivel: "DIESEL",
+    });
+    setConsolidadosEngenharia([]);
+    setEditingEngenhariaItemIndex(null);
+    
     // Reset fases
     setFasesAtividadeGerador(["Execução"]);
     setCustomFaseAtividadeGerador("");
@@ -749,99 +723,13 @@ Valor: ${formatNumber(litrosCom30)} L ${combustivelLabel} x ${precoFormatado} = 
     setCustomFaseAtividadeViatura("");
     setFasesAtividadeEmbarcacao(["Execução"]);
     setCustomFaseAtividadeEmbarcacao("");
+    setFasesAtividadeEngenharia(["Execução"]);
+    setCustomFaseAtividadeEngenharia("");
   };
 
   const handleCancelEdit = () => {
     resetFormFields();
     setTipoSelecionado(null);
-  };
-
-  const handleSalvar = async () => {
-    if (!ptrabId || !tipoSelecionado) return;
-
-    if (!formData.organizacao || !formData.ug || !formData.tipo_equipamento_especifico) {
-      toast.error("Preencha OM, UG e Tipo de Equipamento");
-      return;
-    }
-
-    if (tipoSelecionado === 'MOTOMECANIZACAO') {
-      if (!formData.km_dia) {
-        toast.error("Preencha km/dia");
-        return;
-      }
-    } else {
-      if (!formData.horas_dia) {
-        toast.error("Preencha horas/dia");
-        return;
-      }
-    }
-
-    if (!refLPC) {
-      toast.error("Configure a referência LPC antes de salvar");
-      if (lpcRef.current) {
-        lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-      return;
-    }
-
-    if (!rmFornecimento || !codugRmFornecimento) {
-      toast.error("Selecione a RM de Fornecimento de Combustível");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const memoriaCalculo = gerarMemoriaCalculo();
-      
-      const registro = {
-        p_trab_id: ptrabId,
-        tipo_equipamento: tipoSelecionado,
-        tipo_equipamento_detalhe: formData.tipo_equipamento_especifico,
-        organizacao: formData.organizacao,
-        ug: formData.ug,
-        quantidade: formData.quantidade,
-        potencia_hp: null,
-        horas_dia: formData.horas_dia ?? null,
-        km_dia: formData.km_dia ?? null,
-        consumo_km_litro: tipoSelecionado === 'MOTOMECANIZACAO' ? formData.consumo_fixo : null,
-        dias_operacao: formData.dias_operacao,
-        tipo_combustivel: formData.tipo_combustivel,
-        preco_litro: formData.preco_litro,
-        consumo_hora: tipoSelecionado !== 'MOTOMECANIZACAO' ? formData.consumo_fixo : null,
-        total_litros: calculoPreview.total_litros,
-        valor_total: calculoPreview.valor_total,
-        detalhamento: memoriaCalculo,
-      };
-
-      if (editingId) {
-        const { error } = await supabase
-          .from("classe_iii_registros")
-          .update(registro)
-          .eq("id", editingId);
-
-        if (error) throw error;
-        toast.success("Registro atualizado!");
-      } else {
-        const { data, error } = await supabase
-          .from("classe_iii_registros")
-          .insert([registro]);
-
-        if (error) throw error;
-        toast.success("Registro salvo!");
-      }
-
-      // Atualiza o status do PTrab para 'em_andamento' se estiver 'aberto'
-      await updatePTrabStatusIfAberto(ptrabId);
-
-      resetFormFields();
-      setTipoSelecionado(null);
-      fetchRegistros();
-    } catch (error) {
-      console.error("Erro ao salvar:", error);
-      toast.error("Erro ao salvar registro");
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleEditar = async (registro: ClasseIIIRegistro) => {
@@ -889,6 +777,9 @@ Valor: ${formatNumber(litrosCom30)} L ${combustivelLabel} x ${precoFormatado} = 
         dias_operacao: registro.dias_operacao,
         itens: (registro.itens_equipamentos as ItemGerador[]) || [],
       });
+      const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+      setFasesAtividadeGerador(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
+      setCustomFaseAtividadeGerador(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     } else if (registro.tipo_equipamento === 'MOTOMECANIZACAO') {
       setFormViatura({
         selectedOmId: selectedOmIdForEdit,
@@ -897,6 +788,9 @@ Valor: ${formatNumber(litrosCom30)} L ${combustivelLabel} x ${precoFormatado} = 
         dias_operacao: registro.dias_operacao,
         itens: (registro.itens_equipamentos as ItemViatura[]) || [],
       });
+      const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+      setFasesAtividadeViatura(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
+      setCustomFaseAtividadeViatura(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     } else if (registro.tipo_equipamento === 'EMBARCACAO') {
       setFormEmbarcacao({
         selectedOmId: selectedOmIdForEdit,
@@ -905,301 +799,20 @@ Valor: ${formatNumber(litrosCom30)} L ${combustivelLabel} x ${precoFormatado} = 
         dias_operacao: registro.dias_operacao,
         itens: (registro.itens_equipamentos as ItemEmbarcacao[]) || [],
       });
-    } else {
-      const equipamentoDetalhado = equipamentosDisponiveis.find(eq => eq.nome === registro.tipo_equipamento_detalhe);
-      const consumo_fixo = equipamentoDetalhado ? equipamentoDetalhado.consumo : 0;
-
-      setFormData({
+      const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+      setFasesAtividadeEmbarcacao(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
+      setCustomFaseAtividadeEmbarcacao(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
+    } else if (registro.tipo_equipamento === 'EQUIPAMENTO_ENGENHARIA') {
+      setFormEngenharia({
         selectedOmId: selectedOmIdForEdit,
         organizacao: registro.organizacao,
         ug: registro.ug,
-        tipo_equipamento_especifico: registro.tipo_equipamento_detalhe || "",
-        quantidade: registro.quantidade,
-        horas_dia: registro.horas_dia ?? undefined,
-        km_dia: registro.km_dia ?? undefined,
         dias_operacao: registro.dias_operacao,
-        tipo_combustivel: registro.tipo_combustivel,
-        consumo_fixo: consumo_fixo,
-        preco_litro: registro.preco_litro,
+        itens: (registro.itens_equipamentos as ItemEngenharia[]) || [],
       });
-    }
-  };
-
-  const handleDeletar = async (id: string) => {
-    if (!confirm("Deseja realmente deletar este registro?")) return;
-
-    const { error } = await supabase
-      .from("classe_iii_registros")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      toast.error("Erro ao deletar registro");
-      console.error(error);
-      return;
-    }
-
-    toast.success("Registro deletado!");
-    fetchRegistros();
-  };
-
-  const getTipoLabel = (tipo: TipoEquipamento) => {
-    switch (tipo) {
-      case 'GERADOR': return 'Gerador';
-      case 'EMBARCACAO': return 'Embarcação';
-      case 'EQUIPAMENTO_ENGENHARIA': return 'Equipamento de Engenharia';
-      case 'MOTOMECANIZACAO': return 'Motomecanização';
-    }
-  };
-
-  // Handler para mudança de OM (Embarcação)
-  const handleOMEmbarcacaoChange = (omData: OMData | undefined) => {
-    if (omData) {
-      setFormEmbarcacao({
-        ...formEmbarcacao,
-        selectedOmId: omData.id,
-        organizacao: omData.nome_om,
-        ug: omData.codug_om,
-      });
-      setRmFornecimento(omData.rm_vinculacao);
-      setCodugRmFornecimento(omData.codug_rm_vinculacao);
-    } else {
-      setFormEmbarcacao({
-        ...formEmbarcacao,
-        selectedOmId: undefined,
-        organizacao: "",
-        ug: "",
-      });
-      setRmFornecimento("");
-      setCodugRmFornecimento("");
-    }
-  };
-
-  // Handler para mudança de tipo de embarcação
-  const handleTipoEmbarcacaoChange = (tipoNome: string) => {
-    const equipamento = equipamentosDisponiveis.find(eq => eq.nome === tipoNome);
-    if (equipamento) {
-      const combustivel = equipamento.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL';
-      setItemEmbarcacaoTemp({
-        ...itemEmbarcacaoTemp,
-        tipo_equipamento_especifico: tipoNome,
-        consumo_fixo: equipamento.consumo,
-        tipo_combustivel: combustivel as 'GASOLINA' | 'DIESEL',
-      });
-    }
-  };
-
-  // Adicionar ou atualizar item de embarcação
-  const adicionarOuAtualizarItemEmbarcacao = () => {
-    if (!itemEmbarcacaoTemp.tipo_equipamento_especifico || itemEmbarcacaoTemp.quantidade <= 0 || itemEmbarcacaoTemp.horas_dia <= 0) {
-      toast.error("Preencha todos os campos obrigatórios do item");
-      return;
-    }
-
-    const novoItem: ItemEmbarcacao = { ...itemEmbarcacaoTemp };
-
-    if (editingEmbarcacaoItemIndex !== null) {
-      const novosItens = [...formEmbarcacao.itens];
-      novosItens[editingEmbarcacaoItemIndex] = novoItem;
-      setFormEmbarcacao({ ...formEmbarcacao, itens: novosItens });
-      toast.success("Item atualizado!");
-      setEditingEmbarcacaoItemIndex(null);
-    } else {
-      setFormEmbarcacao({ ...formEmbarcacao, itens: [...formEmbarcacao.itens, novoItem] });
-      toast.success("Item adicionado!");
-    }
-
-    setItemEmbarcacaoTemp({
-      tipo_equipamento_especifico: "",
-      quantidade: 0, // Alterado para 0
-      horas_dia: 0, // Alterado para 0
-      consumo_fixo: 0,
-      tipo_combustivel: "DIESEL",
-    });
-
-    setTimeout(() => {
-      addEmbarcacaoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-  };
-
-  // Remover item de embarcação
-  const removerItemEmbarcacao = (index: number) => {
-    const novosItens = formEmbarcacao.itens.filter((_, i) => i !== index);
-    setFormEmbarcacao({ ...formEmbarcacao, itens: novosItens });
-    toast.success("Item removido!");
-  };
-
-  // Editar item de embarcação
-  const handleEditEmbarcacaoItem = (item: ItemEmbarcacao, index: number) => {
-    setItemEmbarcacaoTemp({ ...item });
-    setEditingEmbarcacaoItemIndex(index);
-    setTimeout(() => {
-      addEmbarcacaoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-  };
-
-  // Cancelar edição de item de embarcação
-  const handleCancelEditEmbarcacaoItem = () => {
-    setItemEmbarcacaoTemp({
-      tipo_equipamento_especifico: "",
-      quantidade: 0, // Alterado para 0
-      horas_dia: 0, // Alterado para 0
-      consumo_fixo: 0,
-      tipo_combustivel: "DIESEL",
-    });
-    setEditingEmbarcacaoItemIndex(null);
-  };
-
-  // Calcular consolidados de embarcação
-  const calcularConsolidadosEmbarcacao = (itens: ItemEmbarcacao[]) => {
-    if (!refLPC || !formEmbarcacao.organizacao || !rmFornecimento) {
-      setConsolidadosEmbarcacao([]);
-      return;
-    }
-
-    const gruposPorCombustivel = itens.reduce((grupos, item) => {
-      if (!grupos[item.tipo_combustivel]) {
-        grupos[item.tipo_combustivel] = [];
-      }
-      grupos[item.tipo_combustivel].push(item);
-      return grupos;
-    }, {} as Record<'GASOLINA' | 'DIESEL', ItemEmbarcacao[]>);
-
-    const novosConsolidados: ConsolidadoEmbarcacao[] = [];
-
-    Object.entries(gruposPorCombustivel).forEach(([combustivel, itensGrupo]) => {
-      const tipoCombustivel = combustivel as 'GASOLINA' | 'DIESEL';
-      const precoLitro = tipoCombustivel === 'GASOLINA' ? refLPC.preco_gasolina : refLPC.preco_diesel;
-      
-      let totalLitrosSemMargem = 0;
-      // Construir string de fases da mesma forma que no salvamento
-      let fasesFinaisCalc = [...fasesAtividadeEmbarcacao];
-      if (customFaseAtividadeEmbarcacao.trim()) {
-        fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeEmbarcacao.trim()];
-      }
-      const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
-      const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
-      let detalhamento = `33.90.30 - Aquisição de Combustível (${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}) para Embarcações, durante ${formEmbarcacao.dias_operacao} dias de ${faseFormatada}, para ${formEmbarcacao.organizacao}.\nFornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})\n\nCálculo:\n`;
-
-      itensGrupo.forEach(item => {
-        const litrosSemMargemItem = item.quantidade * item.consumo_fixo * item.horas_dia * formEmbarcacao.dias_operacao;
-        totalLitrosSemMargem += litrosSemMargemItem;
-        detalhamento += `- ${item.tipo_equipamento_especifico}: ${formatNumber(item.consumo_fixo, 1)} L/h.\n`;
-        detalhamento += `  (${item.quantidade} embarcações x ${formatNumber(item.horas_dia, 1)} horas/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${formEmbarcacao.dias_operacao} dias = ${formatNumber(litrosSemMargemItem)} L.\n`;
-      });
-
-      const totalLitros = totalLitrosSemMargem * 1.3;
-      const valorTotal = totalLitros * precoLitro;
-      
-      const formatarData = (data: string) => {
-        const [ano, mes, dia] = data.split('-');
-        return `${dia}/${mes}/${ano}`;
-      };
-      const dataInicioFormatada = formatarData(refLPC.data_inicio_consulta);
-      const dataFimFormatada = formatarData(refLPC.data_fim_consulta);
-      const localConsulta = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? `(${refLPC.nome_local})` : '';
-      
-      detalhamento += `\n- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'} - ${formatCurrency(precoLitro)}.\n\n`;
-      detalhamento += `Total: ${formatNumber(totalLitrosSemMargem)} L + 30% = ${formatNumber(totalLitros)} L ${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}.\n`;
-      detalhamento += `Valor: ${formatNumber(totalLitros)} L x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
-
-      novosConsolidados.push({
-        tipo_combustivel: tipoCombustivel,
-        total_litros_sem_margem: totalLitrosSemMargem,
-        total_litros: totalLitros,
-        valor_total: valorTotal,
-        itens: itensGrupo,
-        detalhamento,
-      });
-    });
-
-    setConsolidadosEmbarcacao(novosConsolidados);
-  };
-
-  // Salvar registros consolidados de embarcação
-  const salvarRegistrosConsolidadosEmbarcacao = async () => {
-    if (!ptrabId || !formEmbarcacao.organizacao || !formEmbarcacao.ug || consolidadosEmbarcacao.length === 0) {
-      toast.error("Preencha todos os dados obrigatórios e adicione embarcações");
-      return;
-    }
-
-    if (!rmFornecimento || !codugRmFornecimento) {
-      toast.error("Selecione a RM de fornecimento de combustível");
-      return;
-    }
-
-    // Construir string de fases
-    let fasesFinais = [...fasesAtividadeEmbarcacao];
-    if (customFaseAtividadeEmbarcacao.trim()) {
-      fasesFinais = [...fasesFinais, customFaseAtividadeEmbarcacao.trim()];
-    }
-    const faseFinalString = fasesFinais.filter(f => f).join('; ');
-
-    if (!faseFinalString) {
-      toast.error("Selecione ou digite pelo menos uma Fase da Atividade.");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      for (const consolidado of consolidadosEmbarcacao) {
-        const precoLitro = consolidado.tipo_combustivel === 'GASOLINA' 
-          ? refLPC!.preco_gasolina 
-          : refLPC!.preco_diesel;
-
-        const registro = {
-          p_trab_id: ptrabId,
-          tipo_equipamento: 'EMBARCACAO' as TipoEquipamento,
-          organizacao: formEmbarcacao.organizacao,
-          ug: formEmbarcacao.ug,
-          quantidade: consolidado.itens.reduce((sum, item) => sum + item.quantidade, 0),
-          dias_operacao: formEmbarcacao.dias_operacao,
-          tipo_combustivel: consolidado.tipo_combustivel,
-          preco_litro: precoLitro,
-          total_litros: consolidado.total_litros,
-          total_litros_sem_margem: consolidado.total_litros_sem_margem,
-          valor_total: consolidado.valor_total,
-          detalhamento: consolidado.detalhamento,
-          itens_equipamentos: consolidado.itens as any,
-          fase_atividade: faseFinalString,
-        };
-
-        const { error } = await supabase
-          .from("classe_iii_registros")
-          .insert([registro]);
-
-        if (error) throw error;
-      }
-
-      toast.success(`${consolidadosEmbarcacao.length} ${consolidadosEmbarcacao.length === 1 ? 'registro salvo' : 'registros salvos'} com sucesso!`);
-      
-      await updatePTrabStatusIfAberto(ptrabId);
-      
-      setFormEmbarcacao({
-        selectedOmId: undefined,
-        organizacao: "",
-        ug: "",
-        dias_operacao: 1,
-        itens: [],
-      });
-      setItemEmbarcacaoTemp({
-        tipo_equipamento_especifico: "",
-        quantidade: 0, // Alterado para 0
-        horas_dia: 0, // Alterado para 0
-        consumo_fixo: 0,
-        tipo_combustivel: "DIESEL",
-      });
-      setConsolidadosEmbarcacao([]);
-      setRmFornecimento("");
-      setCodugRmFornecimento("");
-      setTipoSelecionado(null);
-      
-      await fetchRegistros();
-    } catch (error: any) {
-      toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
+      const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+      setFasesAtividadeEngenharia(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
+      setCustomFaseAtividadeEngenharia(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     }
   };
 
@@ -1215,57 +828,37 @@ Valor: ${formatNumber(litrosCom30)} L ${combustivelLabel} x ${precoFormatado} = 
     setTipoSelecionado(type);
   };
 
+  // --- Lógica Comum de OM e RM ---
+  const handleRMFornecimentoChange = (rmName: string, rmCodug: string) => {
+    setRmFornecimento(rmName);
+    setCodugRmFornecimento(rmCodug);
+  };
+
+  // --- Lógica Gerador ---
   const handleOMGeradorChange = (omData: OMData | undefined) => {
     if (omData) {
-      setFormGerador({
-        ...formGerador,
-        selectedOmId: omData.id,
-        organizacao: omData.nome_om,
-        ug: omData.codug_om,
-      });
+      setFormGerador({ ...formGerador, selectedOmId: omData.id, organizacao: omData.nome_om, ug: omData.codug_om });
       setRmFornecimento(omData.rm_vinculacao);
       setCodugRmFornecimento(omData.codug_rm_vinculacao);
     } else {
-      setFormGerador({
-        ...formGerador,
-        selectedOmId: undefined,
-        organizacao: "",
-        ug: "",
-      });
+      setFormGerador({ ...formGerador, selectedOmId: undefined, organizacao: "", ug: "" });
       setRmFornecimento("");
       setCodugRmFornecimento("");
     }
   };
-
   const handleTipoGeradorChange = (tipoNome: string) => {
     const equipamento = equipamentosDisponiveis.find(eq => eq.nome === tipoNome);
-    
     if (equipamento) {
       const novoCombustivel = equipamento.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL';
-
-      setItemGeradorTemp({
-        ...itemGeradorTemp,
-        tipo_equipamento_especifico: tipoNome,
-        tipo_combustivel: novoCombustivel,
-        consumo_fixo: equipamento.consumo,
-      });
+      setItemGeradorTemp({ ...itemGeradorTemp, tipo_equipamento_especifico: tipoNome, tipo_combustivel: novoCombustivel, consumo_fixo: equipamento.consumo });
     }
   };
-
   const adicionarOuAtualizarItemGerador = () => {
     if (!itemGeradorTemp.tipo_equipamento_especifico || itemGeradorTemp.quantidade <= 0 || itemGeradorTemp.horas_dia <= 0) {
       toast.error("Preencha todos os campos do item");
       return;
     }
-
-    const novoItem: ItemGerador = {
-      tipo_equipamento_especifico: itemGeradorTemp.tipo_equipamento_especifico,
-      quantidade: itemGeradorTemp.quantidade,
-      horas_dia: itemGeradorTemp.horas_dia,
-      consumo_fixo: itemGeradorTemp.consumo_fixo,
-      tipo_combustivel: itemGeradorTemp.tipo_combustivel,
-    };
-
+    const novoItem: ItemGerador = { ...itemGeradorTemp };
     let novosItens = [...formGerador.itens];
     if (editingGeradorItemIndex !== null) {
       novosItens[editingGeradorItemIndex] = novoItem;
@@ -1274,107 +867,56 @@ Valor: ${formatNumber(litrosCom30)} L ${combustivelLabel} x ${precoFormatado} = 
       novosItens.push(novoItem);
       toast.success("Item de gerador adicionado!");
     }
-
-    setFormGerador({
-      ...formGerador,
-      itens: novosItens,
-    });
-
-    setItemGeradorTemp({
-      tipo_equipamento_especifico: "",
-      quantidade: 0, // Alterado para 0
-      horas_dia: 0, // Alterado para 0
-      consumo_fixo: 0,
-      tipo_combustivel: "DIESEL",
-    });
+    setFormGerador({ ...formGerador, itens: novosItens });
+    setItemGeradorTemp({ tipo_equipamento_especifico: "", quantidade: 0, horas_dia: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
     setEditingGeradorItemIndex(null);
   };
-
   const handleEditGeradorItem = (item: ItemGerador, index: number) => {
     setItemGeradorTemp(item);
     setEditingGeradorItemIndex(index);
-    if (addGeradorRef.current) {
-      addGeradorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    if (addGeradorRef.current) { addGeradorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   };
-
   const handleCancelEditGeradorItem = () => {
-    setItemGeradorTemp({
-      tipo_equipamento_especifico: "",
-      quantidade: 0, // Alterado para 0
-      horas_dia: 0, // Alterado para 0
-      consumo_fixo: 0,
-      tipo_combustivel: "DIESEL",
-    });
+    setItemGeradorTemp({ tipo_equipamento_especifico: "", quantidade: 0, horas_dia: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
     setEditingGeradorItemIndex(null);
   };
-
   const removerItemGerador = (index: number) => {
     if (!confirm("Deseja realmente remover este item?")) return;
     const novosItens = formGerador.itens.filter((_, i) => i !== index);
-    setFormGerador({
-      ...formGerador,
-      itens: novosItens,
-    });
-    if (editingGeradorItemIndex === index) {
-      handleCancelEditGeradorItem();
-    }
+    setFormGerador({ ...formGerador, itens: novosItens });
+    if (editingGeradorItemIndex === index) { handleCancelEditGeradorItem(); }
     toast.success("Item de gerador removido!");
   };
-
   const calcularConsolidadosGerador = (itens: ItemGerador[]) => {
-    if (itens.length === 0) {
-      setConsolidadosGerador([]);
-      return;
-    }
-
+    if (itens.length === 0) { setConsolidadosGerador([]); return; }
     const grupos = itens.reduce((acc, item) => {
-      if (!acc[item.tipo_combustivel]) {
-        acc[item.tipo_combustivel] = [];
-      }
+      if (!acc[item.tipo_combustivel]) { acc[item.tipo_combustivel] = []; }
       acc[item.tipo_combustivel].push(item);
       return acc;
     }, {} as Record<'GASOLINA' | 'DIESEL', ItemGerador[]>);
-
     const consolidados: ConsolidadoGerador[] = [];
-
     Object.entries(grupos).forEach(([combustivel, itensGrupo]) => {
       const tipoCombustivel = combustivel as 'GASOLINA' | 'DIESEL';
-      
       let totalLitrosSemMargem = 0;
       const detalhes: string[] = [];
-
       itensGrupo.forEach(item => {
         const litrosItem = item.quantidade * item.horas_dia * item.consumo_fixo * formGerador.dias_operacao;
         totalLitrosSemMargem += litrosItem;
-        
         const unidade = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
         detalhes.push(`- (${item.quantidade} ${item.tipo_equipamento_especifico} x ${formatNumber(item.horas_dia, 1)} horas/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${formGerador.dias_operacao} dias = ${formatNumber(litrosItem)} L ${unidade}.`);
       });
-
       const totalLitros = totalLitrosSemMargem * 1.3;
       const preco = tipoCombustivel === 'GASOLINA' ? (refLPC?.preco_gasolina ?? 0) : (refLPC?.preco_diesel ?? 0);
       const valorTotal = totalLitros * preco;
-
       const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel';
       const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
-      
-      const formatarData = (data: string) => {
-        const [ano, mes, dia] = data.split('-');
-        return `${dia}/${mes}/${ano}`;
-      };
-
+      const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
       const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
       const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
       const localConsulta = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? `(${refLPC.nome_local})` : '';
-
       const totalGeradores = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
-
-      // Construir string de fases da mesma forma que no salvamento
       let fasesFinaisCalc = [...fasesAtividadeGerador];
-      if (customFaseAtividadeGerador.trim()) {
-        fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeGerador.trim()];
-      }
+      if (customFaseAtividadeGerador.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeGerador.trim()]; }
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
       const detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalGeradores} geradores, durante ${formGerador.dias_operacao} dias de ${faseFormatada}, para ${formGerador.organizacao}.
@@ -1400,48 +942,18 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
         detalhamento,
       });
     });
-
     setConsolidadosGerador(consolidados);
   };
-
   const salvarRegistrosConsolidadosGerador = async () => {
     if (!ptrabId || consolidadosGerador.length === 0) return;
-
-    if (!refLPC) {
-      toast.error("Configure a referência LPC antes de salvar");
-      if (lpcRef.current) {
-        lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-      return;
-    }
-
-    if (!formGerador.organizacao || !formGerador.ug) {
-      toast.error("Selecione uma OM");
-      return;
-    }
-
-    if (!rmFornecimento || !codugRmFornecimento) {
-      toast.error("Selecione a RM de Fornecimento de Combustível");
-      return;
-    }
-
-    if (formGerador.itens.length === 0) {
-      toast.error("Adicione pelo menos um gerador");
-      return;
-    }
-
-    // Construir string de fases
+    if (!refLPC) { toast.error("Configure a referência LPC antes de salvar"); if (lpcRef.current) { lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+    if (!formGerador.organizacao || !formGerador.ug) { toast.error("Selecione uma OM"); return; }
+    if (!rmFornecimento || !codugRmFornecimento) { toast.error("Selecione a RM de Fornecimento de Combustível"); return; }
+    if (formGerador.itens.length === 0) { toast.error("Adicione pelo menos um gerador"); return; }
     let fasesFinais = [...fasesAtividadeGerador];
-    if (customFaseAtividadeGerador.trim()) {
-      fasesFinais = [...fasesFinais, customFaseAtividadeGerador.trim()];
-    }
+    if (customFaseAtividadeGerador.trim()) { fasesFinais = [...fasesFinais, customFaseAtividadeGerador.trim()]; }
     const faseFinalString = fasesFinais.filter(f => f).join('; ');
-
-    if (!faseFinalString) {
-      toast.error("Selecione ou digite pelo menos uma Fase da Atividade.");
-      return;
-    }
-
+    if (!faseFinalString) { toast.error("Selecione ou digite pelo menos uma Fase da Atividade."); return; }
     try {
       setLoading(true);
       if (editingId) {
@@ -1452,13 +964,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
           .eq("tipo_equipamento", "GERADOR")
           .eq("organizacao", formGerador.organizacao)
           .eq("ug", formGerador.ug);
-
-        if (deleteError) {
-          console.error("Erro ao deletar registros existentes de gerador para edição:", deleteError);
-          throw deleteError;
-        }
+        if (deleteError) { console.error("Erro ao deletar registros existentes de gerador para edição:", deleteError); throw deleteError; }
       }
-
       for (const consolidado of consolidadosGerador) {
         const registro = {
           p_trab_id: ptrabId,
@@ -1482,18 +989,11 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
           itens_equipamentos: JSON.parse(JSON.stringify(consolidado.itens)),
           fase_atividade: faseFinalString,
         };
-
-        const { error } = await supabase
-          .from("classe_iii_registros")
-          .insert([registro]);
-
+        const { error } = await supabase.from("classe_iii_registros").insert([registro]);
         if (error) throw error;
       }
-
       toast.success(editingId ? "Registros de geradores atualizados com sucesso!" : "Registros de geradores salvos com sucesso!");
-      // Atualiza o status do PTrab para 'em_andamento' se estiver 'aberto'
       await updatePTrabStatusIfAberto(ptrabId);
-
       resetFormFields();
       setTipoSelecionado(null);
       fetchRegistros();
@@ -1505,58 +1005,31 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
     }
   };
 
+  // --- Lógica Viatura ---
   const handleOMViaturaChange = (omData: OMData | undefined) => {
     if (omData) {
-      setFormViatura({
-        ...formViatura,
-        selectedOmId: omData.id,
-        organizacao: omData.nome_om,
-        ug: omData.codug_om,
-      });
+      setFormViatura({ ...formViatura, selectedOmId: omData.id, organizacao: omData.nome_om, ug: omData.codug_om });
       setRmFornecimento(omData.rm_vinculacao);
       setCodugRmFornecimento(omData.codug_rm_vinculacao);
     } else {
-      setFormViatura({
-        ...formViatura,
-        selectedOmId: undefined,
-        organizacao: "",
-        ug: "",
-      });
+      setFormViatura({ ...formViatura, selectedOmId: undefined, organizacao: "", ug: "" });
       setRmFornecimento("");
       setCodugRmFornecimento("");
     }
   };
-
   const handleTipoViaturaChange = (tipoNome: string) => {
     const equipamento = equipamentosDisponiveis.find(eq => eq.nome === tipoNome);
-    
     if (equipamento) {
       const novoCombustivel = equipamento.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL';
-      
-      setItemViaturaTemp({
-        ...itemViaturaTemp,
-        tipo_equipamento_especifico: tipoNome,
-        tipo_combustivel: novoCombustivel,
-        consumo_fixo: equipamento.consumo,
-      });
+      setItemViaturaTemp({ ...itemViaturaTemp, tipo_equipamento_especifico: tipoNome, tipo_combustivel: novoCombustivel, consumo_fixo: equipamento.consumo });
     }
   };
-
   const adicionarOuAtualizarItemViatura = () => {
     if (!itemViaturaTemp.tipo_equipamento_especifico || itemViaturaTemp.quantidade <= 0 || itemViaturaTemp.distancia_percorrida <= 0 || itemViaturaTemp.quantidade_deslocamentos <= 0) {
       toast.error("Preencha todos os campos do item");
       return;
     }
-
-    const novoItem: ItemViatura = {
-      tipo_equipamento_especifico: itemViaturaTemp.tipo_equipamento_especifico,
-      quantidade: itemViaturaTemp.quantidade,
-      distancia_percorrida: itemViaturaTemp.distancia_percorrida,
-      quantidade_deslocamentos: itemViaturaTemp.quantidade_deslocamentos,
-      consumo_fixo: itemViaturaTemp.consumo_fixo,
-      tipo_combustivel: itemViaturaTemp.tipo_combustivel,
-    };
-
+    const novoItem: ItemViatura = { ...itemViaturaTemp };
     let novosItens = [...formViatura.itens];
     if (editingViaturaItemIndex !== null) {
       novosItens[editingViaturaItemIndex] = novoItem;
@@ -1565,109 +1038,56 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       novosItens.push(novoItem);
       toast.success("Item de viatura adicionado!");
     }
-
-    setFormViatura({
-      ...formViatura,
-      itens: novosItens,
-    });
-
-    setItemViaturaTemp({
-      tipo_equipamento_especifico: "",
-      quantidade: 0, // Alterado para 0
-      distancia_percorrida: 0,
-      quantidade_deslocamentos: 0, // Alterado para 0
-      consumo_fixo: 0,
-      tipo_combustivel: "DIESEL",
-    });
+    setFormViatura({ ...formViatura, itens: novosItens });
+    setItemViaturaTemp({ tipo_equipamento_especifico: "", quantidade: 0, distancia_percorrida: 0, quantidade_deslocamentos: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
     setEditingViaturaItemIndex(null);
   };
-
   const handleEditViaturaItem = (item: ItemViatura, index: number) => {
     setItemViaturaTemp(item);
     setEditingViaturaItemIndex(index);
-    if (addViaturaRef.current) {
-      addViaturaRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    if (addViaturaRef.current) { addViaturaRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   };
-
   const handleCancelEditViaturaItem = () => {
-    setItemViaturaTemp({
-      tipo_equipamento_especifico: "",
-      quantidade: 0, // Alterado para 0
-      distancia_percorrida: 0,
-      quantidade_deslocamentos: 0, // Alterado para 0
-      consumo_fixo: 0,
-      tipo_combustivel: "DIESEL",
-    });
+    setItemViaturaTemp({ tipo_equipamento_especifico: "", quantidade: 0, distancia_percorrida: 0, quantidade_deslocamentos: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
     setEditingViaturaItemIndex(null);
   };
-
   const removerItemViatura = (index: number) => {
     if (!confirm("Deseja realmente remover este item?")) return;
     const novosItens = formViatura.itens.filter((_, i) => i !== index);
-    setFormViatura({
-      ...formViatura,
-      itens: novosItens,
-    });
-    if (editingViaturaItemIndex === index) {
-      handleCancelEditViaturaItem();
-    }
+    setFormViatura({ ...formViatura, itens: novosItens });
+    if (editingViaturaItemIndex === index) { handleCancelEditViaturaItem(); }
     toast.success("Item de viatura removido!");
   };
-
   const calcularConsolidadosViatura = (itens: ItemViatura[]) => {
-    if (itens.length === 0) {
-      setConsolidadosViatura([]);
-      return;
-    }
-
+    if (itens.length === 0) { setConsolidadosViatura([]); return; }
     const grupos = itens.reduce((acc, item) => {
-      if (!acc[item.tipo_combustivel]) {
-        acc[item.tipo_combustivel] = [];
-      }
+      if (!acc[item.tipo_combustivel]) { acc[item.tipo_combustivel] = []; }
       acc[item.tipo_combustivel].push(item);
       return acc;
     }, {} as Record<'GASOLINA' | 'DIESEL', ItemViatura[]>);
-
     const consolidados: ConsolidadoViatura[] = [];
-
     Object.entries(grupos).forEach(([combustivel, itensGrupo]) => {
       const tipoCombustivel = combustivel as 'GASOLINA' | 'DIESEL';
-      
       let totalLitrosSemMargem = 0;
       const detalhes: string[] = [];
-
       itensGrupo.forEach(item => {
         const litrosItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos) / item.consumo_fixo;
         totalLitrosSemMargem += litrosItem;
-        
         const unidade = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
         detalhes.push(`- ${item.quantidade} ${item.tipo_equipamento_especifico}: (${formatNumber(item.distancia_percorrida)} km x ${item.quantidade} vtr x ${item.quantidade_deslocamentos} desloc) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L = ${formatNumber(litrosItem)} L ${unidade}.`);
       });
-
       const totalLitros = totalLitrosSemMargem * 1.3;
       const preco = tipoCombustivel === 'GASOLINA' ? (refLPC?.preco_gasolina ?? 0) : (refLPC?.preco_diesel ?? 0);
       const valorTotal = totalLitros * preco;
-
       const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel';
       const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
-      
-      const formatarData = (data: string) => {
-        const [ano, mes, dia] = data.split('-');
-        return `${dia}/${mes}/${ano}`;
-      };
-
+      const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
       const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
       const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
       const localConsulta = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? `(${refLPC.nome_local})` : '';
-
       const totalViaturas = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
-
-      // Construir string de fases da mesma forma que no salvamento
       let fasesFinaisCalc = [...fasesAtividadeViatura];
-      if (customFaseAtividadeViatura.trim()) {
-        fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeViatura.trim()];
-      }
+      if (customFaseAtividadeViatura.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeViatura.trim()]; }
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
       const detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalViaturas} viaturas, durante ${formViatura.dias_operacao} dias de ${faseFormatada}, para ${formViatura.organizacao}.
@@ -1683,7 +1103,6 @@ ${detalhes.join('\n')}
 
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}.
 Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)} = ${formatCurrency(valorTotal)}.`;
-
       consolidados.push({
         tipo_combustivel: tipoCombustivel,
         total_litros_sem_margem: totalLitrosSemMargem,
@@ -1693,48 +1112,18 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
         detalhamento,
       });
     });
-
     setConsolidadosViatura(consolidados);
   };
-
   const salvarRegistrosConsolidadosViatura = async () => {
     if (!ptrabId || consolidadosViatura.length === 0) return;
-
-    if (!refLPC) {
-      toast.error("Configure a referência LPC antes de salvar");
-      if (lpcRef.current) {
-        lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-      return;
-    }
-
-    if (!formViatura.organizacao || !formViatura.ug) {
-      toast.error("Selecione uma OM");
-      return;
-    }
-
-    if (!rmFornecimento || !codugRmFornecimento) {
-      toast.error("Selecione a RM de Fornecimento de Combustível");
-      return;
-    }
-
-    if (formViatura.itens.length === 0) {
-      toast.error("Adicione pelo menos uma viatura");
-      return;
-    }
-
-    // Construir string de fases
+    if (!refLPC) { toast.error("Configure a referência LPC antes de salvar"); if (lpcRef.current) { lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+    if (!formViatura.organizacao || !formViatura.ug) { toast.error("Selecione uma OM"); return; }
+    if (!rmFornecimento || !codugRmFornecimento) { toast.error("Selecione a RM de Fornecimento de Combustível"); return; }
+    if (formViatura.itens.length === 0) { toast.error("Adicione pelo menos uma viatura"); return; }
     let fasesFinais = [...fasesAtividadeViatura];
-    if (customFaseAtividadeViatura.trim()) {
-      fasesFinais = [...fasesFinais, customFaseAtividadeViatura.trim()];
-    }
+    if (customFaseAtividadeViatura.trim()) { fasesFinais = [...fasesFinais, customFaseAtividadeViatura.trim()]; }
     const faseFinalString = fasesFinais.filter(f => f).join('; ');
-
-    if (!faseFinalString) {
-      toast.error("Selecione ou digite pelo menos uma Fase da Atividade.");
-      return;
-    }
-
+    if (!faseFinalString) { toast.error("Selecione ou digite pelo menos uma Fase da Atividade."); return; }
     try {
       setLoading(true);
       if (editingId) {
@@ -1745,13 +1134,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
           .eq("tipo_equipamento", "MOTOMECANIZACAO")
           .eq("organizacao", formViatura.organizacao)
           .eq("ug", formViatura.ug);
-
-        if (deleteError) {
-          console.error("Erro ao deletar registros existentes de viatura para edição:", deleteError);
-          throw deleteError;
-        }
+        if (deleteError) { console.error("Erro ao deletar registros existentes de viatura para edição:", deleteError); throw deleteError; }
       }
-
       for (const consolidado of consolidadosViatura) {
         const registro = {
           p_trab_id: ptrabId,
@@ -1775,18 +1159,11 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
           itens_equipamentos: JSON.parse(JSON.stringify(consolidado.itens)),
           fase_atividade: faseFinalString,
         };
-
-        const { error } = await supabase
-          .from("classe_iii_registros")
-          .insert([registro]);
-
+        const { error } = await supabase.from("classe_iii_registros").insert([registro]);
         if (error) throw error;
       }
-
       toast.success(editingId ? "Registros de viaturas atualizados com sucesso!" : "Registros de viaturas salvos com sucesso!");
-      // Atualiza o status do PTrab para 'em_andamento' se estiver 'aberto'
       await updatePTrabStatusIfAberto(ptrabId);
-
       resetFormFields();
       setTipoSelecionado(null);
       fetchRegistros();
@@ -1797,6 +1174,317 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       setLoading(false);
     }
   };
+
+  // --- Lógica Embarcação ---
+  const handleOMEmbarcacaoChange = (omData: OMData | undefined) => {
+    if (omData) {
+      setFormEmbarcacao({ ...formEmbarcacao, selectedOmId: omData.id, organizacao: omData.nome_om, ug: omData.codug_om });
+      setRmFornecimento(omData.rm_vinculacao);
+      setCodugRmFornecimento(omData.codug_rm_vinculacao);
+    } else {
+      setFormEmbarcacao({ ...formEmbarcacao, selectedOmId: undefined, organizacao: "", ug: "" });
+      setRmFornecimento("");
+      setCodugRmFornecimento("");
+    }
+  };
+  const handleTipoEmbarcacaoChange = (tipoNome: string) => {
+    const equipamento = equipamentosDisponiveis.find(eq => eq.nome === tipoNome);
+    if (equipamento) {
+      const combustivel = equipamento.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL';
+      setItemEmbarcacaoTemp({ ...itemEmbarcacaoTemp, tipo_equipamento_especifico: tipoNome, consumo_fixo: equipamento.consumo, tipo_combustivel: combustivel as 'GASOLINA' | 'DIESEL' });
+    }
+  };
+  const adicionarOuAtualizarItemEmbarcacao = () => {
+    if (!itemEmbarcacaoTemp.tipo_equipamento_especifico || itemEmbarcacaoTemp.quantidade <= 0 || itemEmbarcacaoTemp.horas_dia <= 0) {
+      toast.error("Preencha todos os campos obrigatórios do item");
+      return;
+    }
+    const novoItem: ItemEmbarcacao = { ...itemEmbarcacaoTemp };
+    if (editingEmbarcacaoItemIndex !== null) {
+      const novosItens = [...formEmbarcacao.itens];
+      novosItens[editingEmbarcacaoItemIndex] = novoItem;
+      setFormEmbarcacao({ ...formEmbarcacao, itens: novosItens });
+      toast.success("Item atualizado!");
+      setEditingEmbarcacaoItemIndex(null);
+    } else {
+      setFormEmbarcacao({ ...formEmbarcacao, itens: [...formEmbarcacao.itens, novoItem] });
+      toast.success("Item adicionado!");
+    }
+    setItemEmbarcacaoTemp({ tipo_equipamento_especifico: "", quantidade: 0, horas_dia: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
+    setTimeout(() => { addEmbarcacaoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+  };
+  const removerItemEmbarcacao = (index: number) => {
+    const novosItens = formEmbarcacao.itens.filter((_, i) => i !== index);
+    setFormEmbarcacao({ ...formEmbarcacao, itens: novosItens });
+    toast.success("Item removido!");
+  };
+  const handleEditEmbarcacaoItem = (item: ItemEmbarcacao, index: number) => {
+    setItemEmbarcacaoTemp({ ...item });
+    setEditingEmbarcacaoItemIndex(index);
+    setTimeout(() => { addEmbarcacaoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+  };
+  const handleCancelEditEmbarcacaoItem = () => {
+    setItemEmbarcacaoTemp({ tipo_equipamento_especifico: "", quantidade: 0, horas_dia: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
+    setEditingEmbarcacaoItemIndex(null);
+  };
+  const calcularConsolidadosEmbarcacao = (itens: ItemEmbarcacao[]) => {
+    if (!refLPC || !formEmbarcacao.organizacao || !rmFornecimento) { setConsolidadosEmbarcacao([]); return; }
+    const gruposPorCombustivel = itens.reduce((grupos, item) => {
+      if (!grupos[item.tipo_combustivel]) { grupos[item.tipo_combustivel] = []; }
+      grupos[item.tipo_combustivel].push(item);
+      return grupos;
+    }, {} as Record<'GASOLINA' | 'DIESEL', ItemEmbarcacao[]>);
+    const novosConsolidados: ConsolidadoEmbarcacao[] = [];
+    Object.entries(gruposPorCombustivel).forEach(([combustivel, itensGrupo]) => {
+      const tipoCombustivel = combustivel as 'GASOLINA' | 'DIESEL';
+      const precoLitro = tipoCombustivel === 'GASOLINA' ? refLPC.preco_gasolina : refLPC.preco_diesel;
+      let totalLitrosSemMargem = 0;
+      let fasesFinaisCalc = [...fasesAtividadeEmbarcacao];
+      if (customFaseAtividadeEmbarcacao.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeEmbarcacao.trim()]; }
+      const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
+      const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
+      let detalhamento = `33.90.30 - Aquisição de Combustível (${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}) para Embarcações, durante ${formEmbarcacao.dias_operacao} dias de ${faseFormatada}, para ${formEmbarcacao.organizacao}.\nFornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})\n\nCálculo:\n`;
+      itensGrupo.forEach(item => {
+        const litrosSemMargemItem = item.quantidade * item.consumo_fixo * item.horas_dia * formEmbarcacao.dias_operacao;
+        totalLitrosSemMargem += litrosSemMargemItem;
+        detalhamento += `- ${item.tipo_equipamento_especifico}: ${formatNumber(item.consumo_fixo, 1)} L/h.\n`;
+        detalhamento += `  (${item.quantidade} embarcações x ${formatNumber(item.horas_dia, 1)} horas/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${formEmbarcacao.dias_operacao} dias = ${formatNumber(litrosSemMargemItem)} L.\n`;
+      });
+      const totalLitros = totalLitrosSemMargem * 1.3;
+      const valorTotal = totalLitros * precoLitro;
+      const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
+      const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
+      const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
+      const localConsulta = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? `(${refLPC.nome_local})` : '';
+      detalhamento += `\n- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'} - ${formatCurrency(precoLitro)}.\n\n`;
+      detalhamento += `Total: ${formatNumber(totalLitrosSemMargem)} L + 30% = ${formatNumber(totalLitros)} L ${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}.\n`;
+      detalhamento += `Valor: ${formatNumber(totalLitros)} L x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
+      novosConsolidados.push({
+        tipo_combustivel: tipoCombustivel,
+        total_litros_sem_margem: totalLitrosSemMargem,
+        total_litros: totalLitros,
+        valor_total: valorTotal,
+        itens: itensGrupo,
+        detalhamento,
+      });
+    });
+    setConsolidadosEmbarcacao(novosConsolidados);
+  };
+  const salvarRegistrosConsolidadosEmbarcacao = async () => {
+    if (!ptrabId || consolidadosEmbarcacao.length === 0) return;
+    if (!refLPC) { toast.error("Configure a referência LPC antes de salvar"); if (lpcRef.current) { lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+    if (!formEmbarcacao.organizacao || !formEmbarcacao.ug) { toast.error("Selecione uma OM"); return; }
+    if (!rmFornecimento || !codugRmFornecimento) { toast.error("Selecione a RM de fornecimento de combustível"); return; }
+    if (formEmbarcacao.itens.length === 0) { toast.error("Adicione pelo menos uma embarcação"); return; }
+    let fasesFinais = [...fasesAtividadeEmbarcacao];
+    if (customFaseAtividadeEmbarcacao.trim()) { fasesFinais = [...fasesFinais, customFaseAtividadeEmbarcacao.trim()]; }
+    const faseFinalString = fasesFinais.filter(f => f).join('; ');
+    if (!faseFinalString) { toast.error("Selecione ou digite pelo menos uma Fase da Atividade."); return; }
+    setLoading(true);
+    try {
+      for (const consolidado of consolidadosEmbarcacao) {
+        const precoLitro = consolidado.tipo_combustivel === 'GASOLINA' ? refLPC!.preco_gasolina : refLPC!.preco_diesel;
+        const registro = {
+          p_trab_id: ptrabId,
+          tipo_equipamento: 'EMBARCACAO' as TipoEquipamento,
+          organizacao: formEmbarcacao.organizacao,
+          ug: formEmbarcacao.ug,
+          quantidade: consolidado.itens.reduce((sum, item) => sum + item.quantidade, 0),
+          dias_operacao: formEmbarcacao.dias_operacao,
+          tipo_combustivel: consolidado.tipo_combustivel,
+          preco_litro: precoLitro,
+          total_litros: consolidado.total_litros,
+          total_litros_sem_margem: consolidado.total_litros_sem_margem,
+          valor_total: consolidado.valor_total,
+          detalhamento: consolidado.detalhamento,
+          itens_equipamentos: consolidado.itens as any,
+          fase_atividade: faseFinalString,
+        };
+        const { error } = await supabase.from("classe_iii_registros").insert([registro]);
+        if (error) throw error;
+      }
+      toast.success(`${consolidadosEmbarcacao.length} ${consolidadosEmbarcacao.length === 1 ? 'registro salvo' : 'registros salvos'} com sucesso!`);
+      await updatePTrabStatusIfAberto(ptrabId);
+      resetFormFields();
+      setTipoSelecionado(null);
+      await fetchRegistros();
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Lógica Equipamento de Engenharia ---
+  const handleOMEngenhariaChange = (omData: OMData | undefined) => {
+    if (omData) {
+      setFormEngenharia({ ...formEngenharia, selectedOmId: omData.id, organizacao: omData.nome_om, ug: omData.codug_om });
+      setRmFornecimento(omData.rm_vinculacao);
+      setCodugRmFornecimento(omData.codug_rm_vinculacao);
+    } else {
+      setFormEngenharia({ ...formEngenharia, selectedOmId: undefined, organizacao: "", ug: "" });
+      setRmFornecimento("");
+      setCodugRmFornecimento("");
+    }
+  };
+  const handleTipoEngenhariaChange = (tipoNome: string) => {
+    const equipamento = equipamentosDisponiveis.find(eq => eq.nome === tipoNome);
+    if (equipamento) {
+      const novoCombustivel = equipamento.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL';
+      setItemEngenhariaTemp({ ...itemEngenhariaTemp, tipo_equipamento_especifico: tipoNome, tipo_combustivel: novoCombustivel, consumo_fixo: equipamento.consumo });
+    }
+  };
+  const adicionarOuAtualizarItemEngenharia = () => {
+    if (!itemEngenhariaTemp.tipo_equipamento_especifico || itemEngenhariaTemp.quantidade <= 0 || itemEngenhariaTemp.horas_dia <= 0) {
+      toast.error("Preencha todos os campos do item");
+      return;
+    }
+    const novoItem: ItemEngenharia = { ...itemEngenhariaTemp };
+    let novosItens = [...formEngenharia.itens];
+    if (editingEngenhariaItemIndex !== null) {
+      novosItens[editingEngenhariaItemIndex] = novoItem;
+      toast.success("Item de engenharia atualizado!");
+    } else {
+      novosItens.push(novoItem);
+      toast.success("Item de engenharia adicionado!");
+    }
+    setFormEngenharia({ ...formEngenharia, itens: novosItens });
+    setItemEngenhariaTemp({ tipo_equipamento_especifico: "", quantidade: 0, horas_dia: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
+    setEditingEngenhariaItemIndex(null);
+  };
+  const handleEditEngenhariaItem = (item: ItemEngenharia, index: number) => {
+    setItemEngenhariaTemp(item);
+    setEditingEngenhariaItemIndex(index);
+    if (addEngenhariaRef.current) { addEngenhariaRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  };
+  const handleCancelEditEngenhariaItem = () => {
+    setItemEngenhariaTemp({ tipo_equipamento_especifico: "", quantidade: 0, horas_dia: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
+    setEditingEngenhariaItemIndex(null);
+  };
+  const removerItemEngenharia = (index: number) => {
+    if (!confirm("Deseja realmente remover este item?")) return;
+    const novosItens = formEngenharia.itens.filter((_, i) => i !== index);
+    setFormEngenharia({ ...formEngenharia, itens: novosItens });
+    if (editingEngenhariaItemIndex === index) { handleCancelEditEngenhariaItem(); }
+    toast.success("Item de engenharia removido!");
+  };
+  const calcularConsolidadosEngenharia = (itens: ItemEngenharia[]) => {
+    if (itens.length === 0) { setConsolidadosEngenharia([]); return; }
+    const grupos = itens.reduce((acc, item) => {
+      if (!acc[item.tipo_combustivel]) { acc[item.tipo_combustivel] = []; }
+      acc[item.tipo_combustivel].push(item);
+      return acc;
+    }, {} as Record<'GASOLINA' | 'DIESEL', ItemEngenharia[]>);
+    const consolidados: ConsolidadoEngenharia[] = [];
+    Object.entries(grupos).forEach(([combustivel, itensGrupo]) => {
+      const tipoCombustivel = combustivel as 'GASOLINA' | 'DIESEL';
+      let totalLitrosSemMargem = 0;
+      const detalhes: string[] = [];
+      itensGrupo.forEach(item => {
+        const litrosItem = item.quantidade * item.horas_dia * item.consumo_fixo * formEngenharia.dias_operacao;
+        totalLitrosSemMargem += litrosItem;
+        const unidade = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
+        detalhes.push(`- (${item.quantidade} ${item.tipo_equipamento_especifico} x ${formatNumber(item.horas_dia, 1)} horas/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${formEngenharia.dias_operacao} dias = ${formatNumber(litrosItem)} L ${unidade}.`);
+      });
+      const totalLitros = totalLitrosSemMargem * 1.3;
+      const preco = tipoCombustivel === 'GASOLINA' ? (refLPC?.preco_gasolina ?? 0) : (refLPC?.preco_diesel ?? 0);
+      const valorTotal = totalLitros * preco;
+      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel';
+      const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
+      const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
+      const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
+      const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
+      const localConsulta = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? `(${refLPC.nome_local})` : '';
+      const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
+      let fasesFinaisCalc = [...fasesAtividadeEngenharia];
+      if (customFaseAtividadeEngenharia.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeEngenharia.trim()]; }
+      const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
+      const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
+      const detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos de engenharia, durante ${formEngenharia.dias_operacao} dias de ${faseFormatada}, para ${formEngenharia.organizacao}.
+Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
+
+Cálculo:
+${itensGrupo.map(item => `- ${item.tipo_equipamento_especifico}: ${formatNumber(item.consumo_fixo, 1)} L/h.`).join('\n')}
+
+Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${combustivelLabel} - ${formatCurrency(preco)}.
+
+Fórmula: (Nr Equipamentos x Nr Horas utilizadas/dia x Consumo/hora) x Nr dias de operação.
+${detalhes.join('\n')}
+
+Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}.
+Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)} = ${formatCurrency(valorTotal)}.`;
+      consolidados.push({
+        tipo_combustivel: tipoCombustivel,
+        total_litros_sem_margem: totalLitrosSemMargem,
+        total_litros: totalLitros,
+        valor_total: valorTotal,
+        itens: itensGrupo,
+        detalhamento,
+      });
+    });
+    setConsolidadosEngenharia(consolidados);
+  };
+  const salvarRegistrosConsolidadosEngenharia = async () => {
+    if (!ptrabId || consolidadosEngenharia.length === 0) return;
+    if (!refLPC) { toast.error("Configure a referência LPC antes de salvar"); if (lpcRef.current) { lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+    if (!formEngenharia.organizacao || !formEngenharia.ug) { toast.error("Selecione uma OM"); return; }
+    if (!rmFornecimento || !codugRmFornecimento) { toast.error("Selecione a RM de Fornecimento de Combustível"); return; }
+    if (formEngenharia.itens.length === 0) { toast.error("Adicione pelo menos um equipamento"); return; }
+    let fasesFinais = [...fasesAtividadeEngenharia];
+    if (customFaseAtividadeEngenharia.trim()) { fasesFinais = [...fasesFinais, customFaseAtividadeEngenharia.trim()]; }
+    const faseFinalString = fasesFinais.filter(f => f).join('; ');
+    if (!faseFinalString) { toast.error("Selecione ou digite pelo menos uma Fase da Atividade."); return; }
+    try {
+      setLoading(true);
+      if (editingId) {
+        const { error: deleteError } = await supabase
+          .from("classe_iii_registros")
+          .delete()
+          .eq("p_trab_id", ptrabId)
+          .eq("tipo_equipamento", "EQUIPAMENTO_ENGENHARIA")
+          .eq("organizacao", formEngenharia.organizacao)
+          .eq("ug", formEngenharia.ug);
+        if (deleteError) { console.error("Erro ao deletar registros existentes de engenharia para edição:", deleteError); throw deleteError; }
+      }
+      for (const consolidado of consolidadosEngenharia) {
+        const registro = {
+          p_trab_id: ptrabId,
+          tipo_equipamento: 'EQUIPAMENTO_ENGENHARIA' as TipoEquipamento,
+          tipo_equipamento_detalhe: null,
+          organizacao: formEngenharia.organizacao,
+          ug: formEngenharia.ug,
+          quantidade: consolidado.itens.reduce((sum, item) => sum + item.quantidade, 0),
+          potencia_hp: null,
+          horas_dia: null,
+          km_dia: null,
+          consumo_hora: null,
+          consumo_km_litro: null,
+          dias_operacao: formEngenharia.dias_operacao,
+          tipo_combustivel: consolidado.tipo_combustivel,
+          preco_litro: consolidado.tipo_combustivel === 'GASOLINA' ? (refLPC?.preco_gasolina ?? 0) : (refLPC?.preco_diesel ?? 0),
+          total_litros: consolidado.total_litros,
+          total_litros_sem_margem: consolidado.total_litros_sem_margem,
+          valor_total: consolidado.valor_total,
+          detalhamento: consolidado.detalhamento,
+          itens_equipamentos: JSON.parse(JSON.stringify(consolidado.itens)),
+          fase_atividade: faseFinalString,
+        };
+        const { error } = await supabase.from("classe_iii_registros").insert([registro]);
+        if (error) throw error;
+      }
+      toast.success(editingId ? "Registros de engenharia atualizados com sucesso!" : "Registros de engenharia salvos com sucesso!");
+      await updatePTrabStatusIfAberto(ptrabId);
+      resetFormFields();
+      setTipoSelecionado(null);
+      fetchRegistros();
+    } catch (error) {
+      console.error("Erro ao salvar/atualizar registros de engenharia:", error);
+      toast.error("Erro ao salvar/atualizar registros de engenharia");
+    } finally {
+      setLoading(false);
+    }
+  };
+  // FIM Lógica Equipamento de Engenharia
 
   if (!tipoSelecionado) {
     return (
@@ -1909,7 +1597,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                         <Input
                           type="number"
                           step="0.01"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-20"
+                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
                           value={formLPC.preco_diesel.toFixed(2)}
                           onChange={(e) => setFormLPC({...formLPC, preco_diesel: parseFloat(e.target.value) || 0})}
                           onKeyDown={handleEnterToNextField}
@@ -1926,7 +1614,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                         <Input
                           type="number"
                           step="0.01"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-20"
+                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
                           value={formLPC.preco_gasolina.toFixed(2)}
                           onChange={(e) => setFormLPC({...formLPC, preco_gasolina: parseFloat(e.target.value) || 0})}
                           onKeyDown={handleEnterToNextField}
@@ -2614,7 +2302,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                       <Input
                         type="number"
                         min="1"
-                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
                         value={formViatura.dias_operacao || ""}
                         onChange={(e) => setFormViatura({ ...formViatura, dias_operacao: parseInt(e.target.value) || 0 })}
                         placeholder="Ex: 7"
@@ -3216,202 +2904,324 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
   if (tipoSelecionado === 'EQUIPAMENTO_ENGENHARIA') {
     return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        <Button
-          variant="ghost"
-          onClick={handleCancelEdit}
-          className="mb-4"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
+      <div className="min-h-screen bg-background p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
+          <Button
+            variant="ghost"
+            onClick={handleCancelEdit}
+            className="mb-4"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Equipamento de Engenharia</CardTitle>
-            <CardDescription>
-              {editingId ? "Editar registro" : "Preencha os dados para calcular as necessidades"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form onSubmit={(e) => { e.preventDefault(); handleSalvar(); }}>
-              <div className="space-y-2">
-                <Label>Tipo de Equipamento *</Label>
-                <Select 
-                  value={formData.tipo_equipamento_especifico}
-                  onValueChange={handleTipoEspecificoChange}
-                  disabled={!refLPC}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {equipamentosDisponiveis.map(eq => (
-                      <SelectItem key={eq.nome} value={eq.nome}>
-                        {eq.nome} - {eq.combustivel} ({formatNumber(eq.consumo, 1)} {eq.unidade})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {formData.consumo_fixo > 0 && (
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">
-                    Consumo: {formatNumber(formData.consumo_fixo, 1)} L/h
-                  </Badge>
-                  <Badge variant="secondary">
-                    Combustível: {formData.tipo_combustivel}
-                  </Badge>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label>Organização Militar (OM) *</Label>
-                <OmSelector
-                  selectedOmId={formData.selectedOmId}
-                  onChange={handleOMChange}
-                  placeholder="Selecione a OM..."
-                  disabled={!refLPC}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>UG</Label>
-                <Input value={formData.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
-              </div>
-
-              {/* Campos de RM e CODUG de Fornecimento lado a lado */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="rmFornecimentoPadrao">RM de Fornecimento de Combustível *</Label>
-                  <RmSelector
-                    value={rmFornecimento}
-                    onChange={handleRMFornecimentoChange}
-                    placeholder="Selecione a RM de fornecimento..."
-                    disabled={!formData.organizacao}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>CODUG da RM de Fornecimento</Label>
-                  <Input value={codugRmFornecimento} readOnly disabled onKeyDown={handleEnterToNextField} />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Quantidade *</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={formData.quantidade === 0 ? "" : formData.quantidade.toString()}
-                  onChange={(e) => setFormData({ ...formData, quantidade: parseInt(e.target.value) || 1 })}
-                  placeholder="Ex: 1"
-                  disabled={!refLPC}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Horas por Dia *</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={formData.horas_dia === 0 ? "" : formData.horas_dia?.toString() || ""}
-                  onChange={(e) => setFormData({ ...formData, horas_dia: parseFloat(e.target.value) || undefined })}
-                  placeholder="Ex: 8"
-                  disabled={!refLPC}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Dias de Operação *</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={formData.dias_operacao === 0 ? "" : formData.dias_operacao.toString()}
-                  onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 1 })}
-                  placeholder="Ex: 7"
-                  disabled={!refLPC}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label>Preço por Litro (R$) *</Label>
-                  {refLPC && (
-                    <Badge variant="secondary" className="text-xs">
-                      Ref. LPC {refLPC.ambito}
-                    </Badge>
-                  )}
-                </div>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={formData.preco_litro === 0 ? "" : formData.preco_litro.toFixed(2)}
-                  onChange={(e) => setFormData({ ...formData, preco_litro: parseFloat(e.target.value) || 0 })}
-                  placeholder="Ex: 5.50"
-                  disabled={!refLPC}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-
-              {calculoPreview.total_litros > 0 && (
-                <div className="border-t pt-4 space-y-3">
-                  <h3 className="font-semibold">Resultado do Cálculo</h3>
-                  <p className="text-sm">
-                    <span className="font-medium">Consumo/hora:</span> {formatNumber(calculoPreview.consumo_hora, 2)} L/h
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Total de Litros (com 30%):</span> {formatNumber(calculoPreview.total_litros)} L
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Valor Total:</span> {formatCurrency(calculoPreview.valor_total)}
-                  </p>
+          <Card>
+            <CardHeader>
+              <CardTitle>Equipamento de Engenharia - Entrada por OM</CardTitle>
+              <CardDescription>
+                Configure os equipamentos de engenharia por Organização Militar
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <form onSubmit={(e) => { e.preventDefault(); salvarRegistrosConsolidadosEngenharia(); }}>
+                <div className="space-y-3">
+                  <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
                   
-                  <div className="space-y-2">
-                    <Label>Detalhamento (Memória de Cálculo)</Label>
-                    <Textarea
-                      value={calculoPreview.detalhamento}
-                      disabled
-                      rows={4}
-                      className="font-mono text-xs"
-                      onKeyDown={handleEnterToNextField}
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Organização Militar (OM) *</Label>
+                      <OmSelector
+                        selectedOmId={formEngenharia.selectedOmId}
+                        onChange={handleOMEngenhariaChange}
+                        placeholder="Selecione a OM..."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>UG</Label>
+                      <Input value={formEngenharia.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="rmFornecimentoEngenharia">RM de Fornecimento de Combustível *</Label>
+                      <RmSelector
+                        value={rmFornecimento}
+                        onChange={handleRMFornecimentoChange}
+                        placeholder="Selecione a RM de fornecimento..."
+                        disabled={!formEngenharia.organizacao}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>CODUG da RM de Fornecimento</Label>
+                      <Input value={codugRmFornecimento} readOnly disabled onKeyDown={handleEnterToNextField} />
+                    </div>
+                  </div>
+
+                  {/* Dias de Atividade e Fase da Atividade lado a lado */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Dias de Atividade *</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        value={formEngenharia.dias_operacao || ""}
+                        onChange={(e) => setFormEngenharia({ ...formEngenharia, dias_operacao: parseInt(e.target.value) || 0 })}
+                        placeholder="Ex: 7"
+                        onKeyDown={handleEnterToNextField}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Fase da Atividade *</Label>
+                      <Popover open={isPopoverOpenEngenharia} onOpenChange={setIsPopoverOpenEngenharia}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            type="button"
+                            className="w-full justify-between"
+                          >
+                            {fasesAtividadeEngenharia.length === 0 && !customFaseAtividadeEngenharia.trim()
+                              ? "Selecione as fases..."
+                              : [...fasesAtividadeEngenharia, customFaseAtividadeEngenharia.trim()].filter(f => f).join(', ')}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0" align="start">
+                          <Command>
+                            <CommandGroup>
+                              {FASES_PADRAO.map((fase) => (
+                                <CommandItem
+                                  key={fase}
+                                  value={fase}
+                                  onSelect={() => handleFaseChangeEngenharia(fase, !fasesAtividadeEngenharia.includes(fase))}
+                                  className="flex items-center justify-between cursor-pointer"
+                                >
+                                  <span>{fase}</span>
+                                  <Checkbox
+                                    checked={fasesAtividadeEngenharia.includes(fase)}
+                                    onCheckedChange={(checked) => handleFaseChangeEngenharia(fase, !!checked)}
+                                  />
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                            <div className="p-2 border-t">
+                              <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade (Opcional)</Label>
+                              <Input
+                                value={customFaseAtividadeEngenharia}
+                                onChange={(e) => setCustomFaseAtividadeEngenharia(e.target.value)}
+                                placeholder="Ex: Patrulhamento"
+                                onKeyDown={handleEnterToNextField}
+                              />
+                            </div>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </div>
                 </div>
-              )}
+                <div className="mb-6" />
 
-              <div className="flex gap-3 pt-4">
-                {editingId && (
-                  <Button
-                    variant="outline"
-                    type="button"
-                    onClick={handleCancelEdit}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Cancelar Edição
-                  </Button>
+                {formEngenharia.organizacao && (
+                  <div className="space-y-4 border-t pt-6" ref={addEngenhariaRef}>
+                    <h3 className="text-lg font-semibold">2. Adicionar Equipamento de Engenharia</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+                      <div className="space-y-2">
+                        <Label>Tipo de Equipamento *</Label>
+                        <Select 
+                          value={itemEngenhariaTemp.tipo_equipamento_especifico}
+                          onValueChange={handleTipoEngenhariaChange}
+                          disabled={!refLPC}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {equipamentosDisponiveis.map(eq => (
+                              <SelectItem key={eq.nome} value={eq.nome}>
+                                {eq.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Quantidade *</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          value={itemEngenhariaTemp.quantidade === 0 ? "" : itemEngenhariaTemp.quantidade.toString()}
+                          onChange={(e) => setItemEngenhariaTemp({ ...itemEngenhariaTemp, quantidade: parseInt(e.target.value) || 0 })}
+                          placeholder="Ex: 1"
+                          disabled={!refLPC}
+                          onKeyDown={handleEnterToNextField}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Horas/dia *</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          value={itemEngenhariaTemp.horas_dia === 0 ? "" : itemEngenhariaTemp.horas_dia.toString()}
+                          onChange={(e) => setItemEngenhariaTemp({ ...itemEngenhariaTemp, horas_dia: parseFloat(e.target.value) || 0 })}
+                          placeholder="Ex: 8"
+                          disabled={!refLPC}
+                          onKeyDown={handleEnterToNextField}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>&nbsp;</Label>
+                        <Button type="button" onClick={adicionarOuAtualizarItemEngenharia} className="w-full" disabled={!refLPC}>
+                          {editingEngenhariaItemIndex !== null ? "Atualizar Item" : "Adicionar"}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {itemEngenhariaTemp.consumo_fixo > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">
+                          Consumo: {formatNumber(itemEngenhariaTemp.consumo_fixo, 1)} L/h
+                        </Badge>
+                        <Badge variant="secondary">
+                          Combustível: {itemEngenhariaTemp.tipo_combustivel}
+                        </Badge>
+                      </div>
+                    )}
+                    {editingEngenhariaItemIndex !== null && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCancelEditEngenhariaItem}
+                        className="mt-2"
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Cancelar Edição do Item
+                      </Button>
+                    )}
+                  </div>
                 )}
-                <Button type="submit" disabled={loading || !refLPC}>
-                  {loading ? "Aguarde..." : (editingId ? "Atualizar Registro" : "Salvar Registro")}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+
+                {formEngenharia.itens.length > 0 && (
+                  <div className="space-y-4 border-t pt-6">
+                    <h3 className="text-lg font-semibold">3. Equipamentos Configurados</h3>
+                    
+                    <div className="space-y-2">
+                      {formEngenharia.itens.map((item, index) => (
+                        <Card key={index} className="p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <p className="font-medium">{item.tipo_equipamento_especifico}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {item.quantidade} unidade(s) • {formatNumber(item.horas_dia, 1)}h/dia • {formatNumber(item.consumo_fixo, 1)} L/h • {item.tipo_combustivel}
+                              </p>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditEngenhariaItem(item, index)}
+                                disabled={!refLPC}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removerItemEngenharia(index)}
+                                disabled={!refLPC}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {consolidadosEngenharia.length > 0 && (
+                  <div className="space-y-4 border-t pt-6">
+                    <h3 className="text-lg font-semibold">4. Consolidação por Combustível</h3>
+                    
+                    {consolidadosEngenharia.map((consolidado, index) => (
+                      <Card key={index} className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-lg">
+                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}
+                            </h4>
+                            <div className="text-right">
+                              <p className="text-sm text-muted-foreground">Total com 30%</p>
+                              <p className="text-lg font-bold">{formatCurrency(consolidado.valor_total)}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <p className="text-muted-foreground">Equipamentos</p>
+                              <p className="font-medium">{consolidado.itens.reduce((sum, item) => sum + item.quantidade, 0)} unidades</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Sem margem</p>
+                              <p className="font-medium">{formatNumber(consolidado.total_litros_sem_margem)} L</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Com margem (30%)</p>
+                              <p className="font-medium">{formatNumber(consolidado.total_litros)} L</p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Memória de Cálculo</Label>
+                            <Textarea
+                              value={consolidado.detalhamento}
+                              readOnly
+                              rows={6}
+                              className="font-mono text-xs"
+                              onKeyDown={handleEnterToNextField}
+                            />
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+
+                    <div className="flex gap-3 pt-4">
+                      {editingId && (
+                        <Button
+                          variant="outline"
+                          type="button"
+                          onClick={handleCancelEdit}
+                        >
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Cancelar Edição
+                        </Button>
+                      )}
+                      <Button type="submit" disabled={!refLPC || loading}>
+                        {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")} ({consolidadosEngenharia.length} {consolidadosEngenharia.length === 1 ? 'tipo' : 'tipos'} de combustível)
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
-  );
+    );
   }
 
   return null;
