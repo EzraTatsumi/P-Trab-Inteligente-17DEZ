@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Adicionado Table components
+import { cn } from "@/lib/utils";
 
 type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
 
@@ -1958,41 +1959,57 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Button
-                size="lg"
-                variant={tipoSelecionado === 'GERADOR' ? 'default' : 'outline'}
+              {/* Gerador */}
+              <Card
+                className={cn(
+                  "cursor-pointer hover:shadow-lg transition-shadow",
+                  tipoSelecionado === 'GERADOR' ? "border-primary ring-2 ring-primary/50" : "border-border"
+                )}
                 onClick={() => handleSelectEquipmentType('GERADOR')}
-                className="flex items-center justify-start h-auto py-4 px-4"
               >
-                <Zap className="h-6 w-6 mr-3" />
-                <span className="text-base font-semibold">Gerador</span>
-              </Button>
-              <Button
-                size="lg"
-                variant={tipoSelecionado === 'MOTOMECANIZACAO' ? 'default' : 'outline'}
+                <CardHeader className="flex flex-row items-center justify-start space-y-0 p-4">
+                  <Zap className={cn("h-6 w-6 mr-3", tipoSelecionado === 'GERADOR' ? "text-primary" : "text-muted-foreground")} />
+                  <CardTitle className="text-xl font-bold">Gerador</CardTitle>
+                </CardHeader>
+              </Card>
+
+              {/* Motomecanização */}
+              <Card
+                className={cn(
+                  "cursor-pointer hover:shadow-lg transition-shadow",
+                  tipoSelecionado === 'MOTOMECANIZACAO' ? "border-primary ring-2 ring-primary/50" : "border-border"
+                )}
                 onClick={() => handleSelectEquipmentType('MOTOMECANIZACAO')}
-                className="flex items-center justify-start h-auto py-4 px-4"
               >
-                <Truck className="h-6 w-6 mr-3" />
-                <span className="text-base font-semibold">Motomecanização</span>
-              </Button>
-              <Button
-                size="lg"
-                variant={tipoSelecionado === 'EMBARCACAO' ? 'default' : 'outline'}
+                <CardHeader className="flex flex-row items-center justify-start space-y-0 p-4">
+                  <Truck className={cn("h-6 w-6 mr-3", tipoSelecionado === 'MOTOMECANIZACAO' ? "text-primary" : "text-muted-foreground")} />
+                  <CardTitle className="text-xl font-bold">Motomecanização</CardTitle>
+                </CardHeader>
+              </Card>
+
+              {/* Embarcação */}
+              <Card
+                className={cn(
+                  "cursor-pointer hover:shadow-lg transition-shadow",
+                  tipoSelecionado === 'EMBARCACAO' ? "border-primary ring-2 ring-primary/50" : "border-border"
+                )}
                 onClick={() => handleSelectEquipmentType('EMBARCACAO')}
-                className="flex items-center justify-start h-auto py-4 px-4"
               >
-                <Ship className="h-6 w-6 mr-3" />
-                <span className="text-base font-semibold">Embarcação</span>
-              </Button>
-              {/* <Button
-                variant={tipoSelecionado === 'EQUIPAMENTO_ENGENHARIA' ? 'default' : 'outline'}
-                onClick={() => handleSelectEquipmentType('EQUIPAMENTO_ENGENHARIA')}
-                className="flex flex-col h-auto py-4"
+                <CardHeader className="flex flex-row items-center justify-start space-y-0 p-4">
+                  <Ship className={cn("h-6 w-6 mr-3", tipoSelecionado === 'EMBARCACAO' ? "text-primary" : "text-muted-foreground")} />
+                  <CardTitle className="text-xl font-bold">Embarcação</CardTitle>
+                </CardHeader>
+              </Card>
+              
+              {/* Equipamento de Engenharia (Placeholder) */}
+              <Card
+                className="opacity-50 cursor-not-allowed"
               >
-                <Wrench className="h-6 w-6 mb-2" />
-                Equip. Engenharia
-              </Button> */}
+                <CardHeader className="flex flex-row items-center justify-start space-y-0 p-4">
+                  <Wrench className="h-6 w-6 mr-3 text-muted-foreground" />
+                  <CardTitle className="text-xl font-bold text-muted-foreground">Equip. Engenharia</CardTitle>
+                </CardHeader>
+              </Card>
             </div>
 
             {tipoSelecionado === 'GERADOR' && (
