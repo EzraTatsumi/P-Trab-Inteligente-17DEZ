@@ -25,7 +25,7 @@ const defaultEmbarcacaoConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Motor de popa", tipo_combustivel: "GAS", consumo: 20, unidade: "L/h" },
   { nome_equipamento: "Emb Guardian 25", tipo_combustivel: "GAS", consumo: 100, unidade: "L/h" },
   { nome_equipamento: "Ferryboat", tipo_combustivel: "OD", consumo: 100, unidade: "L/h" },
-  { nome_equipamento: "Emb Regional", tipo_combustivel: "OD", consumo: 50, unidade: "L/h" },
+  { nome: "Emb Regional", tipo_combustivel: "OD", consumo: 50, unidade: "L/h" },
   { nome_equipamento: "Empurradores", tipo_combustivel: "OD", consumo: 80, unidade: "L/h" },
   { nome_equipamento: "Emb Manobra", tipo_combustivel: "OD", consumo: 30, unidade: "L/h" },
 ];
@@ -578,13 +578,13 @@ const DiretrizesCusteioPage = () => {
                 )}
               </div>
               
-              {/* SEÇÃO CLASSE III - MOTOMECANIZAÇÃO (VIATURAS) */}
+              {/* SEÇÃO CLASSE III - MOTOMECANIZAÇÃO */}
               <div className="border-t pt-4 mt-6">
                 <div 
                   className="flex items-center justify-between cursor-pointer py-2" 
                   onClick={() => setShowClasseIIIMotomecanizacaoConfig(!showClasseIIIMotomecanizacaoConfig)}
                 >
-                  <h3 className="text-lg font-semibold">Classe III - Motomecanização (Viaturas)</h3>
+                  <h3 className="text-lg font-semibold">Classe III - Motomecanização</h3>
                   {showClasseIIIMotomecanizacaoConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                 </div>
                 
