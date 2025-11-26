@@ -53,12 +53,14 @@ export const ImportPTrabOptionsDialog = ({
   // Lógica de análise de numeração
   const analysis = useMemo(() => {
     if (!selectedOm) {
+      // Se nenhuma OM foi selecionada, a sugestão é o número original, mas o campo fica vazio
+      // para forçar a seleção da OM antes de preencher.
       return {
         isSameOm: false,
         isConflict: false,
         suggestedNumber: originalPTrabNumber,
         message: "Selecione a OM de destino para analisar a numeração.",
-        initialValue: originalPTrabNumber, // Valor inicial para o campo
+        initialValue: originalPTrabNumber, // Mantém o original como valor inicial antes da seleção
       };
     }
 
@@ -92,16 +94,16 @@ export const ImportPTrabOptionsDialog = ({
       if (isConflict) {
         suggestedNumber = generateUniquePTrabNumber(existingPTrabNumbers);
         message = `OM de destino diferente da original (${importedOmName}). O número proposto (${newNumberWithSuffix}) conflita. Foi sugerido o próximo número base único.`;
+        initialValue = suggestedNumber; // Preenche com a sugestão única
       } else {
         suggestedNumber = newNumberWithSuffix;
         message = `OM de destino diferente da original (${importedOmName}). Sugestão: ${newNumberWithSuffix}`;
+        initialValue = newNumberWithSuffix; // Preenche com a sugestão com sufixo
       }
-      
-      // Se for OM diferente, o valor inicial do campo deve ser VAZIO.
-      initialValue = "";
     }
     
     // Atualiza o campo de número customizado com o valor inicial calculado
+    // Isso garante que o campo seja preenchido com a sugestão correta assim que a OM é selecionada.
     setCustomPTrabNumber(initialValue);
 
     return { isSameOm, isConflict, suggestedNumber, message, initialValue };
