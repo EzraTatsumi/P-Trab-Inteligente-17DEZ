@@ -848,7 +848,7 @@ const PTrabManager = () => {
           <div className="flex items-center gap-4"> {/* Grupo da esquerda: Título */}
             <div>
               <h1 className="text-3xl font-bold">Planos de Trabalho</h1>
-              <p className="text-muted-foreground">Gerencie seus P Trabs</p>
+              <p className="text-muted-foreground">Gerencie seu P Trab</p>
             </div>
           </div>
 
