@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,18 +29,6 @@ interface OmSelectorProps {
   omsList?: OMData[]; // Novo prop: lista de OMs pré-carregada
 }
 
-// Função auxiliar para limpar o nome da OM para fins de busca (remove acentos e caracteres não alfanuméricos)
-const cleanOmNameForSearch = (name: string) => {
-  // 1. Normaliza para remover acentos (NFD) e remove caracteres diacríticos ([\u0300-\u036f])
-  const normalized = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  // 2. Remove caracteres não alfanuméricos (exceto espaços) e converte para minúsculas
-  const cleanedWithSpaces = normalized.replace(/[^a-zA-Z0-9\s]/g, '').toLowerCase();
-  // 3. Versão sem espaços para busca de substrings
-  const cleanedWithoutSpaces = cleanedWithSpaces.replace(/\s/g, '');
-  
-  return { cleanedWithSpaces, cleanedWithoutSpaces };
-};
-
 export function OmSelector({
   selectedOmId,
   onChange,
@@ -52,9 +40,6 @@ export function OmSelector({
   const [open, setOpen] = useState(false);
   const [oms, setOms] = useState<OMData[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Ref para o CommandInput
-  const inputRef = useRef<HTMLInputElement>(null); 
 
   // Se omsList for fornecido, usa ele. Caso contrário, carrega do Supabase.
   useEffect(() => {
@@ -65,17 +50,6 @@ export function OmSelector({
       loadOMs();
     }
   }, [filterByRM, omsList]);
-
-  // Efeito para focar o input quando o popover abre
-  useEffect(() => {
-    if (open) {
-      // Pequeno delay para garantir que o PopoverContent esteja montado
-      const timer = setTimeout(() => {
-        inputRef.current?.focus();
-      }, 10); 
-      return () => clearTimeout(timer);
-    }
-  }, [open]);
 
   const loadOMs = async () => {
     setLoading(true);
@@ -101,22 +75,6 @@ export function OmSelector({
 
   const selectedOM = oms.find(om => om.id === selectedOmId);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    // Se o popover já estiver aberto, não precisamos fazer nada aqui.
-    if (open) return;
-
-    // Verifica se a tecla pressionada é um caractere de pesquisa (letra, número, etc.)
-    const isSearchKey = e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey;
-
-    if (isSearchKey) {
-      // Previne o comportamento padrão do botão (como o Enter ou Space)
-      e.preventDefault(); 
-      
-      // Abre o popover
-      setOpen(true);
-    }
-  };
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -126,7 +84,6 @@ export function OmSelector({
           aria-expanded={open}
           className="w-full justify-between"
           disabled={disabled || loading}
-          onKeyDown={handleKeyDown} // Adiciona o handler de teclado
         >
           {loading ? (
             "Carregando..."
@@ -141,39 +98,36 @@ export function OmSelector({
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] max-w-[400px] p-0" align="start">
         <Command>
-          <CommandInput ref={inputRef} placeholder="Buscar OM..." />
+          <CommandInput placeholder="Buscar OM..." />
           <CommandList>
             <CommandEmpty>Nenhuma OM encontrada.</CommandEmpty>
             <CommandGroup>
-              {oms.map((om) => {
-                const { cleanedWithSpaces, cleanedWithoutSpaces } = cleanOmNameForSearch(om.nome_om);
-                return (
-                  <CommandItem
-                    key={om.id}
-                    // Inclui o nome original, a versão limpa com espaços, a versão limpa sem espaços, CODUG e RM para busca
-                    value={`${om.nome_om} ${cleanedWithSpaces} ${cleanedWithoutSpaces} ${om.codug_om} ${om.rm_vinculacao} ${om.id}`} 
-                    onSelect={(currentValue) => {
-                      // O currentValue agora é a string completa, precisamos encontrar o ID
-                      const selected = oms.find(o => o.id === om.id); // Usamos o om.id do loop para garantir a seleção correta
-                      onChange(selected?.id === selectedOmId ? undefined : selected); // Passa o objeto completo ou undefined
-                      setOpen(false);
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        selectedOmId === om.id ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    <div className="flex flex-col">
-                      <span>{om.nome_om}</span>
-                      <span className="text-xs text-muted-foreground">
-                        CODUG: {om.codug_om} | {om.rm_vinculacao}
-                      </span>
-                    </div>
-                  </CommandItem>
-                );
-              })}
+              {oms.map((om) => (
+                <CommandItem
+                  key={om.id}
+                  // Alterado o valor para incluir nome e CODUG, melhorando a busca do cmdk
+                  value={`${om.nome_om} ${om.codug_om} ${om.rm_vinculacao} ${om.id}`} 
+                  onSelect={(currentValue) => {
+                    // O currentValue agora é a string completa, precisamos encontrar o ID
+                    const selected = oms.find(o => o.id === om.id); // Usamos o om.id do loop para garantir a seleção correta
+                    onChange(selected?.id === selectedOmId ? undefined : selected); // Passa o objeto completo ou undefined
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      selectedOmId === om.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <div className="flex flex-col">
+                    <span>{om.nome_om}</span>
+                    <span className="text-xs text-muted-foreground">
+                      CODUG: {om.codug_om} | {om.rm_vinculacao}
+                    </span>
+                  </div>
+                </CommandItem>
+              ))}
             </CommandGroup>
           </CommandList>
         </Command>

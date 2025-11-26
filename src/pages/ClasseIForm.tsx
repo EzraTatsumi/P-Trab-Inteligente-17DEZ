@@ -780,6 +780,30 @@ export default function ClasseIForm() {
               </div>
             </div>
 
+            {/* Botão Cadastrar/Atualizar e Cancelar */}
+            <div className="flex justify-end gap-2">
+              {editingRegistroId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={resetFormFields}
+                  className="gap-2"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Cancelar Edição
+                </Button>
+              )}
+              <Button
+                type="submit"
+                className="gap-2"
+                disabled={loading || !om || !ug || !omQS || !ugQS || efetivo <= 0 || diasOperacao <= 0 || (!displayFases)}
+              >
+                <Plus className="h-4 w-4" />
+                {loading ? "Aguarde..." : (editingRegistroId ? "Atualizar OM" : "Cadastrar OM")}
+              </Button>
+            </div>
+          </form>
+
             {/* Preview dos Cálculos */}
             {efetivo > 0 && diasOperacao > 0 && (
               <div className="space-y-6 mt-6">
@@ -859,32 +883,38 @@ export default function ClasseIForm() {
                     </span>
                   </div>
                 </div>
+
+                {/* Memória de Cálculo */}
+                <div className="p-6 bg-muted/50 rounded-lg">
+                  <h3 className="font-semibold text-lg mb-4">Memória de Cálculo</h3>
+                  <div className="space-y-4 text-sm">
+                    <div>
+                      <p className="font-semibold mb-2">QS - Quantitativo de Subsistência:</p>
+                      <p className="text-muted-foreground">
+                        • Complemento: [{efetivo} militares x {nrRefInt} Ref Int x (R$ {valorQS.toFixed(2)}/3) x {diasOperacao} dias] = {formatCurrency(calculos.complementoQS)}
+                      </p>
+                      <p className="text-muted-foreground">
+                        • Etapa: [{efetivo} militares x R$ {valorQS.toFixed(2)} x {calculos.diasEtapaSolicitada} dias] = {formatCurrency(calculos.etapaQS)}
+                      </p>
+                      <p className="font-semibold mt-2">Total QS: {formatCurrency(calculos.totalQS)}</p>
+                    </div>
+                    
+                    <div className="h-px bg-border" />
+                    
+                    <div>
+                      <p className="font-semibold mb-2">QR - Quantitativo de Rancho:</p>
+                      <p className="text-muted-foreground">
+                        • Complemento: [{efetivo} militares x {nrRefInt} Ref Int x (R$ {valorQR.toFixed(2)}/3) x {diasOperacao} dias] = {formatCurrency(calculos.complementoQR)}
+                      </p>
+                      <p className="text-muted-foreground">
+                        • Etapa: [{efetivo} militares x R$ {valorQR.toFixed(2)} x {calculos.diasEtapaSolicitada} dias] = {formatCurrency(calculos.etapaQR)}
+                      </p>
+                      <p className="font-semibold mt-2">Total QR: {formatCurrency(calculos.totalQR)}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
-
-            {/* Botão Cadastrar/Atualizar e Cancelar (MOVIDO PARA O FINAL) */}
-            <div className="flex justify-end gap-2 mt-4">
-              {editingRegistroId && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={resetFormFields}
-                  className="gap-2"
-                >
-                  <XCircle className="h-4 w-4" />
-                  Cancelar Edição
-                </Button>
-              )}
-              <Button
-                type="submit"
-                className="gap-2"
-                disabled={loading || !om || !ug || !omQS || !ugQS || efetivo <= 0 || diasOperacao <= 0 || (!displayFases)}
-              >
-                <Plus className="h-4 w-4" />
-                {loading ? "Aguarde..." : (editingRegistroId ? "Atualizar OM" : "Cadastrar OM")}
-              </Button>
-            </div>
-          </form>
 
             {/* Tabela de Registros */}
             {registros.length > 0 && (
@@ -904,9 +934,9 @@ export default function ClasseIForm() {
                     <table className="w-full table-fixed">
                       <thead className="bg-muted">
                         <tr>
-                          <th className="text-left p-3 font-semibold text-sm w-[10%]">OM Destino (QR)</th>
+                          <th className="text-left p-3 font-semibold text-sm w-[12%]">OM Destino (QR)</th>
                           <th className="text-center p-3 font-semibold text-sm w-[9%]">UG (QR)</th>
-                          <th className="text-left p-3 font-semibold text-sm w-[10%]">RM QS</th>
+                          <th className="text-left p-3 font-semibold text-sm w-[12%]">RM QS</th>
                           <th className="text-center p-3 font-semibold text-sm w-[10%]">CODUG RM QS</th>
                           <th className="text-center p-3 font-semibold text-sm w-[8%]">Efetivo</th>
                           <th className="text-center p-3 font-semibold text-sm w-[8%]">Dias</th>
