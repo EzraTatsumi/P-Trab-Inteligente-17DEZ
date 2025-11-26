@@ -16,7 +16,7 @@ import { useFormNavigation } from "@/hooks/useFormNavigation";
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
-  { nome_equipamento: "Gerador até 15 kva OD", tipo_combustivel: "OD", consumo: 4.0, unidade: "L/h" },
+  { nome: "Gerador até 15 kva OD", tipo_combustivel: "OD", consumo: 4.0, unidade: "L/h" },
   { nome_equipamento: "Gerador acima de 50 kva", tipo_combustivel: "OD", consumo: 20.0, unidade: "L/h" },
 ];
 
@@ -27,6 +27,15 @@ const defaultEmbarcacaoConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Emb Regional", tipo_combustivel: "OD", consumo: 50, unidade: "L/h" },
   { nome_equipamento: "Empurradores", tipo_combustivel: "OD", consumo: 80, unidade: "L/h" },
   { nome_equipamento: "Emb Manobra", tipo_combustivel: "OD", consumo: 30, unidade: "L/h" },
+];
+
+const defaultMotomecanizacaoConfig: DiretrizEquipamentoForm[] = [
+  { nome_equipamento: "Vtr Adm Pqn Porte - Adm Pqn", tipo_combustivel: "GAS", consumo: 8, unidade: "km/L" },
+  { nome_equipamento: "Vtr Adm Pqn Porte - Pick-up", tipo_combustivel: "OD", consumo: 7, unidade: "km/L" },
+  { nome_equipamento: "Vtr Adm Pqn Porte - Van/Micro", tipo_combustivel: "OD", consumo: 6, unidade: "km/L" },
+  { nome_equipamento: "Vtr Op Leve - Marruá", tipo_combustivel: "OD", consumo: 5, unidade: "km/L" },
+  { nome_equipamento: "Vtr Op Gde Porte - Vtr 5 ton", tipo_combustivel: "OD", consumo: 3, unidade: "km/L" },
+  { nome_equipamento: "Motocicleta - até 1.000cc", tipo_combustivel: "GAS", consumo: 15, unidade: "km/L" },
 ];
 
 const defaultDiretrizes = (year: number) => ({
@@ -45,9 +54,12 @@ const DiretrizesCusteioPage = () => {
   const [showClasseIAlimentacaoConfig, setShowClasseIAlimentacaoConfig] = useState(false);
   const [showClasseIIIGeradoresConfig, setShowClasseIIIGeradoresConfig] = useState(false);
   const [showClasseIIIEmbarcacoesConfig, setShowClasseIIIEmbarcacoesConfig] = useState(false);
+  const [showClasseIIIMotomecanizacaoConfig, setShowClasseIIIMotomecanizacaoConfig] = useState(false); // NOVO ESTADO
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
   const [embarcacaoConfig, setEmbarcacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultEmbarcacaoConfig);
+  const [motomecanizacaoConfig, setMotomecanizacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultMotomecanizacaoConfig); // NOVO ESTADO
+  
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -131,7 +143,8 @@ const DiretrizesCusteioPage = () => {
           observacoes: data.observacoes || "",
         });
 
-        const { data: equipamentosData } = await supabase
+        // Carregar Geradores
+        const { data: geradoresData } = await supabase
           .from("diretrizes_equipamentos_classe_iii")
           .select("*")
           .eq("user_id", user.id)
@@ -139,8 +152,8 @@ const DiretrizesCusteioPage = () => {
           .eq("categoria", "GERADOR")
           .eq("ativo", true);
 
-        if (equipamentosData && equipamentosData.length > 0) {
-          setGeradorConfig(equipamentosData.map(eq => ({
+        if (geradoresData && geradoresData.length > 0) {
+          setGeradorConfig(geradoresData.map(eq => ({
             nome_equipamento: eq.nome_equipamento,
             tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
             consumo: Number(eq.consumo),
@@ -150,7 +163,7 @@ const DiretrizesCusteioPage = () => {
           setGeradorConfig(defaultGeradorConfig);
         }
 
-        // Carregar embarcações
+        // Carregar Embarcações
         const { data: embarcacoesData } = await supabase
           .from("diretrizes_equipamentos_classe_iii")
           .select("*")
@@ -169,10 +182,32 @@ const DiretrizesCusteioPage = () => {
         } else {
           setEmbarcacaoConfig(defaultEmbarcacaoConfig);
         }
+        
+        // Carregar Motomecanização (NOVO)
+        const { data: motomecanizacaoData } = await supabase
+          .from("diretrizes_equipamentos_classe_iii")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("ano_referencia", data.ano_referencia)
+          .eq("categoria", "MOTOMECANIZACAO")
+          .eq("ativo", true);
+
+        if (motomecanizacaoData && motomecanizacaoData.length > 0) {
+          setMotomecanizacaoConfig(motomecanizacaoData.map(eq => ({
+            nome_equipamento: eq.nome_equipamento,
+            tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
+            consumo: Number(eq.consumo),
+            unidade: eq.unidade as 'L/h' | 'km/L',
+          })));
+        } else {
+          setMotomecanizacaoConfig(defaultMotomecanizacaoConfig);
+        }
+
       } else {
         setDiretrizes(defaultDiretrizes(year));
         setGeradorConfig(defaultGeradorConfig);
         setEmbarcacaoConfig(defaultEmbarcacaoConfig);
+        setMotomecanizacaoConfig(defaultMotomecanizacaoConfig); // Reset Motomecanização
       }
     } catch (error: any) {
       console.error("Erro ao carregar diretrizes:", error);
@@ -225,53 +260,38 @@ const DiretrizesCusteioPage = () => {
         toast.success("Diretrizes criadas!");
       }
 
-      await supabase
-        .from("diretrizes_equipamentos_classe_iii")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ano_referencia", diretrizes.ano_referencia!)
-        .eq("categoria", "GERADOR");
-
-      const equipamentosParaSalvar = geradorConfig
-        .filter(g => g.nome_equipamento && g.consumo > 0)
-        .map(g => ({
-          user_id: user.id,
-          ano_referencia: diretrizes.ano_referencia,
-          categoria: "GERADOR",
-          ...g,
-        }));
-
-      if (equipamentosParaSalvar.length > 0) {
-        const { error: eqError } = await supabase
+      // --- SALVAR EQUIPAMENTOS ---
+      
+      const saveEquipamentos = async (categoria: 'GERADOR' | 'EMBARCACAO' | 'MOTOMECANIZACAO' | 'EQUIPAMENTO_ENGENHARIA', config: DiretrizEquipamentoForm[]) => {
+        // 1. Deletar antigos
+        await supabase
           .from("diretrizes_equipamentos_classe_iii")
-          .insert(equipamentosParaSalvar);
-        if (eqError) throw eqError;
-      }
+          .delete()
+          .eq("user_id", user.id)
+          .eq("ano_referencia", diretrizes.ano_referencia!)
+          .eq("categoria", categoria);
 
-      // Deletar embarcações antigas
-      await supabase
-        .from("diretrizes_equipamentos_classe_iii")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ano_referencia", diretrizes.ano_referencia!)
-        .eq("categoria", "EMBARCACAO");
+        // 2. Inserir novos
+        const equipamentosParaSalvar = config
+          .filter(g => g.nome_equipamento && g.consumo > 0)
+          .map(g => ({
+            user_id: user.id,
+            ano_referencia: diretrizes.ano_referencia,
+            categoria: categoria,
+            ...g,
+          }));
 
-      // Inserir novas embarcações
-      const embarcacoesParaSalvar = embarcacaoConfig
-        .filter(e => e.nome_equipamento && e.consumo > 0)
-        .map(e => ({
-          user_id: user.id,
-          ano_referencia: diretrizes.ano_referencia,
-          categoria: "EMBARCACAO",
-          ...e,
-        }));
+        if (equipamentosParaSalvar.length > 0) {
+          const { error: eqError } = await supabase
+            .from("diretrizes_equipamentos_classe_iii")
+            .insert(equipamentosParaSalvar);
+          if (eqError) throw eqError;
+        }
+      };
 
-      if (embarcacoesParaSalvar.length > 0) {
-        const { error: embError } = await supabase
-          .from("diretrizes_equipamentos_classe_iii")
-          .insert(embarcacoesParaSalvar);
-        if (embError) throw embError;
-      }
+      await saveEquipamentos("GERADOR", geradorConfig);
+      await saveEquipamentos("EMBARCACAO", embarcacaoConfig);
+      await saveEquipamentos("MOTOMECANIZACAO", motomecanizacaoConfig); // SALVAR MOTOMECANIZAÇÃO
 
       await loadAvailableYears();
     } catch (error: any) {
@@ -556,6 +576,103 @@ const DiretrizesCusteioPage = () => {
                       >
                         <Plus className="mr-2 h-4 w-4" />
                         Adicionar Embarcação
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              
+              {/* NOVO BLOCO: CLASSE III - MOTOMECANIZAÇÃO */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseIIIMotomecanizacaoConfig(!showClasseIIIMotomecanizacaoConfig)}
+                >
+                  <h3 className="text-lg font-semibold">Classe III - Motomecanização (Viaturas)</h3>
+                  {showClasseIIIMotomecanizacaoConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseIIIMotomecanizacaoConfig && (
+                  <Card>
+                    <CardContent className="space-y-4 pt-4">
+                      {motomecanizacaoConfig.map((viatura, index) => (
+                        <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
+                          <div className="col-span-5">
+                            <Label className="text-xs">Tipo de Viatura</Label>
+                            <Input
+                              value={viatura.nome_equipamento}
+                              onChange={(e) => {
+                                const novasViaturas = [...motomecanizacaoConfig];
+                                novasViaturas[index] = { ...novasViaturas[index], nome_equipamento: e.target.value };
+                                setMotomecanizacaoConfig(novasViaturas);
+                              }}
+                              placeholder="Ex: Vtr Adm Pqn Porte - Adm Pqn"
+                              onKeyDown={handleEnterToNextField}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="text-xs">Combustível</Label>
+                            <Select
+                              value={viatura.tipo_combustivel}
+                              onValueChange={(val: 'GAS' | 'OD') => {
+                                const novasViaturas = [...motomecanizacaoConfig];
+                                novasViaturas[index] = { ...novasViaturas[index], tipo_combustivel: val };
+                                setMotomecanizacaoConfig(novasViaturas);
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="GAS">Gasolina</SelectItem>
+                                <SelectItem value="OD">Diesel</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="text-xs">Consumo</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              value={viatura.consumo}
+                              onChange={(e) => {
+                                const novasViaturas = [...motomecanizacaoConfig];
+                                novasViaturas[index] = { ...novasViaturas[index], consumo: parseFloat(e.target.value) || 0 };
+                                setMotomecanizacaoConfig(novasViaturas);
+                              }}
+                              onKeyDown={handleEnterToNextField}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="text-xs">Unidade</Label>
+                            <Input value="km/L" disabled className="bg-muted text-muted-foreground" onKeyDown={handleEnterToNextField} />
+                          </div>
+                          <div className="col-span-1 flex justify-end">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setMotomecanizacaoConfig(motomecanizacaoConfig.filter((_, i) => i !== index))}
+                              type="button"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setMotomecanizacaoConfig([
+                          ...motomecanizacaoConfig,
+                          { nome_equipamento: "", tipo_combustivel: "GAS", consumo: 0, unidade: "km/L" }
+                        ])} 
+                        className="w-full"
+                        type="button"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Adicionar Viatura
                       </Button>
                     </CardContent>
                   </Card>
