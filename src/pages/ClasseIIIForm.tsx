@@ -575,6 +575,8 @@ export default function ClasseIIIForm() {
 
     if (tipoSelecionado === 'MOTOMECANIZACAO') {
       if (formData.km_dia) {
+        // Esta lógica não é mais usada para Motomecanização, mas mantida para Equipamento de Engenharia
+        // A lógica de Motomecanização está nos consolidados
         const litros_dia = formData.km_dia / formData.consumo_fixo;
         litrosSem30 = formData.quantidade * litros_dia * formData.dias_operacao;
         formulaDetalhada = `(Nr Viaturas x Nr Km percorridos/dia ÷ Consumo km/L) x Nr dias de operação.`;
@@ -1095,9 +1097,9 @@ Valor: ${formatNumber(litrosCom30)} L ${combustivelLabel} x ${precoFormatado} = 
         const [ano, mes, dia] = data.split('-');
         return `${dia}/${mes}/${ano}`;
       };
-      const dataInicioFormatada = formatarData(refLPC.data_inicio_consulta);
-      const dataFimFormatada = formatarData(refLPC.data_fim_consulta);
-      const localConsulta = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? `(${refLPC.nome_local})` : '';
+      const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
+      const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
+      const localConsulta = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? `(${refLPC.nome_local})` : '';
       
       detalhamento += `\n- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'} - ${formatCurrency(precoLitro)}.\n\n`;
       detalhamento += `Total: ${formatNumber(totalLitrosSemMargem)} L + 30% = ${formatNumber(totalLitros)} L ${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}.\n`;
@@ -2355,7 +2357,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     <h3 className="text-lg font-semibold">2. Adicionar Geradores</h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
-                      <div className="space-y-2">
+                      <div className="space-y-2 lg:col-span-2">
                         <Label>Tipo de Gerador *</Label>
                         <Select 
                           value={itemGeradorTemp.tipo_equipamento_especifico}
@@ -2368,7 +2370,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           <SelectContent>
                             {equipamentosDisponiveis.map(eq => (
                               <SelectItem key={eq.nome} value={eq.nome}>
-                                {eq.nome}
+                                {eq.nome} - {eq.combustivel === 'GAS' ? 'Gasolina' : 'Diesel'} ({formatNumber(eq.consumo, 1)} {eq.unidade})
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -2403,8 +2405,12 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           onKeyDown={handleEnterToNextField}
                         />
                       </div>
+                      
+                      <div className="space-y-2 lg:col-span-2">
+                        {/* Espaço vazio para alinhar o botão */}
+                      </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-2 lg:col-span-2">
                         <Label>&nbsp;</Label>
                         <Button type="button" onClick={adicionarOuAtualizarItemGerador} className="w-full" disabled={!refLPC}>
                           {editingGeradorItemIndex !== null ? "Atualizar Item" : "Adicionar"}
@@ -2693,7 +2699,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                             <SelectContent>
                               {equipamentosDisponiveis.map(eq => (
                                 <SelectItem key={eq.nome} value={eq.nome}>
-                                  {eq.nome}
+                                  {eq.nome} - {eq.combustivel === 'GAS' ? 'Gasolina' : 'Diesel'} ({formatNumber(eq.consumo, 1)} {eq.unidade})
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -3021,7 +3027,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     <h3 className="text-lg font-semibold">2. Adicionar Embarcações</h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
-                      <div className="space-y-2">
+                      <div className="space-y-2 lg:col-span-2">
                         <Label>Tipo de Embarcação *</Label>
                         <Select 
                           value={itemEmbarcacaoTemp.tipo_equipamento_especifico}
@@ -3034,7 +3040,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           <SelectContent>
                             {equipamentosDisponiveis.map(eq => (
                               <SelectItem key={eq.nome} value={eq.nome}>
-                                {eq.nome}
+                                {eq.nome} - {eq.combustivel === 'GAS' ? 'Gasolina' : 'Diesel'} ({formatNumber(eq.consumo, 1)} {eq.unidade})
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -3069,8 +3075,12 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           onKeyDown={handleEnterToNextField}
                         />
                       </div>
+                      
+                      <div className="space-y-2 lg:col-span-2">
+                        {/* Espaço vazio para alinhar o botão */}
+                      </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-2 lg:col-span-2">
                         <Label>&nbsp;</Label>
                         <Button type="button" onClick={adicionarOuAtualizarItemEmbarcacao} className="w-full" disabled={!refLPC}>
                           {editingEmbarcacaoItemIndex !== null ? "Atualizar Item" : "Adicionar"}
@@ -3249,7 +3259,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   <SelectContent>
                     {equipamentosDisponiveis.map(eq => (
                       <SelectItem key={eq.nome} value={eq.nome}>
-                        {eq.nome} - {eq.combustivel} ({formatNumber(eq.consumo, 1)} {eq.unidade})
+                        {eq.nome} - {eq.combustivel === 'GAS' ? 'Gasolina' : 'Diesel'} ({formatNumber(eq.consumo, 1)} {eq.unidade})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -3356,13 +3366,14 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   type="number"
                   min="0"
                   step="0.01"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
                   value={formData.preco_litro === 0 ? "" : formData.preco_litro.toFixed(2)}
                   onChange={(e) => setFormData({ ...formData, preco_litro: parseFloat(e.target.value) || 0 })}
                   placeholder="Ex: 5.50"
                   disabled={!refLPC}
                   onKeyDown={handleEnterToNextField}
                 />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/litro</span>
               </div>
 
               {calculoPreview.total_litros > 0 && (
