@@ -136,25 +136,25 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
 
           {/* Classe III - Combustíveis (Item principal) */}
           <div className="space-y-2 pt-2">
-            {/* Usamos o AccordionItem como o container principal para o item de Classe III */}
+            <div className="flex justify-between text-sm border-b pb-2 border-border/50">
+              <div className="flex items-center gap-2 text-foreground">
+                <Fuel className="h-4 w-4 text-orange-500" />
+                Classe III (Combustíveis)
+              </div>
+              <span className="font-medium text-foreground">
+                {formatCurrency(totals.totalLogisticoND39)}
+              </span>
+            </div>
+            
+            {/* Detalhamento da Classe III - AGORA COLAPSÁVEL */}
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="item-1" className="border-b-0">
-                
-                {/* O Trigger agora contém o título e o valor, e a seta é renderizada automaticamente à direita */}
                 <AccordionTrigger className={cn(
-                  "py-1 text-sm font-medium text-foreground hover:no-underline transition-colors",
-                  "flex justify-between w-full pr-0 border-b pb-2 border-border/50"
+                  "py-1 text-xs text-muted-foreground hover:no-underline hover:text-foreground transition-colors",
+                  "flex justify-end w-full pr-0" // Alinha o trigger à direita
                 )}>
-                  <div className="flex items-center gap-2 text-foreground">
-                    <Fuel className="h-4 w-4 text-orange-500" />
-                    Classe III (Combustíveis)
-                  </div>
-                  <span className="font-medium text-foreground flex items-center gap-2">
-                    {formatCurrency(totals.totalLogisticoND39)}
-                    {/* A seta é renderizada aqui pelo AccordionTrigger */}
-                  </span>
+                  {/* Seta de expansão */}
                 </AccordionTrigger>
-                
                 <AccordionContent className="pt-1 pb-0">
                   <div className="space-y-1 pl-6 text-xs">
                     <div className="flex justify-between text-muted-foreground">
