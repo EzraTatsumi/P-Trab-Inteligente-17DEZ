@@ -1967,6 +1967,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
             <div className="flex justify-end gap-2 mt-4">
               <Button 
+                type="button" // Adicionado type="button"
                 onClick={handleFetchPrices} 
                 disabled={apiLoading || loading || !formLPC.data_inicio_consulta || !formLPC.data_fim_consulta}
                 variant="secondary"
