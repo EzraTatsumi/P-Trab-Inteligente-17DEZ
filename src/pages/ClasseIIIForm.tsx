@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check, Cloud } from "lucide-react"; // Adicionado Cloud
+import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check, Cloud, Tractor } from "lucide-react"; // Adicionado Cloud, Tractor
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
@@ -269,6 +269,8 @@ export default function ClasseIIIForm() {
     ug: "",
     tipo_equipamento_especifico: "",
     quantidade: 1,
+    horas_dia: undefined,
+    km_dia: undefined,
     dias_operacao: 1,
     tipo_combustivel: "DIESEL",
     consumo_fixo: 0,
@@ -635,6 +637,8 @@ export default function ClasseIIIForm() {
       ug: "",
       tipo_equipamento_especifico: "",
       quantidade: 1,
+      horas_dia: undefined,
+      km_dia: undefined,
       dias_operacao: 1,
       tipo_combustivel: "DIESEL",
       consumo_fixo: 0,
@@ -1024,7 +1028,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       setItemViaturaTemp({ ...itemViaturaTemp, tipo_equipamento_especifico: tipoNome, tipo_combustivel: novoCombustivel, consumo_fixo: equipamento.consumo });
     }
   };
-  const adicionarOuAtualizarItemViatura = () => {
+  const adicionarOu AtualizarItemViatura = () => {
     if (!itemViaturaTemp.tipo_equipamento_especifico || itemViaturaTemp.quantidade <= 0 || itemViaturaTemp.distancia_percorrida <= 0 || itemViaturaTemp.quantidade_deslocamentos <= 0) {
       toast.error("Preencha todos os campos do item");
       return;
@@ -1687,7 +1691,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   onClick={() => handleSelectEquipmentType('MOTOMECANIZACAO')}
                   disabled={!refLPC}
                 >
-                  <Fuel className="mr-3 h-6 w-6" />
+                  <Tractor className="mr-3 h-6 w-6" />
                   Motomecanização
                 </Button>
               </div>
@@ -1697,7 +1701,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-xl font-bold flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-accent" /> {/* Ícone de estrela */}
+                        <Sparkles className="h-5 w-5" /> {/* Ícone de estrela */}
                         OMs Cadastradas
                       </h3>
                       <Badge variant="secondary" className="text-sm">
