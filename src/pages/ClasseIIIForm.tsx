@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check, Cloud } from "lucide-react"; // Adicionado Cloud
+import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check, Cloud, OilCan } from "lucide-react"; // Adicionado OilCan
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
@@ -24,7 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 
-type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
+type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO' | 'LUBRIFICANTE';
 
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
@@ -174,6 +174,28 @@ interface ConsolidadoEngenharia {
 }
 // FIM NOVAS INTERFACES
 
+// NOVAS INTERFACES PARA LUBRIFICANTE
+interface ItemLubrificante {
+  nome_lubrificante: string;
+  quantidade: number; // Quantidade em litros/unidades
+  unidade: 'L' | 'UN';
+  preco_unitario: number;
+}
+
+interface FormDataLubrificante {
+  selectedOmId?: string;
+  organizacao: string;
+  ug: string;
+  itens: ItemLubrificante[];
+}
+
+interface ConsolidadoLubrificante {
+  total_valor: number;
+  itens: ItemLubrificante[];
+  detalhamento: string;
+}
+// FIM NOVAS INTERFACES
+
 export default function ClasseIIIForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -205,6 +227,7 @@ export default function ClasseIIIForm() {
   const addViaturaRef = useRef<HTMLDivElement>(null);
   const addEmbarcacaoRef = useRef<HTMLDivElement>(null);
   const addEngenhariaRef = useRef<HTMLDivElement>(null); // Novo ref
+  const addLubrificanteRef = useRef<HTMLDivElement>(null); // Novo ref para Lubrificante
   const { handleEnterToNextField } = useFormNavigation();
   
   // Estados para Fase da Atividade - Gerador
@@ -364,6 +387,24 @@ export default function ClasseIIIForm() {
   const [consolidadosEngenharia, setConsolidadosEngenharia] = useState<ConsolidadoEngenharia[]>([]);
   // FIM NOVOS ESTADOS
 
+  // NOVOS ESTADOS PARA LUBRIFICANTE
+  const [formLubrificante, setFormLubrificante] = useState<FormDataLubrificante>({
+    selectedOmId: undefined,
+    organizacao: "",
+    ug: "",
+    itens: [],
+  });
+
+  const [itemLubrificanteTemp, setItemLubrificanteTemp] = useState<ItemLubrificante>({
+    nome_lubrificante: "",
+    quantidade: 0,
+    unidade: 'L',
+    preco_unitario: 0,
+  });
+  const [editingLubrificanteItemIndex, setEditingLubrificanteItemIndex] = useState<number | null>(null);
+  const [consolidadoLubrificante, setConsolidadoLubrificante] = useState<ConsolidadoLubrificante | null>(null);
+  // FIM NOVOS ESTADOS
+
   useEffect(() => {
     if (!ptrabId) {
       toast.error("ID do P Trab não encontrado");
@@ -376,7 +417,7 @@ export default function ClasseIIIForm() {
   }, [ptrabId]);
 
   useEffect(() => {
-    if (tipoSelecionado) {
+    if (tipoSelecionado && tipoSelecionado !== 'LUBRIFICANTE') {
       carregarEquipamentos();
     }
   }, [tipoSelecionado]);
@@ -405,6 +446,16 @@ export default function ClasseIIIForm() {
       calcularConsolidadosEngenharia(formEngenharia.itens);
     }
   }, [formEngenharia.dias_operacao, refLPC, formEngenharia.itens, rmFornecimento, codugRmFornecimento]);
+  // FIM NOVO EFEITO
+
+  // NOVO EFEITO PARA LUBRIFICANTE
+  useEffect(() => {
+    if (tipoSelecionado === 'LUBRIFICANTE' && formLubrificante.itens.length > 0) {
+      calcularConsolidadoLubrificante(formLubrificante.itens);
+    } else if (tipoSelecionado === 'LUBRIFICANTE' && formLubrificante.itens.length === 0) {
+      setConsolidadoLubrificante(null);
+    }
+  }, [formLubrificante.itens, formLubrificante.organizacao, rmFornecimento, codugRmFornecimento]);
   // FIM NOVO EFEITO
 
   const loadRefLPC = async () => {
@@ -489,7 +540,7 @@ export default function ClasseIIIForm() {
   };
 
   const carregarEquipamentos = async () => {
-    if (!tipoSelecionado) return;
+    if (!tipoSelecionado || tipoSelecionado === 'LUBRIFICANTE') return;
     const equipamentos = await getEquipamentosPorTipo(tipoSelecionado);
     setEquipamentosDisponiveis(equipamentos);
   };
@@ -624,6 +675,7 @@ export default function ClasseIIIForm() {
       case 'EMBARCACAO': return 'Embarcação';
       case 'EQUIPAMENTO_ENGENHARIA': return 'Equipamento de Engenharia';
       case 'MOTOMECANIZACAO': return 'Motomecanização';
+      case 'LUBRIFICANTE': return 'Lubrificante';
     }
   };
 
@@ -715,6 +767,22 @@ export default function ClasseIIIForm() {
     });
     setConsolidadosEngenharia([]);
     setEditingEngenhariaItemIndex(null);
+    
+    // Reset Lubrificante
+    setFormLubrificante({
+      selectedOmId: undefined,
+      organizacao: "",
+      ug: "",
+      itens: [],
+    });
+    setItemLubrificanteTemp({
+      nome_lubrificante: "",
+      quantidade: 0,
+      unidade: 'L',
+      preco_unitario: 0,
+    });
+    setEditingLubrificanteItemIndex(null);
+    setConsolidadoLubrificante(null);
     
     // Reset fases
     setFasesAtividadeGerador(["Execução"]);
@@ -813,11 +881,19 @@ export default function ClasseIIIForm() {
       const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
       setFasesAtividadeEngenharia(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
       setCustomFaseAtividadeEngenharia(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
+    } else if (registro.tipo_equipamento === 'LUBRIFICANTE') {
+      setFormLubrificante({
+        selectedOmId: selectedOmIdForEdit,
+        organizacao: registro.organizacao,
+        ug: registro.ug,
+        itens: (registro.itens_equipamentos as ItemLubrificante[]) || [],
+      });
+      // Lubrificantes não usam fase_atividade no momento, mas se usarem, o campo está disponível no registro.
     }
   };
 
   const handleSelectEquipmentType = (type: TipoEquipamento) => {
-    if (!refLPC) {
+    if (type !== 'LUBRIFICANTE' && !refLPC) {
       toast.error("Configure a referência LPC antes de adicionar equipamentos.");
       if (lpcRef.current) {
         lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1486,6 +1562,131 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
   };
   // FIM Lógica Equipamento de Engenharia
 
+  // --- Lógica Lubrificante ---
+  const handleOMLubrificanteChange = (omData: OMData | undefined) => {
+    if (omData) {
+      setFormLubrificante({ ...formLubrificante, selectedOmId: omData.id, organizacao: omData.nome_om, ug: omData.codug_om });
+      setRmFornecimento(omData.rm_vinculacao);
+      setCodugRmFornecimento(omData.codug_rm_vinculacao);
+    } else {
+      setFormLubrificante({ ...formLubrificante, selectedOmId: undefined, organizacao: "", ug: "" });
+      setRmFornecimento("");
+      setCodugRmFornecimento("");
+    }
+  };
+
+  const adicionarOuAtualizarItemLubrificante = () => {
+    if (!itemLubrificanteTemp.nome_lubrificante.trim() || itemLubrificanteTemp.quantidade <= 0 || itemLubrificanteTemp.preco_unitario <= 0) {
+      toast.error("Preencha todos os campos obrigatórios do item");
+      return;
+    }
+    const novoItem: ItemLubrificante = { ...itemLubrificanteTemp };
+    if (editingLubrificanteItemIndex !== null) {
+      const novosItens = [...formLubrificante.itens];
+      novosItens[editingLubrificanteItemIndex] = novoItem;
+      setFormLubrificante({ ...formLubrificante, itens: novosItens });
+      toast.success("Item atualizado!");
+      setEditingLubrificanteItemIndex(null);
+    } else {
+      setFormLubrificante({ ...formLubrificante, itens: [...formLubrificante.itens, novoItem] });
+      toast.success("Item adicionado!");
+    }
+    setItemLubrificanteTemp({ nome_lubrificante: "", quantidade: 0, unidade: 'L', preco_unitario: 0 });
+    setTimeout(() => { addLubrificanteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+  };
+
+  const removerItemLubrificante = (index: number) => {
+    const novosItens = formLubrificante.itens.filter((_, i) => i !== index);
+    setFormLubrificante({ ...formLubrificante, itens: novosItens });
+    toast.success("Item removido!");
+  };
+
+  const handleEditLubrificanteItem = (item: ItemLubrificante, index: number) => {
+    setItemLubrificanteTemp({ ...item });
+    setEditingLubrificanteItemIndex(index);
+    setTimeout(() => { addLubrificanteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+  };
+
+  const handleCancelEditLubrificanteItem = () => {
+    setItemLubrificanteTemp({ nome_lubrificante: "", quantidade: 0, unidade: 'L', preco_unitario: 0 });
+    setEditingLubrificanteItemIndex(null);
+  };
+
+  const calcularConsolidadoLubrificante = (itens: ItemLubrificante[]) => {
+    if (!formLubrificante.organizacao || !rmFornecimento) { setConsolidadoLubrificante(null); return; }
+    
+    let totalValor = 0;
+    let detalhamento = `33.90.30 - Aquisição de Lubrificantes para ${formLubrificante.organizacao}.\nFornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})\n\nItens:\n`;
+    
+    itens.forEach(item => {
+      const valorItem = item.quantidade * item.preco_unitario;
+      totalValor += valorItem;
+      detalhamento += `- ${item.nome_lubrificante}: ${formatNumber(item.quantidade)} ${item.unidade} x ${formatCurrency(item.preco_unitario)}/unidade = ${formatCurrency(valorItem)}.\n`;
+    });
+    
+    detalhamento += `\nValor Total: ${formatCurrency(totalValor)}.`;
+
+    setConsolidadoLubrificante({
+      total_valor: totalValor,
+      itens: itens,
+      detalhamento,
+    });
+  };
+
+  const salvarRegistrosConsolidadoLubrificante = async () => {
+    if (!ptrabId || !consolidadoLubrificante) return;
+    if (!formLubrificante.organizacao || !formLubrificante.ug) { toast.error("Selecione uma OM"); return; }
+    if (!rmFornecimento || !codugRmFornecimento) { toast.error("Selecione a RM de Fornecimento"); return; }
+    if (formLubrificante.itens.length === 0) { toast.error("Adicione pelo menos um lubrificante"); return; }
+
+    setLoading(true);
+    try {
+      if (editingId) {
+        const { error: deleteError } = await supabase
+          .from("classe_iii_registros")
+          .delete()
+          .eq("p_trab_id", ptrabId)
+          .eq("tipo_equipamento", "LUBRIFICANTE")
+          .eq("organizacao", formLubrificante.organizacao)
+          .eq("ug", formLubrificante.ug);
+        if (deleteError) { console.error("Erro ao deletar registros existentes de lubrificante para edição:", deleteError); throw deleteError; }
+      }
+
+      const registro = {
+        p_trab_id: ptrabId,
+        tipo_equipamento: 'LUBRIFICANTE' as TipoEquipamento,
+        tipo_equipamento_detalhe: null,
+        organizacao: formLubrificante.organizacao,
+        ug: formLubrificante.ug,
+        quantidade: formLubrificante.itens.reduce((sum, item) => sum + item.quantidade, 0), // Soma das quantidades
+        dias_operacao: 1, // Valor fixo, pois não é baseado em dias de operação
+        tipo_combustivel: 'LUBRIFICANTE', // Tipo de combustível especial
+        preco_litro: 1, // Valor unitário não é relevante aqui, o valor total é o que importa
+        total_litros: 0, // Não se aplica
+        total_litros_sem_margem: 0, // Não se aplica
+        valor_total: consolidadoLubrificante.total_valor,
+        detalhamento: consolidadoLubrificante.detalhamento,
+        itens_equipamentos: JSON.parse(JSON.stringify(consolidadoLubrificante.itens)),
+        fase_atividade: null, // Não se aplica
+      };
+
+      const { error } = await supabase.from("classe_iii_registros").insert([registro]);
+      if (error) throw error;
+
+      toast.success(editingId ? "Registro de lubrificantes atualizado com sucesso!" : "Registro de lubrificantes salvo com sucesso!");
+      await updatePTrabStatusIfAberto(ptrabId);
+      resetFormFields();
+      setTipoSelecionado(null);
+      fetchRegistros();
+    } catch (error: any) {
+      console.error("Erro ao salvar/atualizar registros de lubrificante:", error);
+      toast.error("Erro ao salvar/atualizar registros de lubrificante");
+    } finally {
+      setLoading(false);
+    }
+  };
+  // FIM Lógica Lubrificante
+
   if (!tipoSelecionado) {
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1653,7 +1854,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 </Alert>
               )}
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Button
                   variant="outline"
                   className="h-24 text-lg"
@@ -1690,6 +1891,14 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   <Fuel className="mr-3 h-6 w-6" />
                   Motomecanização
                 </Button>
+                <Button
+                  variant="outline"
+                  className="h-24 text-lg"
+                  onClick={() => handleSelectEquipmentType('LUBRIFICANTE')}
+                >
+                  <OilCan className="mr-3 h-6 w-6" />
+                  Lubrificante
+                </Button>
               </div>
 
               {registros.length > 0 && (
@@ -1714,7 +1923,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                               <th className="text-left p-3 font-semibold text-sm w-[12%]">UG</th>
                               <th className="text-left p-3 font-semibold text-sm w-[15%]">Tipo</th>
                               <th className="text-left p-3 font-semibold text-sm w-[12%]">Combustível</th>
-                              <th className="text-right p-3 font-semibold text-sm w-[13%]">Total Litros</th>
+                              <th className="text-right p-3 font-semibold text-sm w-[13%]">Total Litros/Unid</th>
                               <th className="text-right p-3 font-semibold text-sm w-[13%]">Valor Total</th>
                               <th className="text-center p-3 font-semibold text-sm w-[15%]">Ações</th>
                             </tr>
@@ -1726,11 +1935,15 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                                 <td className="p-3 text-sm">{registro.ug}</td>
                                 <td className="p-3 text-sm">{getTipoLabel(registro.tipo_equipamento as TipoEquipamento)}</td>
                                 <td className="p-3 text-sm">
-                                  <Badge variant={registro.tipo_combustivel === 'DIESEL' ? 'default' : 'secondary'}>
+                                  <Badge variant={registro.tipo_combustivel === 'DIESEL' ? 'default' : (registro.tipo_combustivel === 'GASOLINA' ? 'secondary' : 'outline')}>
                                     {registro.tipo_combustivel}
                                   </Badge>
                                 </td>
-                                <td className="p-3 text-sm text-right font-medium">{formatNumber(registro.total_litros)} L</td>
+                                <td className="p-3 text-sm text-right font-medium">
+                                  {registro.tipo_equipamento === 'LUBRIFICANTE' 
+                                    ? `${formatNumber(registro.quantidade)} UN` 
+                                    : `${formatNumber(registro.total_litros)} L`}
+                                </td>
                                 <td className="p-3 text-sm text-right font-medium">{formatCurrency(registro.valor_total)}</td>
                                 <td className="p-3 text-sm">
                                   <div className="flex gap-1 justify-center">
@@ -1777,9 +1990,19 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                               </td>
                               <td></td>
                             </tr>
+                            <tr>
+                              <td colSpan={4} className="p-3 text-sm font-semibold">TOTAL LUBRIFICANTES</td>
+                              <td className="p-3 text-sm text-right font-bold">
+                                {formatNumber(registros.filter(r => r.tipo_equipamento === 'LUBRIFICANTE').reduce((sum, r) => sum + r.quantidade, 0))} UN
+                              </td>
+                              <td className="p-3 text-sm text-right font-bold text-primary">
+                                {formatCurrency(registros.filter(r => r.tipo_equipamento === 'LUBRIFICANTE').reduce((sum, r) => sum + r.valor_total, 0))}
+                              </td>
+                              <td></td>
+                            </tr>
                             <tr className="bg-primary/10 border-t-2">
                               <td colSpan={4} className="p-3 text-sm font-bold text-primary">
-                                CUSTO TOTAL DE COMBUSTÍVEL
+                                CUSTO TOTAL DE CLASSE III
                               </td>
                               <td className="p-3 text-sm text-right font-bold">
                               </td>
@@ -1820,11 +2043,13 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                             </div>
                             <Badge 
                               variant="default" 
-                              className={registro.tipo_combustivel === 'DIESEL' 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'bg-secondary text-secondary-foreground'}
+                              className={registro.tipo_equipamento === 'LUBRIFICANTE' 
+                                ? 'bg-gray-500 text-white' 
+                                : (registro.tipo_combustivel === 'DIESEL' 
+                                  ? 'bg-primary text-primary-foreground' 
+                                  : 'bg-secondary text-secondary-foreground')}
                             >
-                              {registro.tipo_combustivel}
+                              {getTipoLabel(registro.tipo_equipamento)}
                             </Badge>
                           </div>
                           
@@ -3212,6 +3437,239 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                       )}
                       <Button type="submit" disabled={!refLPC || loading}>
                         {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")} ({consolidadosEngenharia.length} {consolidadosEngenharia.length === 1 ? 'tipo' : 'tipos'} de combustível)
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (tipoSelecionado === 'LUBRIFICANTE') {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
+          <Button
+            variant="ghost"
+            onClick={handleCancelEdit}
+            className="mb-4"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Lubrificantes - Entrada por OM</CardTitle>
+              <CardDescription>
+                Cadastre os lubrificantes necessários por Organização Militar
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <form onSubmit={(e) => { e.preventDefault(); salvarRegistrosConsolidadoLubrificante(); }}>
+                <div className="space-y-3">
+                  <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Organização Militar (OM) *</Label>
+                      <OmSelector
+                        selectedOmId={formLubrificante.selectedOmId}
+                        onChange={handleOMLubrificanteChange}
+                        placeholder="Selecione a OM..."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>UG</Label>
+                      <Input value={formLubrificante.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="rmFornecimentoLubrificante">RM de Fornecimento *</Label>
+                      <RmSelector
+                        value={rmFornecimento}
+                        onChange={handleRMFornecimentoChange}
+                        placeholder="Selecione a RM de fornecimento..."
+                        disabled={!formLubrificante.organizacao}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>CODUG da RM de Fornecimento</Label>
+                      <Input value={codugRmFornecimento} readOnly disabled onKeyDown={handleEnterToNextField} />
+                    </div>
+                  </div>
+                </div>
+                <div className="mb-6" />
+
+                {formLubrificante.organizacao && (
+                  <div className="space-y-4 border-t pt-6" ref={addLubrificanteRef}>
+                    <h3 className="text-lg font-semibold">2. Adicionar Lubrificante</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+                      <div className="space-y-2 col-span-2">
+                        <Label>Nome do Lubrificante *</Label>
+                        <Input
+                          value={itemLubrificanteTemp.nome_lubrificante}
+                          onChange={(e) => setItemLubrificanteTemp({ ...itemLubrificanteTemp, nome_lubrificante: e.target.value })}
+                          placeholder="Ex: Óleo 15W40"
+                          onKeyDown={handleEnterToNextField}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Quantidade *</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            min="1"
+                            step="0.01"
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            value={itemLubrificanteTemp.quantidade === 0 ? "" : itemLubrificanteTemp.quantidade.toString()}
+                            onChange={(e) => setItemLubrificanteTemp({ ...itemLubrificanteTemp, quantidade: parseFloat(e.target.value) || 0 })}
+                            placeholder="Ex: 10"
+                            onKeyDown={handleEnterToNextField}
+                          />
+                          <Select
+                            value={itemLubrificanteTemp.unidade}
+                            onValueChange={(val: 'L' | 'UN') => setItemLubrificanteTemp({ ...itemLubrificanteTemp, unidade: val })}
+                          >
+                            <SelectTrigger className="w-[80px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="L">L</SelectItem>
+                              <SelectItem value="UN">UN</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Preço Unitário *</Label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
+                            value={itemLubrificanteTemp.preco_unitario === 0 ? "" : itemLubrificanteTemp.preco_unitario.toFixed(2)}
+                            onChange={(e) => setItemLubrificanteTemp({ ...itemLubrificanteTemp, preco_unitario: parseFloat(e.target.value) || 0 })}
+                            placeholder="Ex: 45.50"
+                            onKeyDown={handleEnterToNextField}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button type="button" onClick={adicionarOuAtualizarItemLubrificante} className="w-full max-w-[200px]">
+                        {editingLubrificanteItemIndex !== null ? "Atualizar Item" : "Adicionar Lubrificante"}
+                      </Button>
+                    </div>
+
+                    {editingLubrificanteItemIndex !== null && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCancelEditLubrificanteItem}
+                        className="mt-2"
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Cancelar Edição do Item
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {formLubrificante.itens.length > 0 && (
+                  <div className="space-y-4 border-t pt-6">
+                    <h3 className="text-lg font-semibold">3. Lubrificantes Cadastrados</h3>
+                    
+                    <div className="space-y-2">
+                      {formLubrificante.itens.map((item, index) => (
+                        <Card key={index} className="p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <p className="font-medium">{item.nome_lubrificante}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {formatNumber(item.quantidade)} {item.unidade} • {formatCurrency(item.preco_unitario)}/unidade • Total: {formatCurrency(item.quantidade * item.preco_unitario)}
+                              </p>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditLubrificanteItem(item, index)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removerItemLubrificante(index)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {consolidadoLubrificante && (
+                  <div className="space-y-4 border-t pt-6">
+                    <h3 className="text-lg font-semibold">4. Consolidação</h3>
+                    
+                    <Card className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-lg">
+                            Valor Total de Lubrificantes
+                          </h4>
+                          <div className="text-right">
+                            <p className="text-lg font-bold">{formatCurrency(consolidadoLubrificante.total_valor)}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Memória de Cálculo</Label>
+                          <Textarea
+                            value={consolidadoLubrificante.detalhamento}
+                            readOnly
+                            rows={6}
+                            className="font-mono text-xs"
+                            onKeyDown={handleEnterToNextField}
+                          />
+                        </div>
+                      </div>
+                    </Card>
+
+                    <div className="flex gap-3 pt-4">
+                      {editingId && (
+                        <Button
+                          variant="outline"
+                          type="button"
+                          onClick={handleCancelEdit}
+                        >
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Cancelar Edição
+                        </Button>
+                      )}
+                      <Button type="submit" disabled={loading}>
+                        {loading ? "Aguarde..." : (editingId ? "Atualizar Registro" : "Salvar Registro")}
                       </Button>
                     </div>
                   </div>
