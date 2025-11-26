@@ -13,7 +13,7 @@ import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { tipoViaturas } from "@/data/classeIIIData"; // Importar os defaults de viaturas
+import { tipoViaturas, tipoEquipamentosEngenharia } from "@/data/classeIIIData"; // Importar os defaults de viaturas e engenharia
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -37,6 +37,13 @@ const defaultMotomecanizacaoConfig: DiretrizEquipamentoForm[] = tipoViaturas.map
   unidade: v.unidade,
 }));
 
+const defaultEquipamentosEngenhariaConfig: DiretrizEquipamentoForm[] = tipoEquipamentosEngenharia.map(e => ({
+  nome_equipamento: e.nome,
+  tipo_combustivel: e.combustivel,
+  consumo: e.consumo,
+  unidade: e.unidade,
+}));
+
 const defaultDiretrizes = (year: number) => ({
   ano_referencia: year,
   classe_i_valor_qs: 9.00,
@@ -53,11 +60,13 @@ const DiretrizesCusteioPage = () => {
   const [showClasseIAlimentacaoConfig, setShowClasseIAlimentacaoConfig] = useState(false);
   const [showClasseIIIGeradoresConfig, setShowClasseIIIGeradoresConfig] = useState(false);
   const [showClasseIIIEmbarcacoesConfig, setShowClasseIIIEmbarcacoesConfig] = useState(false);
-  const [showClasseIIIMotomecanizacaoConfig, setShowClasseIIIMotomecanizacaoConfig] = useState(false); // Novo estado
+  const [showClasseIIIMotomecanizacaoConfig, setShowClasseIIIMotomecanizacaoConfig] = useState(false);
+  const [showClasseIIIEquipamentosEngenhariaConfig, setShowClasseIIIEquipamentosEngenhariaConfig] = useState(false); // Novo estado
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
   const [embarcacaoConfig, setEmbarcacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultEmbarcacaoConfig);
-  const [motomecanizacaoConfig, setMotomecanizacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultMotomecanizacaoConfig); // Novo estado
+  const [motomecanizacaoConfig, setMotomecanizacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultMotomecanizacaoConfig);
+  const [equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig] = useState<DiretrizEquipamentoForm[]>(defaultEquipamentosEngenhariaConfig); // Novo estado
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -201,12 +210,33 @@ const DiretrizesCusteioPage = () => {
         } else {
           setMotomecanizacaoConfig(defaultMotomecanizacaoConfig);
         }
+
+        // --- Carregar Equipamentos de Engenharia ---
+        const { data: engenhariaData } = await supabase
+          .from("diretrizes_equipamentos_classe_iii")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("ano_referencia", data.ano_referencia)
+          .eq("categoria", "EQUIPAMENTO_ENGENHARIA")
+          .eq("ativo", true);
+
+        if (engenhariaData && engenhariaData.length > 0) {
+          setEquipamentosEngenhariaConfig(engenhariaData.map(eq => ({
+            nome_equipamento: eq.nome_equipamento,
+            tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
+            consumo: Number(eq.consumo),
+            unidade: eq.unidade as 'L/h' | 'km/L',
+          })));
+        } else {
+          setEquipamentosEngenhariaConfig(defaultEquipamentosEngenhariaConfig);
+        }
         
       } else {
         setDiretrizes(defaultDiretrizes(year));
         setGeradorConfig(defaultGeradorConfig);
         setEmbarcacaoConfig(defaultEmbarcacaoConfig);
         setMotomecanizacaoConfig(defaultMotomecanizacaoConfig);
+        setEquipamentosEngenhariaConfig(defaultEquipamentosEngenhariaConfig);
       }
     } catch (error: any) {
       console.error("Erro ao carregar diretrizes:", error);
@@ -260,12 +290,13 @@ const DiretrizesCusteioPage = () => {
         toast.success("Diretrizes criadas!");
       }
 
-      // 2. Salvar Configurações de Equipamentos (Geradores, Embarcações, Motomecanização)
-      const categorias = ["GERADOR", "EMBARCACAO", "MOTOMECANIZACAO"];
+      // 2. Salvar Configurações de Equipamentos (Geradores, Embarcações, Motomecanização, Equipamentos de Engenharia)
+      const categorias = ["GERADOR", "EMBARCACAO", "MOTOMECANIZACAO", "EQUIPAMENTO_ENGENHARIA"];
       const configs = {
         "GERADOR": geradorConfig,
         "EMBARCACAO": embarcacaoConfig,
         "MOTOMECANIZACAO": motomecanizacaoConfig,
+        "EQUIPAMENTO_ENGENHARIA": equipamentosEngenhariaConfig,
       };
 
       for (const categoria of categorias) {
@@ -577,7 +608,7 @@ const DiretrizesCusteioPage = () => {
                   </Card>
                 )}
               </div>
-              
+
               {/* SEÇÃO CLASSE III - MOTOMECANIZAÇÃO */}
               <div className="border-t pt-4 mt-6">
                 <div 
@@ -659,6 +690,89 @@ const DiretrizesCusteioPage = () => {
                   </Card>
                 )}
               </div>
+
+              {/* SEÇÃO CLASSE III - EQUIPAMENTOS DE ENGENHARIA */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseIIIEquipamentosEngenhariaConfig(!showClasseIIIEquipamentosEngenhariaConfig)}
+                >
+                  <h3 className="text-lg font-semibold">Classe III - Equipamento de Engenharia</h3>
+                  {showClasseIIIEquipamentosEngenhariaConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseIIIEquipamentosEngenhariaConfig && (
+                  <Card>
+                    <CardContent className="space-y-4 pt-4">
+                      {equipamentosEngenhariaConfig.map((equipamento, index) => (
+                        <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
+                          <div className="col-span-5">
+                            <Label className="text-xs">Nome do Equipamento</Label>
+                            <Input
+                              value={equipamento.nome_equipamento}
+                              onChange={(e) => handleUpdateItem(equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig, index, 'nome_equipamento', e.target.value)}
+                              placeholder="Ex: Retroescavadeira"
+                              onKeyDown={handleEnterToNextField}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="text-xs">Combustível</Label>
+                            <Select
+                              value={equipamento.tipo_combustivel}
+                              onValueChange={(val: 'GAS' | 'OD') => handleUpdateItem(equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig, index, 'tipo_combustivel', val)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="GAS">Gasolina</SelectItem>
+                                <SelectItem value="OD">Diesel</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="text-xs">Consumo</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              value={equipamento.consumo === 0 ? "" : equipamento.consumo}
+                              onChange={(e) => handleUpdateItem(equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
+                              onKeyDown={handleEnterToNextField}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="text-xs">Unidade</Label>
+                            <Input value="L/h" disabled className="bg-muted text-muted-foreground" onKeyDown={handleEnterToNextField} />
+                          </div>
+                          <div className="col-span-1 flex justify-end">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveItem(equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig, index)}
+                              type="button"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleAddItem(equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig, 'L/h')} 
+                        className="w-full"
+                        type="button"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Adicionar Equipamento
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
 
               <div className="space-y-2 border-t pt-4 mt-6">
                 <Label>Observações</Label>
