@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check, Plus } from "lucide-react"; // Adicionado Plus
+import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check, Plus, Wrench } from "lucide-react"; // Wrench adicionado aqui
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
