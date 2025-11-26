@@ -42,72 +42,62 @@ export const ImportPTrabOptionsDialog = ({
   const importedOmName = importedPTrab.nome_om;
   const originalPTrabNumber = importedPTrab.numero_ptrab;
 
-  useEffect(() => {
-    if (open) {
-      setSelectedOm(undefined);
-      // Inicializa o campo com o número original, mas será ajustado no useMemo
-      setCustomPTrabNumber(originalPTrabNumber); 
-    }
-  }, [open, originalPTrabNumber]);
-
-  // Lógica de análise de numeração
+  // 1. Lógica de Análise de Numeração
   const analysis = useMemo(() => {
-    if (!selectedOm) {
-      // Se nenhuma OM foi selecionada, a sugestão é o número original, mas o campo fica vazio
-      // para forçar a seleção da OM antes de preencher.
-      return {
-        isSameOm: false,
-        isConflict: false,
-        suggestedNumber: originalPTrabNumber,
-        message: "Selecione a OM de destino para analisar a numeração.",
-        initialValue: originalPTrabNumber, // Mantém o original como valor inicial antes da seleção
-      };
-    }
-
-    const targetOmName = selectedOm.nome_om;
-    const isSameOm = importedOmName.trim().toLowerCase() === targetOmName.trim().toLowerCase();
+    const targetOmName = selectedOm?.nome_om;
     let suggestedNumber = originalPTrabNumber;
     let isConflict = false;
     let message = "";
-    let initialValue = originalPTrabNumber;
 
-    if (isSameOm) {
-      // Cenário 1: Mesma OM. Verificar conflito de número.
-      isConflict = isPTrabNumberDuplicate(originalPTrabNumber, existingPTrabNumbers);
-
-      if (isConflict) {
-        suggestedNumber = generateUniquePTrabNumber(existingPTrabNumbers);
-        message = `Conflito detectado! O P Trab original já existe. Foi sugerido o próximo número base único.`;
-        initialValue = suggestedNumber; // Preenche com a sugestão
-      } else {
-        message = `OM de destino é a mesma. O número original será mantido.`;
-        initialValue = originalPTrabNumber; // Preenche com o original
-      }
+    if (!selectedOm) {
+      message = "Selecione a OM de destino para analisar a numeração.";
+      // Não há sugestão válida até que a OM seja selecionada
+      suggestedNumber = ""; 
     } else {
-      // Cenário 2: OM Diferente. Adicionar sufixo /OM_ORIGEM.
-      
-      const omSigla = importedOmName.trim().toUpperCase();
-      const newNumberWithSuffix = `${originalPTrabNumber}/${omSigla}`;
-      
-      isConflict = isPTrabNumberDuplicate(newNumberWithSuffix, existingPTrabNumbers);
-      
-      if (isConflict) {
-        suggestedNumber = generateUniquePTrabNumber(existingPTrabNumbers);
-        message = `OM de destino diferente da original (${importedOmName}). O número proposto (${newNumberWithSuffix}) conflita. Foi sugerido o próximo número base único.`;
-        initialValue = suggestedNumber; // Preenche com a sugestão única
+      const isSameOm = importedOmName.trim().toLowerCase() === targetOmName!.trim().toLowerCase();
+
+      if (isSameOm) {
+        // Cenário 1: Mesma OM. Verificar conflito de número.
+        isConflict = isPTrabNumberDuplicate(originalPTrabNumber, existingPTrabNumbers);
+
+        if (isConflict) {
+          suggestedNumber = generateUniquePTrabNumber(existingPTrabNumbers);
+          message = `Conflito detectado! O P Trab original já existe. Foi sugerido o próximo número base único.`;
+        } else {
+          message = `OM de destino é a mesma. O número original será mantido.`;
+          suggestedNumber = originalPTrabNumber;
+        }
       } else {
-        suggestedNumber = newNumberWithSuffix;
-        message = `OM de destino diferente da original (${importedOmName}). Sugestão: ${newNumberWithSuffix}`;
-        initialValue = newNumberWithSuffix; // Preenche com a sugestão com sufixo
+        // Cenário 2: OM Diferente. Adicionar sufixo /OM_ORIGEM.
+        const omSigla = importedOmName.trim().toUpperCase();
+        const newNumberWithSuffix = `${originalPTrabNumber}/${omSigla}`;
+        
+        isConflict = isPTrabNumberDuplicate(newNumberWithSuffix, existingPTrabNumbers);
+        
+        if (isConflict) {
+          suggestedNumber = generateUniquePTrabNumber(existingPTrabNumbers);
+          message = `OM de destino diferente da original (${importedOmName}). O número proposto (${newNumberWithSuffix}) conflita. Foi sugerido o próximo número base único.`;
+        } else {
+          suggestedNumber = newNumberWithSuffix;
+          message = `OM de destino diferente da original (${importedOmName}). Sugestão: ${newNumberWithSuffix}`;
+        }
       }
     }
-    
-    // Atualiza o campo de número customizado com o valor inicial calculado
-    // Isso garante que o campo seja preenchido com a sugestão correta assim que a OM é selecionada.
-    setCustomPTrabNumber(initialValue);
 
-    return { isSameOm, isConflict, suggestedNumber, message, initialValue };
+    return { isSameOm: !!selectedOm && importedOmName.trim().toLowerCase() === targetOmName!.trim().toLowerCase(), isConflict, suggestedNumber, message };
   }, [selectedOm, importedOmName, originalPTrabNumber, existingPTrabNumbers]);
+
+  // 2. Efeito para preencher o campo com a sugestão quando a OM é selecionada
+  useEffect(() => {
+    if (open && selectedOm) {
+      // Preenche o campo com a sugestão calculada
+      setCustomPTrabNumber(analysis.suggestedNumber);
+    } else if (open && !selectedOm) {
+      // Limpa o campo se a OM for deselecionada
+      setCustomPTrabNumber("");
+    }
+  }, [open, selectedOm, analysis.suggestedNumber]);
+
 
   const handleFinalConfirm = () => {
     if (!selectedOm) {
@@ -120,8 +110,8 @@ export const ImportPTrabOptionsDialog = ({
     }
     
     // Final check for duplication before saving
-    const isFinalDuplicate = isPTrabNumberDuplicate(customPTrabNumber, existingPTrabNumbers);
-    if (isFinalDuplicate) {
+    const isFinalNumberDuplicate = isPTrabNumberDuplicate(customPTrabNumber, existingPTrabNumbers);
+    if (isFinalNumberDuplicate) {
         toast.error(`O número ${customPTrabNumber} já existe. Por favor, altere.`);
         return;
     }
