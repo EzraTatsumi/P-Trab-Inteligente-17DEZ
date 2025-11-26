@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FileText, Package, Briefcase, ArrowLeft, Calendar, Users, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { PTrabCostSummary } from "@/components/PTrabCostSummary"; // Importar o novo componente
 
 interface PTrabData {
   numero_ptrab: string;
@@ -123,7 +124,7 @@ const PTrabForm = () => {
 
   return (
     <div className="min-h-screen bg-background py-4 px-4"> {/* Ajustado py-12 para py-4 */}
-      <div className="container max-w-5xl mx-auto">
+      <div className="container max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-4"> {/* Ajustado mb-6 para mb-4 */}
           <Button
             variant="ghost"
@@ -134,112 +135,123 @@ const PTrabForm = () => {
           </Button>
         </div>
 
-        <Card className="shadow-lg mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-6 w-6 text-primary" />
-              Dados do P Trab
-            </CardTitle>
-            <CardDescription>
-              Informações do Plano de Trabalho selecionado
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-y-2 gap-x-4 mb-4">
-              <div className="space-y-1">
-                <Label className="text-muted-foreground text-xs">Número do PTrab</Label>
-                <p className="text-sm font-medium">{ptrabData?.numero_ptrab}</p>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-muted-foreground text-xs">Nome da Operação</Label>
-                <p className="text-sm font-medium">{ptrabData?.nome_operacao}</p>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-muted-foreground text-xs flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  Período
-                </Label>
-                <p className="text-sm font-medium">
-                  {ptrabData && 
-                    `${formatDate(ptrabData.periodo_inicio)} a ${formatDate(ptrabData.periodo_fim)} - ${calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim)} dias`
-                  }
-                </p>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-muted-foreground text-xs flex items-center gap-1">
-                  <Users className="h-3 w-3" />
-                  Efetivo Empregado
-                </Label>
-                <p className="text-sm font-medium">{ptrabData?.efetivo_empregado}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle>Selecione o Tipo de Material</CardTitle>
-            <CardDescription>
-              Escolha entre logística ou operacional
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-
-            <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="logistica" className="flex items-center gap-2">
-                  <Package className="h-4 w-4" />
-                  Aba Logística
-                </TabsTrigger>
-                <TabsTrigger value="operacional" className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4" />
-                  Aba Operacional
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="logistica" className="space-y-4">
-                <h3 className="text-lg font-semibold text-foreground mb-4">
-                  Selecione a Classe de Material
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {classesLogistica.map((classe) => (
-                    <Button
-                      key={classe.id}
-                      variant="outline"
-                      className="h-auto py-4 px-6 justify-start text-left hover:bg-primary/10 hover:border-primary transition-all"
-                      onClick={() => handleItemClick(classe.id, "logistica")}
-                    >
-                      <div>
-                        <div className="font-semibold">{classe.name.split(" - ")[0]}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {classe.name.split(" - ")[1]}
-                        </div>
-                      </div>
-                    </Button>
-                  ))}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Coluna Esquerda: Dados do P Trab e Resumo de Custos */}
+          <div className="lg:col-span-1 space-y-6">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-6 w-6 text-primary" />
+                  Dados do P Trab
+                </CardTitle>
+                <CardDescription>
+                  Informações do Plano de Trabalho selecionado
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-1 gap-y-2 gap-x-4 mb-4">
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">Número do PTrab</Label>
+                    <p className="text-sm font-medium">{ptrabData?.numero_ptrab}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">Nome da Operação</Label>
+                    <p className="text-sm font-medium">{ptrabData?.nome_operacao}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Período
+                    </Label>
+                    <p className="text-sm font-medium">
+                      {ptrabData && 
+                        `${formatDate(ptrabData.periodo_inicio)} a ${formatDate(ptrabData.periodo_fim)} - ${calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim)} dias`
+                      }
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      Efetivo Empregado
+                    </Label>
+                    <p className="text-sm font-medium">{ptrabData?.efetivo_empregado}</p>
+                  </div>
                 </div>
-              </TabsContent>
+              </CardContent>
+            </Card>
+            
+            {/* NOVO COMPONENTE DE RESUMO DE CUSTOS */}
+            {ptrabId && <PTrabCostSummary ptrabId={ptrabId} />}
+          </div>
 
-              <TabsContent value="operacional" className="space-y-4">
-                <h3 className="text-lg font-semibold text-foreground mb-4">
-                  Selecione o Item Operacional
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {itensOperacional.map((item) => (
-                    <Button
-                      key={item.id}
-                      variant="outline"
-                      className="h-auto py-4 px-6 justify-start text-left hover:bg-secondary/10 hover:border-secondary transition-all"
-                      onClick={() => handleItemClick(item.id, "operacional")}
-                    >
-                      <div className="font-semibold">{item.name}</div>
-                    </Button>
-                  ))}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+          {/* Coluna Direita: Seleção de Classes/Itens */}
+          <div className="lg:col-span-2">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle>Selecione o Tipo de Material</CardTitle>
+                <CardDescription>
+                  Escolha entre logística ou operacional
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+
+                <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-6">
+                    <TabsTrigger value="logistica" className="flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Aba Logística
+                    </TabsTrigger>
+                    <TabsTrigger value="operacional" className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4" />
+                      Aba Operacional
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="logistica" className="space-y-4">
+                    <h3 className="text-lg font-semibold text-foreground mb-4">
+                      Selecione a Classe de Material
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {classesLogistica.map((classe) => (
+                        <Button
+                          key={classe.id}
+                          variant="outline"
+                          className="h-auto py-4 px-6 justify-start text-left hover:bg-primary/10 hover:border-primary transition-all"
+                          onClick={() => handleItemClick(classe.id, "logistica")}
+                        >
+                          <div>
+                            <div className="font-semibold">{classe.name.split(" - ")[0]}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {classe.name.split(" - ")[1]}
+                            </div>
+                          </div>
+                        </Button>
+                      ))}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="operacional" className="space-y-4">
+                    <h3 className="text-lg font-semibold text-foreground mb-4">
+                      Selecione o Item Operacional
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {itensOperacional.map((item) => (
+                        <Button
+                          key={item.id}
+                          variant="outline"
+                          className="h-auto py-4 px-6 justify-start text-left hover:bg-secondary/10 hover:border-secondary transition-all"
+                          onClick={() => handleItemClick(item.id, "operacional")}
+                        >
+                          <div className="font-semibold">{item.name}</div>
+                        </Button>
+                      ))}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
