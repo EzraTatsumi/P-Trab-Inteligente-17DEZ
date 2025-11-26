@@ -1961,26 +1961,26 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
               <Button
                 variant={tipoSelecionado === 'GERADOR' ? 'default' : 'outline'}
                 onClick={() => handleSelectEquipmentType('GERADOR')}
-                className="flex flex-col h-auto py-4"
+                className="flex items-center justify-start h-auto py-3 px-4"
               >
-                <Zap className="h-6 w-6 mb-2" />
-                Gerador
+                <Zap className="h-5 w-5 mr-3" />
+                <span className="text-base font-semibold">Gerador</span>
               </Button>
               <Button
                 variant={tipoSelecionado === 'MOTOMECANIZACAO' ? 'default' : 'outline'}
                 onClick={() => handleSelectEquipmentType('MOTOMECANIZACAO')}
-                className="flex flex-col h-auto py-4"
+                className="flex items-center justify-start h-auto py-3 px-4"
               >
-                <Truck className="h-6 w-6 mb-2" />
-                Motomecanização
+                <Truck className="h-5 w-5 mr-3" />
+                <span className="text-base font-semibold">Motomecanização</span>
               </Button>
               <Button
                 variant={tipoSelecionado === 'EMBARCACAO' ? 'default' : 'outline'}
                 onClick={() => handleSelectEquipmentType('EMBARCACAO')}
-                className="flex flex-col h-auto py-4"
+                className="flex items-center justify-start h-auto py-3 px-4"
               >
-                <Ship className="h-6 w-6 mb-2" />
-                Embarcação
+                <Ship className="h-5 w-5 mr-3" />
+                <span className="text-base font-semibold">Embarcação</span>
               </Button>
               {/* <Button
                 variant={tipoSelecionado === 'EQUIPAMENTO_ENGENHARIA' ? 'default' : 'outline'}
