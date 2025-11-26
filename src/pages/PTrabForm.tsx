@@ -176,13 +176,6 @@ const PTrabForm = () => {
                     </Label>
                     <p className="text-sm font-medium">{ptrabData?.efetivo_empregado}</p>
                   </div>
-                  <div className="space-y-1 col-span-2">
-                    <Label className="text-muted-foreground text-xs flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      Local da OM
-                    </Label>
-                    <p className="text-sm font-medium">{ptrabData?.local_om || 'Não informado'}</p>
-                  </div>
                 </div>
               </CardContent>
             </Card>
