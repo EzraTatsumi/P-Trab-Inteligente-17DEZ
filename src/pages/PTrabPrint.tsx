@@ -816,7 +816,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       valorTotalRow.getCell('G').font = { bold: true };
       valorTotalRow.getCell('G').alignment = { horizontal: 'center', vertical: 'middle' };
       
-      valorTotalRow.getCell('H').value = totalGeralAcumulado + totalValorCombustivel;
+      valorTotalRow.getCell('H').value = totalGeralAcumulado; // Corrigido: Usar apenas o total GND 3
       valorTotalRow.getCell('H').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       valorTotalRow.getCell('H').font = { bold: true };
       valorTotalRow.getCell('H').alignment = { horizontal: 'center' };
@@ -840,7 +840,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       currentRow++;
       
       const gndValueRow = worksheet.getRow(currentRow);
-      gndValueRow.getCell('H').value = totalGeralAcumulado + totalValorCombustivel;
+      gndValueRow.getCell('H').value = totalGeralAcumulado; // Corrigido: Usar apenas o total GND 3
       gndValueRow.getCell('H').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       gndValueRow.getCell('H').font = { bold: true };
       gndValueRow.getCell('H').alignment = { horizontal: 'center', vertical: 'middle' };
@@ -905,8 +905,13 @@ Total QR: ${formatCurrency(total_qr)}.`;
 
   if (!ptrabData) return null;
 
-  const totalGeralAcumulado = registros.reduce((acc, reg) => acc + reg.total_geral, 0) + 
-    registrosClasseIII.reduce((acc, reg) => acc + reg.valor_total, 0);
+  // O cálculo do total geral deve ser a soma de todos os registros de Classe I (total_geral)
+  // mais a soma de todos os registros de Classe III (valor_total).
+  // No contexto do GND 3, isso é a soma de 33.90.30 (Classe I) e 33.90.39 (Classe III).
+  const totalGeral_33_90_30 = registros.reduce((acc, reg) => acc + reg.total_qs + reg.total_qr, 0);
+  const totalGeral_33_90_39 = registrosClasseIII.reduce((acc, reg) => acc + reg.valor_total, 0);
+  const totalGeral_GND3 = totalGeral_33_90_30 + totalGeral_33_90_39;
+  
   const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
 
   // Nova estrutura: agrupar por OM (subseções dinâmicas)
@@ -1038,7 +1043,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
           <p className="info-item font-bold">5.DESPESAS OPERACIONAIS REALIZADAS OU A REALIZAR:</p>
         </div>
 
-        {registros.length > 0 ? (
+        {registros.length > 0 || registrosClasseIII.length > 0 ? (
           <div className="ptrab-table-wrapper">
             <table className="ptrab-table">
               <thead>
@@ -1183,7 +1188,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     </td>
                     <td className="text-center font-bold border border-black">
                       {nomeOM === nomeRM && totaisOM.totalGasolina > 0 
-                        ? `${formatCurrency(totaisOM.totalGasolina)} L GAS` 
+                        ? `${formatNumber(totaisOM.totalGasolina)} L GAS` 
                         : ''}
                     </td>
                     <td className="text-center font-bold border border-black">
@@ -1213,12 +1218,12 @@ Total QR: ${formatCurrency(total_qr)}.`;
               </tr>
               
               {(() => {
-                // Calcular totais gerais por natureza de despesa
-                const totalGeral_33_90_30 = registros.reduce((acc, reg) => acc + reg.total_qs + reg.total_qr, 0);
-                const totalGeral_33_90_39 = registrosClasseIII.reduce((acc, reg) => acc + reg.valor_total, 0);
-                const totalGeral_GND3 = totalGeral_33_90_30 + totalGeral_33_90_39; // Soma de 33.90.30 e 33.90.39
+                // O cálculo do total geral já foi feito no início do componente:
+                // totalGeral_33_90_30
+                // totalGeral_33_90_39
+                // totalGeral_GND3
                 
-                // Totais de combustível por tipo
+                // Totais de combustível por tipo (para exibição na parte laranja)
                 const totalDiesel = registrosClasseIII
                   .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
                   .reduce((acc, reg) => acc + reg.total_litros, 0);
@@ -1231,7 +1236,6 @@ Total QR: ${formatCurrency(total_qr)}.`;
                 const valorGasolina = registrosClasseIII
                   .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
                   .reduce((acc, reg) => acc + reg.valor_total, 0);
-                const totalLitros = totalDiesel + totalGasolina;
                 const totalValorCombustivel = valorDiesel + valorGasolina;
 
                 return (
@@ -1252,7 +1256,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     <tr className="total-geral-final-row">
                       <td colSpan={6}></td>
                       <td className="text-center font-bold" style={{ whiteSpace: 'nowrap' }}>VALOR TOTAL</td>
-                      <td className="text-center font-bold">{formatCurrency(totalGeral_GND3 + totalValorCombustivel)}</td>
+                      <td className="text-center font-bold">{formatCurrency(totalGeral_GND3)}</td>
                       <td style={{ backgroundColor: 'white' }}></td>
                     </tr>
                     
@@ -1267,7 +1271,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     {/* Segunda subdivisão: Valor Total */}
                     <tr style={{ backgroundColor: 'white' }}>
                       <td colSpan={7} style={{ border: 'none' }}></td>
-                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: '3px solid #000', borderRight: '1px solid #000' }}>{formatCurrency(totalGeral_GND3 + totalValorCombustivel)}</td>
+                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: '3px solid #000', borderRight: '1px solid #000' }}>{formatCurrency(totalGeral_GND3)}</td>
                       <td style={{ border: 'none' }}></td>
                     </tr>
                   </>
