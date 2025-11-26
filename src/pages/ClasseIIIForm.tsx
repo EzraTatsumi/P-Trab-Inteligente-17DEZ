@@ -1837,8 +1837,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
             <p className="text-sm text-muted-foreground mb-4">
               Informe os dados da consulta de preços de combustíveis para o período do PTrab.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="space-y-2 lg:col-span-1">
                 <Label htmlFor="data_inicio_consulta">Data Início Consulta *</Label>
                 <Input
                   id="data_inicio_consulta"
@@ -1849,7 +1849,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 lg:col-span-1">
                 <Label htmlFor="data_fim_consulta">Data Fim Consulta *</Label>
                 <Input
                   id="data_fim_consulta"
@@ -1860,7 +1860,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 lg:col-span-1">
                 <Label htmlFor="ambito">Âmbito da Consulta *</Label>
                 <Select
                   value={formLPC.ambito}
@@ -1877,7 +1877,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 </Select>
               </div>
               {formLPC.ambito !== 'Nacional' && (
-                <div className="space-y-2 lg:col-span-3">
+                <div className="space-y-2 lg:col-span-2">
                   <Label htmlFor="nome_local">{formLPC.ambito === 'Estadual' ? 'Estado' : 'Município'} *</Label>
                   <Input
                     id="nome_local"
@@ -1889,7 +1889,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   />
                 </div>
               )}
-              <div className="space-y-2">
+              <div className="space-y-2 lg:col-span-1">
                 <Label htmlFor="preco_diesel">Preço Diesel (R$/L) *</Label>
                 <Input
                   id="preco_diesel"
@@ -1901,7 +1901,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 lg:col-span-1">
                 <Label htmlFor="preco_gasolina">Preço Gasolina (R$/L) *</Label>
                 <Input
                   id="preco_gasolina"
