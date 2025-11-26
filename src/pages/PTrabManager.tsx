@@ -764,6 +764,14 @@ const PTrabManager = () => {
         finalTargetPTrabId = targetPTrabId;
         targetPTrab = pTrabs.find(p => p.id === finalTargetPTrabId);
         if (!targetPTrab) throw new Error("P Trab de destino existente não encontrado.");
+        
+        // Se o P Trab de destino já existe, atualize a origem para 'consolidado'
+        const { error: updateOriginError } = await supabase
+          .from("p_trab")
+          .update({ origem: 'consolidado' })
+          .eq("id", finalTargetPTrabId);
+          
+        if (updateOriginError) console.error("Erro ao atualizar origem para consolidado:", updateOriginError);
       }
 
       // 2. Clonar e Inserir Registros de Classe I e Classe III
