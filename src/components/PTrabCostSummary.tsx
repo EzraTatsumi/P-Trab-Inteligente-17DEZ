@@ -19,12 +19,20 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // 1. Fetch Classe I totals (33.90.30)
   const { data: classeIData, error: classeIError } = await supabase
     .from('classe_i_registros')
-    .select('total_qs, total_qr')
+    .select('total_qs, total_qr, complemento_qs, etapa_qs, complemento_qr, etapa_qr')
     .eq('p_trab_id', ptrabId);
 
   if (classeIError) throw classeIError;
 
-  const totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
+  let totalClasseI = 0;
+  let totalComplemento = 0;
+  let totalEtapaSolicitada = 0;
+
+  (classeIData || []).forEach(record => {
+    totalClasseI += record.total_qs + record.total_qr;
+    totalComplemento += record.complemento_qs + record.complemento_qr;
+    totalEtapaSolicitada += record.etapa_qs + record.etapa_qr;
+  });
 
   // 2. Fetch Classe III totals (33.90.39)
   const { data: classeIIIData, error: classeIIIError } = await supabase
@@ -45,7 +53,6 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const totalClasseIII = totalDiesel + totalGasolina;
 
   // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classe III (ND 39) + Classe III (ND 30)
-  // Para simplificar a exibição, vamos mostrar o total da ND 30 e ND 39 separadamente, e o total geral.
   const totalLogisticoND30 = totalClasseI;
   const totalLogisticoND39 = totalClasseIII;
   const totalLogisticoGeral = totalLogisticoND30 + totalLogisticoND39;
@@ -59,6 +66,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalLogisticoND39,
     totalOperacional,
     totalClasseI,
+    totalComplemento,
+    totalEtapaSolicitada,
     totalDiesel,
     totalGasolina,
   };
@@ -126,33 +135,47 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
             Aba Logística
           </div>
           
-          {/* Classe I - Subsistência */}
-          <div className="flex justify-between text-sm border-b pb-2 border-border/50">
-            <div className="flex items-center gap-2 text-foreground">
-              <Utensils className="h-4 w-4 text-orange-500" />
-              Classe I (Subsistência)
-            </div>
-            {/* Removendo o pr-6 e usando a classe de largura fixa */}
-            <span className={valueClasses}>
-              {formatCurrency(totals.totalClasseI)}
-            </span>
-          </div>
+          {/* Classe I - Subsistência (AGORA É UM ACCORDION) */}
+          <Accordion type="single" collapsible className="w-full pt-0">
+            <AccordionItem value="item-classe-i" className="border-b-0">
+              <AccordionTrigger className="p-0 hover:no-underline">
+                <div className="flex justify-between items-center w-full text-sm border-b pb-2 border-border/50">
+                  <div className="flex items-center gap-2 text-foreground">
+                    <Utensils className="h-4 w-4 text-orange-500" />
+                    Classe I (Subsistência)
+                  </div>
+                  <span className={valueClasses}>
+                    {formatCurrency(totals.totalClasseI)}
+                  </span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pt-1 pb-0">
+                <div className="space-y-1 pl-6 text-xs">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Complemento de Etapa</span>
+                    <span className="font-medium">{formatCurrency(totals.totalComplemento)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Etapa Solicitada</span>
+                    <span className="font-medium">{formatCurrency(totals.totalEtapaSolicitada)}</span>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           {/* Classe III - Combustíveis (Item principal) */}
           <Accordion type="single" collapsible className="w-full pt-2">
-            <AccordionItem value="item-1" className="border-b-0">
-              {/* Ajustando o AccordionTrigger para garantir que o valor fique alinhado com o Classe I */}
+            <AccordionItem value="item-classe-iii" className="border-b-0">
               <AccordionTrigger className="p-0 hover:no-underline">
                 <div className="flex justify-between items-center w-full text-sm border-b pb-2 border-border/50">
                   <div className="flex items-center gap-2 text-foreground">
                     <Fuel className="h-4 w-4 text-orange-500" />
                     Classe III (Combustíveis)
                   </div>
-                  {/* Removendo o pr-6 e usando a classe de largura fixa */}
                   <span className={valueClasses}>
                     {formatCurrency(totals.totalLogisticoND39)}
                   </span>
-                  {/* A seta de expansão é injetada aqui pelo Radix, fora do span de valor */}
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-1 pb-0">
@@ -179,7 +202,6 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
           </div>
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Itens Operacionais (ND 39)</span>
-            {/* Removendo o pr-6 e usando a classe de largura fixa */}
             <span className={valueClasses}>
               {formatCurrency(totals.totalOperacional)}
             </span>
