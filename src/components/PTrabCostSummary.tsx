@@ -144,7 +144,8 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                     <Utensils className="h-4 w-4 text-orange-500" />
                     Classe I (Subsistência)
                   </div>
-                  <span className={valueClasses}>
+                  {/* Adicionando mr-6 para afastar o valor da seta do trigger */}
+                  <span className={cn(valueClasses, "mr-6")}>
                     {formatCurrency(totals.totalClasseI)}
                   </span>
                 </div>
@@ -173,7 +174,8 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                     <Fuel className="h-4 w-4 text-orange-500" />
                     Classe III (Combustíveis)
                   </div>
-                  <span className={valueClasses}>
+                  {/* Adicionando mr-6 para afastar o valor da seta do trigger */}
+                  <span className={cn(valueClasses, "mr-6")}>
                     {formatCurrency(totals.totalLogisticoND39)}
                   </span>
                 </div>
@@ -202,7 +204,8 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
           </div>
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Itens Operacionais (ND 39)</span>
-            <span className={valueClasses}>
+            {/* Aplicando mr-6 para alinhar com os itens do Accordion */}
+            <span className={cn(valueClasses, "mr-6")}>
               {formatCurrency(totals.totalOperacional)}
             </span>
           </div>
