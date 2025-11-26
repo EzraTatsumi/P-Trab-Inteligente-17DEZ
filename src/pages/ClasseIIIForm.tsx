@@ -1682,7 +1682,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   onClick={() => handleSelectEquipmentType('EQUIPAMENTO_ENGENHARIA')}
                   disabled={!refLPC}
                 >
-                  <Truck className="mr-3 h-6 w-6" />
+                  <Tractor className="mr-3 h-6 w-6" />
                   Equipamento de Engenharia
                 </Button>
                 <Button
@@ -1691,7 +1691,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   onClick={() => handleSelectEquipmentType('MOTOMECANIZACAO')}
                   disabled={!refLPC}
                 >
-                  <Tractor className="mr-3 h-6 w-6" />
+                  <Truck className="mr-3 h-6 w-6" />
                   Motomecanização
                 </Button>
               </div>
