@@ -442,7 +442,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       const hdr2 = worksheet.getRow(headerRow2);
       hdr2.getCell('C').value = '33.90.30';
       hdr2.getCell('D').value = '33.90.39';
-      hdr2.getCell('E').value = 'GND 3';
+      hdr2.getCell('E').value = 'TOTAL';
       hdr2.getCell('F').value = 'LITROS';
       hdr2.getCell('G').value = 'PREÇO\nUNITÁRIO';
       hdr2.getCell('H').value = 'PREÇO\nTOTAL';
@@ -1057,7 +1057,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                 <tr>
                   <th className="col-nd col-natureza">33.90.30</th>
                   <th className="col-nd col-natureza">33.90.39</th>
-                  <th className="col-nd col-natureza">GND 3</th>
+                  <th className="col-nd col-natureza">TOTAL</th>
                   <th className="col-combustivel">LITROS</th>
                   <th className="col-combustivel">PREÇO<br/>UNITÁRIO</th>
                   <th className="col-combustivel">PREÇO<br/>TOTAL</th>
@@ -1179,7 +1179,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     {/* Parte Azul (Natureza de Despesa) */}
                     <td className="text-center font-bold">{formatCurrency(totaisOM.total_33_90_30)}</td>
                     <td className="text-center font-bold">{formatCurrency(totaisOM.total_33_90_39)}</td>
-                    <td className="text-center font-bold">{formatCurrency(totaisOM.total_parte_azul + totaisOM.total_33_90_39)}</td> {/* GND 3 é a soma de 33.90.30 e 33.90.39 */}
+                    <td className="text-center font-bold">{formatCurrency(totaisOM.total_parte_azul + totaisOM.total_33_90_39)}</td> {/* TOTAL é a soma de 33.90.30 e 33.90.39 */}
                     {/* Parte Laranja (Combustivel) */}
                     <td className="text-center font-bold border border-black">
                       {nomeOM === nomeRM && totaisOM.totalDiesel > 0 
