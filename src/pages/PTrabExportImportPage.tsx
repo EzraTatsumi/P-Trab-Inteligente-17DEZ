@@ -349,6 +349,7 @@ const PTrabExportImportPage = () => {
             ...restOfPTrab,
             user_id: userId,
             status: 'aberto', // Sempre importa como aberto
+            origem: 'importado', // MARCAR COMO IMPORTADO
         };
         
         const { data: newPTrab, error: insertPTrabError } = await supabase
