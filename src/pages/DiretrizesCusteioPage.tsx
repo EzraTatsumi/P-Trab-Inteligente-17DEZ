@@ -13,30 +13,13 @@ import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
+import { grupoGeradores, tipoEmbarcacoes, tipoViaturas } from "@/data/classeIIIData"; // Importar listas completas
 
-const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
-  { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
-  { nome: "Gerador até 15 kva OD", tipo_combustivel: "OD", consumo: 4.0, unidade: "L/h" },
-  { nome_equipamento: "Gerador acima de 50 kva", tipo_combustivel: "OD", consumo: 20.0, unidade: "L/h" },
-];
+const defaultGeradorConfig: DiretrizEquipamentoForm[] = grupoGeradores;
 
-const defaultEmbarcacaoConfig: DiretrizEquipamentoForm[] = [
-  { nome_equipamento: "Motor de popa", tipo_combustivel: "GAS", consumo: 20, unidade: "L/h" },
-  { nome_equipamento: "Emb Guardian 25", tipo_combustivel: "GAS", consumo: 100, unidade: "L/h" },
-  { nome_equipamento: "Ferryboat", tipo_combustivel: "OD", consumo: 100, unidade: "L/h" },
-  { nome_equipamento: "Emb Regional", tipo_combustivel: "OD", consumo: 50, unidade: "L/h" },
-  { nome_equipamento: "Empurradores", tipo_combustivel: "OD", consumo: 80, unidade: "L/h" },
-  { nome_equipamento: "Emb Manobra", tipo_combustivel: "OD", consumo: 30, unidade: "L/h" },
-];
+const defaultEmbarcacaoConfig: DiretrizEquipamentoForm[] = tipoEmbarcacoes;
 
-const defaultMotomecanizacaoConfig: DiretrizEquipamentoForm[] = [
-  { nome_equipamento: "Vtr Adm Pqn Porte - Adm Pqn", tipo_combustivel: "GAS", consumo: 8, unidade: "km/L" },
-  { nome_equipamento: "Vtr Adm Pqn Porte - Pick-up", tipo_combustivel: "OD", consumo: 7, unidade: "km/L" },
-  { nome_equipamento: "Vtr Adm Pqn Porte - Van/Micro", tipo_combustivel: "OD", consumo: 6, unidade: "km/L" },
-  { nome_equipamento: "Vtr Op Leve - Marruá", tipo_combustivel: "OD", consumo: 5, unidade: "km/L" },
-  { nome_equipamento: "Vtr Op Gde Porte - Vtr 5 ton", tipo_combustivel: "OD", consumo: 3, unidade: "km/L" },
-  { nome_equipamento: "Motocicleta - até 1.000cc", tipo_combustivel: "GAS", consumo: 15, unidade: "km/L" },
-];
+const defaultMotomecanizacaoConfig: DiretrizEquipamentoForm[] = tipoViaturas;
 
 const defaultDiretrizes = (year: number) => ({
   ano_referencia: year,
