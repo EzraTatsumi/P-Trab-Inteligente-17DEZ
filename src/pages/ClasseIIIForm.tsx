@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check, Plus } from "lucide-react"; // Adicionado Plus
+import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check, Plus, Loader2 } from "lucide-react"; // Adicionado Loader2
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Adicionado Table components
+import { fetchPrecosCombustivel } from "@/integrations/api/precoCombustivel"; // Importar API
 
 type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
 
@@ -180,6 +181,8 @@ export default function ClasseIIIForm() {
     preco_gasolina: 0,
   });
   const [isLPCFormExpanded, setIsLPCFormExpanded] = useState(false);
+  const [apiLoading, setApiLoading] = useState(false); // Novo estado para loading da API
+  const [apiSource, setApiSource] = useState<string | null>(null); // Novo estado para fonte da API
 
   const lpcRef = useRef<HTMLDivElement>(null);
   const addGeradorRef = useRef<HTMLDivElement>(null);
@@ -341,14 +344,52 @@ export default function ClasseIIIForm() {
           preco_gasolina: data.preco_gasolina,
         });
         setIsLPCFormExpanded(false);
+        setApiSource(null); // Limpa a fonte da API ao carregar do DB
       } else {
         setRefLPC(null);
         setIsLPCFormExpanded(true);
+        setApiSource(null);
       }
     } catch (error: any) {
       console.error("Erro ao carregar referência LPC:", error);
       setRefLPC(null);
       setIsLPCFormExpanded(true);
+      setApiSource(null);
+    }
+  };
+
+  const handleFetchPrices = async () => {
+    if (!formLPC.data_inicio_consulta || !formLPC.data_fim_consulta) {
+        toast.error("Preencha as datas de início e fim da consulta para buscar preços.");
+        return;
+    }
+    if (formLPC.ambito !== 'Nacional' && !formLPC.nome_local) {
+        toast.error(`Preencha o nome do ${formLPC.ambito === 'Estadual' ? 'Estado' : 'Município'} para buscar preços.`);
+        return;
+    }
+
+    setApiLoading(true);
+    setApiSource(null);
+    try {
+        const result = await fetchPrecosCombustivel(
+            formLPC.ambito,
+            formLPC.nome_local,
+            formLPC.data_inicio_consulta,
+            formLPC.data_fim_consulta
+        );
+
+        setFormLPC(prev => ({
+            ...prev,
+            preco_diesel: result.preco_diesel,
+            preco_gasolina: result.preco_gasolina,
+        }));
+        setApiSource(result.fonte);
+        toast.success(`Preços atualizados via API: Diesel ${formatCurrency(result.preco_diesel)}, Gasolina ${formatCurrency(result.preco_gasolina)}.`);
+    } catch (error) {
+        console.error("Erro ao buscar preços via API:", error);
+        toast.error("Erro ao buscar preços via API. Verifique os dados de consulta.");
+    } finally {
+        setApiLoading(false);
     }
   };
 
@@ -1914,7 +1955,25 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 />
               </div>
             </div>
-            <div className="flex justify-end mt-4">
+            
+            {apiSource && (
+              <Alert className="mt-4">
+                <Check className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  Preços preenchidos automaticamente. Fonte: <span className="font-semibold">{apiSource}</span>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex justify-end gap-2 mt-4">
+              <Button 
+                onClick={handleFetchPrices} 
+                disabled={apiLoading || loading || !formLPC.data_inicio_consulta || !formLPC.data_fim_consulta}
+                variant="secondary"
+              >
+                {apiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Fuel className="mr-2 h-4 w-4" />}
+                {apiLoading ? "Buscando..." : "Buscar Preços via API"}
+              </Button>
               <Button onClick={handleSalvarRefLPC} disabled={loading}>
                 {loading ? "Salvando..." : "Salvar Referência LPC"}
               </Button>
