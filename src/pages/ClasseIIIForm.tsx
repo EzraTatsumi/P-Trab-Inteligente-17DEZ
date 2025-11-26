@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check } from "lucide-react"; // Adicionado Sparkles, ClipboardList e Check
+import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check, Cloud } from "lucide-react"; // Adicionado Cloud
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
@@ -47,7 +47,7 @@ interface ClasseIIIRegistro {
   total_litros: number;
   valor_total: number;
   detalhamento?: string;
-  detalhamento_customizado?: string;
+  detalhamento_customizado?: string | null;
   itens_equipamentos?: any;
   total_litros_sem_margem?: number;
   fase_atividade?: string;
@@ -251,8 +251,8 @@ export default function ClasseIIIForm() {
 
   const [itemGeradorTemp, setItemGeradorTemp] = useState({
     tipo_equipamento_especifico: "",
-    quantidade: 0,
-    horas_dia: 0,
+    quantidade: 0, // Alterado para 0
+    horas_dia: 0, // Alterado para 0
     consumo_fixo: 0,
     tipo_combustivel: "DIESEL" as 'GASOLINA' | 'DIESEL',
   });
@@ -270,9 +270,9 @@ export default function ClasseIIIForm() {
 
   const [itemViaturaTemp, setItemViaturaTemp] = useState({
     tipo_equipamento_especifico: "",
-    quantidade: 0,
+    quantidade: 0, // Alterado para 0
     distancia_percorrida: 0,
-    quantidade_deslocamentos: 0,
+    quantidade_deslocamentos: 0, // Alterado para 0
     consumo_fixo: 0,
     tipo_combustivel: "DIESEL" as 'GASOLINA' | 'DIESEL',
   });
@@ -290,8 +290,8 @@ export default function ClasseIIIForm() {
 
   const [itemEmbarcacaoTemp, setItemEmbarcacaoTemp] = useState({
     tipo_equipamento_especifico: "",
-    quantidade: 0,
-    horas_dia: 0,
+    quantidade: 0, // Alterado para 0
+    horas_dia: 0, // Alterado para 0
     consumo_fixo: 0,
     tipo_combustivel: "DIESEL" as 'GASOLINA' | 'DIESEL',
   });
@@ -512,7 +512,7 @@ export default function ClasseIIIForm() {
 
       if (error) throw error;
 
-      toast.success("Memória de cálculo restaurada para o padrão automático!");
+      toast.success("Memória de cálculo restaurada!");
       fetchRegistros();
     } catch (error) {
       console.error("Erro ao restaurar memória:", error);
@@ -822,7 +822,7 @@ Valor: ${formatNumber(litrosCom30)} L ${combustivelLabel} x ${precoFormatado} = 
         if (error) throw error;
         toast.success("Registro atualizado!");
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("classe_iii_registros")
           .insert([registro]);
 
@@ -1839,6 +1839,18 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
                 
                 <form onSubmit={(e) => { e.preventDefault(); handleSalvarRefLPC(); }}>
+                  <div className="flex justify-end mb-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      disabled 
+                      className="gap-2 text-muted-foreground"
+                    >
+                      <Cloud className="h-4 w-4" />
+                      Consultar via API (Em breve)
+                    </Button>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="space-y-2">
                       <Label>Data Início Consulta</Label>
@@ -2024,7 +2036,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                               <tr key={registro.id} className="border-t hover:bg-muted/50 transition-colors">
                                 <td className="p-3 text-sm">{registro.organizacao}</td>
                                 <td className="p-3 text-sm">{registro.ug}</td>
-                                <td className="p-3 text-sm">{getTipoLabel(registro.tipo_equipamento)}</td>
+                                <td className="p-3 text-sm">{getTipoLabel(registro.tipo_equipamento as TipoEquipamento)}</td>
                                 <td className="p-3 text-sm">
                                   <Badge variant={registro.tipo_combustivel === 'DIESEL' ? 'default' : 'secondary'}>
                                     {registro.tipo_combustivel}
