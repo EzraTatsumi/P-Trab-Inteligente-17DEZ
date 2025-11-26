@@ -191,22 +191,22 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
               <AccordionContent className="pt-1 pb-0">
                 <div className="space-y-1 pl-6 text-xs">
                   {/* Linha Óleo Diesel */}
-                  <div className="grid grid-cols-3 gap-2 text-muted-foreground">
-                    <span className="col-span-1">Óleo Diesel</span>
-                    <span className="col-span-1 text-right font-medium">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span className="w-1/3">Óleo Diesel</span>
+                    <span className="text-right font-medium w-1/3">
                       {formatNumber(totals.totalDieselLitros)} L
                     </span>
-                    <span className="col-span-1 text-right font-medium">
+                    <span className={cn(valueClasses, "mr-6")}>
                       {formatCurrency(totals.totalDieselValor)}
                     </span>
                   </div>
                   {/* Linha Gasolina */}
-                  <div className="grid grid-cols-3 gap-2 text-muted-foreground">
-                    <span className="col-span-1">Gasolina</span>
-                    <span className="col-span-1 text-right font-medium">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span className="w-1/3">Gasolina</span>
+                    <span className="text-right font-medium w-1/3">
                       {formatNumber(totals.totalGasolinaLitros)} L
                     </span>
-                    <span className="col-span-1 text-right font-medium">
+                    <span className={cn(valueClasses, "mr-6")}>
                       {formatCurrency(totals.totalGasolinaValor)}
                     </span>
                   </div>
