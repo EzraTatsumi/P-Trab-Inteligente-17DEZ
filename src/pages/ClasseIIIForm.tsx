@@ -1028,7 +1028,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       setItemViaturaTemp({ ...itemViaturaTemp, tipo_equipamento_especifico: tipoNome, tipo_combustivel: novoCombustivel, consumo_fixo: equipamento.consumo });
     }
   };
-  const adicionarOu AtualizarItemViatura = () => {
+  const adicionarOuAtualizarItemViatura = () => {
     if (!itemViaturaTemp.tipo_equipamento_especifico || itemViaturaTemp.quantidade <= 0 || itemViaturaTemp.distancia_percorrida <= 0 || itemViaturaTemp.quantidade_deslocamentos <= 0) {
       toast.error("Preencha todos os campos do item");
       return;
