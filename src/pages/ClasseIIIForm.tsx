@@ -1959,27 +1959,30 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Button
+                size="lg"
                 variant={tipoSelecionado === 'GERADOR' ? 'default' : 'outline'}
                 onClick={() => handleSelectEquipmentType('GERADOR')}
                 className="flex items-center justify-start h-auto py-3 px-4"
               >
-                <Zap className="h-5 w-5 mr-3" />
+                <Zap className="h-6 w-6 mr-3" />
                 <span className="text-base font-semibold">Gerador</span>
               </Button>
               <Button
+                size="lg"
                 variant={tipoSelecionado === 'MOTOMECANIZACAO' ? 'default' : 'outline'}
                 onClick={() => handleSelectEquipmentType('MOTOMECANIZACAO')}
                 className="flex items-center justify-start h-auto py-3 px-4"
               >
-                <Truck className="h-5 w-5 mr-3" />
+                <Truck className="h-6 w-6 mr-3" />
                 <span className="text-base font-semibold">Motomecanização</span>
               </Button>
               <Button
+                size="lg"
                 variant={tipoSelecionado === 'EMBARCACAO' ? 'default' : 'outline'}
                 onClick={() => handleSelectEquipmentType('EMBARCACAO')}
                 className="flex items-center justify-start h-auto py-3 px-4"
               >
-                <Ship className="h-5 w-5 mr-3" />
+                <Ship className="h-6 w-6 mr-3" />
                 <span className="text-base font-semibold">Embarcação</span>
               </Button>
               {/* <Button
