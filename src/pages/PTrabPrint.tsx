@@ -1238,6 +1238,10 @@ Total QR: ${formatCurrency(total_qr)}.`;
                   .reduce((acc, reg) => acc + reg.valor_total, 0);
                 const totalValorCombustivel = valorDiesel + valorGasolina;
 
+                // Valor total solicitado: Soma do TOTAL (azul) + PREÇO TOTAL (laranja)
+                // totalGeral_GND3 (TOTAL azul) + totalValorCombustivel (PREÇO TOTAL laranja)
+                const valorTotalSolicitado = totalGeral_GND3 + totalValorCombustivel;
+
                 return (
                   <>
                     {/* Linha 1: Soma detalhada por ND e GP de Despesa */}
@@ -1256,7 +1260,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     <tr className="total-geral-final-row">
                       <td colSpan={6}></td>
                       <td className="text-center font-bold" style={{ whiteSpace: 'nowrap' }}>VALOR TOTAL</td>
-                      <td className="text-center font-bold">{formatCurrency(totalGeral_GND3)}</td>
+                      <td className="text-center font-bold">{formatCurrency(valorTotalSolicitado)}</td>
                       <td style={{ backgroundColor: 'white' }}></td>
                     </tr>
                     
@@ -1271,7 +1275,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     {/* Segunda subdivisão: Valor Total */}
                     <tr style={{ backgroundColor: 'white' }}>
                       <td colSpan={7} style={{ border: 'none' }}></td>
-                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: '3px solid #000', borderRight: '1px solid #000' }}>{formatCurrency(totalGeral_GND3)}</td>
+                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: '3px solid #000', borderRight: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
                       <td style={{ border: 'none' }}></td>
                     </tr>
                   </>
