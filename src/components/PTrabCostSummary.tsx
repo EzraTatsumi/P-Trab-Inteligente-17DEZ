@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown } from "lucide-react";
+import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane } from "lucide-react"; // Importar HardHat e Plane
 import {
   Accordion,
   AccordionContent,
@@ -90,6 +90,10 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const totalLogisticoND39 = totalClasseIII;
   const totalLogisticoGeral = totalLogisticoND30 + totalLogisticoND39;
   
+  // Novos totais (placeholders)
+  const totalMaterialPermanente = 0;
+  const totalAviacaoExercito = 0;
+  
   // Total Operacional (Placeholder)
   const totalOperacional = 0;
 
@@ -107,6 +111,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalGasolinaValor,
     totalDieselLitros,
     totalGasolinaLitros,
+    totalMaterialPermanente,
+    totalAviacaoExercito,
   };
 };
 
@@ -152,6 +158,9 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
   }
   
   const totals = data!;
+  
+  // O total geral agora inclui os novos placeholders
+  const totalGeralFinal = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalMaterialPermanente + totals.totalAviacaoExercito;
 
   // Classe para garantir largura e alinhamento consistentes para os valores
   const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
@@ -169,7 +178,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
           Visão consolidada dos custos logísticos e operacionais.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 p-0 pb-6"> {/* Adicionado pb-6 aqui */}
+      <CardContent className="space-y-4 p-0 pb-6">
         
         <Accordion type="single" collapsible className="w-full px-6">
           <AccordionItem value="summary-details" className="border-b-0">
@@ -187,7 +196,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                 </div>
                 <div className="flex justify-between text-foreground font-bold border-t border-border/50 pt-1">
                   <span className="text-lg">Total Geral</span>
-                  <span className="text-xl">{formatCurrency(totals.totalLogisticoGeral + totals.totalOperacional)}</span>
+                  <span className="text-xl">{formatCurrency(totalGeralFinal)}</span>
                 </div>
               </div>
               {/* FIM NOVO RESUMO */}
@@ -316,11 +325,55 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                   </div>
                 </div>
                 
+                {/* Aba Material Permanente (NOVO) */}
+                <div className="space-y-3 border-l-4 border-green-500 pl-3 pt-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-green-600">
+                    <HardHat className="h-4 w-4" />
+                    Aba Material Permanente
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Itens de Material Permanente (ND 44)</span>
+                    <span className={cn(valueClasses, "mr-6")}>
+                      {formatCurrency(totals.totalMaterialPermanente)}
+                    </span>
+                  </div>
+                  
+                  {/* SUBTOTAL MATERIAL PERMANENTE */}
+                  <div className="flex justify-between items-center pt-3 border-t border-border/50">
+                    <span className="font-bold text-sm text-foreground">SUBTOTAL MATERIAL PERMANENTE (ND 44)</span>
+                    <span className="font-bold text-lg text-green-600">
+                      {formatCurrency(totals.totalMaterialPermanente)}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Aba Aviação do Exército (NOVO) */}
+                <div className="space-y-3 border-l-4 border-purple-500 pl-3 pt-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-purple-600">
+                    <Plane className="h-4 w-4" />
+                    Aba Aviação do Exército
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Itens de Aviação (ND 39)</span>
+                    <span className={cn(valueClasses, "mr-6")}>
+                      {formatCurrency(totals.totalAviacaoExercito)}
+                    </span>
+                  </div>
+                  
+                  {/* SUBTOTAL AVIAÇÃO DO EXÉRCITO */}
+                  <div className="flex justify-between items-center pt-3 border-t border-border/50">
+                    <span className="font-bold text-sm text-foreground">SUBTOTAL AVIAÇÃO DO EXÉRCITO (ND 39)</span>
+                    <span className="font-bold text-lg text-purple-600">
+                      {formatCurrency(totals.totalAviacaoExercito)}
+                    </span>
+                  </div>
+                </div>
+                
                 {/* Total Geral (Movido para o final) */}
                 <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-6">
                   <span className="font-bold text-base text-primary">TOTAL GERAL</span>
                   <span className="font-extrabold text-xl text-primary">
-                    {formatCurrency(totals.totalLogisticoGeral + totals.totalOperacional)}
+                    {formatCurrency(totalGeralFinal)}
                   </span>
                 </div>
               </div>
