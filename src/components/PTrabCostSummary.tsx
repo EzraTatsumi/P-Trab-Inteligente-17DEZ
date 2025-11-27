@@ -164,14 +164,34 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
         
         <Accordion type="single" collapsible className="w-full px-6">
           <AccordionItem value="summary-details" className="border-b-0">
-            <AccordionTrigger className="py-3 px-0 hover:no-underline flex justify-between items-center">
-              <div className="flex items-center gap-2 text-base font-bold text-primary">
-                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 text-primary" />
-                Detalhes do Custeio
+            <AccordionTrigger className="py-3 px-0 hover:no-underline flex flex-col items-start gap-2">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2 text-base font-bold text-primary">
+                  <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 text-primary" />
+                  Detalhes do Custeio
+                </div>
+                <span className="font-extrabold text-xl text-primary">
+                  {formatCurrency(totals.totalLogisticoGeral + totals.totalOperacional)}
+                </span>
               </div>
-              <span className="font-extrabold text-xl text-primary">
-                {formatCurrency(totals.totalLogisticoGeral + totals.totalOperacional)}
-              </span>
+              
+              {/* NOVO RESUMO QUANDO FECHADO */}
+              <div className="w-full space-y-1 text-xs pt-1">
+                <div className="flex justify-between text-orange-600">
+                  <span className="font-semibold">Aba Logística</span>
+                  <span className="font-semibold">{formatCurrency(totals.totalLogisticoGeral)}</span>
+                </div>
+                <div className="flex justify-between text-blue-600">
+                  <span className="font-semibold">Aba Operacional</span>
+                  <span className="font-semibold">{formatCurrency(totals.totalOperacional)}</span>
+                </div>
+                <div className="flex justify-between text-foreground font-bold border-t border-border/50 pt-1">
+                  <span>Total Geral</span>
+                  <span>{formatCurrency(totals.totalLogisticoGeral + totals.totalOperacional)}</span>
+                </div>
+              </div>
+              {/* FIM NOVO RESUMO */}
+              
             </AccordionTrigger>
             <AccordionContent className="pt-4 pb-0">
               <div className="space-y-4">
