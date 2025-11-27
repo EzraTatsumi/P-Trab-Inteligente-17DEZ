@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { FileText, Package, Briefcase, ArrowLeft, Calendar, Users, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { PTrabCostSummary } from "@/components/PTrabCostSummary"; // Importar o novo componente
+import { PTrabCostSummary } from "@/components/PTrabCostSummary";
+import { CreditInputCard } from "@/components/CreditInputCard"; // Importar o novo componente
 
 interface PTrabData {
   numero_ptrab: string;
@@ -30,7 +31,11 @@ const PTrabForm = () => {
   const ptrabId = searchParams.get('ptrabId');
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
   const [selectedTab, setSelectedTab] = useState("logistica");
-  const [loading, setLoading] = useState(true); // CORRIGIDO: Usando useState(true)
+  const [loading, setLoading] = useState(true);
+  
+  // Novos estados para armazenar os custos totais (para passar ao CreditInputCard)
+  const [totalGND3Cost, setTotalGND3Cost] = useState(0);
+  const [totalGND4Cost, setTotalGND4Cost] = useState(0);
 
   const classesLogistica = [
     { id: "classe-i", name: "Classe I - Subsistência" },
@@ -92,6 +97,47 @@ const PTrabForm = () => {
     loadPTrab();
   }, [ptrabId, navigate, toast]);
 
+  // Função para buscar os totais e atualizar os estados de custo
+  const fetchAndSetTotals = async () => {
+    if (!ptrabId) return;
+    
+    // Esta lógica deve ser implementada no futuro, por enquanto, usamos 0
+    // Para simular, vamos usar os valores do PTrabManager (que já calcula Logística)
+    // Mas como não temos acesso direto ao PTrabManager, vamos simular a busca aqui
+    
+    // Simulação de busca de totais (usando a mesma lógica do PTrabCostSummary)
+    const { data: classeIData } = await supabase
+      .from('classe_i_registros')
+      .select('total_qs, total_qr')
+      .eq('p_trab_id', ptrabId);
+
+    const totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
+
+    const { data: classeIIIData } = await supabase
+      .from('classe_iii_registros')
+      .select('valor_total')
+      .eq('p_trab_id', ptrabId);
+
+    const totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+    
+    // GND 3 = Logística (Classe I + Classe III) + Operacional (0) + Aviação (0)
+    const calculatedGND3 = totalClasseI + totalClasseIII;
+    
+    // GND 4 = Material Permanente (0)
+    const calculatedGND4 = 0; 
+
+    setTotalGND3Cost(calculatedGND3);
+    setTotalGND4Cost(calculatedGND4);
+  };
+  
+  // Efeito para carregar os totais iniciais e manter a atualização
+  useEffect(() => {
+    fetchAndSetTotals();
+    const interval = setInterval(fetchAndSetTotals, 10000); // Atualiza a cada 10s
+    return () => clearInterval(interval);
+  }, [ptrabId]);
+
+
   const handleItemClick = (itemId: string, type: string) => {
     if (itemId === 'classe-i') {
       navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`);
@@ -136,7 +182,7 @@ const PTrabForm = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Coluna Esquerda: Dados do P Trab e Resumo de Custos */}
+          {/* Coluna Esquerda: Dados do P Trab, Resumo de Custos e Crédito Disponível */}
           <div className="lg:col-span-1 space-y-6">
             <Card className="shadow-lg">
               <CardHeader>
@@ -180,8 +226,14 @@ const PTrabForm = () => {
               </CardContent>
             </Card>
             
-            {/* NOVO COMPONENTE DE RESUMO DE CUSTOS */}
+            {/* Resumo de Custos */}
             {ptrabId && <PTrabCostSummary ptrabId={ptrabId} />}
+            
+            {/* Crédito Disponível (NOVO) */}
+            <CreditInputCard 
+              totalGND3Cost={totalGND3Cost} 
+              totalGND4Cost={totalGND4Cost} 
+            />
           </div>
 
           {/* Coluna Direita: Seleção de Classes/Itens */}
