@@ -9,6 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner"; // Importar toast do sonner
 import { PTrabCostSummary } from "@/components/PTrabCostSummary";
 import { CreditInputDialog } from "@/components/CreditInputDialog"; // Importar o novo diálogo
+import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"; // Importar TanStack Query
+import { fetchUserCredits, updateUserCredits } from "@/lib/creditUtils"; // Importar utilitários de crédito
 
 interface PTrabData {
   numero_ptrab: string;
@@ -28,6 +31,9 @@ const PTrabForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get('ptrabId');
+  const { user } = useSession(); // Obter usuário da sessão
+  const queryClient = useQueryClient();
+  
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
   const [selectedTab, setSelectedTab] = useState("logistica");
   const [loading, setLoading] = useState(true);
@@ -38,8 +44,6 @@ const PTrabForm = () => {
   
   // NOVOS ESTADOS PARA CRÉDITO E DIÁLOGO
   const [showCreditDialog, setShowCreditDialog] = useState(false);
-  const [creditGND3, setCreditGND3] = useState(0);
-  const [creditGND4, setCreditGND4] = useState(0);
 
   const classesLogistica = [
     { id: "classe-i", name: "Classe I - Subsistência" },
@@ -62,6 +66,29 @@ const PTrabForm = () => {
     { id: "diaria", name: "Diária" },
     { id: "outros", name: "Outros" },
   ];
+
+  // --- Lógica de Busca de Créditos (TanStack Query) ---
+  const { data: credits, isLoading: isLoadingCredits } = useQuery({
+    queryKey: ['userCredits', user?.id],
+    queryFn: () => fetchUserCredits(user!.id),
+    enabled: !!user?.id,
+    initialData: { credit_gnd3: 0, credit_gnd4: 0 },
+  });
+  
+  // --- Lógica de Mutação para Salvar Créditos ---
+  const saveCreditsMutation = useMutation({
+    mutationFn: ({ gnd3, gnd4 }: { gnd3: number, gnd4: number }) => 
+      updateUserCredits(user!.id, gnd3, gnd4),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
+      queryClient.invalidateQueries({ queryKey: ['userCredits', user?.id] });
+      toast.success("Créditos disponíveis atualizados e salvos!");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Falha ao salvar créditos.");
+    }
+  });
+
 
   useEffect(() => {
     const loadPTrab = async () => {
@@ -130,12 +157,19 @@ const PTrabForm = () => {
   }, [ptrabId]);
 
   const handleSaveCredit = (gnd3: number, gnd4: number) => {
-    setCreditGND3(gnd3);
-    setCreditGND4(gnd4);
-    toast.success("Créditos disponíveis atualizados!");
+    if (!user?.id) {
+      toast.error("Erro: Usuário não identificado para salvar créditos.");
+      return;
+    }
+    saveCreditsMutation.mutate({ gnd3, gnd4 });
   };
 
   const handleItemClick = (itemId: string, type: string) => {
+    if (ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado') {
+      toast.warning("Este P Trab está completo ou arquivado e não pode ser editado.");
+      return;
+    }
+    
     if (itemId === 'classe-i') {
       navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-iii') {
@@ -146,7 +180,7 @@ const PTrabForm = () => {
     }
   };
 
-  if (loading) {
+  if (loading || isLoadingCredits) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground">Carregando...</p>
@@ -166,9 +200,9 @@ const PTrabForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background py-4 px-4"> {/* Ajustado py-12 para py-4 */}
+    <div className="min-h-screen bg-background py-4 px-4">
       <div className="container max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-4"> {/* Ajustado mb-6 para mb-4 */}
+        <div className="flex items-center justify-between mb-4">
           <Button
             variant="ghost"
             onClick={() => navigate('/ptrab')}
@@ -228,8 +262,8 @@ const PTrabForm = () => {
               <PTrabCostSummary 
                 ptrabId={ptrabId} 
                 onOpenCreditDialog={() => setShowCreditDialog(true)}
-                creditGND3={creditGND3}
-                creditGND4={creditGND4}
+                creditGND3={credits.credit_gnd3}
+                creditGND4={credits.credit_gnd4}
               />
             )}
           </div>
@@ -268,6 +302,7 @@ const PTrabForm = () => {
                           variant="outline"
                           className="h-auto py-4 px-6 justify-start text-left hover:bg-primary/10 hover:border-primary transition-all"
                           onClick={() => handleItemClick(classe.id, "logistica")}
+                          disabled={ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado'}
                         >
                           <div>
                             <div className="font-semibold">{classe.name.split(" - ")[0]}</div>
@@ -291,6 +326,7 @@ const PTrabForm = () => {
                           variant="outline"
                           className="h-auto py-4 px-6 justify-start text-left hover:bg-secondary/10 hover:border-secondary transition-all"
                           onClick={() => handleItemClick(item.id, "operacional")}
+                          disabled={ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado'}
                         >
                           <div className="font-semibold">{item.name}</div>
                         </Button>
@@ -310,8 +346,8 @@ const PTrabForm = () => {
         onOpenChange={setShowCreditDialog}
         totalGND3Cost={totalGND3Cost}
         totalGND4Cost={totalGND4Cost}
-        initialCreditGND3={creditGND3}
-        initialCreditGND4={creditGND4}
+        initialCreditGND3={credits.credit_gnd3}
+        initialCreditGND4={credits.credit_gnd4}
         onSave={handleSaveCredit}
       />
     </div>

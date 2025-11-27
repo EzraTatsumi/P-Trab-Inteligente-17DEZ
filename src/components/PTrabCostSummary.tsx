@@ -88,7 +88,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
 
   const totalClasseIII = totalDieselValor + totalGasolinaValor;
 
-  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classe III (ND 39) + Classe III (ND 30)
+  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classe III (ND 39)
   const totalLogisticoND30 = totalClasseI;
   const totalLogisticoND39 = totalClasseIII;
   const totalLogisticoGeral = totalLogisticoND30 + totalLogisticoND39;
