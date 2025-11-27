@@ -68,7 +68,8 @@ export const CreditInputDialog = ({
 }: CreditInputDialogProps) => {
   // Usamos strings para o estado interno dos inputs para permitir a digitação de vírgulas
   const [inputGND3, setInputGND3] = useState<string>(formatNumberForInput(initialCreditGND3));
-  const [inputGND4, setInputGND4] = useState<string>(formatNumberForInput(initialCreditCreditGND4));
+  // CORREÇÃO AQUI: Usando initialCreditGND4
+  const [inputGND4, setInputGND4] = useState<string>(formatNumberForInput(initialCreditGND4));
   const { handleEnterToNextField } = useFormNavigation();
 
   // Sincroniza o estado interno com os props iniciais quando o diálogo abre
@@ -91,17 +92,10 @@ export const CreditInputDialog = ({
     // Remove a formatação de milhar temporariamente para processar a entrada
     const unformattedValue = rawValue.replace(/\./g, '');
     
-    // Encontra a posição do cursor antes da formatação
-    const cursorPosition = e.target.selectionStart || 0;
-    
     // Aplica a formatação de milhar e decimal
     const formattedValue = formatInputWithThousands(unformattedValue);
     
     setInput(formattedValue);
-
-    // Lógica para manter o cursor na posição correta após a formatação
-    // (Esta lógica é complexa em React e pode ser omitida para simplicidade,
-    // mas a formatação de milhar já é um grande ganho de UX)
   };
 
   const handleSave = () => {
