@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { FileText, Package, Briefcase, ArrowLeft, Calendar, Users, MapPin } from "lucide-react";
+import { FileText, Package, Briefcase, ArrowLeft, Calendar, Users, MapPin, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner"; // Importar toast do sonner
 import { PTrabCostSummary } from "@/components/PTrabCostSummary";
@@ -31,12 +31,12 @@ const PTrabForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get('ptrabId');
-  const { user } = useSession(); // Obter usuário da sessão
+  const { user, loading: loadingSession } = useSession(); // Obter usuário e estado de carregamento da sessão
   const queryClient = useQueryClient();
   
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
   const [selectedTab, setSelectedTab] = useState("logistica");
-  const [loading, setLoading] = useState(true);
+  const [loadingPTrab, setLoadingPTrab] = useState(true);
   
   // Estados para armazenar os custos totais (para passar ao CreditInputCard)
   const [totalGND3Cost, setTotalGND3Cost] = useState(0);
@@ -71,7 +71,7 @@ const PTrabForm = () => {
   const { data: credits, isLoading: isLoadingCredits } = useQuery({
     queryKey: ['userCredits', user?.id],
     queryFn: () => fetchUserCredits(user!.id),
-    enabled: !!user?.id,
+    enabled: !!user?.id, // Só executa se o user.id estiver disponível
     initialData: { credit_gnd3: 0, credit_gnd4: 0 },
   });
   
@@ -115,7 +115,7 @@ const PTrabForm = () => {
         ...data,
         efetivo_empregado: String(data.efetivo_empregado), // Garante que seja string ao carregar
       });
-      setLoading(false);
+      setLoadingPTrab(false);
     };
 
     loadPTrab();
@@ -181,10 +181,11 @@ const PTrabForm = () => {
     }
   };
 
-  if (loading || isLoadingCredits) {
+  if (loadingSession || loadingPTrab || isLoadingCredits) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Carregando...</span>
       </div>
     );
   }
