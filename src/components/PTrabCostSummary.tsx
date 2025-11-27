@@ -1,8 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"; // Importar CardDescription
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown } from "lucide-react"; // Importado ChevronDown
+import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -122,7 +122,10 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
     return (
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-lg">Resumo de Custos</CardTitle>
+          <CardTitle className="text-2xl font-bold">Resumo de Custos</CardTitle>
+          <CardDescription>
+            Visão consolidada dos custos logísticos e operacionais.
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -136,10 +139,13 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
     return (
       <Card className="shadow-lg border-destructive">
         <CardHeader>
-          <CardTitle className="text-lg text-destructive">Erro no Cálculo</CardTitle>
+          <CardTitle className="text-2xl font-bold text-destructive">Erro no Cálculo</CardTitle>
+          <CardDescription>
+            Não foi possível carregar os totais.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Não foi possível carregar os totais.</p>
+          <p className="text-sm text-muted-foreground">Ocorreu um erro ao buscar os dados de custeio.</p>
         </CardContent>
       </Card>
     );
@@ -158,22 +164,16 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
   return (
     <Card className="shadow-lg">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Resumo de Custos</CardTitle>
+        <CardTitle className="text-2xl font-bold">Resumo de Custos</CardTitle>
+        <CardDescription>
+          Visão consolidada dos custos logísticos e operacionais.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 p-0"> {/* Removido padding e space-y do CardContent */}
         
         <Accordion type="single" collapsible className="w-full px-6">
           <AccordionItem value="summary-details" className="border-b-0">
             <AccordionTrigger className="py-3 px-0 hover:no-underline flex flex-col items-start gap-2">
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-2 text-base font-bold text-primary">
-                  <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 text-primary" />
-                  Detalhes do Custeio
-                </div>
-                <span className="font-extrabold text-xl text-primary">
-                  {formatCurrency(totals.totalLogisticoGeral + totals.totalOperacional)}
-                </span>
-              </div>
               
               {/* NOVO RESUMO QUANDO FECHADO */}
               <div className="w-full space-y-1 text-xs pt-1">
