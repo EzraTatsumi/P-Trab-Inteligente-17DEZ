@@ -24,6 +24,13 @@ interface CreditInputDialogProps {
   onSave: (gnd3: number, gnd4: number) => void;
 }
 
+// Função auxiliar para formatar o número para exibição no input (usando vírgula)
+const formatNumberForInput = (num: number): string => {
+  if (num === 0) return "";
+  // Converte para string, substitui ponto por vírgula
+  return num.toFixed(2).replace('.', ',');
+};
+
 export const CreditInputDialog = ({
   open,
   onOpenChange,
@@ -33,31 +40,59 @@ export const CreditInputDialog = ({
   initialCreditGND4,
   onSave,
 }: CreditInputDialogProps) => {
-  const [creditGND3, setCreditGND3] = useState<number>(initialCreditGND3);
-  const [creditGND4, setCreditGND4] = useState<number>(initialCreditGND4);
+  // Usamos strings para o estado interno dos inputs para permitir a digitação de vírgulas
+  const [inputGND3, setInputGND3] = useState<string>(formatNumberForInput(initialCreditGND3));
+  const [inputGND4, setInputGND4] = useState<string>(formatNumberForInput(initialCreditGND4));
   const { handleEnterToNextField } = useFormNavigation();
 
   // Sincroniza o estado interno com os props iniciais quando o diálogo abre
   useEffect(() => {
     if (open) {
-      setCreditGND3(initialCreditGND3);
-      setCreditGND4(initialCreditGND4);
+      setInputGND3(formatNumberForInput(initialCreditGND3));
+      setInputGND4(formatNumberForInput(initialCreditGND4));
     }
   }, [open, initialCreditGND3, initialCreditGND4]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, setCredit: React.Dispatch<React.SetStateAction<number>>) => {
-    // Permite apenas números, vírgulas e pontos, e substitui vírgula por ponto para parseFloat
-    const value = e.target.value.replace(/[^0-9,.]/g, '').replace(',', '.');
-    setCredit(parseFloat(value) || 0);
+  const parseInputToNumber = (input: string): number => {
+    // 1. Remove todos os caracteres que não são dígitos, vírgula ou ponto
+    let cleaned = input.replace(/[^0-9,.]/g, '');
+    
+    // 2. Substitui a vírgula por ponto para que parseFloat funcione corretamente
+    cleaned = cleaned.replace(',', '.');
+    
+    // 3. Garante que apenas o último ponto seja mantido (para evitar 1.2.3)
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      cleaned = parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    return parseFloat(cleaned) || 0;
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, setInput: React.Dispatch<React.SetStateAction<string>>) => {
+    const rawValue = e.target.value;
+    
+    // Permite a entrada de vírgula e ponto, mas limita a formatação
+    let cleanedValue = rawValue.replace(/[^0-9,.]/g, '');
+    
+    // Se o usuário digitar vírgula ou ponto, permite, mas não formata automaticamente
+    setInput(cleanedValue);
   };
 
   const handleSave = () => {
-    onSave(creditGND3, creditGND4);
+    const finalGND3 = parseInputToNumber(inputGND3);
+    const finalGND4 = parseInputToNumber(inputGND4);
+    
+    onSave(finalGND3, finalGND4);
     onOpenChange(false);
   };
 
-  const saldoGND3 = creditGND3 - totalGND3Cost;
-  const saldoGND4 = creditGND4 - totalGND4Cost;
+  // Calcula os custos e saldos usando os valores numéricos parseados
+  const currentCreditGND3 = parseInputToNumber(inputGND3);
+  const currentCreditGND4 = parseInputToNumber(inputGND4);
+  
+  const saldoGND3 = currentCreditGND3 - totalGND3Cost;
+  const saldoGND4 = currentCreditGND4 - totalGND4Cost;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -82,8 +117,8 @@ export const CreditInputDialog = ({
                 id="credit-gnd3"
                 type="text"
                 inputMode="decimal"
-                value={creditGND3 === 0 ? "" : creditGND3.toFixed(2).replace('.', ',')}
-                onChange={(e) => handleInputChange(e, setCreditGND3)}
+                value={inputGND3}
+                onChange={(e) => handleInputChange(e, setInputGND3)}
                 placeholder=""
                 className="pl-8 text-lg font-bold"
                 onKeyDown={handleEnterToNextField}
@@ -111,8 +146,8 @@ export const CreditInputDialog = ({
                 id="credit-gnd4"
                 type="text"
                 inputMode="decimal"
-                value={creditGND4 === 0 ? "" : creditGND4.toFixed(2).replace('.', ',')}
-                onChange={(e) => handleInputChange(e, setCreditGND4)}
+                value={inputGND4}
+                onChange={(e) => handleInputChange(e, setInputGND4)}
                 placeholder=""
                 className="pl-8 text-lg font-bold"
                 onKeyDown={handleEnterToNextField}
