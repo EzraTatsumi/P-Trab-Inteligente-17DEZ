@@ -84,11 +84,11 @@ export const CreditInputDialog = ({
                 inputMode="decimal"
                 value={creditGND3 === 0 ? "" : creditGND3.toFixed(2).replace('.', ',')}
                 onChange={(e) => handleInputChange(e, setCreditGND3)}
-                placeholder="0,00"
+                placeholder="Ex: 100.000,00"
                 className="pl-8 text-lg font-bold"
                 onKeyDown={handleEnterToNextField}
               />
-              <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground font-bold">R$</span>
             </div>
             
             <div className="flex justify-between text-xs pt-1">
@@ -113,11 +113,11 @@ export const CreditInputDialog = ({
                 inputMode="decimal"
                 value={creditGND4 === 0 ? "" : creditGND4.toFixed(2).replace('.', ',')}
                 onChange={(e) => handleInputChange(e, setCreditGND4)}
-                placeholder="0,00"
+                placeholder="Ex: 50.000,00"
                 className="pl-8 text-lg font-bold"
                 onKeyDown={handleEnterToNextField}
               />
-              <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground font-bold">R$</span>
             </div>
             
             <div className="flex justify-between text-xs pt-1">
