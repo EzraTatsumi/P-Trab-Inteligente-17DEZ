@@ -27,8 +27,34 @@ interface CreditInputDialogProps {
 // Função auxiliar para formatar o número para exibição no input (usando vírgula)
 const formatNumberForInput = (num: number): string => {
   if (num === 0) return "";
-  // Converte para string, substitui ponto por vírgula
-  return num.toFixed(2).replace('.', ',');
+  // Usa Intl.NumberFormat para formatar com separador de milhar (ponto) e decimal (vírgula)
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num);
+};
+
+// Função para limpar e formatar a string de entrada com separadores de milhar
+const formatInputWithThousands = (value: string): string => {
+  // 1. Remove tudo exceto dígitos e vírgula
+  let cleaned = value.replace(/[^\d,]/g, '');
+
+  // 2. Garante que haja apenas uma vírgula (separador decimal)
+  const parts = cleaned.split(',');
+  let integerPart = parts[0];
+  let decimalPart = parts.length > 1 ? parts[1] : '';
+
+  // 3. Limita a parte decimal a 2 dígitos
+  decimalPart = decimalPart.substring(0, 2);
+
+  // 4. Aplica a formatação de milhar (ponto) na parte inteira
+  integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  // 5. Reconstrói a string
+  if (parts.length > 1) {
+    return `${integerPart},${decimalPart}`;
+  }
+  return integerPart;
 };
 
 export const CreditInputDialog = ({
@@ -42,7 +68,7 @@ export const CreditInputDialog = ({
 }: CreditInputDialogProps) => {
   // Usamos strings para o estado interno dos inputs para permitir a digitação de vírgulas
   const [inputGND3, setInputGND3] = useState<string>(formatNumberForInput(initialCreditGND3));
-  const [inputGND4, setInputGND4] = useState<string>(formatNumberForInput(initialCreditGND4));
+  const [inputGND4, setInputGND4] = useState<string>(formatNumberForInput(initialCreditCreditGND4));
   const { handleEnterToNextField } = useFormNavigation();
 
   // Sincroniza o estado interno com os props iniciais quando o diálogo abre
@@ -54,50 +80,34 @@ export const CreditInputDialog = ({
   }, [open, initialCreditGND3, initialCreditGND4]);
 
   const parseInputToNumber = (input: string): number => {
-    // 1. Remove todos os caracteres que não são dígitos, vírgula ou ponto
-    let cleaned = input.replace(/[^0-9,.]/g, '');
-    
-    // 2. Substitui a vírgula por ponto para que parseFloat funcione corretamente
-    cleaned = cleaned.replace(',', '.');
-    
-    // 3. Garante que apenas o último ponto seja mantido (para evitar 1.2.3)
-    const parts = cleaned.split('.');
-    if (parts.length > 2) {
-      cleaned = parts[0] + '.' + parts.slice(1).join('');
-    }
-    
+    // Remove pontos de milhar e substitui vírgula por ponto decimal
+    const cleaned = input.replace(/\./g, '').replace(',', '.');
     return parseFloat(cleaned) || 0;
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, setInput: React.Dispatch<React.SetStateAction<string>>) => {
     const rawValue = e.target.value;
     
-    // 1. Limpa caracteres não permitidos (mantém dígitos, vírgula e ponto)
-    let cleanedValue = rawValue.replace(/[^0-9,.]/g, '');
+    // Remove a formatação de milhar temporariamente para processar a entrada
+    const unformattedValue = rawValue.replace(/\./g, '');
     
-    // 2. Normaliza separadores: usa o primeiro ponto/vírgula como separador decimal
-    const decimalIndex = cleanedValue.indexOf(',') !== -1 ? cleanedValue.indexOf(',') : cleanedValue.indexOf('.');
+    // Encontra a posição do cursor antes da formatação
+    const cursorPosition = e.target.selectionStart || 0;
     
-    if (decimalIndex !== -1) {
-      const integerPart = cleanedValue.substring(0, decimalIndex).replace(/[,.]/g, '');
-      let decimalPart = cleanedValue.substring(decimalIndex + 1).replace(/[,.]/g, '');
-      
-      // Limita a parte decimal a 2 dígitos
-      decimalPart = decimalPart.substring(0, 2);
-      
-      cleanedValue = integerPart + ',' + decimalPart;
-    } else {
-      // Remove vírgulas/pontos se não houver parte decimal
-      cleanedValue = cleanedValue.replace(/[,.]/g, '');
-    }
+    // Aplica a formatação de milhar e decimal
+    const formattedValue = formatInputWithThousands(unformattedValue);
     
-    setInput(cleanedValue);
+    setInput(formattedValue);
+
+    // Lógica para manter o cursor na posição correta após a formatação
+    // (Esta lógica é complexa em React e pode ser omitida para simplicidade,
+    // mas a formatação de milhar já é um grande ganho de UX)
   };
 
   const handleSave = () => {
-    // Ao salvar, garantimos que o valor final tenha 2 casas decimais
-    const finalGND3 = parseFloat(parseInputToNumber(inputGND3).toFixed(2));
-    const finalGND4 = parseFloat(parseInputToNumber(inputGND4).toFixed(2));
+    // Ao salvar, usamos o parseInputToNumber para obter o valor limpo
+    const finalGND3 = parseInputToNumber(inputGND3);
+    const finalGND4 = parseInputToNumber(inputGND4);
     
     onSave(finalGND3, finalGND4);
     onOpenChange(false);
@@ -135,7 +145,7 @@ export const CreditInputDialog = ({
                 inputMode="decimal"
                 value={inputGND3}
                 onChange={(e) => handleInputChange(e, setInputGND3)}
-                placeholder=""
+                placeholder="0,00"
                 className="pl-8 text-lg"
                 onKeyDown={handleEnterToNextField}
               />
@@ -164,7 +174,7 @@ export const CreditInputDialog = ({
                 inputMode="decimal"
                 value={inputGND4}
                 onChange={(e) => handleInputChange(e, setInputGND4)}
-                placeholder=""
+                placeholder="0,00"
                 className="pl-8 text-lg"
                 onKeyDown={handleEnterToNextField}
               />
