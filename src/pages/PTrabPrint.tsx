@@ -733,7 +733,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
         totalOMRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
         totalOMRow.getCell('A').font = { name: 'Arial', size: 8, bold: true };
         
-        totalOMRow.getCell('E').value = totaisOM.total_gnd3; // Total C + H
+        totalOMRow.getCell('E').value = totaisOM.total_gnd3;
         totalOMRow.getCell('E').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
         totalOMRow.getCell('E').font = { bold: true };
         totalOMRow.getCell('E').style = { ...totalOMRow.getCell('E').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
@@ -1219,7 +1219,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     <td colSpan={4} className="text-right font-bold">
                       VALOR TOTAL DO {nomeOM}
                     </td>
-                    <td className="text-center font-bold">{formatCurrency(totaisOM.total_gnd3)}</td> // Total C + H
+                    <td className="text-center font-bold">{formatCurrency(totaisOM.total_gnd3)}</td>
                     <td colSpan={3}></td>
                     <td></td>
                   </tr>
