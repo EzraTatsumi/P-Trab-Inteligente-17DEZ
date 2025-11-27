@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { FileText, Package, Briefcase, ArrowLeft, Calendar, Users, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner"; // Importar toast do sonner
 import { PTrabCostSummary } from "@/components/PTrabCostSummary";
 import { CreditInputDialog } from "@/components/CreditInputDialog"; // Importar o novo diálogo
 
@@ -27,7 +27,6 @@ interface PTrabData {
 const PTrabForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { toast } = useToast();
   const ptrabId = searchParams.get('ptrabId');
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
   const [selectedTab, setSelectedTab] = useState("logistica");
@@ -67,11 +66,7 @@ const PTrabForm = () => {
   useEffect(() => {
     const loadPTrab = async () => {
       if (!ptrabId) {
-        toast({
-          title: "Erro",
-          description: "P Trab não selecionado",
-          variant: "destructive",
-        });
+        toast.error("P Trab não selecionado");
         navigate('/ptrab');
         return;
       }
@@ -83,11 +78,7 @@ const PTrabForm = () => {
         .single();
 
       if (error || !data) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar o P Trab",
-          variant: "destructive",
-        });
+        toast.error("Não foi possível carregar o P Trab");
         navigate('/ptrab');
         return;
       }
@@ -100,7 +91,7 @@ const PTrabForm = () => {
     };
 
     loadPTrab();
-  }, [ptrabId, navigate, toast]);
+  }, [ptrabId, navigate]);
 
   // Função para buscar os totais e atualizar os estados de custo
   const fetchAndSetTotals = async () => {
