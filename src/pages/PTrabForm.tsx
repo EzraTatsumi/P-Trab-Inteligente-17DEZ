@@ -8,7 +8,7 @@ import { FileText, Package, Briefcase, ArrowLeft, Calendar, Users, MapPin } from
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PTrabCostSummary } from "@/components/PTrabCostSummary";
-import { CreditInputCard } from "@/components/CreditInputCard"; // Importar o novo componente
+import { CreditInputDialog } from "@/components/CreditInputDialog"; // Importar o novo diálogo
 
 interface PTrabData {
   numero_ptrab: string;
@@ -33,9 +33,14 @@ const PTrabForm = () => {
   const [selectedTab, setSelectedTab] = useState("logistica");
   const [loading, setLoading] = useState(true);
   
-  // Novos estados para armazenar os custos totais (para passar ao CreditInputCard)
+  // Estados para armazenar os custos totais (para passar ao CreditInputCard)
   const [totalGND3Cost, setTotalGND3Cost] = useState(0);
   const [totalGND4Cost, setTotalGND4Cost] = useState(0);
+  
+  // NOVOS ESTADOS PARA CRÉDITO E DIÁLOGO
+  const [showCreditDialog, setShowCreditDialog] = useState(false);
+  const [creditGND3, setCreditGND3] = useState(0);
+  const [creditGND4, setCreditGND4] = useState(0);
 
   const classesLogistica = [
     { id: "classe-i", name: "Classe I - Subsistência" },
@@ -101,10 +106,6 @@ const PTrabForm = () => {
   const fetchAndSetTotals = async () => {
     if (!ptrabId) return;
     
-    // Esta lógica deve ser implementada no futuro, por enquanto, usamos 0
-    // Para simular, vamos usar os valores do PTrabManager (que já calcula Logística)
-    // Mas como não temos acesso direto ao PTrabManager, vamos simular a busca aqui
-    
     // Simulação de busca de totais (usando a mesma lógica do PTrabCostSummary)
     const { data: classeIData } = await supabase
       .from('classe_i_registros')
@@ -137,6 +138,11 @@ const PTrabForm = () => {
     return () => clearInterval(interval);
   }, [ptrabId]);
 
+  const handleSaveCredit = (gnd3: number, gnd4: number) => {
+    setCreditGND3(gnd3);
+    setCreditGND4(gnd4);
+    toast.success("Créditos disponíveis atualizados!");
+  };
 
   const handleItemClick = (itemId: string, type: string) => {
     if (itemId === 'classe-i') {
@@ -227,13 +233,14 @@ const PTrabForm = () => {
             </Card>
             
             {/* Resumo de Custos */}
-            {ptrabId && <PTrabCostSummary ptrabId={ptrabId} />}
-            
-            {/* Crédito Disponível (NOVO) */}
-            <CreditInputCard 
-              totalGND3Cost={totalGND3Cost} 
-              totalGND4Cost={totalGND4Cost} 
-            />
+            {ptrabId && (
+              <PTrabCostSummary 
+                ptrabId={ptrabId} 
+                onOpenCreditDialog={() => setShowCreditDialog(true)}
+                creditGND3={creditGND3}
+                creditGND4={creditGND4}
+              />
+            )}
           </div>
 
           {/* Coluna Direita: Seleção de Classes/Itens */}
@@ -305,6 +312,17 @@ const PTrabForm = () => {
           </div>
         </div>
       </div>
+      
+      {/* Diálogo de Crédito */}
+      <CreditInputDialog
+        open={showCreditDialog}
+        onOpenChange={setShowCreditDialog}
+        totalGND3Cost={totalGND3Cost}
+        totalGND4Cost={totalGND4Cost}
+        initialCreditGND3={creditGND3}
+        initialCreditGND4={creditGND4}
+        onSave={handleSaveCredit}
+      />
     </div>
   );
 };

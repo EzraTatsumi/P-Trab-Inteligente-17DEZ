@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane } from "lucide-react"; // Importar HardHat e Plane
+import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp } from "lucide-react"; // Importar HardHat e Plane
 import {
   Accordion,
   AccordionContent,
@@ -10,9 +10,13 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button"; // Importar Button
 
 interface PTrabCostSummaryProps {
   ptrabId: string;
+  onOpenCreditDialog: () => void; // Novo prop para abrir o diálogo
+  creditGND3: number;
+  creditGND4: number;
 }
 
 // Helper function to calculate days of requested stage (diasEtapaSolicitada)
@@ -54,7 +58,6 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalDiasEtapaSolicitada += diasEtapaSolicitada;
     
     // Refeições Intermediárias (Complemento)
-    // O complemento é calculado sobre todos os dias de operação, mas o valor é dividido por 3 (valor_etapa/3)
     // A quantidade total de refeições intermediárias é: Efetivo * Nr Ref Int * Dias Operação
     totalRefeicoesIntermediarias += record.efetivo * record.nr_ref_int * record.dias_operacao;
   });
@@ -116,7 +119,12 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   };
 };
 
-export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
+export const PTrabCostSummary = ({ 
+  ptrabId, 
+  onOpenCreditDialog,
+  creditGND3,
+  creditGND4,
+}: PTrabCostSummaryProps) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['ptrabTotals', ptrabId],
     queryFn: () => fetchPTrabTotals(ptrabId),
@@ -161,6 +169,10 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
   
   // O total geral agora inclui os novos placeholders
   const totalGeralFinal = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalMaterialPermanente + totals.totalAviacaoExercito;
+
+  // Cálculo do Saldo
+  const saldoGND3 = creditGND3 - (totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito);
+  const saldoGND4 = creditGND4 - totals.totalMaterialPermanente;
 
   // Classe para garantir largura e alinhamento consistentes para os valores
   const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
@@ -320,7 +332,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                     Aba Operacional
                   </div>
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Itens Operacionais (ND 39)</span>
+                    <span>Itens Operacionais</span>
                     <span className={cn(valueClasses, "mr-6")}>
                       {formatCurrency(totals.totalOperacional)}
                     </span>
@@ -342,7 +354,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                     Aba Material Permanente
                   </div>
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Itens de Material Permanente (ND 44)</span>
+                    <span>Itens de Material Permanente</span>
                     <span className={cn(valueClasses, "mr-6")}>
                       {formatCurrency(totals.totalMaterialPermanente)}
                     </span>
@@ -364,7 +376,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                     Aba Aviação do Exército
                   </div>
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Itens de Aviação (ND 39)</span>
+                    <span>Itens de Aviação</span>
                     <span className={cn(valueClasses, "mr-6")}>
                       {formatCurrency(totals.totalAviacaoExercito)}
                     </span>
@@ -390,6 +402,35 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
             </AccordionContent>
           </AccordionItem>
         </Accordion>
+        
+        {/* Seção de Crédito (abaixo do Accordion) */}
+        <div className="px-6 pt-4 border-t border-border/50 space-y-3">
+            <div className="flex justify-between items-center">
+                <h4 className="font-bold text-sm text-accent flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Saldo GND 3
+                </h4>
+                <span className={cn("font-bold text-lg", saldoGND3 >= 0 ? "text-green-600" : "text-destructive")}>
+                    {formatCurrency(saldoGND3)}
+                </span>
+            </div>
+            <div className="flex justify-between items-center">
+                <h4 className="font-bold text-sm text-accent flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Saldo GND 4
+                </h4>
+                <span className={cn("font-bold text-lg", saldoGND4 >= 0 ? "text-green-600" : "text-destructive")}>
+                    {formatCurrency(saldoGND4)}
+                </span>
+            </div>
+            <Button 
+                onClick={onOpenCreditDialog} 
+                variant="outline" 
+                className="w-full mt-3 border-accent text-accent hover:bg-accent/10"
+            >
+                Informar Crédito
+            </Button>
+        </div>
         
       </CardContent>
     </Card>
