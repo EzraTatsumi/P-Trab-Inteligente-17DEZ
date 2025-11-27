@@ -169,7 +169,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
           Visão consolidada dos custos logísticos e operacionais.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 p-0"> {/* Removido padding e space-y do CardContent */}
+      <CardContent className="space-y-4 p-0 pb-6"> {/* Adicionado pb-6 aqui */}
         
         <Accordion type="single" collapsible className="w-full px-6">
           <AccordionItem value="summary-details" className="border-b-0">
@@ -318,7 +318,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                 
                 {/* Total Geral (Movido para o final) */}
                 <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-6">
-                  <span className="font-bold text-base text-primary">TOTAL GERAL (GND 3)</span>
+                  <span className="font-bold text-base text-primary">TOTAL GERAL</span>
                   <span className="font-extrabold text-xl text-primary">
                     {formatCurrency(totals.totalLogisticoGeral + totals.totalOperacional)}
                   </span>
