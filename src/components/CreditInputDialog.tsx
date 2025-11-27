@@ -72,16 +72,32 @@ export const CreditInputDialog = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, setInput: React.Dispatch<React.SetStateAction<string>>) => {
     const rawValue = e.target.value;
     
-    // Permite a entrada de vírgula e ponto, mas limita a formatação
+    // 1. Limpa caracteres não permitidos (mantém dígitos, vírgula e ponto)
     let cleanedValue = rawValue.replace(/[^0-9,.]/g, '');
     
-    // Se o usuário digitar vírgula ou ponto, permite, mas não formata automaticamente
+    // 2. Normaliza separadores: usa o primeiro ponto/vírgula como separador decimal
+    const decimalIndex = cleanedValue.indexOf(',') !== -1 ? cleanedValue.indexOf(',') : cleanedValue.indexOf('.');
+    
+    if (decimalIndex !== -1) {
+      const integerPart = cleanedValue.substring(0, decimalIndex).replace(/[,.]/g, '');
+      let decimalPart = cleanedValue.substring(decimalIndex + 1).replace(/[,.]/g, '');
+      
+      // Limita a parte decimal a 2 dígitos
+      decimalPart = decimalPart.substring(0, 2);
+      
+      cleanedValue = integerPart + ',' + decimalPart;
+    } else {
+      // Remove vírgulas/pontos se não houver parte decimal
+      cleanedValue = cleanedValue.replace(/[,.]/g, '');
+    }
+    
     setInput(cleanedValue);
   };
 
   const handleSave = () => {
-    const finalGND3 = parseInputToNumber(inputGND3);
-    const finalGND4 = parseInputToNumber(inputGND4);
+    // Ao salvar, garantimos que o valor final tenha 2 casas decimais
+    const finalGND3 = parseFloat(parseInputToNumber(inputGND3).toFixed(2));
+    const finalGND4 = parseFloat(parseInputToNumber(inputGND4).toFixed(2));
     
     onSave(finalGND3, finalGND4);
     onOpenChange(false);
@@ -120,7 +136,7 @@ export const CreditInputDialog = ({
                 value={inputGND3}
                 onChange={(e) => handleInputChange(e, setInputGND3)}
                 placeholder=""
-                className="pl-8 text-lg font-bold"
+                className="pl-8 text-lg" // Removido font-bold
                 onKeyDown={handleEnterToNextField}
               />
               <span className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground font-bold">R$</span>
@@ -149,7 +165,7 @@ export const CreditInputDialog = ({
                 value={inputGND4}
                 onChange={(e) => handleInputChange(e, setInputGND4)}
                 placeholder=""
-                className="pl-8 text-lg font-bold"
+                className="pl-8 text-lg" // Removido font-bold
                 onKeyDown={handleEnterToNextField}
               />
               <span className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground font-bold">R$</span>
