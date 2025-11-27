@@ -216,7 +216,7 @@ const PTrabManager = () => {
             totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
           }
 
-          // 2. Fetch Classe III totals (33.90.39)
+          // 2. Fetch Classe III totals (Combustível)
           const { data: classeIIIData, error: classeIIIError } = await supabase
             .from('classe_iii_registros')
             .select('valor_total')
@@ -228,9 +228,9 @@ const PTrabManager = () => {
             totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
           }
 
-          // 3. Calcular totalLogistica para corresponder ao VALOR TOTAL da impressão:
-          // VALOR TOTAL = (Classe I + Classe III) + (Classe III)
-          const totalLogisticaCalculado = totalClasseI + (2 * totalClasseIII);
+          // 3. Calcular totalLogistica para corresponder ao VALOR TOTAL SOLICITADO (Classe I + Classe III)
+          // Este é o valor real do total da Aba Logística.
+          const totalLogisticaCalculado = totalClasseI + totalClasseIII;
 
           return {
             ...ptrab,
@@ -1174,13 +1174,13 @@ const PTrabManager = () => {
                       <div className="flex flex-col items-center text-xs">
                         {/* P Trab Logístico (Classe I + Classe III) */}
                         {ptrab.totalLogistica !== undefined && (
-                          <span className="text-orange-600 font-medium">
+                          <span className="text-blue-600 font-medium">
                             {formatCurrency(ptrab.totalLogistica)}
                           </span>
                         )}
                         {/* P Trab Operacional (atualmente 0) */}
                         {ptrab.totalOperacional !== undefined && (
-                          <span className="text-blue-600 font-medium">
+                          <span className="text-muted-foreground font-medium">
                             {formatCurrency(ptrab.totalOperacional)}
                           </span>
                         )}
