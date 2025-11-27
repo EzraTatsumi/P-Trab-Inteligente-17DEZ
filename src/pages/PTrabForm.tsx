@@ -80,6 +80,7 @@ const PTrabForm = () => {
     mutationFn: ({ gnd3, gnd4 }: { gnd3: number, gnd4: number }) => 
       updateUserCredits(user!.id, gnd3, gnd4),
     onSuccess: () => {
+      // Invalida as queries para forçar a atualização dos totais e créditos
       queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
       queryClient.invalidateQueries({ queryKey: ['userCredits', user?.id] });
       toast.success("Créditos disponíveis atualizados e salvos!");

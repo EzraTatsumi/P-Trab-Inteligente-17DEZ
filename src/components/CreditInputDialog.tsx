@@ -36,25 +36,29 @@ const formatNumberForInput = (num: number): string => {
 
 // Função para limpar e formatar a string de entrada com separadores de milhar
 const formatInputWithThousands = (value: string): string => {
-  // 1. Remove tudo exceto dígitos e vírgula
-  let cleaned = value.replace(/[^\d,]/g, '');
+  // 1. Remove tudo exceto dígitos, ponto e vírgula
+  let cleaned = value.replace(/[^\d,.]/g, '');
 
-  // 2. Garante que haja apenas uma vírgula (separador decimal)
-  const parts = cleaned.split(',');
-  let integerPart = parts[0];
-  let decimalPart = parts.length > 1 ? parts[1] : '';
-
-  // 3. Limita a parte decimal a 2 dígitos
-  decimalPart = decimalPart.substring(0, 2);
-
-  // 4. Aplica a formatação de milhar (ponto) na parte inteira
-  integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-  // 5. Reconstrói a string
-  if (parts.length > 1) {
-    return `${integerPart},${decimalPart}`;
+  // 2. Substitui a primeira vírgula por ponto (para parsear) e remove as demais
+  const decimalIndex = cleaned.indexOf(',');
+  if (decimalIndex !== -1) {
+    const integerPart = cleaned.substring(0, decimalIndex).replace(/\./g, '');
+    let decimalPart = cleaned.substring(decimalIndex + 1).replace(/,/g, '');
+    
+    // Limita a parte decimal a 2 dígitos
+    decimalPart = decimalPart.substring(0, 2);
+    
+    // Reinsere a vírgula para exibição
+    cleaned = `${integerPart}${decimalPart ? `,${decimalPart}` : ''}`;
+  } else {
+    cleaned = cleaned.replace(/\./g, '');
   }
-  return integerPart;
+  
+  // Aplica a formatação de milhar (ponto)
+  const parts = cleaned.split(',');
+  let integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  
+  return parts.length > 1 ? `${integerPart},${parts[1]}` : integerPart;
 };
 
 export const CreditInputDialog = ({
@@ -88,11 +92,8 @@ export const CreditInputDialog = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, setInput: React.Dispatch<React.SetStateAction<string>>) => {
     const rawValue = e.target.value;
     
-    // Remove a formatação de milhar temporariamente para processar a entrada
-    const unformattedValue = rawValue.replace(/\./g, '');
-    
     // Aplica a formatação de milhar e decimal
-    const formattedValue = formatInputWithThousands(unformattedValue);
+    const formattedValue = formatInputWithThousands(rawValue);
     
     setInput(formattedValue);
   };
