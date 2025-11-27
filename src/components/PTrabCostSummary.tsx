@@ -176,18 +176,18 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
             <AccordionTrigger className="py-3 px-0 hover:no-underline flex flex-col items-start gap-2">
               
               {/* NOVO RESUMO QUANDO FECHADO */}
-              <div className="w-full space-y-1 text-xs pt-1">
+              <div className="w-full space-y-1 text-sm pt-1">
                 <div className="flex justify-between text-orange-600">
-                  <span className="font-semibold">Aba Logística</span>
-                  <span className="font-semibold">{formatCurrency(totals.totalLogisticoGeral)}</span>
+                  <span className="font-semibold text-base">Aba Logística</span>
+                  <span className="font-bold text-base">{formatCurrency(totals.totalLogisticoGeral)}</span>
                 </div>
                 <div className="flex justify-between text-blue-600">
-                  <span className="font-semibold">Aba Operacional</span>
-                  <span className="font-semibold">{formatCurrency(totals.totalOperacional)}</span>
+                  <span className="font-semibold text-base">Aba Operacional</span>
+                  <span className="font-bold text-base">{formatCurrency(totals.totalOperacional)}</span>
                 </div>
                 <div className="flex justify-between text-foreground font-bold border-t border-border/50 pt-1">
-                  <span>Total Geral</span>
-                  <span>{formatCurrency(totals.totalLogisticoGeral + totals.totalOperacional)}</span>
+                  <span className="text-lg">Total Geral</span>
+                  <span className="text-xl">{formatCurrency(totals.totalLogisticoGeral + totals.totalOperacional)}</span>
                 </div>
               </div>
               {/* FIM NOVO RESUMO */}
