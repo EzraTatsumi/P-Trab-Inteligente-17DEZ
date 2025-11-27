@@ -518,7 +518,7 @@ const PTrabManager = () => {
       }
 
       // 2. Create the new PTrab object
-      const { id, created_at, updated_at, ...restOfPTrab } = originalPTrab;
+      const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = originalPTrab;
       const newPTrabData = {
         ...restOfPTrab,
         numero_ptrab: newNumeroPTrab,
@@ -529,7 +529,7 @@ const PTrabManager = () => {
 
       const { data: newPTrab, error: insertPTrabError } = await supabase
         .from("p_trab")
-        .insert([newPTrabData])
+        .insert([newPTrabData as Tables<'p_trab'>])
         .select()
         .single();
 
@@ -847,6 +847,11 @@ const PTrabManager = () => {
     }
   };
 
+  const isConsolidationDisabled = pTrabs.length < 2;
+  const consolidationTooltipText = isConsolidationDisabled 
+    ? "É necessário ter pelo menos 2 Planos de Trabalho cadastrados para realizar a consolidação."
+    : "Consolidar dados de múltiplos P Trabs em um único destino.";
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-4"> {/* Contêiner principal com largura máxima, ajustado space-y */}
@@ -1051,15 +1056,32 @@ const PTrabManager = () => {
               </DialogContent>
             </Dialog>
             
-            {/* BOTÃO DE CONSOLIDAÇÃO */}
-            <Button 
-              onClick={() => setShowConsolidationDialog(true)} 
-              variant="secondary"
-              disabled={pTrabs.length < 2}
-            >
-              <ArrowRight className="mr-2 h-4 w-4" />
-              Consolidar P Trab
-            </Button>
+            {/* BOTÃO DE CONSOLIDAÇÃO ENVOLVIDO POR TOOLTIP */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {/* O span é necessário para que o Tooltip funcione em elementos desabilitados */}
+                  <span className="inline-block">
+                    <Button 
+                      onClick={() => {
+                        if (!isConsolidationDisabled) {
+                          setShowConsolidationDialog(true);
+                        }
+                      }} 
+                      variant="secondary"
+                      disabled={isConsolidationDisabled}
+                      style={isConsolidationDisabled ? { pointerEvents: 'none' } : {}} // Desabilita eventos de clique no botão, mas permite no span
+                    >
+                      <ArrowRight className="mr-2 h-4 w-4" />
+                      Consolidar P Trab
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{consolidationTooltipText}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
             <DropdownMenu open={settingsDropdownOpen} onOpenChange={setSettingsDropdownOpen}>
               <DropdownMenuTrigger asChild>
