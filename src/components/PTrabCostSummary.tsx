@@ -194,6 +194,16 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                   <span className="font-semibold text-base">Aba Operacional</span>
                   <span className="font-bold text-base">{formatCurrency(totals.totalOperacional)}</span>
                 </div>
+                {/* Adicionando Material Permanente */}
+                <div className="flex justify-between text-green-600">
+                  <span className="font-semibold text-base">Aba Material Permanente</span>
+                  <span className="font-bold text-base">{formatCurrency(totals.totalMaterialPermanente)}</span>
+                </div>
+                {/* Adicionando Aviação do Exército */}
+                <div className="flex justify-between text-purple-600">
+                  <span className="font-semibold text-base">Aba Aviação do Exército</span>
+                  <span className="font-bold text-base">{formatCurrency(totals.totalAviacaoExercito)}</span>
+                </div>
                 <div className="flex justify-between text-foreground font-bold border-t border-border/50 pt-1">
                   <span className="text-lg">Total Geral</span>
                   <span className="text-xl">{formatCurrency(totalGeralFinal)}</span>
