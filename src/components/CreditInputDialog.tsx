@@ -136,10 +136,10 @@ export const CreditInputDialog = ({
                 value={inputGND3}
                 onChange={(e) => handleInputChange(e, setInputGND3)}
                 placeholder=""
-                className="pl-8 text-lg" // Removido font-bold
+                className="pl-8 text-lg"
                 onKeyDown={handleEnterToNextField}
               />
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground font-bold">R$</span>
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
             </div>
             
             <div className="flex justify-between text-xs pt-1">
@@ -165,10 +165,10 @@ export const CreditInputDialog = ({
                 value={inputGND4}
                 onChange={(e) => handleInputChange(e, setInputGND4)}
                 placeholder=""
-                className="pl-8 text-lg" // Removido font-bold
+                className="pl-8 text-lg"
                 onKeyDown={handleEnterToNextField}
               />
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground font-bold">R$</span>
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
             </div>
             
             <div className="flex justify-between text-xs pt-1">
