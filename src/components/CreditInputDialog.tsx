@@ -84,7 +84,7 @@ export const CreditInputDialog = ({
                 inputMode="decimal"
                 value={creditGND3 === 0 ? "" : creditGND3.toFixed(2).replace('.', ',')}
                 onChange={(e) => handleInputChange(e, setCreditGND3)}
-                placeholder="Ex: 100.000,00"
+                placeholder=""
                 className="pl-8 text-lg font-bold"
                 onKeyDown={handleEnterToNextField}
               />
@@ -113,7 +113,7 @@ export const CreditInputDialog = ({
                 inputMode="decimal"
                 value={creditGND4 === 0 ? "" : creditGND4.toFixed(2).replace('.', ',')}
                 onChange={(e) => handleInputChange(e, setCreditGND4)}
-                placeholder="Ex: 50.000,00"
+                placeholder=""
                 className="pl-8 text-lg font-bold"
                 onKeyDown={handleEnterToNextField}
               />
