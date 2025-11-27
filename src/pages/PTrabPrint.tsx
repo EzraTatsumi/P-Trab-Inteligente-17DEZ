@@ -536,18 +536,23 @@ Total QR: ${formatCurrency(total_qr)}.`;
           .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
           .reduce((acc, reg) => acc + reg.valor_total, 0);
         
-        const totalCombustivelValor = valorDiesel + valorGasolina; // Valor total da Classe III
-        const totalParteAzul = totalQS + totalQR;
-        const totalGeral = totalParteAzul + totalCombustivelValor; // Parte azul + parte laranja
+        const totalCombustivelValor = valorDiesel + valorGasolina; // Valor total da Classe III (H)
+        const totalParteAzul = totalQS + totalQR; // Total Classe I (C)
+        
+        // REGRA DO USUÁRIO: Classe III não entra nas colunas azuis (ND 39 = 0).
+        // O total GND 3 é a soma da Classe I (ND 30) + Classe III (Valor Total Combustível).
+        const totalGeral = totalParteAzul + totalCombustivelValor; 
         
         return {
-          total_33_90_30: totalQS + totalQR,
-          total_33_90_39: (nomeOM === nomeRM) ? totalCombustivelValor : 0, // Corretamente atribuído à 33.90.39
+          total_33_90_30: totalParteAzul, // Total Classe I
+          total_33_90_39: 0, // Classe III não é lançada aqui, conforme instrução do usuário
           total_parte_azul: totalParteAzul,
           total_combustivel: totalCombustivelValor,
           total_gnd3: totalGeral,
           totalDiesel,
           totalGasolina,
+          valorDiesel,
+          valorGasolina,
         };
       };
       
@@ -643,21 +648,22 @@ Total QR: ${formatCurrency(total_qr)}.`;
             const row = worksheet.getRow(currentRow);
             row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
             row.getCell('B').value = `${nomeRM}\n(${gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || 'UG'})`;
-            row.getCell('D').value = registro.valor_total; // Popular coluna D (33.90.39)
-            row.getCell('D').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
-            row.getCell('D').style = { ...row.getCell('D').style, alignment: centerTopAlignment }; // Aplicar alinhamento explícito
-            row.getCell('E').value = registro.valor_total; // GND 3 para este item
-            row.getCell('E').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
-            row.getCell('E').style = { ...row.getCell('E').style, alignment: centerTopAlignment }; // Aplicar alinhamento explícito
+            
+            // REGRA DO USUÁRIO: Colunas azuis (C, D, E) devem ser vazias/zero para Classe III
+            row.getCell('C').value = ''; // 33.90.30
+            row.getCell('D').value = ''; // 33.90.39
+            row.getCell('E').value = ''; // TOTAL ND
+            
+            // Colunas Laranjas (F, G, H) permanecem preenchidas
             row.getCell('F').value = Math.round(registro.total_litros);
             row.getCell('F').numFmt = '#,##0 "L"';
-            row.getCell('F').style = { ...row.getCell('F').style, alignment: centerTopAlignment }; // Aplicar alinhamento explícito
+            row.getCell('F').style = { ...row.getCell('F').style, alignment: centerTopAlignment };
             row.getCell('G').value = registro.preco_litro;
-            row.getCell('G').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
-            row.getCell('G').style = { ...row.getCell('G').style, alignment: centerTopAlignment }; // Aplicar alinhamento explícito
+            row.getCell('G').numFmt = 'R$ #,##0.00';
+            row.getCell('G').style = { ...row.getCell('G').style, alignment: centerTopAlignment };
             row.getCell('H').value = registro.valor_total;
-            row.getCell('H').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
-            row.getCell('H').style = { ...row.getCell('H').style, alignment: centerTopAlignment }; // Aplicar alinhamento explícito
+            row.getCell('H').numFmt = 'R$ #,##0.00';
+            row.getCell('H').style = { ...row.getCell('H').style, alignment: centerTopAlignment };
             
             const detalhamentoCombustivel = registro.detalhamento_customizado || registro.detalhamento || '';
             
@@ -683,17 +689,17 @@ Total QR: ${formatCurrency(total_qr)}.`;
         subtotalRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
         subtotalRow.getCell('A').font = { name: 'Arial', size: 8, bold: true };
         
-        subtotalRow.getCell('C').value = totaisOM.total_33_90_30;
+        subtotalRow.getCell('C').value = totaisOM.total_33_90_30; // Total Classe I
         subtotalRow.getCell('C').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
         subtotalRow.getCell('C').font = { bold: true };
         subtotalRow.getCell('C').style = { ...subtotalRow.getCell('C').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
         
-        subtotalRow.getCell('D').value = totaisOM.total_33_90_39; // Popular coluna D
+        subtotalRow.getCell('D').value = totaisOM.total_33_90_39; // Zero
         subtotalRow.getCell('D').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
         subtotalRow.getCell('D').font = { bold: true };
         subtotalRow.getCell('D').style = { ...subtotalRow.getCell('D').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
 
-        subtotalRow.getCell('E').value = totaisOM.total_gnd3; // GND 3 é a soma de C + D
+        subtotalRow.getCell('E').value = totaisOM.total_parte_azul; // Total ND (C+D) -> Apenas C
         subtotalRow.getCell('E').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
         subtotalRow.getCell('E').font = { bold: true };
         subtotalRow.getCell('E').style = { ...subtotalRow.getCell('E').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
@@ -727,7 +733,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
         totalOMRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
         totalOMRow.getCell('A').font = { name: 'Arial', size: 8, bold: true };
         
-        totalOMRow.getCell('E').value = totaisOM.total_gnd3;
+        totalOMRow.getCell('E').value = totaisOM.total_gnd3; // Total C + H
         totalOMRow.getCell('E').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
         totalOMRow.getCell('E').font = { bold: true };
         totalOMRow.getCell('E').style = { ...totalOMRow.getCell('E').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
@@ -742,8 +748,11 @@ Total QR: ${formatCurrency(total_qr)}.`;
       currentRow++;
       
       const totalGeral_33_90_30 = registros.reduce((acc, reg) => acc + reg.total_qs + reg.total_qr, 0);
-      const totalGeral_33_90_39 = registrosClasseIII.reduce((acc, reg) => acc + reg.valor_total, 0);
-      const totalGeralAcumulado = totalGeral_33_90_30 + totalGeral_33_90_39; // Soma de 33.90.30 e 33.90.39
+      const totalValorCombustivel = registrosClasseIII.reduce((acc, reg) => acc + reg.valor_total, 0);
+      
+      // REGRA DO USUÁRIO: 33.90.39 é zero, e o total geral é a soma de 33.90.30 + Valor Total Combustível
+      const totalGeral_33_90_39 = 0; 
+      const totalGeralAcumulado = totalGeral_33_90_30 + totalValorCombustivel; 
       
       const totalDiesel = registrosClasseIII
         .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
@@ -757,7 +766,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       const valorGasolina = registrosClasseIII
         .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
         .reduce((acc, reg) => acc + reg.valor_total, 0);
-      const totalValorCombustivel = valorDiesel + valorGasolina;
+      const totalValorCombustivelFinal = valorDiesel + valorGasolina;
       
       const somaRow = worksheet.getRow(currentRow);
       somaRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
@@ -765,19 +774,19 @@ Total QR: ${formatCurrency(total_qr)}.`;
       somaRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
       somaRow.getCell('A').font = { bold: true };
       
-      somaRow.getCell('C').value = totalGeral_33_90_30;
+      somaRow.getCell('C').value = totalGeral_33_90_30; // Total Classe I
       somaRow.getCell('C').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       somaRow.getCell('C').font = { bold: true };
       somaRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
       somaRow.getCell('C').style = { ...somaRow.getCell('C').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
       
-      somaRow.getCell('D').value = totalGeral_33_90_39; // Total geral da 33.90.39
+      somaRow.getCell('D').value = totalGeral_33_90_39; // Zero
       somaRow.getCell('D').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       somaRow.getCell('D').font = { bold: true };
       somaRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
       somaRow.getCell('D').style = { ...somaRow.getCell('D').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
       
-      somaRow.getCell('E').value = totalGeralAcumulado; // Total geral GND 3
+      somaRow.getCell('E').value = totalGeralAcumulado; // Total C + H
       somaRow.getCell('E').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       somaRow.getCell('E').font = { bold: true };
       somaRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
@@ -797,8 +806,8 @@ Total QR: ${formatCurrency(total_qr)}.`;
         somaRow.getCell('G').style = { ...somaRow.getCell('G').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
       }
       
-      if (totalValorCombustivel > 0) {
-        somaRow.getCell('H').value = totalValorCombustivel;
+      if (totalValorCombustivelFinal > 0) {
+        somaRow.getCell('H').value = totalValorCombustivelFinal;
         somaRow.getCell('H').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
         somaRow.getCell('H').font = { bold: true };
         somaRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8CBAD' } };
@@ -816,7 +825,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       valorTotalRow.getCell('G').font = { bold: true };
       valorTotalRow.getCell('G').alignment = { horizontal: 'center', vertical: 'middle' };
       
-      valorTotalRow.getCell('H').value = totalGeralAcumulado; // Corrigido: Usar apenas o total GND 3
+      valorTotalRow.getCell('H').value = totalGeralAcumulado; // Total C + H
       valorTotalRow.getCell('H').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       valorTotalRow.getCell('H').font = { bold: true };
       valorTotalRow.getCell('H').alignment = { horizontal: 'center' };
@@ -840,7 +849,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       currentRow++;
       
       const gndValueRow = worksheet.getRow(currentRow);
-      gndValueRow.getCell('H').value = totalGeralAcumulado; // Corrigido: Usar apenas o total GND 3
+      gndValueRow.getCell('H').value = totalGeralAcumulado; // Total C + H
       gndValueRow.getCell('H').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       gndValueRow.getCell('H').font = { bold: true };
       gndValueRow.getCell('H').alignment = { horizontal: 'center', vertical: 'middle' };
@@ -905,12 +914,16 @@ Total QR: ${formatCurrency(total_qr)}.`;
 
   if (!ptrabData) return null;
 
-  // O cálculo do total geral deve ser a soma de todos os registros de Classe I (total_geral)
-  // mais a soma de todos os registros de Classe III (valor_total).
-  // No contexto do GND 3, isso é a soma de 33.90.30 (Classe I) e 33.90.39 (Classe III).
+  // 1. Recalcular Totais Gerais (para HTML/PDF)
   const totalGeral_33_90_30 = registros.reduce((acc, reg) => acc + reg.total_qs + reg.total_qr, 0);
-  const totalGeral_33_90_39 = registrosClasseIII.reduce((acc, reg) => acc + reg.valor_total, 0);
-  const totalGeral_GND3 = totalGeral_33_90_30 + totalGeral_33_90_39;
+  const totalValorCombustivel = registrosClasseIII.reduce((acc, reg) => acc + reg.valor_total, 0);
+  
+  // REGRA DO USUÁRIO: 33.90.39 é zero, e o total geral é a soma de 33.90.30 + Valor Total Combustível
+  const totalGeral_33_90_39 = 0;
+  const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39; // Soma das colunas azuis (C+D)
+  
+  // O valor total solicitado é a soma de todos os itens (Classe I + Classe III)
+  const valorTotalSolicitado = totalGeral_33_90_30 + totalValorCombustivel;
   
   const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
 
@@ -982,13 +995,15 @@ Total QR: ${formatCurrency(total_qr)}.`;
       .reduce((acc, reg) => acc + reg.valor_total, 0);
     
     const totalCombustivel = valorDiesel + valorGasolina;
-    const totalParteAzul = totalQS + totalQR; // APENAS QS + QR (sem combustível)
-    const totalGeral = totalParteAzul + totalCombustivel; // Parte azul + parte laranja
+    const totalParteAzul = totalQS + totalQR; // APENAS QS + QR (ND 30)
+    
+    // REGRA DO USUÁRIO: GND 3 é a soma da Classe I (ND 30) + Classe III (Valor Total Combustível).
+    const totalGeral = totalParteAzul + totalCombustivel; 
     
     return {
-      total_33_90_30: totalQS + totalQR,
-      total_33_90_39: (nomeOM === nomeRM) ? totalCombustivel : 0, // Corretamente atribuído à 33.90.39
-      total_parte_azul: totalParteAzul, // Total apenas da parte azul (ND30)
+      total_33_90_30: totalParteAzul, // Total Classe I
+      total_33_90_39: 0, // Classe III não é lançada aqui
+      total_parte_azul: totalParteAzul, // Usado para a coluna TOTAL (E) no subtotal
       total_combustivel: totalCombustivel, // Total da parte laranja
       total_gnd3: totalGeral, // Soma de parte azul + parte laranja
       totalDiesel,
@@ -1158,9 +1173,9 @@ Total QR: ${formatCurrency(total_qr)}.`;
                           <div>{nomeRM}</div>
                           <div>({gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || 'UG'})</div>
                         </td>
-                        <td className="col-valor-natureza"></td>
-                        <td className="col-valor-natureza">{formatCurrency(registro.valor_total)}</td>
-                        <td className="col-valor-natureza">{formatCurrency(registro.valor_total)}</td>
+                        <td className="col-valor-natureza"></td> {/* 33.90.30 (Vazio) */}
+                        <td className="col-valor-natureza"></td> {/* 33.90.39 (Vazio) */}
+                        <td className="col-valor-natureza"></td> {/* TOTAL (Vazio) */}
                         <td className="col-combustivel-data-filled">{formatNumber(registro.total_litros)} L</td>
                         <td className="col-combustivel-data-filled">{formatCurrency(registro.preco_litro)}</td>
                         <td className="col-combustivel-data-filled">{formatCurrency(registro.valor_total)}</td>
@@ -1178,8 +1193,8 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     <td colSpan={2} className="text-right font-bold">SOMA POR ND E GP DE DESPESA</td>
                     {/* Parte Azul (Natureza de Despesa) */}
                     <td className="text-center font-bold">{formatCurrency(totaisOM.total_33_90_30)}</td>
-                    <td className="text-center font-bold">{formatCurrency(totaisOM.total_33_90_39)}</td>
-                    <td className="text-center font-bold">{formatCurrency(totaisOM.total_parte_azul + totaisOM.total_33_90_39)}</td> {/* TOTAL é a soma de 33.90.30 e 33.90.39 */}
+                    <td className="text-center font-bold">{formatCurrency(totaisOM.total_33_90_39)}</td> {/* Deve ser 0 */}
+                    <td className="text-center font-bold">{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) -> Apenas C */}
                     {/* Parte Laranja (Combustivel) */}
                     <td className="text-center font-bold border border-black">
                       {nomeOM === nomeRM && totaisOM.totalDiesel > 0 
@@ -1204,7 +1219,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     <td colSpan={4} className="text-right font-bold">
                       VALOR TOTAL DO {nomeOM}
                     </td>
-                    <td className="text-center font-bold">{formatCurrency(totaisOM.total_gnd3)}</td>
+                    <td className="text-center font-bold">{formatCurrency(totaisOM.total_gnd3)}</td> // Total C + H
                     <td colSpan={3}></td>
                     <td></td>
                   </tr>
@@ -1218,10 +1233,8 @@ Total QR: ${formatCurrency(total_qr)}.`;
               </tr>
               
               {(() => {
-                // O cálculo do total geral já foi feito no início do componente:
-                // totalGeral_33_90_30
-                // totalGeral_33_90_39
-                // totalGeral_GND3
+                // Valor total solicitado: Soma do TOTAL (azul) + PREÇO TOTAL (laranja)
+                // totalGeral_GND3_ND (SUM(C+D)) + totalValorCombustivel (SUM(H))
                 
                 // Totais de combustível por tipo (para exibição na parte laranja)
                 const totalDiesel = registrosClasseIII
@@ -1236,11 +1249,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                 const valorGasolina = registrosClasseIII
                   .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
                   .reduce((acc, reg) => acc + reg.valor_total, 0);
-                const totalValorCombustivel = valorDiesel + valorGasolina;
-
-                // Valor total solicitado: Soma do TOTAL (azul) + PREÇO TOTAL (laranja)
-                // totalGeral_GND3 (TOTAL azul) + totalValorCombustivel (PREÇO TOTAL laranja)
-                const valorTotalSolicitado = totalGeral_GND3 + totalValorCombustivel;
+                const totalValorCombustivelFinal = valorDiesel + valorGasolina;
 
                 return (
                   <>
@@ -1249,10 +1258,10 @@ Total QR: ${formatCurrency(total_qr)}.`;
                       <td colSpan={2} className="text-right font-bold">SOMA POR ND E GP DE DESPESA</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_30)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_39)}</td>
-                      <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_GND3)}</td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_GND3_ND)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : ''}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : ''}</td>
-                      <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalValorCombustivel > 0 ? formatCurrency(totalValorCombustivel) : ''}</td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalValorCombustivelFinal > 0 ? formatCurrency(totalValorCombustivelFinal) : ''}</td>
                       <td style={{ backgroundColor: 'white' }}></td>
                     </tr>
 
