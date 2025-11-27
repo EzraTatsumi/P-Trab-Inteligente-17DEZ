@@ -96,6 +96,12 @@ export const CreditInputDialog = ({
     
     setInput(formattedValue);
   };
+  
+  const handleInputBlur = (input: string, setInput: React.Dispatch<React.SetStateAction<string>>) => {
+    // Ao perder o foco, parseia para número e formata com 2 casas decimais
+    const numericValue = parseInputToNumber(input);
+    setInput(formatNumberForInput(numericValue));
+  };
 
   const handleSave = () => {
     // Ao salvar, usamos o parseInputToNumber para obter o valor limpo
@@ -138,10 +144,12 @@ export const CreditInputDialog = ({
                 inputMode="decimal"
                 value={inputGND3}
                 onChange={(e) => handleInputChange(e, setInputGND3)}
+                onBlur={() => handleInputBlur(inputGND3, setInputGND3)}
                 placeholder="0,00"
-                className="pl-8 text-lg"
+                className="pl-12 text-lg"
                 onKeyDown={handleEnterToNextField}
               />
+              {/* Ajustado o estilo do R$ para text-lg e foreground */}
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
             </div>
             
@@ -167,10 +175,12 @@ export const CreditInputDialog = ({
                 inputMode="decimal"
                 value={inputGND4}
                 onChange={(e) => handleInputChange(e, setInputGND4)}
+                onBlur={() => handleInputBlur(inputGND4, setInputGND4)}
                 placeholder="0,00"
-                className="pl-8 text-lg"
+                className="pl-12 text-lg"
                 onKeyDown={handleEnterToNextField}
               />
+              {/* Ajustado o estilo do R$ para text-lg e foreground */}
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
             </div>
             
@@ -188,7 +198,6 @@ export const CreditInputDialog = ({
         </div>
 
         <DialogFooter>
-          {/* Ordem invertida: Salvar à esquerda, Cancelar à direita */}
           <Button onClick={handleSave}>
             <Save className="h-4 w-4 mr-2" />
             Salvar Créditos
