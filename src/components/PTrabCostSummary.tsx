@@ -296,7 +296,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                   
                   {/* SUBTOTAL LOGÍSTICA */}
                   <div className="flex justify-between items-center pt-3 border-t border-border/50">
-                    <span className="font-bold text-sm text-foreground">SUBTOTAL LOGÍSTICA (ND 30 + ND 39)</span>
+                    <span className="font-bold text-sm text-foreground">SUBTOTAL LOGÍSTICA</span>
                     <span className="font-bold text-lg text-orange-600">
                       {formatCurrency(totals.totalLogisticoGeral)}
                     </span>
@@ -318,7 +318,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                   
                   {/* SUBTOTAL OPERACIONAL */}
                   <div className="flex justify-between items-center pt-3 border-t border-border/50">
-                    <span className="font-bold text-sm text-foreground">SUBTOTAL OPERACIONAL (ND 39)</span>
+                    <span className="font-bold text-sm text-foreground">SUBTOTAL OPERACIONAL</span>
                     <span className="font-bold text-lg text-blue-600">
                       {formatCurrency(totals.totalOperacional)}
                     </span>
@@ -340,7 +340,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                   
                   {/* SUBTOTAL MATERIAL PERMANENTE */}
                   <div className="flex justify-between items-center pt-3 border-t border-border/50">
-                    <span className="font-bold text-sm text-foreground">SUBTOTAL MATERIAL PERMANENTE (ND 44)</span>
+                    <span className="font-bold text-sm text-foreground">SUBTOTAL MATERIAL PERMANENTE</span>
                     <span className="font-bold text-lg text-green-600">
                       {formatCurrency(totals.totalMaterialPermanente)}
                     </span>
@@ -362,7 +362,7 @@ export const PTrabCostSummary = ({ ptrabId }: PTrabCostSummaryProps) => {
                   
                   {/* SUBTOTAL AVIAÇÃO DO EXÉRCITO */}
                   <div className="flex justify-between items-center pt-3 border-t border-border/50">
-                    <span className="font-bold text-sm text-foreground">SUBTOTAL AVIAÇÃO DO EXÉRCITO (ND 39)</span>
+                    <span className="font-bold text-sm text-foreground">SUBTOTAL AVIAÇÃO DO EXÉRCITO</span>
                     <span className="font-bold text-lg text-purple-600">
                       {formatCurrency(totals.totalAviacaoExercito)}
                     </span>
