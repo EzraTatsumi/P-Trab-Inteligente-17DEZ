@@ -1172,15 +1172,15 @@ const PTrabManager = () => {
                     </TableCell>
                     <TableCell className="text-center"> {/* Célula para os valores do P Trab */}
                       <div className="flex flex-col items-center text-xs">
-                        {/* P Trab Logístico (Classe I + Classe III) */}
+                        {/* P Trab Logístico (Classe I + Classe III) - AGORA EM LARANJA */}
                         {ptrab.totalLogistica !== undefined && (
-                          <span className="text-blue-600 font-medium">
+                          <span className="text-orange-600 font-medium">
                             {formatCurrency(ptrab.totalLogistica)}
                           </span>
                         )}
-                        {/* P Trab Operacional (atualmente 0) */}
+                        {/* P Trab Operacional (atualmente 0) - AGORA EM AZUL */}
                         {ptrab.totalOperacional !== undefined && (
-                          <span className="text-muted-foreground font-medium">
+                          <span className="text-blue-600 font-medium">
                             {formatCurrency(ptrab.totalOperacional)}
                           </span>
                         )}
