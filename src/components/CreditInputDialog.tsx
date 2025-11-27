@@ -68,7 +68,6 @@ export const CreditInputDialog = ({
 }: CreditInputDialogProps) => {
   // Usamos strings para o estado interno dos inputs para permitir a digitação de vírgulas
   const [inputGND3, setInputGND3] = useState<string>(formatNumberForInput(initialCreditGND3));
-  // CORREÇÃO AQUI: Usando initialCreditGND4
   const [inputGND4, setInputGND4] = useState<string>(formatNumberForInput(initialCreditGND4));
   const { handleEnterToNextField } = useFormNavigation();
 
@@ -189,12 +188,13 @@ export const CreditInputDialog = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
+          {/* Ordem invertida: Salvar à esquerda, Cancelar à direita */}
           <Button onClick={handleSave}>
             <Save className="h-4 w-4 mr-2" />
             Salvar Créditos
+          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
           </Button>
         </DialogFooter>
       </DialogContent>
