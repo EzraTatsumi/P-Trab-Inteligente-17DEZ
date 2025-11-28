@@ -354,7 +354,7 @@ export const PTrabCostSummary = ({
                             </span>
                           </div>
                           {/* Linha Lubrificante */}
-                          <div className="flex justify-between text-muted-foreground border-t pt-1 mt-1">
+                          <div className="flex justify-between text-muted-foreground">
                             <span className={descriptionClasses}>Lubrificante</span>
                             <span className={quantityClasses}>
                               {formatNumber(totals.totalLubrificanteLitros, 2)} L
