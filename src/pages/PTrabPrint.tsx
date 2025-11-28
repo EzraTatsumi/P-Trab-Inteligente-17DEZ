@@ -682,7 +682,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
           const row = worksheet.getRow(currentRow);
           
           // Coluna A: DESPESAS
-          let despesasValue = `CLASSE III - LUBRIFICANTE - ${tipoEquipamento}`;
+          let despesasValue = `CLASSE III - LUBRIFICANTE ${tipoEquipamento}`; // REMOVIDO O HÍFEN
           if (isOmDifferent) {
             despesasValue += `\n${linha.registro.organizacao}`;
           }
@@ -1155,7 +1155,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     return (
                       <tr key={`lub-${linha.registro.id}`}>
                         <td className="col-despesas">
-                          <div>CLASSE III - LUBRIFICANTE - {tipoEquipamento}</div>
+                          <div>CLASSE III - LUBRIFICANTE {tipoEquipamento}</div> {/* HÍFEN REMOVIDO AQUI */}
                           {isOmDifferent && <div>{linha.registro.organizacao}</div>}
                         </td>
                         <td className="col-om">
