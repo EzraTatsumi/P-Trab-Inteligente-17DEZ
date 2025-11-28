@@ -2351,7 +2351,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-xl font-bold flex items-center gap-2">
-                        <Sparkles className="h-5 w-5" /> {/* Ícone de estrela */}
+                        <Sparkles className="h-5 w-5 text-amber-500" /> {/* Ícone de estrela com cor amarela */}
                         OMs Cadastradas
                       </h3>
                       <Badge variant="secondary" className="text-sm">
