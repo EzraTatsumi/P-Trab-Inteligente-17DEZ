@@ -857,11 +857,8 @@ const PTrabManager = () => {
     : "Consolidar dados de múltiplos P Trabs em um único destino.";
     
   // NOVO: Mensagem detalhada para quando a consolidação está desativada
-  const getConsolidationDetailedMessage = () => {
-    if (pTrabs.length < 2) {
-      return "É necessário ter pelo menos 2 Planos de Trabalho cadastrados para realizar a consolidação. Cadastre mais P Trabs para habilitar esta função.";
-    }
-    return consolidationTooltipText;
+  const getConsolidationDisabledMessage = () => {
+    return "É necessário ter pelo menos 2 Planos de Trabalho cadastrados para realizar a consolidação. Cadastre mais P Trabs para habilitar esta função.";
   };
 
   return (
@@ -1079,13 +1076,14 @@ const PTrabManager = () => {
                         if (!isConsolidationDisabled) {
                           setShowConsolidationDialog(true);
                         } else {
-                          // Adicionar toast informativo se o botão for clicado enquanto desabilitado
-                          toast.info(getConsolidationDetailedMessage());
+                          // Dispara o toast ao clicar no botão desativado
+                          toast.info(getConsolidationDisabledMessage());
                         }
                       }} 
                       variant="secondary"
                       disabled={isConsolidationDisabled}
-                      style={isConsolidationDisabled ? { pointerEvents: 'none' } : {}}
+                      // Adiciona style para garantir que o clique seja capturado pelo Button e não pelo span
+                      style={isConsolidationDisabled ? { pointerEvents: 'auto' } : {}} 
                     >
                       <ArrowRight className="mr-2 h-4 w-4" />
                       Consolidar P Trab
@@ -1096,7 +1094,7 @@ const PTrabManager = () => {
                   <p>{consolidationTooltipText}</p>
                   {isConsolidationDisabled && (
                     <p className="text-xs text-orange-400 mt-1 max-w-xs">
-                      {getConsolidationDetailedMessage()}
+                      {getConsolidationDisabledMessage()}
                     </p>
                   )}
                 </TooltipContent>
