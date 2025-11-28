@@ -671,14 +671,16 @@ Total QR: ${formatCurrency(total_qr)}.`;
         grupo.linhasLubrificante.forEach((linha) => {
           const isOmDifferent = linha.registro.organizacao !== nomeOM;
           
+          const tipoEquipamento = linha.registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'Gerador' : 'Embarcação';
+          
           const row = worksheet.getRow(currentRow);
           
           // Coluna A: DESPESAS
+          let despesasValue = `CLASSE III - LUBRIFICANTE (${tipoEquipamento})`;
           if (isOmDifferent) {
-            row.getCell('A').value = `CLASSE III - LUBRIFICANTE\n${linha.registro.organizacao}`;
-          } else {
-            row.getCell('A').value = `CLASSE III - LUBRIFICANTE`;
+            despesasValue += `\n${linha.registro.organizacao}`;
           }
+          row.getCell('A').value = despesasValue;
           
           // Coluna B: OM (UGE) CODUG
           row.getCell('B').value = `${linha.registro.organizacao}\n(${linha.registro.ug})`;
@@ -1142,10 +1144,12 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     // Verifica se a OM de destino do recurso (organizacao) é diferente da OM que está sendo agrupada (nomeOM)
                     const isOmDifferent = linha.registro.organizacao !== nomeOM;
                     
+                    const tipoEquipamento = linha.registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'Gerador' : 'Embarcação';
+                    
                     return (
                       <tr key={`lub-${linha.registro.id}`}>
                         <td className="col-despesas">
-                          <div>CLASSE III - LUBRIFICANTE</div>
+                          <div>CLASSE III - LUBRIFICANTE ({tipoEquipamento})</div>
                           {isOmDifferent && <div>{linha.registro.organizacao}</div>}
                         </td>
                         <td className="col-om">
