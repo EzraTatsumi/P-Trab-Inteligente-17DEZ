@@ -384,11 +384,36 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
   };
 
   const handleEditarRegistro = async (registro: ClasseIIRegistro) => {
+    setLoading(true);
     resetFormFields();
-    setEditingId(registro.id);
     
-    // 1. Preencher dados da OM
+    // 1. Buscar TODOS os registros para esta OM/UG
+    const { data: relatedRecords, error: relatedError } = await supabase
+      .from("classe_ii_registros")
+      .select("*, itens_equipamentos")
+      .eq("p_trab_id", ptrabId!)
+      .eq("organizacao", registro.organizacao)
+      .eq("ug", registro.ug);
+      
+    if (relatedError) {
+      console.error("Erro ao carregar registros relacionados para edição:", relatedError);
+      toast.error("Erro ao carregar registros relacionados para edição.");
+      setLoading(false);
+      return;
+    }
+    
+    // 2. Consolidar todos os itens em uma única lista
+    let consolidatedItems: ItemClasseII[] = [];
+    let firstFaseAtividade = registro.fase_atividade;
     let selectedOmIdForEdit: string | undefined = undefined;
+    
+    relatedRecords.forEach(r => {
+      if (Array.isArray(r.itens_equipamentos)) {
+        consolidatedItems = [...consolidatedItems, ...r.itens_equipamentos];
+      }
+    });
+    
+    // 3. Buscar ID da OM
     try {
       const { data: omData, error: omError } = await supabase
         .from('organizacoes_militares')
@@ -403,22 +428,24 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
       console.error("Erro ao buscar OM para edição:", error);
     }
     
-    // 2. Preencher o formulário principal
+    // 4. Preencher o formulário principal
+    setEditingId(registro.id); // Mantém o ID do primeiro registro para indicar modo de edição
     setForm({
       selectedOmId: selectedOmIdForEdit,
       organizacao: registro.organizacao,
       ug: registro.ug,
       dias_operacao: registro.dias_operacao,
-      itens: registro.itens_equipamentos,
+      itens: consolidatedItems,
     });
     
-    // 3. Preencher as fases
-    const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+    // 5. Preencher as fases
+    const fasesSalvas = (firstFaseAtividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
-    // 4. Rolar para o topo
+    // 6. Rolar para o topo
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    setLoading(false);
   };
 
   // Funções de gerenciamento de memória customizada
