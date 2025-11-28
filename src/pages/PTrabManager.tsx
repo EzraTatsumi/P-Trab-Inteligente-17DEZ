@@ -11,8 +11,8 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogTrigger,
-  DialogFooter, // Importar DialogFooter
-  DialogClose // Importar DialogClose
+  DialogFooter,
+  DialogClose
 } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -35,12 +35,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Importar RadioGroup
-import { formatCurrency } from "@/lib/formatUtils"; // Importar formatCurrency
-import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils"; // Importar utilitários
-import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog"; // Importar novo componente
-import { Tables } from "@/integrations/supabase/types"; // Importar Tables
-import { Badge } from "@/components/ui/badge"; // Importar Badge
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { formatCurrency } from "@/lib/formatUtils";
+import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils";
+import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
+import { Tables } from "@/integrations/supabase/types";
+import { Badge } from "@/components/ui/badge";
 
 interface PTrab {
   id: string;
@@ -63,16 +63,17 @@ interface PTrab {
   totalOperacional?: number;
   updated_at: string;
   comentario?: string;
-  origem: 'original' | 'importado' | 'consolidado'; // Adicionado campo origem
+  origem: 'original' | 'importado' | 'consolidado';
 }
 
 const PTrabManager = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [pTrabs, setPTrabs] = useState<PTrab[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]); // Para armazenar os números existentes
+  const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
   
   // Estado para controlar a abertura do DropdownMenu de configurações
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
@@ -92,9 +93,9 @@ const PTrabManager = () => {
   // Novos estados para o diálogo de clonagem
   const [showCloneOptionsDialog, setShowCloneOptionsDialog] = useState(false);
   const [ptrabToClone, setPtrabToClone] = useState<PTrab | null>(null);
-  const [cloneType, setCloneType, ] = useState<'new' | 'variation'>('new'); // 'new' para novo trabalho, 'variation' para variação
+  const [cloneType, setCloneType, ] = useState<'new' | 'variation'>('new');
   const [suggestedCloneNumber, setSuggestedCloneNumber] = useState<string>("");
-  const [customCloneNumber, setCustomCloneNumber] = useState<string>(""); // Para permitir edição do número sugerido
+  const [customCloneNumber, setCustomCloneNumber] = useState<string>("");
 
   // Estados para o diálogo de comentário
   const [showComentarioDialog, setShowComentarioDialog] = useState(false);
@@ -127,12 +128,12 @@ const PTrabManager = () => {
       nome_cmt_om: "",
       local_om: "",
       status: "aberto",
-      origem: 'original', // Padrão para novo PTrab
+      origem: 'original',
     });
-  }, [existingPTrabNumbers]); // Depende de existingPTrabNumbers
+  }, [existingPTrabNumbers]);
 
   const [formData, setFormData] = useState({
-    numero_ptrab: generateUniquePTrabNumber(existingPTrabNumbers), // Inicializa com o valor padrão
+    numero_ptrab: generateUniquePTrabNumber(existingPTrabNumbers),
     comando_militar_area: "",
     nome_om: "",
     nome_om_extenso: "",
@@ -192,17 +193,23 @@ const PTrabManager = () => {
     try {
       const { data: pTrabsData, error: pTrabsError } = await supabase
         .from("p_trab")
-        .select("*, comentario, origem") // Incluindo 'origem' na busca
+        .select("*, comentario, origem")
         .order("created_at", { ascending: false });
 
       if (pTrabsError) throw pTrabsError;
 
+      if (!Array.isArray(pTrabsData)) {
+        console.error("Invalid data received from p_trab table");
+        setPTrabs([]);
+        return;
+      }
+
       const numbers = (pTrabsData || []).map(p => p.numero_ptrab);
-      setExistingPTrabNumbers(numbers); // Armazena os números existentes
+      setExistingPTrabNumbers(numbers);
 
       const pTrabsWithTotals: PTrab[] = await Promise.all(
         (pTrabsData || []).map(async (ptrab) => {
-          let totalOperacionalCalculado = 0; // Por enquanto, sempre zero
+          let totalOperacionalCalculado = 0;
 
           // 1. Fetch Classe I totals (33.90.30)
           const { data: classeIData, error: classeIError } = await supabase
@@ -228,15 +235,13 @@ const PTrabManager = () => {
             totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
           }
 
-          // 3. Calcular totalLogistica para corresponder ao VALOR TOTAL SOLICITADO (Classe I + Classe III)
-          // Este é o valor real do total da Aba Logística.
           const totalLogisticaCalculado = totalClasseI + totalClasseIII;
 
           return {
             ...ptrab,
             totalLogistica: totalLogisticaCalculado,
-            totalOperacional: totalOperacionalCalculado, // Mantido como 0 até a implementação da Aba Operacional
-            origem: ptrab.origem as 'original' | 'importado' | 'consolidado', // Garantir o tipo correto
+            totalOperacional: totalOperacionalCalculado,
+            origem: ptrab.origem as 'original' | 'importado' | 'consolidado',
           };
         })
       );
@@ -251,13 +256,13 @@ const PTrabManager = () => {
         if (
           ptrab.status === 'completo' &&
           new Date(ptrab.updated_at) < tenDaysAgo &&
-          !promptedForArchive.current.has(ptrab.id) // Verifica se já foi perguntado nesta sessão
+          !promptedForArchive.current.has(ptrab.id)
         ) {
           setPtrabToArchiveId(ptrab.id);
           setPtrabToArchiveName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
           setShowArchiveStatusDialog(true);
-          promptedForArchive.current.add(ptrab.id); // Adiciona à lista de já perguntados
-          break; // Mostra apenas um por vez
+          promptedForArchive.current.add(ptrab.id);
+          break;
         }
       }
 
@@ -284,7 +289,7 @@ const PTrabManager = () => {
       setShowArchiveStatusDialog(false);
       setPtrabToArchiveId(null);
       setPtrabToArchiveName(null);
-      loadPTrabs(); // Recarrega a lista para refletir a mudança
+      loadPTrabs();
     } catch (error) {
       console.error("Erro ao arquivar P Trab:", error);
       toast.error("Erro ao arquivar P Trab.");
@@ -328,7 +333,7 @@ const PTrabManager = () => {
         setPtrabToReactivateName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
         setShowReactivateStatusDialog(true);
       }
-      return; // Não atualiza o status ainda, espera a confirmação do dialog
+      return;
     }
 
     try {
@@ -373,8 +378,6 @@ const PTrabManager = () => {
     setShowReactivateStatusDialog(false);
     setPtrabToReactivateId(null);
     setPtrabToReactivateName(null);
-    // A lista de PTrabs será recarregada, o que reverterá visualmente o Select
-    // para o status original ('completo') se a atualização não foi confirmada.
     loadPTrabs(); 
   };
 
@@ -442,7 +445,7 @@ const PTrabManager = () => {
       const ptrabData = {
         ...formData,
         user_id: user.id,
-        origem: editingId ? formData.origem : 'original', // Garante que novos PTrabs sejam 'original'
+        origem: editingId ? formData.origem : 'original',
       };
 
       if (editingId) {
@@ -484,7 +487,7 @@ const PTrabManager = () => {
       nome_cmt_om: ptrab.nome_cmt_om || "",
       local_om: ptrab.local_om || "",
       status: ptrab.status,
-      origem: ptrab.origem, // Carrega a origem para o formulário de edição
+      origem: ptrab.origem,
     });
     setDialogOpen(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -522,9 +525,9 @@ const PTrabManager = () => {
       const newPTrabData = {
         ...restOfPTrab,
         numero_ptrab: newNumeroPTrab,
-        status: "aberto", // Cloned PTrab starts as 'aberto'
-        user_id: originalPTrab.user_id, // Keep the same user_id
-        origem: originalPTrab.origem, // Mantém a origem do original (ex: se clonar um importado, continua importado)
+        status: "aberto",
+        user_id: originalPTrab.user_id,
+        origem: originalPTrab.origem,
       };
 
       const { data: newPTrab, error: insertPTrabError } = await supabase
@@ -641,7 +644,7 @@ const PTrabManager = () => {
       }
 
       toast.success(`P Trab ${newNumeroPTrab} clonado com sucesso!`);
-      await loadPTrabs(); // Reload all PTrabs to show the new one and update existingPTrabNumbers
+      await loadPTrabs();
       
       // Limpar todos os estados relacionados ao diálogo de clonagem
       setPtrabToClone(null);
@@ -660,7 +663,7 @@ const PTrabManager = () => {
   // Função para abrir o diálogo de opções de clonagem
   const handleOpenCloneOptions = (ptrab: PTrab) => {
     setPtrabToClone(ptrab);
-    setCloneType('new'); // Padrão para 'new'
+    setCloneType('new');
     // O useEffect acima cuidará de definir suggestedCloneNumber e customCloneNumber
     setShowCloneOptionsDialog(true);
   };
@@ -726,7 +729,7 @@ const PTrabManager = () => {
     sourcePTrabIds: string[],
     targetPTrabId: string | 'new',
     newPTrabNumber?: string,
-    templatePTrabId?: string // Novo parâmetro
+    templatePTrabId?: string
   ) => {
     if (!sourcePTrabIds.length) return;
 
@@ -752,8 +755,8 @@ const PTrabManager = () => {
           numero_ptrab: newPTrabNumber,
           status: "aberto",
           user_id: (await supabase.auth.getUser()).data.user?.id,
-          nome_operacao: `CONSOLIDADO - ${templatePTrab.nome_operacao}`, // Sugestão de nome
-          origem: 'consolidado', // MARCAR COMO CONSOLIDADO
+          nome_operacao: `CONSOLIDADO - ${templatePTrab.nome_operacao}`,
+          origem: 'consolidado',
         };
 
         const { data: newPTrab, error: insertPTrabError } = await supabase
@@ -764,7 +767,7 @@ const PTrabManager = () => {
 
         if (insertPTrabError || !newPTrab) throw insertPTrabError;
         finalTargetPTrabId = newPTrab.id;
-        targetPTrab = newPTrab as PTrab;
+        targetPTrab = { ...newPTrab, origem: 'consolidado' } as PTrab;
         toast.success(`Novo P Trab ${newPTrabNumber} criado para consolidação.`);
       } else {
         finalTargetPTrabId = targetPTrabId;
@@ -778,6 +781,7 @@ const PTrabManager = () => {
           .eq("id", finalTargetPTrabId);
           
         if (updateOriginError) console.error("Erro ao atualizar origem para consolidado:", updateOriginError);
+        targetPTrab = { ...targetPTrab, origem: 'consolidado' } as PTrab;
       }
 
       // 2. Clonar e Inserir Registros de Classe I e Classe III
@@ -851,19 +855,27 @@ const PTrabManager = () => {
   const consolidationTooltipText = isConsolidationDisabled 
     ? "É necessário ter pelo menos 2 Planos de Trabalho cadastrados para realizar a consolidação."
     : "Consolidar dados de múltiplos P Trabs em um único destino.";
+    
+  // NOVO: Mensagem detalhada para quando a consolidação está desativada
+  const getConsolidationDetailedMessage = () => {
+    if (pTrabs.length < 2) {
+      return "É necessário ter pelo menos 2 Planos de Trabalho cadastrados para realizar a consolidação. Cadastre mais P Trabs para habilitar esta função.";
+    }
+    return consolidationTooltipText;
+  };
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-4"> {/* Contêiner principal com largura máxima, ajustado space-y */}
-        <div className="flex justify-between items-center"> {/* Barra superior */}
-          <div className="flex items-center gap-4"> {/* Grupo da esquerda: Título */}
+      <div className="max-w-7xl mx-auto space-y-4">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold">Planos de Trabalho</h1>
               <p className="text-muted-foreground">Gerencie seu P Trab</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4"> {/* Grupo da direita: Novo P Trab, Consolidação, Configurações, Sair */}
+          <div className="flex items-center gap-4">
             
             {/* BOTÃO NOVO P TRAB */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -887,7 +899,7 @@ const PTrabManager = () => {
                         value={formData.numero_ptrab}
                         onChange={handleNumeroPTrabChange}
                         placeholder={`Ex: 1${yearSuffix}`}
-                        maxLength={10} // Aumentado para acomodar números maiores
+                        maxLength={10}
                         required
                         onKeyDown={handleEnterToNextField}
                       />
@@ -945,7 +957,7 @@ const PTrabManager = () => {
                             setFormData({
                               ...formData,
                               nome_om: omData.nome_om,
-                              nome_om_extenso: formData.nome_om_extenso, // Keep existing extenso if user typed it
+                              nome_om_extenso: formData.nome_om_extenso,
                               codug_om: omData.codug_om,
                               rm_vinculacao: omData.rm_vinculacao,
                               codug_rm_vinculacao: omData.codug_rm_vinculacao,
@@ -1034,7 +1046,7 @@ const PTrabManager = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="acoes">Ações realizadas ou a serem realizadas</Label> {/* Rótulo ajustado */}
+                    <Label htmlFor="acoes">Ações realizadas ou a serem realizadas</Label>
                     <Textarea
                       id="acoes"
                       value={formData.acoes}
@@ -1066,11 +1078,14 @@ const PTrabManager = () => {
                       onClick={() => {
                         if (!isConsolidationDisabled) {
                           setShowConsolidationDialog(true);
+                        } else {
+                          // Adicionar toast informativo se o botão for clicado enquanto desabilitado
+                          toast.info(getConsolidationDetailedMessage());
                         }
                       }} 
                       variant="secondary"
                       disabled={isConsolidationDisabled}
-                      style={isConsolidationDisabled ? { pointerEvents: 'none' } : {}} // Desabilita eventos de clique no botão, mas permite no span
+                      style={isConsolidationDisabled ? { pointerEvents: 'none' } : {}}
                     >
                       <ArrowRight className="mr-2 h-4 w-4" />
                       Consolidar P Trab
@@ -1079,6 +1094,11 @@ const PTrabManager = () => {
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{consolidationTooltipText}</p>
+                  {isConsolidationDisabled && (
+                    <p className="text-xs text-orange-400 mt-1 max-w-xs">
+                      {getConsolidationDetailedMessage()}
+                    </p>
+                  )}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -1092,7 +1112,7 @@ const PTrabManager = () => {
               <DropdownMenuContent 
                 align="end" 
                 className="w-56"
-                onPointerLeave={() => setSettingsDropdownOpen(false)} // Fecha ao sair com o mouse
+                onPointerLeave={() => setSettingsDropdownOpen(false)}
               >
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -1120,7 +1140,7 @@ const PTrabManager = () => {
           </div>
         </div>
 
-        <Card> {/* Cartão "Planos de Trabalho Cadastrados" */}
+        <Card>
           <CardHeader>
             <CardTitle>Planos de Trabalho Cadastrados</CardTitle>
           </CardHeader>
@@ -1132,8 +1152,8 @@ const PTrabManager = () => {
                   <TableHead className="text-center border-b border-border">Operação</TableHead>
                   <TableHead className="text-center border-b border-border">Período</TableHead>
                   <TableHead className="text-center border-b border-border">Status</TableHead>
-                  <TableHead className="text-center border-b border-border">Valor P Trab</TableHead> {/* Nova coluna */}
-                  <TableHead className="text-center border-b border-border w-[50px]"></TableHead> {/* Coluna do ícone de comentário */}
+                  <TableHead className="text-center border-b border-border">Valor P Trab</TableHead>
+                  <TableHead className="text-center border-b border-border w-[50px]"></TableHead>
                   <TableHead className="text-center border-b border-border">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1154,7 +1174,7 @@ const PTrabManager = () => {
                       </div>
                     </TableCell>
                     <TableCell>{ptrab.nome_operacao}</TableCell>
-                    <TableCell className="text-center"> {/* Centralizado */}
+                    <TableCell className="text-center">
                       <div>
                         {new Date(ptrab.periodo_inicio).toLocaleDateString('pt-BR')} - {new Date(ptrab.periodo_fim).toLocaleDateString('pt-BR')}
                       </div>
@@ -1163,7 +1183,7 @@ const PTrabManager = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col items-center"> {/* Flex container para centralizar */}
+                      <div className="flex flex-col items-center">
                         <Select
                           value={ptrab.status}
                           onValueChange={(value) => handleStatusChange(ptrab.id, ptrab.status, value)}
@@ -1192,7 +1212,7 @@ const PTrabManager = () => {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center"> {/* Célula para os valores do P Trab */}
+                    <TableCell className="text-center">
                       <div className="flex flex-col items-center text-xs">
                         {/* P Trab Logístico (Classe I + Classe III) - AGORA EM LARANJA */}
                         {ptrab.totalLogistica !== undefined && (
@@ -1209,7 +1229,7 @@ const PTrabManager = () => {
                         {/* Separador e Total Geral */}
                         {((ptrab.totalLogistica || 0) > 0 || (ptrab.totalOperacional || 0) > 0) && (
                           <>
-                            <div className="w-full h-px bg-muted-foreground/30 my-1" /> {/* Separator */}
+                            <div className="w-full h-px bg-muted-foreground/30 my-1" />
                             <span className="font-bold text-sm text-foreground">
                               {formatCurrency((ptrab.totalLogistica || 0) + (ptrab.totalOperacional || 0))}
                             </span>
@@ -1252,7 +1272,7 @@ const PTrabManager = () => {
                           onClick={() => handleSelectPTrab(ptrab.id)}
                           size="sm"
                           className="flex items-center gap-2"
-                          disabled={ptrab.status === 'completo' || ptrab.status === 'arquivado'} // Desabilita se o status for 'completo' ou 'arquivado'
+                          disabled={ptrab.status === 'completo' || ptrab.status === 'arquivado'}
                         >
                           <FileText className="h-4 w-4" />
                           Preencher
@@ -1274,7 +1294,7 @@ const PTrabManager = () => {
                               <Pencil className="mr-2 h-4 w-4" />
                               Editar P Trab
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleOpenCloneOptions(ptrab)}> {/* Chama o novo diálogo */}
+                            <DropdownMenuItem onClick={() => handleOpenCloneOptions(ptrab)}>
                               <Copy className="mr-2 h-4 w-4" />
                               Clonar P Trab
                             </DropdownMenuItem>
@@ -1413,7 +1433,7 @@ const PTrabManager = () => {
               Cancelar
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogFooter>
       </Dialog>
 
       {/* Diálogo de Consolidação */}
