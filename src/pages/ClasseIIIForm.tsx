@@ -1460,8 +1460,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
     setTimeout(() => { addEmbarcacaoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
   };
   const removerItemEmbarcacao = (index: number) => {
+    if (!confirm("Deseja realmente remover este item?")) return;
     const novosItens = formEmbarcacao.itens.filter((_, i) => i !== index);
     setFormEmbarcacao({ ...formEmbarcacao, itens: novosItens });
+    if (editingEmbarcacaoItemIndex === index) { handleCancelEditEmbarcacaoItem(); }
     toast.success("Item removido!");
   };
   const handleEditEmbarcacaoItem = (item: ItemEmbarcacao, index: number) => {
@@ -3149,7 +3151,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                       <div className="space-y-2">
                         <Label>&nbsp;</Label>
-                        <Button type="button" onClick={adicionarOu AtualizarItemEmbarcacao} className="w-full" disabled={!refLPC}>
+                        <Button type="button" onClick={adicionarOuAtualizarItemEmbarcacao} className="w-full" disabled={!refLPC}>
                           {editingEmbarcacaoItemIndex !== null ? "Atualizar Item" : "Adicionar"}
                         </Button>
                       </div>
