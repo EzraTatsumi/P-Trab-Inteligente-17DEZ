@@ -104,6 +104,7 @@ export type Database = {
         Row: {
           consumo_hora: number | null
           consumo_km_litro: number | null
+          consumo_lubrificante_litro: number | null
           created_at: string
           detalhamento: string | null
           detalhamento_customizado: string | null
@@ -117,6 +118,7 @@ export type Database = {
           p_trab_id: string
           potencia_hp: number | null
           preco_litro: number
+          preco_lubrificante: number | null
           quantidade: number
           tipo_combustivel: string
           tipo_equipamento: string
@@ -130,6 +132,7 @@ export type Database = {
         Insert: {
           consumo_hora?: number | null
           consumo_km_litro?: number | null
+          consumo_lubrificante_litro?: number | null
           created_at?: string
           detalhamento?: string | null
           detalhamento_customizado?: string | null
@@ -143,6 +146,7 @@ export type Database = {
           p_trab_id: string
           potencia_hp?: number | null
           preco_litro: number
+          preco_lubrificante?: number | null
           quantidade: number
           tipo_combustivel: string
           tipo_equipamento: string
@@ -156,6 +160,7 @@ export type Database = {
         Update: {
           consumo_hora?: number | null
           consumo_km_litro?: number | null
+          consumo_lubrificante_litro?: number | null
           created_at?: string
           detalhamento?: string | null
           detalhamento_customizado?: string | null
@@ -169,6 +174,7 @@ export type Database = {
           p_trab_id?: string
           potencia_hp?: number | null
           preco_litro?: number
+          preco_lubrificante?: number | null
           quantidade?: number
           tipo_combustivel?: string
           tipo_equipamento?: string

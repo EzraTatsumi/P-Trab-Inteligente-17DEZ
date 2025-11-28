@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check, Cloud, Tractor } from "lucide-react"; // Adicionado Cloud, Tractor
+import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check, Cloud, Tractor, Droplet } from "lucide-react"; // Adicionado Droplet
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
@@ -18,8 +18,8 @@ import { getEquipamentosPorTipo, TipoEquipamentoDetalhado } from "@/data/classeI
 import { RefLPC, RefLPCForm } from "@/types/refLPC";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils"; // Importar a nova função
-import { formatCurrency, formatNumber } from "@/lib/formatUtils"; // Importar formatCurrency e formatNumber
+import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
+import { formatCurrency, formatNumber } from "@/lib/formatUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -31,7 +31,7 @@ const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversã
 
 interface ClasseIIIRegistro {
   id: string;
-  tipo_equipamento: TipoEquipamento;
+  tipo_equipamento: string;
   organizacao: string;
   ug: string;
   quantidade: number;
@@ -51,6 +51,9 @@ interface ClasseIIIRegistro {
   itens_equipamentos?: any;
   total_litros_sem_margem?: number;
   fase_atividade?: string;
+  // NOVOS CAMPOS DE LUBRIFICANTE
+  consumo_lubrificante_litro?: number;
+  preco_lubrificante?: number;
 }
 
 interface FormData {
@@ -73,6 +76,9 @@ interface ItemGerador {
   horas_dia: number;
   consumo_fixo: number;
   tipo_combustivel: 'GASOLINA' | 'DIESEL';
+  // NOVOS CAMPOS DE LUBRIFICANTE
+  consumo_lubrificante_litro: number;
+  preco_lubrificante: number;
 }
 
 interface FormDataGerador {
@@ -87,6 +93,14 @@ interface FormDataGerador {
 interface ConsolidadoGerador {
   tipo_combustivel: 'GASOLINA' | 'DIESEL';
   total_litros_sem_margem: number;
+  total_litros: number;
+  valor_total: number;
+  itens: ItemGerador[];
+  detalhamento: string;
+}
+
+// NOVO TIPO PARA CONSOLIDADO DE LUBRIFICANTE
+interface ConsolidadoLubrificante {
   total_litros: number;
   valor_total: number;
   itens: ItemGerador[];
@@ -295,16 +309,21 @@ export default function ClasseIIIForm() {
     itens: [],
   });
 
-  const [itemGeradorTemp, setItemGeradorTemp] = useState({
+  const [itemGeradorTemp, setItemGeradorTemp] = useState<ItemGerador>({
     tipo_equipamento_especifico: "",
-    quantidade: 0, // Alterado para 0
-    horas_dia: 0, // Alterado para 0
+    quantidade: 0,
+    horas_dia: 0,
     consumo_fixo: 0,
-    tipo_combustivel: "DIESEL" as 'GASOLINA' | 'DIESEL',
+    tipo_combustivel: "DIESEL",
+    // NOVOS CAMPOS DE LUBRIFICANTE
+    consumo_lubrificante_litro: 0,
+    preco_lubrificante: 0,
   });
   const [editingGeradorItemIndex, setEditingGeradorItemIndex] = useState<number | null>(null);
 
   const [consolidadosGerador, setConsolidadosGerador] = useState<ConsolidadoGerador[]>([]);
+  // NOVO ESTADO PARA CONSOLIDADO DE LUBRIFICANTE
+  const [consolidadoLubrificante, setConsolidadoLubrificante] = useState<ConsolidadoLubrificante | null>(null);
 
   const [formViatura, setFormViatura] = useState<FormDataViatura>({
     selectedOmId: undefined,
@@ -386,6 +405,9 @@ export default function ClasseIIIForm() {
   useEffect(() => {
     if (tipoSelecionado === 'GERADOR' && formGerador.itens.length > 0) {
       calcularConsolidadosGerador(formGerador.itens);
+    } else if (tipoSelecionado === 'GERADOR' && formGerador.itens.length === 0) {
+      setConsolidadosGerador([]);
+      setConsolidadoLubrificante(null);
     }
   }, [formGerador.dias_operacao, refLPC, formGerador.itens, rmFornecimento, codugRmFornecimento]);
 
@@ -501,7 +523,7 @@ export default function ClasseIIIForm() {
     
     const { data, error } = await supabase
       .from("classe_iii_registros")
-      .select("*, detalhamento_customizado")
+      .select("*, detalhamento_customizado, consumo_lubrificante_litro, preco_lubrificante")
       .eq("p_trab_id", ptrabId)
       .order("created_at", { ascending: false });
 
@@ -661,13 +683,17 @@ export default function ClasseIIIForm() {
     });
     setItemGeradorTemp({
       tipo_equipamento_especifico: "",
-      quantidade: 0, // Alterado para 0
-      horas_dia: 0, // Alterado para 0
+      quantidade: 0,
+      horas_dia: 0,
       consumo_fixo: 0,
       tipo_combustivel: "DIESEL",
+      // NOVOS CAMPOS DE LUBRIFICANTE
+      consumo_lubrificante_litro: 0,
+      preco_lubrificante: 0,
     });
     setEditingGeradorItemIndex(null);
     setConsolidadosGerador([]);
+    setConsolidadoLubrificante(null); // Reset Lubrificante
     setFormViatura({
       selectedOmId: undefined,
       organizacao: "",
@@ -739,7 +765,7 @@ export default function ClasseIIIForm() {
   const handleEditar = async (registro: ClasseIIIRegistro) => {
     resetFormFields();
     setEditingId(registro.id);
-    setTipoSelecionado(registro.tipo_equipamento);
+    setTipoSelecionado(registro.tipo_equipamento as TipoEquipamento);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     let defaultRmName = "";
@@ -854,14 +880,27 @@ export default function ClasseIIIForm() {
     const equipamento = equipamentosDisponiveis.find(eq => eq.nome === tipoNome);
     if (equipamento) {
       const novoCombustivel = equipamento.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL';
-      setItemGeradorTemp({ ...itemGeradorTemp, tipo_equipamento_especifico: tipoNome, tipo_combustivel: novoCombustivel, consumo_fixo: equipamento.consumo });
+      setItemGeradorTemp({ 
+        ...itemGeradorTemp, 
+        tipo_equipamento_especifico: tipoNome, 
+        tipo_combustivel: novoCombustivel, 
+        consumo_fixo: equipamento.consumo,
+        // Resetar campos de lubrificante ao mudar o tipo
+        consumo_lubrificante_litro: 0,
+        preco_lubrificante: 0,
+      });
     }
   };
   const adicionarOuAtualizarItemGerador = () => {
     if (!itemGeradorTemp.tipo_equipamento_especifico || itemGeradorTemp.quantidade <= 0 || itemGeradorTemp.horas_dia <= 0) {
-      toast.error("Preencha todos os campos do item");
+      toast.error("Preencha todos os campos obrigatórios do item (Tipo, Quantidade, Horas/dia)");
       return;
     }
+    if (itemGeradorTemp.consumo_lubrificante_litro < 0 || itemGeradorTemp.preco_lubrificante < 0) {
+      toast.error("Consumo e preço do lubrificante não podem ser negativos.");
+      return;
+    }
+
     const novoItem: ItemGerador = { ...itemGeradorTemp };
     let novosItens = [...formGerador.itens];
     if (editingGeradorItemIndex !== null) {
@@ -872,7 +911,15 @@ export default function ClasseIIIForm() {
       toast.success("Item de gerador adicionado!");
     }
     setFormGerador({ ...formGerador, itens: novosItens });
-    setItemGeradorTemp({ tipo_equipamento_especifico: "", quantidade: 0, horas_dia: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
+    setItemGeradorTemp({ 
+      tipo_equipamento_especifico: "", 
+      quantidade: 0, 
+      horas_dia: 0, 
+      consumo_fixo: 0, 
+      tipo_combustivel: "DIESEL",
+      consumo_lubrificante_litro: 0,
+      preco_lubrificante: 0,
+    });
     setEditingGeradorItemIndex(null);
   };
   const handleEditGeradorItem = (item: ItemGerador, index: number) => {
@@ -881,7 +928,15 @@ export default function ClasseIIIForm() {
     if (addGeradorRef.current) { addGeradorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   };
   const handleCancelEditGeradorItem = () => {
-    setItemGeradorTemp({ tipo_equipamento_especifico: "", quantidade: 0, horas_dia: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
+    setItemGeradorTemp({ 
+      tipo_equipamento_especifico: "", 
+      quantidade: 0, 
+      horas_dia: 0, 
+      consumo_fixo: 0, 
+      tipo_combustivel: "DIESEL",
+      consumo_lubrificante_litro: 0,
+      preco_lubrificante: 0,
+    });
     setEditingGeradorItemIndex(null);
   };
   const removerItemGerador = (index: number) => {
@@ -891,15 +946,23 @@ export default function ClasseIIIForm() {
     if (editingGeradorItemIndex === index) { handleCancelEditGeradorItem(); }
     toast.success("Item de gerador removido!");
   };
+  
   const calcularConsolidadosGerador = (itens: ItemGerador[]) => {
-    if (itens.length === 0) { setConsolidadosGerador([]); return; }
-    const grupos = itens.reduce((acc, item) => {
+    if (itens.length === 0) { 
+      setConsolidadosGerador([]); 
+      setConsolidadoLubrificante(null);
+      return; 
+    }
+    
+    // --- CÁLCULO DE COMBUSTÍVEL ---
+    const gruposCombustivel = itens.reduce((acc, item) => {
       if (!acc[item.tipo_combustivel]) { acc[item.tipo_combustivel] = []; }
       acc[item.tipo_combustivel].push(item);
       return acc;
     }, {} as Record<'GASOLINA' | 'DIESEL', ItemGerador[]>);
-    const consolidados: ConsolidadoGerador[] = [];
-    Object.entries(grupos).forEach(([combustivel, itensGrupo]) => {
+    
+    const consolidadosCombustivel: ConsolidadoGerador[] = [];
+    Object.entries(gruposCombustivel).forEach(([combustivel, itensGrupo]) => {
       const tipoCombustivel = combustivel as 'GASOLINA' | 'DIESEL';
       let totalLitrosSemMargem = 0;
       const detalhes: string[] = [];
@@ -923,7 +986,7 @@ export default function ClasseIIIForm() {
       if (customFaseAtividadeGerador.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeGerador.trim()]; }
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
-      const detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalGeradores} geradores, durante ${formGerador.dias_operacao} dias de ${faseFormatada}, para ${formGerador.organizacao}.
+      const detalhamento = `33.90.39 - Aquisição de Combustível (${combustivelLabel}) para ${totalGeradores} geradores, durante ${formGerador.dias_operacao} dias de ${faseFormatada}, para ${formGerador.organizacao}.
 Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
 
 Cálculo:
@@ -937,7 +1000,7 @@ ${detalhes.join('\n')}
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}.
 Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)} = ${formatCurrency(valorTotal)}.`;
 
-      consolidados.push({
+      consolidadosCombustivel.push({
         tipo_combustivel: tipoCombustivel,
         total_litros_sem_margem: totalLitrosSemMargem,
         total_litros: totalLitros,
@@ -946,64 +1009,149 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
         detalhamento,
       });
     });
-    setConsolidadosGerador(consolidados);
+    setConsolidadosGerador(consolidadosCombustivel);
+    
+    // --- CÁLCULO DE LUBRIFICANTE (ND 33.90.30) ---
+    let totalLitrosLubrificante = 0;
+    let totalValorLubrificante = 0;
+    const itensComLubrificante = itens.filter(item => item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0);
+    const detalhesLubrificante: string[] = [];
+    
+    itensComLubrificante.forEach(item => {
+      // Cálculo: (Quantidade * Horas/dia * Dias Operação) / 100h * Consumo Lubrificante
+      const totalHoras = item.quantidade * item.horas_dia * formGerador.dias_operacao;
+      const litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
+      const valorItem = litrosItem * item.preco_lubrificante;
+      
+      totalLitrosLubrificante += litrosItem;
+      totalValorLubrificante += valorItem;
+      
+      detalhesLubrificante.push(`- ${item.quantidade} ${item.tipo_equipamento_especifico}: (${formatNumber(totalHoras)} horas / 100h) x ${formatNumber(item.consumo_lubrificante_litro, 2)} L/100h = ${formatNumber(litrosItem, 2)} L. Valor: ${formatCurrency(valorItem)}.`);
+    });
+    
+    let consolidadoLubrificante: ConsolidadoLubrificante | null = null;
+    
+    if (totalLitrosLubrificante > 0) {
+      const totalGeradores = itensComLubrificante.reduce((sum, item) => sum + item.quantidade, 0);
+      let fasesFinaisCalc = [...fasesAtividadeGerador];
+      if (customFaseAtividadeGerador.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeGerador.trim()]; }
+      const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
+      const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
+      
+      const detalhamentoLubrificante = `33.90.30 - Aquisição de Lubrificante para ${totalGeradores} geradores, durante ${formGerador.dias_operacao} dias de ${faseFormatada}, para ${formGerador.organizacao}.
+Recurso destinado à OM proprietária: ${formGerador.organizacao} (UG: ${formGerador.ug})
+
+Cálculo:
+Fórmula: (Nr Geradores x Nr Horas utilizadas/dia x Nr dias de operação) / 100h x Consumo Lubrificante/100h.
+
+${itensComLubrificante.map(item => `- ${item.tipo_equipamento_especifico}: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/100h. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}.`).join('\n')}
+
+${detalhesLubrificante.join('\n')}
+
+Total Litros: ${formatNumber(totalLitrosLubrificante, 2)} L.
+Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
+
+      consolidadoLubrificante = {
+        total_litros: totalLitrosLubrificante,
+        valor_total: totalValorLubrificante,
+        itens: itensComLubrificante,
+        detalhamento: detalhamentoLubrificante,
+      };
+    }
+    
+    setConsolidadoLubrificante(consolidadoLubrificante);
   };
+  
   const salvarRegistrosConsolidadosGerador = async () => {
-    if (!ptrabId || consolidadosGerador.length === 0) return;
+    if (!ptrabId) return;
     if (!refLPC) { toast.error("Configure a referência LPC antes de salvar"); if (lpcRef.current) { lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
     if (!formGerador.organizacao || !formGerador.ug) { toast.error("Selecione uma OM"); return; }
     if (!rmFornecimento || !codugRmFornecimento) { toast.error("Selecione a RM de Fornecimento de Combustível"); return; }
     if (formGerador.itens.length === 0) { toast.error("Adicione pelo menos um gerador"); return; }
+    
     let fasesFinais = [...fasesAtividadeGerador];
     if (customFaseAtividadeGerador.trim()) { fasesFinais = [...fasesFinais, customFaseAtividadeGerador.trim()]; }
     const faseFinalString = fasesFinais.filter(f => f).join('; ');
     if (!faseFinalString) { toast.error("Selecione ou digite pelo menos uma Fase da Atividade."); return; }
+    
+    const registrosParaSalvar: TablesInsert<'classe_iii_registros'>[] = [];
+    
+    // 1. Preparar registros de COMBUSTÍVEL (ND 33.90.39)
+    for (const consolidado of consolidadosGerador) {
+      const registro: TablesInsert<'classe_iii_registros'> = {
+        p_trab_id: ptrabId,
+        tipo_equipamento: 'GERADOR',
+        tipo_equipamento_detalhe: null,
+        organizacao: formGerador.organizacao,
+        ug: formGerador.ug,
+        quantidade: consolidado.itens.reduce((sum, item) => sum + item.quantidade, 0),
+        dias_operacao: formGerador.dias_operacao,
+        tipo_combustivel: consolidado.tipo_combustivel,
+        preco_litro: consolidado.tipo_combustivel === 'GASOLINA' ? (refLPC?.preco_gasolina ?? 0) : (refLPC?.preco_diesel ?? 0),
+        total_litros: consolidado.total_litros,
+        total_litros_sem_margem: consolidado.total_litros_sem_margem,
+        valor_total: consolidado.valor_total,
+        detalhamento: consolidado.detalhamento,
+        itens_equipamentos: JSON.parse(JSON.stringify(consolidado.itens)),
+        fase_atividade: faseFinalString,
+        // Lubrificante fields are 0 for the fuel record
+        consumo_lubrificante_litro: 0,
+        preco_lubrificante: 0,
+      };
+      registrosParaSalvar.push(registro);
+    }
+    
+    // 2. Preparar registro de LUBRIFICANTE (ND 33.90.30)
+    if (consolidadoLubrificante) {
+      // Usamos o tipo 'LUBRIFICANTE_GERADOR' para diferenciar este registro
+      const registroLubrificante: TablesInsert<'classe_iii_registros'> = {
+        p_trab_id: ptrabId,
+        tipo_equipamento: 'LUBRIFICANTE_GERADOR', // Novo tipo para identificar
+        tipo_equipamento_detalhe: null,
+        organizacao: formGerador.organizacao,
+        ug: formGerador.ug,
+        quantidade: consolidadoLubrificante.itens.reduce((sum, item) => sum + item.quantidade, 0),
+        dias_operacao: formGerador.dias_operacao,
+        tipo_combustivel: 'LUBRIFICANTE', // Tipo de combustível genérico para lubrificante
+        preco_litro: 0, // Preço unitário não se aplica ao total consolidado
+        total_litros: consolidadoLubrificante.total_litros,
+        total_litros_sem_margem: consolidadoLubrificante.total_litros, // Sem margem para lubrificante
+        valor_total: consolidadoLubrificante.valor_total,
+        detalhamento: consolidadoLubrificante.detalhamento,
+        itens_equipamentos: JSON.parse(JSON.stringify(consolidadoLubrificante.itens)),
+        fase_atividade: faseFinalString,
+        // Campos de lubrificante (usamos os valores do primeiro item para fins de exibição na tabela, mas o cálculo é consolidado)
+        consumo_lubrificante_litro: consolidadoLubrificante.itens[0]?.consumo_lubrificante_litro || 0,
+        preco_lubrificante: consolidadoLubrificante.itens[0]?.preco_lubrificante || 0,
+      };
+      registrosParaSalvar.push(registroLubrificante);
+    }
+
     try {
       setLoading(true);
-      if (editingId) {
-        const { error: deleteError } = await supabase
-          .from("classe_iii_registros")
-          .delete()
-          .eq("p_trab_id", ptrabId)
-          .eq("tipo_equipamento", "GERADOR")
-          .eq("organizacao", formGerador.organizacao)
-          .eq("ug", formGerador.ug);
-        if (deleteError) { console.error("Erro ao deletar registros existentes de gerador para edição:", deleteError); throw deleteError; }
-      }
-      for (const consolidado of consolidadosGerador) {
-        const registro = {
-          p_trab_id: ptrabId,
-          tipo_equipamento: 'GERADOR' as TipoEquipamento,
-          tipo_equipamento_detalhe: null,
-          organizacao: formGerador.organizacao,
-          ug: formGerador.ug,
-          quantidade: consolidado.itens.reduce((sum, item) => sum + item.quantidade, 0),
-          potencia_hp: null,
-          horas_dia: null,
-          km_dia: null,
-          consumo_hora: null,
-          consumo_km_litro: null,
-          dias_operacao: formGerador.dias_operacao,
-          tipo_combustivel: consolidado.tipo_combustivel,
-          preco_litro: consolidado.tipo_combustivel === 'GASOLINA' ? (refLPC?.preco_gasolina ?? 0) : (refLPC?.preco_diesel ?? 0),
-          total_litros: consolidado.total_litros,
-          total_litros_sem_margem: consolidado.total_litros_sem_margem,
-          valor_total: consolidado.valor_total,
-          detalhamento: consolidado.detalhamento,
-          itens_equipamentos: JSON.parse(JSON.stringify(consolidado.itens)),
-          fase_atividade: faseFinalString,
-        };
-        const { error } = await supabase.from("classe_iii_registros").insert([registro]);
-        if (error) throw error;
-      }
-      toast.success(editingId ? "Registros de geradores atualizados com sucesso!" : "Registros de geradores salvos com sucesso!");
+      
+      // 3. Deletar registros existentes (Combustível e Lubrificante) para esta OM/Tipo
+      const { error: deleteError } = await supabase
+        .from("classe_iii_registros")
+        .delete()
+        .eq("p_trab_id", ptrabId)
+        .in("tipo_equipamento", ["GERADOR", "LUBRIFICANTE_GERADOR"])
+        .eq("organizacao", formGerador.organizacao)
+        .eq("ug", formGerador.ug);
+      if (deleteError) { console.error("Erro ao deletar registros existentes de gerador/lubrificante para edição:", deleteError); throw deleteError; }
+      
+      // 4. Inserir novos registros
+      const { error: insertError } = await supabase.from("classe_iii_registros").insert(registrosParaSalvar);
+      if (insertError) throw insertError;
+      
+      toast.success(editingId ? "Registros de geradores e lubrificantes atualizados com sucesso!" : "Registros de geradores e lubrificantes salvos com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
       resetFormFields();
       setTipoSelecionado(null);
       fetchRegistros();
     } catch (error) {
-      console.error("Erro ao salvar/atualizar registros de gerador:", error);
-      toast.error("Erro ao salvar/atualizar registros de gerador");
+      console.error("Erro ao salvar/atualizar registros de gerador/lubrificante:", error);
+      toast.error("Erro ao salvar/atualizar registros de gerador/lubrificante");
     } finally {
       setLoading(false);
     }
@@ -1094,7 +1242,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       if (customFaseAtividadeViatura.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeViatura.trim()]; }
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
-      const detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalViaturas} viaturas, durante ${formViatura.dias_operacao} dias de ${faseFormatada}, para ${formViatura.organizacao}.
+      const detalhamento = `33.90.39 - Aquisição de Combustível (${combustivelLabel}) para ${totalViaturas} viaturas, durante ${formViatura.dias_operacao} dias de ${faseFormatada}, para ${formViatura.organizacao}.
 Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
 
 Rendimento das viaturas:
@@ -1141,9 +1289,9 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
         if (deleteError) { console.error("Erro ao deletar registros existentes de viatura para edição:", deleteError); throw deleteError; }
       }
       for (const consolidado of consolidadosViatura) {
-        const registro = {
+        const registro: TablesInsert<'classe_iii_registros'> = {
           p_trab_id: ptrabId,
-          tipo_equipamento: 'MOTOMECANIZACAO' as TipoEquipamento,
+          tipo_equipamento: 'MOTOMECANIZACAO',
           tipo_equipamento_detalhe: null,
           organizacao: formViatura.organizacao,
           ug: formViatura.ug,
@@ -1162,6 +1310,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
           detalhamento: consolidado.detalhamento,
           itens_equipamentos: JSON.parse(JSON.stringify(consolidado.itens)),
           fase_atividade: faseFinalString,
+          consumo_lubrificante_litro: 0,
+          preco_lubrificante: 0,
         };
         const { error } = await supabase.from("classe_iii_registros").insert([registro]);
         if (error) throw error;
@@ -1247,7 +1397,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       if (customFaseAtividadeEmbarcacao.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeEmbarcacao.trim()]; }
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
-      let detalhamento = `33.90.30 - Aquisição de Combustível (${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}) para Embarcações, durante ${formEmbarcacao.dias_operacao} dias de ${faseFormatada}, para ${formEmbarcacao.organizacao}.\nFornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})\n\nCálculo:\n`;
+      let detalhamento = `33.90.39 - Aquisição de Combustível (${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}) para Embarcações, durante ${formEmbarcacao.dias_operacao} dias de ${faseFormatada}, para ${formEmbarcacao.organizacao}.\nFornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})\n\nCálculo:\n`;
       itensGrupo.forEach(item => {
         const litrosSemMargemItem = item.quantidade * item.consumo_fixo * item.horas_dia * formEmbarcacao.dias_operacao;
         totalLitrosSemMargem += litrosSemMargemItem;
@@ -1286,11 +1436,21 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
     if (!faseFinalString) { toast.error("Selecione ou digite pelo menos uma Fase da Atividade."); return; }
     setLoading(true);
     try {
+      if (editingId) {
+        const { error: deleteError } = await supabase
+          .from("classe_iii_registros")
+          .delete()
+          .eq("p_trab_id", ptrabId)
+          .eq("tipo_equipamento", "EMBARCACAO")
+          .eq("organizacao", formEmbarcacao.organizacao)
+          .eq("ug", formEmbarcacao.ug);
+        if (deleteError) { console.error("Erro ao deletar registros existentes de embarcação para edição:", deleteError); throw deleteError; }
+      }
       for (const consolidado of consolidadosEmbarcacao) {
         const precoLitro = consolidado.tipo_combustivel === 'GASOLINA' ? refLPC!.preco_gasolina : refLPC!.preco_diesel;
-        const registro = {
+        const registro: TablesInsert<'classe_iii_registros'> = {
           p_trab_id: ptrabId,
-          tipo_equipamento: 'EMBARCACAO' as TipoEquipamento,
+          tipo_equipamento: 'EMBARCACAO',
           organizacao: formEmbarcacao.organizacao,
           ug: formEmbarcacao.ug,
           quantidade: consolidado.itens.reduce((sum, item) => sum + item.quantidade, 0),
@@ -1303,6 +1463,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
           detalhamento: consolidado.detalhamento,
           itens_equipamentos: consolidado.itens as any,
           fase_atividade: faseFinalString,
+          consumo_lubrificante_litro: 0,
+          preco_lubrificante: 0,
         };
         const { error } = await supabase.from("classe_iii_registros").insert([registro]);
         if (error) throw error;
@@ -1404,7 +1566,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       if (customFaseAtividadeEngenharia.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeEngenharia.trim()]; }
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
-      const detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos de engenharia, durante ${formEngenharia.dias_operacao} dias de ${faseFormatada}, para ${formEngenharia.organizacao}.
+      const detalhamento = `33.90.39 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos de engenharia, durante ${formEngenharia.dias_operacao} dias de ${faseFormatada}, para ${formEngenharia.organizacao}.
 Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
 
 Cálculo:
@@ -1451,9 +1613,9 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
         if (deleteError) { console.error("Erro ao deletar registros existentes de engenharia para edição:", deleteError); throw deleteError; }
       }
       for (const consolidado of consolidadosEngenharia) {
-        const registro = {
+        const registro: TablesInsert<'classe_iii_registros'> = {
           p_trab_id: ptrabId,
-          tipo_equipamento: 'EQUIPAMENTO_ENGENHARIA' as TipoEquipamento,
+          tipo_equipamento: 'EQUIPAMENTO_ENGENHARIA',
           tipo_equipamento_detalhe: null,
           organizacao: formEngenharia.organizacao,
           ug: formEngenharia.ug,
@@ -1472,6 +1634,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
           detalhamento: consolidado.detalhamento,
           itens_equipamentos: JSON.parse(JSON.stringify(consolidado.itens)),
           fase_atividade: faseFinalString,
+          consumo_lubrificante_litro: 0,
+          preco_lubrificante: 0,
         };
         const { error } = await supabase.from("classe_iii_registros").insert([registro]);
         if (error) throw error;
@@ -1724,66 +1888,76 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                             </tr>
                           </thead>
                           <tbody>
-                            {registros.map((registro) => (
-                              <tr key={registro.id} className="border-t hover:bg-muted/50 transition-colors">
-                                <td className="p-3 text-sm">{registro.organizacao}</td>
-                                <td className="p-3 text-sm">{registro.ug}</td>
-                                <td className="p-3 text-sm">{getTipoLabel(registro.tipo_equipamento as TipoEquipamento)}</td>
-                                <td className="p-3 text-sm">
-                                  <Badge variant={registro.tipo_combustivel === 'DIESEL' ? 'default' : 'secondary'}>
-                                    {registro.tipo_combustivel}
-                                  </Badge>
-                                </td>
-                                <td className="p-3 text-sm text-right font-medium">{formatNumber(registro.total_litros)} L</td>
-                                <td className="p-3 text-sm text-right font-medium">{formatCurrency(registro.valor_total)}</td>
-                                <td className="p-3 text-sm">
-                                  <div className="flex gap-1 justify-center">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      onClick={() => handleEditar(registro)}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleDeletar(registro.id)}
-                                      disabled={loading}
-                                      className="h-8 w-8 text-destructive hover:text-destructive/10"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
+                            {registros.map((registro) => {
+                              const isLubrificante = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR';
+                              const tipoLabel = isLubrificante ? 'Lubrificante (Gerador)' : getTipoLabel(registro.tipo_equipamento as TipoEquipamento);
+                              const combustivelBadgeClass = isLubrificante 
+                                ? 'bg-purple-100 text-purple-800' 
+                                : registro.tipo_combustivel === 'DIESEL' || registro.tipo_combustivel === 'OD'
+                                  ? 'bg-primary/10 text-primary' 
+                                  : 'bg-secondary/10 text-secondary';
+                              
+                              return (
+                                <tr key={registro.id} className="border-t hover:bg-muted/50 transition-colors">
+                                  <td className="p-3 text-sm">{registro.organizacao}</td>
+                                  <td className="p-3 text-sm">{registro.ug}</td>
+                                  <td className="p-3 text-sm">{tipoLabel}</td>
+                                  <td className="p-3 text-sm">
+                                    <Badge variant="outline" className={combustivelBadgeClass}>
+                                      {isLubrificante ? 'ND 30' : 'ND 39'}
+                                    </Badge>
+                                  </td>
+                                  <td className="p-3 text-sm text-right font-medium">{formatNumber(registro.total_litros)} L</td>
+                                  <td className="p-3 text-sm text-right font-medium">{formatCurrency(registro.valor_total)}</td>
+                                  <td className="p-3 text-sm">
+                                    <div className="flex gap-1 justify-center">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => handleEditar(registro)}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleDeletar(registro.id)}
+                                        disabled={loading}
+                                        className="h-8 w-8 text-destructive hover:text-destructive/10"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                           <tfoot className="bg-muted/50 border-t-2">
                             <tr>
-                              <td colSpan={4} className="p-3 text-sm font-semibold">TOTAL DIESEL</td>
+                              <td colSpan={4} className="p-3 text-sm font-semibold">TOTAL COMBUSTÍVEL (ND 39)</td>
                               <td className="p-3 text-sm text-right font-bold">
-                                {formatNumber(registros.filter(r => r.tipo_combustivel === 'DIESEL').reduce((sum, r) => sum + r.total_litros, 0))} L
+                                {formatNumber(registros.filter(r => r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR').reduce((sum, r) => sum + r.total_litros, 0))} L
                               </td>
                               <td className="p-3 text-sm text-right font-bold text-primary">
-                                {formatCurrency(registros.filter(r => r.tipo_combustivel === 'DIESEL').reduce((sum, r) => sum + r.valor_total, 0))}
+                                {formatCurrency(registros.filter(r => r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR').reduce((sum, r) => sum + r.valor_total, 0))}
                               </td>
                               <td></td>
                             </tr>
                             <tr>
-                              <td colSpan={4} className="p-3 text-sm font-semibold">TOTAL GASOLINA</td>
+                              <td colSpan={4} className="p-3 text-sm font-semibold">TOTAL LUBRIFICANTE (ND 30)</td>
                               <td className="p-3 text-sm text-right font-bold">
-                                {formatNumber(registros.filter(r => r.tipo_combustivel === 'GASOLINA').reduce((sum, r) => sum + r.total_litros, 0))} L
+                                {formatNumber(registros.filter(r => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR').reduce((sum, r) => sum + r.total_litros, 0))} L
                               </td>
-                              <td className="p-3 text-sm text-right font-bold text-primary">
-                                {formatCurrency(registros.filter(r => r.tipo_combustivel === 'GASOLINA').reduce((sum, r) => sum + r.valor_total, 0))}
+                              <td className="p-3 text-sm text-right font-bold text-purple-600">
+                                {formatCurrency(registros.filter(r => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR').reduce((sum, r) => sum + r.valor_total, 0))}
                               </td>
                               <td></td>
                             </tr>
                             <tr className="bg-primary/10 border-t-2">
                               <td colSpan={4} className="p-3 text-sm font-bold text-primary">
-                                CUSTO TOTAL DE COMBUSTÍVEL
+                                CUSTO TOTAL CLASSE III
                               </td>
                               <td className="p-3 text-sm text-right font-bold">
                               </td>
@@ -1792,8 +1966,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                               </td>
                               <td></td>
                             </tr>
-              </tfoot>
-            </table>
+                          </tfoot>
+                        </table>
                       </div>
                     </div>
                   </div>
@@ -1807,6 +1981,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                       const isEditing = editingMemoriaId === registro.id;
                       const hasCustomMemoria = !!registro.detalhamento_customizado;
                       const memoriaExibida = registro.detalhamento_customizado || registro.detalhamento || "";
+                      const isLubrificante = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR';
 
                       return (
                         <Card key={`memoria-${registro.id}`} className="p-6 bg-muted/30">
@@ -1824,11 +1999,13 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                             </div>
                             <Badge 
                               variant="default" 
-                              className={registro.tipo_combustivel === 'DIESEL' 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'bg-secondary text-secondary-foreground'}
+                              className={isLubrificante 
+                                ? 'bg-purple-600 text-primary-foreground' 
+                                : registro.tipo_combustivel === 'DIESEL' || registro.tipo_combustivel === 'OD'
+                                  ? 'bg-primary text-primary-foreground' 
+                                  : 'bg-secondary text-secondary-foreground'}
                             >
-                              {registro.tipo_combustivel}
+                              {isLubrificante ? 'LUBRIFICANTE (ND 30)' : 'COMBUSTÍVEL (ND 39)'}
                             </Badge>
                           </div>
                           
@@ -1917,6 +2094,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
   }
 
   if (tipoSelecionado === 'GERADOR') {
+    const totalGeradores = formGerador.itens.reduce((sum, item) => sum + item.quantidade, 0);
+    const isFormValid = formGerador.organizacao && formGerador.ug && rmFornecimento && codugRmFornecimento && formGerador.dias_operacao > 0 && formGerador.itens.length > 0;
+    const isItemValid = itemGeradorTemp.tipo_equipamento_especifico && itemGeradorTemp.quantidade > 0 && itemGeradorTemp.horas_dia > 0;
+    
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
@@ -1938,7 +2119,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
             </CardHeader>
             <CardContent className="space-y-6">
               <form onSubmit={(e) => { e.preventDefault(); salvarRegistrosConsolidadosGerador(); }}>
-                <div className="space-y-3"> {/* Alterado de space-y-4 para space-y-3 */}
+                <div className="space-y-3">
                   <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2047,7 +2228,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     <h3 className="text-lg font-semibold">2. Adicionar Geradores</h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
-                      <div className="space-y-2">
+                      <div className="space-y-2 lg:col-span-2">
                         <Label>Tipo de Gerador *</Label>
                         <Select 
                           value={itemGeradorTemp.tipo_equipamento_especifico}
@@ -2095,23 +2276,59 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           onKeyDown={handleEnterToNextField}
                         />
                       </div>
-
+                    </div>
+                    
+                    {/* NOVOS CAMPOS DE LUBRIFICANTE */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
                       <div className="space-y-2">
+                        <Label>Consumo Lubrificante (L/100h)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          value={itemGeradorTemp.consumo_lubrificante_litro === 0 ? "" : itemGeradorTemp.consumo_lubrificante_litro.toString()}
+                          onChange={(e) => setItemGeradorTemp({ ...itemGeradorTemp, consumo_lubrificante_litro: parseFloat(e.target.value) || 0 })}
+                          placeholder="Ex: 0.5"
+                          disabled={!refLPC}
+                          onKeyDown={handleEnterToNextField}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Preço Lubrificante (R$/L)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          value={itemGeradorTemp.preco_lubrificante === 0 ? "" : itemGeradorTemp.preco_lubrificante.toString()}
+                          onChange={(e) => setItemGeradorTemp({ ...itemGeradorTemp, preco_lubrificante: parseFloat(e.target.value) || 0 })}
+                          placeholder="Ex: 35.00"
+                          disabled={!refLPC}
+                          onKeyDown={handleEnterToNextField}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2 lg:col-span-2">
                         <Label>&nbsp;</Label>
-                        <Button type="button" onClick={adicionarOuAtualizarItemGerador} className="w-full" disabled={!refLPC}>
+                        <Button type="button" onClick={adicionarOuAtualizarItemGerador} className="w-full" disabled={!refLPC || !isItemValid}>
                           {editingGeradorItemIndex !== null ? "Atualizar Item" : "Adicionar"}
                         </Button>
                       </div>
                     </div>
+                    {/* FIM NOVOS CAMPOS DE LUBRIFICANTE */}
 
                     {itemGeradorTemp.consumo_fixo > 0 && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="secondary">
-                          Consumo: {formatNumber(itemGeradorTemp.consumo_fixo, 1)} L/h
+                          Combustível: {itemGeradorTemp.tipo_combustivel} ({formatNumber(itemGeradorTemp.consumo_fixo, 1)} L/h)
                         </Badge>
-                        <Badge variant="secondary">
-                          Combustível: {itemGeradorTemp.tipo_combustivel}
-                        </Badge>
+                        {itemGeradorTemp.consumo_lubrificante_litro > 0 && (
+                          <Badge variant="secondary" className="bg-purple-100 text-purple-800 hover:bg-purple-200">
+                            Lubrificante: {formatNumber(itemGeradorTemp.consumo_lubrificante_litro, 2)} L/100h @ {formatCurrency(itemGeradorTemp.preco_lubrificante)}
+                          </Badge>
+                        )}
                       </div>
                     )}
                     {editingGeradorItemIndex !== null && (
@@ -2130,7 +2347,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                 {formGerador.itens.length > 0 && (
                   <div className="space-y-4 border-t pt-6">
-                    <h3 className="text-lg font-semibold">3. Geradores Configurados</h3>
+                    <h3 className="text-lg font-semibold">3. Geradores Configurados ({totalGeradores} unidades)</h3>
                     
                     <div className="space-y-2">
                       {formGerador.itens.map((item, index) => (
@@ -2139,7 +2356,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                             <div className="flex-1">
                               <p className="font-medium">{item.tipo_equipamento_especifico}</p>
                               <p className="text-sm text-muted-foreground">
-                                {item.quantidade} unidade(s) • {formatNumber(item.horas_dia, 1)}h/dia • {formatNumber(item.consumo_fixo, 1)} L/h • {item.tipo_combustivel}
+                                {item.quantidade} unidade(s) • {formatNumber(item.horas_dia, 1)}h/dia • {formatNumber(item.consumo_fixo, 1)} L/h {item.tipo_combustivel}
+                                {item.consumo_lubrificante_litro > 0 && ` • Lub: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/100h`}
                               </p>
                             </div>
                             <div className="flex gap-1">
@@ -2169,20 +2387,22 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   </div>
                 )}
 
-                {consolidadosGerador.length > 0 && (
+                {(consolidadosGerador.length > 0 || consolidadoLubrificante) && (
                   <div className="space-y-4 border-t pt-6">
-                    <h3 className="text-lg font-semibold">4. Consolidação por Combustível</h3>
+                    <h3 className="text-lg font-semibold">4. Consolidação de Custos</h3>
                     
+                    {/* CONSOLIDAÇÃO DE COMBUSTÍVEL */}
                     {consolidadosGerador.map((consolidado, index) => (
-                      <Card key={index} className="p-4">
+                      <Card key={index} className="p-4 border-l-4 border-primary">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-lg">
-                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}
+                            <h4 className="font-medium text-lg flex items-center gap-2 text-primary">
+                              <Fuel className="h-5 w-5" />
+                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'} (ND 33.90.39)
                             </h4>
                             <div className="text-right">
                               <p className="text-sm text-muted-foreground">Total com 30%</p>
-                              <p className="text-lg font-bold">{formatCurrency(consolidado.valor_total)}</p>
+                              <p className="text-lg font-bold text-primary">{formatCurrency(consolidado.valor_total)}</p>
                             </div>
                           </div>
                           
@@ -2214,6 +2434,50 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                         </div>
                       </Card>
                     ))}
+                    
+                    {/* CONSOLIDAÇÃO DE LUBRIFICANTE */}
+                    {consolidadoLubrificante && (
+                      <Card className="p-4 border-l-4 border-purple-600">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-lg flex items-center gap-2 text-purple-600">
+                              <Droplet className="h-5 w-5" />
+                              Lubrificante (ND 33.90.30)
+                            </h4>
+                            <div className="text-right">
+                              <p className="text-sm text-muted-foreground">Valor Total</p>
+                              <p className="text-lg font-bold text-purple-600">{formatCurrency(consolidadoLubrificante.valor_total)}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <p className="text-muted-foreground">Geradores c/ Lub</p>
+                              <p className="font-medium">{consolidadoLubrificante.itens.reduce((sum, item) => sum + item.quantidade, 0)} unidades</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Total Litros</p>
+                              <p className="font-medium">{formatNumber(consolidadoLubrificante.total_litros, 2)} L</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">OM Destino Recurso</p>
+                              <p className="font-medium">{formGerador.organizacao}</p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Memória de Cálculo</Label>
+                            <Textarea
+                              value={consolidadoLubrificante.detalhamento}
+                              readOnly
+                              rows={8}
+                              className="font-mono text-xs"
+                              onKeyDown={handleEnterToNextField}
+                            />
+                          </div>
+                        </div>
+                      </Card>
+                    )}
 
                     <div className="flex gap-3 pt-4">
                       {editingId && (
@@ -2226,8 +2490,11 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           Cancelar Edição
                         </Button>
                       )}
-                      <Button type="submit" disabled={!refLPC || loading}>
-                        {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")} ({consolidadosGerador.length} {consolidadosGerador.length === 1 ? 'tipo' : 'tipos'} de combustível)
+                      <Button 
+                        type="submit" 
+                        disabled={!refLPC || loading || !isFormValid}
+                      >
+                        {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")} ({consolidadosGerador.length + (consolidadoLubrificante ? 1 : 0)} registros)
                       </Button>
                     </div>
                   </div>
