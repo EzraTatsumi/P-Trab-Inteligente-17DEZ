@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -54,7 +55,7 @@ interface ClasseIIRegistro {
   ug: string;
   dias_operacao: number;
   categoria: Categoria;
-  itens_equipamentos: ItemClasseII[];
+  itens_equipamentos: any;
   valor_total: number;
   detalhamento: string;
   detalhamento_customizado?: string | null;
