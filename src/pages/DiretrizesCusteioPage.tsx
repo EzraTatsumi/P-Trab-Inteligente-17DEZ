@@ -722,8 +722,7 @@ const DiretrizesCusteioPage = () => {
                   className="flex items-center justify-between cursor-pointer py-2" 
                   onClick={() => setShowClasseIIIConfig(!showClasseIIIConfig)}
                 >
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Fuel className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-semibold">
                     Classe III - Combustíveis e Lubrificantes
                   </h3>
                   {showClasseIIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
