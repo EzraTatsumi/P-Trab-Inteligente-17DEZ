@@ -508,7 +508,7 @@ const PTrabManager = () => {
         throw new Error("Erro ao carregar o P Trab original.");
       }
       
-      const typedOriginalPTrab = originalPTrab as PTrabDB; // Cast to PTrabDB
+      const typedOriginalPTrab = originalPTrab as unknown as PTrabDB; // Cast to PTrabDB
 
       // 2. Create the new PTrab object
       // Destructure only fields present in the DB schema (PTrabDB)
