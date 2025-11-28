@@ -264,11 +264,8 @@ export const PTrabCostSummary = ({
                 </div>
               </div>
               
-              {/* Indicador de Detalhes (alinhado à direita) */}
+              {/* Indicador de Detalhes (alinhado à direita) - Agora só com o ChevronDown */}
               <div className="w-full flex justify-end items-center mt-2">
-                <span className="text-xs text-muted-foreground mr-2 group-hover:text-foreground transition-colors">
-                  Para maiores detalhes
-                </span>
                 <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
               </div>
             </AccordionTrigger>
