@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button"; // Importar Button
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Importar Tooltip components
 
 interface PTrabCostSummaryProps {
   ptrabId: string;
@@ -150,6 +151,25 @@ export const PTrabCostSummary = ({
     queryFn: () => fetchPTrabTotals(ptrabId),
     enabled: !!ptrabId,
     refetchInterval: 10000, // Atualiza a cada 10 segundos
+    initialData: {
+      totalLogisticoGeral: 0,
+      totalLogisticoND30: 0,
+      totalLogisticoND39: 0,
+      totalOperacional: 0,
+      totalClasseI: 0,
+      totalComplemento: 0,
+      totalEtapaSolicitadaValor: 0,
+      totalDiasEtapaSolicitada: 0,
+      totalRefeicoesIntermediarias: 0,
+      totalDieselValor: 0,
+      totalGasolinaValor: 0,
+      totalDieselLitros: 0,
+      totalGasolinaLitros: 0,
+      totalLubrificanteValor: 0,
+      totalLubrificanteLitros: 0,
+      totalMaterialPermanente: 0,
+      totalAviacaoExercito: 0,
+    },
   });
 
   if (isLoading) {
@@ -214,36 +234,51 @@ export const PTrabCostSummary = ({
         
         <Accordion type="single" collapsible className="w-full px-6">
           <AccordionItem value="summary-details" className="border-b-0">
-            <AccordionTrigger className="py-3 px-0 hover:no-underline flex flex-col items-start gap-2">
-              
-              {/* NOVO RESUMO QUANDO FECHADO */}
-              <div className="w-full space-y-1 text-sm pt-1">
-                <div className="flex justify-between text-orange-600">
-                  <span className="font-semibold text-base">Aba Logística</span>
-                  <span className="font-bold text-base">{formatCurrency(totals.totalLogisticoGeral)}</span>
-                </div>
-                <div className="flex justify-between text-blue-600">
-                  <span className="font-semibold text-base">Aba Operacional</span>
-                  <span className="font-bold text-base">{formatCurrency(totals.totalOperacional)}</span>
-                </div>
-                {/* Adicionando Material Permanente */}
-                <div className="flex justify-between text-green-600">
-                  <span className="font-semibold text-base">Aba Material Permanente</span>
-                  <span className="font-bold text-base">{formatCurrency(totals.totalMaterialPermanente)}</span>
-                </div>
-                {/* Adicionando Aviação do Exército */}
-                <div className="flex justify-between text-purple-600">
-                  <span className="font-semibold text-base">Aba Aviação do Exército</span>
-                  <span className="font-bold text-base">{formatCurrency(totals.totalAviacaoExercito)}</span>
-                </div>
-                <div className="flex justify-between text-foreground font-bold border-t border-border/50 pt-1">
-                  <span className="text-lg">Total Geral</span>
-                  <span className="text-xl">{formatCurrency(totalGeralFinal)}</span>
-                </div>
-              </div>
-              {/* FIM NOVO RESUMO */}
-              
-            </AccordionTrigger>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AccordionTrigger className="py-3 px-0 hover:no-underline flex flex-col items-start gap-2">
+                    
+                    {/* NOVO RESUMO QUANDO FECHADO */}
+                    <div className="w-full space-y-1 text-sm pt-1">
+                      <div className="flex justify-between text-orange-600">
+                        <span className="font-semibold text-base">Aba Logística</span>
+                        <span className="font-bold text-base">{formatCurrency(totals.totalLogisticoGeral)}</span>
+                      </div>
+                      <div className="flex justify-between text-blue-600">
+                        <span className="font-semibold text-base">Aba Operacional</span>
+                        <span className="font-bold text-base">{formatCurrency(totals.totalOperacional)}</span>
+                      </div>
+                      {/* Adicionando Material Permanente */}
+                      <div className="flex justify-between text-green-600">
+                        <span className="font-semibold text-base">Aba Material Permanente</span>
+                        <span className="font-bold text-base">{formatCurrency(totals.totalMaterialPermanente)}</span>
+                      </div>
+                      {/* Adicionando Aviação do Exército */}
+                      <div className="flex justify-between text-purple-600">
+                        <span className="font-semibold text-base">Aba Aviação do Exército</span>
+                        <span className="font-bold text-base">{formatCurrency(totals.totalAviacaoExercito)}</span>
+                      </div>
+                      <div className="flex justify-between text-foreground font-bold border-t border-border/50 pt-1">
+                        <span className="text-lg">Total Geral</span>
+                        <span className="text-xl">{formatCurrency(totalGeralFinal)}</span>
+                      </div>
+                    </div>
+                    {/* FIM NOVO RESUMO */}
+                    
+                  </AccordionTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {/* Conteúdo do Tooltip dinâmico */}
+                  <span className="text-xs">
+                    {/* Verifica se o Accordion está aberto (usando data-state) */}
+                    {/* Nota: O estado do Accordion não é diretamente acessível aqui, mas podemos usar a lógica de toggle */}
+                    Para maiores detalhes, clique para expandir.
+                  </span>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
             <AccordionContent className="pt-4 pb-0">
               <div className="space-y-4">
                 
