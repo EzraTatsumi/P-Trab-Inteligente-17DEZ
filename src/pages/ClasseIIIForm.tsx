@@ -1687,7 +1687,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
   };
   const salvarRegistrosConsolidadosEngenharia = async () => {
     if (!ptrabId || consolidadosEngenharia.length === 0) return;
-    if (!refLPC) { toast.error("Configure a referência LPC antes de salvar"); if (lpcRef.current) { lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+    if (!refLPC) { toast.error("Configure a referência LPC antes de salvar"); if (lpcRef.current) { lpcR
+      ef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
     if (!formEngenharia.organizacao || !formEngenharia.ug) { toast.error("Selecione uma OM"); return; }
     if (!rmFornecimento || !codugRmFornecimento) { toast.error("Selecione a RM de Fornecimento de Combustível"); return; }
     if (formEngenharia.itens.length === 0) { toast.error("Adicione pelo menos um equipamento"); return; }
@@ -2043,7 +2044,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                                         size="icon"
                                         onClick={() => handleDeletar(registro.id)}
                                         disabled={loading}
-                                        className="h-8 w-8 text-destructive hover:text-destructive/10"
+                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
@@ -2367,7 +2368,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     </div>
                   </div>
                 </div>
-                {/* Linha em branco removida */}
+                <div className="mb-6" /> 
 
                 {formGerador.organizacao && (
                   <div className="space-y-4 mt-6 border-t pt-6" ref={addGeradorRef}>
@@ -2538,6 +2539,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                                 size="icon"
                                 onClick={() => removerItemGerador(index)}
                                 disabled={!refLPC}
+                                className="text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -2794,7 +2796,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     </div>
                   </div>
                 </div>
-                {/* Linha em branco removida */}
+                <div className="mb-6" />
 
                 {formViatura.organizacao && (
                   <div className="space-y-4 mt-6 border-t pt-6" ref={addViaturaRef}>
@@ -2932,6 +2934,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                                 size="icon"
                                 onClick={() => removerItemViatura(index)}
                                 disabled={!refLPC}
+                                className="text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -3140,7 +3143,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     </div>
                   </div>
                 </div>
-                {/* Linha em branco removida */}
+                <div className="mb-6" />
 
                 {formEmbarcacao.organizacao && (
                   <div className="space-y-4 mt-6 border-t pt-6" ref={addEmbarcacaoRef}>
@@ -3258,6 +3261,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                                 size="icon"
                                 onClick={() => removerItemEmbarcacao(index)}
                                 disabled={!refLPC}
+                                className="text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -3466,7 +3470,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     </div>
                   </div>
                 </div>
-                {/* Linha em branco removida */}
+                <div className="mb-6" />
 
                 {formEngenharia.organizacao && (
                   <div className="space-y-4 mt-6 border-t pt-6" ref={addEngenhariaRef}>
@@ -3584,6 +3588,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                                 size="icon"
                                 onClick={() => removerItemEngenharia(index)}
                                 disabled={!refLPC}
+                                className="text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
