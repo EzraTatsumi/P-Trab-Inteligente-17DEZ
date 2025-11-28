@@ -235,10 +235,10 @@ export const PTrabCostSummary = ({
         <Accordion type="single" collapsible className="w-full px-6">
           <AccordionItem value="summary-details" className="border-b-0">
             
-            {/* Accordion Trigger Principal com rótulo de detalhes */}
+            {/* Accordion Trigger Principal: Contém o resumo e o indicador de detalhes */}
             <AccordionTrigger className="py-3 px-0 hover:no-underline flex flex-col items-start gap-2 group">
               
-              {/* NOVO RESUMO QUANDO FECHADO */}
+              {/* Resumo de Custos (sempre visível) */}
               <div className="w-full space-y-1 text-sm pt-1">
                 <div className="flex justify-between text-orange-600">
                   <span className="font-semibold text-base">Aba Logística</span>
@@ -263,9 +263,8 @@ export const PTrabCostSummary = ({
                   <span className="text-xl">{formatCurrency(totalGeralFinal)}</span>
                 </div>
               </div>
-              {/* FIM NOVO RESUMO */}
               
-              {/* Rótulo de Detalhes e Seta */}
+              {/* Indicador de Detalhes (alinhado à direita) */}
               <div className="w-full flex justify-end items-center mt-2">
                 <span className="text-xs text-muted-foreground mr-2 group-hover:text-foreground transition-colors">
                   Para maiores detalhes
