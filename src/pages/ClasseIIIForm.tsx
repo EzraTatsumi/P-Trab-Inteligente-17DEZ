@@ -647,12 +647,13 @@ export default function ClasseIIIForm() {
     fetchRegistros();
   };
 
-  const getTipoLabel = (tipo: TipoEquipamento) => {
+  const getTipoLabel = (tipo: TipoEquipamento | 'LUBRIFICANTE_GERADOR') => {
     switch (tipo) {
       case 'GERADOR': return 'Gerador';
       case 'EMBARCACAO': return 'Embarcação';
       case 'EQUIPAMENTO_ENGENHARIA': return 'Equipamento de Engenharia';
       case 'MOTOMECANIZACAO': return 'Motomecanização';
+      case 'LUBRIFICANTE_GERADOR': return 'Gerador (Lubrificante)';
     }
   };
 
@@ -1984,7 +1985,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           <tbody>
                             {registros.map((registro) => {
                               const isLubrificante = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR';
-                              const tipoLabel = isLubrificante ? 'Lubrificante (Gerador)' : getTipoLabel(registro.tipo_equipamento as TipoEquipamento);
+                              const tipoLabel = getTipoLabel(registro.tipo_equipamento as TipoEquipamento | 'LUBRIFICANTE_GERADOR');
                               
                               let suprimentoBadgeClass = '';
                               let suprimentoText = '';
@@ -2091,21 +2092,11 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                       
                       // Determina o tipo de suprimento e equipamento para o título
                       let suprimentoTipo = isLubrificante ? 'Lubrificante' : (registro.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel');
-                      let equipamentoTipo = getTipoLabel(registro.tipo_equipamento as TipoEquipamento);
-                      if (isLubrificante) {
-                          // Se for lubrificante, o equipamento é o Gerador (pois só há lubrificante para gerador)
-                          equipamentoTipo = 'Gerador';
-                      } else if (registro.tipo_equipamento === 'GERADOR') {
-                          equipamentoTipo = 'Gerador';
-                      } else if (registro.tipo_equipamento === 'MOTOMECANIZACAO') {
-                          equipamentoTipo = 'Motomecanização';
-                      } else if (registro.tipo_equipamento === 'EMBARCACAO') {
-                          equipamentoTipo = 'Embarcação';
-                      } else if (registro.tipo_equipamento === 'EQUIPAMENTO_ENGENHARIA') {
-                          equipamentoTipo = 'Equipamento de Engenharia';
-                      }
+                      let equipamentoTipo = getTipoLabel(registro.tipo_equipamento as TipoEquipamento | 'LUBRIFICANTE_GERADOR');
                       
-                      const tituloMemoria = `${equipamentoTipo} - ${suprimentoTipo}`;
+                      // Reorganização do título
+                      const tituloOM = `${registro.organizacao} (UG: ${registro.ug})`;
+                      const tituloEquipamento = equipamentoTipo;
 
                       return (
                         <Card key={`memoria-${registro.id}`} className="p-6 bg-muted/30">
@@ -2113,8 +2104,11 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
                               <h4 className="text-lg font-semibold text-foreground">
-                                {tituloMemoria} | {registro.organizacao} (UG: {registro.ug})
+                                {tituloOM}
                               </h4>
+                              <span className="text-lg font-semibold text-muted-foreground/80">
+                                | {tituloEquipamento}
+                              </span>
                               {hasCustomMemoria && !isEditing && (
                                 <Badge variant="outline" className="text-xs">
                                   Editada manualmente
