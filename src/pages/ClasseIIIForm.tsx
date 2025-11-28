@@ -4006,7 +4006,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                       <div className="space-y-2">
                         <Label>&nbsp;</Label>
-                        <Button type="button" onClick={adicionarOu AtualizarItemEngenharia} className="w-full" disabled={!refLPC}>
+                        <Button type="button" onClick={adicionarOuAtualizarItemEngenharia} className="w-full" disabled={!refLPC}>
                           {editingEngenhariaItemIndex !== null ? "Atualizar Item" : "Adicionar"}
                         </Button>
                       </div>
