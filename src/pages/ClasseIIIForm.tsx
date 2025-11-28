@@ -19,7 +19,7 @@ import { RefLPC, RefLPCForm } from "@/types/refLPC";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -338,6 +338,11 @@ export default function ClasseIIIForm() {
     consumo_lubrificante_litro: 0,
     preco_lubrificante: 0,
   });
+  
+  // NOVOS ESTADOS PARA INPUT STRING DE LUBRIFICANTE (GERADOR)
+  const [inputConsumoLubrificante, setInputConsumoLubrificante] = useState<string>("");
+  const [inputPrecoLubrificante, setInputPrecoLubrificante] = useState<string>("");
+  
   const [editingGeradorItemIndex, setEditingGeradorItemIndex] = useState<number | null>(null);
 
   const [consolidadosGerador, setConsolidadosGerador] = useState<ConsolidadoGerador[]>([]);
@@ -382,6 +387,10 @@ export default function ClasseIIIForm() {
     consumo_lubrificante_litro: 0,
     preco_lubrificante: 0,
   });
+  
+  // NOVOS ESTADOS PARA INPUT STRING DE LUBRIFICANTE (EMBARCAÇÃO)
+  const [inputConsumoLubrificanteEmbarcacao, setInputConsumoLubrificanteEmbarcacao] = useState<string>("");
+  const [inputPrecoLubrificanteEmbarcacao, setInputPrecoLubrificanteEmbarcacao] = useState<string>("");
 
   const [editingEmbarcacaoItemIndex, setEditingEmbarcacaoItemIndex] = useState<number | null>(null);
   const [consolidadosEmbarcacao, setConsolidadosEmbarcacao] = useState<ConsolidadoEmbarcacao[]>([]);
@@ -407,6 +416,77 @@ export default function ClasseIIIForm() {
   const [editingEngenhariaItemIndex, setEditingEngenhariaItemIndex] = useState<number | null>(null);
   const [consolidadosEngenharia, setConsolidadosEngenharia] = useState<ConsolidadoEngenharia[]>([]);
   // FIM NOVOS ESTADOS
+
+  // --- Input Handlers para Gerador (Lubrificante) ---
+  const updateNumericItemGerador = (field: keyof ItemGerador, inputString: string) => {
+    const numericValue = parseInputToNumber(inputString);
+    setItemGeradorTemp(prev => ({ ...prev, [field]: numericValue }));
+  };
+
+  const handleInputGeradorChange = (
+      e: React.ChangeEvent<HTMLInputElement>, 
+      setInput: React.Dispatch<React.SetStateAction<string>>, 
+      field: keyof ItemGerador
+  ) => {
+      const rawValue = e.target.value;
+      const formattedValue = formatInputWithThousands(rawValue);
+      setInput(formattedValue);
+      
+      // Update the numeric state immediately for live calculation feedback
+      updateNumericItemGerador(field, formattedValue);
+  };
+
+  const handleInputGeradorBlur = (
+      input: string, 
+      setInput: React.Dispatch<React.SetStateAction<string>>, 
+      minDecimals: number,
+      field: keyof ItemGerador
+  ) => {
+      const numericValue = parseInputToNumber(input);
+      
+      // Format the display value with required decimals (e.g., 2 for currency)
+      const formattedDisplay = formatNumberForInput(numericValue, minDecimals);
+      setInput(formattedDisplay);
+      
+      // Ensure the numeric state is updated based on the final parsed value
+      updateNumericItemGerador(field, formattedDisplay);
+  };
+  
+  // --- Input Handlers para Embarcação (Lubrificante) ---
+  const updateNumericItemEmbarcacao = (field: keyof ItemEmbarcacao, inputString: string) => {
+    const numericValue = parseInputToNumber(inputString);
+    setItemEmbarcacaoTemp(prev => ({ ...prev, [field]: numericValue }));
+  };
+
+  const handleInputEmbarcacaoChange = (
+      e: React.ChangeEvent<HTMLInputElement>, 
+      setInput: React.Dispatch<React.SetStateAction<string>>, 
+      field: keyof ItemEmbarcacao
+  ) => {
+      const rawValue = e.target.value;
+      const formattedValue = formatInputWithThousands(rawValue);
+      setInput(formattedValue);
+      
+      // Update the numeric state immediately for live calculation feedback
+      updateNumericItemEmbarcacao(field, formattedValue);
+  };
+
+  const handleInputEmbarcacaoBlur = (
+      input: string, 
+      setInput: React.Dispatch<React.SetStateAction<string>>, 
+      minDecimals: number,
+      field: keyof ItemEmbarcacao
+  ) => {
+      const numericValue = parseInputToNumber(input);
+      
+      // Format the display value with required decimals (e.g., 2 for currency)
+      const formattedDisplay = formatNumberForInput(numericValue, minDecimals);
+      setInput(formattedDisplay);
+      
+      // Ensure the numeric state is updated based on the final parsed value
+      updateNumericItemEmbarcacao(field, formattedDisplay);
+  };
+  // Fim Input Handlers
 
   useEffect(() => {
     if (!ptrabId) {
@@ -724,6 +804,8 @@ export default function ClasseIIIForm() {
       consumo_lubrificante_litro: 0,
       preco_lubrificante: 0,
     });
+    setInputConsumoLubrificante("");
+    setInputPrecoLubrificante("");
     setEditingGeradorItemIndex(null);
     setConsolidadosGerador([]);
     setConsolidadoLubrificante(null); // Reset Lubrificante (Gerador)
@@ -760,6 +842,8 @@ export default function ClasseIIIForm() {
       consumo_lubrificante_litro: 0,
       preco_lubrificante: 0,
     });
+    setInputConsumoLubrificanteEmbarcacao("");
+    setInputPrecoLubrificanteEmbarcacao("");
     setConsolidadosEmbarcacao([]);
     setConsolidadoLubrificanteEmbarcacao(null); // Reset Lubrificante (Embarcação)
     setEditingEmbarcacaoItemIndex(null);
@@ -890,6 +974,13 @@ export default function ClasseIIIForm() {
         setSelectedOmLubrificanteId(lubOmId);
         setOmLubrificante(lubrificanteRecord.organizacao);
         setUgLubrificante(lubrificanteRecord.ug);
+        
+        // Preencher os campos de string de lubrificante com o valor do primeiro item (para edição)
+        if (itens.length > 0) {
+          setInputConsumoLubrificante(formatNumberForInput(itens[0].consumo_lubrificante_litro, 2));
+          setInputPrecoLubrificante(formatNumberForInput(itens[0].preco_lubrificante, 2));
+        }
+        
       } else {
         // Se não houver registro de lubrificante, assume-se a OM detentora
         setSelectedOmLubrificanteId(selectedOmIdForEdit);
@@ -969,6 +1060,13 @@ export default function ClasseIIIForm() {
         setSelectedOmLubrificanteEmbarcacaoId(lubOmId);
         setOmLubrificanteEmbarcacao(lubrificanteRecord.organizacao);
         setUgLubrificanteEmbarcacao(lubrificanteRecord.ug);
+        
+        // Preencher os campos de string de lubrificante com o valor do primeiro item (para edição)
+        if (itens.length > 0) {
+          setInputConsumoLubrificanteEmbarcacao(formatNumberForInput(itens[0].consumo_lubrificante_litro, 2));
+          setInputPrecoLubrificanteEmbarcacao(formatNumberForInput(itens[0].preco_lubrificante, 2));
+        }
+        
       } else {
         setSelectedOmLubrificanteEmbarcacaoId(selectedOmIdForEdit);
         setOmLubrificanteEmbarcacao(registro.organizacao);
@@ -1061,6 +1159,8 @@ export default function ClasseIIIForm() {
         consumo_lubrificante_litro: 0,
         preco_lubrificante: 0,
       });
+      setInputConsumoLubrificante("");
+      setInputPrecoLubrificante("");
     }
   };
   const adicionarOuAtualizarItemGerador = () => {
@@ -1092,10 +1192,14 @@ export default function ClasseIIIForm() {
       consumo_lubrificante_litro: 0,
       preco_lubrificante: 0,
     });
+    setInputConsumoLubrificante("");
+    setInputPrecoLubrificante("");
     setEditingGeradorItemIndex(null);
   };
   const handleEditGeradorItem = (item: ItemGerador, index: number) => {
     setItemGeradorTemp(item);
+    setInputConsumoLubrificante(formatNumberForInput(item.consumo_lubrificante_litro, 2));
+    setInputPrecoLubrificante(formatNumberForInput(item.preco_lubrificante, 2));
     setEditingGeradorItemIndex(index);
     if (addGeradorRef.current) { addGeradorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   };
@@ -1109,6 +1213,8 @@ export default function ClasseIIIForm() {
       consumo_lubrificante_litro: 0,
       preco_lubrificante: 0,
     });
+    setInputConsumoLubrificante("");
+    setInputPrecoLubrificante("");
     setEditingGeradorItemIndex(null);
   };
   const removerItemGerador = (index: number) => {
@@ -1551,6 +1657,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
         consumo_lubrificante_litro: 0,
         preco_lubrificante: 0,
       });
+      setInputConsumoLubrificanteEmbarcacao("");
+      setInputPrecoLubrificanteEmbarcacao("");
     }
   };
   const adicionarOuAtualizarItemEmbarcacao = () => {
@@ -1583,6 +1691,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       consumo_lubrificante_litro: 0,
       preco_lubrificante: 0,
     });
+    setInputConsumoLubrificanteEmbarcacao("");
+    setInputPrecoLubrificanteEmbarcacao("");
     setTimeout(() => { addEmbarcacaoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
   };
   const removerItemEmbarcacao = (index: number) => {
@@ -1594,6 +1704,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
   };
   const handleEditEmbarcacaoItem = (item: ItemEmbarcacao, index: number) => {
     setItemEmbarcacaoTemp({ ...item });
+    setInputConsumoLubrificanteEmbarcacao(formatNumberForInput(item.consumo_lubrificante_litro, 2));
+    setInputPrecoLubrificanteEmbarcacao(formatNumberForInput(item.preco_lubrificante, 2));
     setEditingEmbarcacaoItemIndex(index);
     setTimeout(() => { addEmbarcacaoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
   };
@@ -1607,6 +1719,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       consumo_lubrificante_litro: 0,
       preco_lubrificante: 0,
     });
+    setInputConsumoLubrificanteEmbarcacao("");
+    setInputPrecoLubrificanteEmbarcacao("");
     setEditingEmbarcacaoItemIndex(null);
   };
   
@@ -2674,13 +2788,13 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                       <div className="space-y-2">
                         <Label>Consumo Lubrificante (L/100h)</Label>
                         <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
+                          type="text"
+                          inputMode="decimal"
                           className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemGeradorTemp.consumo_lubrificante_litro === 0 ? "" : itemGeradorTemp.consumo_lubrificante_litro.toFixed(2)}
-                          onChange={(e) => setItemGeradorTemp({ ...itemGeradorTemp, consumo_lubrificante_litro: parseFloat(e.target.value) || 0 })}
-                          placeholder="Ex: 0.50"
+                          value={inputConsumoLubrificante}
+                          onChange={(e) => handleInputGeradorChange(e, setInputConsumoLubrificante, 'consumo_lubrificante_litro')}
+                          onBlur={(e) => handleInputGeradorBlur(e.target.value, setInputConsumoLubrificante, 2, 'consumo_lubrificante_litro')}
+                          placeholder="Ex: 0,50"
                           disabled={!refLPC}
                           onKeyDown={handleEnterToNextField}
                         />
@@ -2689,13 +2803,13 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                       <div className="space-y-2">
                         <Label>Preço Lubrificante (R$/L)</Label>
                         <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
+                          type="text"
+                          inputMode="decimal"
                           className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemGeradorTemp.preco_lubrificante === 0 ? "" : itemGeradorTemp.preco_lubrificante.toFixed(2)}
-                          onChange={(e) => setItemGeradorTemp({ ...itemGeradorTemp, preco_lubrificante: parseFloat(e.target.value) || 0 })}
-                          placeholder="Ex: 35.00"
+                          value={inputPrecoLubrificante}
+                          onChange={(e) => handleInputGeradorChange(e, setInputPrecoLubrificante, 'preco_lubrificante')}
+                          onBlur={(e) => handleInputGeradorBlur(e.target.value, setInputPrecoLubrificante, 2, 'preco_lubrificante')}
+                          placeholder="Ex: 35,00"
                           disabled={!refLPC}
                           onKeyDown={handleEnterToNextField}
                         />
@@ -3453,13 +3567,13 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                       <div className="space-y-2">
                         <Label>Consumo Lubrificante (L/h)</Label>
                         <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
+                          type="text"
+                          inputMode="decimal"
                           className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemEmbarcacaoTemp.consumo_lubrificante_litro === 0 ? "" : itemEmbarcacaoTemp.consumo_lubrificante_litro.toFixed(2)}
-                          onChange={(e) => setItemEmbarcacaoTemp({ ...itemEmbarcacaoTemp, consumo_lubrificante_litro: parseFloat(e.target.value) || 0 })}
-                          placeholder="Ex: 0.05"
+                          value={inputConsumoLubrificanteEmbarcacao}
+                          onChange={(e) => handleInputEmbarcacaoChange(e, setInputConsumoLubrificanteEmbarcacao, 'consumo_lubrificante_litro')}
+                          onBlur={(e) => handleInputEmbarcacaoBlur(e.target.value, setInputConsumoLubrificanteEmbarcacao, 2, 'consumo_lubrificante_litro')}
+                          placeholder="Ex: 0,05"
                           disabled={!refLPC}
                           onKeyDown={handleEnterToNextField}
                         />
@@ -3468,13 +3582,13 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                       <div className="space-y-2">
                         <Label>Preço Lubrificante (R$/L)</Label>
                         <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
+                          type="text"
+                          inputMode="decimal"
                           className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemEmbarcacaoTemp.preco_lubrificante === 0 ? "" : itemEmbarcacaoTemp.preco_lubrificante.toFixed(2)}
-                          onChange={(e) => setItemEmbarcacaoTemp({ ...itemEmbarcacaoTemp, preco_lubrificante: parseFloat(e.target.value) || 0 })}
-                          placeholder="Ex: 35.00"
+                          value={inputPrecoLubrificanteEmbarcacao}
+                          onChange={(e) => handleInputEmbarcacaoChange(e, setInputPrecoLubrificanteEmbarcacao, 'preco_lubrificante')}
+                          onBlur={(e) => handleInputEmbarcacaoBlur(e.target.value, setInputPrecoLubrificanteEmbarcacao, 2, 'preco_lubrificante')}
+                          placeholder="Ex: 35,00"
                           disabled={!refLPC}
                           onKeyDown={handleEnterToNextField}
                         />
