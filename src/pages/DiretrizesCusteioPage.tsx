@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Package } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package } from "lucide-react";
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { tipoViaturas, tipoEquipamentosEngenharia } from "@/data/classeIIIData";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Importar Tabs
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -46,7 +46,6 @@ const defaultEquipamentosEngenhariaConfig: DiretrizEquipamentoForm[] = tipoEquip
   unidade: e.unidade,
 }));
 
-// NOVOS VALORES PADRÃO CLASSE II
 const defaultClasseIIConfig: DiretrizClasseIIForm[] = [
   { categoria: "Equipamento Individual", item: "Equipamento Individual", valor_mnt_dia: 2.42 },
   { categoria: "Proteção Balística", item: "Colete balístico", valor_mnt_dia: 3.23 },
@@ -67,6 +66,13 @@ const CATEGORIAS_CLASSE_II = [
   "Material de Estacionamento",
 ];
 
+const CATEGORIAS_CLASSE_III = [
+  { key: "GERADOR", label: "Geradores" },
+  { key: "EMBARCACAO", label: "Embarcações" },
+  { key: "MOTOMECANIZACAO", label: "Motomecanização" },
+  { key: "EQUIPAMENTO_ENGENHARIA", label: "Engenharia" },
+];
+
 const defaultDiretrizes = (year: number) => ({
   ano_referencia: year,
   classe_i_valor_qs: 9.00,
@@ -82,10 +88,7 @@ const DiretrizesCusteioPage = () => {
   const [loading, setLoading] = useState(true);
   const [showClasseIAlimentacaoConfig, setShowClasseIAlimentacaoConfig] = useState(false);
   const [showClasseIIConfig, setShowClasseIIConfig] = useState(false);
-  const [showClasseIIIGeradoresConfig, setShowClasseIIIGeradoresConfig] = useState(false);
-  const [showClasseIIIEmbarcacoesConfig, setShowClasseIIIEmbarcacoesConfig] = useState(false);
-  const [showClasseIIIMotomecanizacaoConfig, setShowClasseIIIMotomecanizacaoConfig] = useState(false);
-  const [showClasseIIIEquipamentosEngenhariaConfig, setShowClasseIIIEquipamentosEngenhariaConfig] = useState(false);
+  const [showClasseIIIConfig, setShowClasseIIIConfig] = useState(false); // NOVO ESTADO PARA CLASSE III
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
   const [embarcacaoConfig, setEmbarcacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultEmbarcacaoConfig);
@@ -97,7 +100,8 @@ const DiretrizesCusteioPage = () => {
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [selectedClasseIITab, setSelectedClasseIITab] = useState<string>(CATEGORIAS_CLASSE_II[0]); // Novo estado para a aba Classe II
+  const [selectedClasseIITab, setSelectedClasseIITab] = useState<string>(CATEGORIAS_CLASSE_II[0]);
+  const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key); // Novo estado para a aba Classe III
   
   const { handleEnterToNextField } = useFormNavigation();
 
@@ -444,36 +448,14 @@ const DiretrizesCusteioPage = () => {
   
   // Função para renderizar a lista de itens da Classe II por categoria
   const renderClasseIIList = (categoria: DiretrizClasseIIForm['categoria']) => {
-    // Filtra os itens que pertencem à categoria atual
     const filteredItems = classeIIConfig.filter(item => item.categoria === categoria);
     
-    // Mapeia os itens filtrados para a renderização
     return (
       <div className="space-y-4 pt-4">
         {filteredItems.map((item, index) => {
           // Encontrar o índice original no array completo para permitir a atualização/remoção
-          // Isso é necessário porque 'filteredItems' tem índices diferentes de 'classeIIConfig'
-          const originalIndex = classeIIConfig.findIndex(c => c.item === item.item && c.categoria === item.categoria);
-          
-          // Se o item não for encontrado (ex: item recém-adicionado), usamos o índice do filtro
-          // Nota: Para novos itens, o índice correto é o último do array completo, mas para garantir que a remoção/atualização funcione corretamente no array principal, precisamos do índice exato.
-          // Vamos usar o índice do item no array principal (classeIIConfig)
           const indexToUse = classeIIConfig.findIndex(c => c.item === item.item && c.categoria === item.categoria);
           
-          // Se o item for novo e ainda não tiver um item/categoria único, o findIndex pode falhar.
-          // Para simplificar, vamos garantir que a lógica de atualização/remoção use o índice correto no array principal.
-          // Como a lógica de adição sempre adiciona ao final, e a remoção/atualização deve ser feita no item correto,
-          // vamos refinar a busca do índice para garantir que estamos manipulando o objeto correto.
-          
-          // Para evitar problemas de índice ao filtrar, vamos usar um identificador único temporário se o item for novo.
-          // No entanto, como não temos IDs temporários aqui, vamos manter a lógica de busca pelo item e categoria,
-          // e garantir que a adição de novos itens seja tratada corretamente.
-          
-          // Se o item for novo (item vazio), o findIndex pode retornar -1 se houver outros itens vazios.
-          // Para fins de demonstração e seguindo a estrutura existente, vamos usar o índice do item no array filtrado
-          // e garantir que a função de atualização/remoção encontre o item correto no array principal.
-          
-          // Refinando a lógica de atualização/remoção para usar o índice do item no array principal (classeIIConfig)
           const handleUpdateFilteredItem = (field: keyof DiretrizClasseIIForm, value: any) => {
             const indexInMainArray = classeIIConfig.findIndex(c => c === item);
             if (indexInMainArray !== -1) {
@@ -537,7 +519,80 @@ const DiretrizesCusteioPage = () => {
       </div>
     );
   };
-  // --- Fim Funções de Gerenciamento da Classe II ---
+  
+  // Função para renderizar a lista de itens da Classe III por categoria
+  const renderClasseIIIList = (categoria: string, config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>) => {
+    const unidade = categoria === 'MOTOMECANIZACAO' ? 'km/L' : 'L/h';
+    
+    return (
+      <div className="space-y-4 pt-4">
+        {config.map((item, index) => (
+          <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
+            <div className="col-span-5">
+              <Label className="text-xs">Nome do Equipamento</Label>
+              <Input
+                value={item.nome_equipamento}
+                onChange={(e) => handleUpdateItem(config, setConfig, index, 'nome_equipamento', e.target.value)}
+                placeholder="Ex: Retroescavadeira"
+                onKeyDown={handleEnterToNextField}
+              />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs">Combustível</Label>
+              <Select
+                value={item.tipo_combustivel}
+                onValueChange={(val: 'GAS' | 'OD') => handleUpdateItem(config, setConfig, index, 'tipo_combustivel', val)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GAS">Gasolina</SelectItem>
+                  <SelectItem value="OD">Diesel</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs">Consumo</Label>
+              <Input
+                type="number"
+                step="0.01"
+                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                value={item.consumo === 0 ? "" : item.consumo}
+                onChange={(e) => handleUpdateItem(config, setConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
+                onKeyDown={handleEnterToNextField}
+              />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs">Unidade</Label>
+              <Input value={unidade} disabled className="bg-muted text-muted-foreground" onKeyDown={handleEnterToNextField} />
+            </div>
+            <div className="col-span-1 flex justify-end">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleRemoveItem(config, setConfig, index)}
+                type="button"
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          </div>
+        ))}
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => handleAddItem(config, setConfig, unidade as 'L/h' | 'km/L')} 
+          className="w-full"
+          type="button"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Adicionar Equipamento
+        </Button>
+      </div>
+    );
+  };
 
 
   if (loading) {
@@ -661,329 +716,42 @@ const DiretrizesCusteioPage = () => {
                 )}
               </div>
 
-              {/* SEÇÃO CLASSE III - GERADORES */}
+              {/* SEÇÃO CLASSE III - COMBUSTÍVEIS E LUBRIFICANTES */}
               <div className="border-t pt-4 mt-6">
                 <div 
                   className="flex items-center justify-between cursor-pointer py-2" 
-                  onClick={() => setShowClasseIIIGeradoresConfig(!showClasseIIIGeradoresConfig)}
+                  onClick={() => setShowClasseIIIConfig(!showClasseIIIConfig)}
                 >
-                  <h3 className="text-lg font-semibold">Classe III - Geradores</h3>
-                  {showClasseIIIGeradoresConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Fuel className="h-5 w-5 text-primary" />
+                    Classe III - Combustíveis e Lubrificantes
+                  </h3>
+                  {showClasseIIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                 </div>
                 
-                {showClasseIIIGeradoresConfig && (
+                {showClasseIIIConfig && (
                   <Card>
-                    <CardContent className="space-y-4 pt-4">
-                      {geradorConfig.map((gerador, index) => (
-                        <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
-                          <div className="col-span-5">
-                            <Label className="text-xs">Nome do Gerador</Label>
-                            <Input
-                              value={gerador.nome_equipamento}
-                              onChange={(e) => handleUpdateItem(geradorConfig, setGeradorConfig, index, 'nome_equipamento', e.target.value)}
-                              placeholder="Ex: Gerador até 15 kva GAS"
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Combustível</Label>
-                            <Select
-                              value={gerador.tipo_combustivel}
-                              onValueChange={(val: 'GAS' | 'OD') => handleUpdateItem(geradorConfig, setGeradorConfig, index, 'tipo_combustivel', val)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="GAS">Gasolina</SelectItem>
-                                <SelectItem value="OD">Diesel</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Consumo</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={gerador.consumo === 0 ? "" : gerador.consumo}
-                              onChange={(e) => handleUpdateItem(geradorConfig, setGeradorConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Unidade</Label>
-                            <Input value="L/h" disabled className="bg-muted text-muted-foreground" onKeyDown={handleEnterToNextField} />
-                          </div>
-                          <div className="col-span-1 flex justify-end">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveItem(geradorConfig, setGeradorConfig, index)}
-                              type="button"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleAddItem(geradorConfig, setGeradorConfig, 'L/h')} 
-                        className="w-full"
-                        type="button"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Adicionar Gerador
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-
-              {/* SEÇÃO CLASSE III - EMBARCAÇÕES */}
-              <div className="border-t pt-4 mt-6">
-                <div 
-                  className="flex items-center justify-between cursor-pointer py-2" 
-                  onClick={() => setShowClasseIIIEmbarcacoesConfig(!showClasseIIIEmbarcacoesConfig)}
-                >
-                  <h3 className="text-lg font-semibold">Classe III - Embarcação</h3>
-                  {showClasseIIIEmbarcacoesConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </div>
-                
-                {showClasseIIIEmbarcacoesConfig && (
-                  <Card>
-                    <CardContent className="space-y-4 pt-4">
-                      {embarcacaoConfig.map((embarcacao, index) => (
-                        <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
-                          <div className="col-span-5">
-                            <Label className="text-xs">Tipo de Embarcação</Label>
-                            <Input
-                              value={embarcacao.nome_equipamento}
-                              onChange={(e) => handleUpdateItem(embarcacaoConfig, setEmbarcacaoConfig, index, 'nome_equipamento', e.target.value)}
-                              placeholder="Ex: Motor de popa"
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Combustível</Label>
-                            <Select
-                              value={embarcacao.tipo_combustivel}
-                              onValueChange={(val: 'GAS' | 'OD') => handleUpdateItem(embarcacaoConfig, setEmbarcacaoConfig, index, 'tipo_combustivel', val)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="GAS">Gasolina</SelectItem>
-                                <SelectItem value="OD">Diesel</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Consumo</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={embarcacao.consumo === 0 ? "" : embarcacao.consumo}
-                              onChange={(e) => handleUpdateItem(embarcacaoConfig, setEmbarcacaoConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Unidade</Label>
-                            <Input value="L/h" disabled className="bg-muted text-muted-foreground" onKeyDown={handleEnterToNextField} />
-                          </div>
-                          <div className="col-span-1 flex justify-end">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveItem(embarcacaoConfig, setEmbarcacaoConfig, index)}
-                              type="button"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleAddItem(embarcacaoConfig, setEmbarcacaoConfig, 'L/h')} 
-                        className="w-full"
-                        type="button"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Adicionar Embarcação
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-
-              {/* SEÇÃO CLASSE III - MOTOMECANIZAÇÃO */}
-              <div className="border-t pt-4 mt-6">
-                <div 
-                  className="flex items-center justify-between cursor-pointer py-2" 
-                  onClick={() => setShowClasseIIIMotomecanizacaoConfig(!showClasseIIIMotomecanizacaoConfig)}
-                >
-                  <h3 className="text-lg font-semibold">Classe III - Motomecanização</h3>
-                  {showClasseIIIMotomecanizacaoConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </div>
-                
-                {showClasseIIIMotomecanizacaoConfig && (
-                  <Card>
-                    <CardContent className="space-y-4 pt-4">
-                      {motomecanizacaoConfig.map((viatura, index) => (
-                        <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
-                          <div className="col-span-5">
-                            <Label className="text-xs">Tipo de Viatura</Label>
-                            <Input
-                              value={viatura.nome_equipamento}
-                              onChange={(e) => handleUpdateItem(motomecanizacaoConfig, setMotomecanizacaoConfig, index, 'nome_equipamento', e.target.value)}
-                              placeholder="Ex: Vtr Adm Pqn Porte - Adm Pqn"
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Combustível</Label>
-                            <Select
-                              value={viatura.tipo_combustivel}
-                              onValueChange={(val: 'GAS' | 'OD') => handleUpdateItem(motomecanizacaoConfig, setMotomecanizacaoConfig, index, 'tipo_combustivel', val)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="GAS">Gasolina</SelectItem>
-                                <SelectItem value="OD">Diesel</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Consumo (km/L)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={viatura.consumo === 0 ? "" : viatura.consumo}
-                              onChange={(e) => handleUpdateItem(motomecanizacaoConfig, setMotomecanizacaoConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Unidade</Label>
-                            <Input value="km/L" disabled className="bg-muted text-muted-foreground" onKeyDown={handleEnterToNextField} />
-                          </div>
-                          <div className="col-span-1 flex justify-end">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveItem(motomecanizacaoConfig, setMotomecanizacaoConfig, index)}
-                              type="button"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleAddItem(motomecanizacaoConfig, setMotomecanizacaoConfig, 'km/L')} 
-                        className="w-full"
-                        type="button"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Adicionar Viatura
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-
-              {/* SEÇÃO CLASSE III - EQUIPAMENTOS DE ENGENHARIA */}
-              <div className="border-t pt-4 mt-6">
-                <div 
-                  className="flex items-center justify-between cursor-pointer py-2" 
-                  onClick={() => setShowClasseIIIEquipamentosEngenhariaConfig(!showClasseIIIEquipamentosEngenhariaConfig)}
-                >
-                  <h3 className="text-lg font-semibold">Classe III - Equipamento de Engenharia</h3>
-                  {showClasseIIIEquipamentosEngenhariaConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </div>
-                
-                {showClasseIIIEquipamentosEngenhariaConfig && (
-                  <Card>
-                    <CardContent className="space-y-4 pt-4">
-                      {equipamentosEngenhariaConfig.map((equipamento, index) => (
-                        <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
-                          <div className="col-span-5">
-                            <Label className="text-xs">Nome do Equipamento</Label>
-                            <Input
-                              value={equipamento.nome_equipamento}
-                              onChange={(e) => handleUpdateItem(equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig, index, 'nome_equipamento', e.target.value)}
-                              placeholder="Ex: Retroescavadeira"
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Combustível</Label>
-                            <Select
-                              value={equipamento.tipo_combustivel}
-                              onValueChange={(val: 'GAS' | 'OD') => handleUpdateItem(equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig, index, 'tipo_combustivel', val)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="GAS">Gasolina</SelectItem>
-                                <SelectItem value="OD">Diesel</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Consumo</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={equipamento.consumo === 0 ? "" : equipamento.consumo}
-                              onChange={(e) => handleUpdateItem(equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Unidade</Label>
-                            <Input value="L/h" disabled className="bg-muted text-muted-foreground" onKeyDown={handleEnterToNextField} />
-                          </div>
-                          <div className="col-span-1 flex justify-end">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveItem(equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig, index)}
-                              type="button"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleAddItem(equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig, 'L/h')} 
-                        className="w-full"
-                        type="button"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Adicionar Equipamento
-                      </Button>
+                    <CardContent className="pt-4">
+                      <Tabs value={selectedClasseIIITab} onValueChange={setSelectedClasseIIITab}>
+                        <TabsList className="grid w-full grid-cols-4">
+                          {CATEGORIAS_CLASSE_III.map(cat => (
+                            <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        <TabsContent value="GERADOR">
+                          {renderClasseIIIList("GERADOR", geradorConfig, setGeradorConfig)}
+                        </TabsContent>
+                        <TabsContent value="EMBARCACAO">
+                          {renderClasseIIIList("EMBARCACAO", embarcacaoConfig, setEmbarcacaoConfig)}
+                        </TabsContent>
+                        <TabsContent value="MOTOMECANIZACAO">
+                          {renderClasseIIIList("MOTOMECANIZACAO", motomecanizacaoConfig, setMotomecanizacaoConfig)}
+                        </TabsContent>
+                        <TabsContent value="EQUIPAMENTO_ENGENHARIA">
+                          {renderClasseIIIList("EQUIPAMENTO_ENGENHARIA", equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig)}
+                        </TabsContent>
+                      </Tabs>
                     </CardContent>
                   </Card>
                 )}
