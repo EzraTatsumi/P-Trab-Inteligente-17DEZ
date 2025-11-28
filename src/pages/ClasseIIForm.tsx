@@ -309,6 +309,7 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
     
     // Agrupar itens por categoria (aba)
     const itensPorCategoria = form.itens.reduce((acc, item) => {
+      // Encontra a categoria do item, se não encontrar, usa a aba selecionada (selectedTab)
       const categoria = diretrizes.find(d => d.item === item.item)?.categoria || selectedTab;
       if (!acc[categoria]) { acc[categoria] = []; }
       acc[categoria].push(item);
