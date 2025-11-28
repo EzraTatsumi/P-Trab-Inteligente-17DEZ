@@ -211,8 +211,20 @@ const PTrabManager = () => {
           else {
             totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
           }
+          
+          // 2. Fetch Classe II totals (33.90.30)
+          const { data: classeIIData, error: classeIIError } = await supabase
+            .from('classe_ii_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
 
-          // 2. Fetch Classe III totals (Combustível)
+          let totalClasseII = 0;
+          if (classeIIError) console.error("Erro ao carregar Classe II para PTrab", ptrab.numero_ptrab, classeIIError);
+          else {
+            totalClasseII = (classeIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          }
+
+          // 3. Fetch Classe III totals (Combustível)
           const { data: classeIIIData, error: classeIIIError } = await supabase
             .from('classe_iii_registros')
             .select('valor_total')
@@ -224,7 +236,7 @@ const PTrabManager = () => {
             totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
           }
 
-          const totalLogisticaCalculado = totalClasseI + totalClasseIII;
+          const totalLogisticaCalculado = totalClasseI + totalClasseII + totalClasseIII;
 
           return {
             ...ptrab,
@@ -575,8 +587,40 @@ const PTrabManager = () => {
           }
         }
       }
+      
+      // 4. Clone Classe II records (NOVO)
+      const { data: originalClasseIIRecords, error: fetchClasseIIError } = await supabase
+        .from("classe_ii_registros")
+        .select("*, itens_equipamentos")
+        .eq("p_trab_id", originalPTrabId);
 
-      // 4. Clone Classe III records
+      if (fetchClasseIIError) {
+        console.error("Erro ao carregar registros da Classe II:", fetchClasseIIError);
+      } else {
+        const newClasseIIRecords = (originalClasseIIRecords || []).map(record => {
+          const { id, created_at, updated_at, ...restOfRecord } = record;
+          return {
+            ...restOfRecord,
+            p_trab_id: newPTrabId,
+            itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null,
+            // Garantir que campos numéricos NOT NULL sejam números
+            dias_operacao: record.dias_operacao ?? 0,
+            valor_total: record.valor_total ?? 0,
+          };
+        });
+
+        if (newClasseIIRecords.length > 0) {
+          const { error: insertClasseIIError } = await supabase
+            .from("classe_ii_registros")
+            .insert(newClasseIIRecords);
+          if (insertClasseIIError) {
+            console.error("ERRO DE INSERÇÃO CLASSE II:", insertClasseIIError);
+            toast.error(`Erro ao clonar registros da Classe II: ${sanitizeError(insertClasseIIError)}`);
+          }
+        }
+      }
+
+      // 5. Clone Classe III records
       const { data: originalClasseIIIRecords, error: fetchClasseIIIError } = await supabase
         .from("classe_iii_registros")
         .select("*")
@@ -597,6 +641,8 @@ const PTrabManager = () => {
             quantidade: record.quantidade ?? 0,
             total_litros: record.total_litros ?? 0,
             valor_total: record.valor_total ?? 0,
+            consumo_lubrificante_litro: record.consumo_lubrificante_litro ?? 0,
+            preco_lubrificante: record.preco_lubrificante ?? 0,
           };
         });
 
@@ -611,7 +657,7 @@ const PTrabManager = () => {
         }
       }
 
-      // 5. Clone p_trab_ref_lpc record (if exists)
+      // 6. Clone p_trab_ref_lpc record (if exists)
       const { data: originalRefLPC, error: fetchRefLPCError } = await supabase
         .from("p_trab_ref_lpc")
         .select("*")
@@ -776,7 +822,7 @@ const PTrabManager = () => {
         targetPTrab = { ...targetPTrab, origem: 'consolidado' } as PTrab;
       }
 
-      // 2. Clonar e Inserir Registros de Classe I e Classe III
+      // 2. Clonar e Inserir Registros de Classe I, Classe II e Classe III
       let totalRecordsCloned = 0;
 
       for (const sourceId of sourcePTrabIds) {
@@ -795,6 +841,22 @@ const PTrabManager = () => {
           if (error) console.error(`Erro ao clonar Classe I de ${sourceId}:`, error);
           totalRecordsCloned += recordsToInsert.length;
         }
+        
+        // Clonar Classe II (NOVO)
+        const { data: classeIIRecords } = await supabase
+          .from("classe_ii_registros")
+          .select("*, itens_equipamentos")
+          .eq("p_trab_id", sourceId);
+
+        if (classeIIRecords && classeIIRecords.length > 0) {
+          const recordsToInsert = classeIIRecords.map(record => {
+            const { id, created_at, updated_at, ...rest } = record;
+            return { ...rest, p_trab_id: finalTargetPTrabId, itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null };
+          });
+          const { error } = await supabase.from("classe_ii_registros").insert(recordsToInsert as Tables<'classe_ii_registros'>[]);
+          if (error) console.error(`Erro ao clonar Classe II de ${sourceId}:`, error);
+          totalRecordsCloned += recordsToInsert.length;
+        }
 
         // Clonar Classe III
         const { data: classeIIIRecords } = await supabase
@@ -805,7 +867,7 @@ const PTrabManager = () => {
         if (classeIIIRecords && classeIIIRecords.length > 0) {
           const recordsToInsert = classeIIIRecords.map(record => {
             const { id, created_at, updated_at, ...rest } = record;
-            return { ...rest, p_trab_id: finalTargetPTrabId };
+            return { ...rest, p_trab_id: finalTargetPTrabId, itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null };
           });
           const { error } = await supabase.from("classe_iii_registros").insert(recordsToInsert as Tables<'classe_iii_registros'>[]);
           if (error) console.error(`Erro ao clonar Classe III de ${sourceId}:`, error);
@@ -1203,7 +1265,7 @@ const PTrabManager = () => {
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex flex-col items-center text-xs">
-                        {/* P Trab Logístico (Classe I + Classe III) - AGORA EM LARANJA */}
+                        {/* P Trab Logístico (Classe I + Classe II + Classe III) - AGORA EM LARANJA */}
                         {ptrab.totalLogistica !== undefined && (
                           <span className="text-orange-600 font-medium">
                             {formatCurrency(ptrab.totalLogistica)}

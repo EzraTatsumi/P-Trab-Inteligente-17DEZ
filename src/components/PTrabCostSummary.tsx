@@ -62,8 +62,28 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     // A quantidade total de refeições intermediárias é: Efetivo * Nr Ref Int * Dias Operação
     totalRefeicoesIntermediarias += record.efetivo * record.nr_ref_int * record.dias_operacao;
   });
+  
+  // 2. Fetch Classe II totals (33.90.30)
+  const { data: classeIIData, error: classeIIError } = await supabase
+    .from('classe_ii_registros')
+    .select('valor_total, itens_equipamentos')
+    .eq('p_trab_id', ptrabId);
 
-  // 2. Fetch Classe III totals (Combustível e Lubrificante)
+  if (classeIIError) throw classeIIError;
+  
+  let totalClasseII = 0;
+  let totalItensClasseII = 0;
+  
+  (classeIIData || []).forEach(record => {
+    totalClasseII += record.valor_total;
+    // Soma a quantidade de itens dentro do JSONB
+    if (Array.isArray(record.itens_equipamentos)) {
+      totalItensClasseII += record.itens_equipamentos.reduce((sum, item: any) => sum + (item.quantidade || 0), 0);
+    }
+  });
+
+
+  // 3. Fetch Classe III totals (Combustível e Lubrificante)
   const { data: classeIIIData, error: classeIIIError } = await supabase
     .from('classe_iii_registros')
     .select('valor_total, tipo_combustivel, total_litros, tipo_equipamento')
@@ -107,8 +127,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const totalLubrificanteLitros = lubrificanteRecords
     .reduce((sum, record) => sum + record.total_litros, 0);
 
-  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Lubrificante (ND 30) + Combustível (ND 39)
-  const totalLogisticoGeral = totalClasseI + totalLubrificanteValor + totalCombustivel;
+  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classe II (ND 30) + Lubrificante (ND 30) + Combustível (ND 39)
+  const totalLogisticoGeral = totalClasseI + totalClasseII + totalLubrificanteValor + totalCombustivel;
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
@@ -121,6 +141,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalLogisticoGeral,
     totalOperacional,
     totalClasseI,
+    totalClasseII, // Novo total
+    totalItensClasseII, // Nova quantidade
     totalComplemento,
     totalEtapaSolicitadaValor,
     totalDiasEtapaSolicitada,
@@ -129,9 +151,9 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalGasolinaValor,
     totalDieselLitros,
     totalGasolinaLitros,
-    totalLubrificanteValor, // Novo
-    totalLubrificanteLitros, // Novo
-    totalCombustivel, // Total Combustível (ND 39)
+    totalLubrificanteValor,
+    totalLubrificanteLitros,
+    totalCombustivel,
     totalMaterialPermanente,
     totalAviacaoExercito,
   };
@@ -152,6 +174,8 @@ export const PTrabCostSummary = ({
       totalLogisticoGeral: 0,
       totalOperacional: 0,
       totalClasseI: 0,
+      totalClasseII: 0,
+      totalItensClasseII: 0,
       totalComplemento: 0,
       totalEtapaSolicitadaValor: 0,
       totalDiasEtapaSolicitada: 0,
@@ -310,6 +334,36 @@ export const PTrabCostSummary = ({
                             </span>
                             <span className={cn(valueClasses, "mr-6")}>
                               {formatCurrency(totals.totalEtapaSolicitadaValor)}
+                            </span>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                  
+                  {/* Classe II - Material de Intendência (NOVO) */}
+                  <Accordion type="single" collapsible className="w-full pt-2">
+                    <AccordionItem value="item-classe-ii" className="border-b-0">
+                      <AccordionTrigger simple className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-sm border-b pb-2 border-border/50">
+                          <div className="flex items-center gap-2 text-foreground">
+                            <ClipboardList className="h-4 w-4 text-orange-500" />
+                            Classe II (Intendência)
+                          </div>
+                          <span className={cn(valueClasses, "mr-6")}>
+                            {formatCurrency(totals.totalClasseII)}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-6 text-xs">
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className={descriptionClasses}>Itens Solicitados</span>
+                            <span className={quantityClasses}>
+                              {formatNumber(totals.totalItensClasseII)} unidades
+                            </span>
+                            <span className={cn(valueClasses, "mr-6")}>
+                              {formatCurrency(totals.totalClasseII)}
                             </span>
                           </div>
                         </div>

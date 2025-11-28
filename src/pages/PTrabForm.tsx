@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -140,8 +140,16 @@ const PTrabForm = () => {
 
     const totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
     
-    // GND 3 = Logística (Classe I + Classe III) + Operacional (0) + Aviação (0)
-    const calculatedGND3 = totalClasseI + totalClasseIII;
+    // NOVO: Buscar totais da Classe II
+    const { data: classeIIData } = await supabase
+      .from('classe_ii_registros')
+      .select('valor_total')
+      .eq('p_trab_id', ptrabId);
+
+    const totalClasseII = (classeIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+    
+    // GND 3 = Logística (Classe I + Classe II + Classe III) + Operacional (0) + Aviação (0)
+    const calculatedGND3 = totalClasseI + totalClasseII + totalClasseIII;
     
     // GND 4 = Material Permanente (0)
     const calculatedGND4 = 0; 
@@ -173,6 +181,8 @@ const PTrabForm = () => {
     
     if (itemId === 'classe-i') {
       navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`);
+    } else if (itemId === 'classe-ii') {
+      navigate(`/ptrab/classe-ii?ptrabId=${ptrabId}`); // Nova navegação
     } else if (itemId === 'classe-iii') {
       navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
     } else {
