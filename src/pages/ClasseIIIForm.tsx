@@ -2055,33 +2055,33 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           <tfoot className="bg-muted/50 border-t-2">
                             {/* TOTAL GASOLINA */}
                             <tr>
-                              <td colSpan={4} className="p-3 text-sm font-semibold text-amber-500">TOTAL GASOLINA</td>
-                              <td className="p-3 text-sm text-right font-bold text-amber-500">
+                              <td colSpan={4} className="py-1 px-3 text-sm font-semibold text-amber-500">TOTAL GASOLINA</td>
+                              <td className="py-1 px-3 text-sm text-right font-bold text-amber-500">
                                 {formatNumber(totalGasolinaLitros)} L
                               </td>
-                              <td className="p-3 text-sm text-right font-bold text-amber-500">
+                              <td className="py-1 px-3 text-sm text-right font-bold text-amber-500">
                                 {formatCurrency(totalGasolinaValor)}
                               </td>
                               <td></td>
                             </tr>
                             {/* TOTAL DIESEL */}
                             <tr>
-                              <td colSpan={4} className="p-3 text-sm font-semibold text-cyan-600">TOTAL DIESEL</td>
-                              <td className="p-3 text-sm text-right font-bold text-cyan-600">
+                              <td colSpan={4} className="py-1 px-3 text-sm font-semibold text-cyan-600">TOTAL DIESEL</td>
+                              <td className="py-1 px-3 text-sm text-right font-bold text-cyan-600">
                                 {formatNumber(totalDieselLitros)} L
                               </td>
-                              <td className="p-3 text-sm text-right font-bold text-cyan-600">
+                              <td className="py-1 px-3 text-sm text-right font-bold text-cyan-600">
                                 {formatCurrency(totalDieselValor)}
                               </td>
                               <td></td>
                             </tr>
                             {/* TOTAL LUBRIFICANTE */}
                             <tr>
-                              <td colSpan={4} className="p-3 text-sm font-semibold text-purple-600">TOTAL LUBRIFICANTE</td>
-                              <td className="p-3 text-sm text-right font-bold text-purple-600">
+                              <td colSpan={4} className="py-1 px-3 text-sm font-semibold text-purple-600">TOTAL LUBRIFICANTE</td>
+                              <td className="py-1 px-3 text-sm text-right font-bold text-purple-600">
                                 {formatNumber(totalLubrificanteLitros)} L
                               </td>
-                              <td className="p-3 text-sm text-right font-bold text-purple-600">
+                              <td className="py-1 px-3 text-sm text-right font-bold text-purple-600">
                                 {formatCurrency(totalLubrificanteValor)}
                               </td>
                               <td></td>
