@@ -626,7 +626,7 @@ export default function ClasseIIIForm() {
     // 3 ou mais fases: "Fase1, Fase2 e Fase3"
     const ultimaFase = fasesOrdenadas[fasesOrdenadas.length - 1];
     const demaisFases = fasesOrdenadas.slice(0, -1).join(', ');
-    return `${demaisFases} e ${ultimaFases}`;
+    return `${demaisFases} e ${ultimaFase}`;
   };
 
   const handleDeletar = async (id: string) => {
@@ -2034,6 +2034,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                                         size="icon"
                                         className="h-8 w-8"
                                         onClick={() => handleEditar(registro)}
+                                        disabled={!refLPC}
                                       >
                                         <Pencil className="h-4 w-4" />
                                       </Button>
@@ -2558,8 +2559,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                       <Card key={index} className="p-4 border-l-4 border-primary">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-lg flex items-center gap-2 text-primary">
-                              <Fuel className="h-5 w-5" />
+                            <h4 className="font-medium text-lg text-primary">
                               {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'} (ND 33.90.39)
                             </h4>
                             <div className="text-right">
@@ -2602,8 +2602,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                       <Card className="p-4 border-l-4 border-purple-600">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-lg flex items-center gap-2 text-purple-600">
-                              <Droplet className="h-5 w-5" />
+                            <h4 className="font-medium text-lg text-purple-600">
                               Lubrificante (ND 33.90.30)
                             </h4>
                             <div className="text-right">
