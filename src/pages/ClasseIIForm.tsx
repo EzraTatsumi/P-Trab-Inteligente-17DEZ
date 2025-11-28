@@ -121,7 +121,10 @@ export default function ClasseIIForm() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 1. Buscar o ano de referência mais recente
+      const currentYear = new Date().getFullYear();
+      let anoReferencia = currentYear;
+
+      // 1. Buscar o ano de referência mais recente (se houver)
       const { data: diretrizCusteio } = await supabase
         .from("diretrizes_custeio")
         .select("ano_referencia")
@@ -130,19 +133,18 @@ export default function ClasseIIForm() {
         .limit(1)
         .maybeSingle();
 
-      if (!diretrizCusteio) {
-        // Se não houver diretriz de custeio, usa os valores padrão
-        setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
-        toast.warning("Diretriz de Custeio não encontrada. Usando valores padrão.");
-        return;
+      if (diretrizCusteio) {
+        anoReferencia = diretrizCusteio.ano_referencia;
+      } else {
+        toast.warning(`Diretriz de Custeio não encontrada para o ano ${currentYear}. Por favor, configure em 'Configurações > Diretriz de Custeio'.`);
       }
 
-      // 2. Buscar itens de Classe II para o ano
+      // 2. Buscar itens de Classe II para o ano de referência
       const { data: classeIIData, error } = await supabase
         .from("diretrizes_classe_ii")
         .select("*")
         .eq("user_id", user.id)
-        .eq("ano_referencia", diretrizCusteio.ano_referencia)
+        .eq("ano_referencia", anoReferencia)
         .eq("ativo", true);
 
       if (error) throw error;
@@ -150,9 +152,9 @@ export default function ClasseIIForm() {
       if (classeIIData && classeIIData.length > 0) {
         setDiretrizes((classeIIData || []) as DiretrizClasseII[]);
       } else {
-        // Se a diretriz de custeio existe, mas a tabela de itens está vazia, usa o fallback
+        // Se a tabela de itens está vazia para o ano, usa o fallback e avisa.
         setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
-        toast.warning("Itens de Classe II não configurados para o ano. Usando valores padrão.");
+        toast.warning(`Itens de Classe II não configurados para o ano ${anoReferencia}. Usando valores padrão.`);
       }
       
     } catch (error) {
