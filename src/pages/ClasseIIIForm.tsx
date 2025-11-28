@@ -1985,15 +1985,22 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                               const isLubrificante = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR';
                               const tipoLabel = isLubrificante ? 'Lubrificante (Gerador)' : getTipoLabel(registro.tipo_equipamento as TipoEquipamento);
                               
-                              // ND 30 (Lubrificante) = Roxo
-                              // ND 39 (Combustível) = Primário (Azul/Verde)
-                              const suprimentoBadgeClass = isLubrificante 
-                                ? 'bg-purple-600 text-white' 
-                                : 'bg-primary text-primary-foreground';
-                              
-                              const suprimentoText = isLubrificante 
-                                ? `Lubrificante` 
-                                : `${registro.tipo_combustivel === 'DIESEL' ? 'Óleo Diesel' : 'Gasolina'}`;
+                              let suprimentoBadgeClass = '';
+                              let suprimentoText = '';
+
+                              if (isLubrificante) {
+                                suprimentoBadgeClass = 'bg-purple-600 text-white hover:bg-purple-700';
+                                suprimentoText = 'Lubrificante';
+                              } else if (registro.tipo_combustivel === 'DIESEL') {
+                                suprimentoBadgeClass = 'bg-cyan-600 text-white hover:bg-cyan-700';
+                                suprimentoText = 'Óleo Diesel';
+                              } else if (registro.tipo_combustivel === 'GASOLINA') {
+                                suprimentoBadgeClass = 'bg-amber-500 text-white hover:bg-amber-600';
+                                suprimentoText = 'Gasolina';
+                              } else {
+                                suprimentoBadgeClass = 'bg-primary text-primary-foreground';
+                                suprimentoText = 'Combustível';
+                              }
                               
                               return (
                                 <tr key={registro.id} className="border-t hover:bg-muted/50 transition-colors">
