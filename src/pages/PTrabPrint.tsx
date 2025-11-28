@@ -73,13 +73,30 @@ interface ClasseIIIRegistro {
   tipo_equipamento_detalhe?: string;
 }
 
+// --- NOVAS INTERFACES PARA AGRUPAMENTO ---
+interface LinhaTabela {
+  registro: ClasseIRegistro;
+  tipo: 'QS' | 'QR';
+}
+
+interface LinhaLubrificante {
+  registro: ClasseIIIRegistro;
+}
+
+interface GrupoOM {
+  linhasQS: LinhaTabela[];
+  linhasQR: LinhaTabela[];
+  linhasLubrificante: LinhaLubrificante[];
+}
+// --- FIM NOVAS INTERFACES ---
+
 const PTrabPrint = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const ptrabId = searchParams.get('ptrabId');
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
-  const [registros, setRegistros] = useState<ClasseIRegistro[]>([]);
+  const [registrosClasseI, setRegistrosClasseI] = useState<ClasseIRegistro[]>([]);
   const [registrosClasseIII, setRegistrosClasseIII] = useState<ClasseIIIRegistro[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -122,7 +139,7 @@ const PTrabPrint = () => {
       if (classeIError) {
         toast({
           title: "Erro",
-          description: "Não foi possível carregar os registros",
+          description: "Não foi possível carregar os registros de Classe I",
           variant: "destructive",
         });
       }
@@ -137,7 +154,7 @@ const PTrabPrint = () => {
       }
 
       setPtrabData(ptrab);
-      setRegistros(classeIData || []);
+      setRegistrosClasseI(classeIData || []);
       setRegistrosClasseIII(classeIIIData || []);
       setLoading(false);
     };
@@ -272,6 +289,101 @@ Total QR: ${formatCurrency(total_qr)}.`;
     navigate('/ptrab'); // Redireciona mesmo se não mudar o status
   };
 
+  // --- LÓGICA DE AGRUPAMENTO E CÁLCULO ---
+  const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO';
+  const isCombustivel = (r: ClasseIIIRegistro) => !isLubrificante(r);
+
+  const gruposPorOM: Record<string, GrupoOM> = {};
+
+  const initializeGroup = (name: string) => {
+      if (!gruposPorOM[name]) {
+          gruposPorOM[name] = { linhasQS: [], linhasQR: [], linhasLubrificante: [] };
+      }
+  };
+
+  // 1. Processar Classe I
+  registrosClasseI.forEach((registro) => {
+      // QS goes to OM fornecedora (om_qs)
+      initializeGroup(registro.om_qs);
+      gruposPorOM[registro.om_qs].linhasQS.push({ registro, tipo: 'QS' });
+
+      // QR goes to OM de destino (organizacao)
+      initializeGroup(registro.organizacao);
+      gruposPorOM[registro.organizacao].linhasQR.push({ registro, tipo: 'QR' });
+  });
+
+  // 2. Processar Classe III Lubrificante
+  registrosClasseIII.forEach((registro) => {
+      if (isLubrificante(registro)) {
+          // Lubrificante goes to OM de destino (organizacao)
+          initializeGroup(registro.organizacao);
+          gruposPorOM[registro.organizacao].linhasLubrificante.push({ registro });
+      }
+  });
+
+  // 3. Ordenar as OMs
+  const omsOrdenadas = Object.keys(gruposPorOM).sort((a, b) => {
+      const aTemRM = a.includes('RM') || a.includes('R M');
+      const bTemRM = b.includes('RM') || b.includes('R M');
+      
+      if (aTemRM && !bTemRM) return -1;
+      if (!aTemRM && bTemRM) return 1;
+      return a.localeCompare(b);
+  });
+
+  // 4. Identificar a RM (primeira OM que contém "RM")
+  const nomeRM = omsOrdenadas.find(om => om.includes('RM') || om.includes('R M')) || ptrabData?.nome_om;
+
+  // 5. Função de Cálculo de Totais por OM
+  const calcularTotaisPorOM = (grupo: GrupoOM, nomeOM: string) => {
+    const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.total_qs, 0);
+    const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + linha.registro.total_qr, 0);
+    
+    // NEW: Total Lubrificante (ND 30)
+    const totalLubrificante = grupo.linhasLubrificante.reduce((acc, linha) => acc + linha.registro.valor_total, 0);
+    
+    // Total ND 30 = Classe I + Lubrificante
+    const totalParteAzul = totalQS + totalQR + totalLubrificante; 
+    
+    // Total Combustível (ND 39) - Apenas Combustível (não lubrificante) e apenas se for a RM
+    const classeIIIDestaOM = (nomeOM === nomeRM) 
+      ? registrosClasseIII.filter(isCombustivel)
+      : [];
+    
+    const valorDiesel = classeIIIDestaOM
+      .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
+      .reduce((acc, reg) => acc + reg.valor_total, 0);
+    const valorGasolina = classeIIIDestaOM
+      .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
+      .reduce((acc, reg) => acc + reg.valor_total, 0);
+    
+    const totalCombustivel = valorDiesel + valorGasolina; // Valor total da Classe III Combustível (ND 39)
+    
+    // Total GND 3 = Total ND 30 (Classe I + Lubrificante) + Total Combustível ND 39
+    const totalGeral = totalParteAzul + totalCombustivel; 
+    
+    const totalDieselLitros = classeIIIDestaOM
+      .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
+      .reduce((acc, reg) => acc + reg.total_litros, 0);
+    const totalGasolinaLitros = classeIIIDestaOM
+      .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
+      .reduce((acc, reg) => acc + reg.total_litros, 0);
+
+    return {
+      total_33_90_30: totalParteAzul, // Classe I + Lubrificante
+      total_33_90_39: 0, // Coluna D deve ser 0
+      total_parte_azul: totalParteAzul,
+      total_combustivel: totalCombustivel,
+      total_gnd3: totalGeral,
+      totalDieselLitros,
+      totalGasolinaLitros,
+      valorDiesel,
+      valorGasolina,
+    };
+  };
+  // --- FIM LÓGICA DE AGRUPAMENTO E CÁLCULO ---
+
+
   const exportPDF = useCallback(async () => {
     const element = document.querySelector('.ptrab-print-container');
     if (!element) {
@@ -380,7 +492,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
         const row = worksheet.getRow(currentRow);
         row.getCell(1).value = text;
         row.getCell(1).font = { name: 'Arial', size: 11, bold: true };
-        row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        row.getCell(1).alignment = { horizontal: 'center' as const, vertical: 'middle' as const };
         worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
         currentRow++;
       };
@@ -394,7 +506,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       const titleRow = worksheet.getRow(currentRow);
       titleRow.getCell(1).value = `PLANO DE TRABALHO LOGÍSTICO - OPERAÇÃO ${ptrabData.nome_operacao.toUpperCase()}`;
       titleRow.getCell(1).font = { name: 'Arial', size: 11, bold: true, underline: true };
-      titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+      titleRow.getCell(1).alignment = { horizontal: 'center' as const, vertical: 'middle' as const };
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
@@ -481,81 +593,6 @@ Total QR: ${formatCurrency(total_qr)}.`;
       const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
       const centerMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
       
-      interface LinhaTabela {
-        registro: ClasseIRegistro;
-        tipo: 'QS' | 'QR';
-      }
-      
-      interface GrupoOM {
-        linhasQS: LinhaTabela[];
-        linhasQR: LinhaTabela[];
-      }
-      
-      const gruposPorOM: Record<string, GrupoOM> = {};
-      
-      registros.forEach((registro) => {
-        const omFornecedora = registro.om_qs;
-        if (!gruposPorOM[omFornecedora]) {
-          gruposPorOM[omFornecedora] = { linhasQS: [], linhasQR: [] };
-        }
-        gruposPorOM[omFornecedora].linhasQS.push({ registro, tipo: 'QS' });
-        
-        const omDestino = registro.organizacao;
-        if (!gruposPorOM[omDestino]) {
-          gruposPorOM[omDestino] = { linhasQS: [], linhasQR: [] };
-        }
-        gruposPorOM[omDestino].linhasQR.push({ registro, tipo: 'QR' });
-      });
-      
-      const omsOrdenadas = Object.keys(gruposPorOM).sort((a, b) => {
-        const aTemRM = a.includes('RM') || a.includes('R M');
-        const bTemRM = b.includes('RM') || b.includes('R M');
-        if (aTemRM && !bTemRM) return -1;
-        if (!aTemRM && bTemRM) return 1;
-        return a.localeCompare(b);
-      });
-      
-      const nomeRM = omsOrdenadas.find(om => om.includes('RM') || om.includes('R M')) || ptrabData.nome_om;
-      
-      const calcularTotaisPorOM = (grupo: GrupoOM, nomeOM: string) => {
-        const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.total_qs, 0);
-        const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + linha.registro.total_qr, 0);
-        
-        const classeIIIDestaOM = (nomeOM === nomeRM) ? registrosClasseIII : [];
-        
-        const totalDiesel = classeIIIDestaOM
-          .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
-          .reduce((acc, reg) => acc + reg.total_litros, 0);
-        const totalGasolina = classeIIIDestaOM
-          .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
-          .reduce((acc, reg) => acc + reg.total_litros, 0);
-        const valorDiesel = classeIIIDestaOM
-          .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
-          .reduce((acc, reg) => acc + reg.valor_total, 0);
-        const valorGasolina = classeIIIDestaOM
-          .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
-          .reduce((acc, reg) => acc + reg.valor_total, 0);
-        
-        const totalCombustivelValor = valorDiesel + valorGasolina; // Valor total da Classe III (H)
-        const totalParteAzul = totalQS + totalQR; // Total Classe I (C)
-        
-        // REGRA DO USUÁRIO: Classe III não entra nas colunas azuis (ND 39 = 0).
-        // O total GND 3 é a soma da Classe I (ND 30) + Classe III (Valor Total Combustível).
-        const totalGeral = totalParteAzul + totalCombustivelValor; 
-        
-        return {
-          total_33_90_30: totalParteAzul, // Total Classe I
-          total_33_90_39: 0, // Classe III não é lançada aqui, conforme instrução do usuário
-          total_parte_azul: totalParteAzul,
-          total_combustivel: totalCombustivelValor,
-          total_gnd3: totalGeral,
-          totalDiesel,
-          totalGasolina,
-          valorDiesel,
-          valorGasolina,
-        };
-      };
-      
       const cellBorder = {
         top: { style: 'thin' as const },
         left: { style: 'thin' as const },
@@ -567,8 +604,10 @@ Total QR: ${formatCurrency(total_qr)}.`;
         const grupo = gruposPorOM[nomeOM];
         const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
         
-        if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.length === 0)) return;
+        // Se o grupo não tem linhas, pula
+        if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasLubrificante.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) return;
         
+        // 1. Linhas QS
         grupo.linhasQS.forEach((linha) => {
           const row = worksheet.getRow(currentRow);
           row.getCell('A').value = `CLASSE I - SUBSISTÊNCIA\n${linha.registro.organizacao}`;
@@ -598,6 +637,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
           currentRow++;
         });
         
+        // 2. Linhas QR
         grupo.linhasQR.forEach((linha) => {
           const row = worksheet.getRow(currentRow);
           row.getCell('A').value = `CLASSE I - SUBSISTÊNCIA`;
@@ -627,8 +667,44 @@ Total QR: ${formatCurrency(total_qr)}.`;
           currentRow++;
         });
         
+        // 3. Linhas Lubrificante (NOVO)
+        grupo.linhasLubrificante.forEach((linha) => {
+          const row = worksheet.getRow(currentRow);
+          row.getCell('A').value = `CLASSE III - LUBRIFICANTE\n${linha.registro.organizacao}`;
+          row.getCell('B').value = `${linha.registro.organizacao}\n(${linha.registro.ug})`;
+          row.getCell('C').value = linha.registro.valor_total; // Valor na coluna 33.90.30
+          row.getCell('C').numFmt = 'R$ #,##0.00';
+          row.getCell('C').style = { ...row.getCell('C').style, alignment: centerTopAlignment };
+          row.getCell('D').value = ''; // 33.90.39 (Vazio)
+          row.getCell('E').value = linha.registro.valor_total; // TOTAL (ND 30)
+          row.getCell('E').numFmt = 'R$ #,##0.00';
+          row.getCell('E').style = { ...row.getCell('E').style, alignment: centerTopAlignment };
+          
+          // Colunas de Combustível (F, G, H) vazias
+          row.getCell('F').value = '';
+          row.getCell('G').value = '';
+          row.getCell('H').value = '';
+          
+          const detalhamentoLubrificante = linha.registro.detalhamento_customizado || linha.registro.detalhamento || '';
+          
+          row.getCell('I').value = detalhamentoLubrificante;
+          row.getCell('I').alignment = { wrapText: true, vertical: 'top' };
+          row.getCell('I').font = { name: 'Arial', size: 6.5 };
+          
+          ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+            row.getCell(col).border = cellBorder;
+            if (!row.getCell(col).font) {
+              row.getCell(col).font = { name: 'Arial', size: 8 };
+            }
+            row.getCell(col).alignment = { ...row.getCell(col).alignment, vertical: 'top' };
+          });
+          
+          currentRow++;
+        });
+        
+        // 4. Linhas Combustível (APENAS na RM)
         if (nomeOM === nomeRM) {
-          registrosClasseIII.forEach((registro) => {
+          registrosClasseIII.filter(isCombustivel).forEach((registro) => {
             const getTipoEquipamentoLabel = (tipo: string) => {
               switch (tipo) {
                 case 'GERADOR': return 'GERADOR';
@@ -649,7 +725,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
             row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
             row.getCell('B').value = `${nomeRM}\n(${gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || 'UG'})`;
             
-            // REGRA DO USUÁRIO: Colunas azuis (C, D, E) devem ser vazias/zero para Classe III
+            // Colunas azuis (C, D, E) devem ser vazias/zero para Classe III Combustível
             row.getCell('C').value = ''; // 33.90.30
             row.getCell('D').value = ''; // 33.90.39
             row.getCell('E').value = ''; // TOTAL ND
@@ -683,13 +759,14 @@ Total QR: ${formatCurrency(total_qr)}.`;
           });
         }
         
+        // Subtotal da OM
         const subtotalRow = worksheet.getRow(currentRow);
         subtotalRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
         worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
         subtotalRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
         subtotalRow.getCell('A').font = { name: 'Arial', size: 8, bold: true };
         
-        subtotalRow.getCell('C').value = totaisOM.total_33_90_30; // Total Classe I
+        subtotalRow.getCell('C').value = totaisOM.total_33_90_30; // Total Classe I + Lubrificante
         subtotalRow.getCell('C').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
         subtotalRow.getCell('C').font = { bold: true };
         subtotalRow.getCell('C').style = { ...subtotalRow.getCell('C').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
@@ -699,18 +776,18 @@ Total QR: ${formatCurrency(total_qr)}.`;
         subtotalRow.getCell('D').font = { bold: true };
         subtotalRow.getCell('D').style = { ...subtotalRow.getCell('D').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
 
-        subtotalRow.getCell('E').value = totaisOM.total_parte_azul; // Total ND (C+D) -> Apenas C
+        subtotalRow.getCell('E').value = totaisOM.total_parte_azul; // Total ND (C+D) -> C
         subtotalRow.getCell('E').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
         subtotalRow.getCell('E').font = { bold: true };
         subtotalRow.getCell('E').style = { ...subtotalRow.getCell('E').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
         
-        if (nomeOM === nomeRM && totaisOM.totalDiesel > 0) {
-          subtotalRow.getCell('F').value = `${formatNumber(totaisOM.totalDiesel)} L OD`;
+        if (nomeOM === nomeRM && totaisOM.totalDieselLitros > 0) {
+          subtotalRow.getCell('F').value = `${formatNumber(totaisOM.totalDieselLitros)} L OD`;
           subtotalRow.getCell('F').font = { bold: true };
           subtotalRow.getCell('F').style = { ...subtotalRow.getCell('F').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
         }
-        if (nomeOM === nomeRM && totaisOM.totalGasolina > 0) {
-          subtotalRow.getCell('G').value = `${formatNumber(totaisOM.totalGasolina)} L GAS`;
+        if (nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0) {
+          subtotalRow.getCell('G').value = `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS`;
           subtotalRow.getCell('G').font = { bold: true };
           subtotalRow.getCell('G').style = { ...subtotalRow.getCell('G').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
         }
@@ -747,26 +824,20 @@ Total QR: ${formatCurrency(total_qr)}.`;
       
       currentRow++;
       
-      const totalGeral_33_90_30 = registros.reduce((acc, reg) => acc + reg.total_qs + reg.total_qr, 0);
-      const totalValorCombustivel = registrosClasseIII.reduce((acc, reg) => acc + reg.valor_total, 0);
+      // CÁLCULO TOTAL GERAL
+      const totalGeral_33_90_30 = Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_30, 0);
+      const totalValorCombustivel = registrosClasseIII.filter(isCombustivel).reduce((acc, reg) => acc + reg.valor_total, 0);
       
-      // REGRA DO USUÁRIO: 33.90.39 é zero, e o total geral é a soma de 33.90.30 + Valor Total Combustível
       const totalGeral_33_90_39 = 0; 
       const totalGeralAcumulado = totalGeral_33_90_30 + totalValorCombustivel; 
       
-      const totalDiesel = registrosClasseIII
+      const totalDiesel = registrosClasseIII.filter(isCombustivel)
         .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
         .reduce((acc, reg) => acc + reg.total_litros, 0);
-      const totalGasolina = registrosClasseIII
+      const totalGasolina = registrosClasseIII.filter(isCombustivel)
         .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
         .reduce((acc, reg) => acc + reg.total_litros, 0);
-      const valorDiesel = registrosClasseIII
-        .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
-        .reduce((acc, reg) => acc + reg.valor_total, 0);
-      const valorGasolina = registrosClasseIII
-        .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
-        .reduce((acc, reg) => acc + reg.valor_total, 0);
-      const totalValorCombustivelFinal = valorDiesel + valorGasolina;
+      const totalValorCombustivelFinal = totalValorCombustivel;
       
       const somaRow = worksheet.getRow(currentRow);
       somaRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
@@ -774,7 +845,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       somaRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
       somaRow.getCell('A').font = { bold: true };
       
-      somaRow.getCell('C').value = totalGeral_33_90_30; // Total Classe I
+      somaRow.getCell('C').value = totalGeral_33_90_30; // Total Classe I + Lubrificante
       somaRow.getCell('C').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       somaRow.getCell('C').font = { bold: true };
       somaRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
@@ -901,7 +972,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
         variant: "destructive",
       });
     }
-  }, [ptrabData, registros, registrosClasseIII, toast, handleExportSuccess]);
+  }, [ptrabData, registrosClasseI, registrosClasseIII, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, toast, handleExportSuccess]);
       
   // Se estiver carregando, exibe uma mensagem de carregamento.
   if (loading) {
@@ -915,8 +986,8 @@ Total QR: ${formatCurrency(total_qr)}.`;
   if (!ptrabData) return null;
 
   // 1. Recalcular Totais Gerais (para HTML/PDF)
-  const totalGeral_33_90_30 = registros.reduce((acc, reg) => acc + reg.total_qs + reg.total_qr, 0);
-  const totalValorCombustivel = registrosClasseIII.reduce((acc, reg) => acc + reg.valor_total, 0);
+  const totalGeral_33_90_30 = Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_30, 0);
+  const totalValorCombustivel = registrosClasseIII.filter(isCombustivel).reduce((acc, reg) => acc + reg.valor_total, 0);
   
   // REGRA DO USUÁRIO: 33.90.39 é zero, e o total geral é a soma de 33.90.30 + Valor Total Combustível
   const totalGeral_33_90_39 = 0;
@@ -926,92 +997,6 @@ Total QR: ${formatCurrency(total_qr)}.`;
   const valorTotalSolicitado = totalGeral_33_90_30 + totalValorCombustivel;
   
   const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
-
-  // Nova estrutura: agrupar por OM (subseções dinâmicas)
-  interface LinhaTabela {
-    registro: ClasseIRegistro;
-    tipo: 'QS' | 'QR';
-  }
-
-  interface GrupoOM {
-    linhasQS: LinhaTabela[];
-    linhasQR: LinhaTabela[];
-  }
-
-  const gruposPorOM: Record<string, GrupoOM> = {};
-
-  // Processar cada registro: QS vai para om_qs, QR vai para organizacao
-  registros.forEach((registro) => {
-    // Adicionar linha QS ao grupo da OM fornecedora (om_qs)
-    const omFornecedora = registro.om_qs;
-    if (!gruposPorOM[omFornecedora]) {
-      gruposPorOM[omFornecedora] = { linhasQS: [], linhasQR: [] };
-    }
-    gruposPorOM[omFornecedora].linhasQS.push({ registro, tipo: 'QS' });
-
-    // Adicionar linha QR ao grupo da OM de destino (organizacao)
-    const omDestino = registro.organizacao;
-    if (!gruposPorOM[omDestino]) {
-      gruposPorOM[omDestino] = { linhasQS: [], linhasQR: [] };
-    }
-    gruposPorOM[omDestino].linhasQR.push({ registro, tipo: 'QR' });
-  });
-
-  // Ordenar as OMs: primeiro as que contêm "RM", depois as demais em ordem alfabética
-  const omsOrdenadas = Object.keys(gruposPorOM).sort((a, b) => {
-    const aTemRM = a.includes('RM') || a.includes('R M');
-    const bTemRM = b.includes('RM') || b.includes('R M');
-    
-    if (aTemRM && !bTemRM) return -1;
-    if (!aTemRM && bTemRM) return 1;
-    return a.localeCompare(b);
-  });
-
-  // Identificar a RM (primeira OM que contém "RM")
-  const nomeRM = omsOrdenadas.find(om => om.includes('RM') || om.includes('R M')) || ptrabData.nome_om; // Fallback para nome_om do PTrab
-
-  // Calcular totais por OM
-  const calcularTotaisPorOM = (grupo: GrupoOM, nomeOM: string) => {
-    const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.total_qs, 0);
-    const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + linha.registro.total_qr, 0);
-    
-    // Se esta OM for a RM, incluir TODOS os combustíveis
-    const classeIIIDestaOM = (nomeOM === nomeRM) 
-      ? registrosClasseIII 
-      : [];
-    
-    // Totais de combustível por tipo (apenas para RM)
-    const totalDiesel = classeIIIDestaOM
-      .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
-      .reduce((acc, reg) => acc + reg.total_litros, 0);
-    const totalGasolina = classeIIIDestaOM
-      .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
-      .reduce((acc, reg) => acc + reg.total_litros, 0);
-    const valorDiesel = classeIIIDestaOM
-      .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
-      .reduce((acc, reg) => acc + reg.valor_total, 0);
-    const valorGasolina = classeIIIDestaOM
-      .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
-      .reduce((acc, reg) => acc + reg.valor_total, 0);
-    
-    const totalCombustivel = valorDiesel + valorGasolina;
-    const totalParteAzul = totalQS + totalQR; // APENAS QS + QR (ND 30)
-    
-    // REGRA DO USUÁRIO: GND 3 é a soma da Classe I (ND 30) + Classe III (Valor Total Combustível).
-    const totalGeral = totalParteAzul + totalCombustivel; 
-    
-    return {
-      total_33_90_30: totalParteAzul, // Total Classe I
-      total_33_90_39: 0, // Classe III não é lançada aqui
-      total_parte_azul: totalParteAzul, // Usado para a coluna TOTAL (E) no subtotal
-      total_combustivel: totalCombustivel, // Total da parte laranja
-      total_gnd3: totalGeral, // Soma de parte azul + parte laranja
-      totalDiesel,
-      totalGasolina,
-      valorDiesel,
-      valorGasolina,
-    };
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -1058,7 +1043,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
           <p className="info-item font-bold">5.DESPESAS OPERACIONAIS REALIZADAS OU A REALIZAR:</p>
         </div>
 
-        {registros.length > 0 || registrosClasseIII.length > 0 ? (
+        {registrosClasseI.length > 0 || registrosClasseIII.length > 0 ? (
           <div className="ptrab-table-wrapper">
             <table className="ptrab-table">
               <thead>
@@ -1085,7 +1070,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                 const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
                 
                 // Se o grupo não tem linhas, pula
-                if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.length === 0)) {
+                if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasLubrificante.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
                   return [];
                 }
                 
@@ -1141,8 +1126,33 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     </tr>
                   )),
                   
-                  // Renderizar linhas de Classe III APENAS na RM
-                  ...(nomeOM === nomeRM ? registrosClasseIII.map((registro) => {
+                  // Renderizar linhas de Lubrificante (NOVO)
+                  ...grupo.linhasLubrificante.map((linha) => (
+                    <tr key={`lub-${linha.registro.id}`}>
+                      <td className="col-despesas">
+                        <div>CLASSE III - LUBRIFICANTE</div>
+                        <div>{linha.registro.organizacao}</div>
+                      </td>
+                      <td className="col-om">
+                        <div>{linha.registro.organizacao}</div>
+                        <div>({linha.registro.ug})</div>
+                      </td>
+                      <td className="col-valor-natureza">{formatCurrency(linha.registro.valor_total)}</td>
+                      <td className="col-valor-natureza"></td>
+                      <td className="col-valor-natureza">{formatCurrency(linha.registro.valor_total)}</td>
+                      <td className="col-combustivel-data-filled"></td>
+                      <td className="col-combustivel-data-filled"></td>
+                      <td className="col-combustivel-data-filled"></td>
+                      <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
+                        <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                          {linha.registro.detalhamento_customizado || linha.registro.detalhamento || ''}
+                        </pre>
+                      </td>
+                    </tr>
+                  )),
+                  
+                  // Renderizar linhas de Classe III Combustível (APENAS na RM)
+                  ...(nomeOM === nomeRM ? registrosClasseIII.filter(isCombustivel).map((registro) => {
                     const getTipoEquipamentoLabel = (tipo: string) => {
                       switch (tipo) {
                         case 'GERADOR': return 'GERADOR';
@@ -1197,13 +1207,13 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     <td className="text-center font-bold">{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) -> Apenas C */}
                     {/* Parte Laranja (Combustivel) */}
                     <td className="text-center font-bold border border-black">
-                      {nomeOM === nomeRM && totaisOM.totalDiesel > 0 
-                        ? `${formatNumber(totaisOM.totalDiesel)} L OD` 
+                      {nomeOM === nomeRM && totaisOM.totalDieselLitros > 0 
+                        ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
                         : ''}
                     </td>
                     <td className="text-center font-bold border border-black">
-                      {nomeOM === nomeRM && totaisOM.totalGasolina > 0 
-                        ? `${formatNumber(totaisOM.totalGasolina)} L GAS` 
+                      {nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0 
+                        ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` 
                         : ''}
                     </td>
                     <td className="text-center font-bold border border-black">
@@ -1233,23 +1243,14 @@ Total QR: ${formatCurrency(total_qr)}.`;
               </tr>
               
               {(() => {
-                // Valor total solicitado: Soma do TOTAL (azul) + PREÇO TOTAL (laranja)
-                // totalGeral_GND3_ND (SUM(C+D)) + totalValorCombustivel (SUM(H))
-                
                 // Totais de combustível por tipo (para exibição na parte laranja)
-                const totalDiesel = registrosClasseIII
+                const totalDiesel = registrosClasseIII.filter(isCombustivel)
                   .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
                   .reduce((acc, reg) => acc + reg.total_litros, 0);
-                const totalGasolina = registrosClasseIII
+                const totalGasolina = registrosClasseIII.filter(isCombustivel)
                   .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
                   .reduce((acc, reg) => acc + reg.total_litros, 0);
-                const valorDiesel = registrosClasseIII
-                  .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
-                  .reduce((acc, reg) => acc + reg.valor_total, 0);
-                const valorGasolina = registrosClasseIII
-                  .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
-                  .reduce((acc, reg) => acc + reg.valor_total, 0);
-                const totalValorCombustivelFinal = valorDiesel + valorGasolina;
+                const totalValorCombustivelFinal = totalValorCombustivel;
 
                 return (
                   <>
