@@ -185,7 +185,7 @@ const PTrabPrint = () => {
     
     const ultimaFase = fases[fases.length - 1];
     const demaisFases = fases.slice(0, -1).join(', ');
-    return `${demaisFases} e ${ultimaFase}`;
+    return `${demaisFases} e ${ultimaFases}`;
   };
 
   // Função para gerar memória automática de Classe I
@@ -669,9 +669,20 @@ Total QR: ${formatCurrency(total_qr)}.`;
         
         // 3. Linhas Lubrificante (NOVO)
         grupo.linhasLubrificante.forEach((linha) => {
+          const isOmDifferent = linha.registro.organizacao !== nomeOM;
+          
           const row = worksheet.getRow(currentRow);
-          row.getCell('A').value = `CLASSE III - LUBRIFICANTE\n${linha.registro.organizacao}`;
+          
+          // Coluna A: DESPESAS
+          if (isOmDifferent) {
+            row.getCell('A').value = `CLASSE III - LUBRIFICANTE\n${linha.registro.organizacao}`;
+          } else {
+            row.getCell('A').value = `CLASSE III - LUBRIFICANTE`;
+          }
+          
+          // Coluna B: OM (UGE) CODUG
           row.getCell('B').value = `${linha.registro.organizacao}\n(${linha.registro.ug})`;
+          
           row.getCell('C').value = linha.registro.valor_total; // Valor na coluna 33.90.30
           row.getCell('C').numFmt = 'R$ #,##0.00';
           row.getCell('C').style = { ...row.getCell('C').style, alignment: centerTopAlignment };
@@ -896,7 +907,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       valorTotalRow.getCell('G').font = { bold: true };
       valorTotalRow.getCell('G').alignment = { horizontal: 'center', vertical: 'middle' };
       
-      valorTotalRow.getCell('H').value = totalGeralAcumulado; // Total C + H
+      valorTotalRow.getCell('H').value = valorTotalSolicitado; // Total C + H
       valorTotalRow.getCell('H').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       valorTotalRow.getCell('H').font = { bold: true };
       valorTotalRow.getCell('H').alignment = { horizontal: 'center' };
@@ -920,7 +931,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       currentRow++;
       
       const gndValueRow = worksheet.getRow(currentRow);
-      gndValueRow.getCell('H').value = totalGeralAcumulado; // Total C + H
+      gndValueRow.getCell('H').value = valorTotalSolicitado; // Total C + H
       gndValueRow.getCell('H').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       gndValueRow.getCell('H').font = { bold: true };
       gndValueRow.getCell('H').alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1036,11 +1047,11 @@ Total QR: ${formatCurrency(total_qr)}.`;
         </div>
 
         <div className="ptrab-info">
-          <p className="info-item"><span className="font-bold">1.NOME DA OPERAÇÃO:</span> {ptrabData.nome_operacao}</p>
-          <p className="info-item"><span className="font-bold">2.PERÍODO:</span> de {formatDate(ptrabData.periodo_inicio)} a {formatDate(ptrabData.periodo_fim)} - Nr Dias: {diasOperacao}</p>
-          <p className="info-item"><span className="font-bold">3.EFETIVO EMPREGADO:</span> {ptrabData.efetivo_empregado} militares do Exército Brasileiro</p>
-          <p className="info-item"><span className="font-bold">4.AÇÕES REALIZADAS OU A REALIZAR:</span> {ptrabData.acoes}</p>
-          <p className="info-item font-bold">5.DESPESAS OPERACIONAIS REALIZADAS OU A REALIZAR:</p>
+          <p className="info-item"><span className="font-bold">1. NOME DA OPERAÇÃO:</span> {ptrabData.nome_operacao}</p>
+          <p className="info-item"><span className="font-bold">2. PERÍODO:</span> de {formatDate(ptrabData.periodo_inicio)} a {formatDate(ptrabData.periodo_fim)} - Nr Dias: {diasOperacao}</p>
+          <p className="info-item"><span className="font-bold">3. EFETIVO EMPREGADO:</span> {ptrabData.efetivo_empregado} militares do Exército Brasileiro</p>
+          <p className="info-item"><span className="font-bold">4. AÇÕES REALIZADAS OU A REALIZAR:</span> {ptrabData.acoes}</p>
+          <p className="info-item font-bold">5. DESPESAS OPERACIONAIS REALIZADAS OU A REALIZAR:</p>
         </div>
 
         {registrosClasseI.length > 0 || registrosClasseIII.length > 0 ? (
@@ -1127,29 +1138,34 @@ Total QR: ${formatCurrency(total_qr)}.`;
                   )),
                   
                   // Renderizar linhas de Lubrificante (NOVO)
-                  ...grupo.linhasLubrificante.map((linha) => (
-                    <tr key={`lub-${linha.registro.id}`}>
-                      <td className="col-despesas">
-                        <div>CLASSE III - LUBRIFICANTE</div>
-                        <div>{linha.registro.organizacao}</div>
-                      </td>
-                      <td className="col-om">
-                        <div>{linha.registro.organizacao}</div>
-                        <div>({linha.registro.ug})</div>
-                      </td>
-                      <td className="col-valor-natureza">{formatCurrency(linha.registro.valor_total)}</td>
-                      <td className="col-valor-natureza"></td>
-                      <td className="col-valor-natureza">{formatCurrency(linha.registro.valor_total)}</td>
-                      <td className="col-combustivel-data-filled"></td>
-                      <td className="col-combustivel-data-filled"></td>
-                      <td className="col-combustivel-data-filled"></td>
-                      <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
-                        <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                          {linha.registro.detalhamento_customizado || linha.registro.detalhamento || ''}
-                        </pre>
-                      </td>
-                    </tr>
-                  )),
+                  ...grupo.linhasLubrificante.map((linha) => {
+                    // Verifica se a OM de destino do recurso (organizacao) é diferente da OM que está sendo agrupada (nomeOM)
+                    const isOmDifferent = linha.registro.organizacao !== nomeOM;
+                    
+                    return (
+                      <tr key={`lub-${linha.registro.id}`}>
+                        <td className="col-despesas">
+                          <div>CLASSE III - LUBRIFICANTE</div>
+                          {isOmDifferent && <div>{linha.registro.organizacao}</div>}
+                        </td>
+                        <td className="col-om">
+                          <div>{linha.registro.organizacao}</div>
+                          <div>({linha.registro.ug})</div>
+                        </td>
+                        <td className="col-valor-natureza">{formatCurrency(linha.registro.valor_total)}</td>
+                        <td className="col-valor-natureza"></td>
+                        <td className="col-valor-natureza">{formatCurrency(linha.registro.valor_total)}</td>
+                        <td className="col-combustivel-data-filled"></td>
+                        <td className="col-combustivel-data-filled"></td>
+                        <td className="col-combustivel-data-filled"></td>
+                        <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
+                          <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                            {linha.registro.detalhamento_customizado || linha.registro.detalhamento || ''}
+                          </pre>
+                        </td>
+                      </tr>
+                    );
+                  }),
                   
                   // Renderizar linhas de Classe III Combustível (APENAS na RM)
                   ...(nomeOM === nomeRM ? registrosClasseIII.filter(isCombustivel).map((registro) => {
