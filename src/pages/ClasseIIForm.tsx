@@ -22,7 +22,7 @@ import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { defaultClasseIIConfig } from "@/data/classeIIData"; // Importar dados padrão
+import { defaultClasseIIConfig } from "@/data/classeIIData";
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -72,6 +72,9 @@ export default function ClasseIIForm() {
   const [loading, setLoading] = useState(false);
   const [diretrizes, setDiretrizes] = useState<DiretrizClasseII[]>([]);
   const [selectedTab, setSelectedTab] = useState<Categoria>(CATEGORIAS[0]);
+  
+  // NOVO ESTADO: ID do registro que está sendo editado (para o formulário principal)
+  const [editingId, setEditingId] = useState<string | null>(null);
   
   // Formulário principal (compartilhado)
   const [form, setForm] = useState<FormDataClasseII>({
@@ -213,6 +216,7 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
   };
 
   const resetFormFields = () => {
+    setEditingId(null);
     setForm({
       selectedOmId: undefined,
       organizacao: "",
