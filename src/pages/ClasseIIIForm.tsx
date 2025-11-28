@@ -1991,6 +1991,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                                 ? 'bg-purple-600 text-white' 
                                 : 'bg-primary text-primary-foreground';
                               
+                              const suprimentoText = isLubrificante 
+                                ? `Lubrificante (ND 30)` 
+                                : `${registro.tipo_combustivel === 'DIESEL' ? 'Óleo Diesel' : 'Gasolina'} (ND 39)`;
+                              
                               return (
                                 <tr key={registro.id} className="border-t hover:bg-muted/50 transition-colors">
                                   <td className="p-3 text-sm">{registro.organizacao}</td>
@@ -1998,7 +2002,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                                   <td className="p-3 text-sm">{tipoLabel}</td>
                                   <td className="p-3 text-sm">
                                     <Badge variant="default" className={suprimentoBadgeClass}>
-                                      {isLubrificante ? 'ND 30' : 'ND 39'}
+                                      {suprimentoText}
                                     </Badge>
                                   </td>
                                   <td className="p-3 text-sm text-right font-medium">{formatNumber(registro.total_litros)} L</td>
