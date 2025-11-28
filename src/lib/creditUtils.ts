@@ -23,7 +23,7 @@ export async function fetchUserCredits(userId: string): Promise<{ credit_gnd3: n
       throw error;
     }
 
-    const profileData = data as ProfileCredits | null; // Cast data to the expected structure
+    const profileData = data as unknown as ProfileCredits | null; // Cast data to the expected structure
 
     return {
       credit_gnd3: Number(profileData?.credit_gnd3 || 0),
