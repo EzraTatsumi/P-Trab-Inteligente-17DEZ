@@ -106,18 +106,10 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const totalLubrificanteLitros = lubrificanteRecords
     .reduce((sum, record) => sum + record.total_litros, 0);
 
-  // --- NOVA LÓGICA DE ND ---
-  // Se Classe I e Classe III são exclusivamente ND 30:
-  
-  // Total ND 30 = Classe I + Lubrificante + Combustível
-  const totalLogisticoND30 = totalClasseI + totalLubrificanteValor + totalCombustivelND39;
-  
-  // Total ND 39 deve ser zero
-  const totalLogisticoND39 = 0;
-  
-  // Total Logístico Geral
+  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Lubrificante (ND 30) + Combustível (ND 39)
+  const totalLogisticoND30 = totalClasseI + totalLubrificanteValor;
+  const totalLogisticoND39 = totalCombustivelND39;
   const totalLogisticoGeral = totalLogisticoND30 + totalLogisticoND39;
-  // --- FIM NOVA LÓGICA DE ND ---
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
@@ -319,9 +311,9 @@ export const PTrabCostSummary = ({
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-0">
                         <div className="space-y-1 pl-6 text-xs">
-                          {/* Linha Óleo Diesel (ND 30) */}
+                          {/* Linha Óleo Diesel (ND 39) */}
                           <div className="flex justify-between text-muted-foreground">
-                            <span className={descriptionClasses}>Óleo Diesel (ND 30)</span>
+                            <span className={descriptionClasses}>Óleo Diesel (ND 39)</span>
                             <span className={quantityClasses}>
                               {formatNumber(totals.totalDieselLitros)} L
                             </span>
@@ -329,9 +321,9 @@ export const PTrabCostSummary = ({
                               {formatCurrency(totals.totalDieselValor)}
                             </span>
                           </div>
-                          {/* Linha Gasolina (ND 30) */}
+                          {/* Linha Gasolina (ND 39) */}
                           <div className="flex justify-between text-muted-foreground">
-                            <span className={descriptionClasses}>Gasolina (ND 30)</span>
+                            <span className={descriptionClasses}>Gasolina (ND 39)</span>
                             <span className={quantityClasses}>
                               {formatNumber(totals.totalGasolinaLitros)} L
                             </span>
