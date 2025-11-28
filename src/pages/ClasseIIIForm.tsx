@@ -2077,8 +2077,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                             </tr>
                             {/* TOTAL LUBRIFICANTE */}
                             <tr>
-                              <td colSpan={4} className="p-3 text-sm font-semibold">TOTAL LUBRIFICANTE</td>
-                              <td className="p-3 text-sm text-right font-bold">
+                              <td colSpan={4} className="p-3 text-sm font-semibold text-purple-600">TOTAL LUBRIFICANTE</td>
+                              <td className="p-3 text-sm text-right font-bold text-purple-600">
                                 {formatNumber(totalLubrificanteLitros)} L
                               </td>
                               <td className="p-3 text-sm text-right font-bold text-purple-600">
