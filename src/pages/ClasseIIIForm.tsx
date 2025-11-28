@@ -690,11 +690,11 @@ export default function ClasseIIIForm() {
       dias_operacao: 0,
       itens: [],
     });
-    setItemGeradorTemp({
-      tipo_equipamento_especifico: "",
-      quantidade: 0,
-      horas_dia: 0,
-      consumo_fixo: 0,
+    setItemGeradorTemp({ 
+      tipo_equipamento_especifico: "", 
+      quantidade: 0, 
+      horas_dia: 0, 
+      consumo_fixo: 0, 
       tipo_combustivel: "DIESEL",
       consumo_lubrificante_litro: 0,
       preco_lubrificante: 0,
@@ -2469,7 +2469,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     <div className="flex justify-end">
                       <Button 
                         type="button" 
-                        onClick={adicionarOu AtualizarItemGerador} 
+                        onClick={adicionarOuAtualizarItemGerador} 
                         className="w-full md:w-auto" 
                         disabled={!refLPC || !isItemValid}
                       >
