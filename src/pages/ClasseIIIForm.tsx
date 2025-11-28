@@ -1593,7 +1593,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       setItemEngenhariaTemp({ ...itemEngenhariaTemp, tipo_equipamento_especifico: tipoNome, tipo_combustivel: novoCombustivel, consumo_fixo: equipamento.consumo });
     }
   };
-  const adicionarOuAtualizarItemEngenharia = () => {
+  const adicionarOu AtualizarItemEngenharia = () => {
     if (!itemEngenhariaTemp.tipo_equipamento_especifico || itemEngenhariaTemp.quantidade <= 0 || itemEngenhariaTemp.horas_dia <= 0) {
       toast.error("Preencha todos os campos do item");
       return;
@@ -1985,15 +1985,26 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                               const isLubrificante = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR';
                               const tipoLabel = isLubrificante ? 'Lubrificante (Gerador)' : getTipoLabel(registro.tipo_equipamento as TipoEquipamento);
                               
-                              // ND 30 (Lubrificante) = Roxo
-                              // ND 39 (Combustível) = Primário (Azul/Verde)
-                              const suprimentoBadgeClass = isLubrificante 
-                                ? 'bg-purple-600 text-white' 
-                                : 'bg-primary text-primary-foreground';
+                              let suprimentoText: string;
+                              let suprimentoBadgeClass: string;
+
+                              if (isLubrificante) {
+                                suprimentoText = 'Lubrificante (ND 30)';
+                                suprimentoBadgeClass = 'bg-purple-600 text-white hover:bg-purple-700';
+                              } else if (registro.tipo_combustivel === 'DIESEL') {
+                                suprimentoText = 'Óleo Diesel (ND 39)';
+                                suprimentoBadgeClass = 'bg-primary text-primary-foreground hover:bg-primary/90';
+                              } else { // GASOLINA
+                                suprimentoText = 'Gasolina (ND 39)';
+                                suprimentoBadgeClass = 'bg-amber-500 text-white hover:bg-amber-600';
+                              }
                               
-                              const suprimentoText = isLubrificante 
-                                ? `Lubrificante (ND 30)` 
-                                : `${registro.tipo_combustivel === 'DIESEL' ? 'Óleo Diesel' : 'Gasolina'} (ND 39)`;
+                              // Removendo ND 39/30 do texto do badge, mantendo apenas o tipo de suprimento
+                              const displaySuprimentoText = isLubrificante 
+                                ? 'Lubrificante' 
+                                : registro.tipo_combustivel === 'DIESEL' 
+                                  ? 'Óleo Diesel' 
+                                  : 'Gasolina';
                               
                               return (
                                 <tr key={registro.id} className="border-t hover:bg-muted/50 transition-colors">
@@ -2002,7 +2013,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                                   <td className="p-3 text-sm">{tipoLabel}</td>
                                   <td className="p-3 text-sm">
                                     <Badge variant="default" className={suprimentoBadgeClass}>
-                                      {suprimentoText}
+                                      {displaySuprimentoText}
                                     </Badge>
                                   </td>
                                   <td className="p-3 text-sm text-right font-medium">{formatNumber(registro.total_litros)} L</td>
