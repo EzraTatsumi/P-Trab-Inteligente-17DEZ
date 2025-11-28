@@ -626,7 +626,7 @@ export default function ClasseIIIForm() {
     // 3 ou mais fases: "Fase1, Fase2 e Fase3"
     const ultimaFase = fasesOrdenadas[fasesOrdenadas.length - 1];
     const demaisFases = fasesOrdenadas.slice(0, -1).join(', ');
-    return `${demaisFases} e ${ultimaFase}`;
+    return `${demaisFases} e ${ultimaFases}`;
   };
 
   const handleDeletar = async (id: string) => {
@@ -3527,7 +3527,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                       <div className="space-y-2">
                         <Label>&nbsp;</Label>
-                        <Button type="button" onClick={adicionarOu AtualizarItemEngenharia} className="w-full" disabled={!refLPC}>
+                        <Button type="button" onClick={adicionarOuAtualizarItemEngenharia} className="w-full" disabled={!refLPC}>
                           {editingEngenhariaItemIndex !== null ? "Atualizar Item" : "Adicionar"}
                         </Button>
                       </div>
