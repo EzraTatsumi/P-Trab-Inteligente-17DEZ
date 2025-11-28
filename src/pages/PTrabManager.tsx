@@ -39,31 +39,17 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatCurrency } from "@/lib/formatUtils";
 import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils";
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
-import { Tables } from "@/integrations/supabase/types";
+import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 
-interface PTrab {
-  id: string;
-  numero_ptrab: string;
-  nome_operacao: string;
-  comando_militar_area: string;
-  nome_om: string;
-  nome_om_extenso?: string;
-  codug_om?: string;
-  rm_vinculacao?: string;
-  codug_rm_vinculacao?: string;
-  periodo_inicio: string;
-  periodo_fim: string;
-  efetivo_empregado: string;
-  acoes: string;
-  status: string;
-  nome_cmt_om?: string;
-  local_om?: string;
+// Define a base type for PTrab data fetched from DB, including the missing 'origem' field
+type PTrabDB = Tables<'p_trab'> & {
+  origem: 'original' | 'importado' | 'consolidado';
+};
+
+interface PTrab extends PTrabDB {
   totalLogistica?: number;
   totalOperacional?: number;
-  updated_at: string;
-  comentario?: string;
-  origem: 'original' | 'importado' | 'consolidado';
 }
 
 const PTrabManager = () => {
@@ -204,11 +190,14 @@ const PTrabManager = () => {
         return;
       }
 
-      const numbers = (pTrabsData || []).map(p => p.numero_ptrab);
+      // Cast pTrabsData to the expected structure PTrabDB[]
+      const typedPTrabsData = pTrabsData as PTrabDB[];
+
+      const numbers = (typedPTrabsData || []).map(p => p.numero_ptrab);
       setExistingPTrabNumbers(numbers);
 
       const pTrabsWithTotals: PTrab[] = await Promise.all(
-        (pTrabsData || []).map(async (ptrab) => {
+        (typedPTrabsData || []).map(async (ptrab) => {
           let totalOperacionalCalculado = 0;
 
           // 1. Fetch Classe I totals (33.90.30)
@@ -218,7 +207,7 @@ const PTrabManager = () => {
             .eq('p_trab_id', ptrab.id);
 
           let totalClasseI = 0;
-          if (classeIError) console.error("Erro ao carregar Classe I para PTrab", ptrab.id, classeIError);
+          if (classeIError) console.error("Erro ao carregar Classe I para PTrab", ptrab.numero_ptrab, classeIError);
           else {
             totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
           }
@@ -230,7 +219,7 @@ const PTrabManager = () => {
             .eq('p_trab_id', ptrab.id);
 
           let totalClasseIII = 0;
-          if (classeIIIError) console.error("Erro ao carregar Classe III para PTrab", ptrab.id, classeIIIError);
+          if (classeIIIError) console.error("Erro ao carregar Classe III para PTrab", ptrab.numero_ptrab, classeIIIError);
           else {
             totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
           }
@@ -241,8 +230,7 @@ const PTrabManager = () => {
             ...ptrab,
             totalLogistica: totalLogisticaCalculado,
             totalOperacional: totalOperacionalCalculado,
-            origem: ptrab.origem as 'original' | 'importado' | 'consolidado',
-          };
+          } as PTrab;
         })
       );
 
@@ -511,7 +499,7 @@ const PTrabManager = () => {
       // 1. Fetch the original PTrab
       const { data: originalPTrab, error: fetchPTrabError } = await supabase
         .from("p_trab")
-        .select("*")
+        .select("*, origem") // Ensure 'origem' is selected
         .eq("id", originalPTrabId)
         .single();
 
@@ -519,20 +507,24 @@ const PTrabManager = () => {
         console.error("ERRO AO CARREGAR P TRAB ORIGINAL:", fetchPTrabError);
         throw new Error("Erro ao carregar o P Trab original.");
       }
+      
+      const typedOriginalPTrab = originalPTrab as PTrabDB; // Cast to PTrabDB
 
       // 2. Create the new PTrab object
-      const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = originalPTrab;
-      const newPTrabData = {
+      // Destructure only fields present in the DB schema (PTrabDB)
+      const { id, created_at, updated_at, ...restOfPTrab } = typedOriginalPTrab; 
+      
+      const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
         ...restOfPTrab,
         numero_ptrab: newNumeroPTrab,
         status: "aberto",
-        user_id: originalPTrab.user_id,
-        origem: originalPTrab.origem,
+        user_id: typedOriginalPTrab.user_id,
+        origem: typedOriginalPTrab.origem,
       };
 
       const { data: newPTrab, error: insertPTrabError } = await supabase
         .from("p_trab")
-        .insert([newPTrabData as Tables<'p_trab'>])
+        .insert([newPTrabData as TablesInsert<'p_trab'>]) // Cast to TablesInsert<'p_trab'>
         .select()
         .single();
 
@@ -750,18 +742,18 @@ const PTrabManager = () => {
         // FIX: Explicitly exclude calculated fields and IDs
         const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = templatePTrab;
         
-        const newPTrabData = {
+        const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
           ...restOfPTrab,
           numero_ptrab: newPTrabNumber,
           status: "aberto",
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: (await supabase.auth.getUser()).data.user?.id!,
           nome_operacao: `CONSOLIDADO - ${templatePTrab.nome_operacao}`,
           origem: 'consolidado',
         };
 
         const { data: newPTrab, error: insertPTrabError } = await supabase
           .from("p_trab")
-          .insert([newPTrabData as Tables<'p_trab'>])
+          .insert([newPTrabData as TablesInsert<'p_trab'>]) // Cast to TablesInsert<'p_trab'>
           .select()
           .single();
 
@@ -777,7 +769,7 @@ const PTrabManager = () => {
         // Se o P Trab de destino já existe, atualize a origem para 'consolidado'
         const { error: updateOriginError } = await supabase
           .from("p_trab")
-          .update({ origem: 'consolidado' })
+          .update({ origem: 'consolidado' } as TablesUpdate<'p_trab'>)
           .eq("id", finalTargetPTrabId);
           
         if (updateOriginError) console.error("Erro ao atualizar origem para consolidado:", updateOriginError);
