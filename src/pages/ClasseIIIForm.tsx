@@ -2602,12 +2602,12 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                       <Card className="p-4 border-l-4 border-purple-600">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-lg text-purple-600">
+                            <h4 className="font-medium text-lg text-primary">
                               Lubrificante
                             </h4>
                             <div className="text-right">
                               <p className="text-sm text-muted-foreground">Valor Total</p>
-                              <p className="text-lg font-bold text-purple-600">{formatCurrency(consolidadoLubrificante.valor_total)}</p>
+                              <p className="text-lg font-bold text-primary">{formatCurrency(consolidadoLubrificante.valor_total)}</p>
                             </div>
                           </div>
                           
