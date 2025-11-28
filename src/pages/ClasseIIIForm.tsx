@@ -2560,7 +2560,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <h4 className="font-medium text-lg text-primary">
-                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'} (ND 33.90.39)
+                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'}
                             </h4>
                             <div className="text-right">
                               <p className="text-sm text-muted-foreground">Total com 30%</p>
@@ -2603,7 +2603,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <h4 className="font-medium text-lg text-purple-600">
-                              Lubrificante (ND 33.90.30)
+                              Lubrificante
                             </h4>
                             <div className="text-right">
                               <p className="text-sm text-muted-foreground">Valor Total</p>
