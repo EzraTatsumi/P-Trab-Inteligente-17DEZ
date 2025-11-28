@@ -1681,9 +1681,8 @@ Valor: ${formatNumber(totalLitros)} L x ${formatCurrency(precoLitro)} = ${format
     const detalhesLubrificante: string[] = [];
     
     itensComLubrificante.forEach(item => {
-      // Cálculo: (Quantidade * Horas/dia * Dias Operação) / 100h * Consumo Lubrificante
+      // Cálculo: (Quantidade * Horas/dia * Dias Operação) x Consumo Lubrificante (L/h)
       const totalHoras = item.quantidade * item.horas_dia * formEmbarcacao.dias_operacao;
-      // Assumindo que o consumo de lubrificante é por hora de trabalho (L/h)
       const litrosItem = totalHoras * item.consumo_lubrificante_litro;
       const valorItem = litrosItem * item.preco_lubrificante;
       
@@ -2679,9 +2678,9 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           min="0"
                           step="0.01"
                           className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemGeradorTemp.consumo_lubrificante_litro === 0 ? "" : itemGeradorTemp.consumo_lubrificante_litro.toString()}
+                          value={itemGeradorTemp.consumo_lubrificante_litro === 0 ? "" : itemGeradorTemp.consumo_lubrificante_litro.toFixed(2)}
                           onChange={(e) => setItemGeradorTemp({ ...itemGeradorTemp, consumo_lubrificante_litro: parseFloat(e.target.value) || 0 })}
-                          placeholder="Ex: 0.5"
+                          placeholder="Ex: 0.50"
                           disabled={!refLPC}
                           onKeyDown={handleEnterToNextField}
                         />
@@ -2694,7 +2693,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           min="0"
                           step="0.01"
                           className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemGeradorTemp.preco_lubrificante === 0 ? "" : itemGeradorTemp.preco_lubrificante.toString()}
+                          value={itemGeradorTemp.preco_lubrificante === 0 ? "" : itemGeradorTemp.preco_lubrificante.toFixed(2)}
                           onChange={(e) => setItemGeradorTemp({ ...itemGeradorTemp, preco_lubrificante: parseFloat(e.target.value) || 0 })}
                           placeholder="Ex: 35.00"
                           disabled={!refLPC}
@@ -3458,7 +3457,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           min="0"
                           step="0.01"
                           className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemEmbarcacaoTemp.consumo_lubrificante_litro === 0 ? "" : itemEmbarcacaoTemp.consumo_lubrificante_litro.toString()}
+                          value={itemEmbarcacaoTemp.consumo_lubrificante_litro === 0 ? "" : itemEmbarcacaoTemp.consumo_lubrificante_litro.toFixed(2)}
                           onChange={(e) => setItemEmbarcacaoTemp({ ...itemEmbarcacaoTemp, consumo_lubrificante_litro: parseFloat(e.target.value) || 0 })}
                           placeholder="Ex: 0.05"
                           disabled={!refLPC}
@@ -3473,7 +3472,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           min="0"
                           step="0.01"
                           className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemEmbarcacaoTemp.preco_lubrificante === 0 ? "" : itemEmbarcacaoTemp.preco_lubrificante.toString()}
+                          value={itemEmbarcacaoTemp.preco_lubrificante === 0 ? "" : itemEmbarcacaoTemp.preco_lubrificante.toFixed(2)}
                           onChange={(e) => setItemEmbarcacaoTemp({ ...itemEmbarcacaoTemp, preco_lubrificante: parseFloat(e.target.value) || 0 })}
                           placeholder="Ex: 35.00"
                           disabled={!refLPC}
