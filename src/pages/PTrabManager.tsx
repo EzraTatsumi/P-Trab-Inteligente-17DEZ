@@ -191,7 +191,7 @@ const PTrabManager = () => {
       }
 
       // Cast pTrabsData to the expected structure PTrabDB[]
-      const typedPTrabsData = pTrabsData as PTrabDB[];
+      const typedPTrabsData = pTrabsData as unknown as PTrabDB[];
 
       const numbers = (typedPTrabsData || []).map(p => p.numero_ptrab);
       setExistingPTrabNumbers(numbers);
