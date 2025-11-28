@@ -293,6 +293,11 @@ export default function ClasseIIIForm() {
 
   const [rmFornecimento, setRmFornecimento] = useState<string>(""); // Novo estado para o nome da RM fornecedora
   const [codugRmFornecimento, setCodugRmFornecimento] = useState<string>(""); // Novo estado para o CODUG da RM fornecedora
+  
+  // NOVOS ESTADOS PARA OM DE DESTINO DO LUBRIFICANTE
+  const [selectedOmLubrificanteId, setSelectedOmLubrificanteId] = useState<string | undefined>(undefined);
+  const [omLubrificante, setOmLubrificante] = useState<string>("");
+  const [ugLubrificante, setUgLubrificante] = useState<string>("");
 
   const [calculoPreview, setCalculoPreview] = useState({
     consumo_hora: 0,
@@ -322,7 +327,7 @@ export default function ClasseIIIForm() {
   const [editingGeradorItemIndex, setEditingGeradorItemIndex] = useState<number | null>(null);
 
   const [consolidadosGerador, setConsolidadosGerador] = useState<ConsolidadoGerador[]>([]);
-  // NOVO ESTADO PARA CONSOLIDADO DE LUBRIFICANTE
+  // NOVO TIPO PARA CONSOLIDADO DE LUBRIFICANTE
   const [consolidadoLubrificante, setConsolidadoLubrificante] = useState<ConsolidadoLubrificante | null>(null);
 
   const [formViatura, setFormViatura] = useState<FormDataViatura>({
@@ -409,7 +414,7 @@ export default function ClasseIIIForm() {
       setConsolidadosGerador([]);
       setConsolidadoLubrificante(null);
     }
-  }, [formGerador.dias_operacao, refLPC, formGerador.itens, rmFornecimento, codugRmFornecimento]);
+  }, [formGerador.dias_operacao, refLPC, formGerador.itens, rmFornecimento, codugRmFornecimento, omLubrificante, ugLubrificante]); // Adicionado omLubrificante/ugLubrificante
 
   useEffect(() => {
     if (tipoSelecionado === 'MOTOMECANIZACAO' && formViatura.itens.length > 0) {
@@ -668,6 +673,9 @@ export default function ClasseIIIForm() {
     });
     setRmFornecimento("");
     setCodugRmFornecimento("");
+    setSelectedOmLubrificanteId(undefined); // Reset Lubrificante OM
+    setOmLubrificante("");
+    setUgLubrificante("");
     setCalculoPreview({
       consumo_hora: 0,
       total_litros: 0,
@@ -831,7 +839,21 @@ export default function ClasseIIIForm() {
         itens: itens,
       });
       
-      // 4. Preencher as fases (pegar de qualquer registro)
+      // 4. Preencher a OM de destino do Lubrificante (se houver registro de lubrificante)
+      const lubrificanteRecord = relatedRecords?.find(r => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR');
+      if (lubrificanteRecord) {
+        // A OM de destino do lubrificante é a OM do registro (organizacao/ug)
+        setSelectedOmLubrificanteId(selectedOmIdForEdit);
+        setOmLubrificante(lubrificanteRecord.organizacao);
+        setUgLubrificante(lubrificanteRecord.ug);
+      } else {
+        // Se não houver registro de lubrificante, assume-se a OM detentora
+        setSelectedOmLubrificanteId(selectedOmIdForEdit);
+        setOmLubrificante(registro.organizacao);
+        setUgLubrificante(registro.ug);
+      }
+      
+      // 5. Preencher as fases (pegar de qualquer registro)
       const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
       setFasesAtividadeGerador(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
       setCustomFaseAtividadeGerador(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
@@ -900,12 +922,34 @@ export default function ClasseIIIForm() {
       setFormGerador({ ...formGerador, selectedOmId: omData.id, organizacao: omData.nome_om, ug: omData.codug_om });
       setRmFornecimento(omData.rm_vinculacao);
       setCodugRmFornecimento(omData.codug_rm_vinculacao);
+      
+      // Define a OM detentora como OM de destino do lubrificante por padrão
+      setSelectedOmLubrificanteId(omData.id);
+      setOmLubrificante(omData.nome_om);
+      setUgLubrificante(omData.codug_om);
     } else {
       setFormGerador({ ...formGerador, selectedOmId: undefined, organizacao: "", ug: "" });
       setRmFornecimento("");
       setCodugRmFornecimento("");
+      setSelectedOmLubrificanteId(undefined);
+      setOmLubrificante("");
+      setUgLubrificante("");
     }
   };
+  
+  // NOVO HANDLER PARA OM DE DESTINO DO LUBRIFICANTE
+  const handleOMLubrificanteChange = (omData: OMData | undefined) => {
+    if (omData) {
+      setSelectedOmLubrificanteId(omData.id);
+      setOmLubrificante(omData.nome_om);
+      setUgLubrificante(omData.codug_om);
+    } else {
+      setSelectedOmLubrificanteId(undefined);
+      setOmLubrificante("");
+      setUgLubrificante("");
+    }
+  };
+  
   const handleTipoGeradorChange = (tipoNome: string) => {
     const equipamento = equipamentosDisponiveis.find(eq => eq.nome === tipoNome);
     if (equipamento) {
@@ -1069,7 +1113,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
       
       const detalhamentoLubrificante = `33.90.30 - Aquisição de Lubrificante para ${totalGeradores} geradores, durante ${formGerador.dias_operacao} dias de ${faseFormatada}, para ${formGerador.organizacao}.
-Recurso destinado à OM proprietária: ${formGerador.organizacao} (UG: ${formGerador.ug})
+Recurso destinado à OM proprietária: ${omLubrificante} (UG: ${ugLubrificante})
 
 Cálculo:
 Fórmula: (Nr Geradores x Nr Horas utilizadas/dia x Nr dias de operação) / 100h x Consumo Lubrificante/100h.
@@ -1098,6 +1142,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
     if (!formGerador.organizacao || !formGerador.ug) { toast.error("Selecione uma OM"); return; }
     if (!rmFornecimento || !codugRmFornecimento) { toast.error("Selecione a RM de Fornecimento de Combustível"); return; }
     if (formGerador.itens.length === 0) { toast.error("Adicione pelo menos um gerador"); return; }
+    if (consolidadoLubrificante && (!omLubrificante || !ugLubrificante)) { toast.error("Selecione a OM de destino do Lubrificante (ND 30)"); return; }
     
     let fasesFinais = [...fasesAtividadeGerador];
     if (customFaseAtividadeGerador.trim()) { fasesFinais = [...fasesFinais, customFaseAtividadeGerador.trim()]; }
@@ -1112,8 +1157,8 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         p_trab_id: ptrabId,
         tipo_equipamento: 'GERADOR',
         tipo_equipamento_detalhe: null,
-        organizacao: formGerador.organizacao,
-        ug: formGerador.ug,
+        organizacao: formGerador.organizacao, // OM Detentora
+        ug: formGerador.ug, // UG Detentora
         quantidade: consolidado.itens.reduce((sum, item) => sum + item.quantidade, 0),
         dias_operacao: formGerador.dias_operacao,
         tipo_combustivel: consolidado.tipo_combustivel,
@@ -1138,8 +1183,8 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         p_trab_id: ptrabId,
         tipo_equipamento: 'LUBRIFICANTE_GERADOR', // Novo tipo para identificar
         tipo_equipamento_detalhe: null,
-        organizacao: formGerador.organizacao,
-        ug: formGerador.ug,
+        organizacao: omLubrificante, // OM de Destino do Recurso (Pode ser diferente da detentora)
+        ug: ugLubrificante, // UG de Destino do Recurso
         quantidade: consolidadoLubrificante.itens.reduce((sum, item) => sum + item.quantidade, 0),
         dias_operacao: formGerador.dias_operacao,
         tipo_combustivel: 'LUBRIFICANTE', // Tipo de combustível genérico para lubrificante
@@ -1161,12 +1206,14 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       setLoading(true);
       
       // 3. Deletar registros existentes (Combustível e Lubrificante) para esta OM/Tipo
+      // Para a edição, precisamos deletar todos os registros que pertencem à OM detentora original
+      // e que são do tipo GERADOR ou LUBRIFICANTE_GERADOR.
       const { error: deleteError } = await supabase
         .from("classe_iii_registros")
         .delete()
         .eq("p_trab_id", ptrabId)
         .in("tipo_equipamento", ["GERADOR", "LUBRIFICANTE_GERADOR"])
-        .eq("organizacao", formGerador.organizacao)
+        .eq("organizacao", formGerador.organizacao) // Usar a OM detentora como filtro de exclusão
         .eq("ug", formGerador.ug);
       if (deleteError) { console.error("Erro ao deletar registros existentes de gerador/lubrificante para edição:", deleteError); throw deleteError; }
       
@@ -2154,16 +2201,16 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Organização Militar (OM) *</Label>
+                      <Label>OM Detentora do Equipamento *</Label>
                       <OmSelector
                         selectedOmId={formGerador.selectedOmId}
                         onChange={handleOMGeradorChange}
-                        placeholder="Selecione a OM..."
+                        placeholder="Selecione a OM detentora..."
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label>UG</Label>
+                      <Label>UG Detentora</Label>
                       <Input value={formGerador.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
                     </div>
                   </div>
@@ -2257,9 +2304,9 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   <div className="space-y-4 border-t pt-6" ref={addGeradorRef}>
                     <h3 className="text-lg font-semibold">2. Adicionar Geradores</h3>
                     
-                    {/* LINHA 1: DADOS DO GERADOR (3 COLUNAS) */}
+                    {/* LINHA 1: DADOS DO GERADOR (3 COLUNAS) - COMBUSTÍVEL */}
                     <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
-                      <div className="space-y-2 col-span-3">
+                      <div className="space-y-2">
                         <Label>Tipo de Gerador *</Label>
                         <Select 
                           value={itemGeradorTemp.tipo_equipamento_especifico}
@@ -2307,16 +2354,6 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           onKeyDown={handleEnterToNextField}
                         />
                       </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Combustível</Label>
-                        <Input 
-                          value={itemGeradorTemp.tipo_combustivel} 
-                          readOnly 
-                          disabled 
-                          className="disabled:opacity-100"
-                        />
-                      </div>
                     </div>
                     
                     {/* LINHA 2: DADOS DO LUBRIFICANTE (3 COLUNAS) */}
@@ -2352,14 +2389,14 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                       </div>
                       
                       <div className="space-y-2">
-                        <Label>Destino Recurso (ND 30)</Label>
-                        <Input 
-                          value={formGerador.organizacao} 
-                          readOnly 
-                          disabled 
-                          className="disabled:opacity-100"
+                        <Label>OM Destino Recurso (ND 30) *</Label>
+                        <OmSelector
+                          selectedOmId={selectedOmLubrificanteId}
+                          onChange={handleOMLubrificanteChange}
+                          placeholder="Selecione a OM de destino..."
+                          disabled={!formGerador.organizacao}
                         />
-                        <p className="text-xs text-muted-foreground">OM Detentora do Equipamento</p>
+                        <p className="text-xs text-muted-foreground">OM que receberá o recurso de lubrificante.</p>
                       </div>
                     </div>
                     {/* FIM DADOS DO LUBRIFICANTE */}
@@ -2517,7 +2554,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                             </div>
                             <div>
                               <p className="text-muted-foreground">OM Destino Recurso</p>
-                              <p className="font-medium">{formGerador.organizacao}</p>
+                              <p className="font-medium">{omLubrificante} (UG: {ugLubrificante})</p>
                             </div>
                           </div>
 
@@ -2548,7 +2585,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                       )}
                       <Button 
                         type="submit" 
-                        disabled={!refLPC || loading || !isFormValid}
+                        disabled={!refLPC || loading || !isFormValid || (consolidadoLubrificante && (!omLubrificante || !ugLubrificante))}
                       >
                         {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")} ({consolidadosGerador.length + (consolidadoLubrificante ? 1 : 0)} registros)
                       </Button>
