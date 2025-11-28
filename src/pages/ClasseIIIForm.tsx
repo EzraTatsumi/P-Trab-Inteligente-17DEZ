@@ -1065,7 +1065,7 @@ export default function ClasseIIIForm() {
       const totalLitros = totalLitrosSemMargem * 1.3;
       const preco = tipoCombustivel === 'GASOLINA' ? (refLPC?.preco_gasolina ?? 0) : (refLPC?.preco_diesel ?? 0);
       const valorTotal = totalLitros * preco;
-      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
+      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel';
       const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
       const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
       const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
@@ -1324,7 +1324,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       const totalLitros = totalLitrosSemMargem * 1.3;
       const preco = tipoCombustivel === 'GASOLINA' ? (refLPC?.preco_gasolina ?? 0) : (refLPC?.preco_diesel ?? 0);
       const valorTotal = totalLitros * preco;
-      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
+      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel';
       const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
       const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
       const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
@@ -1490,7 +1490,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       if (customFaseAtividadeEmbarcacao.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeEmbarcacao.trim()]; }
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
-      let detalhamento = `33.90.39 - Aquisição de Combustível (${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'}) para Embarcações, durante ${formEmbarcacao.dias_operacao} dias de ${faseFormatada}, para ${formEmbarcacao.organizacao}.\nFornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})\n\nCálculo:\n`;
+      let detalhamento = `33.90.39 - Aquisição de Combustível (${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}) para Embarcações, durante ${formEmbarcacao.dias_operacao} dias de ${faseFormatada}, para ${formEmbarcacao.organizacao}.\nFornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})\n\nCálculo:\n`;
       itensGrupo.forEach(item => {
         const litrosSemMargemItem = item.quantidade * item.consumo_fixo * item.horas_dia * formEmbarcacao.dias_operacao;
         totalLitrosSemMargem += litrosSemMargemItem;
@@ -1503,8 +1503,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
       const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
       const localConsulta = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? `(${refLPC.nome_local})` : '';
-      detalhamento += `\n- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'} - ${formatCurrency(precoLitro)}.\n\n`;
-      detalhamento += `Total: ${formatNumber(totalLitrosSemMargem)} L + 30% = ${formatNumber(totalLitros)} L ${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'}.\n`;
+      detalhamento += `\n- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'} - ${formatCurrency(precoLitro)}.\n\n`;
+      detalhamento += `Total: ${formatNumber(totalLitrosSemMargem)} L + 30% = ${formatNumber(totalLitros)} L ${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}.\n`;
       detalhamento += `Valor: ${formatNumber(totalLitros)} L x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
       novosConsolidados.push({
         tipo_combustivel: tipoCombustivel,
@@ -1519,7 +1519,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
   };
   const salvarRegistrosConsolidadosEmbarcacao = async () => {
     if (!ptrabId || consolidadosEmbarcacao.length === 0) return;
-    if (!refLPC) { toast.error("Configure a referência LPC antes de salvar"); if (lpcRef.current) { lpcR ef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+    if (!refLPC) { toast.error("Configure a referência LPC antes de salvar"); if (lpcRef.current) { lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
     if (!formEmbarcacao.organizacao || !formEmbarcacao.ug) { toast.error("Selecione uma OM"); return; }
     if (!rmFornecimento || !codugRmFornecimento) { toast.error("Selecione a RM de fornecimento de combustível"); return; }
     if (formEmbarcacao.itens.length === 0) { toast.error("Adicione pelo menos uma embarcação"); return; }
@@ -1648,7 +1648,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       const totalLitros = totalLitrosSemMargem * 1.3;
       const preco = tipoCombustivel === 'GASOLINA' ? (refLPC?.preco_gasolina ?? 0) : (refLPC?.preco_diesel ?? 0);
       const valorTotal = totalLitros * preco;
-      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
+      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel';
       const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
       const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
       const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
@@ -1993,7 +1993,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                                 suprimentoText = 'Lubrificante';
                               } else if (registro.tipo_combustivel === 'DIESEL') {
                                 suprimentoBadgeClass = 'bg-cyan-600 text-white hover:bg-cyan-700';
-                                suprimentoText = 'Diesel'; // Alterado de 'Óleo Diesel' para 'Diesel'
+                                suprimentoText = 'Óleo Diesel';
                               } else if (registro.tipo_combustivel === 'GASOLINA') {
                                 suprimentoBadgeClass = 'bg-amber-500 text-white hover:bg-amber-600';
                                 suprimentoText = 'Gasolina';
@@ -2517,7 +2517,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           <div className="flex items-center justify-between">
                             <h4 className="font-medium text-lg flex items-center gap-2 text-primary">
                               <Fuel className="h-5 w-5" />
-                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'} (ND 33.90.39)
+                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'} (ND 33.90.39)
                             </h4>
                             <div className="text-right">
                               <p className="text-sm text-muted-foreground">Total com 30%</p>
@@ -2908,7 +2908,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <h4 className="font-medium text-lg">
-                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'}
+                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}
                             </h4>
                             <div className="text-right">
                               <p className="text-sm text-muted-foreground">Total com 30%</p>
@@ -3230,7 +3230,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <h4 className="font-medium text-lg">
-                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'}
+                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}
                             </h4>
                             <div className="text-right">
                               <p className="text-sm text-muted-foreground">Total com 30%</p>
@@ -3552,7 +3552,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <h4 className="font-medium text-lg">
-                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'}
+                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Óleo Diesel'}
                             </h4>
                             <div className="text-right">
                               <p className="text-sm text-muted-foreground">Total com 30%</p>
