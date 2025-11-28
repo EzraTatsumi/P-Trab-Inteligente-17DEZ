@@ -843,7 +843,23 @@ export default function ClasseIIIForm() {
       const lubrificanteRecord = relatedRecords?.find(r => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR');
       if (lubrificanteRecord) {
         // A OM de destino do lubrificante é a OM do registro (organizacao/ug)
-        setSelectedOmLubrificanteId(selectedOmIdForEdit);
+        // Precisamos buscar o ID da OM de destino do lubrificante para preencher o OmSelector
+        let lubOmId: string | undefined = undefined;
+        try {
+          const { data: lubOmData, error: lubOmError } = await supabase
+            .from('organizacoes_militares')
+            .select('id')
+            .eq('nome_om', lubrificanteRecord.organizacao)
+            .eq('codug_om', lubrificanteRecord.ug)
+            .single();
+          if (lubOmData && !lubOmError) {
+            lubOmId = lubOmData.id;
+          }
+        } catch (error) {
+          console.error("Erro ao buscar OM de lubrificante para edição:", error);
+        }
+        
+        setSelectedOmLubrificanteId(lubOmId);
         setOmLubrificante(lubrificanteRecord.organizacao);
         setUgLubrificante(lubrificanteRecord.ug);
       } else {
@@ -1028,7 +1044,7 @@ export default function ClasseIIIForm() {
       return; 
     }
     
-    // --- CÁLCULO DE COMBUSTÍVEL ---
+    // --- CÁLCULO DE COMBUSTÍVEL (ND 33.90.39) ---
     const gruposCombustivel = itens.reduce((acc, item) => {
       if (!acc[item.tipo_combustivel]) { acc[item.tipo_combustivel] = []; }
       acc[item.tipo_combustivel].push(item);
@@ -1958,7 +1974,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                               <th className="text-left p-3 font-semibold text-sm w-[20%]">OM</th>
                               <th className="text-left p-3 font-semibold text-sm w-[12%]">UG</th>
                               <th className="text-left p-3 font-semibold text-sm w-[15%]">Tipo</th>
-                              <th className="text-left p-3 font-semibold text-sm w-[12%]">Combustível</th>
+                              <th className="text-left p-3 font-semibold text-sm w-[12%]">Suprimento</th> {/* Rótulo alterado */}
                               <th className="text-right p-3 font-semibold text-sm w-[13%]">Total Litros</th>
                               <th className="text-right p-3 font-semibold text-sm w-[13%]">Valor Total</th>
                               <th className="text-center p-3 font-semibold text-sm w-[15%]">Ações</th>
@@ -1968,11 +1984,12 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                             {registros.map((registro) => {
                               const isLubrificante = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR';
                               const tipoLabel = isLubrificante ? 'Lubrificante (Gerador)' : getTipoLabel(registro.tipo_equipamento as TipoEquipamento);
-                              const combustivelBadgeClass = isLubrificante 
-                                ? 'bg-purple-100 text-purple-800' 
-                                : registro.tipo_combustivel === 'DIESEL' || registro.tipo_combustivel === 'OD'
-                                  ? 'bg-primary/10 text-primary' 
-                                  : 'bg-secondary/10 text-secondary';
+                              
+                              // ND 30 (Lubrificante) = Roxo
+                              // ND 39 (Combustível) = Primário (Azul/Verde)
+                              const suprimentoBadgeClass = isLubrificante 
+                                ? 'bg-purple-600 text-white' 
+                                : 'bg-primary text-primary-foreground';
                               
                               return (
                                 <tr key={registro.id} className="border-t hover:bg-muted/50 transition-colors">
@@ -1980,7 +1997,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                                   <td className="p-3 text-sm">{registro.ug}</td>
                                   <td className="p-3 text-sm">{tipoLabel}</td>
                                   <td className="p-3 text-sm">
-                                    <Badge variant="outline" className={combustivelBadgeClass}>
+                                    <Badge variant="default" className={suprimentoBadgeClass}>
                                       {isLubrificante ? 'ND 30' : 'ND 39'}
                                     </Badge>
                                   </td>
@@ -2078,9 +2095,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                               variant="default" 
                               className={isLubrificante 
                                 ? 'bg-purple-600 text-primary-foreground' 
-                                : registro.tipo_combustivel === 'DIESEL' || registro.tipo_combustivel === 'OD'
-                                  ? 'bg-primary text-primary-foreground' 
-                                  : 'bg-secondary text-secondary-foreground'}
+                                : 'bg-primary text-primary-foreground'}
                             >
                               {isLubrificante ? 'LUBRIFICANTE (ND 30)' : 'COMBUSTÍVEL (ND 39)'}
                             </Badge>
@@ -2414,11 +2429,11 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                     {itemGeradorTemp.consumo_fixo > 0 && (
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="secondary">
+                        <Badge variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
                           Combustível: {itemGeradorTemp.tipo_combustivel} ({formatNumber(itemGeradorTemp.consumo_fixo, 1)} L/h)
                         </Badge>
                         {itemGeradorTemp.consumo_lubrificante_litro > 0 && (
-                          <Badge variant="secondary" className="bg-purple-100 text-purple-800 hover:bg-purple-200">
+                          <Badge variant="default" className="bg-purple-600 text-white hover:bg-purple-700">
                             Lubrificante: {formatNumber(itemGeradorTemp.consumo_lubrificante_litro, 2)} L/100h @ {formatCurrency(itemGeradorTemp.preco_lubrificante)}
                           </Badge>
                         )}
@@ -2810,10 +2825,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                     {itemViaturaTemp.consumo_fixo > 0 && (
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary">
+                        <Badge variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
                           Consumo: {formatNumber(itemViaturaTemp.consumo_fixo, 1)} km/L
                         </Badge>
-                        <Badge variant="secondary">
+                        <Badge variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
                           Combustível: {itemViaturaTemp.tipo_combustivel}
                         </Badge>
                       </div>
@@ -3132,10 +3147,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                     {itemEmbarcacaoTemp.consumo_fixo > 0 && (
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary">
+                        <Badge variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
                           Consumo: {formatNumber(itemEmbarcacaoTemp.consumo_fixo, 1)} L/h
                         </Badge>
-                        <Badge variant="secondary">
+                        <Badge variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
                           Combustível: {itemEmbarcacaoTemp.tipo_combustivel}
                         </Badge>
                       </div>
@@ -3454,10 +3469,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                     {itemEngenhariaTemp.consumo_fixo > 0 && (
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary">
+                        <Badge variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
                           Consumo: {formatNumber(itemEngenhariaTemp.consumo_fixo, 1)} L/h
                         </Badge>
-                        <Badge variant="secondary">
+                        <Badge variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
                           Combustível: {itemEngenhariaTemp.tipo_combustivel}
                         </Badge>
                       </div>
