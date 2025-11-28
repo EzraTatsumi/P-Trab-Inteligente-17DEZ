@@ -22,6 +22,7 @@ import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { defaultClasseIIConfig } from "@/data/classeIIData"; // Importar dados padrão
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -127,6 +128,8 @@ export default function ClasseIIForm() {
         .maybeSingle();
 
       if (!diretrizCusteio) {
+        // Se não houver diretriz de custeio, usa os valores padrão
+        setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
         toast.warning("Diretriz de Custeio não encontrada. Usando valores padrão.");
         return;
       }
@@ -141,9 +144,18 @@ export default function ClasseIIForm() {
 
       if (error) throw error;
 
-      setDiretrizes((classeIIData || []) as DiretrizClasseII[]);
+      if (classeIIData && classeIIData.length > 0) {
+        setDiretrizes((classeIIData || []) as DiretrizClasseII[]);
+      } else {
+        // Se a diretriz de custeio existe, mas a tabela de itens está vazia, usa o fallback
+        setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
+        toast.warning("Itens de Classe II não configurados para o ano. Usando valores padrão.");
+      }
+      
     } catch (error) {
       console.error("Erro ao carregar diretrizes:", error);
+      setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
+      toast.error("Erro ao carregar diretrizes. Usando valores padrão.");
     }
   };
 
