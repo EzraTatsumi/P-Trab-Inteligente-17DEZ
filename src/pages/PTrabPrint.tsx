@@ -185,7 +185,7 @@ const PTrabPrint = () => {
     
     const ultimaFase = fases[fases.length - 1];
     const demaisFases = fases.slice(0, -1).join(', ');
-    return `${demaisFases} e ${ultimaFases}`;
+    return `${demaisFases} e ${ultimaFase}`;
   };
 
   // Função para gerar memória automática de Classe I
@@ -342,8 +342,8 @@ Total QR: ${formatCurrency(total_qr)}.`;
     // NEW: Total Lubrificante (ND 30)
     const totalLubrificante = grupo.linhasLubrificante.reduce((acc, linha) => acc + linha.registro.valor_total, 0);
     
-    // Total ND 30 = Classe I + Lubrificante
-    const totalParteAzul = totalQS + totalQR + totalLubrificante; 
+    // Total ND 30 (Coluna C) = Classe I + Lubrificante
+    const total_33_90_30 = totalQS + totalQR + totalLubrificante; 
     
     // Total Combustível (ND 39) - Apenas Combustível (não lubrificante) e apenas se for a RM
     const classeIIIDestaOM = (nomeOM === nomeRM) 
@@ -359,8 +359,14 @@ Total QR: ${formatCurrency(total_qr)}.`;
     
     const totalCombustivel = valorDiesel + valorGasolina; // Valor total da Classe III Combustível (ND 39)
     
-    // Total GND 3 = Total ND 30 (Classe I + Lubrificante) + Total Combustível ND 39
-    const totalGeral = totalParteAzul + totalCombustivel; 
+    // Coluna D (33.90.39) deve ser 0
+    const total_33_90_39 = 0;
+    
+    // Coluna E (TOTAL ND) = Coluna C + Coluna D
+    const total_parte_azul = total_33_90_30 + total_33_90_39;
+    
+    // Total GND 3 (Valor Total Solicitado) = Total Parte Azul + Total Combustível (Laranja)
+    const total_gnd3 = total_parte_azul + totalCombustivel; 
     
     const totalDieselLitros = classeIIIDestaOM
       .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
@@ -370,11 +376,11 @@ Total QR: ${formatCurrency(total_qr)}.`;
       .reduce((acc, reg) => acc + reg.total_litros, 0);
 
     return {
-      total_33_90_30: totalParteAzul, // Classe I + Lubrificante
-      total_33_90_39: 0, // Coluna D deve ser 0
-      total_parte_azul: totalParteAzul,
-      total_combustivel: totalCombustivel,
-      total_gnd3: totalGeral,
+      total_33_90_30, // Classe I + Lubrificante
+      total_33_90_39, // Zero
+      total_parte_azul, // Total ND (C+D)
+      total_combustivel, // Valor total da Classe III Combustível (Laranja)
+      total_gnd3, // Valor Total Solicitado (GND 3)
       totalDieselLitros,
       totalGasolinaLitros,
       valorDiesel,
@@ -842,7 +848,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       const totalValorCombustivel = registrosClasseIII.filter(isCombustivel).reduce((acc, reg) => acc + reg.valor_total, 0);
       
       const totalGeral_33_90_39 = 0; 
-      const totalGeralAcumulado = totalGeral_33_90_30 + totalValorCombustivel; 
+      const totalGeralAcumulado = totalGeral_33_90_30 + totalGeral_33_90_39; 
       
       const totalDiesel = registrosClasseIII.filter(isCombustivel)
         .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
@@ -870,7 +876,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       somaRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
       somaRow.getCell('D').style = { ...somaRow.getCell('D').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
       
-      somaRow.getCell('E').value = totalGeralAcumulado; // Total C + H
+      somaRow.getCell('E').value = totalGeralAcumulado; // Total C + D
       somaRow.getCell('E').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       somaRow.getCell('E').font = { bold: true };
       somaRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
