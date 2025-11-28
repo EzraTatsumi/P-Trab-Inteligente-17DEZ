@@ -444,24 +444,57 @@ const DiretrizesCusteioPage = () => {
   
   // Função para renderizar a lista de itens da Classe II por categoria
   const renderClasseIIList = (categoria: DiretrizClasseIIForm['categoria']) => {
+    // Filtra os itens que pertencem à categoria atual
     const filteredItems = classeIIConfig.filter(item => item.categoria === categoria);
     
+    // Mapeia os itens filtrados para a renderização
     return (
       <div className="space-y-4 pt-4">
         {filteredItems.map((item, index) => {
-          // Encontrar o índice original no array completo para permitir a atualização
+          // Encontrar o índice original no array completo para permitir a atualização/remoção
+          // Isso é necessário porque 'filteredItems' tem índices diferentes de 'classeIIConfig'
           const originalIndex = classeIIConfig.findIndex(c => c.item === item.item && c.categoria === item.categoria);
           
           // Se o item não for encontrado (ex: item recém-adicionado), usamos o índice do filtro
-          const indexToUse = originalIndex !== -1 ? originalIndex : classeIIConfig.length - 1;
+          // Nota: Para novos itens, o índice correto é o último do array completo, mas para garantir que a remoção/atualização funcione corretamente no array principal, precisamos do índice exato.
+          // Vamos usar o índice do item no array principal (classeIIConfig)
+          const indexToUse = classeIIConfig.findIndex(c => c.item === item.item && c.categoria === item.categoria);
+          
+          // Se o item for novo e ainda não tiver um item/categoria único, o findIndex pode falhar.
+          // Para simplificar, vamos garantir que a lógica de atualização/remoção use o índice correto no array principal.
+          // Como a lógica de adição sempre adiciona ao final, e a remoção/atualização deve ser feita no item correto,
+          // vamos refinar a busca do índice para garantir que estamos manipulando o objeto correto.
+          
+          // Para evitar problemas de índice ao filtrar, vamos usar um identificador único temporário se o item for novo.
+          // No entanto, como não temos IDs temporários aqui, vamos manter a lógica de busca pelo item e categoria,
+          // e garantir que a adição de novos itens seja tratada corretamente.
+          
+          // Se o item for novo (item vazio), o findIndex pode retornar -1 se houver outros itens vazios.
+          // Para fins de demonstração e seguindo a estrutura existente, vamos usar o índice do item no array filtrado
+          // e garantir que a função de atualização/remoção encontre o item correto no array principal.
+          
+          // Refinando a lógica de atualização/remoção para usar o índice do item no array principal (classeIIConfig)
+          const handleUpdateFilteredItem = (field: keyof DiretrizClasseIIForm, value: any) => {
+            const indexInMainArray = classeIIConfig.findIndex(c => c === item);
+            if (indexInMainArray !== -1) {
+              handleUpdateClasseIIItem(indexInMainArray, field, value);
+            }
+          };
 
+          const handleRemoveFilteredItem = () => {
+            const indexInMainArray = classeIIConfig.findIndex(c => c === item);
+            if (indexInMainArray !== -1) {
+              handleRemoveClasseIIItem(indexInMainArray);
+            }
+          };
+          
           return (
             <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
               <div className="col-span-8">
                 <Label className="text-xs">Item</Label>
                 <Input
                   value={item.item}
-                  onChange={(e) => handleUpdateClasseIIItem(indexToUse, 'item', e.target.value)}
+                  onChange={(e) => handleUpdateFilteredItem('item', e.target.value)}
                   placeholder="Ex: Colete balístico"
                   onKeyDown={handleEnterToNextField}
                 />
@@ -473,7 +506,7 @@ const DiretrizesCusteioPage = () => {
                   step="0.01"
                   className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   value={item.valor_mnt_dia === 0 ? "" : item.valor_mnt_dia}
-                  onChange={(e) => handleUpdateClasseIIItem(indexToUse, 'valor_mnt_dia', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseFloat(e.target.value) || 0)}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
@@ -481,7 +514,7 @@ const DiretrizesCusteioPage = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => handleRemoveClasseIIItem(indexToUse)}
+                  onClick={handleRemoveFilteredItem}
                   type="button"
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
@@ -601,8 +634,7 @@ const DiretrizesCusteioPage = () => {
                   className="flex items-center justify-between cursor-pointer py-2" 
                   onClick={() => setShowClasseIIConfig(!showClasseIIConfig)}
                 >
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Package className="h-5 w-5 text-secondary" />
+                  <h3 className="text-lg font-semibold">
                     Classe II - Material de Intendência
                   </h3>
                   {showClasseIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
