@@ -1,5 +1,3 @@
-"use client"
-
 import * as React from "react"
 import * as AccordionPrimitive from "@radix-ui/react-accordion"
 import { ChevronDown } from "lucide-react"
@@ -28,25 +26,14 @@ const AccordionTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline group", // Adicionado 'group' para usar group-data-[state]
+        "flex flex-1 items-center justify-between py-4 font-medium transition-all [&[data-state=open]>svg]:rotate-180",
         className
       )}
       {...props}
     >
       {children}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        {/* Texto para estado fechado (ChevronDown): "para mais detalhes" */}
-        <span className="group-data-[state=open]:hidden">
-          para mais detalhes
-        </span>
-        {/* Texto para estado aberto (ChevronUp): "para menos detalhes" */}
-        <span className="group-data-[state=closed]:hidden">
-          para menos detalhes
-        </span>
-        <ChevronDown 
-          className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" 
-        />
-      </div>
+      {/* Removendo os textos de detalhe, mantendo apenas o ícone */}
+      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 text-muted-foreground" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ))
