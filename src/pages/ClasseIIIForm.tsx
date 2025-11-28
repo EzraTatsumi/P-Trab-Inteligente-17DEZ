@@ -799,17 +799,47 @@ export default function ClasseIIIForm() {
       setCodugRmFornecimento(defaultRmCodug);
     }
 
-    if (registro.tipo_equipamento === 'GERADOR') {
+    if (registro.tipo_equipamento === 'GERADOR' || registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR') {
+      // Para edição de gerador, precisamos carregar todos os registros (combustível e lubrificante)
+      // para a mesma OM/UG e consolidá-los no formulário.
+      
+      // 1. Buscar todos os registros de GERADOR e LUBRIFICANTE_GERADOR para esta OM/UG
+      const { data: relatedRecords, error: relatedError } = await supabase
+        .from("classe_iii_registros")
+        .select("*, consumo_lubrificante_litro, preco_lubrificante")
+        .eq("p_trab_id", ptrabId!)
+        .in("tipo_equipamento", ["GERADOR", "LUBRIFICANTE_GERADOR"])
+        .eq("organizacao", registro.organizacao)
+        .eq("ug", registro.ug);
+        
+      if (relatedError) {
+        console.error("Erro ao carregar registros relacionados para edição:", relatedError);
+        toast.error("Erro ao carregar registros relacionados para edição.");
+        return;
+      }
+      
+      // 2. Extrair a lista de itens (itens_equipamentos) de um dos registros (eles devem ser iguais)
+      const itemRecord = relatedRecords?.find(r => r.itens_equipamentos);
+      const itens = (itemRecord?.itens_equipamentos as ItemGerador[]) || [];
+      
+      // 3. Preencher o formulário de Gerador
       setFormGerador({
         selectedOmId: selectedOmIdForEdit,
         organizacao: registro.organizacao,
         ug: registro.ug,
         dias_operacao: registro.dias_operacao,
-        itens: (registro.itens_equipamentos as ItemGerador[]) || [],
+        itens: itens,
       });
+      
+      // 4. Preencher as fases (pegar de qualquer registro)
       const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
       setFasesAtividadeGerador(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
       setCustomFaseAtividadeGerador(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
+      
+      // O editingId é mantido para indicar que estamos em modo de edição, mas o salvamento
+      // será feito deletando e reinserindo todos os registros consolidados para esta OM/UG.
+      setEditingId(registro.id); 
+
     } else if (registro.tipo_equipamento === 'MOTOMECANIZACAO') {
       setFormViatura({
         selectedOmId: selectedOmIdForEdit,
@@ -2227,8 +2257,9 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                   <div className="space-y-4 border-t pt-6" ref={addGeradorRef}>
                     <h3 className="text-lg font-semibold">2. Adicionar Geradores</h3>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
-                      <div className="space-y-2 lg:col-span-2">
+                    {/* LINHA 1: DADOS DO GERADOR (3 COLUNAS) */}
+                    <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
+                      <div className="space-y-2 col-span-3">
                         <Label>Tipo de Gerador *</Label>
                         <Select 
                           value={itemGeradorTemp.tipo_equipamento_especifico}
@@ -2276,10 +2307,20 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           onKeyDown={handleEnterToNextField}
                         />
                       </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Combustível</Label>
+                        <Input 
+                          value={itemGeradorTemp.tipo_combustivel} 
+                          readOnly 
+                          disabled 
+                          className="disabled:opacity-100"
+                        />
+                      </div>
                     </div>
                     
-                    {/* NOVOS CAMPOS DE LUBRIFICANTE */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+                    {/* LINHA 2: DADOS DO LUBRIFICANTE (3 COLUNAS) */}
+                    <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg border-t border-border">
                       <div className="space-y-2">
                         <Label>Consumo Lubrificante (L/100h)</Label>
                         <Input
@@ -2310,14 +2351,29 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                         />
                       </div>
                       
-                      <div className="space-y-2 lg:col-span-2">
-                        <Label>&nbsp;</Label>
-                        <Button type="button" onClick={adicionarOuAtualizarItemGerador} className="w-full" disabled={!refLPC || !isItemValid}>
-                          {editingGeradorItemIndex !== null ? "Atualizar Item" : "Adicionar"}
-                        </Button>
+                      <div className="space-y-2">
+                        <Label>Destino Recurso (ND 30)</Label>
+                        <Input 
+                          value={formGerador.organizacao} 
+                          readOnly 
+                          disabled 
+                          className="disabled:opacity-100"
+                        />
+                        <p className="text-xs text-muted-foreground">OM Detentora do Equipamento</p>
                       </div>
                     </div>
-                    {/* FIM NOVOS CAMPOS DE LUBRIFICANTE */}
+                    {/* FIM DADOS DO LUBRIFICANTE */}
+
+                    <div className="flex justify-end">
+                      <Button 
+                        type="button" 
+                        onClick={adicionarOuAtualizarItemGerador} 
+                        className="w-full md:w-auto" 
+                        disabled={!refLPC || !isItemValid}
+                      >
+                        {editingGeradorItemIndex !== null ? "Atualizar Item" : "Adicionar"}
+                      </Button>
+                    </div>
 
                     {itemGeradorTemp.consumo_fixo > 0 && (
                       <div className="flex flex-wrap items-center gap-2">
@@ -2357,7 +2413,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                               <p className="font-medium">{item.tipo_equipamento_especifico}</p>
                               <p className="text-sm text-muted-foreground">
                                 {item.quantidade} unidade(s) • {formatNumber(item.horas_dia, 1)}h/dia • {formatNumber(item.consumo_fixo, 1)} L/h {item.tipo_combustivel}
-                                {item.consumo_lubrificante_litro > 0 && ` • Lub: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/100h`}
+                                {item.consumo_lubrificante_litro > 0 && ` • Lub: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/100h @ ${formatCurrency(item.preco_lubrificante)}`}
                               </p>
                             </div>
                             <div className="flex gap-1">
