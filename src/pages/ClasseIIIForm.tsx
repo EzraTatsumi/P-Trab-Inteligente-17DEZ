@@ -626,7 +626,7 @@ export default function ClasseIIIForm() {
     // 3 ou mais fases: "Fase1, Fase2 e Fase3"
     const ultimaFase = fasesOrdenadas[fasesOrdenadas.length - 1];
     const demaisFases = fasesOrdenadas.slice(0, -1).join(', ');
-    return `${demaisFases} e ${ultimaFases}`;
+    return `${demaisFases} e ${ultimaFase}`;
   };
 
   const handleDeletar = async (id: string) => {
@@ -2240,6 +2240,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
     const isFormValid = formGerador.organizacao && formGerador.ug && rmFornecimento && codugRmFornecimento && formGerador.dias_operacao > 0 && formGerador.itens.length > 0;
     const isItemValid = itemGeradorTemp.tipo_equipamento_especifico && itemGeradorTemp.quantidade > 0 && itemGeradorTemp.horas_dia > 0;
     
+    const fuelBadgeClass = itemGeradorTemp.tipo_combustivel === 'DIESEL' 
+      ? 'bg-cyan-600 text-white hover:bg-cyan-700' 
+      : 'bg-amber-500 text-white hover:bg-amber-600';
+
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
@@ -2479,7 +2483,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                     {itemGeradorTemp.consumo_fixo > 0 && (
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        <Badge variant="default" className={fuelBadgeClass}>
                           Combustível: {itemGeradorTemp.tipo_combustivel} ({formatNumber(itemGeradorTemp.consumo_fixo, 1)} L/h)
                         </Badge>
                         {itemGeradorTemp.consumo_lubrificante_litro > 0 && (
@@ -2666,6 +2670,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
   }
 
   if (tipoSelecionado === 'MOTOMECANIZACAO') {
+    const fuelBadgeClass = itemViaturaTemp.tipo_combustivel === 'DIESEL' 
+      ? 'bg-cyan-600 text-white hover:bg-cyan-700' 
+      : 'bg-amber-500 text-white hover:bg-amber-600';
+
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
@@ -2875,10 +2883,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                     {itemViaturaTemp.consumo_fixo > 0 && (
                       <div className="flex items-center gap-2">
-                        <Badge variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        <Badge variant="default" className={fuelBadgeClass}>
                           Consumo: {formatNumber(itemViaturaTemp.consumo_fixo, 1)} km/L
                         </Badge>
-                        <Badge variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        <Badge variant="default" className={fuelBadgeClass}>
                           Combustível: {itemViaturaTemp.tipo_combustivel}
                         </Badge>
                       </div>
@@ -3010,6 +3018,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
   }
 
   if (tipoSelecionado === 'EMBARCACAO') {
+    const fuelBadgeClass = itemEmbarcacaoTemp.tipo_combustivel === 'DIESEL' 
+      ? 'bg-cyan-600 text-white hover:bg-cyan-700' 
+      : 'bg-amber-500 text-white hover:bg-amber-600';
+
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
@@ -3197,10 +3209,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                     {itemEmbarcacaoTemp.consumo_fixo > 0 && (
                       <div className="flex items-center gap-2">
-                        <Badge variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        <Badge variant="default" className={fuelBadgeClass}>
                           Consumo: {formatNumber(itemEmbarcacaoTemp.consumo_fixo, 1)} L/h
                         </Badge>
-                        <Badge variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        <Badge variant="default" className={fuelBadgeClass}>
                           Combustível: {itemEmbarcacaoTemp.tipo_combustivel}
                         </Badge>
                       </div>
@@ -3332,6 +3344,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
   }
 
   if (tipoSelecionado === 'EQUIPAMENTO_ENGENHARIA') {
+    const fuelBadgeClass = itemEngenhariaTemp.tipo_combustivel === 'DIESEL' 
+      ? 'bg-cyan-600 text-white hover:bg-cyan-700' 
+      : 'bg-amber-500 text-white hover:bg-amber-600';
+
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
@@ -3519,10 +3535,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                     {itemEngenhariaTemp.consumo_fixo > 0 && (
                       <div className="flex items-center gap-2">
-                        <Badge variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        <Badge variant="default" className={fuelBadgeClass}>
                           Consumo: {formatNumber(itemEngenhariaTemp.consumo_fixo, 1)} L/h
                         </Badge>
-                        <Badge variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        <Badge variant="default" className={fuelBadgeClass}>
                           Combustível: {itemEngenhariaTemp.tipo_combustivel}
                         </Badge>
                       </div>
