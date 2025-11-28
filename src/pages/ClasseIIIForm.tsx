@@ -1750,6 +1750,17 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
   // FIM Lógica Equipamento de Engenharia
 
   if (!tipoSelecionado) {
+    
+    // Cálculo dos totais separados
+    const registrosCombustivel = registros.filter(r => r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR');
+    const totalGasolinaLitros = registrosCombustivel.filter(r => r.tipo_combustivel === 'GASOLINA').reduce((sum, r) => sum + r.total_litros, 0);
+    const totalGasolinaValor = registrosCombustivel.filter(r => r.tipo_combustivel === 'GASOLINA').reduce((sum, r) => sum + r.valor_total, 0);
+    const totalDieselLitros = registrosCombustivel.filter(r => r.tipo_combustivel === 'DIESEL').reduce((sum, r) => sum + r.total_litros, 0);
+    const totalDieselValor = registrosCombustivel.filter(r => r.tipo_combustivel === 'DIESEL').reduce((sum, r) => sum + r.valor_total, 0);
+    const totalLubrificanteLitros = registros.filter(r => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR').reduce((sum, r) => sum + r.total_litros, 0);
+    const totalLubrificanteValor = registros.filter(r => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR').reduce((sum, r) => sum + r.valor_total, 0);
+    const custoTotalClasseIII = totalGasolinaValor + totalDieselValor + totalLubrificanteValor;
+
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
@@ -2042,23 +2053,36 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                             })}
                           </tbody>
                           <tfoot className="bg-muted/50 border-t-2">
+                            {/* TOTAL GASOLINA */}
                             <tr>
-                              <td colSpan={4} className="p-3 text-sm font-semibold">TOTAL COMBUSTÍVEL</td>
-                              <td className="p-3 text-sm text-right font-bold">
-                                {formatNumber(registros.filter(r => r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR').reduce((sum, r) => sum + r.total_litros, 0))} L
+                              <td colSpan={4} className="p-3 text-sm font-semibold text-amber-500">TOTAL GASOLINA</td>
+                              <td className="p-3 text-sm text-right font-bold text-amber-500">
+                                {formatNumber(totalGasolinaLitros)} L
                               </td>
-                              <td className="p-3 text-sm text-right font-bold text-primary">
-                                {formatCurrency(registros.filter(r => r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR').reduce((sum, r) => sum + r.valor_total, 0))}
+                              <td className="p-3 text-sm text-right font-bold text-amber-500">
+                                {formatCurrency(totalGasolinaValor)}
                               </td>
                               <td></td>
                             </tr>
+                            {/* TOTAL DIESEL */}
+                            <tr>
+                              <td colSpan={4} className="p-3 text-sm font-semibold text-cyan-600">TOTAL DIESEL</td>
+                              <td className="p-3 text-sm text-right font-bold text-cyan-600">
+                                {formatNumber(totalDieselLitros)} L
+                              </td>
+                              <td className="p-3 text-sm text-right font-bold text-cyan-600">
+                                {formatCurrency(totalDieselValor)}
+                              </td>
+                              <td></td>
+                            </tr>
+                            {/* TOTAL LUBRIFICANTE */}
                             <tr>
                               <td colSpan={4} className="p-3 text-sm font-semibold">TOTAL LUBRIFICANTE</td>
                               <td className="p-3 text-sm text-right font-bold">
-                                {formatNumber(registros.filter(r => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR').reduce((sum, r) => sum + r.total_litros, 0))} L
+                                {formatNumber(totalLubrificanteLitros)} L
                               </td>
                               <td className="p-3 text-sm text-right font-bold text-purple-600">
-                                {formatCurrency(registros.filter(r => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR').reduce((sum, r) => sum + r.valor_total, 0))}
+                                {formatCurrency(totalLubrificanteValor)}
                               </td>
                               <td></td>
                             </tr>
@@ -2069,7 +2093,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                               <td className="p-3 text-sm text-right font-bold">
                               </td>
                               <td className="p-3 text-sm text-right font-extrabold text-primary text-base">
-                                {formatCurrency(registros.reduce((sum, r) => sum + r.valor_total, 0))}
+                                {formatCurrency(custoTotalClasseIII)}
                               </td>
                               <td></td>
                             </tr>
@@ -2445,7 +2469,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     <div className="flex justify-end">
                       <Button 
                         type="button" 
-                        onClick={adicionarOuAtualizarItemGerador} 
+                        onClick={adicionarOu AtualizarItemGerador} 
                         className="w-full md:w-auto" 
                         disabled={!refLPC || !isItemValid}
                       >
