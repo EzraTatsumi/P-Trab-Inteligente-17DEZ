@@ -852,11 +852,9 @@ const PTrabManager = () => {
   };
 
   const isConsolidationDisabled = pTrabs.length < 2;
-  const consolidationTooltipText = isConsolidationDisabled 
-    ? "É necessário ter pelo menos 2 Planos de Trabalho cadastrados para realizar a consolidação."
-    : "Consolidar dados de múltiplos P Trabs em um único destino.";
+  const consolidationTooltipText = "Consolidar dados de múltiplos P Trabs em um único destino.";
     
-  // NOVO: Mensagem detalhada para quando a consolidação está desativada
+  // Mensagem detalhada para quando a consolidação está desativada
   const getConsolidationDisabledMessage = () => {
     return "É necessário ter pelo menos 2 Planos de Trabalho cadastrados para realizar a consolidação. Cadastre mais P Trabs para habilitar esta função.";
   };
@@ -1091,11 +1089,12 @@ const PTrabManager = () => {
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{consolidationTooltipText}</p>
-                  {isConsolidationDisabled && (
-                    <p className="text-xs text-orange-400 mt-1 max-w-xs">
+                  {isConsolidationDisabled ? (
+                    <p className="text-xs text-orange-400 max-w-xs">
                       {getConsolidationDisabledMessage()}
                     </p>
+                  ) : (
+                    <p>{consolidationTooltipText}</p>
                   )}
                 </TooltipContent>
               </Tooltip>
