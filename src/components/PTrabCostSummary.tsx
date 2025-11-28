@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp } from "lucide-react"; // Importar HardHat e Plane
+import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Droplet } from "lucide-react"; // Importar Droplet
 import {
   Accordion,
   AccordionContent,
@@ -62,35 +62,53 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalRefeicoesIntermediarias += record.efetivo * record.nr_ref_int * record.dias_operacao;
   });
 
-  // 2. Fetch Classe III totals (33.90.39)
+  // 2. Fetch Classe III totals (33.90.39 - Combustível e 33.90.30 - Lubrificante)
   const { data: classeIIIData, error: classeIIIError } = await supabase
     .from('classe_iii_registros')
-    .select('valor_total, tipo_combustivel, total_litros')
+    .select('valor_total, tipo_combustivel, total_litros, tipo_equipamento')
     .eq('p_trab_id', ptrabId);
 
   if (classeIIIError) throw classeIIIError;
 
-  const totalDieselValor = (classeIIIData || [])
+  // Filtra registros de Combustível (ND 39)
+  const combustivelRecords = (classeIIIData || []).filter(r => 
+    r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR' && r.tipo_equipamento !== 'LUBRIFICANTE_EMBARCACAO'
+  );
+  
+  // Filtra registros de Lubrificante (ND 30)
+  const lubrificanteRecords = (classeIIIData || []).filter(r => 
+    r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO'
+  );
+
+  // Totais de Combustível (ND 39)
+  const totalDieselValor = combustivelRecords
     .filter(r => r.tipo_combustivel === 'DIESEL' || r.tipo_combustivel === 'OD')
     .reduce((sum, record) => sum + record.valor_total, 0);
     
-  const totalGasolinaValor = (classeIIIData || [])
+  const totalGasolinaValor = combustivelRecords
     .filter(r => r.tipo_combustivel === 'GASOLINA' || r.tipo_combustivel === 'GAS')
     .reduce((sum, record) => sum + record.valor_total, 0);
     
-  const totalDieselLitros = (classeIIIData || [])
+  const totalDieselLitros = combustivelRecords
     .filter(r => r.tipo_combustivel === 'DIESEL' || r.tipo_combustivel === 'OD')
     .reduce((sum, record) => sum + record.total_litros, 0);
     
-  const totalGasolinaLitros = (classeIIIData || [])
+  const totalGasolinaLitros = combustivelRecords
     .filter(r => r.tipo_combustivel === 'GASOLINA' || r.tipo_combustivel === 'GAS')
     .reduce((sum, record) => sum + record.total_litros, 0);
 
-  const totalClasseIII = totalDieselValor + totalGasolinaValor;
+  const totalCombustivelND39 = totalDieselValor + totalGasolinaValor;
+  
+  // Totais de Lubrificante (ND 30)
+  const totalLubrificanteValor = lubrificanteRecords
+    .reduce((sum, record) => sum + record.valor_total, 0);
+    
+  const totalLubrificanteLitros = lubrificanteRecords
+    .reduce((sum, record) => sum + record.total_litros, 0);
 
-  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classe III (ND 39)
-  const totalLogisticoND30 = totalClasseI;
-  const totalLogisticoND39 = totalClasseIII;
+  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Lubrificante (ND 30) + Combustível (ND 39)
+  const totalLogisticoND30 = totalClasseI + totalLubrificanteValor;
+  const totalLogisticoND39 = totalCombustivelND39;
   const totalLogisticoGeral = totalLogisticoND30 + totalLogisticoND39;
   
   // Novos totais (placeholders)
@@ -114,6 +132,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalGasolinaValor,
     totalDieselLitros,
     totalGasolinaLitros,
+    totalLubrificanteValor, // Novo
+    totalLubrificanteLitros, // Novo
     totalMaterialPermanente,
     totalAviacaoExercito,
   };
@@ -275,25 +295,25 @@ export const PTrabCostSummary = ({
                     </AccordionItem>
                   </Accordion>
 
-                  {/* Classe III - Combustíveis (Item principal) */}
+                  {/* Classe III - Combustíveis e Lubrificantes (Item principal) */}
                   <Accordion type="single" collapsible className="w-full pt-2">
                     <AccordionItem value="item-classe-iii" className="border-b-0">
                       <AccordionTrigger className="p-0 hover:no-underline">
                         <div className="flex justify-between items-center w-full text-sm border-b pb-2 border-border/50">
                           <div className="flex items-center gap-2 text-foreground">
                             <Fuel className="h-4 w-4 text-orange-500" />
-                            Classe III (Combustíveis)
+                            Classe III (Combustíveis e Lubrificantes)
                           </div>
                           <span className={cn(valueClasses, "mr-6")}>
-                            {formatCurrency(totals.totalLogisticoND39)}
+                            {formatCurrency(totals.totalLogisticoND39 + totals.totalLubrificanteValor)}
                           </span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-0">
                         <div className="space-y-1 pl-6 text-xs">
-                          {/* Linha Óleo Diesel */}
+                          {/* Linha Óleo Diesel (ND 39) */}
                           <div className="flex justify-between text-muted-foreground">
-                            <span className={descriptionClasses}>Óleo Diesel</span>
+                            <span className={descriptionClasses}>Óleo Diesel (ND 39)</span>
                             <span className={quantityClasses}>
                               {formatNumber(totals.totalDieselLitros)} L
                             </span>
@@ -301,14 +321,24 @@ export const PTrabCostSummary = ({
                               {formatCurrency(totals.totalDieselValor)}
                             </span>
                           </div>
-                          {/* Linha Gasolina */}
+                          {/* Linha Gasolina (ND 39) */}
                           <div className="flex justify-between text-muted-foreground">
-                            <span className={descriptionClasses}>Gasolina</span>
+                            <span className={descriptionClasses}>Gasolina (ND 39)</span>
                             <span className={quantityClasses}>
                               {formatNumber(totals.totalGasolinaLitros)} L
                             </span>
                             <span className={cn(valueClasses, "mr-6")}>
                               {formatCurrency(totals.totalGasolinaValor)}
+                            </span>
+                          </div>
+                          {/* Linha Lubrificante (ND 30) */}
+                          <div className="flex justify-between text-muted-foreground border-t pt-1 mt-1">
+                            <span className={descriptionClasses}>Lubrificante (ND 30)</span>
+                            <span className={quantityClasses}>
+                              {formatNumber(totals.totalLubrificanteLitros, 2)} L
+                            </span>
+                            <span className={cn(valueClasses, "mr-6")}>
+                              {formatCurrency(totals.totalLubrificanteValor)}
                             </span>
                           </div>
                         </div>
