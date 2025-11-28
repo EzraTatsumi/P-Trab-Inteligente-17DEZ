@@ -2508,7 +2508,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {formGerador.itens.length > 0 && (
-                  <div className="space-y-4 border-t pt-6">
+                  <div className="space-y-4 border-t pt-10">
                     <h3 className="text-lg font-semibold">3. Geradores Configurados ({totalGeradores} unidades)</h3>
                     
                     <div className="space-y-2">
@@ -2550,7 +2550,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {(consolidadosGerador.length > 0 || consolidadoLubrificante) && (
-                  <div className="space-y-4 border-t pt-6">
+                  <div className="space-y-4 border-t pt-10">
                     <h3 className="text-lg font-semibold">4. Consolidação de Custos</h3>
                     
                     {/* CONSOLIDAÇÃO DE COMBUSTÍVEL */}
@@ -2906,7 +2906,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {formViatura.itens.length > 0 && (
-                  <div className="space-y-4 border-t pt-6">
+                  <div className="space-y-4 border-t pt-10">
                     <h3 className="text-lg font-semibold">3. Viaturas Configuradas</h3>
                     
                     <div className="space-y-2">
@@ -2947,7 +2947,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {consolidadosViatura.length > 0 && (
-                  <div className="space-y-4 border-t pt-6">
+                  <div className="space-y-4 border-t pt-10">
                     <h3 className="text-lg font-semibold">4. Consolidação por Combustível</h3>
                     
                     {consolidadosViatura.map((consolidado, index) => (
@@ -3232,7 +3232,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {formEmbarcacao.itens.length > 0 && (
-                  <div className="space-y-4 border-t pt-6">
+                  <div className="space-y-4 border-t pt-10">
                     <h3 className="text-lg font-semibold">3. Embarcações Configuradas</h3>
                     
                     <div className="space-y-2">
@@ -3273,7 +3273,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {consolidadosEmbarcacao.length > 0 && (
-                  <div className="space-y-4 border-t pt-6">
+                  <div className="space-y-4 border-t pt-10">
                     <h3 className="text-lg font-semibold">4. Consolidação por Combustível</h3>
                     
                     {consolidadosEmbarcacao.map((consolidado, index) => (
@@ -3527,7 +3527,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                       <div className="space-y-2">
                         <Label>&nbsp;</Label>
-                        <Button type="button" onClick={adicionarOuAtualizarItemEngenharia} className="w-full" disabled={!refLPC}>
+                        <Button type="button" onClick={adicionarOu AtualizarItemEngenharia} className="w-full" disabled={!refLPC}>
                           {editingEngenhariaItemIndex !== null ? "Atualizar Item" : "Adicionar"}
                         </Button>
                       </div>
@@ -3558,7 +3558,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {formEngenharia.itens.length > 0 && (
-                  <div className="space-y-4 border-t pt-6">
+                  <div className="space-y-4 border-t pt-10">
                     <h3 className="text-lg font-semibold">3. Equipamentos Configurados</h3>
                     
                     <div className="space-y-2">
@@ -3599,7 +3599,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {consolidadosEngenharia.length > 0 && (
-                  <div className="space-y-4 border-t pt-6">
+                  <div className="space-y-4 border-t pt-10">
                     <h3 className="text-lg font-semibold">4. Consolidação por Combustível</h3>
                     
                     {consolidadosEngenharia.map((consolidado, index) => (
