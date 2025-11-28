@@ -2125,9 +2125,11 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                               variant="default" 
                               className={isLubrificante 
                                 ? 'bg-purple-600 text-primary-foreground' 
-                                : 'bg-primary text-primary-foreground'}
+                                : (registro.tipo_combustivel === 'GASOLINA' 
+                                    ? 'bg-amber-500 text-primary-foreground' 
+                                    : 'bg-cyan-600 text-primary-foreground')}
                             >
-                              {isLubrificante ? 'ND 33.90.30' : 'ND 33.90.39'}
+                              {suprimentoTipo}
                             </Badge>
                           </div>
                           
