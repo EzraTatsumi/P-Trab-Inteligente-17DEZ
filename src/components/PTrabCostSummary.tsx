@@ -63,7 +63,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalRefeicoesIntermediarias += record.efetivo * record.nr_ref_int * record.dias_operacao;
   });
 
-  // 2. Fetch Classe III totals (33.90.39 - Combustível e 33.90.30 - Lubrificante)
+  // 2. Fetch Classe III totals (Combustível e Lubrificante)
   const { data: classeIIIData, error: classeIIIError } = await supabase
     .from('classe_iii_registros')
     .select('valor_total, tipo_combustivel, total_litros, tipo_equipamento')
@@ -98,7 +98,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     .filter(r => r.tipo_combustivel === 'GASOLINA' || r.tipo_combustivel === 'GAS')
     .reduce((sum, record) => sum + record.total_litros, 0);
 
-  const totalCombustivelND39 = totalDieselValor + totalGasolinaValor;
+  const totalCombustivel = totalDieselValor + totalGasolinaValor;
   
   // Totais de Lubrificante (ND 30)
   const totalLubrificanteValor = lubrificanteRecords
@@ -108,9 +108,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     .reduce((sum, record) => sum + record.total_litros, 0);
 
   // O total logístico para o PTrab é a soma da Classe I (ND 30) + Lubrificante (ND 30) + Combustível (ND 39)
-  const totalLogisticoND30 = totalClasseI + totalLubrificanteValor;
-  const totalLogisticoND39 = totalCombustivelND39;
-  const totalLogisticoGeral = totalLogisticoND30 + totalLogisticoND39;
+  const totalLogisticoGeral = totalClasseI + totalLubrificanteValor + totalCombustivel;
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
@@ -121,8 +119,6 @@ const fetchPTrabTotals = async (ptrabId: string) => {
 
   return {
     totalLogisticoGeral,
-    totalLogisticoND30,
-    totalLogisticoND39,
     totalOperacional,
     totalClasseI,
     totalComplemento,
@@ -135,6 +131,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalGasolinaLitros,
     totalLubrificanteValor, // Novo
     totalLubrificanteLitros, // Novo
+    totalCombustivel, // Total Combustível (ND 39)
     totalMaterialPermanente,
     totalAviacaoExercito,
   };
@@ -153,8 +150,6 @@ export const PTrabCostSummary = ({
     refetchInterval: 10000, // Atualiza a cada 10 segundos
     initialData: {
       totalLogisticoGeral: 0,
-      totalLogisticoND30: 0,
-      totalLogisticoND39: 0,
       totalOperacional: 0,
       totalClasseI: 0,
       totalComplemento: 0,
@@ -167,6 +162,7 @@ export const PTrabCostSummary = ({
       totalGasolinaLitros: 0,
       totalLubrificanteValor: 0,
       totalLubrificanteLitros: 0,
+      totalCombustivel: 0,
       totalMaterialPermanente: 0,
       totalAviacaoExercito: 0,
     },
@@ -331,15 +327,15 @@ export const PTrabCostSummary = ({
                             Classe III (Combustíveis e Lubrificantes)
                           </div>
                           <span className={cn(valueClasses, "mr-6")}>
-                            {formatCurrency(totals.totalLogisticoND39 + totals.totalLubrificanteValor)}
+                            {formatCurrency(totals.totalCombustivel + totals.totalLubrificanteValor)}
                           </span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-0">
                         <div className="space-y-1 pl-6 text-xs">
-                          {/* Linha Óleo Diesel (ND 39) */}
+                          {/* Linha Óleo Diesel */}
                           <div className="flex justify-between text-muted-foreground">
-                            <span className={descriptionClasses}>Óleo Diesel (ND 39)</span>
+                            <span className={descriptionClasses}>Óleo Diesel (Valor)</span>
                             <span className={quantityClasses}>
                               {formatNumber(totals.totalDieselLitros)} L
                             </span>
@@ -347,9 +343,9 @@ export const PTrabCostSummary = ({
                               {formatCurrency(totals.totalDieselValor)}
                             </span>
                           </div>
-                          {/* Linha Gasolina (ND 39) */}
+                          {/* Linha Gasolina */}
                           <div className="flex justify-between text-muted-foreground">
-                            <span className={descriptionClasses}>Gasolina (ND 39)</span>
+                            <span className={descriptionClasses}>Gasolina (Valor)</span>
                             <span className={quantityClasses}>
                               {formatNumber(totals.totalGasolinaLitros)} L
                             </span>
@@ -357,9 +353,9 @@ export const PTrabCostSummary = ({
                               {formatCurrency(totals.totalGasolinaValor)}
                             </span>
                           </div>
-                          {/* Linha Lubrificante (ND 30) */}
+                          {/* Linha Lubrificante */}
                           <div className="flex justify-between text-muted-foreground border-t pt-1 mt-1">
-                            <span className={descriptionClasses}>Lubrificante (ND 30)</span>
+                            <span className={descriptionClasses}>Lubrificante (Valor)</span>
                             <span className={quantityClasses}>
                               {formatNumber(totals.totalLubrificanteLitros, 2)} L
                             </span>
