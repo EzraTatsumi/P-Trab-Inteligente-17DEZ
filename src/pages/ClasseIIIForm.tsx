@@ -1269,7 +1269,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       setItemViaturaTemp({ ...itemViaturaTemp, tipo_equipamento_especifico: tipoNome, tipo_combustivel: novoCombustivel, consumo_fixo: equipamento.consumo });
     }
   };
-  const adicionarOuAtualizarItemViatura = () => {
+  const adicionarOu AtualizarItemViatura = () => {
     if (!itemViaturaTemp.tipo_equipamento_especifico || itemViaturaTemp.quantidade <= 0 || itemViaturaTemp.distancia_percorrida <= 0 || itemViaturaTemp.quantidade_deslocamentos <= 0) {
       toast.error("Preencha todos os campos do item");
       return;
@@ -2556,7 +2556,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     
                     {/* CONSOLIDAÇÃO DE COMBUSTÍVEL */}
                     {consolidadosGerador.map((consolidado, index) => (
-                      <Card key={index} className="p-4 border-l-4 border-primary">
+                      <Card key={index} className="p-4">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <h4 className="font-medium text-lg text-primary">
@@ -2599,7 +2599,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     
                     {/* CONSOLIDAÇÃO DE LUBRIFICANTE */}
                     {consolidadoLubrificante && (
-                      <Card className="p-4 border-l-4 border-purple-600">
+                      <Card className="p-4">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <h4 className="font-medium text-lg text-primary">
