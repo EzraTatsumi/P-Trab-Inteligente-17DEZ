@@ -1992,8 +1992,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                                 : 'bg-primary text-primary-foreground';
                               
                               const suprimentoText = isLubrificante 
-                                ? `Lubrificante` 
-                                : `${registro.tipo_combustivel === 'DIESEL' ? 'Óleo Diesel' : 'Gasolina'}`;
+                                ? `Lubrificante (ND 30)` 
+                                : `${registro.tipo_combustivel === 'DIESEL' ? 'Óleo Diesel' : 'Gasolina'} (ND 39)`;
                               
                               return (
                                 <tr key={registro.id} className="border-t hover:bg-muted/50 transition-colors">
@@ -2034,7 +2034,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           </tbody>
                           <tfoot className="bg-muted/50 border-t-2">
                             <tr>
-                              <td colSpan={4} className="p-3 text-sm font-semibold">TOTAL COMBUSTÍVEL</td>
+                              <td colSpan={4} className="p-3 text-sm font-semibold">TOTAL COMBUSTÍVEL (ND 39)</td>
                               <td className="p-3 text-sm text-right font-bold">
                                 {formatNumber(registros.filter(r => r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR').reduce((sum, r) => sum + r.total_litros, 0))} L
                               </td>
@@ -2044,7 +2044,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                               <td></td>
                             </tr>
                             <tr>
-                              <td colSpan={4} className="p-3 text-sm font-semibold">TOTAL LUBRIFICANTE</td>
+                              <td colSpan={4} className="p-3 text-sm font-semibold">TOTAL LUBRIFICANTE (ND 30)</td>
                               <td className="p-3 text-sm text-right font-bold">
                                 {formatNumber(registros.filter(r => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR').reduce((sum, r) => sum + r.total_litros, 0))} L
                               </td>
@@ -2820,7 +2820,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                         <div className="space-y-2">
                           <Label>&nbsp;</Label>
-                          <Button type="button" onClick={adicionarOu AtualizarItemViatura} className="w-full" disabled={!refLPC}>
+                          <Button type="button" onClick={adicionarOuAtualizarItemViatura} className="w-full" disabled={!refLPC}>
                             {editingViaturaItemIndex !== null ? "Atualizar Viatura" : "Adicionar Viatura"}
                           </Button>
                         </div>
