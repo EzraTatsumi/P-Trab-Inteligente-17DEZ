@@ -267,7 +267,7 @@ export const PTrabCostSummary = ({
               {/* Indicador de Detalhes (alinhado à direita) - REMOVIDO */}
               {/* O AccordionTrigger nativamente adiciona o ChevronDown à direita. */}
               {/* Se o ChevronDown estiver duplicado, o problema pode estar no componente AccordionTrigger de shadcn/ui. */}
-              {/* No entanto, se o objetivo é remover o que estava na linha 36 (o div com o ChevronDown), ele foi removido. */}
+              {/* Se o ChevronDown estiver duplicado, o problema pode estar no componente AccordionTrigger de shadcn/ui. */}
             </AccordionTrigger>
             
             <AccordionContent className="pt-4 pb-0">
@@ -283,7 +283,7 @@ export const PTrabCostSummary = ({
                   {/* Classe I - Subsistência */}
                   <Accordion type="single" collapsible className="w-full pt-0">
                     <AccordionItem value="item-classe-i" className="border-b-0">
-                      <AccordionTrigger className="p-0 hover:no-underline">
+                      <AccordionTrigger simple className="p-0 hover:no-underline">
                         <div className="flex justify-between items-center w-full text-sm border-b pb-2 border-border/50">
                           <div className="flex items-center gap-2 text-foreground">
                             <Utensils className="h-4 w-4 text-orange-500" />
@@ -324,7 +324,7 @@ export const PTrabCostSummary = ({
                   {/* Classe III - Combustíveis e Lubrificantes (Item principal) */}
                   <Accordion type="single" collapsible className="w-full pt-2">
                     <AccordionItem value="item-classe-iii" className="border-b-0">
-                      <AccordionTrigger className="p-0 hover:no-underline">
+                      <AccordionTrigger simple className="p-0 hover:no-underline">
                         <div className="flex justify-between items-center w-full text-sm border-b pb-2 border-border/50">
                           <div className="flex items-center gap-2 text-foreground">
                             <Fuel className="h-4 w-4 text-orange-500" />

@@ -20,10 +20,14 @@ const AccordionItem = React.forwardRef<
 ))
 AccordionItem.displayName = "AccordionItem"
 
+interface AccordionTriggerProps extends React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger> {
+  simple?: boolean; // Novo prop para desativar os textos de detalhe
+}
+
 const AccordionTrigger = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
+  AccordionTriggerProps
+>(({ className, children, simple = false, ...props }, ref) => (
   <AccordionPrimitive.Header className="flex">
     <AccordionPrimitive.Trigger
       ref={ref}
@@ -35,21 +39,25 @@ const AccordionTrigger = React.forwardRef<
     >
       {children}
       <div className="flex items-center space-x-2">
-        {/* Aviso para mais detalhes (Visível quando fechado) */}
-        <span className={cn(
-          "text-sm text-muted-foreground",
-          "group-data-[state=open]:hidden" // Usa group-data para referenciar o estado do Trigger pai
-        )}>
-          Mais detalhes
-        </span>
-        
-        {/* Aviso para menos detalhes (Visível quando aberto) */}
-        <span className={cn(
-          "text-sm text-muted-foreground",
-          "group-data-[state=closed]:hidden" // Usa group-data para referenciar o estado do Trigger pai
-        )}>
-          Menos detalhes
-        </span>
+        {!simple && (
+          <>
+            {/* Aviso para mais detalhes (Visível quando fechado) */}
+            <span className={cn(
+              "text-sm text-muted-foreground",
+              "group-data-[state=open]:hidden"
+            )}>
+              Mais detalhes
+            </span>
+            
+            {/* Aviso para menos detalhes (Visível quando aberto) */}
+            <span className={cn(
+              "text-sm text-muted-foreground",
+              "group-data-[state=closed]:hidden"
+            )}>
+              Menos detalhes
+            </span>
+          </>
+        )}
         
         <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 text-muted-foreground" />
       </div>
