@@ -792,12 +792,12 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
               </div>
             )}
 
-            {/* 4. Registros Salvos */}
+            {/* 4. Registros Salvos (OMs Cadastradas) */}
             {registrosAgrupados.length > 0 && (
               <div className="space-y-4 mt-6">
                 <h2 className="text-xl font-bold flex items-center gap-2">
-                  <ClipboardList className="h-5 w-5 text-primary" />
-                  Registros Salvos por OM
+                  <Sparkles className="h-5 w-5 text-accent" />
+                  OMs Cadastradas
                 </h2>
                 
                 {registrosAgrupados.map((registrosOM, index) => {
