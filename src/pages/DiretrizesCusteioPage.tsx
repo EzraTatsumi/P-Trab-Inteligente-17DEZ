@@ -10,11 +10,12 @@ import { toast } from "sonner";
 import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Package } from "lucide-react";
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
-import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII"; // Importar novo tipo
+import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { tipoViaturas, tipoEquipamentosEngenharia } from "@/data/classeIIIData";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Importar Tabs
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -80,7 +81,7 @@ const DiretrizesCusteioPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [showClasseIAlimentacaoConfig, setShowClasseIAlimentacaoConfig] = useState(false);
-  const [showClasseIIConfig, setShowClasseIIConfig] = useState(false); // NOVO ESTADO
+  const [showClasseIIConfig, setShowClasseIIConfig] = useState(false);
   const [showClasseIIIGeradoresConfig, setShowClasseIIIGeradoresConfig] = useState(false);
   const [showClasseIIIEmbarcacoesConfig, setShowClasseIIIEmbarcacoesConfig] = useState(false);
   const [showClasseIIIMotomecanizacaoConfig, setShowClasseIIIMotomecanizacaoConfig] = useState(false);
@@ -91,11 +92,13 @@ const DiretrizesCusteioPage = () => {
   const [motomecanizacaoConfig, setMotomecanizacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultMotomecanizacaoConfig);
   const [equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig] = useState<DiretrizEquipamentoForm[]>(defaultEquipamentosEngenhariaConfig);
   
-  const [classeIIConfig, setClasseIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseIIConfig); // NOVO ESTADO
+  const [classeIIConfig, setClasseIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseIIConfig);
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedClasseIITab, setSelectedClasseIITab] = useState<string>(CATEGORIAS_CLASSE_II[0]); // Novo estado para a aba Classe II
+  
   const { handleEnterToNextField } = useFormNavigation();
 
   useEffect(() => {
@@ -366,7 +369,7 @@ const DiretrizesCusteioPage = () => {
         }
       }
       
-      // 3. Salvar Configurações de Classe II (NOVO)
+      // 3. Salvar Configurações de Classe II
       await supabase
         .from("diretrizes_classe_ii")
         .delete()
@@ -422,10 +425,10 @@ const DiretrizesCusteioPage = () => {
   };
   
   // --- Funções de Gerenciamento da Classe II ---
-  const handleAddClasseIIItem = () => {
-    setClasseIIConfig([
-      ...classeIIConfig,
-      { categoria: "Equipamento Individual", item: "", valor_mnt_dia: 0 } as DiretrizClasseIIForm
+  const handleAddClasseIIItem = (categoria: DiretrizClasseIIForm['categoria']) => {
+    setClasseIIConfig(prev => [
+      ...prev,
+      { categoria: categoria, item: "", valor_mnt_dia: 0 } as DiretrizClasseIIForm
     ]);
   };
 
@@ -437,6 +440,69 @@ const DiretrizesCusteioPage = () => {
     const novosItens = [...classeIIConfig];
     novosItens[index] = { ...novosItens[index], [field]: value };
     setClasseIIConfig(novosItens);
+  };
+  
+  // Função para renderizar a lista de itens da Classe II por categoria
+  const renderClasseIIList = (categoria: DiretrizClasseIIForm['categoria']) => {
+    const filteredItems = classeIIConfig.filter(item => item.categoria === categoria);
+    
+    return (
+      <div className="space-y-4 pt-4">
+        {filteredItems.map((item, index) => {
+          // Encontrar o índice original no array completo para permitir a atualização
+          const originalIndex = classeIIConfig.findIndex(c => c.item === item.item && c.categoria === item.categoria);
+          
+          // Se o item não for encontrado (ex: item recém-adicionado), usamos o índice do filtro
+          const indexToUse = originalIndex !== -1 ? originalIndex : classeIIConfig.length - 1;
+
+          return (
+            <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
+              <div className="col-span-8">
+                <Label className="text-xs">Item</Label>
+                <Input
+                  value={item.item}
+                  onChange={(e) => handleUpdateClasseIIItem(indexToUse, 'item', e.target.value)}
+                  placeholder="Ex: Colete balístico"
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="col-span-3">
+                <Label className="text-xs">Valor Mnt/Dia (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  value={item.valor_mnt_dia === 0 ? "" : item.valor_mnt_dia}
+                  onChange={(e) => handleUpdateClasseIIItem(indexToUse, 'valor_mnt_dia', parseFloat(e.target.value) || 0)}
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="col-span-1 flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleRemoveClasseIIItem(indexToUse)}
+                  type="button"
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => handleAddClasseIIItem(categoria)} 
+          className="w-full"
+          type="button"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Adicionar Item
+        </Button>
+      </div>
+    );
   };
   // --- Fim Funções de Gerenciamento da Classe II ---
 
@@ -529,7 +595,7 @@ const DiretrizesCusteioPage = () => {
                 )}
               </div>
               
-              {/* SEÇÃO CLASSE II - MATERIAL DE INTENDÊNCIA (NOVO) */}
+              {/* SEÇÃO CLASSE II - MATERIAL DE INTENDÊNCIA */}
               <div className="border-t pt-4 mt-6">
                 <div 
                   className="flex items-center justify-between cursor-pointer py-2" 
@@ -544,68 +610,20 @@ const DiretrizesCusteioPage = () => {
                 
                 {showClasseIIConfig && (
                   <Card>
-                    <CardContent className="space-y-4 pt-4">
-                      {classeIIConfig.map((item, index) => (
-                        <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
-                          <div className="col-span-4">
-                            <Label className="text-xs">Categoria</Label>
-                            <Select
-                              value={item.categoria}
-                              onValueChange={(val: DiretrizClasseIIForm['categoria']) => handleUpdateClasseIIItem(index, 'categoria', val)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {CATEGORIAS_CLASSE_II.map(cat => (
-                                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="col-span-5">
-                            <Label className="text-xs">Item</Label>
-                            <Input
-                              value={item.item}
-                              onChange={(e) => handleUpdateClasseIIItem(index, 'item', e.target.value)}
-                              placeholder="Ex: Colete balístico"
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Valor Mnt/Dia (R$)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={item.valor_mnt_dia === 0 ? "" : item.valor_mnt_dia}
-                              onChange={(e) => handleUpdateClasseIIItem(index, 'valor_mnt_dia', parseFloat(e.target.value) || 0)}
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                          <div className="col-span-1 flex justify-end">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveClasseIIItem(index)}
-                              type="button"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleAddClasseIIItem} 
-                        className="w-full"
-                        type="button"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Adicionar Item Classe II
-                      </Button>
+                    <CardContent className="pt-4">
+                      <Tabs value={selectedClasseIITab} onValueChange={setSelectedClasseIITab}>
+                        <TabsList className="grid w-full grid-cols-3">
+                          {CATEGORIAS_CLASSE_II.map(cat => (
+                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        {CATEGORIAS_CLASSE_II.map(cat => (
+                          <TabsContent key={cat} value={cat}>
+                            {renderClasseIIList(cat as DiretrizClasseIIForm['categoria'])}
+                          </TabsContent>
+                        ))}
+                      </Tabs>
                     </CardContent>
                   </Card>
                 )}
