@@ -335,7 +335,7 @@ export const PTrabCostSummary = ({
                         <div className="space-y-1 pl-6 text-xs">
                           {/* Linha Óleo Diesel */}
                           <div className="flex justify-between text-muted-foreground">
-                            <span className={descriptionClasses}>Óleo Diesel (Valor)</span>
+                            <span className={descriptionClasses}>Óleo Diesel</span>
                             <span className={quantityClasses}>
                               {formatNumber(totals.totalDieselLitros)} L
                             </span>
@@ -345,7 +345,7 @@ export const PTrabCostSummary = ({
                           </div>
                           {/* Linha Gasolina */}
                           <div className="flex justify-between text-muted-foreground">
-                            <span className={descriptionClasses}>Gasolina (Valor)</span>
+                            <span className={descriptionClasses}>Gasolina</span>
                             <span className={quantityClasses}>
                               {formatNumber(totals.totalGasolinaLitros)} L
                             </span>
@@ -355,7 +355,7 @@ export const PTrabCostSummary = ({
                           </div>
                           {/* Linha Lubrificante */}
                           <div className="flex justify-between text-muted-foreground border-t pt-1 mt-1">
-                            <span className={descriptionClasses}>Lubrificante (Valor)</span>
+                            <span className={descriptionClasses}>Lubrificante</span>
                             <span className={quantityClasses}>
                               {formatNumber(totals.totalLubrificanteLitros, 2)} L
                             </span>
