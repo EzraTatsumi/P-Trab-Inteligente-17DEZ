@@ -264,10 +264,10 @@ export const PTrabCostSummary = ({
                 </div>
               </div>
               
-              {/* Indicador de Detalhes (alinhado à direita) - Agora só com o ChevronDown */}
-              <div className="w-full flex justify-end items-center mt-2">
-                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-              </div>
+              {/* Indicador de Detalhes (alinhado à direita) - REMOVIDO */}
+              {/* O AccordionTrigger nativamente adiciona o ChevronDown à direita. */}
+              {/* Se o ChevronDown estiver duplicado, o problema pode estar no componente AccordionTrigger de shadcn/ui. */}
+              {/* No entanto, se o objetivo é remover o que estava na linha 36 (o div com o ChevronDown), ele foi removido. */}
             </AccordionTrigger>
             
             <AccordionContent className="pt-4 pb-0">
