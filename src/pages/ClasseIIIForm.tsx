@@ -2088,6 +2088,24 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                       const hasCustomMemoria = !!registro.detalhamento_customizado;
                       const memoriaExibida = registro.detalhamento_customizado || registro.detalhamento || "";
                       const isLubrificante = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR';
+                      
+                      // Determina o tipo de suprimento e equipamento para o título
+                      let suprimentoTipo = isLubrificante ? 'Lubrificante' : (registro.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel');
+                      let equipamentoTipo = getTipoLabel(registro.tipo_equipamento as TipoEquipamento);
+                      if (isLubrificante) {
+                          // Se for lubrificante, o equipamento é o Gerador (pois só há lubrificante para gerador)
+                          equipamentoTipo = 'Gerador';
+                      } else if (registro.tipo_equipamento === 'GERADOR') {
+                          equipamentoTipo = 'Gerador';
+                      } else if (registro.tipo_equipamento === 'MOTOMECANIZACAO') {
+                          equipamentoTipo = 'Motomecanização';
+                      } else if (registro.tipo_equipamento === 'EMBARCACAO') {
+                          equipamentoTipo = 'Embarcação';
+                      } else if (registro.tipo_equipamento === 'EQUIPAMENTO_ENGENHARIA') {
+                          equipamentoTipo = 'Equipamento de Engenharia';
+                      }
+                      
+                      const tituloMemoria = `${equipamentoTipo} - ${suprimentoTipo}`;
 
                       return (
                         <Card key={`memoria-${registro.id}`} className="p-6 bg-muted/30">
@@ -2095,7 +2113,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
                               <h4 className="text-lg font-semibold text-foreground">
-                                {registro.organizacao} (UG: {registro.ug})
+                                {tituloMemoria} | {registro.organizacao} (UG: {registro.ug})
                               </h4>
                               {hasCustomMemoria && !isEditing && (
                                 <Badge variant="outline" className="text-xs">
@@ -2109,7 +2127,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                                 ? 'bg-purple-600 text-primary-foreground' 
                                 : 'bg-primary text-primary-foreground'}
                             >
-                              {isLubrificante ? 'LUBRIFICANTE' : 'COMBUSTÍVEL'}
+                              {isLubrificante ? 'ND 33.90.30' : 'ND 33.90.39'}
                             </Badge>
                           </div>
                           
