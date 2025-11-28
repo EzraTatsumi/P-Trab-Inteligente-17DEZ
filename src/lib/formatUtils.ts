@@ -38,31 +38,36 @@ export const formatNumberForInput = (num: number, minFractionDigits: number = 2)
 };
 
 /**
- * Cleans and formats a raw string input, applying thousand separators (dots) 
- * and ensuring only one comma (decimal separator) is presente.
- * This is used during onChange to provide live formatting feedback.
+ * Cleans a raw string input, allowing only digits, dots (for thousands), and one comma (for decimal).
+ * This version is designed to be permissive during typing.
  */
 export const formatInputWithThousands = (value: string): string => {
   // 1. Remove tudo exceto dígitos, ponto e vírgula
   let cleaned = value.replace(/[^\d,.]/g, '');
 
-  // 2. Trata a vírgula como separador decimal
-  const decimalIndex = cleaned.indexOf(',');
-  if (decimalIndex !== -1) {
-    // Parte inteira: remove todos os pontos e vírgulas após a primeira vírgula
-    const integerPart = cleaned.substring(0, decimalIndex).replace(/\./g, '');
-    let decimalPart = cleaned.substring(decimalIndex + 1).replace(/,/g, '').replace(/\./g, '');
-    
-    // Reinsere a vírgula para exibição
-    cleaned = `${integerPart}${decimalPart ? `,${decimalPart}` : ''}`;
-  } else {
-    // Se não tem vírgula, remove todos os pontos
-    cleaned = cleaned.replace(/\./g, '');
+  // 2. Garante que haja apenas uma vírgula (decimal separator)
+  const parts = cleaned.split(',');
+  if (parts.length > 2) {
+    // Se houver mais de uma vírgula, mantém apenas a primeira
+    cleaned = parts[0] + ',' + parts.slice(1).join('');
   }
   
-  // Aplica a formatação de milhar (ponto) na parte inteira
-  const parts = cleaned.split(',');
-  let integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  // 3. Remove pontos que não estejam na posição correta de milhar (simplificado para ser mais permissivo)
+  // Para inputs de valor, vamos apenas remover todos os pontos para evitar confusão durante a digitação.
+  // A formatação de milhar será aplicada apenas no blur.
   
-  return parts.length > 1 ? `${integerPart},${parts[1]}` : integerPart;
+  // Se houver vírgula, remove todos os pontos da parte inteira
+  if (cleaned.includes(',')) {
+    const [integerPart, decimalPart] = cleaned.split(',');
+    const cleanInteger = integerPart.replace(/\./g, '');
+    
+    // Limita a parte decimal a 2 dígitos (para preço) ou 4 (para consumo, se necessário)
+    // Vamos deixar a limitação de dígitos para o componente que chama, mas aqui limitamos a 4 para segurança.
+    const limitedDecimal = decimalPart.substring(0, 4); 
+    
+    return `${cleanInteger}${limitedDecimal ? `,${limitedDecimal}` : ''}`;
+  }
+  
+  // Se não houver vírgula, remove todos os pontos
+  return cleaned.replace(/\./g, '');
 };

@@ -429,11 +429,22 @@ export default function ClasseIIIForm() {
       field: keyof ItemGerador
   ) => {
       const rawValue = e.target.value;
-      const formattedValue = formatInputWithThousands(rawValue);
-      setInput(formattedValue);
+      // Permite a digitação livre, mas remove caracteres não permitidos
+      let cleaned = rawValue.replace(/[^\d,.]/g, '');
+      
+      // Garante que haja apenas uma vírgula
+      const parts = cleaned.split(',');
+      if (parts.length > 2) {
+        cleaned = parts[0] + ',' + parts.slice(1).join('');
+      }
+      
+      // Remove pontos (separadores de milhar) durante a digitação
+      cleaned = cleaned.replace(/\./g, '');
+      
+      setInput(cleaned);
       
       // Update the numeric state immediately for live calculation feedback
-      updateNumericItemGerador(field, formattedValue);
+      updateNumericItemGerador(field, cleaned);
   };
 
   const handleInputGeradorBlur = (
@@ -464,11 +475,22 @@ export default function ClasseIIIForm() {
       field: keyof ItemEmbarcacao
   ) => {
       const rawValue = e.target.value;
-      const formattedValue = formatInputWithThousands(rawValue);
-      setInput(formattedValue);
+      // Permite a digitação livre, mas remove caracteres não permitidos
+      let cleaned = rawValue.replace(/[^\d,.]/g, '');
+      
+      // Garante que haja apenas uma vírgula
+      const parts = cleaned.split(',');
+      if (parts.length > 2) {
+        cleaned = parts[0] + ',' + parts.slice(1).join('');
+      }
+      
+      // Remove pontos (separadores de milhar) durante a digitação
+      cleaned = cleaned.replace(/\./g, '');
+      
+      setInput(cleaned);
       
       // Update the numeric state immediately for live calculation feedback
-      updateNumericItemEmbarcacao(field, formattedValue);
+      updateNumericItemEmbarcacao(field, cleaned);
   };
 
   const handleInputEmbarcacaoBlur = (
@@ -3984,7 +4006,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
 
                       <div className="space-y-2">
                         <Label>&nbsp;</Label>
-                        <Button type="button" onClick={adicionarOuAtualizarItemEngenharia} className="w-full" disabled={!refLPC}>
+                        <Button type="button" onClick={adicionarOu AtualizarItemEngenharia} className="w-full" disabled={!refLPC}>
                           {editingEngenhariaItemIndex !== null ? "Atualizar Item" : "Adicionar"}
                         </Button>
                       </div>
