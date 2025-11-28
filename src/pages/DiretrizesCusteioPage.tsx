@@ -7,13 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Package } from "lucide-react";
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
+import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII"; // Importar novo tipo
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { tipoViaturas, tipoEquipamentosEngenharia } from "@/data/classeIIIData"; // Importar os defaults de viaturas e engenharia
+import { tipoViaturas, tipoEquipamentosEngenharia } from "@/data/classeIIIData";
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -44,6 +45,27 @@ const defaultEquipamentosEngenhariaConfig: DiretrizEquipamentoForm[] = tipoEquip
   unidade: e.unidade,
 }));
 
+// NOVOS VALORES PADRÃO CLASSE II
+const defaultClasseIIConfig: DiretrizClasseIIForm[] = [
+  { categoria: "Equipamento Individual", item: "Equipamento Individual", valor_mnt_dia: 2.42 },
+  { categoria: "Proteção Balística", item: "Colete balístico", valor_mnt_dia: 3.23 },
+  { categoria: "Proteção Balística", item: "Capacete balístico", valor_mnt_dia: 2.56 },
+  { categoria: "Material de Estacionamento", item: "Barraca de campanha", valor_mnt_dia: 7.55 },
+  { categoria: "Material de Estacionamento", item: "Toldo modular", valor_mnt_dia: 1.88 },
+  { categoria: "Material de Estacionamento", item: "Barraca individual", valor_mnt_dia: 0.26 },
+  { categoria: "Material de Estacionamento", item: "Cama de campanha", valor_mnt_dia: 0.32 },
+  { categoria: "Material de Estacionamento", item: "Marmita Térmica", valor_mnt_dia: 0.67 },
+  { categoria: "Material de Estacionamento", item: "Armário", valor_mnt_dia: 0.82 },
+  { categoria: "Material de Estacionamento", item: "Beliche", valor_mnt_dia: 0.66 },
+  { categoria: "Material de Estacionamento", item: "Colchão", valor_mnt_dia: 0.28 },
+];
+
+const CATEGORIAS_CLASSE_II = [
+  "Equipamento Individual",
+  "Proteção Balística",
+  "Material de Estacionamento",
+];
+
 const defaultDiretrizes = (year: number) => ({
   ano_referencia: year,
   classe_i_valor_qs: 9.00,
@@ -58,15 +80,18 @@ const DiretrizesCusteioPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [showClasseIAlimentacaoConfig, setShowClasseIAlimentacaoConfig] = useState(false);
+  const [showClasseIIConfig, setShowClasseIIConfig] = useState(false); // NOVO ESTADO
   const [showClasseIIIGeradoresConfig, setShowClasseIIIGeradoresConfig] = useState(false);
   const [showClasseIIIEmbarcacoesConfig, setShowClasseIIIEmbarcacoesConfig] = useState(false);
   const [showClasseIIIMotomecanizacaoConfig, setShowClasseIIIMotomecanizacaoConfig] = useState(false);
-  const [showClasseIIIEquipamentosEngenhariaConfig, setShowClasseIIIEquipamentosEngenhariaConfig] = useState(false); // Novo estado
+  const [showClasseIIIEquipamentosEngenhariaConfig, setShowClasseIIIEquipamentosEngenhariaConfig] = useState(false);
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
   const [embarcacaoConfig, setEmbarcacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultEmbarcacaoConfig);
   const [motomecanizacaoConfig, setMotomecanizacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultMotomecanizacaoConfig);
-  const [equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig] = useState<DiretrizEquipamentoForm[]>(defaultEquipamentosEngenhariaConfig); // Novo estado
+  const [equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig] = useState<DiretrizEquipamentoForm[]>(defaultEquipamentosEngenhariaConfig);
+  
+  const [classeIIConfig, setClasseIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseIIConfig); // NOVO ESTADO
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -75,7 +100,7 @@ const DiretrizesCusteioPage = () => {
 
   useEffect(() => {
     checkAuthAndLoadYears();
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // Rola para o topo ao carregar
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   useEffect(() => {
@@ -150,94 +175,108 @@ const DiretrizesCusteioPage = () => {
           classe_iii_fator_equip_engenharia: data.classe_iii_fator_equip_engenharia,
           observacoes: data.observacoes || "",
         });
-
-        // --- Carregar Geradores ---
-        const { data: equipamentosData } = await supabase
-          .from("diretrizes_equipamentos_classe_iii")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("ano_referencia", data.ano_referencia)
-          .eq("categoria", "GERADOR")
-          .eq("ativo", true);
-
-        if (equipamentosData && equipamentosData.length > 0) {
-          setGeradorConfig(equipamentosData.map(eq => ({
-            nome_equipamento: eq.nome_equipamento,
-            tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
-            consumo: Number(eq.consumo),
-            unidade: eq.unidade as 'L/h' | 'km/L',
-          })));
-        } else {
-          setGeradorConfig(defaultGeradorConfig);
-        }
-
-        // --- Carregar Embarcações ---
-        const { data: embarcacoesData } = await supabase
-          .from("diretrizes_equipamentos_classe_iii")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("ano_referencia", data.ano_referencia)
-          .eq("categoria", "EMBARCACAO")
-          .eq("ativo", true);
-
-        if (embarcacoesData && embarcacoesData.length > 0) {
-          setEmbarcacaoConfig(embarcacoesData.map(eq => ({
-            nome_equipamento: eq.nome_equipamento,
-            tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
-            consumo: Number(eq.consumo),
-            unidade: eq.unidade as 'L/h' | 'km/L',
-          })));
-        } else {
-          setEmbarcacaoConfig(defaultEmbarcacaoConfig);
-        }
-        
-        // --- Carregar Motomecanização ---
-        const { data: motomecanizacaoData } = await supabase
-          .from("diretrizes_equipamentos_classe_iii")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("ano_referencia", data.ano_referencia)
-          .eq("categoria", "MOTOMECANIZACAO")
-          .eq("ativo", true);
-
-        if (motomecanizacaoData && motomecanizacaoData.length > 0) {
-          setMotomecanizacaoConfig(motomecanizacaoData.map(eq => ({
-            nome_equipamento: eq.nome_equipamento,
-            tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
-            consumo: Number(eq.consumo),
-            unidade: eq.unidade as 'L/h' | 'km/L',
-          })));
-        } else {
-          setMotomecanizacaoConfig(defaultMotomecanizacaoConfig);
-        }
-
-        // --- Carregar Equipamentos de Engenharia ---
-        const { data: engenhariaData } = await supabase
-          .from("diretrizes_equipamentos_classe_iii")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("ano_referencia", data.ano_referencia)
-          .eq("categoria", "EQUIPAMENTO_ENGENHARIA")
-          .eq("ativo", true);
-
-        if (engenhariaData && engenhariaData.length > 0) {
-          setEquipamentosEngenhariaConfig(engenhariaData.map(eq => ({
-            nome_equipamento: eq.nome_equipamento,
-            tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
-            consumo: Number(eq.consumo),
-            unidade: eq.unidade as 'L/h' | 'km/L',
-          })));
-        } else {
-          setEquipamentosEngenhariaConfig(defaultEquipamentosEngenhariaConfig);
-        }
-        
       } else {
         setDiretrizes(defaultDiretrizes(year));
+      }
+      
+      // --- Carregar Classe II ---
+      const { data: classeIIData } = await supabase
+        .from("diretrizes_classe_ii")
+        .select("categoria, item, valor_mnt_dia")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year)
+        .eq("ativo", true);
+
+      if (classeIIData && classeIIData.length > 0) {
+        setClasseIIConfig(classeIIData.map(d => ({
+          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
+          item: d.item,
+          valor_mnt_dia: Number(d.valor_mnt_dia),
+        })));
+      } else {
+        setClasseIIConfig(defaultClasseIIConfig);
+      }
+
+      // --- Carregar Classe III - Geradores ---
+      const { data: equipamentosData } = await supabase
+        .from("diretrizes_equipamentos_classe_iii")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year)
+        .eq("categoria", "GERADOR")
+        .eq("ativo", true);
+
+      if (equipamentosData && equipamentosData.length > 0) {
+        setGeradorConfig(equipamentosData.map(eq => ({
+          nome_equipamento: eq.nome_equipamento,
+          tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
+          consumo: Number(eq.consumo),
+          unidade: eq.unidade as 'L/h' | 'km/L',
+        })));
+      } else {
         setGeradorConfig(defaultGeradorConfig);
+      }
+
+      // --- Carregar Classe III - Embarcações ---
+      const { data: embarcacoesData } = await supabase
+        .from("diretrizes_equipamentos_classe_iii")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year)
+        .eq("categoria", "EMBARCACAO")
+        .eq("ativo", true);
+
+      if (embarcacoesData && embarcacoesData.length > 0) {
+        setEmbarcacaoConfig(embarcacoesData.map(eq => ({
+          nome_equipamento: eq.nome_equipamento,
+          tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
+          consumo: Number(eq.consumo),
+          unidade: eq.unidade as 'L/h' | 'km/L',
+        })));
+      } else {
         setEmbarcacaoConfig(defaultEmbarcacaoConfig);
+      }
+      
+      // --- Carregar Classe III - Motomecanização ---
+      const { data: motomecanizacaoData } = await supabase
+        .from("diretrizes_equipamentos_classe_iii")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year)
+        .eq("categoria", "MOTOMECANIZACAO")
+        .eq("ativo", true);
+
+      if (motomecanizacaoData && motomecanizacaoData.length > 0) {
+        setMotomecanizacaoConfig(motomecanizacaoData.map(eq => ({
+          nome_equipamento: eq.nome_equipamento,
+          tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
+          consumo: Number(eq.consumo),
+          unidade: eq.unidade as 'L/h' | 'km/L',
+        })));
+      } else {
         setMotomecanizacaoConfig(defaultMotomecanizacaoConfig);
+      }
+
+      // --- Carregar Classe III - Equipamentos de Engenharia ---
+      const { data: engenhariaData } = await supabase
+        .from("diretrizes_equipamentos_classe_iii")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year)
+        .eq("categoria", "EQUIPAMENTO_ENGENHARIA")
+        .eq("ativo", true);
+
+      if (engenhariaData && engenhariaData.length > 0) {
+        setEquipamentosEngenhariaConfig(engenhariaData.map(eq => ({
+          nome_equipamento: eq.nome_equipamento,
+          tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
+          consumo: Number(eq.consumo),
+          unidade: eq.unidade as 'L/h' | 'km/L',
+        })));
+      } else {
         setEquipamentosEngenhariaConfig(defaultEquipamentosEngenhariaConfig);
       }
+        
     } catch (error: any) {
       console.error("Erro ao carregar diretrizes:", error);
       toast.error("Erro ao carregar diretrizes para o ano selecionado");
@@ -289,17 +328,17 @@ const DiretrizesCusteioPage = () => {
         if (error) throw error;
         toast.success("Diretrizes criadas!");
       }
-
-      // 2. Salvar Configurações de Equipamentos (Geradores, Embarcações, Motomecanização, Equipamentos de Engenharia)
-      const categorias = ["GERADOR", "EMBARCACAO", "MOTOMECANIZACAO", "EQUIPAMENTO_ENGENHARIA"];
-      const configs = {
+      
+      // 2. Salvar Configurações de Equipamentos (Classe III)
+      const categoriasClasseIII = ["GERADOR", "EMBARCACAO", "MOTOMECANIZACAO", "EQUIPAMENTO_ENGENHARIA"];
+      const configsClasseIII = {
         "GERADOR": geradorConfig,
         "EMBARCACAO": embarcacaoConfig,
         "MOTOMECANIZACAO": motomecanizacaoConfig,
         "EQUIPAMENTO_ENGENHARIA": equipamentosEngenhariaConfig,
       };
 
-      for (const categoria of categorias) {
+      for (const categoria of categoriasClasseIII) {
         // Deletar registros antigos da categoria
         await supabase
           .from("diretrizes_equipamentos_classe_iii")
@@ -309,7 +348,7 @@ const DiretrizesCusteioPage = () => {
           .eq("categoria", categoria);
 
         // Inserir novos registros
-        const configList = configs[categoria as keyof typeof configs];
+        const configList = configsClasseIII[categoria as keyof typeof configsClasseIII];
         const equipamentosParaSalvar = configList
           .filter(g => g.nome_equipamento && g.consumo > 0)
           .map(g => ({
@@ -326,6 +365,31 @@ const DiretrizesCusteioPage = () => {
           if (eqError) throw eqError;
         }
       }
+      
+      // 3. Salvar Configurações de Classe II (NOVO)
+      await supabase
+        .from("diretrizes_classe_ii")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("ano_referencia", diretrizes.ano_referencia!);
+        
+      const classeIIParaSalvar = classeIIConfig
+        .filter(item => item.item && item.valor_mnt_dia >= 0)
+        .map(item => ({
+          user_id: user.id,
+          ano_referencia: diretrizes.ano_referencia,
+          categoria: item.categoria,
+          item: item.item,
+          valor_mnt_dia: item.valor_mnt_dia,
+          ativo: true,
+        }));
+        
+      if (classeIIParaSalvar.length > 0) {
+        const { error: c2Error } = await supabase
+          .from("diretrizes_classe_ii")
+          .insert(classeIIParaSalvar);
+        if (c2Error) throw c2Error;
+      }
 
       await loadAvailableYears();
     } catch (error: any) {
@@ -337,7 +401,7 @@ const DiretrizesCusteioPage = () => {
     }
   };
   
-  // Função genérica para adicionar item
+  // Função genérica para adicionar item (Classe III)
   const handleAddItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, unidade: 'L/h' | 'km/L') => {
     setConfig([
       ...config,
@@ -345,17 +409,36 @@ const DiretrizesCusteioPage = () => {
     ]);
   };
 
-  // Função genérica para remover item
+  // Função genérica para remover item (Classe III)
   const handleRemoveItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, index: number) => {
     setConfig(config.filter((_, i) => i !== index));
   };
 
-  // Função genérica para atualizar item
+  // Função genérica para atualizar item (Classe III)
   const handleUpdateItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, index: number, field: keyof DiretrizEquipamentoForm, value: any) => {
     const novosItens = [...config];
     novosItens[index] = { ...novosItens[index], [field]: value };
     setConfig(novosItens);
   };
+  
+  // --- Funções de Gerenciamento da Classe II ---
+  const handleAddClasseIIItem = () => {
+    setClasseIIConfig([
+      ...classeIIConfig,
+      { categoria: "Equipamento Individual", item: "", valor_mnt_dia: 0 } as DiretrizClasseIIForm
+    ]);
+  };
+
+  const handleRemoveClasseIIItem = (index: number) => {
+    setClasseIIConfig(classeIIConfig.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateClasseIIItem = (index: number, field: keyof DiretrizClasseIIForm, value: any) => {
+    const novosItens = [...classeIIConfig];
+    novosItens[index] = { ...novosItens[index], [field]: value };
+    setClasseIIConfig(novosItens);
+  };
+  // --- Fim Funções de Gerenciamento da Classe II ---
 
 
   if (loading) {
@@ -400,6 +483,7 @@ const DiretrizesCusteioPage = () => {
                 </Select>
               </div>
 
+              {/* SEÇÃO CLASSE I - ALIMENTAÇÃO */}
               <div className="border-t pt-4 mt-6">
                 <div 
                   className="flex items-center justify-between cursor-pointer py-2" 
@@ -442,6 +526,88 @@ const DiretrizesCusteioPage = () => {
                       </div>
                     </div>
                   </div>
+                )}
+              </div>
+              
+              {/* SEÇÃO CLASSE II - MATERIAL DE INTENDÊNCIA (NOVO) */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseIIConfig(!showClasseIIConfig)}
+                >
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Package className="h-5 w-5 text-secondary" />
+                    Classe II - Material de Intendência
+                  </h3>
+                  {showClasseIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseIIConfig && (
+                  <Card>
+                    <CardContent className="space-y-4 pt-4">
+                      {classeIIConfig.map((item, index) => (
+                        <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
+                          <div className="col-span-4">
+                            <Label className="text-xs">Categoria</Label>
+                            <Select
+                              value={item.categoria}
+                              onValueChange={(val: DiretrizClasseIIForm['categoria']) => handleUpdateClasseIIItem(index, 'categoria', val)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {CATEGORIAS_CLASSE_II.map(cat => (
+                                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="col-span-5">
+                            <Label className="text-xs">Item</Label>
+                            <Input
+                              value={item.item}
+                              onChange={(e) => handleUpdateClasseIIItem(index, 'item', e.target.value)}
+                              placeholder="Ex: Colete balístico"
+                              onKeyDown={handleEnterToNextField}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="text-xs">Valor Mnt/Dia (R$)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              value={item.valor_mnt_dia === 0 ? "" : item.valor_mnt_dia}
+                              onChange={(e) => handleUpdateClasseIIItem(index, 'valor_mnt_dia', parseFloat(e.target.value) || 0)}
+                              onKeyDown={handleEnterToNextField}
+                            />
+                          </div>
+                          <div className="col-span-1 flex justify-end">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveClasseIIItem(index)}
+                              type="button"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleAddClasseIIItem} 
+                        className="w-full"
+                        type="button"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Adicionar Item Classe II
+                      </Button>
+                    </CardContent>
+                  </Card>
                 )}
               </div>
 

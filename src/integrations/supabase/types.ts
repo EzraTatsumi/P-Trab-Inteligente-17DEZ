@@ -195,6 +195,42 @@ export type Database = {
           },
         ]
       }
+      diretrizes_classe_ii: {
+        Row: {
+          ano_referencia: number
+          ativo: boolean | null
+          categoria: string
+          created_at: string
+          id: string
+          item: string
+          updated_at: string
+          user_id: string
+          valor_mnt_dia: number
+        }
+        Insert: {
+          ano_referencia: number
+          ativo?: boolean | null
+          categoria: string
+          created_at?: string
+          id?: string
+          item: string
+          updated_at?: string
+          user_id: string
+          valor_mnt_dia: number
+        }
+        Update: {
+          ano_referencia?: number
+          ativo?: boolean | null
+          categoria?: string
+          created_at?: string
+          id?: string
+          item?: string
+          updated_at?: string
+          user_id?: string
+          valor_mnt_dia?: number
+        }
+        Relationships: []
+      }
       diretrizes_custeio: {
         Row: {
           ano_referencia: number
