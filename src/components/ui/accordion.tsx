@@ -36,12 +36,18 @@ const AccordionTrigger = React.forwardRef<
       {children}
       <div className="flex items-center space-x-2">
         {/* Aviso para mais detalhes (Visível quando fechado) */}
-        <span className="text-sm text-muted-foreground [&[data-state=open]_&]:hidden">
+        <span className={cn(
+          "text-sm text-muted-foreground",
+          "group-data-[state=open]:hidden" // Usa group-data para referenciar o estado do Trigger pai
+        )}>
           Mais detalhes
         </span>
         
         {/* Aviso para menos detalhes (Visível quando aberto) */}
-        <span className="text-sm text-muted-foreground [&[data-state=closed]_&]:hidden">
+        <span className={cn(
+          "text-sm text-muted-foreground",
+          "group-data-[state=closed]:hidden" // Usa group-data para referenciar o estado do Trigger pai
+        )}>
           Menos detalhes
         </span>
         
