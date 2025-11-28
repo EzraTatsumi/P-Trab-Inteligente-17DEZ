@@ -379,7 +379,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       total_33_90_30, // Classe I + Lubrificante
       total_33_90_39, // Zero
       total_parte_azul, // Total ND (C+D)
-      total_combustivel, // Valor total da Classe III Combustível (Laranja)
+      total_combustivel: totalCombustivel, // Valor total da Classe III Combustível (Laranja)
       total_gnd3, // Valor Total Solicitado (GND 3)
       totalDieselLitros,
       totalGasolinaLitros,
