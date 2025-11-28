@@ -2367,11 +2367,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     </div>
                   </div>
                 </div>
-                {/* Linha em branco adicionada aqui */}
-                <div className="mb-6" /> 
+                {/* Linha em branco removida */}
 
                 {formGerador.organizacao && (
-                  <div className="space-y-4 border-t pt-6" ref={addGeradorRef}>
+                  <div className="space-y-4 mt-6 border-t pt-6" ref={addGeradorRef}>
                     <h3 className="text-lg font-semibold">2. Adicionar Geradores</h3>
                     
                     {/* LINHA 1: DADOS DO GERADOR (3 COLUNAS) - COMBUSTÍVEL */}
@@ -2509,7 +2508,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {formGerador.itens.length > 0 && (
-                  <div className="space-y-4 border-t pt-10">
+                  <div className="space-y-4 mt-6 border-t pt-6">
                     <h3 className="text-lg font-semibold">3. Geradores Configurados ({totalGeradores} unidades)</h3>
                     
                     <div className="space-y-2">
@@ -2551,7 +2550,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {(consolidadosGerador.length > 0 || consolidadoLubrificante) && (
-                  <div className="space-y-4 border-t pt-10">
+                  <div className="space-y-4 mt-6 border-t pt-6">
                     <h3 className="text-lg font-semibold">4. Consolidação de Custos</h3>
                     
                     {/* CONSOLIDAÇÃO DE COMBUSTÍVEL */}
@@ -2795,11 +2794,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     </div>
                   </div>
                 </div>
-                {/* Linha em branco adicionada aqui */}
-                <div className="mb-6" />
+                {/* Linha em branco removida */}
 
                 {formViatura.organizacao && (
-                  <div className="space-y-4 border-t pt-6" ref={addViaturaRef}>
+                  <div className="space-y-4 mt-6 border-t pt-6" ref={addViaturaRef}>
                     <h3 className="text-lg font-semibold">2. Adicionar Viaturas</h3>
                     
                     <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
@@ -2905,7 +2903,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {formViatura.itens.length > 0 && (
-                  <div className="space-y-4 border-t pt-10">
+                  <div className="space-y-4 mt-6 border-t pt-6">
                     <h3 className="text-lg font-semibold">3. Viaturas Configuradas</h3>
                     
                     <div className="space-y-2">
@@ -2946,7 +2944,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {consolidadosViatura.length > 0 && (
-                  <div className="space-y-4 border-t pt-10">
+                  <div className="space-y-4 mt-6 border-t pt-6">
                     <h3 className="text-lg font-semibold">4. Consolidação por Combustível</h3>
                     
                     {consolidadosViatura.map((consolidado, index) => (
@@ -3142,10 +3140,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     </div>
                   </div>
                 </div>
-                <div className="mb-6" />
+                {/* Linha em branco removida */}
 
                 {formEmbarcacao.organizacao && (
-                  <div className="space-y-4 border-t pt-6" ref={addEmbarcacaoRef}>
+                  <div className="space-y-4 mt-6 border-t pt-6" ref={addEmbarcacaoRef}>
                     <h3 className="text-lg font-semibold">2. Adicionar Embarcações</h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
@@ -3231,7 +3229,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {formEmbarcacao.itens.length > 0 && (
-                  <div className="space-y-4 border-t pt-10">
+                  <div className="space-y-4 mt-6 border-t pt-6">
                     <h3 className="text-lg font-semibold">3. Embarcações Configuradas</h3>
                     
                     <div className="space-y-2">
@@ -3272,7 +3270,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {consolidadosEmbarcacao.length > 0 && (
-                  <div className="space-y-4 border-t pt-10">
+                  <div className="space-y-4 mt-6 border-t pt-6">
                     <h3 className="text-lg font-semibold">4. Consolidação por Combustível</h3>
                     
                     {consolidadosEmbarcacao.map((consolidado, index) => (
@@ -3468,10 +3466,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                     </div>
                   </div>
                 </div>
-                <div className="mb-6" />
+                {/* Linha em branco removida */}
 
                 {formEngenharia.organizacao && (
-                  <div className="space-y-4 border-t pt-6" ref={addEngenhariaRef}>
+                  <div className="space-y-4 mt-6 border-t pt-6" ref={addEngenhariaRef}>
                     <h3 className="text-lg font-semibold">2. Adicionar Equipamento de Engenharia</h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
@@ -3557,7 +3555,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {formEngenharia.itens.length > 0 && (
-                  <div className="space-y-4 border-t pt-10">
+                  <div className="space-y-4 mt-6 border-t pt-6">
                     <h3 className="text-lg font-semibold">3. Equipamentos Configurados</h3>
                     
                     <div className="space-y-2">
@@ -3598,7 +3596,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 )}
 
                 {consolidadosEngenharia.length > 0 && (
-                  <div className="space-y-4 border-t pt-10">
+                  <div className="space-y-4 mt-6 border-t pt-6">
                     <h3 className="text-lg font-semibold">4. Consolidação por Combustível</h3>
                     
                     {consolidadosEngenharia.map((consolidado, index) => (
