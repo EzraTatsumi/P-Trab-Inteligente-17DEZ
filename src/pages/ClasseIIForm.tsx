@@ -7,14 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Package, Pencil, Trash2, XCircle, Check, ChevronDown, ClipboardList, Sparkles } from "lucide-react";
+import { ArrowLeft, Package, Pencil, Trash2, XCircle, Check, ChevronDown, ClipboardList, Sparkles, DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -24,7 +24,7 @@ import { TablesInsert } from "@/integrations/supabase/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { defaultClasseIIConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Importar componentes de tabela
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -47,17 +47,24 @@ interface ItemClasseII {
 
 interface FormDataClasseII {
   selectedOmId?: string;
-  organizacao: string;
-  ug: string;
+  organizacao: string; // OM Detentora
+  ug: string; // UG Detentora
   dias_operacao: number;
   itens: ItemClasseII[];
   fase_atividade?: string;
+  // CAMPOS PARA OM DE DESTINO DO RECURSO (ND 30)
+  om_destino_recurso: string;
+  ug_destino_recurso: string;
+  selectedOmDestinoId?: string;
+  
+  // NOVOS CAMPOS DE ALOCAÇÃO
+  valor_nd_39_input: string; // Input string para ND 33.90.39
 }
 
 interface ClasseIIRegistro {
   id: string;
-  organizacao: string;
-  ug: string;
+  organizacao: string; // OM de Destino do Recurso (ND 30)
+  ug: string; // UG de Destino do Recurso (ND 30)
   dias_operacao: number;
   categoria: string;
   itens_equipamentos: ItemClasseII[]; // Tipo corrigido
@@ -65,6 +72,9 @@ interface ClasseIIRegistro {
   detalhamento: string;
   detalhamento_customizado?: string | null;
   fase_atividade?: string;
+  // NOVOS CAMPOS DO DB
+  valor_nd_30: number;
+  valor_nd_39: number;
 }
 
 export default function ClasseIIForm() {
@@ -85,6 +95,10 @@ export default function ClasseIIForm() {
     ug: "",
     dias_operacao: 0,
     itens: [],
+    om_destino_recurso: "",
+    ug_destino_recurso: "",
+    selectedOmDestinoId: undefined,
+    valor_nd_39_input: "",
   });
   
   // NOVO ESTADO: Lista de itens da categoria atual com quantidades editáveis
@@ -213,7 +227,7 @@ export default function ClasseIIForm() {
     
     const { data, error } = await supabase
       .from("classe_ii_registros")
-      .select("*, itens_equipamentos, detalhamento_customizado")
+      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
       .eq("p_trab_id", ptrabId)
       .order("created_at", { ascending: false });
 
@@ -229,6 +243,8 @@ export default function ClasseIIForm() {
         const record = {
             ...r,
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseII[],
+            valor_nd_30: Number(r.valor_nd_30),
+            valor_nd_39: Number(r.valor_nd_39),
         } as ClasseIIRegistro;
         uniqueRecordsMap.set(key, record);
     });
@@ -250,10 +266,10 @@ export default function ClasseIIForm() {
     return `${demaisFases} e ${ultimaFase}`;
   };
 
-  const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organizacao: string, faseAtividade: string): string => {
+  const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const valorTotal = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
+    const valorTotal = valorND30 + valorND39;
 
     const itensPorCategoria = itens.reduce((acc, item) => {
         if (!acc[item.categoria]) { acc[item.categoria] = []; }
@@ -273,7 +289,12 @@ export default function ClasseIIForm() {
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    return `33.90.30 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
+
+Alocação:
+- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
+- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
 Cálculo:
 Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
@@ -311,6 +332,10 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
       ug: "",
       dias_operacao: 0,
       itens: [],
+      om_destino_recurso: "",
+      ug_destino_recurso: "",
+      selectedOmDestinoId: undefined,
+      valor_nd_39_input: "",
     });
     // Resetar estados de edição de item
     setEditingItemMemoriaId(null);
@@ -324,9 +349,44 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
 
   const handleOMChange = (omData: OMData | undefined) => {
     if (omData) {
-      setForm({ ...form, selectedOmId: omData.id, organizacao: omData.nome_om, ug: omData.codug_om });
+      setForm({ 
+        ...form, 
+        selectedOmId: omData.id, 
+        organizacao: omData.nome_om, 
+        ug: omData.codug_om,
+        // Por padrão, a OM de destino do recurso é a OM detentora
+        om_destino_recurso: omData.nome_om,
+        ug_destino_recurso: omData.codug_om,
+        selectedOmDestinoId: omData.id,
+      });
     } else {
-      setForm({ ...form, selectedOmId: undefined, organizacao: "", ug: "" });
+      setForm({ 
+        ...form, 
+        selectedOmId: undefined, 
+        organizacao: "", 
+        ug: "",
+        om_destino_recurso: "",
+        ug_destino_recurso: "",
+        selectedOmDestinoId: undefined,
+      });
+    }
+  };
+  
+  const handleOMDestinoChange = (omData: OMData | undefined) => {
+    if (omData) {
+      setForm({ 
+        ...form, 
+        om_destino_recurso: omData.nome_om, 
+        ug_destino_recurso: omData.codug_om,
+        selectedOmDestinoId: omData.id,
+      });
+    } else {
+      setForm({ 
+        ...form, 
+        om_destino_recurso: "", 
+        ug_destino_recurso: "",
+        selectedOmDestinoId: undefined,
+      });
     }
   };
 
@@ -365,12 +425,37 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
     setForm({ ...form, itens: newFormItems });
     toast.success(`Itens da categoria ${selectedTab} atualizados!`);
   };
+  
+  // Lógica de cálculo de alocação
+  const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+  
+  const nd39Value = useMemo(() => {
+    const parsed = parseInputToNumber(form.valor_nd_39_input);
+    return Math.min(valorTotalForm, Math.max(0, parsed));
+  }, [form.valor_nd_39_input, valorTotalForm]);
+  
+  const nd30Value = valorTotalForm - nd39Value;
+
+  const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    // Permite a formatação de milhar e decimal
+    const formattedValue = formatNumberForInput(parseInputToNumber(rawValue), 2);
+    setForm(prev => ({ ...prev, valor_nd_39_input: formattedValue }));
+  };
+  
+  const handleND39InputBlur = () => {
+    // Ao perder o foco, garante que o valor seja formatado corretamente
+    const numericValue = parseInputToNumber(form.valor_nd_39_input);
+    setForm(prev => ({ ...prev, valor_nd_39_input: formatNumberForInput(numericValue, 2) }));
+  };
+
 
   const handleSalvarRegistros = async () => {
     if (!ptrabId) return;
-    if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM"); return; }
+    if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
     if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
     if (form.itens.length === 0) { toast.error("Adicione pelo menos um item"); return; }
+    if (!form.om_destino_recurso || !form.ug_destino_recurso) { toast.error("Selecione a OM de destino do recurso"); return; }
     
     let fasesFinais = [...fasesAtividade];
     if (customFaseAtividade.trim()) { fasesFinais = [...fasesFinais, customFaseAtividade.trim()]; }
@@ -379,8 +464,21 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
 
     setLoading(true);
     
-    const valorTotal = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
-    const detalhamento = generateDetalhamento(form.itens, form.dias_operacao, form.organizacao, faseFinalString);
+    const valorTotal = valorTotalForm; // Já calculado
+    const valorND30Final = nd30Value;
+    const valorND39Final = nd39Value;
+    
+    const detalhamento = generateDetalhamento(
+      form.itens, 
+      form.dias_operacao, 
+      form.organizacao, 
+      form.ug, 
+      faseFinalString,
+      form.om_destino_recurso,
+      form.ug_destino_recurso,
+      valorND30Final,
+      valorND39Final
+    );
     
     // Mapear itens para garantir que 'memoria_customizada' seja explicitamente null se estiver faltando
     const finalItensToSave = form.itens.map(item => ({
@@ -390,8 +488,8 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
     
     const registroParaSalvar: TablesInsert<'classe_ii_registros'> = {
       p_trab_id: ptrabId,
-      organizacao: form.organizacao,
-      ug: form.ug,
+      organizacao: form.om_destino_recurso, // OM de destino do recurso (ND 30)
+      ug: form.ug_destino_recurso, // UG de destino do recurso
       dias_operacao: form.dias_operacao,
       categoria: 'CONSOLIDADO',
       itens_equipamentos: finalItensToSave as any, // Salvar o array atualizado
@@ -399,16 +497,18 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
       detalhamento: detalhamento,
       fase_atividade: faseFinalString,
       detalhamento_customizado: null, // Ignorar o campo de detalhamento consolidado
+      valor_nd_30: valorND30Final, // NOVO
+      valor_nd_39: valorND39Final, // NOVO
     };
     
     try {
-      // 1. Deletar registros existentes para esta OM/UG
+      // 1. Deletar registros existentes para esta OM/UG de destino
       const { error: deleteError } = await supabase
         .from("classe_ii_registros")
         .delete()
         .eq("p_trab_id", ptrabId)
-        .eq("organizacao", form.organizacao)
-        .eq("ug", form.ug);
+        .eq("organizacao", form.om_destino_recurso)
+        .eq("ug", form.ug_destino_recurso);
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
       // 2. Inserir o novo registro consolidado
@@ -433,28 +533,45 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
     
     const consolidatedItems = registro.itens_equipamentos || [];
     let selectedOmIdForEdit: string | undefined = undefined;
+    let selectedOmDestinoIdForEdit: string | undefined = undefined;
     
     try {
+      // Buscar OM Detentora (usando o nome da OM do primeiro item, se houver)
+      // Nota: O item não armazena OM/UG, mas o registro consolidado sim.
+      // Para fins de edição, assumimos que a OM Detentora é a mesma que a OM de Destino do Recurso,
+      // a menos que tenhamos uma forma de rastrear a OM Detentora original.
+      // Por enquanto, vamos assumir que a OM Detentora é a mesma que a OM de Destino do Recurso.
+      
+      const omDetentoraNome = registro.organizacao;
+      const omDetentoraUg = registro.ug;
+      
       const { data: omData, error: omError } = await supabase
         .from('organizacoes_militares')
-        .select('id')
-        .eq('nome_om', registro.organizacao)
-        .eq('codug_om', registro.ug)
-        .single();
+        .select('id, nome_om, codug_om')
+        .eq('nome_om', omDetentoraNome)
+        .eq('codug_om', omDetentoraUg)
+        .maybeSingle();
+        
       if (omData && !omError) {
         selectedOmIdForEdit = omData.id;
+        selectedOmDestinoIdForEdit = omData.id;
       }
+      
     } catch (error) {
-      console.error("Erro ao buscar OM para edição:", error);
+      console.error("Erro ao buscar OMs para edição:", error);
     }
     
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
-      organizacao: registro.organizacao,
-      ug: registro.ug,
+      organizacao: registro.organizacao, // OM Detentora (Assumindo ser a mesma que a de destino)
+      ug: registro.ug, // UG Detentora
       dias_operacao: registro.dias_operacao,
       itens: consolidatedItems, // Load all items here
+      om_destino_recurso: registro.organizacao, // OM de Destino do Recurso
+      ug_destino_recurso: registro.ug, // UG de Destino do Recurso
+      selectedOmDestinoId: selectedOmDestinoIdForEdit,
+      valor_nd_39_input: formatNumberForInput(registro.valor_nd_39, 2), // NOVO: Carregar valor ND 39
     });
     
     const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
@@ -582,7 +699,6 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
   };
   // --- Fim Handlers para Edição de Memória por Item ---
 
-  const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
   const registrosAgrupados = useMemo(() => {
     return registros;
   }, [registros]);
@@ -616,7 +732,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>Organização Militar (OM) *</Label>
+                  <Label>OM Detentora do Equipamento *</Label>
                   <OmSelector
                     selectedOmId={form.selectedOmId}
                     onChange={handleOMChange}
@@ -625,7 +741,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                 </div>
 
                 <div className="space-y-2">
-                  <Label>UG</Label>
+                  <Label>UG Detentora</Label>
                   <Input value={form.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
                 </div>
                 
@@ -767,6 +883,23 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                                 {formatCurrency(currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0))}
                             </span>
                         </div>
+                        
+                        {/* NOVO CAMPO: OM de Destino do Recurso (ND 30) */}
+                        <div className="space-y-2 pt-2">
+                          <Label>OM de Destino do Recurso (ND 30/39) *</Label>
+                          <OmSelector
+                            selectedOmId={form.selectedOmDestinoId}
+                            onChange={handleOMDestinoChange}
+                            placeholder="Selecione a OM que receberá o recurso..."
+                            // Desabilitar se a OM detentora não estiver selecionada
+                            disabled={!form.organizacao} 
+                          />
+                          {form.ug_destino_recurso && (
+                            <p className="text-xs text-muted-foreground">
+                              UG de Destino: {form.ug_destino_recurso}
+                            </p>
+                          )}
+                        </div>
 
                         <div className="flex justify-end">
                             <Button 
@@ -812,6 +945,56 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                   </span>
                 </div>
                 
+                {/* NOVO BLOCO DE ALOCAÇÃO ND 30/39 */}
+                <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                    <h4 className="font-semibold text-sm">Alocação de Recursos (ND 33.90.30 / 33.90.39)</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="nd39-input">ND 33.90.39 (Serviço)</Label>
+                            <div className="relative">
+                                <Input
+                                    id="nd39-input"
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={form.valor_nd_39_input}
+                                    onChange={handleND39InputChange}
+                                    onBlur={handleND39InputBlur}
+                                    placeholder="0,00"
+                                    className="pl-8 text-lg"
+                                    disabled={valorTotalForm === 0}
+                                    onKeyDown={handleEnterToNextField}
+                                />
+                                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Valor alocado para contratação de serviço.
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>ND 33.90.30 (Material)</Label>
+                            <div className="relative">
+                                <Input
+                                    value={formatNumberForInput(nd30Value, 2)}
+                                    readOnly
+                                    disabled
+                                    className="pl-8 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
+                                />
+                                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Calculado por diferença (Total - ND 39).
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold border-t pt-2">
+                        <span>TOTAL ALOCADO:</span>
+                        <span className={cn(valorTotalForm === (nd30Value + nd39Value) ? "text-primary" : "text-destructive")}>
+                            {formatCurrency(nd30Value + nd39Value)}
+                        </span>
+                    </div>
+                </div>
+                {/* FIM NOVO BLOCO DE ALOCAÇÃO */}
+                
                 <div className="flex gap-3 pt-4 justify-end">
                   <Button
                     variant="outline"
@@ -824,7 +1007,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                   <Button 
                     type="button" 
                     onClick={handleSalvarRegistros} 
-                    disabled={loading || !form.organizacao || form.itens.length === 0}
+                    disabled={loading || !form.organizacao || form.itens.length === 0 || !form.om_destino_recurso || valorTotalForm !== (nd30Value + nd39Value)}
                   >
                     {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")}
                   </Button>
@@ -899,6 +1082,18 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                               <span className="font-semibold">{formatCurrency(registro.itens_equipamentos.filter(i => i.categoria === categoria).reduce((sum, i) => sum + (i.quantidade * i.valor_mnt_dia * registro.dias_operacao), 0))}</span>
                             </div>
                           ))}
+                        </div>
+                        
+                        {/* Exibição da Alocação */}
+                        <div className="pt-2 border-t">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
+                                <span className="font-medium text-green-600">{formatCurrency(registro.valor_nd_30)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
+                                <span className="font-medium text-blue-600">{formatCurrency(registro.valor_nd_39)}</span>
+                            </div>
                         </div>
                         
                         <div className="flex justify-between items-center pt-2">
