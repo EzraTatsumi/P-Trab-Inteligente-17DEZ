@@ -47,15 +47,11 @@ interface ItemClasseII {
 
 interface FormDataClasseII {
   selectedOmId?: string;
-  organizacao: string; // OM Detentora
-  ug: string; // UG Detentora
-  dias_operacao: number;
-  itens: ItemClasseII[];
-  fase_atividade?: string;
-  // CAMPOS PARA OM DE DESTINO DO RECURSO (ND 30)
-  om_destino_recurso: string;
-  ug_destino_recurso: string;
-  selectedOmDestinoId?: string;
+  organizacao: string; // OM Detentora (Global)
+  ug: string; // UG Detentora (Global)
+  dias_operacao: number; // Global
+  itens: ItemClasseII[]; // All items across all categories
+  fase_atividade?: string; // Global
 }
 
 interface ClasseIIRegistro {
@@ -79,12 +75,16 @@ interface CategoryAllocation {
   nd_39_input: string; // User input string for ND 39
   nd_30_value: number; // Calculated ND 30 value
   nd_39_value: number; // Calculated ND 39 value
+  // NEW: Destination fields (Per Category)
+  om_destino_recurso: string;
+  ug_destino_recurso: string;
+  selectedOmDestinoId?: string;
 }
 
 const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
-    'Equipamento Individual': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0 },
-    'Proteção Balística': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0 },
-    'Material de Estacionamento': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0 },
+    'Equipamento Individual': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Proteção Balística': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Material de Estacionamento': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
 };
 
 // Helper para agrupar itens de um registro por categoria
@@ -213,9 +213,6 @@ export default function ClasseIIForm() {
     ug: "",
     dias_operacao: 0,
     itens: [],
-    om_destino_recurso: "",
-    ug_destino_recurso: "",
-    selectedOmDestinoId: undefined,
   });
   
   // NOVO ESTADO: Rastreia a alocação de ND por categoria
@@ -371,9 +368,10 @@ export default function ClasseIIForm() {
       return;
     }
 
+    // A edição agora é feita por registro (que representa uma categoria)
     const uniqueRecordsMap = new Map<string, ClasseIIRegistro>();
     (data || []).forEach(r => {
-        const key = `${r.organizacao}-${r.ug}`;
+        const key = `${r.organizacao}-${r.ug}-${r.categoria}`; // Chave única por OM de destino E Categoria
         const record = {
             ...r,
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseII[],
@@ -394,9 +392,6 @@ export default function ClasseIIForm() {
       ug: "",
       dias_operacao: 0,
       itens: [],
-      om_destino_recurso: "",
-      ug_destino_recurso: "",
-      selectedOmDestinoId: undefined,
     });
     
     setCategoryAllocations(initialCategoryAllocations); // Reset allocations
@@ -415,40 +410,52 @@ export default function ClasseIIForm() {
         selectedOmId: omData.id, 
         organizacao: omData.nome_om, 
         ug: omData.codug_om,
-        // Por padrão, a OM de destino do recurso é a OM detentora
-        om_destino_recurso: omData.nome_om,
-        ug_destino_recurso: omData.codug_om,
-        selectedOmDestinoId: omData.id,
       });
+      
+      // Initialize destination OM for all categories to the OM Detentora
+      const newAllocations = CATEGORIAS.reduce((acc, cat) => {
+          acc[cat] = {
+              ...categoryAllocations[cat],
+              om_destino_recurso: omData.nome_om,
+              ug_destino_recurso: omData.codug_om,
+              selectedOmDestinoId: omData.id,
+          };
+          return acc;
+      }, {} as Record<Categoria, CategoryAllocation>);
+      setCategoryAllocations(newAllocations);
+      
     } else {
       setForm({ 
         ...form, 
         selectedOmId: undefined, 
         organizacao: "", 
         ug: "",
-        om_destino_recurso: "",
-        ug_destino_recurso: "",
-        selectedOmDestinoId: undefined,
       });
+      
+      // Clear destination OM for all categories
+      const newAllocations = CATEGORIAS.reduce((acc, cat) => {
+          acc[cat] = {
+              ...categoryAllocations[cat],
+              om_destino_recurso: "",
+              ug_destino_recurso: "",
+              selectedOmDestinoId: undefined,
+          };
+          return acc;
+      }, {} as Record<Categoria, CategoryAllocation>);
+      setCategoryAllocations(newAllocations);
     }
   };
   
   const handleOMDestinoChange = (omData: OMData | undefined) => {
-    if (omData) {
-      setForm({ 
-        ...form, 
-        om_destino_recurso: omData.nome_om, 
-        ug_destino_recurso: omData.codug_om,
-        selectedOmDestinoId: omData.id,
-      });
-    } else {
-      setForm({ 
-        ...form, 
-        om_destino_recurso: "", 
-        ug_destino_recurso: "",
-        selectedOmDestinoId: undefined,
-      });
-    }
+    setCategoryAllocations(prev => ({
+        ...prev,
+        [selectedTab]: {
+            ...prev[selectedTab],
+            om_destino_recurso: omData?.nome_om || "",
+            ug_destino_recurso: omData?.codug_om || "",
+            selectedOmDestinoId: omData?.id,
+        }
+    }));
   };
 
   const handleFaseChange = (fase: string, checked: boolean) => {
@@ -512,10 +519,11 @@ export default function ClasseIIForm() {
     // 5. Mesclar as listas
     const newFormItems = [...otherCategoryItems, ...itemsToKeep];
 
-    // 6. Update allocation state for the current category
+    // 6. Update allocation state for the current category (including destination fields which might have been updated)
     setCategoryAllocations(prev => ({
         ...prev,
         [selectedTab]: {
+            ...prev[selectedTab], // Keep existing destination fields
             total_valor: categoryTotalValue,
             nd_39_input: formatNumberForInput(finalND39Value, 2), // Store the final formatted input
             nd_30_value: finalND30Value,
@@ -541,7 +549,6 @@ export default function ClasseIIForm() {
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
     if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
     if (form.itens.length === 0) { toast.error("Adicione pelo menos um item"); return; }
-    if (!form.om_destino_recurso || !form.ug_destino_recurso) { toast.error("Selecione a OM de destino do recurso"); return; }
     
     let fasesFinais = [...fasesAtividade];
     if (customFaseAtividade.trim()) { fasesFinais = [...fasesFinais, customFaseAtividade.trim()]; }
@@ -550,65 +557,89 @@ export default function ClasseIIForm() {
 
     setLoading(true);
     
-    const valorTotal = valorTotalForm; // Total value of all items
-    const valorND30Final = totalND30Final;
-    const valorND39Final = totalND39Final;
+    // 1. Agrupar itens por categoria que possuem quantidade > 0
+    const itemsByActiveCategory = form.itens.reduce((acc, item) => {
+        if (item.quantidade > 0) {
+            if (!acc[item.categoria]) {
+                acc[item.categoria] = [];
+            }
+            acc[item.categoria].push(item);
+        }
+        return acc;
+    }, {} as Record<Categoria, ItemClasseII[]>);
     
-    // Final check: Ensure total allocated matches total calculated value
-    if (valorTotal !== totalAlocado) {
-        toast.error(`Erro de alocação: O valor total dos itens (${formatCurrency(valorTotal)}) não corresponde ao total alocado (${formatCurrency(totalAlocado)}). Salve todos os itens de categoria primeiro.`);
+    const categoriesToSave = Object.keys(itemsByActiveCategory) as Categoria[];
+    
+    if (categoriesToSave.length === 0) {
+        toast.error("Nenhum item com quantidade maior que zero foi configurado.");
         setLoading(false);
         return;
     }
     
-    const detalhamento = generateDetalhamento(
-      form.itens, 
-      form.dias_operacao, 
-      form.organizacao, 
-      form.ug, 
-      faseFinalString,
-      form.om_destino_recurso,
-      form.ug_destino_recurso,
-      valorND30Final,
-      valorND39Final
-    );
+    const registrosParaSalvar: TablesInsert<'classe_ii_registros'>[] = [];
     
-    // Mapear itens para garantir que 'memoria_customizada' seja explicitamente null se estiver faltando
-    const finalItensToSave = form.itens.map(item => ({
-        ...item,
-        memoria_customizada: null, // Força null, pois a edição por item foi removida
-    }));
-    
-    const registroParaSalvar: TablesInsert<'classe_ii_registros'> = {
-      p_trab_id: ptrabId,
-      organizacao: form.om_destino_recurso, // OM de destino do recurso (ND 30)
-      ug: form.ug_destino_recurso, // UG de destino do recurso
-      dias_operacao: form.dias_operacao,
-      categoria: 'CONSOLIDADO',
-      itens_equipamentos: finalItensToSave as any, // Salvar o array atualizado
-      valor_total: valorTotal,
-      detalhamento: detalhamento,
-      fase_atividade: faseFinalString,
-      detalhamento_customizado: null, // Ignorar o campo de detalhamento consolidado
-      valor_nd_30: valorND30Final, // NOVO
-      valor_nd_39: valorND39Final, // NOVO
-    };
-    
+    // 2. Iterar sobre as categorias ativas e criar um registro para cada
+    for (const categoria of categoriesToSave) {
+        const itens = itemsByActiveCategory[categoria];
+        const allocation = categoryAllocations[categoria];
+        
+        if (!allocation.om_destino_recurso || !allocation.ug_destino_recurso) {
+            toast.error(`Selecione a OM de destino do recurso para a categoria: ${categoria}.`);
+            setLoading(false);
+            return;
+        }
+        
+        const valorTotalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+        
+        // Final check: Ensure total allocated matches total calculated value for this category
+        if (valorTotalCategoria !== (allocation.nd_30_value + allocation.nd_39_value)) {
+            toast.error(`Erro de alocação na categoria ${categoria}: O valor total dos itens (${formatCurrency(valorTotalCategoria)}) não corresponde ao total alocado (${formatCurrency(allocation.nd_30_value + allocation.nd_39_value)}). Salve a categoria novamente.`);
+            setLoading(false);
+            return;
+        }
+        
+        const detalhamento = generateDetalhamento(
+            itens, 
+            form.dias_operacao, 
+            form.organizacao, // OM Detentora
+            form.ug, // UG Detentora
+            faseFinalString,
+            allocation.om_destino_recurso, // OM de Destino do Recurso (ND 30/39)
+            allocation.ug_destino_recurso, // UG de Destino do Recurso (ND 30/39)
+            allocation.nd_30_value,
+            allocation.nd_39_value
+        );
+        
+        const registro: TablesInsert<'classe_ii_registros'> = {
+            p_trab_id: ptrabId,
+            organizacao: allocation.om_destino_recurso, // OM de destino do recurso (ND 30/39)
+            ug: allocation.ug_destino_recurso, // UG de destino do recurso
+            dias_operacao: form.dias_operacao,
+            categoria: categoria, // Salvar a categoria como o tipo de registro
+            itens_equipamentos: itens as any,
+            valor_total: valorTotalCategoria,
+            detalhamento: detalhamento,
+            fase_atividade: faseFinalString,
+            detalhamento_customizado: null,
+            valor_nd_30: allocation.nd_30_value,
+            valor_nd_39: allocation.nd_39_value,
+        };
+        registrosParaSalvar.push(registro);
+    }
+
     try {
-      // 1. Deletar registros existentes para esta OM/UG de destino
+      // 3. Deletar TODOS os registros existentes para o PTrab (pois estamos salvando por categoria)
       const { error: deleteError } = await supabase
         .from("classe_ii_registros")
         .delete()
-        .eq("p_trab_id", ptrabId)
-        .eq("organizacao", form.om_destino_recurso)
-        .eq("ug", form.ug_destino_recurso);
+        .eq("p_trab_id", ptrabId);
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
-      // 2. Inserir o novo registro consolidado
-      const { error: insertError } = await supabase.from("classe_ii_registros").insert([registroParaSalvar]);
+      // 4. Inserir os novos registros (um por categoria ativa)
+      const { error: insertError } = await supabase.from("classe_ii_registros").insert(registrosParaSalvar);
       if (insertError) throw insertError;
       
-      toast.success(editingId ? "Registro de Classe II atualizado com sucesso!" : "Registro de Classe II salvo com sucesso!");
+      toast.success(editingId ? "Registros de Classe II atualizados com sucesso!" : "Registros de Classe II salvos com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
       resetFormFields();
       fetchRegistros();
@@ -624,57 +655,103 @@ export default function ClasseIIForm() {
     setLoading(true);
     resetFormFields();
     
-    const consolidatedItems = registro.itens_equipamentos || [];
-    let selectedOmIdForEdit: string | undefined = undefined;
-    let selectedOmDestinoIdForEdit: string | undefined = undefined;
-    
-    try {
-      // Buscar OM Detentora (usando o nome da OM do primeiro item, se houver)
-      // Para fins de edição, assumimos que a OM Detentora é a mesma que a OM de Destino do Recurso.
-      
-      const omDetentoraNome = registro.organizacao;
-      const omDetentoraUg = registro.ug;
-      
-      const { data: omData, error: omError } = await supabase
-        .from('organizacoes_militares')
-        .select('id, nome_om, codug_om')
-        .eq('nome_om', omDetentoraNome)
-        .eq('codug_om', omDetentoraUg)
-        .maybeSingle();
+    // 1. Buscar TODOS os registros para este PTrab (pois a edição é consolidada)
+    const { data: allRecords, error: fetchAllError } = await supabase
+        .from("classe_ii_registros")
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
+        .eq("p_trab_id", ptrabId);
         
-      if (omData && !omError) {
-        selectedOmIdForEdit = omData.id;
-        selectedOmDestinoIdForEdit = omData.id;
-      }
-      
-    } catch (error) {
-      console.error("Erro ao buscar OMs para edição:", error);
+    if (fetchAllError) {
+        toast.error("Erro ao carregar todos os registros para edição.");
+        setLoading(false);
+        return;
     }
     
+    // 2. Consolidar todos os itens em um único array (form.itens)
+    let consolidatedItems: ItemClasseII[] = [];
+    let newAllocations = { ...initialCategoryAllocations };
+    let firstOmDetentora: { nome: string, ug: string } | null = null;
+    
+    (allRecords || []).forEach(r => {
+        const category = r.categoria as Categoria;
+        const items = (r.itens_equipamentos || []) as ItemClasseII[];
+        
+        // Adicionar itens ao array consolidado
+        consolidatedItems = consolidatedItems.concat(items);
+        
+        // Preencher a alocação para a categoria
+        if (newAllocations[category]) {
+            const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * r.dias_operacao), 0);
+            
+            newAllocations[category] = {
+                total_valor: totalValor,
+                nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
+                nd_30_value: Number(r.valor_nd_30),
+                nd_39_value: Number(r.valor_nd_39),
+                om_destino_recurso: r.organizacao,
+                ug_destino_recurso: r.ug,
+                selectedOmDestinoId: undefined, // Será preenchido abaixo
+            };
+        }
+        
+        // Capturar a OM Detentora (assumindo que é a mesma para todos os registros)
+        if (!firstOmDetentora) {
+            // Nota: O campo 'organizacao' no DB é a OM de Destino do Recurso.
+            // Para fins de edição, assumimos que a OM Detentora é a mesma que a OM de Destino do Recurso (organizacao/ug)
+            firstOmDetentora = { nome: r.organizacao, ug: r.ug };
+        }
+    });
+    
+    // 3. Buscar IDs das OMs de Destino e Detentora
+    let selectedOmIdForEdit: string | undefined = undefined;
+    
+    if (firstOmDetentora) {
+        try {
+            const { data: omData } = await supabase
+                .from('organizacoes_militares')
+                .select('id')
+                .eq('nome_om', firstOmDetentora.nome)
+                .eq('codug_om', firstOmDetentora.ug)
+                .maybeSingle();
+            selectedOmIdForEdit = omData?.id;
+        } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
+    }
+    
+    // 4. Preencher o formulário principal
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
-      organizacao: registro.organizacao, // OM Detentora (Assumindo ser a mesma que a de destino)
-      ug: registro.ug, // UG Detentora
+      organizacao: firstOmDetentora?.nome || "",
+      ug: firstOmDetentora?.ug || "",
       dias_operacao: registro.dias_operacao,
-      itens: consolidatedItems, // Load all items here
-      om_destino_recurso: registro.organizacao, // OM de Destino do Recurso
-      ug_destino_recurso: registro.ug, // UG de Destino do Recurso
-      selectedOmDestinoId: selectedOmDestinoIdForEdit,
+      itens: consolidatedItems,
     });
     
-    // Reset ND allocation state when loading for editing (cannot reliably reconstruct per-category)
-    setCategoryAllocations(initialCategoryAllocations);
-    setCurrentND39Input(""); // Reset current input
+    // 5. Preencher o estado de alocação e buscar IDs de destino
+    const categoriesToLoad = Object.keys(newAllocations) as Categoria[];
+    for (const cat of categoriesToLoad) {
+        const alloc = newAllocations[cat];
+        if (alloc.om_destino_recurso) {
+            try {
+                const { data: omData } = await supabase
+                    .from('organizacoes_militares')
+                    .select('id')
+                    .eq('nome_om', alloc.om_destino_recurso)
+                    .eq('codug_om', alloc.ug_destino_recurso)
+                    .maybeSingle();
+                alloc.selectedOmDestinoId = omData?.id;
+            } catch (e) { console.error(`Erro ao buscar OM Destino ID para ${cat}:`, e); }
+        }
+    }
+    setCategoryAllocations(newAllocations);
     
+    // 6. Preencher fases e aba
     const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
-    // Set the initial tab to the category of the first item, if available
     if (consolidatedItems.length > 0) {
-        const firstCategory = consolidatedItems[0].categoria;
-        setSelectedTab(firstCategory);
+        setSelectedTab(consolidatedItems[0].categoria);
     } else {
         setSelectedTab(CATEGORIAS[0]);
     }
@@ -791,23 +868,6 @@ export default function ClasseIIForm() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                
-                {/* CAMPO: OM de Destino do Recurso */}
-                <div className="space-y-2">
-                  <Label>OM de Destino do Recurso *</Label>
-                  <OmSelector
-                    selectedOmId={form.selectedOmDestinoId}
-                    onChange={handleOMDestinoChange}
-                    placeholder="Selecione a OM que receberá o recurso..."
-                    // Desabilitar se a OM detentora não estiver selecionada
-                    disabled={!form.organizacao} 
-                  />
-                  {form.ug_destino_recurso && (
-                    <p className="text-xs text-muted-foreground">
-                      UG de Destino: {form.ug_destino_recurso}
-                    </p>
-                  )}
-                </div>
               </div>
             </div>
 
@@ -885,11 +945,45 @@ export default function ClasseIIForm() {
                             </span>
                         </div>
                         
-                        {/* NOVO BLOCO DE ALOCAÇÃO ND 30/39 - MOVIDO PARA AQUI */}
+                        {/* NOVO BLOCO DE ALOCAÇÃO ND 30/39 */}
                         {currentCategoryTotalValue > 0 && (
                             <div className="space-y-4 p-4 border rounded-lg bg-background">
                                 <h4 className="font-semibold text-sm">Alocação de Recursos para {cat}</h4>
+                                
+                                {/* CAMPO: OM de Destino do Recurso */}
+                                <div className="space-y-2">
+                                    <Label>OM de Destino do Recurso *</Label>
+                                    <OmSelector
+                                        selectedOmId={categoryAllocations[cat].selectedOmDestinoId}
+                                        onChange={handleOMDestinoChange}
+                                        placeholder="Selecione a OM que receberá o recurso..."
+                                        disabled={!form.organizacao} 
+                                    />
+                                    {categoryAllocations[cat].ug_destino_recurso && (
+                                        <p className="text-xs text-muted-foreground">
+                                            UG de Destino: {categoryAllocations[cat].ug_destino_recurso}
+                                        </p>
+                                    )}
+                                </div>
+                                
                                 <div className="grid grid-cols-2 gap-4">
+                                    {/* ND 30 (Material) - ESQUERDA */}
+                                    <div className="space-y-2">
+                                        <Label>ND 33.90.30 (Material)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                value={formatNumberForInput(nd30ValueTemp, 2)}
+                                                readOnly
+                                                disabled
+                                                className="pl-8 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
+                                            />
+                                            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Calculado por diferença (Total - ND 39).
+                                        </p>
+                                    </div>
+                                    {/* ND 39 (Serviço) - DIREITA */}
                                     <div className="space-y-2">
                                         <Label htmlFor="nd39-input">ND 33.90.39 (Serviço)</Label>
                                         <div className="relative">
@@ -911,21 +1005,6 @@ export default function ClasseIIForm() {
                                             Valor alocado para contratação de serviço.
                                         </p>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>ND 33.90.30 (Material)</Label>
-                                        <div className="relative">
-                                            <Input
-                                                value={formatNumberForInput(nd30ValueTemp, 2)}
-                                                readOnly
-                                                disabled
-                                                className="pl-8 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
-                                            />
-                                            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            Calculado por diferença (Total - ND 39).
-                                        </p>
-                                    </div>
                                 </div>
                                 <div className="flex justify-between text-sm font-bold border-t pt-2">
                                     <span>TOTAL ALOCADO:</span>
@@ -942,7 +1021,7 @@ export default function ClasseIIForm() {
                                 type="button" 
                                 onClick={handleUpdateCategoryItems} 
                                 className="w-full md:w-auto" 
-                                disabled={!form.organizacao || form.dias_operacao <= 0 || currentCategoryTotalValue !== (nd30ValueTemp + nd39ValueTemp)}
+                                disabled={!form.organizacao || form.dias_operacao <= 0 || currentCategoryTotalValue !== (nd30ValueTemp + nd39ValueTemp) || !categoryAllocations[cat].om_destino_recurso}
                             >
                                 Salvar Itens da Categoria
                             </Button>
@@ -988,6 +1067,12 @@ export default function ClasseIIForm() {
                         {/* Exibe a alocação salva */}
                         <div className="pt-2 border-t mt-2">
                             <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                <span className="font-medium text-foreground">
+                                    {allocation.om_destino_recurso} ({allocation.ug_destino_recurso})
+                                </span>
+                            </div>
+                            <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
                                 <span className="font-medium text-green-600">{formatCurrency(allocation.nd_30_value)}</span>
                             </div>
@@ -1021,18 +1106,7 @@ export default function ClasseIIForm() {
                         A alocação foi definida por categoria. O total deve ser igual ao Valor Total da OM.
                     </p>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label>ND 33.90.39 (Serviço)</Label>
-                            <div className="relative">
-                                <Input
-                                    value={formatNumberForInput(totalND39Final, 2)}
-                                    readOnly
-                                    disabled
-                                    className="pl-8 text-lg font-bold bg-blue-500/10 text-blue-600 disabled:opacity-100"
-                                />
-                                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            </div>
-                        </div>
+                        {/* ND 30 (Material) - ESQUERDA */}
                         <div className="space-y-2">
                             <Label>ND 33.90.30 (Material)</Label>
                             <div className="relative">
@@ -1041,6 +1115,19 @@ export default function ClasseIIForm() {
                                     readOnly
                                     disabled
                                     className="pl-8 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
+                                />
+                                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            </div>
+                        </div>
+                        {/* ND 39 (Serviço) - DIREITA */}
+                        <div className="space-y-2">
+                            <Label>ND 33.90.39 (Serviço)</Label>
+                            <div className="relative">
+                                <Input
+                                    value={formatNumberForInput(totalND39Final, 2)}
+                                    readOnly
+                                    disabled
+                                    className="pl-8 text-lg font-bold bg-blue-500/10 text-blue-600 disabled:opacity-100"
                                 />
                                 <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             </div>
@@ -1073,7 +1160,7 @@ export default function ClasseIIForm() {
                   <Button 
                     type="button" 
                     onClick={handleSalvarRegistros} 
-                    disabled={loading || !form.organizacao || form.itens.length === 0 || !form.om_destino_recurso || valorTotalForm !== totalAlocado}
+                    disabled={loading || !form.organizacao || form.itens.length === 0 || valorTotalForm !== totalAlocado}
                   >
                     {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")}
                   </Button>
@@ -1086,7 +1173,7 @@ export default function ClasseIIForm() {
               <div className="space-y-4 mt-6">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-accent" />
-                  OMs Cadastradas
+                  Registros Salvos (Por Categoria)
                 </h2>
                 
                 {registrosAgrupados.map((registro) => {
@@ -1099,8 +1186,8 @@ export default function ClasseIIForm() {
                     <Card key={registro.id} className="p-4 bg-muted/30">
                       <div className="flex items-center justify-between mb-3 border-b pb-2">
                         <div className="flex items-center gap-2">
-                          <h4 className="text-lg font-semibold text-foreground">{om} (UG: {ug})</h4>
-                          <Badge variant="secondary" className="ml-2 text-xs">Consolidado</Badge>
+                          <h4 className="text-lg font-semibold text-foreground">{registro.categoria}</h4>
+                          <Badge variant="secondary" className="ml-2 text-xs">OM Destino: {om} ({ug})</Badge>
                         </div>
                         <div className="flex gap-1">
                           <Button
@@ -1115,7 +1202,7 @@ export default function ClasseIIForm() {
                             variant="ghost"
                             size="icon"
                             onClick={() => {
-                              if (confirm(`Deseja realmente deletar o registro de Classe II para ${om}?`)) {
+                              if (confirm(`Deseja realmente deletar o registro de Classe II para ${om} (${registro.categoria})?`)) {
                                 supabase.from("classe_ii_registros")
                                   .delete()
                                   .eq("id", registro.id)
@@ -1163,7 +1250,7 @@ export default function ClasseIIForm() {
                         </div>
                         
                         <div className="flex justify-between items-center pt-2">
-                          <span className="font-bold text-base">TOTAL OM</span>
+                          <span className="font-bold text-base">TOTAL CATEGORIA</span>
                           <span className="font-extrabold text-xl text-primary">{formatCurrency(totalOM)}</span>
                         </div>
                       </div>
@@ -1189,42 +1276,27 @@ export default function ClasseIIForm() {
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                       <h4 className="text-lg font-semibold text-foreground">
-                        OM: {om} ({ug})
+                        OM Destino: {om} ({ug}) - Categoria: {registro.categoria}
                       </h4>
                       
                       <div className="space-y-3">
-                        {Object.entries(itensPorCategoria).map(([categoria, itens]) => {
-                          const categoriaKey = categoria as Categoria;
+                        {/* A memória de cálculo agora é gerada para o registro completo, que já é por categoria */}
+                        <Card className="p-4 bg-background">
+                          <div className="flex items-center justify-between mb-2">
+                            <h6 className="font-bold text-sm">
+                              Detalhamento Completo
+                            </h6>
+                          </div>
                           
-                          // Gera a memória de cálculo para a categoria
-                          const categoriaMemoria = generateCategoryMemoriaCalculo(
-                            categoriaKey,
-                            itens,
-                            registro.dias_operacao,
-                            registro.organizacao,
-                            registro.ug,
-                            registro.fase_atividade
-                          );
-                          
-                          return (
-                            <Card key={categoriaKey} className="p-4 bg-background">
-                              <div className="flex items-center justify-between mb-2">
-                                <h6 className="font-bold text-sm">
-                                  {categoriaKey} ({itens.reduce((sum, i) => sum + i.quantidade, 0)} un.)
-                                </h6>
-                              </div>
-                              
-                              <Card className="p-3 bg-muted/50">
-                                <Textarea
-                                  value={categoriaMemoria}
-                                  readOnly
-                                  rows={10}
-                                  className="font-mono text-xs whitespace-pre-wrap text-foreground"
-                                />
-                              </Card>
-                            </Card>
-                          );
-                        })}
+                          <Card className="p-3 bg-muted/50">
+                            <Textarea
+                              value={registro.detalhamento || ''}
+                              readOnly
+                              rows={15}
+                              className="font-mono text-xs whitespace-pre-wrap text-foreground"
+                            />
+                          </Card>
+                        </Card>
                       </div>
                     </div>
                   );
