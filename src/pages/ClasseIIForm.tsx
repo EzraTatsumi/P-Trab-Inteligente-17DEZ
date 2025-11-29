@@ -105,18 +105,18 @@ const groupRecordItemsByCategory = (items: ItemClasseII[]) => {
 
 // Função para formatar fases (MOVIDA PARA O TOPO)
 const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
-    if (!faseCSV) return 'operação';
-    
-    const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
-    
-    if (fases.length === 0) return 'operação';
-    if (fases.length === 1) return fases[0];
-    if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
-    
-    const ultimaFase = fases[fases.length - 1];
-    const demaisFases = fases.slice(0, -1).join(', ');
-    return `${demaisFases} e ${ultimaFase}`;
-  };
+  if (!faseCSV) return 'operação';
+  
+  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
+  
+  if (fases.length === 0) return 'operação';
+  if (fases.length === 1) return fases[0];
+  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
+  
+  const ultimaFase = fases[fases.length - 1];
+  const demaisFases = fases.slice(0, -1).join(', ');
+  return `${demaisFases} e ${ultimaFase}`;
+};
 
 // NOVO: Gera a memória de cálculo detalhada para uma categoria
 const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
@@ -365,7 +365,8 @@ export default function ClasseIIForm() {
       .from("classe_ii_registros")
       .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
       .eq("p_trab_id", ptrabId)
-      .order("created_at", { ascending: false });
+      .order("organizacao", { ascending: true }) // Ordenar por OM
+      .order("categoria", { ascending: true }); // E depois por categoria
 
     if (error) {
       toast.error("Erro ao carregar registros");
@@ -777,8 +778,16 @@ export default function ClasseIIForm() {
     setLoading(false);
   };
   
-  const registrosAgrupados = useMemo(() => {
-    return registros;
+  // NOVO MEMO: Agrupa os registros por OM de Destino
+  const registrosAgrupadosPorOM = useMemo(() => {
+    return registros.reduce((acc, registro) => {
+        const key = `${registro.organizacao} (${registro.ug})`;
+        if (!acc[key]) {
+            acc[key] = [];
+        }
+        acc[key].push(registro);
+        return acc;
+    }, {} as Record<string, ClasseIIRegistro[]>);
   }, [registros]);
 
   return (
@@ -1038,7 +1047,7 @@ export default function ClasseIIForm() {
                                 type="button" 
                                 onClick={handleUpdateCategoryItems} 
                                 className="w-full md:w-auto" 
-                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || !categoryAllocations[cat].om_destino_recurso}
+                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && !categoryAllocations[cat].om_destino_recurso)}
                             >
                                 Salvar Itens da Categoria
                             </Button>
@@ -1061,7 +1070,7 @@ export default function ClasseIIForm() {
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription className="font-medium">
                             Atenção: O Custo Total dos Itens ({formatCurrency(valorTotalForm)}) não corresponde ao Total Alocado ({formatCurrency(totalAlocado)}). 
-                            Certifique-se de clicar em "Salvar Itens da Categoria" em todas as abas que contêm itens.
+                            Clique em "Salvar Itens da Categoria" em todas as abas ativas.
                         </AlertDescription>
                     </Alert>
                 )}
@@ -1148,93 +1157,100 @@ export default function ClasseIIForm() {
             )}
 
             {/* 4. Registros Salvos (OMs Cadastradas) - SUMMARY SECTION */}
-            {registrosAgrupados.length > 0 && (
+            {registros.length > 0 && (
               <div className="space-y-4 mt-6">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-accent" />
-                  Registros Salvos (Por Categoria)
+                  OMs Cadastradas
                 </h2>
                 
-                {registrosAgrupados.map((registro) => {
-                  const om = registro.organizacao;
-                  const ug = registro.ug;
-                  const totalOM = registro.valor_total;
-                  const fases = formatFasesParaTexto(registro.fase_atividade);
-                  
-                  return (
-                    <Card key={registro.id} className="p-4 bg-muted/30">
-                      <div className="flex items-center justify-between mb-3 border-b pb-2">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-lg font-semibold text-foreground">{registro.categoria}</h4>
-                          <Badge variant="secondary" className="ml-2 text-xs">OM Destino: {om} ({ug})</Badge>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleEditarRegistro(registro)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              if (confirm(`Deseja realmente deletar o registro de Classe II para ${om} (${registro.categoria})?`)) {
-                                supabase.from("classe_ii_registros")
-                                  .delete()
-                                  .eq("id", registro.id)
-                                  .then(() => {
-                                    toast.success("Registro excluído!");
-                                    fetchRegistros();
-                                  })
-                                  .catch(err => {
-                                    toast.error(sanitizeError(err));
-                                  });
-                              }
-                            }}
-                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">Dias: {registro.dias_operacao} | Fases: {fases}</p>
-                        
-                        <div className="space-y-1 pt-2">
-                          {Object.entries(registro.itens_equipamentos.reduce((acc, item) => {
-                            acc[item.categoria] = (acc[item.categoria] || 0) + item.quantidade;
-                            return acc;
-                          }, {} as Record<Categoria, number>)).map(([categoria, quantidade]) => (
-                            <div key={categoria} className="flex justify-between text-sm border-b border-dashed pb-1">
-                              <span className="font-medium text-primary">{categoria} ({quantidade} itens)</span>
-                              <span className="font-semibold">{formatCurrency(registro.itens_equipamentos.filter(i => i.categoria === categoria).reduce((sum, i) => sum + (i.quantidade * i.valor_mnt_dia * registro.dias_operacao), 0))}</span>
+                {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+                    const totalOM = omRegistros.reduce((sum, r) => sum + r.valor_total, 0);
+                    const omName = omKey.split(' (')[0];
+                    const ug = omKey.split(' (')[1].replace(')', '');
+                    
+                    return (
+                        <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                            <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                <h3 className="font-bold text-lg text-primary">
+                                    {omName} (UG: {ug})
+                                </h3>
+                                <span className="font-extrabold text-xl text-primary">
+                                    {formatCurrency(totalOM)}
+                                </span>
                             </div>
-                          ))}
-                        </div>
-                        
-                        {/* Exibição da Alocação */}
-                        <div className="pt-2 border-t">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
-                                <span className="font-medium text-green-600">{formatCurrency(registro.valor_nd_30)}</span>
+                            
+                            <div className="space-y-3">
+                                {omRegistros.map((registro) => {
+                                    const totalCategoria = registro.valor_total;
+                                    const fases = formatFasesParaTexto(registro.fase_atividade);
+                                    
+                                    return (
+                                        <Card key={registro.id} className="p-3 bg-background border">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex flex-col">
+                                                    <h4 className="font-semibold text-base text-foreground">
+                                                        {registro.categoria}
+                                                    </h4>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Dias: {registro.dias_operacao} | Fases: {fases}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-lg text-primary/80">
+                                                        {formatCurrency(totalCategoria)}
+                                                    </span>
+                                                    <div className="flex gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            onClick={() => handleEditarRegistro(registro)}
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => {
+                                                                if (confirm(`Deseja realmente deletar o registro de Classe II para ${omName} (${registro.categoria})?`)) {
+                                                                    supabase.from("classe_ii_registros")
+                                                                        .delete()
+                                                                        .eq("id", registro.id)
+                                                                        .then(() => {
+                                                                            toast.success("Registro excluído!");
+                                                                            fetchRegistros();
+                                                                        })
+                                                                        .catch(err => {
+                                                                            toast.error(sanitizeError(err));
+                                                                        });
+                                                                }
+                                                            }}
+                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Detalhes da Alocação */}
+                                            <div className="pt-2 border-t mt-2">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
+                                                    <span className="font-medium text-green-600">{formatCurrency(registro.valor_nd_30)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
+                                                    <span className="font-medium text-blue-600">{formatCurrency(registro.valor_nd_39)}</span>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    );
+                                })}
                             </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
-                                <span className="font-medium text-blue-600">{formatCurrency(registro.valor_nd_39)}</span>
-                            </div>
-                        </div>
-                        
-                        <div className="flex justify-between items-center pt-2">
-                          <span className="font-bold text-base">TOTAL CATEGORIA</span>
-                          <span className="font-extrabold text-xl text-primary">{formatCurrency(totalOM)}</span>
-                        </div>
-                      </div>
-                    </Card>
-                  );
+                        </Card>
+                    );
                 })}
               </div>
             )}
@@ -1250,7 +1266,9 @@ export default function ClasseIIForm() {
                 {registros.map(registro => {
                   const om = registro.organizacao;
                   const ug = registro.ug;
-                  const itensPorCategoria = groupRecordItemsByCategory(registro.itens_equipamentos);
+                  const isEditing = editingMemoriaId === registro.id;
+                  const hasCustomMemoria = !!registro.detalhamento_customizado;
+                  const memoriaExibida = registro.detalhamento_customizado || registro.detalhamento || "";
                   
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
@@ -1258,25 +1276,73 @@ export default function ClasseIIForm() {
                         OM Destino: {om} ({ug}) - Categoria: {registro.categoria}
                       </h4>
                       
-                      <div className="space-y-3">
-                        {/* A memória de cálculo agora é gerada para o registro completo, que já é por categoria */}
-                        <Card className="p-4 bg-background">
-                          <div className="flex items-center justify-between mb-2">
-                            <h6 className="font-bold text-sm">
-                              Detalhamento Completo
-                            </h6>
-                          </div>
-                          
-                          <Card className="p-3 bg-muted/50">
-                            <Textarea
-                              value={registro.detalhamento || ''}
-                              readOnly
-                              rows={15}
-                              className="font-mono text-xs whitespace-pre-wrap text-foreground"
-                            />
-                          </Card>
-                        </Card>
-                      </div>
+                      <div className="flex items-center justify-end gap-2 mb-4">
+                          {!isEditing ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleIniciarEdicaoMemoria(registro)}
+                                disabled={loading}
+                                className="gap-2"
+                              >
+                                <Pencil className="h-4 w-4" />
+                                Editar Memória
+                              </Button>
+                              
+                              {hasCustomMemoria && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                                  disabled={loading}
+                                  className="gap-2 text-muted-foreground"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                  Restaurar Automática
+                                </Button>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                disabled={loading}
+                                className="gap-2"
+                              >
+                                <Check className="h-4 w-4" />
+                                Salvar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleCancelarEdicaoMemoria}
+                                disabled={loading}
+                                className="gap-2"
+                              >
+                                <XCircle className="h-4 w-4" />
+                                Cancelar
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      
+                      <Card className="p-4 bg-background rounded-lg border">
+                        {isEditing ? (
+                          <Textarea
+                            value={memoriaEdit}
+                            onChange={(e) => setMemoriaEdit(e.target.value)}
+                            className="min-h-[300px] font-mono text-sm"
+                            placeholder="Digite a memória de cálculo..."
+                          />
+                        ) : (
+                          <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
+                            {memoriaExibida}
+                          </pre>
+                        )}
+                      </Card>
                     </div>
                   );
                 })}
