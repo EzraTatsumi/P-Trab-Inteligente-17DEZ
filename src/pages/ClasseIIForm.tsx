@@ -97,6 +97,7 @@ export default function ClasseIIForm() {
   const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
+  // Removendo estados de edição de memória consolidada
   const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
   const [memoriaEdit, setMemoriaEdit] = useState<string>("");
 
@@ -390,6 +391,8 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
       valor_total: valorTotal,
       detalhamento: detalhamento,
       fase_atividade: faseFinalString,
+      // Limpar detalhamento_customizado ao salvar um novo registro/atualização
+      detalhamento_customizado: null, 
     };
     
     try {
@@ -461,64 +464,8 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
     setLoading(false);
   };
 
-  // Funções de gerenciamento de memória customizada
-  const handleIniciarEdicaoMemoria = (registro: ClasseIIRegistro) => {
-    setEditingMemoriaId(registro.id);
-    setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento || "");
-  };
-
-  const handleCancelarEdicaoMemoria = () => {
-    setEditingMemoriaId(null);
-    setMemoriaEdit("");
-  };
-
-  const handleSalvarMemoriaCustomizada = async (registroId: string) => {
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from("classe_ii_registros")
-        .update({
-          detalhamento_customizado: memoriaEdit.trim() || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", registroId);
-
-      if (error) throw error;
-
-      toast.success("Memória de cálculo atualizada com sucesso!");
-      setEditingMemoriaId(null);
-      setMemoriaEdit("");
-      fetchRegistros();
-    } catch (error) {
-      console.error("Erro ao salvar memória:", error);
-      toast.error("Erro ao salvar memória de cálculo");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from("classe_ii_registros")
-        .update({
-          detalhamento_customizado: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", registroId);
-
-      if (error) throw error;
-
-      toast.success("Memória de cálculo restaurada!");
-      fetchRegistros();
-    } catch (error) {
-      console.error("Erro ao restaurar memória:", error);
-      toast.error("Erro ao restaurar memória automática");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Funções de gerenciamento de memória customizada (REMOVIDAS)
+  // ...
 
   // Filtra as diretrizes disponíveis para a aba selecionada
   const itensDisponiveis = useMemo(() => {
@@ -887,82 +834,17 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                 </h2>
                 
                 {registros.map(registro => {
-                  const isEditing = editingMemoriaId === registro.id;
-                  const hasCustomMemoria = !!registro.detalhamento_customizado;
+                  // const isEditing = editingMemoriaId === registro.id; // Não é mais necessário
+                  // const hasCustomMemoria = !!registro.detalhamento_customizado; // Não é mais necessário
                   
-                  // Se estiver editando, a Textarea é exibida para o registro consolidado
-                  if (isEditing) {
-                    return (
-                      <Card key={`memoria-edit-${registro.id}`} className="p-4 bg-muted/30">
-                        <div className="flex items-center justify-between mb-2">
-                          <h6 className="font-bold text-sm text-primary">
-                            Edição Consolidada: {registro.organizacao} ({registro.ug})
-                          </h6>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
-                              disabled={loading}
-                              className="gap-2 h-8"
-                            >
-                              <Check className="h-4 w-4" />
-                              Salvar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={handleCancelarEdicaoMemoria}
-                              disabled={loading}
-                              className="gap-2 h-8"
-                            >
-                              <XCircle className="h-4 w-4" />
-                              Cancelar
-                            </Button>
-                          </div>
-                        </div>
-                        <Textarea
-                          value={memoriaEdit}
-                          onChange={(e) => setMemoriaEdit(e.target.value)}
-                          rows={15}
-                          className="font-mono text-xs whitespace-pre-wrap text-foreground"
-                          placeholder="Edite a memória de cálculo consolidada aqui..."
-                        />
-                      </Card>
-                    );
-                  }
-                  
-                  // Se não estiver editando, exibe a memória individual para cada item
+                  // Apenas exibe a memória individual para cada item
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                       <div className="flex justify-between items-center">
                         <h4 className="text-lg font-semibold text-foreground">
                           OM: {registro.organizacao} ({registro.ug})
                         </h4>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleIniciarEdicaoMemoria(registro)}
-                            disabled={loading}
-                            className="gap-2 h-8"
-                          >
-                            <Pencil className="h-4 w-4" />
-                            Editar Memória Consolidada
-                          </Button>
-                          {hasCustomMemoria && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
-                              disabled={loading}
-                              className="gap-2 text-muted-foreground h-8"
-                            >
-                              <XCircle className="h-4 w-4" />
-                              Restaurar Automática
-                            </Button>
-                          )}
-                        </div>
+                        {/* Botões de edição de memória consolidada removidos */}
                       </div>
                       
                       <div className="space-y-3">
@@ -988,17 +870,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                         })}
                       </div>
                       
-                      {/* Exibir a memória consolidada customizada, se existir */}
-                      {hasCustomMemoria && (
-                        <div className="pt-4 border-t">
-                          <h6 className="font-bold text-sm mb-2 text-destructive">
-                            Memória Consolidada Customizada (Usada na Exportação)
-                          </h6>
-                          <pre className="font-mono text-xs whitespace-pre-wrap text-muted-foreground border p-2 rounded">
-                            {registro.detalhamento_customizado}
-                          </pre>
-                        </div>
-                      )}
+                      {/* Memória Consolidada Customizada removida */}
                     </div>
                   );
                 })}
