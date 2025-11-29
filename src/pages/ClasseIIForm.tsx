@@ -24,6 +24,7 @@ import { TablesInsert } from "@/integrations/supabase/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { defaultClasseIIConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Importar componentes de tabela
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -693,7 +694,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
               </div>
             </div>
 
-            {/* 2. Adicionar Itens por Categoria (Aba) - REESTRUTURADO */}
+            {/* 2. Adicionar Itens por Categoria (Aba) - REESTRUTURADO PARA TABELA */}
             {form.organizacao && form.dias_operacao > 0 && (
               <div className="space-y-4 border-b pb-4" ref={formRef}>
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
@@ -709,48 +710,55 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                     <TabsContent key={cat} value={cat} className="mt-4">
                       <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
                         
-                        <div className="max-h-[400px] overflow-y-auto space-y-3">
-                            {currentCategoryItems.length === 0 ? (
-                                <p className="text-muted-foreground text-center py-4">
-                                    Nenhum item de diretriz encontrado para esta categoria.
-                                </p>
-                            ) : (
-                                currentCategoryItems.map((item, index) => {
-                                    const itemTotal = item.quantidade * item.valor_mnt_dia * form.dias_operacao;
-                                    
-                                    return (
-                                        <div key={item.item} className="grid grid-cols-12 gap-4 items-center p-2 border-b border-border/50 hover:bg-background/50 transition-colors">
-                                            <div className="col-span-6">
-                                                <Label className="font-medium text-sm">{item.item}</Label>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {formatCurrency(item.valor_mnt_dia)}/dia
-                                                </p>
-                                            </div>
+                        <div className="max-h-[400px] overflow-y-auto rounded-md border">
+                            <Table className="w-full">
+                                <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                                    <TableRow>
+                                        <TableHead className="w-[50%]">Item</TableHead>
+                                        <TableHead className="w-[20%] text-right">Valor/Dia</TableHead>
+                                        <TableHead className="w-[15%] text-center">Quantidade</TableHead>
+                                        <TableHead className="w-[15%] text-right">Total</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {currentCategoryItems.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                                Nenhum item de diretriz encontrado para esta categoria.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        currentCategoryItems.map((item, index) => {
+                                            const itemTotal = item.quantidade * item.valor_mnt_dia * form.dias_operacao;
                                             
-                                            <div className="col-span-3 space-y-1">
-                                                <Label htmlFor={`qty-${item.item}`} className="text-xs">Quantidade</Label>
-                                                <Input
-                                                    id={`qty-${item.item}`}
-                                                    type="number"
-                                                    min="0"
-                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8"
-                                                    value={item.quantidade === 0 ? "" : item.quantidade.toString()}
-                                                    onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
-                                                    placeholder="0"
-                                                    onKeyDown={handleEnterToNextField}
-                                                />
-                                            </div>
-                                            
-                                            <div className="col-span-3 text-right">
-                                                <Label className="text-xs text-muted-foreground">Total</Label>
-                                                <p className="font-semibold text-sm">
-                                                    {formatCurrency(itemTotal)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                            )}
+                                            return (
+                                                <TableRow key={item.item} className="h-12">
+                                                    <TableCell className="font-medium text-sm py-1">
+                                                        {item.item}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-xs text-muted-foreground py-1">
+                                                        {formatCurrency(item.valor_mnt_dia)}
+                                                    </TableCell>
+                                                    <TableCell className="py-1">
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
+                                                            value={item.quantidade === 0 ? "" : item.quantidade.toString()}
+                                                            onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
+                                                            placeholder="0"
+                                                            onKeyDown={handleEnterToNextField}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-semibold text-sm py-1">
+                                                        {formatCurrency(itemTotal)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
+                                    )}
+                                </TableBody>
+                            </Table>
                         </div>
                         
                         <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
