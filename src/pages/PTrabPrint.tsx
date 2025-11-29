@@ -58,21 +58,13 @@ interface ClasseIRegistro {
   fase_atividade?: string | null;
 }
 
-interface ItemClasseII {
-  item: string;
-  quantidade: number;
-  valor_mnt_dia: number;
-  categoria: string;
-  memoria_customizada?: string | null;
-}
-
 interface ClasseIIRegistro {
   id: string;
   organizacao: string;
   ug: string;
   dias_operacao: number;
   categoria: string;
-  itens_equipamentos: ItemClasseII[];
+  itens_equipamentos: any;
   valor_total: number;
   detalhamento: string;
   detalhamento_customizado?: string | null;
@@ -174,7 +166,7 @@ const PTrabPrint = () => {
       // NOVO: Busca Classe II
       const { data: classeIIData, error: classeIIError } = await supabase
         .from('classe_ii_registros')
-        .select('*, detalhamento_customizado, fase_atividade, itens_equipamentos')
+        .select('*, detalhamento_customizado, fase_atividade')
         .eq('p_trab_id', ptrabId);
 
       if (classeIIError) {
@@ -192,7 +184,7 @@ const PTrabPrint = () => {
 
       setPtrabData(ptrab);
       setRegistrosClasseI(classeIData || []);
-      setRegistrosClasseII((classeIIData || []) as ClasseIIRegistro[]); // Cast para o tipo correto
+      setRegistrosClasseII(classeIIData || []); // NOVO
       setRegistrosClasseIII(classeIIIData || []);
       setLoading(false);
     };
@@ -280,36 +272,28 @@ Total QR: ${formatCurrency(total_qr)}.`;
     return { qs: memoriaQS, qr: memoriaQR };
   };
   
-  // Função para gerar memória de Classe II (AGORA DETALHADA POR ITEM)
+  // Função para gerar memória automática de Classe II (NOVO)
   const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro): string => {
-    const { organizacao, ug, dias_operacao, itens_equipamentos, fase_atividade } = registro;
+    const { organizacao, ug, dias_operacao, categoria, itens_equipamentos, valor_total, fase_atividade } = registro;
     
     const faseFormatada = formatFasesParaTexto(fase_atividade);
-    const valorTotalRegistro = registro.valor_total;
-    
-    let detalhamentoCompleto = `33.90.30 - Aquisição de Material de Intendência (Diversos) para ${organizacao} (UG: ${ug}), durante ${dias_operacao} dias de ${faseFormatada}.
+    const totalItens = itens_equipamentos.reduce((sum: number, item: any) => sum + item.quantidade, 0);
+
+    const detalhamentoItens = itens_equipamentos.map((item: any) => {
+      const valorItem = item.quantidade * item.valor_mnt_dia * dias_operacao;
+      // Item e Categoria em CAIXA ALTA
+      return `- ${item.quantidade} ${item.item.toUpperCase()} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${dias_operacao} dias = ${formatCurrency(valorItem)}.`;
+    }).join('\n');
+
+    // Categoria em CAIXA ALTA
+    return `33.90.30 - Aquisição de Material de Intendência (${categoria.toUpperCase()}) para ${totalItens} itens, durante ${dias_operacao} dias de ${faseFormatada}, para ${organizacao} (UG: ${ug}).
 
 Cálculo:
 Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
 
---- DETALHAMENTO POR ITEM ---
-`;
+${detalhamentoItens}
 
-    itens_equipamentos.forEach((item) => {
-      const valorItem = item.quantidade * item.valor_mnt_dia * dias_operacao;
-      const memoriaItem = item.memoria_customizada || 
-        `Item: ${item.item} (${item.categoria})
-- ${item.quantidade} un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${dias_operacao} dias = ${formatCurrency(valorItem)}.
-Valor Total do Item: ${formatCurrency(valorItem)}.`;
-      
-      detalhamentoCompleto += `\n[${item.item.toUpperCase()} - ${item.categoria.toUpperCase()}]\n`;
-      detalhamentoCompleto += memoriaItem.trim() + '\n';
-    });
-    
-    detalhamentoCompleto += `\n--- RESUMO ---\n`;
-    detalhamentoCompleto += `Valor Total do Registro (OM/UG): ${formatCurrency(valorTotalRegistro)}.`;
-
-    return detalhamentoCompleto;
+Valor Total: ${formatCurrency(valor_total)}.`;
   };
 
   const handlePrint = () => {
@@ -757,7 +741,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
         grupo.linhasClasseII.forEach((linha) => {
           const row = worksheet.getRow(currentRow);
           // Categoria em CAIXA ALTA
-          row.getCell('A').value = `CLASSE II - MATERIAL DE INTENDÊNCIA\n${linha.registro.organizacao}`;
+          row.getCell('A').value = `CLASSE II - MATERIAL DE INTENDÊNCIA\n${linha.registro.categoria.toUpperCase()}`;
           row.getCell('B').value = `${linha.registro.organizacao}\n(${linha.registro.ug})`;
           row.getCell('C').value = linha.registro.valor_total;
           row.getCell('C').numFmt = 'R$ #,##0.00';
@@ -766,8 +750,8 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
           row.getCell('E').numFmt = 'R$ #,##0.00';
           row.getCell('E').style = { ...row.getCell('E').style, alignment: centerTopAlignment };
           
-          // Usar a nova função que detalha item por item
-          const detalhamentoClasseII = generateClasseIIMemoriaCalculo(linha.registro);
+          const detalhamentoClasseII = linha.registro.detalhamento_customizado || 
+                                       generateClasseIIMemoriaCalculo(linha.registro);
           
           row.getCell('I').value = detalhamentoClasseII;
           row.getCell('I').alignment = { wrapText: true, vertical: 'top' };
@@ -950,10 +934,9 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
         });
         
         currentRow++;
-        
-        // Linha em branco para espaçamento
-        currentRow++;
       });
+      
+      currentRow++;
       
       // CÁLCULO TOTAL GERAL
       const totalGeral_33_90_30 = Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_30, 0);
@@ -1262,7 +1245,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                     <tr key={`classe-ii-${linha.registro.id}`}>
                       <td className="col-despesas">
                         <div>CLASSE II - MATERIAL DE INTENDÊNCIA</div>
-                        <div>{linha.registro.organizacao}</div>
+                        <div className="uppercase">{linha.registro.categoria}</div> {/* Categoria em CAIXA ALTA */}
                       </td>
                       <td className="col-om">
                         <div>{linha.registro.organizacao}</div>
@@ -1276,7 +1259,8 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                       <td className="col-combustivel-data-filled"></td>
                       <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
                         <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                          {generateClasseIIMemoriaCalculo(linha.registro)}
+                          {linha.registro.detalhamento_customizado || 
+                           generateClasseIIMemoriaCalculo(linha.registro)}
                         </pre>
                       </td>
                     </tr>
