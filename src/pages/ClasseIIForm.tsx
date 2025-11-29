@@ -792,9 +792,9 @@ export default function ClasseIIForm() {
                   </Popover>
                 </div>
                 
-                {/* NOVO CAMPO: OM de Destino do Recurso (ND 30) - MANTIDO AQUI */}
+                {/* CAMPO: OM de Destino do Recurso */}
                 <div className="space-y-2">
-                  <Label>OM de Destino do Recurso (ND 30/39) *</Label>
+                  <Label>OM de Destino do Recurso *</Label>
                   <OmSelector
                     selectedOmId={form.selectedOmDestinoId}
                     onChange={handleOMDestinoChange}
