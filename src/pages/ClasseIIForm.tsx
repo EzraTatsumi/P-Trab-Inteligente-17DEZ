@@ -694,7 +694,7 @@ export default function ClasseIIForm() {
             };
         }
         
-        // Capturar a OM Detentora (assumindo que é a mesma para todos os registros)
+        // Capturar a OM Detentora (assumindo que é a mesma que a OM de Destino do Recurso)
         if (!firstOmDetentora) {
             // Nota: O campo 'organizacao' no DB é a OM de Destino do Recurso.
             // Para fins de edição, assumimos que a OM Detentora é a mesma que a OM de Destino do Recurso (organizacao/ug)
@@ -811,7 +811,7 @@ export default function ClasseIIForm() {
                   <Input
                     type="number"
                     min="1"
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
                     value={form.dias_operacao || ""}
                     onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value) || 0 })}
                     placeholder="Ex: 7"
@@ -1099,54 +1099,7 @@ export default function ClasseIIForm() {
                   </span>
                 </div>
                 
-                {/* NOVO BLOCO DE ALOCAÇÃO GLOBAL (RESUMO) */}
-                <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-                    <h4 className="font-semibold text-sm">Resumo da Alocação de Recursos (ND 30/39)</h4>
-                    <p className="text-xs text-muted-foreground">
-                        A alocação foi definida por categoria. O total deve ser igual ao Valor Total da OM.
-                    </p>
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* ND 30 (Material) - ESQUERDA */}
-                        <div className="space-y-2">
-                            <Label>ND 33.90.30 (Material)</Label>
-                            <div className="relative">
-                                <Input
-                                    value={formatNumberForInput(totalND30Final, 2)}
-                                    readOnly
-                                    disabled
-                                    className="pl-8 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
-                                />
-                                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            </div>
-                        </div>
-                        {/* ND 39 (Serviço) - DIREITA */}
-                        <div className="space-y-2">
-                            <Label>ND 33.90.39 (Serviço)</Label>
-                            <div className="relative">
-                                <Input
-                                    value={formatNumberForInput(totalND39Final, 2)}
-                                    readOnly
-                                    disabled
-                                    className="pl-8 text-lg font-bold bg-blue-500/10 text-blue-600 disabled:opacity-100"
-                                />
-                                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex justify-between text-sm font-bold border-t pt-2">
-                        <span>TOTAL ALOCADO:</span>
-                        <span className={cn(valorTotalForm === totalAlocado ? "text-primary" : "text-destructive")}>
-                            {formatCurrency(totalAlocado)}
-                        </span>
-                    </div>
-                    {valorTotalForm !== totalAlocado && (
-                        <p className="text-xs text-destructive flex items-center gap-1 pt-1">
-                            <AlertCircle className="h-3 w-3" />
-                            O valor total alocado não corresponde ao valor total dos itens. Salve todas as categorias com itens.
-                        </p>
-                    )}
-                </div>
-                {/* FIM NOVO BLOCO DE ALOCAÇÃO GLOBAL */}
+                {/* REMOVIDO: NOVO BLOCO DE ALOCAÇÃO GLOBAL (RESUMO) */}
                 
                 <div className="flex gap-3 pt-4 justify-end">
                   <Button
