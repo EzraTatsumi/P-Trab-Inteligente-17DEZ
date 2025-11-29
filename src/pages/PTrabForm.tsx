@@ -256,6 +256,9 @@ const PTrabForm = () => {
         
         toast.success(`P Trab finalizado e número ${newPTrabNumber} atribuído com sucesso!`);
         
+        // 5. Redirecionar para a página de gerenciamento
+        navigate('/ptrab');
+        
     } catch (error: any) {
         toast.error(error.message || "Falha ao finalizar o P Trab.");
     } finally {
