@@ -5,9 +5,7 @@ import { z } from 'zod';
  * Prevents invalid data entry and ensures data integrity
  */
 
-/**
- * Schema de validação para Login e Cadastro (Signup).
- */
+// Login/Signup validation
 export const loginSchema = z.object({
   email: z
     .string()
@@ -20,17 +18,12 @@ export const loginSchema = z.object({
     .max(100, { message: "Senha muito longa" }),
 });
 
-/**
- * Schema de validação para o código UG (Unidade Gestora).
- * Deve estar exatamente no formato XXX.XXX (6 dígitos).
- */
+// UG code validation (must be exactly 6 digits in format XXX.XXX)
 export const ugCodeSchema = z
   .string()
   .regex(/^\d{3}\.\d{3}$/, { message: "UG deve ter formato XXX.XXX (6 dígitos)" });
 
-/**
- * Schema de validação para o formulário de registro de Classe I (Subsistência).
- */
+// Classe I Form validation
 export const classeIFormSchema = z.object({
   organizacao: z
     .string()
@@ -73,9 +66,7 @@ export const classeIFormSchema = z.object({
     .max(1000000, { message: "Valor QR muito alto" }),
 });
 
-/**
- * Schema de validação para o formulário principal de criação/edição do P Trab.
- */
+// P Trab creation validation
 export const ptrabSchema = z.object({
   numero_ptrab: z
     .string()
@@ -128,9 +119,7 @@ export const ptrabSchema = z.object({
   }
 );
 
-/**
- * Schema de validação para o formulário de registro de Classe III (Combustíveis).
- */
+// Classe III validation
 export const classeIIIFormSchema = z.object({
   organizacao: z
     .string()

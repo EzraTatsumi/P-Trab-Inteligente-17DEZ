@@ -1,151 +1,384 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Check, ArrowRight, Plus, AlertCircle, ChevronsUpDown, XCircle } from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { sanitizeError } from "@/lib/errorUtils";
-import { Tables } from "@/integrations/supabase/types";
-import { formatCurrency } from "@/lib/formatUtils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
+import { Check, FileText, ArrowRight, Plus, AlertCircle, ChevronsUpDown, XCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { generateUniquePTrabNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Importar Select
 
-type PTrab = Tables<'p_trab'>;
+interface SimplePTrab {
+  id: string;
+  numero_ptrab: string;
+  nome_operacao: string;
+}
 
 interface PTrabConsolidationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  sourcePTrabId: string;
-  onConsolidateSuccess: () => void;
+  pTrabsList: SimplePTrab[];
+  existingPTrabNumbers: string[];
+  onConfirm: (
+    sourcePTrabIds: string[],
+    targetPTrabId: string | 'new',
+    newPTrabNumber?: string,
+    templatePTrabId?: string // Novo parâmetro para o ID do template
+  ) => void;
+  loading: boolean;
 }
 
-export function PTrabConsolidationDialog({ open, onOpenChange, sourcePTrabId, onConsolidateSuccess }: PTrabConsolidationDialogProps) {
-  const [loading, setLoading] = useState(false);
-  const [targetPTrabId, setTargetPTrabId] = useState<string | null>(null);
-  const [availablePTrabs, setAvailablePTrabs] = useState<PTrab[]>([]);
-  const [sourcePTrab, setSourcePTrab] = useState<PTrab | null>(null);
+const PTrabConsolidationDialog = ({
+  open,
+  onOpenChange,
+  pTrabsList,
+  existingPTrabNumbers,
+  onConfirm,
+  loading,
+}: PTrabConsolidationDialogProps) => {
+  const [sourceIds, setSourceIds] = useState<string[]>([]);
+  const [targetId, setTargetId] = useState<string | 'new'>('new');
+  const [newPTrabNumber, setNewPTrabNumber] = useState('');
+  const [templatePTrabId, setTemplatePTrabId] = useState<string>(''); // Novo estado para o template
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isSourcePopoverOpen, setIsSourcePopoverOpen] = useState(false);
+  const [isTargetPopoverOpen, setIsTargetPopoverOpen] = useState(false);
+
+  const availableSourcePTrabs = pTrabsList.filter(p => p.id !== targetId);
+  const availableTargetPTrabs = pTrabsList.filter(p => !sourceIds.includes(p.id));
+
+  const suggestedNewNumber = useMemo(() => {
+    return generateUniquePTrabNumber(existingPTrabNumbers);
+  }, [existingPTrabNumbers]);
 
   useEffect(() => {
     if (open) {
-      loadPTrabs();
-    }
-  }, [open, sourcePTrabId]);
-
-  const loadPTrabs = async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Fetch all PTrabs for the user
-      const { data: allPTrabs, error: fetchError } = await supabase
-        .from('p_trab')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-
-      // Separate source PTrab and available targets
-      const source = allPTrabs.find(p => p.id === sourcePTrabId);
-      setSourcePTrab(source || null);
-
-      // Targets are other PTrabs that are not the source
-      const targets = allPTrabs.filter(p => p.id !== sourcePTrabId);
-      setAvailablePTrabs(targets);
-      setTargetPTrabId(null); // Reset target selection
+      setSourceIds([]);
+      setTargetId('new');
+      setNewPTrabNumber(suggestedNewNumber);
+      setTemplatePTrabId(''); // Resetar template
       
-    } catch (error) {
-      console.error("Erro ao carregar P Trabs:", error);
-      toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
+      setTimeout(() => {
+        if (contentRef.current) {
+          contentRef.current.scrollTop = 0;
+        }
+      }, 50);
     }
+  }, [open, suggestedNewNumber]);
+
+  // Atualiza o template ID quando a lista de origem muda, se o template atual não for mais válido
+  useEffect(() => {
+    if (sourceIds.length > 0 && !sourceIds.includes(templatePTrabId)) {
+      setTemplatePTrabId(sourceIds[0]); // Define o primeiro selecionado como padrão
+    } else if (sourceIds.length === 0) {
+      setTemplatePTrabId('');
+    }
+  }, [sourceIds, templatePTrabId]);
+
+  const handleToggleSource = (id: string) => {
+    setSourceIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
   };
 
-  const handleConsolidate = async () => {
-    if (!sourcePTrabId || !targetPTrabId) {
-      toast.error("Selecione um P Trab de destino.");
+  const handleTargetChange = (id: string | 'new') => {
+    setTargetId(id);
+    setSourceIds(prev => prev.filter(i => i !== id));
+    setIsTargetPopoverOpen(false);
+  };
+
+  const handleConfirm = () => {
+    if (sourceIds.length === 0) {
+      toast.error("Selecione pelo menos um P Trab de origem.");
       return;
     }
 
-    if (!confirm(`Tem certeza que deseja CONSOLIDAR os dados do P Trab de origem (${sourcePTrab?.numero_ptrab}) no P Trab de destino? Esta ação é irreversível e pode duplicar registros se o destino já tiver dados.`)) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Chamada para a função RPC de consolidação
-      const { data, error } = await supabase.rpc('consolidate_ptrab_data', {
-        source_ptrab_id: sourcePTrabId,
-        target_ptrab_id: targetPTrabId,
-      });
-
-      if (error) throw error;
-
-      toast.success(`Consolidação concluída! ${data.total_records} registros transferidos/atualizados.`);
-      onConsolidateSuccess();
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Erro ao consolidar P Trabs:", error);
-      toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
+    if (targetId === 'new') {
+      if (!newPTrabNumber.trim()) {
+        toast.error("O número do novo P Trab é obrigatório.");
+        return;
+      }
+      if (isPTrabNumberDuplicate(newPTrabNumber, existingPTrabNumbers)) {
+        toast.error("O número do novo P Trab já existe.");
+        return;
+      }
+      if (!templatePTrabId) {
+        toast.error("Selecione um P Trab para usar como template de cabeçalho.");
+        return;
+      }
+      onConfirm(sourceIds, 'new', newPTrabNumber, templatePTrabId);
+    } else {
+      onConfirm(sourceIds, targetId);
     }
   };
 
-  const targetPTrab = availablePTrabs.find(p => p.id === targetPTrabId);
+  const isNewNumberDuplicate = targetId === 'new' && isPTrabNumberDuplicate(newPTrabNumber, existingPTrabNumbers);
+  
+  const selectedTargetPTrab = targetId !== 'new' ? pTrabsList.find(p => p.id === targetId) : undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent 
+        className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        ref={contentRef}
+      >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-primary">
-            <Plus className="h-5 w-5" />
-            Consolidar P-Trab
+          <DialogTitle className="flex items-center gap-2">
+            <ArrowRight className="h-5 w-5 text-primary" />
+            Consolidar Planos de Trabalho
           </DialogTitle>
           <DialogDescription>
-            Transfira todos os registros de Classe I, II e III do P-Trab de origem para um P-Trab de destino.
+            Selecione os P Trabs de origem (que fornecerão os dados) e o P Trab de destino (que receberá os dados).
           </DialogDescription>
         </DialogHeader>
-        
-        <div className="grid gap-4 py-4 text-sm">
-          <div className="p-3 border rounded-lg bg-muted/50 flex items-center justify-between">
-            <span className="font-semibold">P-Trab de Origem:</span>
-            <span className="font-bold text-primary">{sourcePTrab?.numero_ptrab || 'Carregando...'}</span>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="target-ptrab">P-Trab de Destino *</Label>
-            <Select
-              value={targetPTrabId || ""}
-              onValueChange={setTargetPTrabId}
-              disabled={loading || availablePTrabs.length === 0}
-            >
-              <SelectTrigger id="target-ptrab">
-                <SelectValue placeholder="Selecione o P-Trab de destino..." />
-              </SelectTrigger>
-              <SelectContent>
-                {availablePTrabs.map((ptrab) => (
-                  <SelectItem key={ptrab.id} value={ptrab.id}>
-                    {ptrab.numero_ptrab} - {ptrab.nome_operacao} ({formatCurrency(ptrab.valor_total || 0)})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {availablePTrabs.length === 0 && (
-                <p className="text-xs text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    Nenhum outro P-Trab disponível para consolidação.
-                </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 py-4">
+          {/* Coluna 1: P Trab de Origem */}
+          <div className="space-y-3">
+            <Label className="text-lg font-semibold flex items-center gap-2">
+              P Trab de Origem ({sourceIds.length})
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Os registros de Classe I e Classe III destes P Trabs serão copiados.
+            </p>
+            
+            <Popover open={isSourcePopoverOpen} onOpenChange={setIsSourcePopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={isSourcePopoverOpen}
+                  className="w-full justify-between h-auto py-2"
+                >
+                  {sourceIds.length === 0 ? (
+                    "Selecione os P Trab..."
+                  ) : (
+                    <span className="truncate">
+                      {sourceIds.map(id => pTrabsList.find(p => p.id === id)?.numero_ptrab).join(', ')}
+                    </span>
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar P Trab de origem..." />
+                  <CommandList className="max-h-[300px]">
+                    <CommandEmpty>Nenhum P Trab disponível.</CommandEmpty>
+                    <CommandGroup>
+                      {availableSourcePTrabs.map((ptrab) => (
+                        <CommandItem
+                          key={ptrab.id}
+                          value={`${ptrab.numero_ptrab} ${ptrab.nome_operacao}`}
+                          onSelect={() => handleToggleSource(ptrab.id)}
+                          className={cn(
+                            "cursor-pointer",
+                            sourceIds.includes(ptrab.id) && "bg-primary/10 text-primary"
+                          )}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              sourceIds.includes(ptrab.id) ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span>{ptrab.numero_ptrab}</span>
+                            <span className="text-xs text-muted-foreground">{ptrab.nome_operacao}</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            
+            {/* Lista de P Trabs selecionados (visível abaixo do Popover) */}
+            {sourceIds.length > 0 && (
+              <div className="space-y-2 max-h-[150px] overflow-y-auto p-2 border rounded-lg bg-background">
+                {sourceIds.map(id => {
+                  const ptrab = pTrabsList.find(p => p.id === id);
+                  return ptrab ? (
+                    <div key={id} className="flex items-center justify-between text-sm p-1 rounded bg-muted/50">
+                      <span className="font-medium">{ptrab.numero_ptrab}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6"
+                        onClick={() => handleToggleSource(id)}
+                      >
+                        <XCircle className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ) : null;
+                })}
+              </div>
             )}
           </div>
-          
-          <div className="p-3 border rounded-lg bg-red-50/50 border-red-300 text-xs text-red-700 flex items-start gap-2">
-            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            <p>
-                Atenção: A consolidação irá copiar os registros de Classe I, II e III do P-Trab de origem para o P-Trab de destino. Se o P-Trab de destino já possuir registros, eles serão mantidos e os novos serão adicionados.
+
+          {/* Coluna 2: P Trab de Destino */}
+          <div className="space-y-3">
+            <Label className="text-lg font-semibold flex items-center gap-2">
+              P Trab de Destino
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              O P Trab que receberá os novos registros.
             </p>
+            
+            <div className="space-y-4">
+              {/* Opção 1: Novo P Trab */}
+              <div 
+                className={cn(
+                  "p-4 border rounded-lg cursor-pointer transition-colors",
+                  targetId === 'new' ? "border-primary ring-2 ring-primary/50 bg-primary/5" : "border-border hover:bg-muted/50"
+                )}
+                onClick={() => handleTargetChange('new')}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    <span className="font-medium">Criar Novo P Trab</span>
+                  </div>
+                  {targetId === 'new' && <Check className="h-4 w-4 text-primary" />}
+                </div>
+                
+                {targetId === 'new' && (
+                  <div className="mt-3 space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="new-ptrab-number" className="text-sm">Número do Novo P Trab</Label>
+                      <Input
+                        id="new-ptrab-number"
+                        value={newPTrabNumber}
+                        onChange={(e) => setNewPTrabNumber(e.target.value)}
+                        placeholder={suggestedNewNumber}
+                      />
+                      {isNewNumberDuplicate && (
+                        <Alert variant="destructive" className="py-2">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription className="text-xs">
+                            Este número já existe.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      <p className="text-xs text-muted-foreground">Sugestão: {suggestedNewNumber}</p>
+                    </div>
+
+                    {/* NOVO CAMPO: Template de Cabeçalho */}
+                    <div className="space-y-2">
+                      <Label htmlFor="template-ptrab" className="text-sm">Aproveitar Cabeçalho e Rodapé de *</Label>
+                      <Select
+                        value={templatePTrabId}
+                        onValueChange={setTemplatePTrabId}
+                        disabled={sourceIds.length === 0}
+                      >
+                        <SelectTrigger id="template-ptrab">
+                          <SelectValue placeholder="Selecione um P Trab de origem..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sourceIds.map(id => {
+                            const ptrab = pTrabsList.find(p => p.id === id);
+                            return ptrab ? (
+                              <SelectItem key={id} value={id}>
+                                {ptrab.numero_ptrab} - {ptrab.nome_operacao}
+                              </SelectItem>
+                            ) : null;
+                          })}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Os dados da Operação, OM, C Mil A, Período, Efetivo, Comandante e Local serão copiados deste P Trab.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Opção 2: Selecionar Existente */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Ou selecione um P Trab existente:</Label>
+                
+                <Popover open={isTargetPopoverOpen} onOpenChange={setIsTargetPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={isTargetPopoverOpen}
+                      className={cn(
+                        "w-full justify-between h-auto py-2",
+                        targetId !== 'new' ? "border-primary ring-2 ring-primary/50 bg-primary/5" : "border-border hover:bg-muted/50"
+                      )}
+                      onClick={() => targetId !== 'new' && handleTargetChange('new')} // Desseleciona se já estiver selecionado
+                    >
+                      {selectedTargetPTrab ? (
+                        <span className="truncate">{selectedTargetPTrab.numero_ptrab} - {selectedTargetPTrab.nome_operacao}</span>
+                      ) : (
+                        <span className="text-muted-foreground">Selecione o P Trab de destino...</span>
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Buscar P Trab existente..." />
+                      <CommandList className="max-h-[300px]">
+                        <CommandEmpty>Nenhum P Trab disponível.</CommandEmpty>
+                        <CommandGroup>
+                          {availableTargetPTrabs.map((ptrab) => (
+                            <CommandItem
+                              key={ptrab.id}
+                              value={`${ptrab.numero_ptrab} ${ptrab.nome_operacao}`}
+                              onSelect={() => handleTargetChange(ptrab.id)}
+                              className={cn(
+                                "cursor-pointer",
+                                targetId === ptrab.id ? "bg-primary/10 text-primary" : "hover:bg-muted/50"
+                              )}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  targetId === ptrab.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span>{ptrab.numero_ptrab}</span>
+                                <span className="text-xs text-muted-foreground">{ptrab.nome_operacao}</span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                
+                {/* Exibir detalhes do P Trab selecionado se não for 'new' */}
+                {targetId !== 'new' && selectedTargetPTrab && (
+                    <div className="mt-2 p-2 border rounded-lg bg-muted/50 text-sm">
+                        <p className="font-medium">Destino: {selectedTargetPTrab.numero_ptrab}</p>
+                        <p className="text-xs text-muted-foreground">Operação: {selectedTargetPTrab.nome_operacao}</p>
+                    </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -154,14 +387,15 @@ export function PTrabConsolidationDialog({ open, onOpenChange, sourcePTrabId, on
             Cancelar
           </Button>
           <Button 
-            onClick={handleConsolidate} 
-            disabled={loading || !targetPTrabId}
+            onClick={handleConfirm} 
+            disabled={loading || sourceIds.length === 0 || (targetId === 'new' && (isNewNumberDuplicate || !newPTrabNumber.trim() || !templatePTrabId))}
           >
-            <ArrowRight className="h-4 w-4 mr-2" />
-            {loading ? "Consolidando..." : "Confirmar Consolidação"}
+            {loading ? "Consolidando..." : `Consolidar ${sourceIds.length} P Trab(s)`}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
+};
+
+export default PTrabConsolidationDialog;

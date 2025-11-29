@@ -1,8 +1,3 @@
-/**
- * Formata um valor numérico para a moeda brasileira (Real - R$).
- * @param value O valor numérico a ser formatado.
- * @returns A string formatada (ex: R$ 1.234,56).
- */
 export const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -10,12 +5,6 @@ export const formatCurrency = (value: number): string => {
   }).format(value);
 };
 
-/**
- * Formata um valor numérico para o padrão brasileiro (ponto como separador de milhar, vírgula como decimal).
- * @param value O valor numérico a ser formatado.
- * @param decimals O número de casas decimais (padrão: 0).
- * @returns A string formatada (ex: 1.234,56).
- */
 export const formatNumber = (value: number, decimals: number = 0): string => {
   return new Intl.NumberFormat("pt-BR", {
     minimumFractionDigits: decimals,
@@ -24,10 +13,8 @@ export const formatNumber = (value: number, decimals: number = 0): string => {
 };
 
 /**
- * Converte uma string de entrada (permitindo vírgula como separador decimal e pontos como separadores de milhar) em um número.
- * Remove separadores de milhar (pontos) e substitui a vírgula por ponto decimal.
- * @param input A string de entrada.
- * @returns O valor numérico (ou 0 se inválido).
+ * Parses a string input (allowing comma as decimal separator) into a number.
+ * Handles optional thousand separators (dots) by removing them.
  */
 export const parseInputToNumber = (input: string): number => {
   // 1. Remove dots (thousand separators)
@@ -37,11 +24,8 @@ export const parseInputToNumber = (input: string): number => {
 };
 
 /**
- * Formata um número para exibição em um campo de entrada usando o padrão brasileiro (vírgula para decimal).
- * Garante um número mínimo de casas decimais.
- * @param num O número a ser formatado.
- * @param minFractionDigits O número mínimo de casas decimais (padrão: 2).
- * @returns A string formatada para exibição no input (ex: "1.234,56" ou "" se for 0).
+ * Formats a number for display in an input field using the Brazilian standard (comma for decimal).
+ * Ensures a minimum number of fraction digits.
  */
 export const formatNumberForInput = (num: number, minFractionDigits: number = 2): string => {
   if (num === 0) return "";
@@ -54,10 +38,8 @@ export const formatNumberForInput = (num: number, minFractionDigits: number = 2)
 };
 
 /**
- * Limpa uma string de entrada bruta, removendo caracteres inválidos e formatando a parte inteira/decimal
- * de forma permissiva durante a digitação.
- * @param value A string de entrada bruta.
- * @returns A string limpa e formatada.
+ * Cleans a raw string input, allowing only digits, dots (for thousands), and one comma (for decimal).
+ * This version is designed to be permissive during typing.
  */
 export const formatInputWithThousands = (value: string): string => {
   // 1. Remove tudo exceto dígitos, ponto e vírgula
@@ -70,15 +52,17 @@ export const formatInputWithThousands = (value: string): string => {
     cleaned = parts[0] + ',' + parts.slice(1).join('');
   }
   
-  // 3. Remove todos os pontos (separadores de milhar) para simplificar a entrada
-  // A formatação de milhar será aplicada apenas no blur/saída do campo.
+  // 3. Remove pontos que não estejam na posição correta de milhar (simplificado para ser mais permissivo)
+  // Para inputs de valor, vamos apenas remover todos os pontos para evitar confusão durante a digitação.
+  // A formatação de milhar será aplicada apenas no blur.
   
   // Se houver vírgula, remove todos os pontos da parte inteira
   if (cleaned.includes(',')) {
     const [integerPart, decimalPart] = cleaned.split(',');
     const cleanInteger = integerPart.replace(/\./g, '');
     
-    // Limita a parte decimal a 4 dígitos (para ser flexível, mas seguro)
+    // Limita a parte decimal a 2 dígitos (para preço) ou 4 (para consumo, se necessário)
+    // Vamos deixar a limitação de dígitos para o componente que chama, mas aqui limitamos a 4 para segurança.
     const limitedDecimal = decimalPart.substring(0, 4); 
     
     return `${cleanInteger}${limitedDecimal ? `,${limitedDecimal}` : ''}`;

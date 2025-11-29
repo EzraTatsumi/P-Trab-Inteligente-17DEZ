@@ -7,22 +7,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, Trash2, XCircle, Check, ChevronDown, Sparkles, DollarSign, AlertCircle } from "lucide-react";
+import { ArrowLeft, Package, Pencil, Trash2, XCircle, Check, ChevronDown, ClipboardList, Sparkles, DollarSign, AlertCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
-import { TablesInsert, Tables } from "@/integrations/supabase/types";
+import { TablesInsert } from "@/integrations/supabase/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { defaultClasseIIConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Alert, AlertDescription } from "@/components/ui/alert"; // Importar Alert
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -52,9 +54,6 @@ interface FormDataClasseII {
   fase_atividade?: string; // Global
 }
 
-// Usando Tables<'classe_ii_registros'> para tipar o registro do DB
-type ClasseIIRegistroDB = Tables<'classe_ii_registros'>;
-
 interface ClasseIIRegistro {
   id: string;
   organizacao: string; // OM de Destino do Recurso (ND 30)
@@ -66,8 +65,9 @@ interface ClasseIIRegistro {
   detalhamento: string;
   detalhamento_customizado?: string | null;
   fase_atividade?: string;
-  valor_nd_30: number; // NOVO
-  valor_nd_39: number; // NOVO
+  // NOVOS CAMPOS DO DB
+  valor_nd_30: number;
+  valor_nd_39: number;
 }
 
 interface CategoryAllocation {
@@ -92,6 +92,17 @@ const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
     return Math.abs(a - b) < tolerance;
 };
 
+// Helper para agrupar itens de um registro por categoria
+const groupRecordItemsByCategory = (items: ItemClasseII[]) => {
+    return items.reduce((acc, item) => {
+        if (!acc[item.categoria]) {
+            acc[item.categoria] = [];
+        }
+        acc[item.categoria].push(item);
+        return acc;
+    }, {} as Record<Categoria, ItemClasseII[]>);
+};
+
 // Função para formatar fases (MOVIDA PARA O TOPO)
 const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   if (!faseCSV) return 'operação';
@@ -107,7 +118,32 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-// Gera o detalhamento final (simplificado para o registro)
+// NOVO: Gera a memória de cálculo detalhada para uma categoria
+const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
+    const faseFormatada = formatFasesParaTexto(faseAtividade);
+    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
+    const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
+
+    let detalhamentoItens = "";
+    itens.forEach(item => {
+        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
+        detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
+    });
+
+    return `33.90.30 - Aquisição de Material de Intendência (${categoria})
+OM de Destino: ${organizacao} (UG: ${ug})
+Período: ${diasOperacao} dias de ${faseFormatada}
+Total de Itens na Categoria: ${totalQuantidade}
+
+Cálculo:
+Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
+
+Detalhes dos Itens:
+${detalhamentoItens.trim()}
+
+Valor Total da Categoria: ${formatCurrency(totalValor)}.`;
+};
+
 const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
@@ -265,6 +301,22 @@ export default function ClasseIIForm() {
   }, [selectedTab, diretrizes, form.itens, form.organizacao, form.dias_operacao]);
 
 
+  const itensDisponiveis = useMemo(() => {
+    return diretrizes.filter(d => d.categoria === selectedTab);
+  }, [diretrizes, selectedTab]);
+  
+  // MEMO: Agrupa os itens do formulário por categoria para exibição consolidada
+  const itensAgrupadosPorCategoria = useMemo(() => {
+    return form.itens.reduce((acc, item) => {
+      if (!acc[item.categoria]) {
+        acc[item.categoria] = [];
+      }
+      acc[item.categoria].push(item);
+      return acc;
+    }, {} as Record<Categoria, ItemClasseII[]>);
+  }, [form.itens]);
+  
+
   const loadDiretrizes = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -299,24 +351,22 @@ export default function ClasseIIForm() {
       if (classeIIData && classeIIData.length > 0) {
         setDiretrizes((classeIIData || []) as DiretrizClasseII[]);
       } else {
-        // defaultClasseIIConfig não está definido, mas para fins de correção, assumimos que existe ou que o array vazio é aceitável.
-        setDiretrizes([]); 
-        toast.warning(`Itens de Classe II não configurados para o ano ${anoReferencia}.`);
+        setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
+        toast.warning(`Itens de Classe II não configurados para o ano ${anoReferencia}. Usando valores padrão.`);
       }
       
     } catch (error) {
       console.error("Erro ao carregar diretrizes:", error);
-      setDiretrizes([]);
-      toast.error("Erro ao carregar diretrizes.");
+      setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
+      toast.error("Erro ao carregar diretrizes. Usando valores padrão.");
     }
   };
 
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
-    // Usando 'as any' para contornar o erro de sobrecarga do Supabase Client
     const { data, error } = await supabase
-      .from("classe_ii_registros" as any)
+      .from("classe_ii_registros")
       .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
       .eq("p_trab_id", ptrabId)
       .order("organizacao", { ascending: true }) // Ordenar por OM
@@ -329,48 +379,19 @@ export default function ClasseIIForm() {
     }
 
     // A edição agora é feita por registro (que representa uma categoria)
-    let newAllocations = { ...initialCategoryAllocations };
     const uniqueRecordsMap = new Map<string, ClasseIIRegistro>();
-    
-    (data as ClasseIIRegistroDB[] || []).forEach(r => {
+    (data || []).forEach(r => {
         const key = `${r.organizacao}-${r.ug}-${r.categoria}`; // Chave única por OM de destino E Categoria
-        const category = r.categoria as Categoria;
-        
-        const record: ClasseIIRegistro = {
-            id: r.id,
-            organizacao: r.organizacao,
-            ug: r.ug,
-            dias_operacao: r.dias_operacao,
-            categoria: r.categoria,
+        const record = {
+            ...r,
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseII[],
-            valor_total: Number(r.valor_total),
-            detalhamento: r.detalhamento || "",
-            detalhamento_customizado: r.detalhamento_customizado,
-            fase_atividade: r.fase_atividade,
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
-        };
-        
+        } as ClasseIIRegistro;
         uniqueRecordsMap.set(key, record);
-        
-        // Atualizar alocações para o estado
-        if (newAllocations[category]) {
-            const totalValor = record.itens_equipamentos.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * r.dias_operacao), 0);
-            
-            newAllocations[category] = {
-                ...newAllocations[category],
-                total_valor: totalValor,
-                nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
-                nd_30_value: Number(r.valor_nd_30),
-                nd_39_value: Number(r.valor_nd_39),
-                om_destino_recurso: r.organizacao,
-                ug_destino_recurso: r.ug,
-            };
-        }
     });
 
     setRegistros(Array.from(uniqueRecordsMap.values()));
-    setCategoryAllocations(newAllocations);
   };
 
   const resetFormFields = () => {
@@ -480,7 +501,7 @@ export default function ClasseIIForm() {
   };
 
   // NOVO HANDLER: Salva os itens da lista expandida para o form.itens principal
-  const handleUpdateCategoryItems = async () => {
+  const handleUpdateCategoryItems = () => {
     if (!form.organizacao || form.dias_operacao <= 0) {
         toast.error("Preencha a OM e os Dias de Operação antes de salvar itens.");
         return;
@@ -512,22 +533,8 @@ export default function ClasseIIForm() {
 
     // 5. Mesclar as listas
     const newFormItems = [...otherCategoryItems, ...itemsToKeep];
-    
-    // 6. Buscar ID da OM de destino do recurso (se não estiver no estado)
-    let selectedOmDestinoId = categoryAllocations[selectedTab].selectedOmDestinoId;
-    if (!selectedOmDestinoId && categoryAllocations[selectedTab].om_destino_recurso) {
-        try {
-            const { data: omData } = await supabase
-                .from('organizacoes_militares')
-                .select('id')
-                .eq('nome_om', categoryAllocations[selectedTab].om_destino_recurso)
-                .eq('codug_om', categoryAllocations[selectedTab].ug_destino_recurso)
-                .maybeSingle();
-            selectedOmDestinoId = omData?.id;
-        } catch (e) { console.error("Erro ao buscar OM Destino ID:", e); }
-    }
 
-    // 7. Update allocation state for the current category (including destination fields which might have been updated)
+    // 6. Update allocation state for the current category (including destination fields which might have been updated)
     setCategoryAllocations(prev => ({
         ...prev,
         [selectedTab]: {
@@ -536,7 +543,6 @@ export default function ClasseIIForm() {
             nd_39_input: formatNumberForInput(finalND39Value, 2), // Store the final formatted input
             nd_30_value: finalND30Value,
             nd_39_value: finalND39Value,
-            selectedOmDestinoId: selectedOmDestinoId,
         }
     }));
 
@@ -547,8 +553,8 @@ export default function ClasseIIForm() {
   // Lógica de cálculo de alocação (Global Totals)
   const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
 
-  const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => alloc.total_valor > 0 ? sum + alloc.nd_30_value : sum, 0);
-  const totalND39Final = Object.values(categoryAllocations).reduce((sum, alloc) => alloc.total_39_value > 0 ? sum + alloc.nd_39_value : sum, 0);
+  const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_30_value, 0);
+  const totalND39Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_39_value, 0);
 
   const totalAlocado = totalND30Final + totalND39Final;
   
@@ -646,13 +652,13 @@ export default function ClasseIIForm() {
     try {
       // 3. Deletar TODOS os registros existentes para o PTrab (pois estamos salvando por categoria)
       const { error: deleteError } = await supabase
-        .from("classe_ii_registros" as any)
+        .from("classe_ii_registros")
         .delete()
         .eq("p_trab_id", ptrabId);
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
       // 4. Inserir os novos registros (um por categoria ativa)
-      const { error: insertError } = await supabase.from("classe_ii_registros" as any).insert(registrosParaSalvar);
+      const { error: insertError } = await supabase.from("classe_ii_registros").insert(registrosParaSalvar);
       if (insertError) throw insertError;
       
       toast.success(editingId ? "Registros de Classe II atualizados com sucesso!" : "Registros de Classe II salvos com sucesso!");
@@ -661,7 +667,7 @@ export default function ClasseIIForm() {
       fetchRegistros();
     } catch (error) {
       console.error("Erro ao salvar registros de Classe II:", error);
-      toast.error(sanitizeError(error));
+      toast.error("Erro ao salvar registros de Classe II");
     } finally {
       setLoading(false);
     }
@@ -672,9 +678,8 @@ export default function ClasseIIForm() {
     resetFormFields();
     
     // 1. Buscar TODOS os registros para este PTrab (pois a edição é consolidada)
-    // Usando 'as any' para contornar o erro de sobrecarga do Supabase Client
     const { data: allRecords, error: fetchAllError } = await supabase
-        .from("classe_ii_registros" as any)
+        .from("classe_ii_registros")
         .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
         .eq("p_trab_id", ptrabId);
         
@@ -689,7 +694,7 @@ export default function ClasseIIForm() {
     let newAllocations = { ...initialCategoryAllocations };
     let firstOmDetentora: { nome: string, ug: string } | null = null;
     
-    (allRecords as ClasseIIRegistroDB[] || []).forEach(r => {
+    (allRecords || []).forEach(r => {
         const category = r.categoria as Categoria;
         const items = (r.itens_equipamentos || []) as ItemClasseII[];
         
@@ -777,107 +782,10 @@ export default function ClasseIIForm() {
     setLoading(false);
   };
   
-  const handleRemoverRegistro = async (id: string) => {
-    if (!confirm("Tem certeza que deseja remover este registro?")) return;
-
-    try {
-      setLoading(true);
-      // Usando 'as any' para contornar o erro de sobrecarga do Supabase Client
-      const { error } = await supabase
-        .from("classe_ii_registros" as any)
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-
-      toast.success("Registro removido com sucesso!");
-      await updatePTrabStatusIfAberto(ptrabId!);
-      fetchRegistros();
-    } catch (error: any) {
-      toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // --- Handlers de Edição de Memória de Cálculo ---
-  
-  const handleIniciarEdicaoMemoria = (registro: ClasseIIRegistro) => {
-    setEditingMemoriaId(registro.id);
-    setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento);
-  };
-
-  const handleCancelarEdicaoMemoria = () => {
-    setEditingMemoriaId(null);
-    setMemoriaEdit("");
-  };
-
-  const handleSalvarMemoriaCustomizada = async (registroId: string) => {
-    try {
-      setLoading(true);
-      
-      const { error } = await supabase
-        .from("classe_ii_registros" as any)
-        .update({
-          detalhamento_customizado: memoriaEdit,
-        })
-        .eq("id", registroId);
-
-      if (error) throw error;
-
-      toast.success("Memória de cálculo customizada salva!");
-      handleCancelarEdicaoMemoria();
-      fetchRegistros();
-    } catch (error: any) {
-      toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
-    if (!confirm("Deseja restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      
-      const { error } = await supabase
-        .from("classe_ii_registros" as any)
-        .update({
-          detalhamento_customizado: null,
-        })
-        .eq("id", registroId);
-
-      if (error) throw error;
-
-      toast.success("Memória de cálculo restaurada!");
-      fetchRegistros();
-    } catch (error: any) {
-      toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // NOVO MEMO: Agrupa os itens do formulário por categoria (para exibição na seção 3)
-  const itensAgrupadosPorCategoria = useMemo(() => {
-    return form.itens.reduce((acc, item) => {
-        if (item.quantidade > 0) {
-            if (!acc[item.categoria]) {
-                acc[item.categoria] = [];
-            }
-            acc[item.categoria].push(item);
-        }
-        return acc;
-    }, {} as Record<Categoria, ItemClasseII[]>);
-  }, [form.itens]);
-
-  // NOVO MEMO: Agrupa os registros por OM de Destino (para exibição na seção 4)
+  // NOVO MEMO: Agrupa os registros por OM de Destino
   const registrosAgrupadosPorOM = useMemo(() => {
     return registros.reduce((acc, registro) => {
-        const key = `${registro.organizacao} (UG: ${registro.ug})`;
+        const key = `${registro.organizacao} (${registro.ug})`;
         if (!acc[key]) {
             acc[key] = [];
         }
@@ -969,14 +877,11 @@ export default function ClasseIIForm() {
                               onSelect={() => handleFaseChange(fase, !fasesAtividade.includes(fase))}
                               className="flex items-center justify-between cursor-pointer"
                             >
-                              <div className="flex items-center space-x-2">
-                                <Checkbox
-                                  checked={fasesAtividade.includes(fase)}
-                                  onCheckedChange={(checked) => handleFaseChange(fase, !!checked)}
-                                />
-                                <Label>{fase}</Label>
-                              </div>
-                              {fasesAtividade.includes(fase) && <Check className="ml-auto h-4 w-4" />}
+                              <span>{fase}</span>
+                              <Checkbox
+                                checked={fasesAtividade.includes(fase)}
+                                onCheckedChange={(checked) => handleFaseChange(fase, !!checked)}
+                              />
                             </CommandItem>
                           ))}
                         </CommandGroup>
@@ -1194,171 +1099,256 @@ export default function ClasseIIForm() {
                             <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
                               <span className="font-medium">{item.item}</span>
                               <span className="text-right">
-                                {item.quantidade} un x {form.dias_operacao} dias x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
+                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
                               </span>
                             </div>
                           ))}
                         </div>
                         
-                        {/* Alocação ND */}
-                        <div className="mt-4 pt-2 border-t border-secondary/50 space-y-1">
-                            <p className="text-xs font-semibold text-muted-foreground">Alocação de Recurso (OM Destino: {allocation.om_destino_recurso} / UG: {allocation.ug_destino_recurso})</p>
-                            <div className="flex justify-between text-sm">
-                                <span className="font-medium text-green-600">ND 33.90.30 (Material):</span>
-                                <span className="font-bold text-green-600">{formatCurrency(allocation.nd_30_value)}</span>
+                        {/* Exibe a alocação salva */}
+                        <div className="pt-2 border-t mt-2">
+                            <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                <span className="font-medium text-foreground">
+                                    {allocation.om_destino_recurso} ({allocation.ug_destino_recurso})
+                                </span>
                             </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="font-medium text-blue-600">ND 33.90.39 (Serviço):</span>
-                                <span className="font-bold text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
+                            <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
+                                <span className="font-medium text-green-600">{formatCurrency(allocation.nd_30_value)}</span>
                             </div>
+                            <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
+                                <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
+                            </div>
+                            {!areNumbersEqual(allocation.total_valor, totalCategoria) && (
+                                <p className="text-xs text-destructive flex items-center gap-1 pt-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    Valores desatualizados. Salve a categoria novamente.
+                                </p>
+                            )}
                         </div>
                       </Card>
                     );
                   })}
                 </div>
                 
-                <div className="flex justify-end gap-3 pt-4">
-                    {editingId && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={resetFormFields}
-                        >
-                            <XCircle className="h-4 w-4 mr-2" />
-                            Cancelar Edição
-                        </Button>
-                    )}
-                    <Button 
-                        type="button" 
-                        onClick={handleSalvarRegistros} 
-                        disabled={loading || !isTotalAlocadoCorrect || form.itens.length === 0}
-                    >
-                        {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")} ({Object.keys(itensAgrupadosPorCategoria).length} registros)
-                    </Button>
+                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
+                  <span className="font-bold text-base text-primary">VALOR TOTAL DA OM</span>
+                  <span className="font-extrabold text-xl text-primary">
+                    {formatCurrency(valorTotalForm)}
+                  </span>
+                </div>
+                
+                <div className="flex gap-3 pt-4 justify-end">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={resetFormFields}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Limpar Formulário
+                  </Button>
+                  <Button 
+                    type="button" 
+                    onClick={handleSalvarRegistros} 
+                    disabled={loading || !form.organizacao || form.itens.length === 0 || !isTotalAlocadoCorrect}
+                  >
+                    {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")}
+                  </Button>
                 </div>
               </div>
             )}
 
-            {/* 4. Registros Salvos e Memória de Cálculo */}
+            {/* 4. Registros Salvos (OMs Cadastradas) - SUMMARY SECTION */}
             {registros.length > 0 && (
-              <div className="space-y-4 pt-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
+              <div className="space-y-4 mt-6">
+                <h2 className="text-xl font-bold flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-accent" />
-                  Registros Salvos
-                </h3>
+                  OMs Cadastradas
+                </h2>
                 
-                <div className="space-y-6">
-                  {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => (
-                    <Card key={omKey} className="p-6 bg-background/80 border-primary/10">
-                      <h4 className="text-xl font-bold mb-4 text-primary">{omKey}</h4>
-                      
-                      {omRegistros.map((registro) => {
-                        const isEditingMemoria = editingMemoriaId === registro.id;
-                        const memoriaFinal = isEditingMemoria ? memoriaEdit : (registro.detalhamento_customizado || registro.detalhamento);
-                        const hasCustomMemoria = !!registro.detalhamento_customizado;
-                        
-                        return (
-                          <div key={registro.id} className="mb-6 p-4 border rounded-lg bg-muted/30">
-                            <div className="flex justify-between items-start mb-3">
-                              <div>
-                                <p className="font-semibold text-lg">{registro.categoria}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  Dias: {registro.dias_operacao} | Total: {formatCurrency(registro.valor_total)}
-                                </p>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleEditarRegistro(registro)}
-                                  disabled={loading}
-                                  className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleRemoverRegistro(registro.id)}
-                                  disabled={loading}
-                                  className="h-8 w-8 text-destructive hover:text-destructive/10"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
+                {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+                    const totalOM = omRegistros.reduce((sum, r) => sum + r.valor_total, 0);
+                    const omName = omKey.split(' (')[0];
+                    const ug = omKey.split(' (')[1].replace(')', '');
+                    
+                    return (
+                        <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                            <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                <h3 className="font-bold text-lg text-primary">
+                                    {omName} (UG: {ug})
+                                </h3>
+                                <span className="font-extrabold text-xl text-primary">
+                                    {formatCurrency(totalOM)}
+                                </span>
                             </div>
                             
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center">
-                                <Label>Memória de Cálculo</Label>
-                                {!isEditingMemoria ? (
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleIniciarEdicaoMemoria(registro)}
-                                      disabled={loading}
-                                      className="gap-2"
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                      Editar
-                                    </Button>
-                                    {hasCustomMemoria && (
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
-                                        disabled={loading}
-                                        className="gap-2 text-muted-foreground"
-                                      >
-                                        <XCircle className="h-4 w-4" />
-                                        Restaurar
-                                      </Button>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="default"
-                                      onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
-                                      disabled={loading}
-                                      className="gap-2"
-                                    >
-                                      <Check className="h-4 w-4" />
-                                      Salvar
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={handleCancelarEdicaoMemoria}
-                                      disabled={loading}
-                                      className="gap-2"
-                                    >
-                                      <XCircle className="h-4 w-4" />
-                                      Cancelar
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                              
-                              <Textarea
-                                value={memoriaFinal}
-                                onChange={(e) => isEditingMemoria && setMemoriaEdit(e.target.value)}
-                                readOnly={!isEditingMemoria}
-                                rows={15}
-                                className={cn(
-                                  "font-mono text-xs whitespace-pre-wrap text-foreground",
-                                  isEditingMemoria && "border-primary focus:ring-2 focus:ring-primary"
-                                )}
-                              />
+                            <div className="space-y-3">
+                                {omRegistros.map((registro) => {
+                                    const totalCategoria = registro.valor_total;
+                                    const fases = formatFasesParaTexto(registro.fase_atividade);
+                                    
+                                    return (
+                                        <Card key={registro.id} className="p-3 bg-background border">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex flex-col">
+                                                    <h4 className="font-semibold text-base text-foreground">
+                                                        {registro.categoria}
+                                                    </h4>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Dias: {registro.dias_operacao} | Fases: {fases}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-lg text-primary/80">
+                                                        {formatCurrency(totalCategoria)}
+                                                    </span>
+                                                    <div className="flex gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            onClick={() => handleEditarRegistro(registro)}
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => {
+                                                                if (confirm(`Deseja realmente deletar o registro de Classe II para ${omName} (${registro.categoria})?`)) {
+                                                                    supabase.from("classe_ii_registros")
+                                                                        .delete()
+                                                                        .eq("id", registro.id)
+                                                                        .then(() => {
+                                                                            toast.success("Registro excluído!");
+                                                                            fetchRegistros();
+                                                                        })
+                                                                        .catch(err => {
+                                                                            toast.error(sanitizeError(err));
+                                                                        });
+                                                                }
+                                                            }}
+                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Detalhes da Alocação */}
+                                            <div className="pt-2 border-t mt-2">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
+                                                    <span className="font-medium text-green-600">{formatCurrency(registro.valor_nd_30)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
+                                                    <span className="font-medium text-blue-600">{formatCurrency(registro.valor_nd_39)}</span>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    );
+                                })}
                             </div>
-                          </div>
-                        );
-                      })}
-                    </Card>
-                  ))}
-                </div>
+                        </Card>
+                    );
+                })}
+              </div>
+            )}
+
+            {/* 5. Memórias de Cálculos Detalhadas - AGORA POR CATEGORIA */}
+            {registros.length > 0 && (
+              <div className="space-y-4 mt-8">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  📋 Memórias de Cálculos Detalhadas
+                </h3>
+                
+                {registros.map(registro => {
+                  const om = registro.organizacao;
+                  const ug = registro.ug;
+                  const isEditing = editingMemoriaId === registro.id;
+                  const hasCustomMemoria = !!registro.detalhamento_customizado;
+                  const memoriaExibida = registro.detalhamento_customizado || registro.detalhamento || "";
+                  
+                  return (
+                    <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
+                      <h4 className="text-lg font-semibold text-foreground">
+                        OM Destino: {om} ({ug}) - Categoria: {registro.categoria}
+                      </h4>
+                      
+                      <div className="flex items-center justify-end gap-2 mb-4">
+                          {!isEditing ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleIniciarEdicaoMemoria(registro)}
+                                disabled={loading}
+                                className="gap-2"
+                              >
+                                <Pencil className="h-4 w-4" />
+                                Editar Memória
+                              </Button>
+                              
+                              {hasCustomMemoria && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                                  disabled={loading}
+                                  className="gap-2 text-muted-foreground"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                  Restaurar Automática
+                                </Button>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                disabled={loading}
+                                className="gap-2"
+                              >
+                                <Check className="h-4 w-4" />
+                                Salvar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleCancelarEdicaoMemoria}
+                                disabled={loading}
+                                className="gap-2"
+                              >
+                                <XCircle className="h-4 w-4" />
+                                Cancelar
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      
+                      <Card className="p-4 bg-background rounded-lg border">
+                        {isEditing ? (
+                          <Textarea
+                            value={memoriaEdit}
+                            onChange={(e) => setMemoriaEdit(e.target.value)}
+                            className="min-h-[300px] font-mono text-sm"
+                            placeholder="Digite a memória de cálculo..."
+                          />
+                        ) : (
+                          <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
+                            {memoriaExibida}
+                          </pre>
+                        )}
+                      </Card>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>

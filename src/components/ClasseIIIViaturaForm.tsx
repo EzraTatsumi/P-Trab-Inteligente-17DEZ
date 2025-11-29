@@ -6,13 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Trash2, Pencil, XCircle, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Pencil, XCircle, ChevronDown, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
 import { OMData } from "@/lib/omUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput } from "@/lib/formatUtils";
 import { TipoEquipamentoDetalhado } from "@/data/classeIIIData";
 import { RefLPC } from "@/types/refLPC";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -216,7 +216,6 @@ export const ClasseIIIViaturaForm = ({
     
     Object.entries(grupos).forEach(([combustivel, itensGrupo]) => {
       const tipoCombustivel = combustivel as CombustivelTipo;
-      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
       let totalLitrosSemMargem = 0;
       const detalhes: string[] = [];
       
@@ -230,6 +229,7 @@ export const ClasseIIIViaturaForm = ({
       const totalLitros = totalLitrosSemMargem * 1.3;
       const preco = tipoCombustivel === 'GASOLINA' ? (refLPC.preco_gasolina ?? 0) : (refLPC.preco_diesel ?? 0);
       const valorTotal = totalLitros * preco;
+      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
       const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
       const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
       const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';

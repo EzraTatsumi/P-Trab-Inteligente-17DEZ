@@ -1,285 +1,257 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Save, Loader2 } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { ChevronDown, ChevronUp, Fuel, AlertCircle, Cloud } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
-import { RefLPC } from "@/types/refLPC";
-import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency, parseInputToNumber, formatNumberForInput } from "@/lib/formatUtils";
-import { useFormNavigation } from "@/hooks/useFormNavigation";
+import { toast } from "sonner";
 import { sanitizeError } from "@/lib/errorUtils";
+import { useFormNavigation } from "@/hooks/useFormNavigation";
+import { RefLPC, RefLPCForm } from "@/types/refLPC";
 
 interface RefLPCFormSectionProps {
   ptrabId: string;
-  initialRefLPC: RefLPC | null;
-  onSave: (refLPC: RefLPC) => void;
+  refLPC: RefLPC | null;
+  onUpdate: (newRefLPC: RefLPC) => void;
 }
 
-export function RefLPCFormSection({ ptrabId, initialRefLPC, onSave }: RefLPCFormSectionProps) {
+const initialFormState: RefLPCForm = {
+  data_inicio_consulta: "",
+  data_fim_consulta: "",
+  ambito: "Nacional",
+  nome_local: "",
+  preco_diesel: 0,
+  preco_gasolina: 0,
+};
+
+export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSectionProps) => {
+  const [formLPC, setFormLPC] = useState<RefLPCForm>(initialFormState);
+  const [isLPCFormExpanded, setIsLPCFormExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
   const { handleEnterToNextField } = useFormNavigation();
-
-  const [form, setForm] = useState<Omit<RefLPC, 'id' | 'user_id' | 'p_trab_id' | 'created_at' | 'updated_at'>>({
-    data_inicio_consulta: initialRefLPC?.data_inicio_consulta || format(new Date(), 'yyyy-MM-dd'),
-    data_fim_consulta: initialRefLPC?.data_fim_consulta || format(new Date(), 'yyyy-MM-dd'),
-    ambito: initialRefLPC?.ambito || 'Nacional',
-    nome_local: initialRefLPC?.nome_local || null,
-    preco_diesel: initialRefLPC?.preco_diesel || 0,
-    preco_gasolina: initialRefLPC?.preco_gasolina || 0,
-  });
-
-  const [inputDiesel, setInputDiesel] = useState(formatNumberForInput(form.preco_diesel, 2));
-  const [inputGasolina, setInputGasolina] = useState(formatNumberForInput(form.preco_gasolina, 2));
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (initialRefLPC) {
-      setForm({
-        data_inicio_consulta: initialRefLPC.data_inicio_consulta,
-        data_fim_consulta: initialRefLPC.data_fim_consulta,
-        ambito: initialRefLPC.ambito,
-        nome_local: initialRefLPC.nome_local,
-        preco_diesel: initialRefLPC.preco_diesel,
-        preco_gasolina: initialRefLPC.preco_gasolina,
+    if (refLPC) {
+      setFormLPC({
+        data_inicio_consulta: refLPC.data_inicio_consulta,
+        data_fim_consulta: refLPC.data_fim_consulta,
+        ambito: refLPC.ambito as 'Nacional' | 'Estadual' | 'Municipal',
+        nome_local: refLPC.nome_local || "",
+        preco_diesel: Number(refLPC.preco_diesel),
+        preco_gasolina: Number(refLPC.preco_gasolina),
       });
-      setInputDiesel(formatNumberForInput(initialRefLPC.preco_diesel, 2));
-      setInputGasolina(formatNumberForInput(initialRefLPC.preco_gasolina, 2));
+      setIsLPCFormExpanded(false);
+    } else {
+      setFormLPC(initialFormState);
+      setIsLPCFormExpanded(true);
     }
-  }, [initialRefLPC]);
+  }, [refLPC]);
 
-  const handleDateChange = (field: 'data_inicio_consulta' | 'data_fim_consulta', date: Date | undefined) => {
-    if (date) {
-      setForm(prev => ({ ...prev, [field]: format(date, 'yyyy-MM-dd') }));
-    }
-  };
-
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, setInput: React.Dispatch<React.SetStateAction<string>>, field: 'preco_diesel' | 'preco_gasolina') => {
-    const rawValue = e.target.value;
-    let cleaned = rawValue.replace(/[^\d,.]/g, '');
-    const parts = cleaned.split(',');
-    if (parts.length > 2) { cleaned = parts[0] + ',' + parts.slice(1).join(''); }
-    cleaned = cleaned.replace(/\./g, '');
-    
-    setInput(cleaned);
-    setForm(prev => ({ ...prev, [field]: parseInputToNumber(cleaned) }));
-  };
-
-  const handlePriceBlur = (input: string, setInput: React.Dispatch<React.SetStateAction<string>>, field: 'preco_diesel' | 'preco_gasolina') => {
-    const numericValue = parseInputToNumber(input);
-    const formattedDisplay = formatNumberForInput(numericValue, 2);
-    setInput(formattedDisplay);
-    setForm(prev => ({ ...prev, [field]: numericValue }));
-  };
-
-  const handleSave = async () => {
-    if (!user) {
-      toast.error("Usuário não autenticado.");
+  const handleSalvarRefLPC = async () => {
+    if (!formLPC.data_inicio_consulta || !formLPC.data_fim_consulta) {
+      toast.error("Preencha as datas de início e fim da consulta");
       return;
     }
-    if (form.preco_diesel <= 0 || form.preco_gasolina <= 0) {
-      toast.error("Os preços do Diesel e da Gasolina devem ser maiores que zero.");
+
+    if (formLPC.ambito !== 'Nacional' && !formLPC.nome_local) {
+      toast.error(`Preencha o nome do ${formLPC.ambito === 'Estadual' ? 'Estado' : 'Município'}`);
       return;
     }
-    if (form.ambito === 'Local' && !form.nome_local) {
-      toast.error("Informe o nome do local para consulta de âmbito local.");
+
+    if (formLPC.preco_diesel <= 0 || formLPC.preco_gasolina <= 0) {
+      toast.error("Os preços devem ser maiores que zero");
       return;
     }
 
     setLoading(true);
     try {
       const dataToSave = {
-        ...form,
-        user_id: user.id,
         p_trab_id: ptrabId,
-        nome_local: form.ambito === 'Nacional' ? null : form.nome_local,
+        ...formLPC,
       };
 
-      if (initialRefLPC) {
-        // Update existing
+      let result;
+      if (refLPC) {
         const { data, error } = await supabase
           .from("p_trab_ref_lpc")
           .update(dataToSave)
-          .eq("id", initialRefLPC.id)
+          .eq("id", refLPC.id)
           .select()
           .single();
-        
+
         if (error) throw error;
-        onSave(data as RefLPC);
-        toast.success("Referência LPC atualizada com sucesso!");
+        result = data;
+        toast.success("Referência LPC atualizada!");
       } else {
-        // Insert new
         const { data, error } = await supabase
           .from("p_trab_ref_lpc")
           .insert([dataToSave])
           .select()
           .single();
-        
+
         if (error) throw error;
-        onSave(data as RefLPC);
-        toast.success("Referência LPC salva com sucesso!");
+        result = data;
+        toast.success("Referência LPC salva!");
       }
-    } catch (error) {
-      console.error("Erro ao salvar LPC:", error);
+
+      onUpdate(result as RefLPC);
+      setIsLPCFormExpanded(false);
+    } catch (error: any) {
       toast.error(sanitizeError(error));
     } finally {
       setLoading(false);
     }
   };
 
-  const parseDate = (dateString: string) => {
-    try {
-      return new Date(dateString + 'T00:00:00'); // Adiciona T00:00:00 para evitar problemas de fuso horário
-    } catch {
-      return undefined;
-    }
-  };
-
-  const startDate = parseDate(form.data_inicio_consulta);
-  const endDate = parseDate(form.data_fim_consulta);
-
   return (
-    <Card className="bg-muted/30">
-      <CardHeader>
-        <CardTitle>Referência LPC (Levantamento de Preços e Custos)</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Datas de Consulta */}
-          <div className="space-y-2">
-            <Label>Data Início da Consulta *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !startDate && "text-muted-foreground"
-                  )}
-                  disabled={loading}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {startDate ? format(startDate, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={startDate}
-                  onSelect={(date) => handleDateChange('data_inicio_consulta', date)}
-                  initialFocus
-                  locale={ptBR}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Data Fim da Consulta *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !endDate && "text-muted-foreground"
-                  )}
-                  disabled={loading}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {endDate ? format(endDate, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={endDate}
-                  onSelect={(date) => handleDateChange('data_fim_consulta', date)}
-                  initialFocus
-                  locale={ptBR}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-
-        {/* Âmbito e Local */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Âmbito da Consulta *</Label>
-            <Select
-              value={form.ambito}
-              onValueChange={(value) => setForm(prev => ({ ...prev, ambito: value as 'Nacional' | 'Local', nome_local: value === 'Nacional' ? null : prev.nome_local }))}
-              disabled={loading}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o âmbito" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Nacional">Nacional (LPC/DLOG)</SelectItem>
-                <SelectItem value="Local">Local (Pesquisa de Mercado)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Nome do Local (Se Local)</Label>
-            <Input
-              value={form.nome_local || ""}
-              onChange={(e) => setForm(prev => ({ ...prev, nome_local: e.target.value }))}
-              placeholder="Ex: Posto Ipiranga - Brasília/DF"
-              disabled={form.ambito === 'Nacional' || loading}
-              onKeyDown={handleEnterToNextField}
-            />
-          </div>
-        </div>
-
-        {/* Preços */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Preço Diesel (R$/L) *</Label>
-            <Input
-              type="text"
-              inputMode="decimal"
-              value={inputDiesel}
-              onChange={(e) => handlePriceChange(e, setInputDiesel, 'preco_diesel')}
-              onBlur={(e) => handlePriceBlur(e.target.value, setInputDiesel, 'preco_diesel')}
-              placeholder="Ex: 6,50"
-              disabled={loading}
-              onKeyDown={handleEnterToNextField}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Preço Gasolina (R$/L) *</Label>
-            <Input
-              type="text"
-              inputMode="decimal"
-              value={inputGasolina}
-              onChange={(e) => handlePriceChange(e, setInputGasolina, 'preco_gasolina')}
-              onBlur={(e) => handlePriceBlur(e.target.value, setInputGasolina, 'preco_gasolina')}
-              placeholder="Ex: 5,80"
-              disabled={loading}
-              onKeyDown={handleEnterToNextField}
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end pt-2">
-          <Button onClick={handleSave} disabled={loading}>
-            <Save className="mr-2 h-4 w-4" />
-            {loading ? "Salvando..." : (initialRefLPC ? "Atualizar LPC" : "Salvar LPC")}
+    <Card className="mb-6 border-2 border-primary/20" ref={contentRef}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Fuel className="h-5 w-5" />
+            Referência de Preços - Consulta LPC
+          </CardTitle>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setIsLPCFormExpanded(!isLPCFormExpanded)}
+            disabled={loading}
+          >
+            {isLPCFormExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
         </div>
-      </CardContent>
+      </CardHeader>
+      {isLPCFormExpanded && (
+        <CardContent>
+          {!refLPC && (
+            <Alert className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Configure a referência de preços LPC para este P Trab antes de adicionar registros de Classe III.
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          <form onSubmit={(e) => { e.preventDefault(); handleSalvarRefLPC(); }}>
+            <div className="flex justify-end mb-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                disabled 
+                className="gap-2 text-muted-foreground"
+              >
+                <Cloud className="h-4 w-4" />
+                Consultar via API (Em breve)
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>Data Início Consulta</Label>
+                <Input
+                  type="date"
+                  value={formLPC.data_inicio_consulta}
+                  onChange={(e) => setFormLPC({...formLPC, data_inicio_consulta: e.target.value})}
+                  onKeyDown={handleEnterToNextField}
+                  disabled={loading}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Data Fim Consulta</Label>
+                <Input
+                  type="date"
+                  value={formLPC.data_fim_consulta}
+                  onChange={(e) => setFormLPC({...formLPC, data_fim_consulta: e.target.value})}
+                  onKeyDown={handleEnterToNextField}
+                  disabled={loading}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Âmbito da Pesquisa</Label>
+                <Select
+                  value={formLPC.ambito}
+                  onValueChange={(val) => setFormLPC({...formLPC, ambito: val as 'Nacional' | 'Estadual' | 'Municipal', nome_local: ''})}
+                  disabled={loading}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Nacional">Nacional</SelectItem>
+                    <SelectItem value="Estadual">Estadual</SelectItem>
+                    <SelectItem value="Municipal">Municipal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {formLPC.ambito !== 'Nacional' && (
+                <div className="space-y-2">
+                  <Label>{formLPC.ambito === 'Estadual' ? 'Estado' : 'Município'}</Label>
+                  <Input
+                    value={formLPC.nome_local || ''}
+                    onChange={(e) => setFormLPC({...formLPC, nome_local: e.target.value})}
+                    placeholder={formLPC.ambito === 'Estadual' ? 'Ex: Rio de Janeiro' : 'Ex: Niterói'}
+                    onKeyDown={handleEnterToNextField}
+                    disabled={loading}
+                  />
+                </div>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="space-y-2">
+                <Label>Preço Diesel</Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
+                    value={formLPC.preco_diesel.toFixed(2)}
+                    onChange={(e) => setFormLPC({...formLPC, preco_diesel: parseFloat(e.target.value) || 0})}
+                    onKeyDown={handleEnterToNextField}
+                    disabled={loading}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    R$/litro
+                  </span>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Preço Gasolina</Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
+                    value={formLPC.preco_gasolina.toFixed(2)}
+                    onChange={(e) => setFormLPC({...formLPC, preco_gasolina: parseFloat(e.target.value) || 0})}
+                    onKeyDown={handleEnterToNextField}
+                    disabled={loading}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    R$/litro
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end mt-4">
+              <Button type="submit" disabled={loading}>
+                {loading ? "Salvando..." : (refLPC ? "Atualizar Referência LPC" : "Salvar Referência LPC")}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      )}
     </Card>
   );
-}
+};
+
+export default RefLPCFormSection;
