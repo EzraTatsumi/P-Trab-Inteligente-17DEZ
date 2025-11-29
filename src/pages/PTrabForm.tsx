@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
-import { pTrabSchema } from "@/lib/validationSchemas";
+import { ptrabSchema } from "@/lib/validationSchemas";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { PTrabCostSummary } from "@/components/PTrabCostSummary";
@@ -31,7 +31,7 @@ type PTrabData = Tables<'p_trab'> & {
   comentario: string | null;
   data_fim: string;
   data_inicio: string;
-  nome_om_extenso: string;
+  nome_om_extenso: string | undefined; // Pode ser undefined se não for carregado
   nome_operacao: string;
   numero_ptrab: string;
   organizacao: string;
@@ -182,7 +182,7 @@ export default function PTrabForm() {
       efetivo_empregado: Number(ptrabData.efetivo_empregado),
     };
 
-    const validationResult = pTrabSchema.safeParse(dataToValidate);
+    const validationResult = ptrabSchema.safeParse(dataToValidate);
 
     if (!validationResult.success) {
       toast.error(validationResult.error.errors[0].message);
@@ -197,7 +197,7 @@ export default function PTrabForm() {
       const dataToSave: TablesInsert<'p_trab'> = {
         ...ptrabData,
         user_id: user.id,
-        efetivo_empregado: Number(ptrabData.efetivo_empregado),
+        efetivo_empregado: String(Number(ptrabData.efetivo_empregado)), // Salvar como string no DB
         // Garantir que campos opcionais sejam null se vazios
         comentario: ptrabData.comentario || null,
         nome_om_extenso: ptrabData.nome_om_extenso || null,
