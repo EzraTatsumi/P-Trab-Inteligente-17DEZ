@@ -14,7 +14,7 @@ import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -42,7 +42,7 @@ interface ItemClasseII {
   quantidade: number;
   valor_mnt_dia: number;
   categoria: Categoria;
-  memoria_customizada?: string | null; // NOVO CAMPO
+  memoria_customizada?: string | null;
 }
 
 interface FormDataClasseII {
@@ -56,9 +56,6 @@ interface FormDataClasseII {
   om_destino_recurso: string;
   ug_destino_recurso: string;
   selectedOmDestinoId?: string;
-  
-  // NOVOS CAMPOS DE ALOCAÇÃO
-  valor_nd_39_input: string; // Input string para ND 33.90.39
 }
 
 interface ClasseIIRegistro {
@@ -76,6 +73,19 @@ interface ClasseIIRegistro {
   valor_nd_30: number;
   valor_nd_39: number;
 }
+
+interface CategoryAllocation {
+  total_valor: number;
+  nd_39_input: string; // User input string for ND 39
+  nd_30_value: number; // Calculated ND 30 value
+  nd_39_value: number; // Calculated ND 39 value
+}
+
+const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
+    'Equipamento Individual': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0 },
+    'Proteção Balística': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0 },
+    'Material de Estacionamento': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0 },
+};
 
 // Helper para agrupar itens de um registro por categoria
 const groupRecordItemsByCategory = (items: ItemClasseII[]) => {
@@ -206,8 +216,12 @@ export default function ClasseIIForm() {
     om_destino_recurso: "",
     ug_destino_recurso: "",
     selectedOmDestinoId: undefined,
-    valor_nd_39_input: "",
   });
+  
+  // NOVO ESTADO: Rastreia a alocação de ND por categoria
+  const [categoryAllocations, setCategoryAllocations] = useState<Record<Categoria, CategoryAllocation>>(initialCategoryAllocations);
+  // NOVO ESTADO: Input temporário para ND 39 da aba atual
+  const [currentND39Input, setCurrentND39Input] = useState<string>("");
   
   // NOVO ESTADO: Lista de itens da categoria atual com quantidades editáveis
   const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemClasseII[]>([]);
@@ -216,10 +230,6 @@ export default function ClasseIIForm() {
   const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
-  // REMOVIDOS: Estados para edição de memória de cálculo por item
-  // const [editingItemMemoriaId, setEditingItemMemoriaId] = useState<{ registroId: string, itemIndex: number } | null>(null);
-  // const [memoriaItemEdit, setMemoriaItemEdit] = useState<string>("");
-
   const { handleEnterToNextField } = useFormNavigation();
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -233,6 +243,11 @@ export default function ClasseIIForm() {
     fetchRegistros();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId]);
+  
+  // Efeito para sincronizar o input ND 39 ao mudar de aba
+  useEffect(() => {
+    setCurrentND39Input(categoryAllocations[selectedTab].nd_39_input);
+  }, [selectedTab, categoryAllocations]);
 
   // Efeito para gerenciar a lista de itens da categoria atual
   useEffect(() => {
@@ -382,12 +397,11 @@ export default function ClasseIIForm() {
       om_destino_recurso: "",
       ug_destino_recurso: "",
       selectedOmDestinoId: undefined,
-      valor_nd_39_input: "",
     });
-    // REMOVIDOS: Resetar estados de edição de item
-    // setEditingItemMemoriaId(null);
-    // setMemoriaItemEdit("");
-    // Resetar currentCategoryItems (será re-populado pelo useEffect)
+    
+    setCategoryAllocations(initialCategoryAllocations); // Reset allocations
+    setCurrentND39Input(""); // Reset current input
+    
     setCurrentCategoryItems([]);
     
     setFasesAtividade(["Execução"]);
@@ -453,48 +467,73 @@ export default function ClasseIIForm() {
     setCurrentCategoryItems(newItems);
   };
 
+  // ND Calculation and Input Handlers (Temporary for current tab)
+  const currentCategoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+  const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, parseInputToNumber(currentND39Input)));
+  const nd30ValueTemp = currentCategoryTotalValue - nd39ValueTemp;
+
+  const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const rawValue = e.target.value;
+      setCurrentND39Input(formatInputWithThousands(rawValue));
+  };
+
+  const handleND39InputBlur = () => {
+      const numericValue = parseInputToNumber(currentND39Input);
+      const finalND39Value = Math.min(currentCategoryTotalValue, Math.max(0, numericValue));
+      setCurrentND39Input(formatNumberForInput(finalND39Value, 2));
+  };
+
   // NOVO HANDLER: Salva os itens da lista expandida para o form.itens principal
   const handleUpdateCategoryItems = () => {
     if (!form.organizacao || form.dias_operacao <= 0) {
         toast.error("Preencha a OM e os Dias de Operação antes de salvar itens.");
         return;
     }
+    
+    // 1. Calculate total value for items currently in the tab
+    const categoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
 
-    // 1. Itens válidos da categoria atual (quantidade > 0)
+    // 2. Calculate final ND split for this category based on current input
+    const numericInput = parseInputToNumber(currentND39Input);
+    const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
+    const finalND30Value = categoryTotalValue - finalND39Value;
+    
+    if (categoryTotalValue > 0 && (finalND30Value + finalND39Value) !== categoryTotalValue) {
+        toast.error("Erro de cálculo: A soma de ND 30 e ND 39 deve ser igual ao Total da Categoria.");
+        return;
+    }
+
+    // 3. Itens válidos da categoria atual (quantidade > 0)
     const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
 
-    // 2. Itens de outras categorias no formulário principal
+    // 4. Itens de outras categorias no formulário principal
     const otherCategoryItems = form.itens.filter(item => item.categoria !== selectedTab);
 
-    // 3. Mesclar as listas
+    // 5. Mesclar as listas
     const newFormItems = [...otherCategoryItems, ...itemsToKeep];
 
-    setForm({ ...form, itens: newFormItems });
-    toast.success(`Itens da categoria ${selectedTab} atualizados!`);
-  };
-  
-  // Lógica de cálculo de alocação
-  const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
-  
-  const nd39Value = useMemo(() => {
-    const parsed = parseInputToNumber(form.valor_nd_39_input);
-    return Math.min(valorTotalForm, Math.max(0, parsed));
-  }, [form.valor_nd_39_input, valorTotalForm]);
-  
-  const nd30Value = valorTotalForm - nd39Value;
+    // 6. Update allocation state for the current category
+    setCategoryAllocations(prev => ({
+        ...prev,
+        [selectedTab]: {
+            total_valor: categoryTotalValue,
+            nd_39_input: formatNumberForInput(finalND39Value, 2), // Store the final formatted input
+            nd_30_value: finalND30Value,
+            nd_39_value: finalND39Value,
+        }
+    }));
 
-  const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    // Permite a formatação de milhar e decimal
-    const formattedValue = formatNumberForInput(parseInputToNumber(rawValue), 2);
-    setForm(prev => ({ ...prev, valor_nd_39_input: formattedValue }));
+    setForm({ ...form, itens: newFormItems });
+    toast.success(`Itens e alocação de ND para ${selectedTab} atualizados!`);
   };
   
-  const handleND39InputBlur = () => {
-    // Ao perder o foco, garante que o valor seja formatado corretamente
-    const numericValue = parseInputToNumber(form.valor_nd_39_input);
-    setForm(prev => ({ ...prev, valor_nd_39_input: formatNumberForInput(numericValue, 2) }));
-  };
+  // Lógica de cálculo de alocação (Global Totals)
+  const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+
+  const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_30_value, 0);
+  const totalND39Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_39_value, 0);
+
+  const totalAlocado = totalND30Final + totalND39Final;
 
 
   const handleSalvarRegistros = async () => {
@@ -511,9 +550,16 @@ export default function ClasseIIForm() {
 
     setLoading(true);
     
-    const valorTotal = valorTotalForm; // Já calculado
-    const valorND30Final = nd30Value;
-    const valorND39Final = nd39Value;
+    const valorTotal = valorTotalForm; // Total value of all items
+    const valorND30Final = totalND30Final;
+    const valorND39Final = totalND39Final;
+    
+    // Final check: Ensure total allocated matches total calculated value
+    if (valorTotal !== totalAlocado) {
+        toast.error(`Erro de alocação: O valor total dos itens (${formatCurrency(valorTotal)}) não corresponde ao total alocado (${formatCurrency(totalAlocado)}). Salve todos os itens de categoria primeiro.`);
+        setLoading(false);
+        return;
+    }
     
     const detalhamento = generateDetalhamento(
       form.itens, 
@@ -528,7 +574,6 @@ export default function ClasseIIForm() {
     );
     
     // Mapear itens para garantir que 'memoria_customizada' seja explicitamente null se estiver faltando
-    // NOTA: Como removemos a edição por item, a memória customizada deve ser sempre null aqui.
     const finalItensToSave = form.itens.map(item => ({
         ...item,
         memoria_customizada: null, // Força null, pois a edição por item foi removida
@@ -616,8 +661,11 @@ export default function ClasseIIForm() {
       om_destino_recurso: registro.organizacao, // OM de Destino do Recurso
       ug_destino_recurso: registro.ug, // UG de Destino do Recurso
       selectedOmDestinoId: selectedOmDestinoIdForEdit,
-      valor_nd_39_input: formatNumberForInput(registro.valor_nd_39, 2), // NOVO: Carregar valor ND 39
     });
+    
+    // Reset ND allocation state when loading for editing (cannot reliably reconstruct per-category)
+    setCategoryAllocations(initialCategoryAllocations);
+    setCurrentND39Input(""); // Reset current input
     
     const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
@@ -635,8 +683,6 @@ export default function ClasseIIForm() {
     setLoading(false);
   };
   
-  // REMOVIDOS: Handlers para Edição de Memória por Item
-
   const registrosAgrupados = useMemo(() => {
     return registros;
   }, [registros]);
@@ -745,6 +791,23 @@ export default function ClasseIIForm() {
                     </PopoverContent>
                   </Popover>
                 </div>
+                
+                {/* CAMPO: OM de Destino do Recurso */}
+                <div className="space-y-2">
+                  <Label>OM de Destino do Recurso *</Label>
+                  <OmSelector
+                    selectedOmId={form.selectedOmDestinoId}
+                    onChange={handleOMDestinoChange}
+                    placeholder="Selecione a OM que receberá o recurso..."
+                    // Desabilitar se a OM detentora não estiver selecionada
+                    disabled={!form.organizacao} 
+                  />
+                  {form.ug_destino_recurso && (
+                    <p className="text-xs text-muted-foreground">
+                      UG de Destino: {form.ug_destino_recurso}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -818,33 +881,70 @@ export default function ClasseIIForm() {
                         <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
                             <span className="font-bold text-sm">TOTAL DA CATEGORIA</span>
                             <span className="font-extrabold text-lg text-primary">
-                                {formatCurrency(currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0))}
+                                {formatCurrency(currentCategoryTotalValue)}
                             </span>
                         </div>
                         
-                        {/* NOVO CAMPO: OM de Destino do Recurso (ND 30) */}
-                        <div className="space-y-2 pt-2">
-                          <Label>OM de Destino do Recurso (ND 30/39) *</Label>
-                          <OmSelector
-                            selectedOmId={form.selectedOmDestinoId}
-                            onChange={handleOMDestinoChange}
-                            placeholder="Selecione a OM que receberá o recurso..."
-                            // Desabilitar se a OM detentora não estiver selecionada
-                            disabled={!form.organizacao} 
-                          />
-                          {form.ug_destino_recurso && (
-                            <p className="text-xs text-muted-foreground">
-                              UG de Destino: {form.ug_destino_recurso}
-                            </p>
-                          )}
-                        </div>
+                        {/* NOVO BLOCO DE ALOCAÇÃO ND 30/39 - ORDEM INVERTIDA */}
+                        {currentCategoryTotalValue > 0 && (
+                            <div className="space-y-4 p-4 border rounded-lg bg-background">
+                                <h4 className="font-semibold text-sm">Alocação de Recursos para {cat}</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* ND 30 (Material) - ESQUERDA */}
+                                    <div className="space-y-2">
+                                        <Label>ND 33.90.30 (Material)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                value={formatNumberForInput(nd30ValueTemp, 2)}
+                                                readOnly
+                                                disabled
+                                                className="pl-8 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
+                                            />
+                                            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Calculado por diferença (Total - ND 39).
+                                        </p>
+                                    </div>
+                                    {/* ND 39 (Serviço) - DIREITA */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nd39-input">ND 33.90.39 (Serviço)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                id="nd39-input"
+                                                type="text"
+                                                inputMode="decimal"
+                                                value={currentND39Input}
+                                                onChange={handleND39InputChange}
+                                                onBlur={handleND39InputBlur}
+                                                placeholder="0,00"
+                                                className="pl-8 text-lg"
+                                                disabled={currentCategoryTotalValue === 0}
+                                                onKeyDown={handleEnterToNextField}
+                                            />
+                                            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Valor alocado para contratação de serviço.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between text-sm font-bold border-t pt-2">
+                                    <span>TOTAL ALOCADO:</span>
+                                    <span className={cn(currentCategoryTotalValue === (nd30ValueTemp + nd39ValueTemp) ? "text-primary" : "text-destructive")}>
+                                        {formatCurrency(nd30ValueTemp + nd39ValueTemp)}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                        {/* FIM NOVO BLOCO DE ALOCAÇÃO */}
 
                         <div className="flex justify-end">
                             <Button 
                                 type="button" 
                                 onClick={handleUpdateCategoryItems} 
                                 className="w-full md:w-auto" 
-                                disabled={!form.organizacao || form.dias_operacao <= 0}
+                                disabled={!form.organizacao || form.dias_operacao <= 0 || currentCategoryTotalValue !== (nd30ValueTemp + nd39ValueTemp)}
                             >
                                 Salvar Itens da Categoria
                             </Button>
@@ -866,6 +966,9 @@ export default function ClasseIIForm() {
                     const totalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
                     const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
                     
+                    // Busca a alocação salva para esta categoria
+                    const allocation = categoryAllocations[categoria as Categoria];
+                    
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
@@ -883,6 +986,24 @@ export default function ClasseIIForm() {
                             </div>
                           ))}
                         </div>
+                        
+                        {/* Exibe a alocação salva */}
+                        <div className="pt-2 border-t mt-2">
+                            <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
+                                <span className="font-medium text-green-600">{formatCurrency(allocation.nd_30_value)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
+                                <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
+                            </div>
+                            {allocation.total_valor !== totalCategoria && (
+                                <p className="text-xs text-destructive flex items-center gap-1 pt-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    Valores desatualizados. Salve a categoria novamente.
+                                </p>
+                            )}
+                        </div>
                       </Card>
                     );
                   })}
@@ -895,55 +1016,54 @@ export default function ClasseIIForm() {
                   </span>
                 </div>
                 
-                {/* NOVO BLOCO DE ALOCAÇÃO ND 30/39 */}
+                {/* NOVO BLOCO DE ALOCAÇÃO GLOBAL (RESUMO) - ORDEM INVERTIDA */}
                 <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-                    <h4 className="font-semibold text-sm">Alocação de Recursos (ND 33.90.30 / 33.90.39)</h4>
+                    <h4 className="font-semibold text-sm">Resumo da Alocação de Recursos (ND 30/39)</h4>
+                    <p className="text-xs text-muted-foreground">
+                        A alocação foi definida por categoria. O total deve ser igual ao Valor Total da OM.
+                    </p>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="nd39-input">ND 33.90.39 (Serviço)</Label>
-                            <div className="relative">
-                                <Input
-                                    id="nd39-input"
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={form.valor_nd_39_input}
-                                    onChange={handleND39InputChange}
-                                    onBlur={handleND39InputBlur}
-                                    placeholder="0,00"
-                                    className="pl-8 text-lg"
-                                    disabled={valorTotalForm === 0}
-                                    onKeyDown={handleEnterToNextField}
-                                />
-                                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Valor alocado para contratação de serviço.
-                            </p>
-                        </div>
+                        {/* ND 30 (Material) - ESQUERDA */}
                         <div className="space-y-2">
                             <Label>ND 33.90.30 (Material)</Label>
                             <div className="relative">
                                 <Input
-                                    value={formatNumberForInput(nd30Value, 2)}
+                                    value={formatNumberForInput(totalND30Final, 2)}
                                     readOnly
                                     disabled
                                     className="pl-8 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
                                 />
                                 <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                Calculado por diferença (Total - ND 39).
-                            </p>
+                        </div>
+                        {/* ND 39 (Serviço) - DIREITA */}
+                        <div className="space-y-2">
+                            <Label>ND 33.90.39 (Serviço)</Label>
+                            <div className="relative">
+                                <Input
+                                    value={formatNumberForInput(totalND39Final, 2)}
+                                    readOnly
+                                    disabled
+                                    className="pl-8 text-lg font-bold bg-blue-500/10 text-blue-600 disabled:opacity-100"
+                                />
+                                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            </div>
                         </div>
                     </div>
                     <div className="flex justify-between text-sm font-bold border-t pt-2">
                         <span>TOTAL ALOCADO:</span>
-                        <span className={cn(valorTotalForm === (nd30Value + nd39Value) ? "text-primary" : "text-destructive")}>
-                            {formatCurrency(nd30Value + nd39Value)}
+                        <span className={cn(valorTotalForm === totalAlocado ? "text-primary" : "text-destructive")}>
+                            {formatCurrency(totalAlocado)}
                         </span>
                     </div>
+                    {valorTotalForm !== totalAlocado && (
+                        <p className="text-xs text-destructive flex items-center gap-1 pt-1">
+                            <AlertCircle className="h-3 w-3" />
+                            O valor total alocado não corresponde ao valor total dos itens. Salve todas as categorias com itens.
+                        </p>
+                    )}
                 </div>
-                {/* FIM NOVO BLOCO DE ALOCAÇÃO */}
+                {/* FIM NOVO BLOCO DE ALOCAÇÃO GLOBAL */}
                 
                 <div className="flex gap-3 pt-4 justify-end">
                   <Button
@@ -957,7 +1077,7 @@ export default function ClasseIIForm() {
                   <Button 
                     type="button" 
                     onClick={handleSalvarRegistros} 
-                    disabled={loading || !form.organizacao || form.itens.length === 0 || !form.om_destino_recurso || valorTotalForm !== (nd30Value + nd39Value)}
+                    disabled={loading || !form.organizacao || form.itens.length === 0 || !form.om_destino_recurso || valorTotalForm !== totalAlocado}
                   >
                     {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")}
                   </Button>
@@ -983,12 +1103,8 @@ export default function ClasseIIForm() {
                     <Card key={registro.id} className="p-4 bg-muted/30">
                       <div className="flex items-center justify-between mb-3 border-b pb-2">
                         <div className="flex items-center gap-2">
-                          <h4 className="text-lg font-semibold text-foreground">
-                            {om} (UG: {ug})
-                          </h4>
-                          <Badge variant="secondary" className="ml-2 text-xs">
-                            Consolidado
-                          </Badge>
+                          <h4 className="text-lg font-semibold text-foreground}>{om} (UG: {ug})</h4>
+                          <Badge variant="secondary" className="ml-2 text-xs">Consolidado</Badge>
                         </div>
                         <div className="flex gap-1">
                           <Button
