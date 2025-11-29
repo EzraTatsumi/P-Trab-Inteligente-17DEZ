@@ -978,7 +978,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                           return (
                             <Card key={itemIndex} className="p-3 bg-background">
                               <h6 className="font-bold text-sm mb-2">
-                                {item.item} ({item.quantidade} un.)
+                                {item.item} ({item.quantidade} un.) - {item.categoria}
                               </h6>
                               <pre className="font-mono text-xs whitespace-pre-wrap text-foreground">
                                 {itemMemoria}
