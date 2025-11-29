@@ -212,6 +212,10 @@ export default function ClasseIIForm() {
   
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  // Estados para edição de memória de cálculo
+  const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
+  const [memoriaEdit, setMemoriaEdit] = useState<string>("");
+  
   const [form, setForm] = useState<FormDataClasseII>({
     selectedOmId: undefined,
     organizacao: "",
