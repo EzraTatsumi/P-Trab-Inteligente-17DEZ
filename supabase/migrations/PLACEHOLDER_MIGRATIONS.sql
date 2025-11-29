@@ -1,3 +1,0 @@
--- This file is a placeholder for the numerous Supabase migration files 
--- that were removed from the context to reduce token count.
--- The actual database schema is assumed to be correctly represented by the Supabase Context.
