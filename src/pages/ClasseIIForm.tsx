@@ -281,21 +281,34 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
       novosItens[editingItemIndex] = novoItem;
       toast.success("Item atualizado!");
     } else if (existingIndex !== -1) {
-      toast.error("Este item já foi adicionado. Edite o item existente ou remova-o primeiro.");
-      return;
+      // Se o item já existe, soma a quantidade
+      novosItens[existingIndex] = {
+        ...novosItens[existingIndex],
+        quantidade: novosItens[existingIndex].quantidade + novoItem.quantidade,
+      };
+      toast.success(`Quantidade de ${novoItem.item} somada!`);
     } else {
       novosItens.push(novoItem);
       toast.success("Item adicionado!");
     }
     
     setForm({ ...form, itens: novosItens });
-    setItemTemp({ item: "", quantidade: 0, valor_mnt_dia: 0 });
+    
+    // Resetar apenas a quantidade e o item selecionado para permitir a adição contínua
+    setItemTemp({
+      item: "",
+      quantidade: 0,
+      valor_mnt_dia: 0,
+    });
     setEditingItemIndex(null);
   };
 
   const handleEditItem = (item: ItemClasseII, index: number) => {
     setItemTemp(item);
     setEditingItemIndex(index);
+    // Define a aba correta para edição
+    const itemCategory = diretrizes.find(d => d.item === item.item)?.categoria || CATEGORIAS[0];
+    setSelectedTab(itemCategory);
     if (formRef.current) { formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   };
 
@@ -327,8 +340,8 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
     
     // Agrupar itens por categoria (aba)
     const itensPorCategoria = form.itens.reduce((acc, item) => {
-      // Encontra a categoria do item, se não encontrar, usa a aba selecionada (selectedTab)
-      const categoria = diretrizes.find(d => d.item === item.item)?.categoria || selectedTab;
+      // Encontra a categoria do item, se não encontrar, usa a categoria do primeiro item encontrado
+      const categoria = diretrizes.find(d => d.item === item.item)?.categoria || CATEGORIAS[0];
       if (!acc[categoria]) { acc[categoria] = []; }
       acc[categoria].push(item);
       return acc;
