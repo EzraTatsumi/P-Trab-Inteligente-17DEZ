@@ -1263,7 +1263,7 @@ export default function ClasseIIForm() {
             {registros.length > 0 && (
               <div className="space-y-4 mt-8">
                 <h2 className="text-xl font-bold flex items-center gap-2">
-                  <ClipboardList className="h-5 w-5 text-accent" />
+                  <ClipboardList className="h-5 w-5 text-primary" />
                   Memórias de Cálculos Detalhadas (Por Categoria)
                 </h2>
                 
