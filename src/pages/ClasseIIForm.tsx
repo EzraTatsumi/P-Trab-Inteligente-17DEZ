@@ -271,20 +271,37 @@ export default function ClasseIIForm() {
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const valorTotal = valorND30 + valorND39;
 
-    const itensPorCategoria = itens.reduce((acc, item) => {
-        if (!acc[item.categoria]) { acc[item.categoria] = []; }
-        acc[item.categoria].push(item);
+    // 1. Agrupar itens por categoria e calcular o subtotal de valor por categoria
+    const gruposPorCategoria = itens.reduce((acc, item) => {
+        const categoria = item.categoria;
+        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
+        
+        if (!acc[categoria]) {
+            acc[categoria] = {
+                totalValor: 0,
+                totalQuantidade: 0,
+                detalhes: [],
+            };
+        }
+        
+        acc[categoria].totalValor += valorItem;
+        acc[categoria].totalQuantidade += item.quantidade;
+        acc[categoria].detalhes.push(
+            `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.`
+        );
+        
         return acc;
-    }, {} as Record<Categoria, ItemClasseII[]>);
+    }, {} as Record<Categoria, { totalValor: number, totalQuantidade: number, detalhes: string[] }>);
 
     let detalhamentoItens = "";
     
-    Object.entries(itensPorCategoria).forEach(([categoria, itensGrupo]) => {
-        detalhamentoItens += `\n--- ${categoria.toUpperCase()} ---\n`;
-        itensGrupo.forEach(item => {
-            const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-            detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
-        });
+    // 2. Formatar a seção de cálculo agrupada
+    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
+        detalhamentoItens += `\n--- ${categoria.toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`;
+        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
+        detalhamentoItens += `Detalhes:\n`;
+        detalhamentoItens += grupo.detalhes.join('\n');
+        detalhamentoItens += `\n`;
     });
     
     detalhamentoItens = detalhamentoItens.trim();
@@ -297,7 +314,7 @@ Alocação:
 - ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
 Cálculo:
-Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
+Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
 
 ${detalhamentoItens}
 
