@@ -118,6 +118,14 @@ export default function ClasseIIForm() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId]);
 
+  // Define itensDisponiveis com base na aba selecionada
+  const itensDisponiveis = useMemo(() => {
+    return diretrizes.filter(d => d.categoria === selectedTab);
+  }, [diretrizes, selectedTab]);
+
+  // Calcula o valor total do item temporário
+  const valorItemTemp = itemTemp.quantidade * itemTemp.valor_mnt_dia * form.dias_operacao;
+
   const loadDiretrizes = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -331,6 +339,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
     
     if (editingItemIndex !== null) {
       const originalItem = form.itens[editingItemIndex];
+      // Ao atualizar, mantemos a memória customizada original do item, se houver
       novoItem.memoria_customizada = originalItem.memoria_customizada || null;
       
       novosItens[editingItemIndex] = novoItem;

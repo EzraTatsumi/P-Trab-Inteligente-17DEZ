@@ -229,7 +229,7 @@ const PTrabPrint = () => {
     
     const ultimaFase = fases[fases.length - 1];
     const demaisFases = fases.slice(0, -1).join(', ');
-    return `${demaisFases} e ${ultimaFases}`;
+    return `${demaisFases} e ${ultimaFase}`;
   };
 
   // Função para gerar memória automática de Classe I
@@ -762,8 +762,9 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
         // 3. Linhas Classe II (NOVO: Desagrupado por item)
         grupo.linhasClasseII.forEach((linha) => {
           const row = worksheet.getRow(currentRow);
-          // Categoria em CAIXA ALTA
+          // Coluna A: DESPESAS
           row.getCell('A').value = `CLASSE II - MATERIAL DE INTENDÊNCIA\n${linha.item.categoria.toUpperCase()}\n${linha.item.item.toUpperCase()}`;
+          
           row.getCell('B').value = `${linha.organizacao}\n(${linha.ug})`;
           row.getCell('C').value = linha.valor_total_item;
           row.getCell('C').numFmt = 'R$ #,##0.00';
@@ -1272,8 +1273,9 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                     <tr key={`classe-ii-${linha.registroId}-${itemIndex}`}>
                       <td className="col-despesas">
                         <div>CLASSE II - MATERIAL DE INTENDÊNCIA</div>
+                        {/* CORREÇÃO: Exibir apenas a categoria e o item em CAIXA ALTA */}
                         <div className="uppercase">{linha.item.categoria}</div>
-                        <div>{linha.item.item}</div>
+                        <div className="uppercase">{linha.item.item}</div>
                       </td>
                       <td className="col-om">
                         <div>{linha.organizacao}</div>
