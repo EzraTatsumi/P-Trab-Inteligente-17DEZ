@@ -265,6 +265,28 @@ export const PTrabCostSummary = ({
   const quantityClasses = "text-right font-medium w-1/3";
   // Classes para a coluna de descrição (ajustada para 1/3)
   const descriptionClasses = "w-1/3";
+  
+  // --- NOVA LÓGICA DE AGRUPAMENTO CLASSE II ---
+  const groupedClasseIIItems = totals.allClasseIIItems.reduce((acc, item) => {
+    const key = item.item;
+    const itemTotal = item.quantidade * item.valor_mnt_dia * item.parent_dias_operacao;
+    
+    if (!acc[key]) {
+      acc[key] = {
+        item: item.item,
+        totalQuantidade: 0,
+        totalValor: 0,
+      };
+    }
+    
+    acc[key].totalQuantidade += item.quantidade;
+    acc[key].totalValor += itemTotal;
+    
+    return acc;
+  }, {} as Record<string, { item: string, totalQuantidade: number, totalValor: number }>);
+  
+  const sortedGroupedClasseIIItems = Object.values(groupedClasseIIItems).sort((a, b) => a.item.localeCompare(b.item));
+  // --- FIM NOVA LÓGICA DE AGRUPAMENTO CLASSE II ---
 
   return (
     <Card className="shadow-lg">
@@ -379,27 +401,23 @@ export const PTrabCostSummary = ({
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-0">
                         <div className="space-y-1 pl-6 text-xs">
-                          {totals.allClasseIIItems.length === 0 ? (
+                          {sortedGroupedClasseIIItems.length === 0 ? (
                             <div className="text-muted-foreground">Nenhum item cadastrado.</div>
                           ) : (
-                            // Display individual items
-                            totals.allClasseIIItems.map((item, index) => {
-                              const itemTotal = item.quantidade * item.valor_mnt_dia * item.parent_dias_operacao;
-                              
-                              return (
-                                <div key={index} className="flex justify-between text-muted-foreground">
-                                  <span className={descriptionClasses}>
-                                    {item.item} ({item.parent_organizacao})
-                                  </span>
-                                  <span className={quantityClasses}>
-                                    {item.quantidade} un.
-                                  </span>
-                                  <span className={cn(valueClasses, "mr-6")}>
-                                    {formatCurrency(itemTotal)}
-                                  </span>
-                                </div>
-                              );
-                            })
+                            // Display grouped items
+                            sortedGroupedClasseIIItems.map((item, index) => (
+                              <div key={index} className="flex justify-between text-muted-foreground">
+                                <span className={descriptionClasses}>
+                                  {item.item}
+                                </span>
+                                <span className={quantityClasses}>
+                                  {item.totalQuantidade} un.
+                                </span>
+                                <span className={cn(valueClasses, "mr-6")}>
+                                  {formatCurrency(item.totalValor)}
+                                </span>
+                              </div>
+                            ))
                           )}
                           
                           {/* Total line remains the same */}
