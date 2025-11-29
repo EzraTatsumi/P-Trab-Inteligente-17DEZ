@@ -39,6 +39,7 @@ interface ItemClasseII {
   item: string;
   quantidade: number;
   valor_mnt_dia: number;
+  categoria: Categoria; // Adicionado categoria ao item para detalhamento
 }
 
 interface FormDataClasseII {
@@ -55,8 +56,8 @@ interface ClasseIIRegistro {
   organizacao: string;
   ug: string;
   dias_operacao: number;
-  categoria: Categoria;
-  itens_equipamentos: any;
+  categoria: string; // Agora será 'CONSOLIDADO' ou a categoria do único item
+  itens_equipamentos: ItemClasseII[]; // Tipo corrigido
   valor_total: number;
   detalhamento: string;
   detalhamento_customizado?: string | null;
@@ -73,10 +74,8 @@ export default function ClasseIIForm() {
   const [diretrizes, setDiretrizes] = useState<DiretrizClasseII[]>([]);
   const [selectedTab, setSelectedTab] = useState<Categoria>(CATEGORIAS[0]);
   
-  // NOVO ESTADO: ID do registro que está sendo editado (para o formulário principal)
   const [editingId, setEditingId] = useState<string | null>(null);
   
-  // Formulário principal (compartilhado)
   const [form, setForm] = useState<FormDataClasseII>({
     selectedOmId: undefined,
     organizacao: "",
@@ -85,25 +84,24 @@ export default function ClasseIIForm() {
     itens: [],
   });
   
-  // Item temporário para adição/edição
   const [itemTemp, setItemTemp] = useState<ItemClasseII>({
     item: "",
     quantidade: 0,
     valor_mnt_dia: 0,
+    categoria: CATEGORIAS[0], // Inicializa com a primeira categoria
   });
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   
-  // Estados para Fase da Atividade
   const [fasesAtividade, setFasesAtividade] = useState<string[]>(["Execução"]);
   const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
-  // Estados para edição de memória de cálculo
   const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
   const [memoriaEdit, setMemoriaEdit] = useState<string>("");
 
   const { handleEnterToNextField } = useFormNavigation();
   const formRef = useRef<HTMLDivElement>(null);
+  const itemSelectRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!ptrabId) {
@@ -124,7 +122,6 @@ export default function ClasseIIForm() {
       const currentYear = new Date().getFullYear();
       let anoReferencia = currentYear;
 
-      // 1. Buscar o ano de referência mais recente (se houver)
       const { data: diretrizCusteio } = await supabase
         .from("diretrizes_custeio")
         .select("ano_referencia")
@@ -139,7 +136,6 @@ export default function ClasseIIForm() {
         toast.warning(`Diretriz de Custeio não encontrada para o ano ${currentYear}. Por favor, configure em 'Configurações > Diretriz de Custeio'.`);
       }
 
-      // 2. Buscar itens de Classe II para o ano de referência
       const { data: classeIIData, error } = await supabase
         .from("diretrizes_classe_ii")
         .select("*")
@@ -152,7 +148,6 @@ export default function ClasseIIForm() {
       if (classeIIData && classeIIData.length > 0) {
         setDiretrizes((classeIIData || []) as DiretrizClasseII[]);
       } else {
-        // Se a tabela de itens está vazia para o ano, usa o fallback e avisa.
         setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
         toast.warning(`Itens de Classe II não configurados para o ano ${anoReferencia}. Usando valores padrão.`);
       }
@@ -167,6 +162,7 @@ export default function ClasseIIForm() {
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
+    // Agora buscamos apenas registros que não são 'LUBRIFICANTE' para evitar duplicação na exibição
     const { data, error } = await supabase
       .from("classe_ii_registros")
       .select("*, itens_equipamentos, detalhamento_customizado")
@@ -179,7 +175,15 @@ export default function ClasseIIForm() {
       return;
     }
 
-    setRegistros((data || []) as ClasseIIRegistro[]);
+    // Filtra para garantir que apenas um registro por OM/UG seja exibido (o consolidado)
+    const uniqueRecordsMap = new Map<string, ClasseIIRegistro>();
+    (data || []).forEach(r => {
+        const key = `${r.organizacao}-${r.ug}`;
+        // Como agora só deve haver um registro por OM/UG, o último encontrado é o que vale.
+        uniqueRecordsMap.set(key, r as ClasseIIRegistro);
+    });
+
+    setRegistros(Array.from(uniqueRecordsMap.values()));
   };
 
   // Função para formatar as fases de forma natural no texto
@@ -197,17 +201,33 @@ export default function ClasseIIForm() {
     return `${demaisFases} e ${ultimaFase}`;
   };
 
-  const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organizacao: string, categoria: Categoria, faseAtividade: string): string => {
+  // Função de Detalhamento CONSOLIDADA
+  const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organizacao: string, faseAtividade: string): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const valorTotal = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
 
-    const detalhamentoItens = itens.map(item => {
-      const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-      return `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.`;
-    }).join('\n');
+    // Agrupar itens por categoria para melhor visualização na memória
+    const itensPorCategoria = itens.reduce((acc, item) => {
+        if (!acc[item.categoria]) { acc[item.categoria] = []; }
+        acc[item.categoria].push(item);
+        return acc;
+    }, {} as Record<Categoria, ItemClasseII[]>);
 
-    return `33.90.30 - Aquisição de Material de Intendência (${categoria}) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+    let detalhamentoItens = "";
+    
+    Object.entries(itensPorCategoria).forEach(([categoria, itensGrupo]) => {
+        detalhamentoItens += `\n--- ${categoria.toUpperCase()} ---\n`;
+        itensGrupo.forEach(item => {
+            const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
+            detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
+        });
+    });
+    
+    // Remove a primeira quebra de linha
+    detalhamentoItens = detalhamentoItens.trim();
+
+    return `33.90.30 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
 
 Cálculo:
 Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
@@ -230,6 +250,7 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
       item: "",
       quantidade: 0,
       valor_mnt_dia: 0,
+      categoria: CATEGORIAS[0],
     });
     setEditingItemIndex(null);
     setEditingMemoriaId(null);
@@ -261,6 +282,7 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
         ...prev,
         item: itemName,
         valor_mnt_dia: Number(diretriz.valor_mnt_dia),
+        categoria: diretriz.categoria as Categoria, // Define a categoria do item
       }));
     }
   };
@@ -289,18 +311,29 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
     }
     
     setForm({ ...form, itens: novosItens });
-    setItemTemp({ item: "", quantidade: 0, valor_mnt_dia: 0 });
+    setItemTemp({
+      item: "",
+      quantidade: 0,
+      valor_mnt_dia: 0,
+      categoria: selectedTab, // Mantém a categoria da aba atual para o próximo item
+    });
     setEditingItemIndex(null);
+    
+    // Foca de volta no seletor de item para adicionar o próximo
+    if (itemSelectRef.current) {
+      itemSelectRef.current.focus();
+    }
   };
 
   const handleEditItem = (item: ItemClasseII, index: number) => {
     setItemTemp(item);
     setEditingItemIndex(index);
+    setSelectedTab(item.categoria); // Muda a aba para a categoria do item
     if (formRef.current) { formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   };
 
   const handleCancelEditItem = () => {
-    setItemTemp({ item: "", quantidade: 0, valor_mnt_dia: 0 });
+    setItemTemp({ item: "", quantidade: 0, valor_mnt_dia: 0, categoria: selectedTab });
     setEditingItemIndex(null);
   };
 
@@ -325,40 +358,24 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
 
     setLoading(true);
     
-    // Agrupar itens por categoria (aba)
-    const itensPorCategoria = form.itens.reduce((acc, item) => {
-      // Encontra a categoria do item, se não encontrar, usa a aba selecionada (selectedTab)
-      const categoria = diretrizes.find(d => d.item === item.item)?.categoria || selectedTab;
-      if (!acc[categoria]) { acc[categoria] = []; }
-      acc[categoria].push(item);
-      return acc;
-    }, {} as Record<Categoria, ItemClasseII[]>);
-
-    const registrosParaSalvar: TablesInsert<'classe_ii_registros'>[] = [];
+    // --- CONSOLIDAÇÃO EM UM ÚNICO REGISTRO ---
+    const valorTotal = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+    const detalhamento = generateDetalhamento(form.itens, form.dias_operacao, form.organizacao, faseFinalString);
     
-    for (const categoria in itensPorCategoria) {
-      const itens = itensPorCategoria[categoria as Categoria];
-      if (itens.length > 0) {
-        const valorTotal = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
-        const detalhamento = generateDetalhamento(itens, form.dias_operacao, form.organizacao, categoria as Categoria, faseFinalString);
-        
-        const registro: TablesInsert<'classe_ii_registros'> = {
-          p_trab_id: ptrabId,
-          organizacao: form.organizacao,
-          ug: form.ug,
-          dias_operacao: form.dias_operacao,
-          categoria: categoria,
-          itens_equipamentos: JSON.parse(JSON.stringify(itens)),
-          valor_total: valorTotal,
-          detalhamento: detalhamento,
-          fase_atividade: faseFinalString,
-        };
-        registrosParaSalvar.push(registro);
-      }
-    }
+    const registroParaSalvar: TablesInsert<'classe_ii_registros'> = {
+      p_trab_id: ptrabId,
+      organizacao: form.organizacao,
+      ug: form.ug,
+      dias_operacao: form.dias_operacao,
+      categoria: 'CONSOLIDADO', // Usar um valor genérico para o registro consolidado
+      itens_equipamentos: JSON.parse(JSON.stringify(form.itens)),
+      valor_total: valorTotal,
+      detalhamento: detalhamento,
+      fase_atividade: faseFinalString,
+    };
     
     try {
-      // 1. Deletar registros existentes para esta OM/UG
+      // 1. Deletar registros existentes para esta OM/UG (agora só deve haver um)
       const { error: deleteError } = await supabase
         .from("classe_ii_registros")
         .delete()
@@ -367,11 +384,11 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
         .eq("ug", form.ug);
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
-      // 2. Inserir novos registros
-      const { error: insertError } = await supabase.from("classe_ii_registros").insert(registrosParaSalvar);
+      // 2. Inserir o novo registro consolidado
+      const { error: insertError } = await supabase.from("classe_ii_registros").insert([registroParaSalvar]);
       if (insertError) throw insertError;
       
-      toast.success("Registros de Classe II salvos com sucesso!");
+      toast.success("Registro de Classe II salvo com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
       resetFormFields();
       fetchRegistros();
@@ -387,33 +404,11 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
     setLoading(true);
     resetFormFields();
     
-    // 1. Buscar TODOS os registros para esta OM/UG
-    const { data: relatedRecords, error: relatedError } = await supabase
-      .from("classe_ii_registros")
-      .select("*, itens_equipamentos")
-      .eq("p_trab_id", ptrabId!)
-      .eq("organizacao", registro.organizacao)
-      .eq("ug", registro.ug);
-      
-    if (relatedError) {
-      console.error("Erro ao carregar registros relacionados para edição:", relatedError);
-      toast.error("Erro ao carregar registros relacionados para edição.");
-      setLoading(false);
-      return;
-    }
-    
-    // 2. Consolidar todos os itens em uma única lista
-    let consolidatedItems: ItemClasseII[] = [];
-    let firstFaseAtividade = registro.fase_atividade;
+    // 1. O registro já contém todos os itens em itens_equipamentos
+    const consolidatedItems = registro.itens_equipamentos || [];
     let selectedOmIdForEdit: string | undefined = undefined;
     
-    relatedRecords.forEach(r => {
-      if (Array.isArray(r.itens_equipamentos)) {
-        consolidatedItems = [...consolidatedItems, ...r.itens_equipamentos];
-      }
-    });
-    
-    // 3. Buscar ID da OM
+    // 2. Buscar ID da OM
     try {
       const { data: omData, error: omError } = await supabase
         .from('organizacoes_militares')
@@ -428,8 +423,8 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
       console.error("Erro ao buscar OM para edição:", error);
     }
     
-    // 4. Preencher o formulário principal
-    setEditingId(registro.id); // Mantém o ID do primeiro registro para indicar modo de edição
+    // 3. Preencher o formulário principal
+    setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
       organizacao: registro.organizacao,
@@ -438,12 +433,12 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
       itens: consolidatedItems,
     });
     
-    // 5. Preencher as fases
-    const fasesSalvas = (firstFaseAtividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+    // 4. Preencher as fases
+    const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
-    // 6. Rolar para o topo
+    // 5. Rolar para o topo
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setLoading(false);
   };
@@ -518,17 +513,10 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
   // Calcula o valor total do formulário
   const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
   
-  // Agrupa os registros salvos por OM/UG para exibição na tabela
+  // Agrupa os registros salvos por OM/UG para exibição na tabela (agora é apenas uma lista de registros)
   const registrosAgrupados = useMemo(() => {
-    const map = new Map<string, ClasseIIRegistro[]>();
-    registros.forEach(r => {
-      const key = `${r.organizacao}-${r.ug}`;
-      if (!map.has(key)) {
-        map.set(key, []);
-      }
-      map.get(key)!.push(r);
-    });
-    return Array.from(map.values());
+    // Como agora cada OM/UG deve ter apenas um registro consolidado, a lista de registros é o que precisamos.
+    return registros;
   }, [registros]);
 
   return (
@@ -661,7 +649,7 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
                               value={itemTemp.item}
                               onValueChange={handleItemSelect}
                             >
-                              <SelectTrigger>
+                              <SelectTrigger ref={itemSelectRef}>
                                 <SelectValue placeholder="Selecione o item..." />
                               </SelectTrigger>
                               <SelectContent>
@@ -734,7 +722,7 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
                     <Card key={index} className="p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <p className="font-medium">{item.item}</p>
+                          <p className="font-medium">{item.item} <Badge variant="secondary" className="ml-2 text-xs">{item.categoria}</Badge></p>
                           <p className="text-sm text-muted-foreground">
                             {item.quantidade} unidade(s) • {formatCurrency(item.valor_mnt_dia)}/dia • Total: {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
                           </p>
@@ -771,16 +759,14 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
                 </div>
                 
                 <div className="flex gap-3 pt-4 justify-end">
-                  {editingId && (
-                    <Button
-                      variant="outline"
-                      type="button"
-                      onClick={resetFormFields}
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Cancelar Edição
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={resetFormFields}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Limpar Formulário
+                  </Button>
                   <Button 
                     type="button" 
                     onClick={handleSalvarRegistros} 
@@ -800,25 +786,25 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
                   OMs Cadastradas
                 </h2>
                 
-                {registrosAgrupados.map((registrosOM, index) => {
-                  const om = registrosOM[0].organizacao;
-                  const ug = registrosOM[0].ug;
-                  const totalOM = registrosOM.reduce((sum, r) => sum + r.valor_total, 0);
-                  const fases = formatFasesParaTexto(registrosOM[0].fase_atividade);
+                {registrosAgrupados.map((registro) => {
+                  const om = registro.organizacao;
+                  const ug = registro.ug;
+                  const totalOM = registro.valor_total;
+                  const fases = formatFasesParaTexto(registro.fase_atividade);
                   
                   return (
-                    <Card key={index} className="p-4 bg-muted/30">
+                    <Card key={registro.id} className="p-4 bg-muted/30">
                       <div className="flex items-center justify-between mb-3 border-b pb-2">
                         <div className="flex items-center gap-2">
                           <h4 className="text-lg font-semibold text-foreground">{om} (UG: {ug})</h4>
-                          <Badge variant="secondary" className="text-xs">{registrosOM.length} categorias</Badge>
+                          <Badge variant="secondary" className="text-xs">Consolidado</Badge>
                         </div>
                         <div className="flex gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => handleEditarRegistro(registrosOM[0])}
+                            onClick={() => handleEditarRegistro(registro)}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -826,15 +812,13 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
                             variant="ghost"
                             size="icon"
                             onClick={() => {
-                              if (confirm(`Deseja realmente deletar todos os registros de Classe II para ${om}?`)) {
-                                // Deletar todos os registros desta OM/UG
+                              if (confirm(`Deseja realmente deletar o registro de Classe II para ${om}?`)) {
+                                // Deletar o único registro desta OM/UG
                                 supabase.from("classe_ii_registros")
                                   .delete()
-                                  .eq("p_trab_id", ptrabId!)
-                                  .eq("organizacao", om)
-                                  .eq("ug", ug)
+                                  .eq("id", registro.id)
                                   .then(() => {
-                                    toast.success("Registros excluídos!");
+                                    toast.success("Registro excluído!");
                                     fetchRegistros();
                                   })
                                   .catch(err => {
@@ -850,14 +834,18 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
                       </div>
                       
                       <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">Dias: {registrosOM[0].dias_operacao} | Fases: {fases}</p>
+                        <p className="text-sm text-muted-foreground">Dias: {registro.dias_operacao} | Fases: {fases}</p>
                         
                         {/* Detalhes por Categoria */}
                         <div className="space-y-1 pt-2">
-                          {registrosOM.map(r => (
-                            <div key={r.id} className="flex justify-between text-sm border-b border-dashed pb-1">
-                              <span className="font-medium text-primary">{r.categoria}</span>
-                              <span className="font-semibold">{formatCurrency(r.valor_total)}</span>
+                          {/* Exibir resumo dos itens por categoria */}
+                          {Object.entries(registro.itens_equipamentos.reduce((acc, item) => {
+                            acc[item.categoria] = (acc[item.categoria] || 0) + item.quantidade;
+                            return acc;
+                          }, {} as Record<Categoria, number>)).map(([categoria, quantidade]) => (
+                            <div key={categoria} className="flex justify-between text-sm border-b border-dashed pb-1">
+                              <span className="font-medium text-primary">{categoria} ({quantidade} itens)</span>
+                              <span className="font-semibold">{formatCurrency(registro.itens_equipamentos.filter(i => i.categoria === categoria).reduce((sum, i) => sum + (i.quantidade * i.valor_mnt_dia * registro.dias_operacao), 0))}</span>
                             </div>
                           ))}
                         </div>
