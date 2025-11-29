@@ -750,7 +750,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
           const registro = linha.registro;
           const row = worksheet.getRow(currentRow);
           
-          // Coluna A: DESPESAS
+          // Coluna A: DESPESAS (Removido o nome da OM)
           row.getCell('A').value = `CLASSE II - MATERIAL DE INTENDÊNCIA\n${registro.categoria.toUpperCase()}`;
           
           // Coluna B: OM (UGE) CODUG
@@ -1278,7 +1278,6 @@ Total QR: ${formatCurrency(total_qr)}.`;
                         <td className="col-despesas">
                           <div>CLASSE II - MATERIAL DE INTENDÊNCIA</div>
                           <div className="uppercase">{registro.categoria}</div>
-                          <div>{omDestinoRecurso}</div>
                         </td>
                         <td className="col-om">
                           <div>{omDestinoRecurso}</div>
