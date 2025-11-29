@@ -2,16 +2,18 @@ const currentYear = new Date().getFullYear();
 const yearSuffix = `/${currentYear}`;
 
 /**
- * Generates the next sequential PTrab number (e.g., 5/2025).
- * @param existingNumbers Array of existing PTrab numbers (e.g., ['1/2025', '4.1/2025']).
- * @returns The next unique base number.
+ * Gera o próximo número sequencial base do PTrab para o ano atual (ex: 5/2025).
+ * Ignora variações (ex: 4.1/2025).
+ * 
+ * @param existingNumbers Array de números de PTrab existentes (ex: ['1/2025', '4.1/2025']).
+ * @returns O próximo número base único no formato 'NUMERO/ANO'.
  */
 export const generateUniquePTrabNumber = (existingNumbers: string[]): string => {
   const currentYearStr = String(currentYear);
   
   // 1. Encontrar o maior número base existente para o ano atual
   const numbersForCurrentYear = existingNumbers
-    .filter(num => num.endsWith(`/${currentYearStr}`) && !num.includes('.')) // Filter base numbers for current year
+    .filter(num => num.endsWith(`/${currentYearStr}`) && !num.includes('.')) // Filtra números base para o ano atual
     .map(num => parseInt(num.split('/')[0]))
     .filter(num => !isNaN(num));
 
@@ -30,10 +32,11 @@ export const generateUniquePTrabNumber = (existingNumbers: string[]): string => 
 };
 
 /**
- * Generates the next variation PTrab number (e.g., 4.1/2025 -> 4.2/2025).
- * @param originalPTrabNumber The base PTrab number (e.g., '4/2025').
- * @param existingNumbers Array of existing PTrab numbers.
- * @returns The next unique variation number.
+ * Gera o próximo número de variação do PTrab (ex: 4/2025 -> 4.1/2025, 4.1/2025 -> 4.2/2025).
+ * 
+ * @param originalPTrabNumber O número base do PTrab (ex: '4/2025').
+ * @param existingNumbers Array de números de PTrab existentes.
+ * @returns O próximo número de variação único no formato 'NUMERO.VARIAÇÃO/ANO'.
  */
 export const generateVariationPTrabNumber = (originalPTrabNumber: string, existingNumbers: string[]): string => {
   const parts = originalPTrabNumber.split('/');
@@ -58,10 +61,11 @@ export const generateVariationPTrabNumber = (originalPTrabNumber: string, existi
 };
 
 /**
- * Checks if a PTrab number already exists in the list.
- * @param numberToCheck The PTrab number to validate.
- * @param existingNumbers Array of existing PTrab numbers.
- * @returns True if the number exists, false otherwise.
+ * Verifica se um número de PTrab já existe na lista.
+ * 
+ * @param numberToCheck O número do PTrab a ser validado.
+ * @param existingNumbers Array de números de PTrab existentes.
+ * @returns True se o número existir, false caso contrário.
  */
 export const isPTrabNumberDuplicate = (numberToCheck: string, existingNumbers: string[]): boolean => {
     return existingNumbers.includes(numberToCheck);
