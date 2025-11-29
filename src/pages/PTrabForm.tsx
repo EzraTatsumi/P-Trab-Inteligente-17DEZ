@@ -49,13 +49,13 @@ const PTrabForm = () => {
     { id: "classe-i", name: "Classe I - Subsistência" },
     { id: "classe-ii", name: "Classe II - Material de Intendência" },
     { id: "classe-iii", name: "Classe III - Combustíveis e Lubrificantes" },
-    { id: "classe-iv", name: "Classe IV - Material de Construção" },
+    // { id: "classe-iv", name: "Classe IV - Material de Construção" }, // REMOVIDO
     { id: "classe-v", name: "Classe V - Munição" },
     { id: "classe-vi", name: "Classe VI - Material de Engenharia" },
     { id: "classe-vii", name: "Classe VII - Viaturas e Equipamentos" },
     { id: "classe-viii", name: "Classe VIII - Material de Saúde" },
     { id: "classe-ix", name: "Classe IX - Material de Manutenção" },
-    { id: "classe-x", name: "Classe X - Material para Atividades Especiais" },
+    // { id: "classe-x", name: "Classe X - Material para Atividades Especiais" }, // REMOVIDO
   ];
 
   const itensOperacional = [
@@ -228,13 +228,13 @@ const PTrabForm = () => {
           {/* Coluna Esquerda: Dados do P Trab, Resumo de Custos e Crédito Disponível */}
           <div className="lg:col-span-1 space-y-4">
             <Card className="shadow-lg">
-              <CardHeader className="pb-1 pt-3"> {/* Reduzido padding vertical */}
+              <CardHeader className="pb-1 pt-3">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <FileText className="h-5 w-5 text-primary" />
                   Dados do P Trab
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-2 pb-3"> {/* Reduzido padding vertical */}
+              <CardContent className="pt-2 pb-3">
                 <div className="grid grid-cols-2 gap-y-1 gap-x-4">
                   <div className="space-y-0.5">
                     <Label className="text-muted-foreground text-xs">Número do PTrab</Label>
