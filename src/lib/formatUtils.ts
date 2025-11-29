@@ -16,10 +16,13 @@ export const formatNumber = (value: number, decimals: number = 0): string => {
  * Parses a string input (allowing comma as decimal separator) into a number.
  * Handles optional thousand separators (dots) by removing them.
  */
-export const parseInputToNumber = (input: string): number => {
+export const parseInputToNumber = (input: string | number | null | undefined): number => {
+  // Garante que a entrada seja uma string, tratando null/undefined como string vazia
+  const stringInput = String(input || '');
+  
   // 1. Remove dots (thousand separators)
   // 2. Replace comma (decimal separator) with dot
-  const cleaned = input.replace(/\./g, '').replace(',', '.');
+  const cleaned = stringInput.replace(/\./g, '').replace(',', '.');
   return parseFloat(cleaned) || 0;
 };
 
