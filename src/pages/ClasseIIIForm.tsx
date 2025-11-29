@@ -5,32 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, AlertCircle, XCircle, ChevronDown, ChevronUp, Sparkles, ClipboardList, Check, Cloud, Tractor, Droplet } from "lucide-react";
+import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, Sparkles, Tractor } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { OmSelector } from "@/components/OmSelector";
-import { RmSelector } from "@/components/RmSelector";
-import { OMData } from "@/lib/omUtils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getEquipamentosPorTipo, TipoEquipamentoDetalhado } from "@/data/classeIIIData";
 import { RefLPC } from "@/types/refLPC";
-import { sanitizeError } from "@/lib/errorUtils";
-import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
-import { Checkbox } from "@/components/ui/checkbox";
+import RefLPCFormSection from "@/components/RefLPCFormSection";
+import { ClasseIIIGeradorForm } from "@/components/ClasseIIIGeradorForm";
+import { ClasseIIIViaturaForm } from "@/components/ClasseIIIViaturaForm"; // NOVO
+import { ClasseIIIEmbarcacaoForm } from "@/components/ClasseIIIEmbarcacaoForm"; // NOVO
+import { ClasseIIIEngenhariaForm } from "@/components/ClasseIIIEngenhariaForm"; // NOVO
+import { formatCurrency, formatNumber } from "@/lib/formatUtils";
 import { TablesInsert } from "@/integrations/supabase/types";
-import RefLPCFormSection from "@/components/RefLPCFormSection"; // NOVO IMPORT
-import { ClasseIIIGeradorForm } from "@/components/ClasseIIIGeradorForm"; // NOVO IMPORT
 
 type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
-
-// Opções fixas de fase de atividade
-const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
 
 interface ClasseIIIRegistro {
   id: string;
@@ -58,94 +47,6 @@ interface ClasseIIIRegistro {
   preco_lubrificante?: number;
 }
 
-interface ItemViatura {
-  tipo_equipamento_especifico: string;
-  quantidade: number;
-  distancia_percorrida: number;
-  quantidade_deslocamentos: number;
-  consumo_fixo: number;
-  tipo_combustivel: 'GASOLINA' | 'DIESEL';
-}
-
-interface FormDataViatura {
-  selectedOmId?: string;
-  organizacao: string;
-  ug: string;
-  dias_operacao: number;
-  itens: ItemViatura[];
-  fase_atividade?: string;
-}
-
-interface ConsolidadoViatura {
-  tipo_combustivel: 'GASOLINA' | 'DIESEL';
-  total_litros_sem_margem: number;
-  total_litros: number;
-  valor_total: number;
-  itens: ItemViatura[];
-  detalhamento: string;
-}
-
-interface ItemEmbarcacao {
-  tipo_equipamento_especifico: string;
-  quantidade: number;
-  horas_dia: number;
-  consumo_fixo: number;
-  tipo_combustivel: 'GASOLINA' | 'DIESEL';
-  consumo_lubrificante_litro: number;
-  preco_lubrificante: number;
-}
-
-interface FormDataEmbarcacao {
-  selectedOmId?: string;
-  organizacao: string;
-  ug: string;
-  dias_operacao: number;
-  itens: ItemEmbarcacao[];
-  fase_atividade?: string;
-}
-
-interface ConsolidadoEmbarcacao {
-  tipo_combustivel: 'GASOLINA' | 'DIESEL';
-  total_litros_sem_margem: number;
-  total_litros: number;
-  valor_total: number;
-  itens: ItemEmbarcacao[];
-  detalhamento: string;
-}
-
-interface ConsolidadoLubrificanteEmbarcacao {
-  total_litros: number;
-  valor_total: number;
-  itens: ItemEmbarcacao[];
-  detalhamento: string;
-}
-
-interface ItemEngenharia {
-  tipo_equipamento_especifico: string;
-  quantidade: number;
-  horas_dia: number;
-  consumo_fixo: number;
-  tipo_combustivel: 'GASOLINA' | 'DIESEL';
-}
-
-interface FormDataEngenharia {
-  selectedOmId?: string;
-  organizacao: string;
-  ug: string;
-  dias_operacao: number;
-  itens: ItemEngenharia[];
-  fase_atividade?: string;
-}
-
-interface ConsolidadoEngenharia {
-  tipo_combustivel: 'GASOLINA' | 'DIESEL';
-  total_litros_sem_margem: number;
-  total_litros: number;
-  valor_total: number;
-  itens: ItemEngenharia[];
-  detalhamento: string;
-}
-
 export default function ClasseIIIForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -153,7 +54,6 @@ export default function ClasseIIIForm() {
   
   const [tipoSelecionado, setTipoSelecionado] = useState<TipoEquipamento | null>(null);
   const [registros, setRegistros] = useState<ClasseIIIRegistro[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [equipamentosDisponiveis, setEquipamentosDisponiveis] = useState<TipoEquipamentoDetalhado[]>([]);
   
@@ -164,128 +64,10 @@ export default function ClasseIIIForm() {
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
   
   const lpcRef = useRef<HTMLDivElement>(null);
-  const { handleEnterToNextField } = useFormNavigation();
   
-  // --- ESTADOS DE FORMULÁRIO (VIATURA, EMBARCAÇÃO, ENGENHARIA) ---
-  
-  // Gerador (Movido para o componente ClasseIIIGeradorForm, mas mantemos o estado inicial para o reset)
-  const [initialGeradorData, setInitialGeradorData] = useState<any>(null);
-
-  // Viatura
-  const [formViatura, setFormViatura] = useState<FormDataViatura>({
-    selectedOmId: undefined,
-    organizacao: "",
-    ug: "",
-    dias_operacao: 0,
-    itens: [],
-  });
-  const [itemViaturaTemp, setItemViaturaTemp] = useState({
-    tipo_equipamento_especifico: "",
-    quantidade: 0,
-    distancia_percorrida: 0,
-    quantidade_deslocamentos: 0,
-    consumo_fixo: 0,
-    tipo_combustivel: "DIESEL" as 'GASOLINA' | 'DIESEL',
-  });
-  const [editingViaturaItemIndex, setEditingViaturaItemIndex] = useState<number | null>(null);
-  const [consolidadosViatura, setConsolidadosViatura] = useState<ConsolidadoViatura[]>([]);
-  const [rmFornecimentoViatura, setRmFornecimentoViatura] = useState<string>("");
-  const [codugRmFornecimentoViatura, setCodugRmFornecimentoViatura] = useState<string>("");
-  const [fasesAtividadeViatura, setFasesAtividadeViatura] = useState<string[]>(["Execução"]);
-  const [customFaseAtividadeViatura, setCustomFaseAtividadeViatura] = useState<string>("");
-  const [isPopoverOpenViatura, setIsPopoverOpenViatura] = useState(false);
-  const addViaturaRef = useRef<HTMLDivElement>(null);
-
-  // Embarcação
-  const [formEmbarcacao, setFormEmbarcacao] = useState<FormDataEmbarcacao>({
-    selectedOmId: undefined,
-    organizacao: "",
-    ug: "",
-    dias_operacao: 0,
-    itens: [],
-  });
-  const [itemEmbarcacaoTemp, setItemEmbarcacaoTemp] = useState<ItemEmbarcacao>({
-    tipo_equipamento_especifico: "",
-    quantidade: 0,
-    horas_dia: 0,
-    consumo_fixo: 0,
-    tipo_combustivel: "DIESEL",
-    consumo_lubrificante_litro: 0,
-    preco_lubrificante: 0,
-  });
-  const [inputConsumoLubrificanteEmbarcacao, setInputConsumoLubrificanteEmbarcacao] = useState<string>("");
-  const [inputPrecoLubrificanteEmbarcacao, setInputPrecoLubrificanteEmbarcacao] = useState<string>("");
-  const [editingEmbarcacaoItemIndex, setEditingEmbarcacaoItemIndex] = useState<number | null>(null);
-  const [consolidadosEmbarcacao, setConsolidadosEmbarcacao] = useState<ConsolidadoEmbarcacao[]>([]);
-  const [consolidadoLubrificanteEmbarcacao, setConsolidadoLubrificanteEmbarcacao] = useState<ConsolidadoLubrificanteEmbarcacao | null>(null);
-  const [rmFornecimentoEmbarcacao, setRmFornecimentoEmbarcacao] = useState<string>("");
-  const [codugRmFornecimentoEmbarcacao, setCodugRmFornecimentoEmbarcacao] = useState<string>("");
-  const [selectedOmLubrificanteEmbarcacaoId, setSelectedOmLubrificanteEmbarcacaoId] = useState<string | undefined>(undefined);
-  const [omLubrificanteEmbarcacao, setOmLubrificanteEmbarcacao] = useState<string>("");
-  const [ugLubrificanteEmbarcacao, setUgLubrificanteEmbarcacao] = useState<string>("");
-  const [fasesAtividadeEmbarcacao, setFasesAtividadeEmbarcacao] = useState<string[]>(["Execução"]);
-  const [customFaseAtividadeEmbarcacao, setCustomFaseAtividadeEmbarcacao] = useState<string>("");
-  const [isPopoverOpenEmbarcacao, setIsPopoverOpenEmbarcacao] = useState(false);
-  const addEmbarcacaoRef = useRef<HTMLDivElement>(null);
-
-  // Engenharia
-  const [formEngenharia, setFormEngenharia] = useState<FormDataEngenharia>({
-    selectedOmId: undefined,
-    organizacao: "",
-    ug: "",
-    dias_operacao: 0,
-    itens: [],
-  });
-  const [itemEngenhariaTemp, setItemEngenhariaTemp] = useState({
-    tipo_equipamento_especifico: "",
-    quantidade: 0,
-    horas_dia: 0,
-    consumo_fixo: 0,
-    tipo_combustivel: "DIESEL" as 'GASOLINA' | 'DIESEL',
-  });
-  const [editingEngenhariaItemIndex, setEditingEngenhariaItemIndex] = useState<number | null>(null);
-  const [consolidadosEngenharia, setConsolidadosEngenharia] = useState<ConsolidadoEngenharia[]>([]);
-  const [rmFornecimentoEngenharia, setRmFornecimentoEngenharia] = useState<string>("");
-  const [codugRmFornecimentoEngenharia, setCodugRmFornecimentoEngenharia] = useState<string>("");
-  const [fasesAtividadeEngenharia, setFasesAtividadeEngenharia] = useState<string[]>(["Execução"]);
-  const [customFaseAtividadeEngenharia, setCustomFaseAtividadeEngenharia] = useState<string>("");
-  const [isPopoverOpenEngenharia, setIsPopoverOpenEngenharia] = useState(false);
-  const addEngenhariaRef = useRef<HTMLDivElement>(null);
-  
-  // --- FIM ESTADOS DE FORMULÁRIO ---
-
-  // --- Input Handlers para Embarcação (Lubrificante) ---
-  const updateNumericItemEmbarcacao = (field: keyof ItemEmbarcacao, inputString: string) => {
-    const numericValue = parseInputToNumber(inputString);
-    setItemEmbarcacaoTemp(prev => ({ ...prev, [field]: numericValue }));
-  };
-
-  const handleInputEmbarcacaoChange = (
-      e: React.ChangeEvent<HTMLInputElement>, 
-      setInput: React.Dispatch<React.SetStateAction<string>>, 
-      field: keyof ItemEmbarcacao
-  ) => {
-      const rawValue = e.target.value;
-      let cleaned = rawValue.replace(/[^\d,.]/g, '');
-      const parts = cleaned.split(',');
-      if (parts.length > 2) { cleaned = parts[0] + ',' + parts.slice(1).join(''); }
-      cleaned = cleaned.replace(/\./g, '');
-      setInput(cleaned);
-      updateNumericItemEmbarcacao(field, cleaned);
-  };
-
-  const handleInputEmbarcacaoBlur = (
-      input: string, 
-      setInput: React.Dispatch<React.SetStateAction<string>>, 
-      minDecimals: number,
-      field: keyof ItemEmbarcacao
-  ) => {
-      const numericValue = parseInputToNumber(input);
-      const formattedDisplay = formatNumberForInput(numericValue, minDecimals);
-      setInput(formattedDisplay);
-      updateNumericItemEmbarcacao(field, formattedDisplay);
-  };
-  // Fim Input Handlers
+  // Estado para edição de registro (passado para os sub-formulários)
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [initialData, setInitialData] = useState<any>(null); // Dados iniciais para o sub-formulário
 
   useEffect(() => {
     if (!ptrabId) {
@@ -303,29 +85,6 @@ export default function ClasseIIIForm() {
       carregarEquipamentos();
     }
   }, [tipoSelecionado]);
-
-  // Efeitos de Cálculo (Mantidos aqui por enquanto)
-  useEffect(() => {
-    if (tipoSelecionado === 'MOTOMECANIZACAO' && formViatura.itens.length > 0) {
-      calcularConsolidadosViatura(formViatura.itens);
-    }
-  }, [formViatura.dias_operacao, refLPC, formViatura.itens, rmFornecimentoViatura, codugRmFornecimentoViatura]);
-
-  useEffect(() => {
-    if (tipoSelecionado === 'EMBARCACAO' && formEmbarcacao.itens.length > 0) {
-      calcularConsolidadosEmbarcacao(formEmbarcacao.itens);
-    } else if (tipoSelecionado === 'EMBARCACAO' && formEmbarcacao.itens.length === 0) {
-      setConsolidadosEmbarcacao([]);
-      setConsolidadoLubrificanteEmbarcacao(null);
-    }
-  }, [formEmbarcacao.dias_operacao, refLPC, formEmbarcacao.itens, rmFornecimentoEmbarcacao, codugRmFornecimentoEmbarcacao, omLubrificanteEmbarcacao, ugLubrificanteEmbarcacao]);
-  
-  useEffect(() => {
-    if (tipoSelecionado === 'EQUIPAMENTO_ENGENHARIA' && formEngenharia.itens.length > 0) {
-      calcularConsolidadosEngenharia(formEngenharia.itens);
-    }
-  }, [formEngenharia.dias_operacao, refLPC, formEngenharia.itens, rmFornecimentoEngenharia, codugRmFornecimentoEngenharia]);
-  // Fim Efeitos de Cálculo
 
   const loadRefLPC = async () => {
     try {
@@ -375,6 +134,9 @@ export default function ClasseIIIForm() {
     }
 
     setRegistros((data || []) as ClasseIIIRegistro[]);
+    setEditingId(null); // Reset editing state after fetch
+    setInitialData(null);
+    setTipoSelecionado(null);
   };
 
   // Funções de gerenciamento de memória customizada
@@ -396,7 +158,7 @@ export default function ClasseIIIForm() {
         .update({
           detalhamento_customizado: memoriaEdit.trim() || null,
           updated_at: new Date().toISOString(),
-        })
+        } as TablesInsert<'classe_iii_registros'>)
         .eq("id", registroId);
 
       if (error) throw error;
@@ -425,7 +187,7 @@ export default function ClasseIIIForm() {
         .update({
           detalhamento_customizado: null,
           updated_at: new Date().toISOString(),
-        })
+        } as TablesInsert<'classe_iii_registros'>)
         .eq("id", registroId);
 
       if (error) throw error;
@@ -438,30 +200,6 @@ export default function ClasseIIIForm() {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Função para formatar as fases de forma natural no texto
-  const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
-    if (!faseCSV) return 'operação';
-    
-    const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
-    
-    if (fases.length === 0) return 'operação';
-    
-    const fasesOrdenadas = fases.sort((a, b) => {
-      const indexA = FASES_PADRAO.indexOf(a);
-      const indexB = FASES_PADRAO.indexOf(b);
-      if (indexA === -1) return 1;
-      if (indexB === -1) return -1;
-      return indexA - indexB;
-    });
-    
-    if (fasesOrdenadas.length === 1) return fasesOrdenadas[0];
-    if (fasesOrdenadas.length === 2) return `${fasesOrdenadas[0]} e ${fasesOrdenadas[1]}`;
-    
-    const ultimaFase = fasesOrdenadas[fasesOrdenadas.length - 1];
-    const demaisFases = fasesOrdenadas.slice(0, -1).join(', ');
-    return `${demaisFases} e ${ultimaFase}`;
   };
 
   const handleDeletar = async (id: string) => {
@@ -493,54 +231,21 @@ export default function ClasseIIIForm() {
     }
   };
 
-  const resetFormFields = () => {
+  const handleSelectEquipmentType = (type: TipoEquipamento) => {
+    if (!refLPC) {
+      toast.error("Configure a referência LPC antes de adicionar equipamentos.");
+      if (lpcRef.current) {
+        lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
+    }
     setEditingId(null);
-    setInitialGeradorData(null); // Reset Gerador initial data
-    
-    // Reset Viatura
-    setFormViatura({ selectedOmId: undefined, organizacao: "", ug: "", dias_operacao: 0, itens: [] });
-    setItemViaturaTemp({ tipo_equipamento_especifico: "", quantidade: 0, distancia_percorrida: 0, quantidade_deslocamentos: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
-    setEditingViaturaItemIndex(null);
-    setConsolidadosViatura([]);
-    setRmFornecimentoViatura("");
-    setCodugRmFornecimentoViatura("");
-    setFasesAtividadeViatura(["Execução"]);
-    setCustomFaseAtividadeViatura("");
-
-    // Reset Embarcação
-    setFormEmbarcacao({ selectedOmId: undefined, organizacao: "", ug: "", dias_operacao: 0, itens: [] });
-    setItemEmbarcacaoTemp({ tipo_equipamento_especifico: "", quantidade: 0, horas_dia: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL", consumo_lubrificante_litro: 0, preco_lubrificante: 0 });
-    setInputConsumoLubrificanteEmbarcacao("");
-    setInputPrecoLubrificanteEmbarcacao("");
-    setEditingEmbarcacaoItemIndex(null);
-    setConsolidadosEmbarcacao([]);
-    setConsolidadoLubrificanteEmbarcacao(null);
-    setRmFornecimentoEmbarcacao("");
-    setCodugRmFornecimentoEmbarcacao("");
-    setSelectedOmLubrificanteEmbarcacaoId(undefined);
-    setOmLubrificanteEmbarcacao("");
-    setUgLubrificanteEmbarcacao("");
-    setFasesAtividadeEmbarcacao(["Execução"]);
-    setCustomFaseAtividadeEmbarcacao("");
-
-    // Reset Engenharia
-    setFormEngenharia({ selectedOmId: undefined, organizacao: "", ug: "", dias_operacao: 0, itens: [] });
-    setItemEngenhariaTemp({ tipo_equipamento_especifico: "", quantidade: 0, horas_dia: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
-    setConsolidadosEngenharia([]);
-    setEditingEngenhariaItemIndex(null);
-    setRmFornecimentoEngenharia("");
-    setCodugRmFornecimentoEngenharia("");
-    setFasesAtividadeEngenharia(["Execução"]);
-    setCustomFaseAtividadeEngenharia("");
-  };
-
-  const handleCancelEdit = () => {
-    resetFormFields();
-    setTipoSelecionado(null);
+    setInitialData(null);
+    setTipoSelecionado(type);
   };
 
   const handleEditar = async (registro: ClasseIIIRegistro) => {
-    resetFormFields();
+    setLoading(true);
     setEditingId(registro.id);
     setTipoSelecionado(registro.tipo_equipamento as TipoEquipamento);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -556,7 +261,7 @@ export default function ClasseIIIForm() {
           .select('id, rm_vinculacao, codug_rm_vinculacao')
           .eq('nome_om', registro.organizacao)
           .eq('codug_om', registro.ug)
-          .single();
+          .maybeSingle();
         if (omData && !omError) {
           selectedOmIdForEdit = omData.id;
           defaultRmName = omData.rm_vinculacao;
@@ -567,9 +272,29 @@ export default function ClasseIIIForm() {
       }
     }
 
+    // Tenta extrair RM/CODUG do detalhamento (para registros antigos ou importados)
     const rmMatch = registro.detalhamento?.match(/Fornecido por: (.*?) \(CODUG: (.*?)\)/);
     const rmName = rmMatch ? rmMatch[1] : defaultRmName;
     const rmCodug = rmMatch ? rmMatch[2] : defaultRmCodug;
+    
+    const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+    const fasesPadrao = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
+    const fasesAtividade = fasesSalvas.filter(f => fasesPadrao.includes(f));
+    const customFaseAtividade = fasesSalvas.find(f => !fasesPadrao.includes(f)) || "";
+
+    const baseData = {
+        form: {
+            selectedOmId: selectedOmIdForEdit,
+            organizacao: registro.organizacao,
+            ug: registro.ug,
+            dias_operacao: registro.dias_operacao,
+            itens: (registro.itens_equipamentos as any) || [],
+        },
+        rmFornecimento: rmName,
+        codugRmFornecimento: rmCodug,
+        fasesAtividade: fasesAtividade,
+        customFaseAtividade: customFaseAtividade,
+    };
 
     if (registro.tipo_equipamento === 'GERADOR' || registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR') {
       const { data: relatedRecords } = await supabase
@@ -580,9 +305,6 @@ export default function ClasseIIIForm() {
         .eq("organizacao", registro.organizacao)
         .eq("ug", registro.ug);
         
-      const itemRecord = relatedRecords?.find(r => r.itens_equipamentos);
-      const itens = (itemRecord?.itens_equipamentos as any) || [];
-      
       const lubrificanteRecord = relatedRecords?.find(r => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR');
       
       let lubOmId: string | undefined = selectedOmIdForEdit;
@@ -598,45 +320,20 @@ export default function ClasseIIIForm() {
             .select('id')
             .eq('nome_om', lubOmName)
             .eq('codug_om', lubUg)
-            .single();
+            .maybeSingle();
           lubOmId = lubOmData?.id;
         } catch (error) {
           console.error("Erro ao buscar OM de lubrificante para edição:", error);
         }
       }
       
-      const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
-      
-      setInitialGeradorData({
-        form: {
-          selectedOmId: selectedOmIdForEdit,
-          organizacao: registro.organizacao,
-          ug: registro.ug,
-          dias_operacao: registro.dias_operacao,
-          itens: itens,
-        },
-        rmFornecimento: rmName,
-        codugRmFornecimento: rmCodug,
+      setInitialData({
+        ...baseData,
         omLubrificante: lubOmName,
         ugLubrificante: lubUg,
         selectedOmLubrificanteId: lubOmId,
-        fasesAtividade: fasesSalvas.filter(f => FASES_PADRAO.includes(f)),
-        customFaseAtividade: fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "",
       });
 
-    } else if (registro.tipo_equipamento === 'MOTOMECANIZACAO') {
-      setFormViatura({
-        selectedOmId: selectedOmIdForEdit,
-        organizacao: registro.organizacao,
-        ug: registro.ug,
-        dias_operacao: registro.dias_operacao,
-        itens: (registro.itens_equipamentos as ItemViatura[]) || [],
-      });
-      setRmFornecimentoViatura(rmName);
-      setCodugRmFornecimentoViatura(rmCodug);
-      const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
-      setFasesAtividadeViatura(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
-      setCustomFaseAtividadeViatura(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     } else if (registro.tipo_equipamento === 'EMBARCACAO' || registro.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO') {
       const { data: relatedRecords } = await supabase
         .from("classe_iii_registros")
@@ -646,9 +343,6 @@ export default function ClasseIIIForm() {
         .eq("organizacao", registro.organizacao)
         .eq("ug", registro.ug);
         
-      const itemRecord = relatedRecords?.find(r => r.itens_equipamentos);
-      const itens = (itemRecord?.itens_equipamentos as any) || [];
-      
       const lubrificanteRecord = relatedRecords?.find(r => r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO');
       
       let lubOmId: string | undefined = selectedOmIdForEdit;
@@ -664,735 +358,30 @@ export default function ClasseIIIForm() {
             .select('id')
             .eq('nome_om', lubOmName)
             .eq('codug_om', lubUg)
-            .single();
+            .maybeSingle();
           lubOmId = lubOmData?.id;
         } catch (error) {
           console.error("Erro ao buscar OM de lubrificante para edição:", error);
         }
       }
       
-      setFormEmbarcacao({
-        selectedOmId: selectedOmIdForEdit,
-        organizacao: registro.organizacao,
-        ug: registro.ug,
-        dias_operacao: registro.dias_operacao,
-        itens: itens,
+      setInitialData({
+        ...baseData,
+        omLubrificante: lubOmName,
+        ugLubrificante: lubUg,
+        selectedOmLubrificanteId: lubOmId,
       });
-      setRmFornecimentoEmbarcacao(rmName);
-      setCodugRmFornecimentoEmbarcacao(rmCodug);
-      setSelectedOmLubrificanteEmbarcacaoId(lubOmId);
-      setOmLubrificanteEmbarcacao(lubOmName);
-      setUgLubrificanteEmbarcacao(lubUg);
-      
-      const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
-      setFasesAtividadeEmbarcacao(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
-      setCustomFaseAtividadeEmbarcacao(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
-
-    } else if (registro.tipo_equipamento === 'EQUIPAMENTO_ENGENHARIA') {
-      setFormEngenharia({
-        selectedOmId: selectedOmIdForEdit,
-        organizacao: registro.organizacao,
-        ug: registro.ug,
-        dias_operacao: registro.dias_operacao,
-        itens: (registro.itens_equipamentos as ItemEngenharia[]) || [],
-      });
-      setRmFornecimentoEngenharia(rmName);
-      setCodugRmFornecimentoEngenharia(rmCodug);
-      const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
-      setFasesAtividadeEngenharia(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
-      setCustomFaseAtividadeEngenharia(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
-    }
-  };
-
-  const handleSelectEquipmentType = (type: TipoEquipamento) => {
-    if (!refLPC) {
-      toast.error("Configure a referência LPC antes de adicionar equipamentos.");
-      if (lpcRef.current) {
-        lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-      return;
-    }
-    resetFormFields();
-    setTipoSelecionado(type);
-  };
-
-  // --- Lógica Viatura ---
-  const handleOMViaturaChange = (omData: OMData | undefined) => {
-    if (omData) {
-      setFormViatura({ ...formViatura, selectedOmId: omData.id, organizacao: omData.nome_om, ug: omData.codug_om });
-      setRmFornecimentoViatura(omData.rm_vinculacao);
-      setCodugRmFornecimentoViatura(omData.codug_rm_vinculacao);
     } else {
-      setFormViatura({ ...formViatura, selectedOmId: undefined, organizacao: "", ug: "" });
-      setRmFornecimentoViatura("");
-      setCodugRmFornecimentoViatura("");
-    }
-  };
-  const handleRMFornecimentoViaturaChange = (rmName: string, rmCodug: string) => {
-    setRmFornecimentoViatura(rmName);
-    setCodugRmFornecimentoViatura(rmCodug);
-  };
-  const handleTipoViaturaChange = (tipoNome: string) => {
-    const equipamento = equipamentosDisponiveis.find(eq => eq.nome === tipoNome);
-    if (equipamento) {
-      const novoCombustivel = equipamento.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL';
-      setItemViaturaTemp({ ...itemViaturaTemp, tipo_equipamento_especifico: tipoNome, tipo_combustivel: novoCombustivel, consumo_fixo: equipamento.consumo });
-    }
-  };
-  const adicionarOuAtualizarItemViatura = () => {
-    if (!itemViaturaTemp.tipo_equipamento_especifico || itemViaturaTemp.quantidade <= 0 || itemViaturaTemp.distancia_percorrida <= 0 || itemViaturaTemp.quantidade_deslocamentos <= 0) {
-      toast.error("Preencha todos os campos do item");
-      return;
-    }
-    const novoItem: ItemViatura = { ...itemViaturaTemp };
-    let novosItens = [...formViatura.itens];
-    if (editingViaturaItemIndex !== null) {
-      novosItens[editingViaturaItemIndex] = novoItem;
-      toast.success("Item de viatura atualizado!");
-    } else {
-      novosItens.push(novoItem);
-      toast.success("Item de viatura adicionado!");
-    }
-    setFormViatura({ ...formViatura, itens: novosItens });
-    setItemViaturaTemp({ tipo_equipamento_especifico: "", quantidade: 0, distancia_percorrida: 0, quantidade_deslocamentos: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
-    setEditingViaturaItemIndex(null);
-  };
-  const handleEditViaturaItem = (item: ItemViatura, index: number) => {
-    setItemViaturaTemp(item);
-    setEditingViaturaItemIndex(index);
-    if (addViaturaRef.current) { addViaturaRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-  };
-  const handleCancelEditViaturaItem = () => {
-    setItemViaturaTemp({ tipo_equipamento_especifico: "", quantidade: 0, distancia_percorrida: 0, quantidade_deslocamentos: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
-    setEditingViaturaItemIndex(null);
-  };
-  const removerItemViatura = (index: number) => {
-    if (!confirm("Deseja realmente remover este item?")) return;
-    const novosItens = formViatura.itens.filter((_, i) => i !== index);
-    setFormViatura({ ...formViatura, itens: novosItens });
-    if (editingViaturaItemIndex === index) { handleCancelEditViaturaItem(); }
-    toast.success("Item de viatura removido!");
-  };
-  const calcularConsolidadosViatura = (itens: ItemViatura[]) => {
-    if (!refLPC || itens.length === 0) { setConsolidadosViatura([]); return; }
-    const grupos = itens.reduce((acc, item) => {
-      if (!acc[item.tipo_combustivel]) { acc[item.tipo_combustivel] = []; }
-      acc[item.tipo_combustivel].push(item);
-      return acc;
-    }, {} as Record<'GASOLINA' | 'DIESEL', ItemViatura[]>);
-    const consolidados: ConsolidadoViatura[] = [];
-    Object.entries(grupos).forEach(([combustivel, itensGrupo]) => {
-      const tipoCombustivel = combustivel as 'GASOLINA' | 'DIESEL';
-      let totalLitrosSemMargem = 0;
-      const detalhes: string[] = [];
-      itensGrupo.forEach(item => {
-        const litrosItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos) / item.consumo_fixo;
-        totalLitrosSemMargem += litrosItem;
-        const unidade = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
-        detalhes.push(`- ${item.quantidade} ${item.tipo_equipamento_especifico}: (${formatNumber(item.distancia_percorrida)} km x ${item.quantidade} vtr x ${item.quantidade_deslocamentos} desloc) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L = ${formatNumber(litrosItem)} L ${unidade}.`);
-      });
-      const totalLitros = totalLitrosSemMargem * 1.3;
-      const preco = tipoCombustivel === 'GASOLINA' ? (refLPC.preco_gasolina ?? 0) : (refLPC.preco_diesel ?? 0);
-      const valorTotal = totalLitros * preco;
-      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
-      const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
-      const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
-      const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
-      const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
-      const localConsulta = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? `(${refLPC.nome_local})` : '';
-      const totalViaturas = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
-      let fasesFinaisCalc = [...fasesAtividadeViatura];
-      if (customFaseAtividadeViatura.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeViatura.trim()]; }
-      const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
-      const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
-      const detalhamento = `33.90.39 - Aquisição de Combustível (${combustivelLabel}) para ${totalViaturas} viaturas, durante ${formViatura.dias_operacao} dias de ${faseFormatada}, para ${formViatura.organizacao}.
-Fornecido por: ${rmFornecimentoViatura} (CODUG: ${codugRmFornecimentoViatura})
-
-Rendimento das viaturas:
-${itensGrupo.map(item => `- ${item.tipo_equipamento_especifico}: ${formatNumber(item.consumo_fixo, 1)} km/L.`).join('\n')}
-
-Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${combustivelLabel} - ${formatCurrency(preco)}.
-
-Fórmula: (Distância a percorrer × Nr Viaturas × Nr Deslocamentos) ÷ Rendimento (km/L).
-${detalhes.join('\n')}
-
-Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}.
-Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)} = ${formatCurrency(valorTotal)}.`;
-      consolidados.push({
-        tipo_combustivel: tipoCombustivel,
-        total_litros_sem_margem: totalLitrosSemMargem,
-        total_litros: totalLitros,
-        valor_total: valorTotal,
-        itens: itensGrupo,
-        detalhamento,
-      });
-    });
-    setConsolidadosViatura(consolidados);
-  };
-  const salvarRegistrosConsolidadosViatura = async () => {
-    if (!ptrabId || consolidadosViatura.length === 0) return;
-    if (!refLPC) { toast.error("Configure a referência LPC antes de salvar"); if (lpcRef.current) { lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
-    if (!formViatura.organizacao || !formViatura.ug) { toast.error("Selecione uma OM"); return; }
-    if (!rmFornecimentoViatura || !codugRmFornecimentoViatura) { toast.error("Selecione a RM de Fornecimento de Combustível"); return; }
-    if (formViatura.itens.length === 0) { toast.error("Adicione pelo menos uma viatura"); return; }
-    let fasesFinais = [...fasesAtividadeViatura];
-    if (customFaseAtividadeViatura.trim()) { fasesFinais = [...fasesFinais, customFaseAtividadeViatura.trim()]; }
-    const faseFinalString = fasesFinais.filter(f => f).join('; ');
-    if (!faseFinalString) { toast.error("Selecione ou digite pelo menos uma Fase da Atividade."); return; }
-    try {
-      setLoading(true);
-      if (editingId) {
-        const { error: deleteError } = await supabase
-          .from("classe_iii_registros")
-          .delete()
-          .eq("p_trab_id", ptrabId)
-          .eq("tipo_equipamento", "MOTOMECANIZACAO")
-          .eq("organizacao", formViatura.organizacao)
-          .eq("ug", formViatura.ug);
-        if (deleteError) { console.error("Erro ao deletar registros existentes de viatura para edição:", deleteError); throw deleteError; }
-      }
-      for (const consolidado of consolidadosViatura) {
-        const registro: TablesInsert<'classe_iii_registros'> = {
-          p_trab_id: ptrabId,
-          tipo_equipamento: 'MOTOMECANIZACAO',
-          tipo_equipamento_detalhe: null,
-          organizacao: formViatura.organizacao,
-          ug: formViatura.ug,
-          quantidade: consolidado.itens.reduce((sum, item) => sum + item.quantidade, 0),
-          potencia_hp: null,
-          horas_dia: null,
-          km_dia: null,
-          consumo_hora: null,
-          consumo_km_litro: null,
-          dias_operacao: formViatura.dias_operacao,
-          tipo_combustivel: consolidado.tipo_combustivel,
-          preco_litro: consolidado.tipo_combustivel === 'GASOLINA' ? (refLPC.preco_gasolina ?? 0) : (refLPC.preco_diesel ?? 0),
-          total_litros: consolidado.total_litros,
-          total_litros_sem_margem: consolidado.total_litros_sem_margem,
-          valor_total: consolidado.valor_total,
-          detalhamento: consolidado.detalhamento,
-          itens_equipamentos: JSON.parse(JSON.stringify(consolidado.itens)),
-          fase_atividade: faseFinalString,
-          consumo_lubrificante_litro: 0,
-          preco_lubrificante: 0,
-        };
-        const { error } = await supabase.from("classe_iii_registros").insert([registro]);
-        if (error) throw error;
-      }
-      toast.success(editingId ? "Registros de viaturas atualizados com sucesso!" : "Registros de viaturas salvos com sucesso!");
-      await updatePTrabStatusIfAberto(ptrabId);
-      resetFormFields();
-      setTipoSelecionado(null);
-      fetchRegistros();
-    } catch (error) {
-      console.error("Erro ao salvar/atualizar registros de viatura:", error);
-      toast.error("Erro ao salvar/atualizar registros de viatura");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // --- Lógica Embarcação ---
-  const handleOMEmbarcacaoChange = (omData: OMData | undefined) => {
-    if (omData) {
-      setFormEmbarcacao({ ...formEmbarcacao, selectedOmId: omData.id, organizacao: omData.nome_om, ug: omData.codug_om });
-      setRmFornecimentoEmbarcacao(omData.rm_vinculacao);
-      setCodugRmFornecimentoEmbarcacao(omData.codug_rm_vinculacao);
-      
-      setSelectedOmLubrificanteEmbarcacaoId(omData.id);
-      setOmLubrificanteEmbarcacao(omData.nome_om);
-      setUgLubrificanteEmbarcacao(omData.codug_om);
-    } else {
-      setFormEmbarcacao({ ...formEmbarcacao, selectedOmId: undefined, organizacao: "", ug: "" });
-      setRmFornecimentoEmbarcacao("");
-      setCodugRmFornecimentoEmbarcacao("");
-      setSelectedOmLubrificanteEmbarcacaoId(undefined);
-      setOmLubrificanteEmbarcacao("");
-      setUgLubrificanteEmbarcacao("");
-    }
-  };
-  
-  const handleOMLubrificanteEmbarcacaoChange = (omData: OMData | undefined) => {
-    if (omData) {
-      setSelectedOmLubrificanteEmbarcacaoId(omData.id);
-      setOmLubrificanteEmbarcacao(omData.nome_om);
-      setUgLubrificanteEmbarcacao(omData.codug_om);
-    } else {
-      setSelectedOmLubrificanteEmbarcacaoId(undefined);
-      setOmLubrificanteEmbarcacao("");
-      setUgLubrificanteEmbarcacao("");
-    }
-  };
-  
-  const handleRMFornecimentoEmbarcacaoChange = (rmName: string, rmCodug: string) => {
-    setRmFornecimentoEmbarcacao(rmName);
-    setCodugRmFornecimentoEmbarcacao(rmCodug);
-  };
-  
-  const handleTipoEmbarcacaoChange = (tipoNome: string) => {
-    const equipamento = equipamentosDisponiveis.find(eq => eq.nome === tipoNome);
-    if (equipamento) {
-      const combustivel = equipamento.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL';
-      setItemEmbarcacaoTemp({ 
-        ...itemEmbarcacaoTemp, 
-        tipo_equipamento_especifico: tipoNome, 
-        consumo_fixo: equipamento.consumo, 
-        tipo_combustivel: combustivel as 'GASOLINA' | 'DIESEL',
-        consumo_lubrificante_litro: 0,
-        preco_lubrificante: 0,
-      });
-      setInputConsumoLubrificanteEmbarcacao("");
-      setInputPrecoLubrificanteEmbarcacao("");
-    }
-  };
-  const adicionarOuAtualizarItemEmbarcacao = () => {
-    if (!itemEmbarcacaoTemp.tipo_equipamento_especifico || itemEmbarcacaoTemp.quantidade <= 0 || itemEmbarcacaoTemp.horas_dia <= 0) {
-      toast.error("Preencha todos os campos obrigatórios do item (Tipo, Quantidade, Horas/dia)");
-      return;
-    }
-    if (itemEmbarcacaoTemp.consumo_lubrificante_litro < 0 || itemEmbarcacaoTemp.preco_lubrificante < 0) {
-      toast.error("Consumo e preço do lubrificante não podem ser negativos.");
-      return;
+        setInitialData(baseData);
     }
     
-    const novoItem: ItemEmbarcacao = { ...itemEmbarcacaoTemp };
-    let novosItens = [...formEmbarcacao.itens];
-    if (editingEmbarcacaoItemIndex !== null) {
-      novosItens[editingEmbarcacaoItemIndex] = novoItem;
-      toast.success("Item atualizado!");
-      setEditingEmbarcacaoItemIndex(null);
-    } else {
-      novosItens.push(novoItem);
-      toast.success("Item adicionado!");
-    }
-    setFormEmbarcacao({ ...formEmbarcacao, itens: novosItens });
-    setItemEmbarcacaoTemp({ 
-      tipo_equipamento_especifico: "", 
-      quantidade: 0, 
-      horas_dia: 0, 
-      consumo_fixo: 0, 
-      tipo_combustivel: "DIESEL",
-      consumo_lubrificante_litro: 0,
-      preco_lubrificante: 0,
-    });
-    setInputConsumoLubrificanteEmbarcacao("");
-    setInputPrecoLubrificanteEmbarcacao("");
-    setTimeout(() => { addEmbarcacaoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+    setLoading(false);
   };
-  const removerItemEmbarcacao = (index: number) => {
-    if (!confirm("Deseja realmente remover este item?")) return;
-    const novosItens = formEmbarcacao.itens.filter((_, i) => i !== index);
-    setFormEmbarcacao({ ...formEmbarcacao, itens: novosItens });
-    if (editingEmbarcacaoItemIndex === index) { handleCancelEditEmbarcacaoItem(); }
-    toast.success("Item removido!");
-  };
-  const handleEditEmbarcacaoItem = (item: ItemEmbarcacao, index: number) => {
-    setItemEmbarcacaoTemp({ ...item });
-    setInputConsumoLubrificanteEmbarcacao(formatNumberForInput(item.consumo_lubrificante_litro, 2));
-    setInputPrecoLubrificanteEmbarcacao(formatNumberForInput(item.preco_lubrificante, 2));
-    setEditingEmbarcacaoItemIndex(index);
-    setTimeout(() => { addEmbarcacaoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
-  };
-  const handleCancelEditEmbarcacaoItem = () => {
-    setItemEmbarcacaoTemp({ 
-      tipo_equipamento_especifico: "", 
-      quantidade: 0, 
-      horas_dia: 0, 
-      consumo_fixo: 0, 
-      tipo_combustivel: "DIESEL",
-      consumo_lubrificante_litro: 0,
-      preco_lubrificante: 0,
-    });
-    setInputConsumoLubrificanteEmbarcacao("");
-    setInputPrecoLubrificanteEmbarcacao("");
-    setEditingEmbarcacaoItemIndex(null);
-  };
-  
-  const calcularConsolidadosEmbarcacao = (itens: ItemEmbarcacao[]) => {
-    if (!refLPC || itens.length === 0) { 
-      setConsolidadosEmbarcacao([]); 
-      setConsolidadoLubrificanteEmbarcacao(null);
-      return; 
-    }
-    
-    // --- CÁLCULO DE COMBUSTÍVEL (ND 33.90.39) ---
-    const gruposPorCombustivel = itens.reduce((grupos, item) => {
-      if (!grupos[item.tipo_combustivel]) { grupos[item.tipo_combustivel] = []; }
-      grupos[item.tipo_combustivel].push(item);
-      return grupos;
-    }, {} as Record<'GASOLINA' | 'DIESEL', ItemEmbarcacao[]>);
-    
-    const novosConsolidados: ConsolidadoEmbarcacao[] = [];
-    Object.entries(gruposPorCombustivel).forEach(([combustivel, itensGrupo]) => {
-      const tipoCombustivel = combustivel as 'GASOLINA' | 'DIESEL';
-      const precoLitro = tipoCombustivel === 'GASOLINA' ? refLPC.preco_gasolina : refLPC.preco_diesel;
-      let totalLitrosSemMargem = 0;
-      let detalhes: string[] = [];
-      let fasesFinaisCalc = [...fasesAtividadeEmbarcacao];
-      if (customFaseAtividadeEmbarcacao.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeEmbarcacao.trim()]; }
-      const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
-      const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
-      
-      itensGrupo.forEach(item => {
-        const litrosSemMargemItem = item.quantidade * item.consumo_fixo * item.horas_dia * formEmbarcacao.dias_operacao;
-        totalLitrosSemMargem += litrosSemMargemItem;
-        detalhes.push(`- (${item.quantidade} ${item.tipo_equipamento_especifico} x ${formatNumber(item.horas_dia, 1)} horas/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${formEmbarcacao.dias_operacao} dias = ${formatNumber(litrosSemMargemItem)} L.`);
-      });
-      
-      const totalLitros = totalLitrosSemMargem * 1.3;
-      const valorTotal = totalLitros * precoLitro;
-      const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
-      const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
-      const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
-      const localConsulta = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? `(${refLPC.nome_local})` : '';
-      const totalEmbarcacoes = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
-      
-      let detalhamento = `33.90.39 - Aquisição de Combustível (${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'}) para ${totalEmbarcacoes} embarcações, durante ${formEmbarcacao.dias_operacao} dias de ${faseFormatada}, para ${formEmbarcacao.organizacao}.
-Fornecido por: ${rmFornecimentoEmbarcacao} (CODUG: ${codugRmFornecimentoEmbarcacao})
-
-Cálculo:
-${itensGrupo.map(item => `- ${item.tipo_equipamento_especifico}: ${formatNumber(item.consumo_fixo, 1)} L/h.`).join('\n')}
-
-Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'} - ${formatCurrency(precoLitro)}.
-
-Fórmula: (Nr Embarcações x Nr Horas utilizadas/dia x Consumo/hora) x Nr dias de operação.
-${detalhes.join('\n')}
-
-Total: ${formatNumber(totalLitrosSemMargem)} L + 30% = ${formatNumber(totalLitros)} L ${tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD'}.
-Valor: ${formatNumber(totalLitros)} L x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
-      
-      novosConsolidados.push({
-        tipo_combustivel: tipoCombustivel,
-        total_litros_sem_margem: totalLitrosSemMargem,
-        total_litros: totalLitros,
-        valor_total: valorTotal,
-        itens: itensGrupo,
-        detalhamento,
-      });
-    });
-    
-    // --- CÁLCULO DE LUBRIFICANTE (ND 33.90.30) ---
-    let totalLitrosLubrificante = 0;
-    let totalValorLubrificante = 0;
-    const itensComLubrificante = itens.filter(item => item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0);
-    const detalhesLubrificante: string[] = [];
-    
-    itensComLubrificante.forEach(item => {
-      const totalHoras = item.quantidade * item.horas_dia * formEmbarcacao.dias_operacao;
-      const litrosItem = totalHoras * item.consumo_lubrificante_litro;
-      const valorItem = litrosItem * item.preco_lubrificante;
-      
-      totalLitrosLubrificante += litrosItem;
-      totalValorLubrificante += valorItem;
-      
-      detalhesLubrificante.push(`- ${item.quantidade} ${item.tipo_equipamento_especifico}: (${formatNumber(totalHoras)} horas) x ${formatNumber(item.consumo_lubrificante_litro, 2)} L/h = ${formatNumber(litrosItem, 2)} L. Valor: ${formatCurrency(valorItem)}.`);
-    });
-    
-    let consolidadoLubrificanteEmbarcacao: ConsolidadoLubrificanteEmbarcacao | null = null;
-    
-    if (totalLitrosLubrificante > 0) {
-      const totalEmbarcacoes = itensComLubrificante.reduce((sum, item) => sum + item.quantidade, 0);
-      let fasesFinaisCalc = [...fasesAtividadeEmbarcacao];
-      if (customFaseAtividadeEmbarcacao.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeEmbarcacao.trim()]; }
-      const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
-      const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
-      
-      const detalhamentoLubrificante = `33.90.30 - Aquisição de Lubrificante para ${totalEmbarcacoes} embarcações, durante ${formEmbarcacao.dias_operacao} dias de ${faseFormatada}, para ${formEmbarcacao.organizacao}.
-Recurso destinado à OM proprietária: ${omLubrificanteEmbarcacao} (UG: ${ugLubrificanteEmbarcacao})
-
-Cálculo:
-Fórmula: (Nr Embarcações x Nr Horas utilizadas/dia x Nr dias de operação) x Consumo Lubrificante/hora.
-
-${itensComLubrificante.map(item => `- ${item.tipo_equipamento_especifico}: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/h. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}.`).join('\n')}
-
-${detalhesLubrificante.join('\n')}
-
-Total Litros: ${formatNumber(totalLitrosLubrificante, 2)} L.
-Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
-
-      consolidadoLubrificanteEmbarcacao = {
-        total_litros: totalLitrosLubrificante,
-        valor_total: totalValorLubrificante,
-        itens: itensComLubrificante,
-        detalhamento: detalhamentoLubrificante,
-      };
-    }
-    
-    setConsolidadoLubrificanteEmbarcacao(consolidadoLubrificanteEmbarcacao);
-  };
-  
-  const salvarRegistrosConsolidadosEmbarcacao = async () => {
-    if (!ptrabId) return;
-    if (!refLPC) { toast.error("Configure a referência LPC antes de salvar"); if (lpcRef.current) { lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
-    if (!formEmbarcacao.organizacao || !formEmbarcacao.ug) { toast.error("Selecione uma OM"); return; }
-    if (!rmFornecimentoEmbarcacao || !codugRmFornecimentoEmbarcacao) { toast.error("Selecione a RM de fornecimento de combustível"); return; }
-    if (formEmbarcacao.itens.length === 0) { toast.error("Adicione pelo menos uma embarcação"); return; }
-    if (consolidadoLubrificanteEmbarcacao && (!omLubrificanteEmbarcacao || !ugLubrificanteEmbarcacao)) { toast.error("Selecione a OM de destino do Lubrificante (ND 30)"); return; }
-    
-    let fasesFinais = [...fasesAtividadeEmbarcacao];
-    if (customFaseAtividadeEmbarcacao.trim()) { fasesFinais = [...fasesFinais, customFaseAtividadeEmbarcacao.trim()]; }
-    const faseFinalString = fasesFinais.filter(f => f).join('; ');
-    if (!faseFinalString) { toast.error("Selecione ou digite pelo menos uma Fase da Atividade."); return; }
-    
-    const registrosParaSalvar: TablesInsert<'classe_iii_registros'>[] = [];
-    
-    // 1. Preparar registros de COMBUSTÍVEL (ND 33.90.39)
-    for (const consolidado of consolidadosEmbarcacao) {
-      const precoLitro = consolidado.tipo_combustivel === 'GASOLINA' ? refLPC.preco_gasolina : refLPC.preco_diesel;
-      const registro: TablesInsert<'classe_iii_registros'> = {
-        p_trab_id: ptrabId,
-        tipo_equipamento: 'EMBARCACAO',
-        organizacao: formEmbarcacao.organizacao,
-        ug: formEmbarcacao.ug,
-        quantidade: consolidado.itens.reduce((sum, item) => sum + item.quantidade, 0),
-        dias_operacao: formEmbarcacao.dias_operacao,
-        tipo_combustivel: consolidado.tipo_combustivel,
-        preco_litro: precoLitro,
-        total_litros: consolidado.total_litros,
-        total_litros_sem_margem: consolidado.total_litros_sem_margem,
-        valor_total: consolidado.valor_total,
-        detalhamento: consolidado.detalhamento,
-        itens_equipamentos: consolidado.itens as any,
-        fase_atividade: faseFinalString,
-        consumo_lubrificante_litro: 0,
-        preco_lubrificante: 0,
-      };
-      registrosParaSalvar.push(registro);
-    }
-    
-    // 2. Preparar registro de LUBRIFICANTE (ND 33.90.30)
-    if (consolidadoLubrificanteEmbarcacao) {
-      const registroLubrificante: TablesInsert<'classe_iii_registros'> = {
-        p_trab_id: ptrabId,
-        tipo_equipamento: 'LUBRIFICANTE_EMBARCACAO',
-        tipo_equipamento_detalhe: null,
-        organizacao: omLubrificanteEmbarcacao,
-        ug: ugLubrificanteEmbarcacao,
-        quantidade: consolidadoLubrificanteEmbarcacao.itens.reduce((sum, item) => sum + item.quantidade, 0),
-        dias_operacao: formEmbarcacao.dias_operacao,
-        tipo_combustivel: 'LUBRIFICANTE',
-        preco_litro: 0,
-        total_litros: consolidadoLubrificanteEmbarcacao.total_litros,
-        total_litros_sem_margem: consolidadoLubrificanteEmbarcacao.total_litros,
-        valor_total: consolidadoLubrificanteEmbarcacao.valor_total,
-        detalhamento: consolidadoLubrificanteEmbarcacao.detalhamento,
-        itens_equipamentos: JSON.parse(JSON.stringify(consolidadoLubrificanteEmbarcacao.itens)),
-        fase_atividade: faseFinalString,
-        consumo_lubrificante_litro: consolidadoLubrificanteEmbarcacao.itens[0]?.consumo_lubrificante_litro || 0,
-        preco_lubrificante: consolidadoLubrificanteEmbarcacao.itens[0]?.preco_lubrificante || 0,
-      };
-      registrosParaSalvar.push(registroLubrificante);
-    }
-    
-    setLoading(true);
-    try {
-      // 3. Deletar registros existentes (Combustível e Lubrificante) para esta OM/Tipo
-      const { error: deleteError } = await supabase
-        .from("classe_iii_registros")
-        .delete()
-        .eq("p_trab_id", ptrabId)
-        .in("tipo_equipamento", ["EMBARCACAO", "LUBRIFICANTE_EMBARCACAO"])
-        .eq("organizacao", formEmbarcacao.organizacao)
-        .eq("ug", formEmbarcacao.ug);
-      if (deleteError) { console.error("Erro ao deletar registros existentes de embarcação/lubrificante para edição:", deleteError); throw deleteError; }
-      
-      // 4. Inserir novos registros
-      const { error: insertError } = await supabase.from("classe_iii_registros").insert(registrosParaSalvar);
-      if (insertError) throw insertError;
-      
-      toast.success(editingId ? "Registros de embarcações e lubrificantes atualizados com sucesso!" : "Registros de embarcações e lubrificantes salvos com sucesso!");
-      await updatePTrabStatusIfAberto(ptrabId);
-      resetFormFields();
-      setTipoSelecionado(null);
-      await fetchRegistros();
-    } catch (error: any) {
-      toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // --- Lógica Equipamento de Engenharia ---
-  const handleOMEngenhariaChange = (omData: OMData | undefined) => {
-    if (omData) {
-      setFormEngenharia({ ...formEngenharia, selectedOmId: omData.id, organizacao: omData.nome_om, ug: omData.codug_om });
-      setRmFornecimentoEngenharia(omData.rm_vinculacao);
-      setCodugRmFornecimentoEngenharia(omData.codug_rm_vinculacao);
-    } else {
-      setFormEngenharia({ ...formEngenharia, selectedOmId: undefined, organizacao: "", ug: "" });
-      setRmFornecimentoEngenharia("");
-      setCodugRmFornecimentoEngenharia("");
-    }
-  };
-  const handleRMFornecimentoEngenhariaChange = (rmName: string, rmCodug: string) => {
-    setRmFornecimentoEngenharia(rmName);
-    setCodugRmFornecimentoEngenharia(rmCodug);
-  };
-  const handleTipoEngenhariaChange = (tipoNome: string) => {
-    const equipamento = equipamentosDisponiveis.find(eq => eq.nome === tipoNome);
-    if (equipamento) {
-      const novoCombustivel = equipamento.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL';
-      setItemEngenhariaTemp({ ...itemEngenhariaTemp, tipo_equipamento_especifico: tipoNome, tipo_combustivel: novoCombustivel, consumo_fixo: equipamento.consumo });
-    }
-  };
-  const adicionarOuAtualizarItemEngenharia = () => {
-    if (!itemEngenhariaTemp.tipo_equipamento_especifico || itemEngenhariaTemp.quantidade <= 0 || itemEngenhariaTemp.horas_dia <= 0) {
-      toast.error("Preencha todos os campos do item");
-      return;
-    }
-    const novoItem: ItemEngenharia = { ...itemEngenhariaTemp };
-    let novosItens = [...formEngenharia.itens];
-    if (editingEngenhariaItemIndex !== null) {
-      novosItens[editingEngenhariaItemIndex] = novoItem;
-      toast.success("Item de engenharia atualizado!");
-    } else {
-      novosItens.push(novoItem);
-      toast.success("Item de engenharia adicionado!");
-    }
-    setFormEngenharia({ ...formEngenharia, itens: novosItens });
-    setItemEngenhariaTemp({ tipo_equipamento_especifico: "", quantidade: 0, horas_dia: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
-    setEditingEngenhariaItemIndex(null);
-  };
-  const handleEditEngenhariaItem = (item: ItemEngenharia, index: number) => {
-    setItemEngenhariaTemp(item);
-    setEditingEngenhariaItemIndex(index);
-    if (addEngenhariaRef.current) { addEngenhariaRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-  };
-  const handleCancelEditEngenhariaItem = () => {
-    setItemEngenhariaTemp({ tipo_equipamento_especifico: "", quantidade: 0, horas_dia: 0, consumo_fixo: 0, tipo_combustivel: "DIESEL" });
-    setEditingEngenhariaItemIndex(null);
-  };
-  const removerItemEngenharia = (index: number) => {
-    if (!confirm("Deseja realmente remover este item?")) return;
-    const novosItens = formEngenharia.itens.filter((_, i) => i !== index);
-    setFormEngenharia({ ...formEngenharia, itens: novosItens });
-    if (editingEngenhariaItemIndex === index) { handleCancelEditEngenhariaItem(); }
-    toast.success("Item de engenharia removido!");
-  };
-  const calcularConsolidadosEngenharia = (itens: ItemEngenharia[]) => {
-    if (!refLPC || itens.length === 0) { setConsolidadosEngenharia([]); return; }
-    const grupos = itens.reduce((acc, item) => {
-      if (!acc[item.tipo_combustivel]) { acc[item.tipo_combustivel] = []; }
-      acc[item.tipo_combustivel].push(item);
-      return acc;
-    }, {} as Record<'GASOLINA' | 'DIESEL', ItemEngenharia[]>);
-    const consolidados: ConsolidadoEngenharia[] = [];
-    Object.entries(grupos).forEach(([combustivel, itensGrupo]) => {
-      const tipoCombustivel = combustivel as 'GASOLINA' | 'DIESEL';
-      let totalLitrosSemMargem = 0;
-      const detalhes: string[] = [];
-      itensGrupo.forEach(item => {
-        const litrosItem = item.quantidade * item.horas_dia * item.consumo_fixo * formEngenharia.dias_operacao;
-        totalLitrosSemMargem += litrosItem;
-        const unidade = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
-        detalhes.push(`- (${item.quantidade} ${item.tipo_equipamento_especifico} x ${formatNumber(item.horas_dia, 1)} horas/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${formEngenharia.dias_operacao} dias = ${formatNumber(litrosItem)} L ${unidade}.`);
-      });
-      const totalLitros = totalLitrosSemMargem * 1.3;
-      const preco = tipoCombustivel === 'GASOLINA' ? (refLPC.preco_gasolina ?? 0) : (refLPC.preco_diesel ?? 0);
-      const valorTotal = totalLitros * preco;
-      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
-      const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
-      const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
-      const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
-      const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
-      const localConsulta = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? `(${refLPC.nome_local})` : '';
-      const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
-      let fasesFinaisCalc = [...fasesAtividadeEngenharia];
-      if (customFaseAtividadeEngenharia.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividadeEngenharia.trim()]; }
-      const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
-      const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
-      const detalhamento = `33.90.39 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos de engenharia, durante ${formEngenharia.dias_operacao} dias de ${faseFormatada}, para ${formEngenharia.organizacao}.
-Fornecido por: ${rmFornecimentoEngenharia} (CODUG: ${codugRmFornecimentoEngenharia})
-
-Cálculo:
-${itensGrupo.map(item => `- ${item.tipo_equipamento_especifico}: ${formatNumber(item.consumo_fixo, 1)} L/h.`).join('\n')}
-
-Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${combustivelLabel} - ${formatCurrency(preco)}.
-
-Fórmula: (Nr Equipamentos x Nr Horas utilizadas/dia x Consumo/hora) x Nr dias de operação.
-${detalhes.join('\n')}
-
-Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}.
-Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)} = ${formatCurrency(valorTotal)}.`;
-      consolidados.push({
-        tipo_combustivel: tipoCombustivel,
-        total_litros_sem_margem: totalLitrosSemMargem,
-        total_litros: totalLitros,
-        valor_total: valorTotal,
-        itens: itensGrupo,
-        detalhamento,
-      });
-    });
-    setConsolidadosEngenharia(consolidados);
-  };
-  const salvarRegistrosConsolidadosEngenharia = async () => {
-    if (!ptrabId || consolidadosEngenharia.length === 0) return;
-    if (!refLPC) { toast.error("Configure a referência LPC antes de salvar"); if (lpcRef.current) { lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
-    if (!formEngenharia.organizacao || !formEngenharia.ug) { toast.error("Selecione uma OM"); return; }
-    if (!rmFornecimentoEngenharia || !codugRmFornecimentoEngenharia) { toast.error("Selecione a RM de Fornecimento de Combustível"); return; }
-    if (formEngenharia.itens.length === 0) { toast.error("Adicione pelo menos um equipamento"); return; }
-    let fasesFinais = [...fasesAtividadeEngenharia];
-    if (customFaseAtividadeEngenharia.trim()) { fasesFinais = [...fasesFinais, customFaseAtividadeEngenharia.trim()]; }
-    const faseFinalString = fasesFinais.filter(f => f).join('; ');
-    if (!faseFinalString) { toast.error("Selecione ou digite pelo menos uma Fase da Atividade."); return; }
-    try {
-      setLoading(true);
-      if (editingId) {
-        const { error: deleteError } = await supabase
-          .from("classe_iii_registros")
-          .delete()
-          .eq("p_trab_id", ptrabId)
-          .eq("tipo_equipamento", "EQUIPAMENTO_ENGENHARIA")
-          .eq("organizacao", formEngenharia.organizacao)
-          .eq("ug", formEngenharia.ug);
-        if (deleteError) { console.error("Erro ao deletar registros existentes de engenharia para edição:", deleteError); throw deleteError; }
-      }
-      for (const consolidado of consolidadosEngenharia) {
-        const registro: TablesInsert<'classe_iii_registros'> = {
-          p_trab_id: ptrabId,
-          tipo_equipamento: 'EQUIPAMENTO_ENGENHARIA',
-          tipo_equipamento_detalhe: null,
-          organizacao: formEngenharia.organizacao,
-          ug: formEngenharia.ug,
-          quantidade: consolidado.itens.reduce((sum, item) => sum + item.quantidade, 0),
-          potencia_hp: null,
-          horas_dia: null,
-          km_dia: null,
-          consumo_hora: null,
-          consumo_km_litro: null,
-          dias_operacao: formEngenharia.dias_operacao,
-          tipo_combustivel: consolidado.tipo_combustivel,
-          preco_litro: consolidado.tipo_combustivel === 'GASOLINA' ? (refLPC.preco_gasolina ?? 0) : (refLPC.preco_diesel ?? 0),
-          total_litros: consolidado.total_litros,
-          total_litros_sem_margem: consolidado.total_litros_sem_margem,
-          valor_total: consolidado.valor_total,
-          detalhamento: consolidado.detalhamento,
-          itens_equipamentos: JSON.parse(JSON.stringify(consolidado.itens)),
-          fase_atividade: faseFinalString,
-          consumo_lubrificante_litro: 0,
-          preco_lubrificante: 0,
-        };
-        const { error } = await supabase.from("classe_iii_registros").insert([registro]);
-        if (error) throw error;
-      }
-      toast.success(editingId ? "Registros de engenharia atualizados com sucesso!" : "Registros de engenharia salvos com sucesso!");
-      await updatePTrabStatusIfAberto(ptrabId);
-      resetFormFields();
-      setTipoSelecionado(null);
-      fetchRegistros();
-    } catch (error) {
-      console.error("Erro ao salvar/atualizar registros de engenharia:", error);
-      toast.error("Erro ao salvar/atualizar registros de engenharia");
-    } finally {
-      setLoading(false);
-    }
-  };
-  // FIM Lógica Equipamento de Engenharia
 
   // Cálculo dos totais separados
   const registrosCombustivel = registros.filter(r => r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR' && r.tipo_equipamento !== 'LUBRIFICANTE_EMBARCACAO');
-  const totalGasolinaValor = registrosCombustivel.filter(r => r.tipo_combustivel === 'GASOLINA').reduce((sum, r) => sum + r.valor_total, 0);
-  const totalDieselValor = registrosCombustivel.filter(r => r.tipo_combustivel === 'DIESEL').reduce((sum, r) => sum + r.valor_total, 0);
+  const totalGasolinaValor = registrosCombustivel.filter(r => r.tipo_combustivel === 'GASOLINA' || r.tipo_combustivel === 'GAS').reduce((sum, r) => sum + r.valor_total, 0);
+  const totalDieselValor = registrosCombustivel.filter(r => r.tipo_combustivel === 'DIESEL' || r.tipo_combustivel === 'OD').reduce((sum, r) => sum + r.valor_total, 0);
   const registrosLubrificante = registros.filter(r => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO');
   const totalLubrificanteValor = registrosLubrificante.reduce((sum, r) => sum + r.valor_total, 0);
   const custoTotalClasseIII = totalGasolinaValor + totalDieselValor + totalLubrificanteValor;
@@ -1428,13 +417,14 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
           <CardContent className="space-y-6">
             {!refLPC && (
               <Alert className="mb-4">
-                <AlertCircle className="h-4 w-4" />
+                <Fuel className="h-4 w-4" />
                 <AlertDescription>
                   Configure a referência LPC antes de adicionar equipamentos.
                 </AlertDescription>
               </Alert>
             )}
             
+            {/* SELEÇÃO DE TIPO DE EQUIPAMENTO */}
             {!tipoSelecionado && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Button
@@ -1476,7 +466,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
               </div>
             )}
 
-            {/* RENDERIZAÇÃO DO NOVO COMPONENTE DE FORMULÁRIO DE GERADOR */}
+            {/* RENDERIZAÇÃO DOS SUB-FORMULÁRIOS */}
             {tipoSelecionado === 'GERADOR' && refLPC && (
               <ClasseIIIGeradorForm
                 ptrabId={ptrabId!}
@@ -1485,966 +475,46 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                 onSaveSuccess={fetchRegistros}
                 editingRegistroId={editingId}
                 setEditingRegistroId={setEditingId}
-                initialData={initialGeradorData}
+                initialData={initialData}
               />
             )}
             
-            {/* --- FORMULÁRIO VIATURA (MOTOMECANIZACAO) --- */}
             {tipoSelecionado === 'MOTOMECANIZACAO' && refLPC && (
-              <form onSubmit={(e) => { e.preventDefault(); salvarRegistrosConsolidadosViatura(); }}>
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Organização Militar (OM) *</Label>
-                      <OmSelector
-                        selectedOmId={formViatura.selectedOmId}
-                        onChange={handleOMViaturaChange}
-                        placeholder="Selecione a OM..."
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>UG</Label>
-                      <Input value={formViatura.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="rmFornecimentoViatura">RM de Fornecimento de Combustível *</Label>
-                      <RmSelector
-                        value={rmFornecimentoViatura}
-                        onChange={handleRMFornecimentoViaturaChange}
-                        placeholder="Selecione a RM de fornecimento..."
-                        disabled={!formViatura.organizacao}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>CODUG da RM de Fornecimento</Label>
-                      <Input value={codugRmFornecimentoViatura} readOnly disabled onKeyDown={handleEnterToNextField} />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Dias de Atividade *</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
-                        value={formViatura.dias_operacao || ""}
-                        onChange={(e) => setFormViatura({ ...formViatura, dias_operacao: parseInt(e.target.value) || 0 })}
-                        placeholder="Ex: 7"
-                        onKeyDown={handleEnterToNextField}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Fase da Atividade *</Label>
-                      <Popover open={isPopoverOpenViatura} onOpenChange={setIsPopoverOpenViatura}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            type="button"
-                            className="w-full justify-between"
-                          >
-                            {[...fasesAtividadeViatura, customFaseAtividadeViatura.trim()].filter(f => f).join(', ') || "Selecione as fases..."}
-                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0" align="start">
-                          <Command>
-                            <CommandGroup>
-                              {FASES_PADRAO.map((fase) => (
-                                <CommandItem
-                                  key={fase}
-                                  value={fase}
-                                  onSelect={() => {
-                                    const isChecked = fasesAtividadeViatura.includes(fase);
-                                    setFasesAtividadeViatura(prev => isChecked ? prev.filter(f => f !== fase) : [...prev, fase]);
-                                  }}
-                                  className="flex items-center justify-between cursor-pointer"
-                                >
-                                  <span>{fase}</span>
-                                  <Checkbox
-                                    checked={fasesAtividadeViatura.includes(fase)}
-                                    onCheckedChange={(checked) => {
-                                      setFasesAtividadeViatura(prev => checked ? [...prev, fase] : prev.filter(f => f !== fase));
-                                    }}
-                                  />
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                            <div className="p-2 border-t">
-                              <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade (Opcional)</Label>
-                              <Input
-                                value={customFaseAtividadeViatura}
-                                onChange={(e) => setCustomFaseAtividadeViatura(e.target.value)}
-                                placeholder="Ex: Patrulhamento"
-                                onKeyDown={handleEnterToNextField}
-                              />
-                            </div>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-                </div>
-                <div className="mb-6" />
-
-                {formViatura.organizacao && (
-                  <div className="space-y-4 mt-6 border-t pt-6" ref={addViaturaRef}>
-                    <h3 className="text-lg font-semibold">2. Adicionar Viaturas</h3>
-                    
-                    <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="space-y-2">
-                          <Label>Tipo de Viatura *</Label>
-                          <Select 
-                            value={itemViaturaTemp.tipo_equipamento_especifico}
-                            onValueChange={handleTipoViaturaChange}
-                            disabled={loading}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {equipamentosDisponiveis.map(eq => (
-                                <SelectItem key={eq.nome} value={eq.nome}>
-                                  {eq.nome}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Distância a ser percorrida (km) *</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.1"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            value={itemViaturaTemp.distancia_percorrida === 0 ? "" : itemViaturaTemp.distancia_percorrida.toString()}
-                            onChange={(e) => setItemViaturaTemp({ ...itemViaturaTemp, distancia_percorrida: parseFloat(e.target.value) || 0 })}
-                            placeholder="Ex: 150"
-                            disabled={loading}
-                            onKeyDown={handleEnterToNextField}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Quantidade de Deslocamentos *</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            value={itemViaturaTemp.quantidade_deslocamentos === 0 ? "" : itemViaturaTemp.quantidade_deslocamentos.toString()}
-                            onChange={(e) => setItemViaturaTemp({ ...itemViaturaTemp, quantidade_deslocamentos: parseInt(e.target.value) || 0 })}
-                            placeholder="Ex: 5"
-                            disabled={loading}
-                            onKeyDown={handleEnterToNextField}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Quantidade de Viaturas *</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            value={itemViaturaTemp.quantidade === 0 ? "" : itemViaturaTemp.quantidade.toString()}
-                            onChange={(e) => setItemViaturaTemp({ ...itemViaturaTemp, quantidade: parseInt(e.target.value) || 0 })}
-                            placeholder="Ex: 3"
-                            disabled={loading}
-                            onKeyDown={handleEnterToNextField}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>&nbsp;</Label>
-                          <Button type="button" onClick={adicionarOuAtualizarItemViatura} className="w-full" disabled={loading}>
-                            {editingViaturaItemIndex !== null ? "Atualizar Viatura" : "Adicionar Viatura"}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {itemViaturaTemp.consumo_fixo > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="default" className={itemViaturaTemp.tipo_combustivel === 'DIESEL' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : 'bg-amber-500 text-white hover:bg-amber-600'}>
-                          Consumo: {formatNumber(itemViaturaTemp.consumo_fixo, 1)} km/L
-                        </Badge>
-                        <Badge variant="default" className={itemViaturaTemp.tipo_combustivel === 'DIESEL' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : 'bg-amber-500 text-white hover:bg-amber-600'}>
-                          Combustível: {itemViaturaTemp.tipo_combustivel}
-                        </Badge>
-                      </div>
-                    )}
-                    {editingViaturaItemIndex !== null && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCancelEditViaturaItem}
-                        className="mt-2"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Cancelar Edição do Item
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {formViatura.itens.length > 0 && (
-                  <div className="space-y-4 mt-6 border-t pt-6">
-                    <h3 className="text-lg font-semibold">3. Viaturas Configuradas</h3>
-                    
-                    <div className="space-y-2">
-                      {formViatura.itens.map((item, index) => (
-                        <Card key={index} className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <p className="font-medium">{item.tipo_equipamento_especifico}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {item.quantidade} vtr • {formatNumber(item.distancia_percorrida)} km • {item.quantidade_deslocamentos} desloc • {formatNumber(item.consumo_fixo, 1)} km/L • {item.tipo_combustivel}
-                              </p>
-                            </div>
-                            <div className="flex gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditViaturaItem(item, index)}
-                                disabled={loading}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removerItemViatura(index)}
-                                disabled={loading}
-                                className="text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {consolidadosViatura.length > 0 && (
-                  <div className="space-y-4 mt-6 border-t pt-6">
-                    <h3 className="text-lg font-semibold">4. Consolidação por Combustível</h3>
-                    
-                    {consolidadosViatura.map((consolidado, index) => (
-                      <Card key={index} className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-lg">
-                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'}
-                            </h4>
-                            <div className="text-right">
-                              <p className="text-sm text-muted-foreground">Total com 30%</p>
-                              <p className="text-lg font-bold">{formatCurrency(consolidado.valor_total)}</p>
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label>Memória de Cálculo</Label>
-                            <Textarea
-                              value={consolidado.detalhamento}
-                              readOnly
-                              rows={6}
-                              className="font-mono text-xs"
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-
-                    <div className="flex gap-3 pt-4 justify-end">
-                      {editingId && (
-                        <Button
-                          variant="outline"
-                          type="button"
-                          onClick={handleCancelEdit}
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Cancelar Edição
-                        </Button>
-                      )}
-                      <Button type="submit" disabled={loading}>
-                        {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")} ({consolidadosViatura.length} {consolidadosViatura.length === 1 ? 'tipo' : 'tipos'} de combustível)
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </form>
+              <ClasseIIIViaturaForm
+                ptrabId={ptrabId!}
+                refLPC={refLPC}
+                equipamentosDisponiveis={equipamentosDisponiveis}
+                onSaveSuccess={fetchRegistros}
+                editingRegistroId={editingId}
+                setEditingRegistroId={setEditingId}
+                initialData={initialData}
+              />
             )}
-            {/* --- FIM FORMULÁRIO VIATURA --- */}
-
-            {/* --- FORMULÁRIO EMBARCAÇÃO --- */}
+            
             {tipoSelecionado === 'EMBARCACAO' && refLPC && (
-              <form onSubmit={(e) => { e.preventDefault(); salvarRegistrosConsolidadosEmbarcacao(); }}>
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Organização Militar (OM) *</Label>
-                      <OmSelector
-                        selectedOmId={formEmbarcacao.selectedOmId}
-                        onChange={handleOMEmbarcacaoChange}
-                        placeholder="Selecione a OM..."
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>UG</Label>
-                      <Input value={formEmbarcacao.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="rmFornecimentoEmbarcacao">RM de Fornecimento de Combustível *</Label>
-                      <RmSelector
-                        value={rmFornecimentoEmbarcacao}
-                        onChange={handleRMFornecimentoEmbarcacaoChange}
-                        placeholder="Selecione a RM de fornecimento..."
-                        disabled={!formEmbarcacao.organizacao}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>CODUG da RM de Fornecimento</Label>
-                      <Input value={codugRmFornecimentoEmbarcacao} readOnly disabled onKeyDown={handleEnterToNextField} />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Dias de Atividade *</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
-                        value={formEmbarcacao.dias_operacao || ""}
-                        onChange={(e) => setFormEmbarcacao({ ...formEmbarcacao, dias_operacao: parseInt(e.target.value) || 0 })}
-                        placeholder="Ex: 7"
-                        onKeyDown={handleEnterToNextField}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Fase da Atividade *</Label>
-                      <Popover open={isPopoverOpenEmbarcacao} onOpenChange={setIsPopoverOpenEmbarcacao}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            type="button"
-                            className="w-full justify-between"
-                          >
-                            {[...fasesAtividadeEmbarcacao, customFaseAtividadeEmbarcacao.trim()].filter(f => f).join(', ') || "Selecione as fases..."}
-                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0" align="start">
-                          <Command>
-                            <CommandGroup>
-                              {FASES_PADRAO.map((fase) => (
-                                <CommandItem
-                                  key={fase}
-                                  value={fase}
-                                  onSelect={() => {
-                                    const isChecked = fasesAtividadeEmbarcacao.includes(fase);
-                                    setFasesAtividadeEmbarcacao(prev => isChecked ? prev.filter(f => f !== fase) : [...prev, fase]);
-                                  }}
-                                  className="flex items-center justify-between cursor-pointer"
-                                >
-                                  <span>{fase}</span>
-                                  <Checkbox
-                                    checked={fasesAtividadeEmbarcacao.includes(fase)}
-                                    onCheckedChange={(checked) => {
-                                      setFasesAtividadeEmbarcacao(prev => checked ? [...prev, fase] : prev.filter(f => f !== fase));
-                                    }}
-                                  />
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                            <div className="p-2 border-t">
-                              <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade (Opcional)</Label>
-                              <Input
-                                value={customFaseAtividadeEmbarcacao}
-                                onChange={(e) => setCustomFaseAtividadeEmbarcacao(e.target.value)}
-                                placeholder="Ex: Patrulhamento"
-                                onKeyDown={handleEnterToNextField}
-                              />
-                            </div>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-                </div>
-                <div className="mb-6" />
-
-                {formEmbarcacao.organizacao && (
-                  <div className="space-y-4 mt-6 border-t pt-6" ref={addEmbarcacaoRef}>
-                    <h3 className="text-lg font-semibold">2. Adicionar Embarcações</h3>
-                    
-                    <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
-                      <div className="space-y-2">
-                        <Label>Tipo de Embarcação *</Label>
-                        <Select 
-                          value={itemEmbarcacaoTemp.tipo_equipamento_especifico}
-                          onValueChange={handleTipoEmbarcacaoChange}
-                          disabled={loading}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {equipamentosDisponiveis.map(eq => (
-                              <SelectItem key={eq.nome} value={eq.nome}>
-                                {eq.nome}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Quantidade *</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemEmbarcacaoTemp.quantidade === 0 ? "" : itemEmbarcacaoTemp.quantidade.toString()}
-                          onChange={(e) => setItemEmbarcacaoTemp({ ...itemEmbarcacaoTemp, quantidade: parseInt(e.target.value) || 0 })}
-                          placeholder="Ex: 2"
-                          disabled={loading}
-                          onKeyDown={handleEnterToNextField}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Horas/dia *</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemEmbarcacaoTemp.horas_dia === 0 ? "" : itemEmbarcacaoTemp.horas_dia.toString()}
-                          onChange={(e) => setItemEmbarcacaoTemp({ ...itemEmbarcacaoTemp, horas_dia: parseFloat(e.target.value) || 0 })}
-                          placeholder="Ex: 6"
-                          disabled={loading}
-                          onKeyDown={handleEnterToNextField}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg border-t border-border">
-                      <div className="space-y-2">
-                        <Label>Consumo Lubrificante (L/h)</Label>
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={inputConsumoLubrificanteEmbarcacao}
-                          onChange={(e) => handleInputEmbarcacaoChange(e, setInputConsumoLubrificanteEmbarcacao, 'consumo_lubrificante_litro')}
-                          onBlur={(e) => handleInputEmbarcacaoBlur(e.target.value, setInputConsumoLubrificanteEmbarcacao, 2, 'consumo_lubrificante_litro')}
-                          placeholder="Ex: 0,05"
-                          disabled={loading}
-                          onKeyDown={handleEnterToNextField}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Preço Lubrificante (R$/L)</Label>
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={inputPrecoLubrificanteEmbarcacao}
-                          onChange={(e) => handleInputEmbarcacaoChange(e, setInputPrecoLubrificanteEmbarcacao, 'preco_lubrificante')}
-                          onBlur={(e) => handleInputEmbarcacaoBlur(e.target.value, setInputPrecoLubrificanteEmbarcacao, 2, 'preco_lubrificante')}
-                          placeholder="Ex: 35,00"
-                          disabled={loading}
-                          onKeyDown={handleEnterToNextField}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>OM Destino Recurso (ND 30) *</Label>
-                        <OmSelector
-                          selectedOmId={selectedOmLubrificanteEmbarcacaoId}
-                          onChange={handleOMLubrificanteEmbarcacaoChange}
-                          placeholder="Selecione a OM de destino..."
-                          disabled={!formEmbarcacao.organizacao || loading}
-                        />
-                        <p className="text-xs text-muted-foreground">OM que receberá o recurso de lubrificante.</p>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <Button type="button" onClick={adicionarOuAtualizarItemEmbarcacao} className="w-full md:w-auto" disabled={loading || !itemEmbarcacaoTemp.tipo_equipamento_especifico || itemEmbarcacaoTemp.quantidade <= 0 || itemEmbarcacaoTemp.horas_dia <= 0}>
-                        {editingEmbarcacaoItemIndex !== null ? "Atualizar Item" : "Adicionar"}
-                      </Button>
-                    </div>
-
-                    {itemEmbarcacaoTemp.consumo_fixo > 0 && (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="default" className={itemEmbarcacaoTemp.tipo_combustivel === 'DIESEL' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : 'bg-amber-500 text-white hover:bg-amber-600'}>
-                          Combustível: {itemEmbarcacaoTemp.tipo_combustivel} ({formatNumber(itemEmbarcacaoTemp.consumo_fixo, 1)} L/h)
-                        </Badge>
-                        {itemEmbarcacaoTemp.consumo_lubrificante_litro > 0 && (
-                          <Badge variant="default" className="bg-purple-600 text-white hover:bg-purple-700">
-                            Lubrificante: {formatNumber(itemEmbarcacaoTemp.consumo_lubrificante_litro, 2)} L/h @ {formatCurrency(itemEmbarcacaoTemp.preco_lubrificante)}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                    {editingEmbarcacaoItemIndex !== null && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCancelEditEmbarcacaoItem}
-                        className="mt-2"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Cancelar Edição do Item
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {formEmbarcacao.itens.length > 0 && (
-                  <div className="space-y-4 mt-6 border-t pt-6">
-                    <h3 className="text-lg font-semibold">3. Embarcações Configuradas</h3>
-                    
-                    <div className="space-y-2">
-                      {formEmbarcacao.itens.map((item, index) => (
-                        <Card key={index} className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <p className="font-medium">{item.tipo_equipamento_especifico}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {item.quantidade} unidade(s) • {formatNumber(item.horas_dia, 1)}h/dia • {formatNumber(item.consumo_fixo, 1)} L/h • {item.tipo_combustivel}
-                                {item.consumo_lubrificante_litro > 0 && ` • Lub: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/h`}
-                              </p>
-                            </div>
-                            <div className="flex gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditEmbarcacaoItem(item, index)}
-                                disabled={loading}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removerItemEmbarcacao(index)}
-                                disabled={loading}
-                                className="text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {(consolidadosEmbarcacao.length > 0 || consolidadoLubrificanteEmbarcacao) && (
-                  <div className="space-y-4 mt-6 border-t pt-6">
-                    <h3 className="text-lg font-semibold">4. Consolidação de Custos</h3>
-                    
-                    {consolidadosEmbarcacao.map((consolidado, index) => (
-                      <Card key={index} className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-lg text-primary">
-                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'}
-                            </h4>
-                            <div className="text-right">
-                              <p className="text-sm text-muted-foreground">Total com 30%</p>
-                              <p className="text-lg font-bold text-primary">{formatCurrency(consolidado.valor_total)}</p>
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label>Memória de Cálculo</Label>
-                            <Textarea
-                              value={consolidado.detalhamento}
-                              readOnly
-                              rows={6}
-                              className="font-mono text-xs"
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                    
-                    {consolidadoLubrificanteEmbarcacao && (
-                      <Card className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-lg text-primary">
-                              Lubrificante
-                            </h4>
-                            <div className="text-right">
-                              <p className="text-sm text-muted-foreground">Valor Total</p>
-                              <p className="text-lg font-bold text-primary">{formatCurrency(consolidadoLubrificanteEmbarcacao.valor_total)}</p>
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label>Memória de Cálculo</Label>
-                            <Textarea
-                              value={consolidadoLubrificanteEmbarcacao.detalhamento}
-                              readOnly
-                              rows={8}
-                              className="font-mono text-xs"
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                        </div>
-                      </Card>
-                    )}
-
-                    <div className="flex gap-3 pt-4 justify-end">
-                      {editingId && (
-                        <Button
-                          variant="outline"
-                          type="button"
-                          onClick={handleCancelEdit}
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Cancelar Edição
-                        </Button>
-                      )}
-                      <Button 
-                        type="submit" 
-                        disabled={loading || !formEmbarcacao.organizacao || formEmbarcacao.itens.length === 0 || (consolidadoLubrificanteEmbarcacao && (!omLubrificanteEmbarcacao || !ugLubrificanteEmbarcacao))}
-                      >
-                        {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")} ({consolidadosEmbarcacao.length + (consolidadoLubrificanteEmbarcacao ? 1 : 0)} registros)
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </form>
+              <ClasseIIIEmbarcacaoForm
+                ptrabId={ptrabId!}
+                refLPC={refLPC}
+                equipamentosDisponiveis={equipamentosDisponiveis}
+                onSaveSuccess={fetchRegistros}
+                editingRegistroId={editingId}
+                setEditingRegistroId={setEditingId}
+                initialData={initialData}
+              />
             )}
-            {/* --- FIM FORMULÁRIO EMBARCAÇÃO --- */}
-
-            {/* --- FORMULÁRIO ENGENHARIA --- */}
+            
             {tipoSelecionado === 'EQUIPAMENTO_ENGENHARIA' && refLPC && (
-              <form onSubmit={(e) => { e.preventDefault(); salvarRegistrosConsolidadosEngenharia(); }}>
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Organização Militar (OM) *</Label>
-                      <OmSelector
-                        selectedOmId={formEngenharia.selectedOmId}
-                        onChange={handleOMEngenhariaChange}
-                        placeholder="Selecione a OM..."
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>UG</Label>
-                      <Input value={formEngenharia.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="rmFornecimentoEngenharia">RM de Fornecimento de Combustível *</Label>
-                      <RmSelector
-                        value={rmFornecimentoEngenharia}
-                        onChange={handleRMFornecimentoEngenhariaChange}
-                        placeholder="Selecione a RM de fornecimento..."
-                        disabled={!formEngenharia.organizacao}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>CODUG da RM de Fornecimento</Label>
-                      <Input value={codugRmFornecimentoEngenharia} readOnly disabled onKeyDown={handleEnterToNextField} />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Dias de Atividade *</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
-                        value={formEngenharia.dias_operacao || ""}
-                        onChange={(e) => setFormEngenharia({ ...formEngenharia, dias_operacao: parseInt(e.target.value) || 0 })}
-                        placeholder="Ex: 7"
-                        onKeyDown={handleEnterToNextField}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Fase da Atividade *</Label>
-                      <Popover open={isPopoverOpenEngenharia} onOpenChange={setIsPopoverOpenEngenharia}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            type="button"
-                            className="w-full justify-between"
-                          >
-                            {[...fasesAtividadeEngenharia, customFaseAtividadeEngenharia.trim()].filter(f => f).join(', ') || "Selecione as fases..."}
-                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0" align="start">
-                          <Command>
-                            <CommandGroup>
-                              {FASES_PADRAO.map((fase) => (
-                                <CommandItem
-                                  key={fase}
-                                  value={fase}
-                                  onSelect={() => {
-                                    const isChecked = fasesAtividadeEngenharia.includes(fase);
-                                    setFasesAtividadeEngenharia(prev => isChecked ? prev.filter(f => f !== fase) : [...prev, fase]);
-                                  }}
-                                  className="flex items-center justify-between cursor-pointer"
-                                >
-                                  <span>{fase}</span>
-                                  <Checkbox
-                                    checked={fasesAtividadeEngenharia.includes(fase)}
-                                    onCheckedChange={(checked) => {
-                                      setFasesAtividadeEngenharia(prev => checked ? [...prev, fase] : prev.filter(f => f !== fase));
-                                    }}
-                                  />
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                            <div className="p-2 border-t">
-                              <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade (Opcional)</Label>
-                              <Input
-                                value={customFaseAtividadeEngenharia}
-                                onChange={(e) => setCustomFaseAtividadeEngenharia(e.target.value)}
-                                placeholder="Ex: Patrulhamento"
-                                onKeyDown={handleEnterToNextField}
-                              />
-                            </div>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-                </div>
-                <div className="mb-6" />
-
-                {formEngenharia.organizacao && (
-                  <div className="space-y-4 mt-6 border-t pt-6" ref={addEngenhariaRef}>
-                    <h3 className="text-lg font-semibold">2. Adicionar Equipamento de Engenharia</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
-                      <div className="space-y-2">
-                        <Label>Tipo de Equipamento *</Label>
-                        <Select 
-                          value={itemEngenhariaTemp.tipo_equipamento_especifico}
-                          onValueChange={handleTipoEngenhariaChange}
-                          disabled={loading}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {equipamentosDisponiveis.map(eq => (
-                              <SelectItem key={eq.nome} value={eq.nome}>
-                                {eq.nome}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Quantidade *</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemEngenhariaTemp.quantidade === 0 ? "" : itemEngenhariaTemp.quantidade.toString()}
-                          onChange={(e) => setItemEngenhariaTemp({ ...itemEngenhariaTemp, quantidade: parseInt(e.target.value) || 0 })}
-                          placeholder="Ex: 1"
-                          disabled={loading}
-                          onKeyDown={handleEnterToNextField}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Horas/dia *</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          value={itemEngenhariaTemp.horas_dia === 0 ? "" : itemEngenhariaTemp.horas_dia.toString()}
-                          onChange={(e) => setItemEngenhariaTemp({ ...itemEngenhariaTemp, horas_dia: parseFloat(e.target.value) || 0 })}
-                          placeholder="Ex: 8"
-                          disabled={loading}
-                          onKeyDown={handleEnterToNextField}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>&nbsp;</Label>
-                        <Button type="button" onClick={adicionarOuAtualizarItemEngenharia} className="w-full" disabled={loading}>
-                          {editingEngenhariaItemIndex !== null ? "Atualizar Item" : "Adicionar"}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {itemEngenhariaTemp.consumo_fixo > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="default" className={itemEngenhariaTemp.tipo_combustivel === 'DIESEL' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : 'bg-amber-500 text-white hover:bg-amber-600'}>
-                          Consumo: {formatNumber(itemEngenhariaTemp.consumo_fixo, 1)} L/h
-                        </Badge>
-                        <Badge variant="default" className={itemEngenhariaTemp.tipo_combustivel === 'DIESEL' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : 'bg-amber-500 text-white hover:bg-amber-600'}>
-                          Combustível: {itemEngenhariaTemp.tipo_combustivel}
-                        </Badge>
-                      </div>
-                    )}
-                    {editingEngenhariaItemIndex !== null && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCancelEditEngenhariaItem}
-                        className="mt-2"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Cancelar Edição do Item
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {formEngenharia.itens.length > 0 && (
-                  <div className="space-y-4 mt-6 border-t pt-6">
-                    <h3 className="text-lg font-semibold">3. Equipamentos Configurados</h3>
-                    
-                    <div className="space-y-2">
-                      {formEngenharia.itens.map((item, index) => (
-                        <Card key={index} className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <p className="font-medium">{item.tipo_equipamento_especifico}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {item.quantidade} unidade(s) • {formatNumber(item.horas_dia, 1)}h/dia • {formatNumber(item.consumo_fixo, 1)} L/h • {item.tipo_combustivel}
-                              </p>
-                            </div>
-                            <div className="flex gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditEngenhariaItem(item, index)}
-                                disabled={loading}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removerItemEngenharia(index)}
-                                disabled={loading}
-                                className="text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {consolidadosEngenharia.length > 0 && (
-                  <div className="space-y-4 mt-6 border-t pt-6">
-                    <h3 className="text-lg font-semibold">4. Consolidação por Combustível</h3>
-                    
-                    {consolidadosEngenharia.map((consolidado, index) => (
-                      <Card key={index} className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-lg">
-                              {consolidado.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'}
-                            </h4>
-                            <div className="text-right">
-                              <p className="text-sm text-muted-foreground">Total com 30%</p>
-                              <p className="text-lg font-bold">{formatCurrency(consolidado.valor_total)}</p>
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label>Memória de Cálculo</Label>
-                            <Textarea
-                              value={consolidado.detalhamento}
-                              readOnly
-                              rows={6}
-                              className="font-mono text-xs"
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-
-                    <div className="flex gap-3 pt-4 justify-end">
-                      {editingId && (
-                        <Button
-                          variant="outline"
-                          type="button"
-                          onClick={handleCancelEdit}
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Cancelar Edição
-                        </Button>
-                      )}
-                      <Button type="submit" disabled={loading || !formEngenharia.organizacao || formEngenharia.itens.length === 0}>
-                        {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")} ({consolidadosEngenharia.length} {consolidadosEngenharia.length === 1 ? 'tipo' : 'tipos'} de combustível)
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </form>
+              <ClasseIIIEngenhariaForm
+                ptrabId={ptrabId!}
+                refLPC={refLPC}
+                equipamentosDisponiveis={equipamentosDisponiveis}
+                onSaveSuccess={fetchRegistros}
+                editingRegistroId={editingId}
+                setEditingRegistroId={setEditingId}
+                initialData={initialData}
+              />
             )}
-            {/* --- FIM FORMULÁRIO ENGENHARIA --- */}
-
+            
             {/* RENDERIZAÇÃO DE REGISTROS SALVOS */}
             {registros.length > 0 && !tipoSelecionado && (
               <>
@@ -2586,7 +656,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
                             variant="default" 
                             className={isLubrificante 
                               ? 'bg-purple-600 text-primary-foreground' 
-                              : (registro.tipo_combustivel === 'GASOLINA' 
+                              : (registro.tipo_combustivel === 'GASOLINA' || registro.tipo_combustivel === 'GAS'
                                   ? 'bg-amber-500 text-primary-foreground' 
                                   : 'bg-cyan-600 text-primary-foreground')}
                           >
