@@ -1262,10 +1262,9 @@ export default function ClasseIIForm() {
             {/* 5. Memórias de Cálculos Detalhadas - AGORA POR CATEGORIA */}
             {registros.length > 0 && (
               <div className="space-y-4 mt-8">
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  <ClipboardList className="h-5 w-5 text-primary" />
-                  Memórias de Cálculos Detalhadas (Por Categoria)
-                </h2>
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  📋 Memórias de Cálculos Detalhadas
+                </h3>
                 
                 {registros.map(registro => {
                   const om = registro.organizacao;
