@@ -3,15 +3,15 @@ const yearSuffix = `/${currentYear}`;
 
 /**
  * Generates the next sequential PTrab number (e.g., 5/2025).
- * @param existingNumbers Array of existing PTrab numbers (e.g., ['1/2025', '4.1/2025', 'MINUTA']).
+ * @param existingNumbers Array of existing PTrab numbers (e.g., ['1/2025', '4.1/2025']).
  * @returns The next unique base number.
  */
 export const generateUniquePTrabNumber = (existingNumbers: string[]): string => {
   const currentYearStr = String(currentYear);
   
-  // 1. Encontrar o maior número base existente para o ano atual, excluindo 'MINUTA'
+  // 1. Encontrar o maior número base existente para o ano atual
   const numbersForCurrentYear = existingNumbers
-    .filter(num => num.endsWith(`/${currentYearStr}`) && !num.includes('.') && num.toUpperCase() !== 'MINUTA') // Filter base numbers for current year
+    .filter(num => num.endsWith(`/${currentYearStr}`) && !num.includes('.')) // Filter base numbers for current year
     .map(num => parseInt(num.split('/')[0]))
     .filter(num => !isNaN(num));
 

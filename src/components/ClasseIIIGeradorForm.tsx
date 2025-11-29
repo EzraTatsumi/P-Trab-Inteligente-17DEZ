@@ -165,7 +165,7 @@ export const ClasseIIIGeradorForm = ({
       const numericValue = parseInputToNumber(input);
       const formattedDisplay = formatNumberForInput(numericValue, minDecimals);
       setInput(formattedDisplay);
-      updateNumericItemGerador(field, numericValue);
+      updateNumericItemGerador(field, formattedDisplay);
   };
   // Fim Input Handlers
 
@@ -336,7 +336,7 @@ export const ClasseIIIGeradorForm = ({
       const totalLitros = totalLitrosSemMargem * 1.3;
       const preco = tipoCombustivel === 'GASOLINA' ? (refLPC.preco_gasolina ?? 0) : (refLPC.preco_diesel ?? 0);
       const valorTotal = totalLitros * preco;
-      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'; // DEFINIÇÃO AQUI
+      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
       const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
       const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
       const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
@@ -385,7 +385,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       totalLitrosLubrificante += litrosItem;
       totalValorLubrificante += valorItem;
       
-      detalhesLubrificante.push(`- ${item.quantidade} ${item.tipo_equipamento_especifico}: (${formatNumber(totalHoras)} horas) / 100h x ${formatNumber(item.consumo_lubrificante_litro, 2)} L/100h = ${formatNumber(litrosItem, 2)} L. Valor: ${formatCurrency(valorItem)}.`);
+      detalhesLubrificante.push(`- ${item.quantidade} ${item.tipo_equipamento_especifico}: (${formatNumber(totalHoras)} horas / 100h) x ${formatNumber(item.consumo_lubrificante_litro, 2)} L/100h = ${formatNumber(litrosItem, 2)} L. Valor: ${formatCurrency(valorItem)}.`);
     });
     
     let consolidadoLubrificante: ConsolidadoLubrificante | null = null;

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { FileText, Package, Briefcase, ArrowLeft, Calendar, Users, MapPin, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { FileText, Package, Briefcase, ArrowLeft, Calendar, Users, MapPin, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner"; // Importar toast do sonner
 import { PTrabCostSummary } from "@/components/PTrabCostSummary";
@@ -12,11 +12,8 @@ import { CreditInputDialog } from "@/components/CreditInputDialog"; // Importar 
 import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"; // Importar TanStack Query
 import { fetchUserCredits, updateUserCredits } from "@/lib/creditUtils"; // Importar utilitários de crédito
-import { generateUniquePTrabNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils"; // Importar utilitários de numeração
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PTrabData {
-  id: string;
   numero_ptrab: string;
   comando_militar_area: string;
   nome_om: string;
@@ -47,17 +44,18 @@ const PTrabForm = () => {
   
   // NOVOS ESTADOS PARA CRÉDITO E DIÁLOGO
   const [showCreditDialog, setShowCreditDialog] = useState(false);
-  const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
 
   const classesLogistica = [
     { id: "classe-i", name: "Classe I - Subsistência" },
     { id: "classe-ii", name: "Classe II - Material de Intendência" },
     { id: "classe-iii", name: "Classe III - Combustíveis e Lubrificantes" },
+    // { id: "classe-iv", name: "Classe IV - Material de Construção" }, // REMOVIDO
     { id: "classe-v", name: "Classe V - Munição" },
     { id: "classe-vi", name: "Classe VI - Material de Engenharia" },
     { id: "classe-vii", name: "Classe VII - Viaturas e Equipamentos" },
     { id: "classe-viii", name: "Classe VIII - Material de Saúde" },
     { id: "classe-ix", name: "Classe IX - Material de Manutenção" },
+    // { id: "classe-x", name: "Classe X - Material para Atividades Especiais" }, // REMOVIDO
   ];
 
   const itensOperacional = [
@@ -119,20 +117,8 @@ const PTrabForm = () => {
       });
       setLoadingPTrab(false);
     };
-    
-    const loadExistingPTrabNumbers = async () => {
-        const { data, error } = await supabase
-            .from('p_trab')
-            .select('numero_ptrab');
-        if (error) {
-            console.error("Erro ao carregar números existentes:", error);
-            return;
-        }
-        setExistingPTrabNumbers((data || []).map(p => p.numero_ptrab));
-    };
 
     loadPTrab();
-    loadExistingPTrabNumbers();
   }, [ptrabId, navigate]);
 
   // Função para buscar os totais e atualizar os estados de custo
@@ -204,67 +190,6 @@ const PTrabForm = () => {
       // Aqui será implementada a navegação para outros formulários específicos
     }
   };
-  
-  const handleFinalizarPTrab = async () => {
-    if (!ptrabData || ptrabData.status !== 'em_andamento') {
-        toast.error("O P Trab deve estar 'Em Andamento' para ser finalizado.");
-        return;
-    }
-    
-    if (totalGND3Cost === 0 && totalGND4Cost === 0) {
-        toast.error("O P Trab não possui custos calculados. Adicione registros antes de finalizar.");
-        return;
-    }
-    
-    if (credits.credit_gnd3 < totalGND3Cost || credits.credit_gnd4 < totalGND4Cost) {
-        toast.error("O saldo de crédito é insuficiente para finalizar o P Trab.");
-        return;
-    }
-    
-    if (!confirm(`Deseja realmente finalizar o P Trab e atribuir o próximo número sequencial? Esta ação não pode ser desfeita.`)) {
-        return;
-    }
-    
-    setLoadingPTrab(true);
-    
-    try {
-        // 1. Gerar o próximo número sequencial
-        const newPTrabNumber = generateUniquePTrabNumber(existingPTrabNumbers);
-        
-        if (isPTrabNumberDuplicate(newPTrabNumber, existingPTrabNumbers)) {
-            throw new Error("Erro de numeração: O número gerado já existe. Tente novamente.");
-        }
-
-        // 2. Atualizar o P Trab no banco de dados
-        const { error } = await supabase
-            .from('p_trab')
-            .update({ 
-                numero_ptrab: newPTrabNumber, 
-                status: 'completo' 
-            })
-            .eq('id', ptrabId);
-
-        if (error) throw error;
-        
-        // 3. Atualizar o estado local e a lista de números existentes
-        setPtrabData(prev => prev ? { ...prev, numero_ptrab: newPTrabNumber, status: 'completo' } : null);
-        setExistingPTrabNumbers(prev => [...prev, newPTrabNumber]);
-        
-        // 4. Invalida a query de totais para forçar a atualização na tela de gerenciamento
-        queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
-        queryClient.invalidateQueries({ queryKey: ['pTrabs'] });
-        
-        toast.success(`P Trab finalizado e número ${newPTrabNumber} atribuído com sucesso!`);
-        
-        // 5. Redirecionar para a página de gerenciamento
-        navigate('/ptrab');
-        
-    } catch (error: any) {
-        toast.error(error.message || "Falha ao finalizar o P Trab.");
-    } finally {
-        setLoadingPTrab(false);
-    }
-  };
 
   if (loadingSession || loadingPTrab || isLoadingCredits) {
     return (
@@ -285,11 +210,6 @@ const PTrabForm = () => {
     const diff = end.getTime() - start.getTime();
     return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
   };
-  
-  const isFinalizado = ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado';
-  const isEmAndamento = ptrabData?.status === 'em_andamento';
-  const isMinuta = ptrabData?.numero_ptrab.toUpperCase() === 'MINUTA';
-  const isSaldoInsuficiente = credits.credit_gnd3 < totalGND3Cost || credits.credit_gnd4 < totalGND4Cost;
 
   return (
     <div className="min-h-screen bg-background py-4 px-4">
@@ -302,28 +222,6 @@ const PTrabForm = () => {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar para Gerenciamento
           </Button>
-          
-          {/* Botão de Finalização */}
-          {isMinuta && isEmAndamento && (
-            <Button
-                onClick={handleFinalizarPTrab}
-                disabled={loadingPTrab || isSaldoInsuficiente}
-                className="bg-green-600 hover:bg-green-700 gap-2"
-            >
-                <CheckCircle className="h-4 w-4" />
-                {loadingPTrab ? "Finalizando..." : "Finalizar e Atribuir Número"}
-            </Button>
-          )}
-          
-          {/* Mensagem de P Trab Finalizado */}
-          {isFinalizado && (
-            <Alert className="w-auto bg-green-500/10 border-green-500 text-green-700">
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription className="font-medium">
-                    P Trab Finalizado ({ptrabData.numero_ptrab})
-                </AlertDescription>
-            </Alert>
-          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -340,13 +238,9 @@ const PTrabForm = () => {
                 <div className="grid grid-cols-2 gap-y-1 gap-x-4">
                   <div className="space-y-0.5">
                     <Label className="text-muted-foreground text-xs">Número do PTrab</Label>
-                    <p className="text-sm font-bold text-primary">{ptrabData?.numero_ptrab}</p>
+                    <p className="text-sm font-medium">{ptrabData?.numero_ptrab}</p>
                   </div>
                   <div className="space-y-0.5">
-                    <Label className="text-muted-foreground text-xs">Status</Label>
-                    <p className="text-sm font-bold text-blue-600">{ptrabData?.status.toUpperCase()}</p>
-                  </div>
-                  <div className="space-y-0.5 col-span-2">
                     <Label className="text-muted-foreground text-xs">Nome da Operação</Label>
                     <p className="text-sm font-medium">{ptrabData?.nome_operacao}</p>
                   </div>
@@ -371,16 +265,6 @@ const PTrabForm = () => {
                 </div>
               </CardContent>
             </Card>
-            
-            {/* Alerta de Saldo Insuficiente */}
-            {isSaldoInsuficiente && (
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription className="font-medium">
-                        Saldo de Crédito Insuficiente. Atualize o crédito disponível para finalizar o P Trab.
-                    </AlertDescription>
-                </Alert>
-            )}
             
             {/* Resumo de Custos */}
             {ptrabId && (
@@ -427,7 +311,7 @@ const PTrabForm = () => {
                           variant="outline"
                           className="h-auto py-4 px-6 justify-start text-left hover:bg-primary/10 hover:border-primary transition-all"
                           onClick={() => handleItemClick(classe.id, "logistica")}
-                          disabled={isFinalizado}
+                          disabled={ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado'}
                         >
                           <div>
                             <div className="font-semibold">{classe.name.split(" - ")[0]}</div>
@@ -451,7 +335,7 @@ const PTrabForm = () => {
                           variant="outline"
                           className="h-auto py-4 px-6 justify-start text-left hover:bg-secondary/10 hover:border-secondary transition-all"
                           onClick={() => handleItemClick(item.id, "operacional")}
-                          disabled={isFinalizado}
+                          disabled={ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado'}
                         >
                           <div className="font-semibold">{item.name}</div>
                         </Button>

@@ -99,7 +99,7 @@ const PTrabManager = () => {
     setEditingId(null);
     setSelectedOmId(undefined);
     setFormData({
-      numero_ptrab: "MINUTA", // Valor inicial é MINUTA
+      numero_ptrab: generateUniquePTrabNumber(existingPTrabNumbers),
       comando_militar_area: "",
       nome_om: "",
       nome_om_extenso: "",
@@ -116,10 +116,10 @@ const PTrabManager = () => {
       status: "aberto",
       origem: 'original',
     });
-  }, []);
+  }, [existingPTrabNumbers]);
 
   const [formData, setFormData] = useState({
-    numero_ptrab: "MINUTA", // Valor inicial é MINUTA
+    numero_ptrab: generateUniquePTrabNumber(existingPTrabNumbers),
     comando_militar_area: "",
     nome_om: "",
     nome_om_extenso: "",
@@ -414,8 +414,13 @@ const PTrabManager = () => {
     navigate("/");
   };
 
-  // REMOVIDO: handleNumeroPTrabChange
-  // O número do P Trab é sempre "MINUTA" na criação/edição.
+  const handleNumeroPTrabChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    // Extrai apenas a parte numérica antes da barra, se houver
+    const numericPart = inputValue.split('/')[0].replace(/\D/g, '');
+    // Sempre formata como NUMERO/ANO
+    setFormData((prev) => ({ ...prev, numero_ptrab: `${numericPart}${yearSuffix}` }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -425,10 +430,16 @@ const PTrabManager = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Se estiver editando, o número já existe e não precisa ser validado como "MINUTA"
-      if (!editingId && formData.numero_ptrab !== "MINUTA") {
-        // Isso não deve acontecer se o formulário estiver correto, mas é uma salvaguarda
-        throw new Error("Novo P Trab deve ser criado com número 'MINUTA'.");
+      // Validação de número de P Trab único
+      // Compara o formData.numero_ptrab (já formatado como NUMERO/ANO)
+      // com os números existentes. Exclui o próprio PTrab se estiver em modo de edição.
+      const isDuplicate = isPTrabNumberDuplicate(formData.numero_ptrab, existingPTrabNumbers) && 
+                         formData.numero_ptrab !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
+
+      if (isDuplicate) {
+        toast.error("Já existe um P Trab com este número. Por favor, proponha outro.");
+        setLoading(false);
+        return;
       }
 
       const ptrabData = {
@@ -438,12 +449,10 @@ const PTrabManager = () => {
       };
 
       if (editingId) {
-        // Se estiver editando, permite salvar o número atual (MINUTA ou o número final)
         const { error } = await supabase.from("p_trab").update(ptrabData).eq("id", editingId);
         if (error) throw error;
         toast.success("P Trab atualizado!");
       } else {
-        // Se estiver criando, insere com "MINUTA"
         const { error } = await supabase.from("p_trab").insert([ptrabData]);
         if (error) throw error;
         toast.success("P Trab criado!");
@@ -931,19 +940,18 @@ const PTrabManager = () => {
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* L1L: Número do P Trab (AGORA READONLY) */}
+                    {/* L1L: Número do P Trab */}
                     <div className="space-y-2">
-                      <Label htmlFor="numero_ptrab">Número do P Trab</Label>
+                      <Label htmlFor="numero_ptrab">Número do P Trab *</Label>
                       <Input
                         id="numero_ptrab"
                         value={formData.numero_ptrab}
-                        readOnly
-                        disabled
-                        className="font-bold text-lg disabled:opacity-100"
+                        onChange={handleNumeroPTrabChange}
+                        placeholder={`Ex: 1${yearSuffix}`}
+                        maxLength={10}
+                        required
+                        onKeyDown={handleEnterToNextField}
                       />
-                      <p className="text-xs text-muted-foreground">
-                        O número final será atribuído ao finalizar o P Trab.
-                      </p>
                     </div>
                     {/* L1R: Nome da Operação */}
                     <div className="space-y-2">

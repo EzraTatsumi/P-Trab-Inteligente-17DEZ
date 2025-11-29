@@ -325,7 +325,6 @@ export const ClasseIIIEmbarcacaoForm = ({
     Object.entries(gruposPorCombustivel).forEach(([combustivel, itensGrupo]) => {
       const tipoCombustivel = combustivel as CombustivelTipo;
       const precoLitro = tipoCombustivel === 'GASOLINA' ? refLPC.preco_gasolina : refLPC.preco_diesel;
-      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'; // DEFINIÇÃO AQUI
       let totalLitrosSemMargem = 0;
       let detalhes: string[] = [];
       let fasesFinaisCalc = [...fasesAtividadeEmbarcacao];

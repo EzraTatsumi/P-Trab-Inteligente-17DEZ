@@ -229,7 +229,7 @@ export const ClasseIIIViaturaForm = ({
       const totalLitros = totalLitrosSemMargem * 1.3;
       const preco = tipoCombustivel === 'GASOLINA' ? (refLPC.preco_gasolina ?? 0) : (refLPC.preco_diesel ?? 0);
       const valorTotal = totalLitros * preco;
-      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'; // DEFINIÇÃO AQUI
+      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
       const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
       const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
       const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
