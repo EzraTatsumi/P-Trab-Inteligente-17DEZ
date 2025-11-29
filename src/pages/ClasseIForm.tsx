@@ -735,7 +735,7 @@ export default function ClasseIForm() {
                     <Button
                       variant="outline"
                       role="combobox"
-                      aria-expanded={isPopoverOpen}
+                      type="button"
                       className="w-full justify-between"
                     >
                       <span className="truncate">

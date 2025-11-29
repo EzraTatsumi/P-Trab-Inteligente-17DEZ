@@ -16,6 +16,7 @@ import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { tipoViaturas, tipoEquipamentosEngenharia } from "@/data/classeIIIData";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox"; // Importar Checkbox
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },

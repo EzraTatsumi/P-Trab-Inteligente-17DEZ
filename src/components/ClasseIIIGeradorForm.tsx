@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, XCircle, ChevronDown, Checkbox, Check } from "lucide-react";
+import { Plus, Trash2, Pencil, XCircle, ChevronDown, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
@@ -22,6 +22,7 @@ import { TablesInsert } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
 import { sanitizeError } from "@/lib/errorUtils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type CombustivelTipo = 'GASOLINA' | 'DIESEL';
 
