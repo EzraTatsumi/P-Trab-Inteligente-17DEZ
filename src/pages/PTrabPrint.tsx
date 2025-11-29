@@ -748,13 +748,16 @@ Total QR: ${formatCurrency(total_qr)}.`;
         // 3. Linhas Classe II (POR CATEGORIA/REGISTRO)
         grupo.linhasClasseII.forEach((linha) => {
           const registro = linha.registro;
+          const omDestinoRecurso = registro.organizacao;
+          const ugDestinoRecurso = registro.ug;
+          
           const row = worksheet.getRow(currentRow);
           
           // Coluna A: DESPESAS (Removido o nome da OM)
           row.getCell('A').value = `CLASSE II - MATERIAL DE INTENDÊNCIA\n${registro.categoria.toUpperCase()}`;
           
           // Coluna B: OM (UGE) CODUG
-          row.getCell('B').value = `${registro.organizacao}\n(${registro.ug})`;
+          row.getCell('B').value = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
           
           // Coluna C: 33.90.30 (Material)
           row.getCell('C').value = registro.valor_nd_30;
@@ -814,8 +817,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
           row.getCell('C').value = linha.registro.valor_total; // Valor na coluna 33.90.30
           row.getCell('C').numFmt = 'R$ #,##0.00';
           row.getCell('C').style = { ...row.getCell('C').style, alignment: centerTopAlignment };
-          row.getCell('D').value = 0; // 33.90.39 (Zero)
-          row.getCell('D').numFmt = 'R$ #,##0.00';
+          row.getCell('D').value = ''; // 33.90.39 (Vazio) - CORREÇÃO APLICADA AQUI
           row.getCell('D').style = { ...row.getCell('D').style, alignment: centerTopAlignment };
           row.getCell('E').value = linha.registro.valor_total; // TOTAL (ND 30 + ND 39)
           row.getCell('E').numFmt = 'R$ #,##0.00';
@@ -1316,7 +1318,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                           <div>({linha.registro.ug})</div>
                         </td>
                         <td className="col-valor-natureza">{formatCurrency(linha.registro.valor_total)}</td>
-                        <td className="col-valor-natureza">{formatCurrency(0)}</td>
+                        <td className="col-valor-natureza"></td> {/* ND 33.90.39 (Vazio) - CORREÇÃO APLICADA AQUI */}
                         <td className="col-valor-natureza">{formatCurrency(linha.registro.valor_total)}</td>
                         <td className="col-combustivel-data-filled"></td>
                         <td className="col-combustivel-data-filled"></td>
