@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Lovable Context Optimization
+android/
+ios/
+bun.lockb
+tsconfig.app.json
+tsconfig.node.json
+supabase/migrations/
