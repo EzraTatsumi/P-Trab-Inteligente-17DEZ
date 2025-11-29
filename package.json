@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "doc": "typedoc --out docs src"
+    "doc": "typedoc --out docs src --entryPointStrategy expand"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",
