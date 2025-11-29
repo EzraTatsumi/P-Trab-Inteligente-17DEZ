@@ -1,21 +1,20 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, XCircle, ChevronDown, Check } from "lucide-react";
+import { Trash2, Pencil, XCircle, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
 import { OMData } from "@/lib/omUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput } from "@/lib/formatUtils";
 import { TipoEquipamentoDetalhado } from "@/data/classeIIIData";
 import { RefLPC } from "@/types/refLPC";
-import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { TablesInsert } from "@/integrations/supabase/types";
@@ -137,8 +136,7 @@ export const ClasseIIIGeradorForm = ({
   const { handleEnterToNextField } = useFormNavigation();
 
   // --- Input Handlers para Lubrificante ---
-  const updateNumericItemGerador = (field: keyof ItemGerador, inputString: string) => {
-    const numericValue = parseInputToNumber(inputString);
+  const updateNumericItemGerador = (field: keyof ItemGerador, numericValue: number) => {
     setItemGeradorTemp(prev => ({ ...prev, [field]: numericValue }));
   };
 
@@ -153,7 +151,7 @@ export const ClasseIIIGeradorForm = ({
       if (parts.length > 2) { cleaned = parts[0] + ',' + parts.slice(1).join(''); }
       cleaned = cleaned.replace(/\./g, '');
       setInput(cleaned);
-      updateNumericItemGerador(field, cleaned);
+      updateNumericItemGerador(field, parseInputToNumber(cleaned));
   };
 
   const handleInputGeradorBlur = (
@@ -165,7 +163,7 @@ export const ClasseIIIGeradorForm = ({
       const numericValue = parseInputToNumber(input);
       const formattedDisplay = formatNumberForInput(numericValue, minDecimals);
       setInput(formattedDisplay);
-      updateNumericItemGerador(field, formattedDisplay);
+      updateNumericItemGerador(field, numericValue);
   };
   // Fim Input Handlers
 
@@ -325,6 +323,7 @@ export const ClasseIIIGeradorForm = ({
     const consolidadosCombustivel: ConsolidadoCombustivel[] = [];
     Object.entries(gruposCombustivel).forEach(([combustivel, itensGrupo]) => {
       const tipoCombustivel = combustivel as CombustivelTipo;
+      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
       let totalLitrosSemMargem = 0;
       const detalhes: string[] = [];
       itensGrupo.forEach(item => {
@@ -336,7 +335,6 @@ export const ClasseIIIGeradorForm = ({
       const totalLitros = totalLitrosSemMargem * 1.3;
       const preco = tipoCombustivel === 'GASOLINA' ? (refLPC.preco_gasolina ?? 0) : (refLPC.preco_diesel ?? 0);
       const valorTotal = totalLitros * preco;
-      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
       const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
       const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
       const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
@@ -843,7 +841,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
             <Card className="p-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-lg text-primary">
+                  <h4 className="font-medium text-lg text-primary flex items-center gap-2">
                     Lubrificante
                   </h4>
                   <div className="text-right">

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, XCircle, ChevronDown, Check, Droplet } from "lucide-react";
+import { Trash2, Pencil, XCircle, ChevronDown, Droplet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
@@ -136,8 +136,7 @@ export const ClasseIIIEmbarcacaoForm = ({
   const { handleEnterToNextField } = useFormNavigation();
 
   // --- Input Handlers para Lubrificante ---
-  const updateNumericItemEmbarcacao = (field: keyof ItemEmbarcacao, inputString: string) => {
-    const numericValue = parseInputToNumber(inputString);
+  const updateNumericItemEmbarcacao = (field: keyof ItemEmbarcacao, numericValue: number) => {
     setItemEmbarcacaoTemp(prev => ({ ...prev, [field]: numericValue }));
   };
 
@@ -152,7 +151,7 @@ export const ClasseIIIEmbarcacaoForm = ({
       if (parts.length > 2) { cleaned = parts[0] + ',' + parts.slice(1).join(''); }
       cleaned = cleaned.replace(/\./g, '');
       setInput(cleaned);
-      updateNumericItemEmbarcacao(field, cleaned);
+      updateNumericItemEmbarcacao(field, parseInputToNumber(cleaned));
   };
 
   const handleInputEmbarcacaoBlur = (
@@ -164,7 +163,7 @@ export const ClasseIIIEmbarcacaoForm = ({
       const numericValue = parseInputToNumber(input);
       const formattedDisplay = formatNumberForInput(numericValue, minDecimals);
       setInput(formattedDisplay);
-      updateNumericItemEmbarcacao(field, numericValue); // Usar numericValue para o estado interno
+      updateNumericItemEmbarcacao(field, numericValue);
   };
   // Fim Input Handlers
 
@@ -325,6 +324,7 @@ export const ClasseIIIEmbarcacaoForm = ({
     Object.entries(gruposPorCombustivel).forEach(([combustivel, itensGrupo]) => {
       const tipoCombustivel = combustivel as CombustivelTipo;
       const precoLitro = tipoCombustivel === 'GASOLINA' ? refLPC.preco_gasolina : refLPC.preco_diesel;
+      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel'; // Definido aqui
       let totalLitrosSemMargem = 0;
       let detalhes: string[] = [];
       let fasesFinaisCalc = [...fasesAtividadeEmbarcacao];

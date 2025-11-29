@@ -21,11 +21,9 @@ import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
 import { OMData } from "@/lib/omUtils";
-import { Info } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
+import { formatCurrency } from "@/lib/formatUtils";
 import { Textarea } from "@/components/ui/textarea"; // Importar Textarea
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
@@ -87,7 +85,7 @@ const calculateClasseICalculations = (
 
   const B7 = diasOperacao / 30;
   const C7 = Math.floor(B7);
-  const D7 = B7 - C7;
+  // const D7 = B7 - C7; // Variável não utilizada
   
   const nrCiclos = Math.ceil(diasOperacao / 30);
   const diasEtapaPaga = 22 * nrCiclos;
@@ -204,7 +202,7 @@ export default function ClasseIForm() {
   const [valorQS, setValorQS] = useState<number>(9.0);
   const [valorQR, setValorQR] = useState<number>(6.0);
   const [registros, setRegistros] = useState<OMRegistro[]>([]);
-  const [diretrizAno, setDiretrizAno] = useState<number | null>(null);
+  // const [diretrizAno, setDiretrizAno] = useState<number | null>(null); // Variável não utilizada
   const [editingRegistroId, setEditingRegistroId] = useState<string | null>(null);
   
   // NOVO ESTADO PARA FASE DA ATIVIDADE (Array de strings)
@@ -261,7 +259,7 @@ export default function ClasseIForm() {
       if (data) {
         setValorQS(data.classe_i_valor_qs);
         setValorQR(data.classe_i_valor_qr);
-        setDiretrizAno(data.ano_referencia);
+        // setDiretrizAno(data.ano_referencia); // Variável não utilizada
       }
     } catch (error: any) {
       console.error("Erro ao carregar diretrizes:", error);
@@ -457,7 +455,7 @@ export default function ClasseIForm() {
         if (error) throw error;
         toast.success("OM atualizada com sucesso!");
       } else {
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from("classe_i_registros")
           .insert([registroData])
           .select()
