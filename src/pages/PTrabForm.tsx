@@ -1,366 +1,563 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { FileText, Package, Briefcase, ArrowLeft, Calendar, Users, MapPin, Loader2 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { FileText, Package, Briefcase, ArrowLeft, Calendar as CalendarIcon, Users, Loader2 } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner"; // Importar toast do sonner
+import { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { cn } from "@/lib/utils";
+import { pTrabSchema } from "@/lib/validationSchemas";
+import { sanitizeError } from "@/lib/errorUtils";
+import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { PTrabCostSummary } from "@/components/PTrabCostSummary";
-import { CreditInputDialog } from "@/components/CreditInputDialog"; // Importar o novo diálogo
-import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"; // Importar TanStack Query
-import { fetchUserCredits, updateUserCredits } from "@/lib/creditUtils"; // Importar utilitários de crédito
+import { OmSelector } from "@/components/OmSelector";
+import { OMData } from "@/lib/omUtils";
+import { RmSelector } from "@/components/RmSelector";
 
-interface PTrabData {
-  numero_ptrab: string;
-  comando_militar_area: string;
-  nome_om: string;
+type PTrabData = Tables<'p_trab'> & {
+  // Sobrescreve a tipagem para garantir que campos que podem ser nulos no DB sejam tratados como tal
+  acoes: string; // Ações é obrigatório no formulário
+  codug_om: string;
+  codug_rm_vinculacao: string;
+  comentario: string | null;
+  data_fim: string;
+  data_inicio: string;
+  nome_om_extenso: string;
   nome_operacao: string;
-  periodo_inicio: string;
-  periodo_fim: string;
-  efetivo_empregado: string; // Alterado de number para string
-  acoes: string;
-  status: string;
-  nome_cmt_om?: string;
-  local_om?: string;
-}
+  numero_ptrab: string;
+  organizacao: string;
+  rm_vinculacao: string;
+  status: 'aberto' | 'em_andamento' | 'concluido';
+  tipo_operacao: string;
+  valor_total: number;
+  efetivo_empregado: string; // Mantido como string para input
+};
 
-const PTrabForm = () => {
+const initialFormState: PTrabData = {
+  id: "",
+  user_id: "",
+  created_at: "",
+  updated_at: null,
+  numero_ptrab: "",
+  nome_operacao: "",
+  tipo_operacao: "Operação",
+  organizacao: "",
+  codug_om: "",
+  nome_om_extenso: "",
+  comando_militar_area: "CMSE",
+  rm_vinculacao: "",
+  codug_rm_vinculacao: "",
+  data_inicio: format(new Date(), 'yyyy-MM-dd'),
+  data_fim: format(new Date(), 'yyyy-MM-dd'),
+  efetivo_empregado: "",
+  acoes: "",
+  comentario: null,
+  valor_total: 0,
+  status: 'aberto',
+};
+
+export default function PTrabForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const ptrabId = searchParams.get('ptrabId');
-  const { user, loading: loadingSession } = useSession(); // Obter usuário e estado de carregamento da sessão
-  const queryClient = useQueryClient();
-  
-  const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
-  const [selectedTab, setSelectedTab] = useState("logistica");
-  const [loadingPTrab, setLoadingPTrab] = useState(true);
-  
-  // Estados para armazenar os custos totais (para passar ao CreditInputCard)
-  const [totalGND3Cost, setTotalGND3Cost] = useState(0);
-  const [totalGND4Cost, setTotalGND4Cost] = useState(0);
-  
-  // NOVOS ESTADOS PARA CRÉDITO E DIÁLOGO
-  const [showCreditDialog, setShowCreditDialog] = useState(false);
+  const ptrabId = searchParams.get("ptrabId");
+  const [loading, setLoading] = useState(false);
+  const [ptrabData, setPtrabData] = useState<PTrabData | null>(initialFormState);
+  const [isEditing, setIsEditing] = useState(!!ptrabId);
+  const [totalClasseII, setTotalClasseII] = useState(0);
+  const { handleEnterToNextField } = useFormNavigation();
 
-  const classesLogistica = [
-    { id: "classe-i", name: "Classe I - Subsistência" },
-    { id: "classe-ii", name: "Classe II - Material de Intendência" },
-    { id: "classe-iii", name: "Classe III - Combustíveis e Lubrificantes" },
-    // { id: "classe-iv", name: "Classe IV - Material de Construção" }, // REMOVIDO
-    { id: "classe-v", name: "Classe V - Munição" },
-    { id: "classe-vi", name: "Classe VI - Material de Engenharia" },
-    { id: "classe-vii", name: "Classe VII - Viaturas e Equipamentos" },
-    { id: "classe-viii", name: "Classe VIII - Material de Saúde" },
-    { id: "classe-ix", name: "Classe IX - Material de Manutenção" },
-    // { id: "classe-x", name: "Classe X - Material para Atividades Especiais" }, // REMOVIDO
-  ];
-
-  const itensOperacional = [
-    { id: "locacao-viatura", name: "Locação de Viatura" },
-    { id: "locacao-estruturas", name: "Locação de Estruturas" },
-    { id: "servico-grafico", name: "Serviço Gráfico" },
-    { id: "passagem-aerea", name: "Passagem Aérea" },
-    { id: "diaria", name: "Diária" },
-    { id: "outros", name: "Outros" },
-  ];
-
-  // --- Lógica de Busca de Créditos (TanStack Query) ---
-  const { data: credits, isLoading: isLoadingCredits } = useQuery({
-    queryKey: ['userCredits', user?.id],
-    queryFn: () => fetchUserCredits(user!.id),
-    enabled: !!user?.id, // Só executa se o user.id estiver disponível
-    initialData: { credit_gnd3: 0, credit_gnd4: 0 },
-  });
-  
-  // --- Lógica de Mutação para Salvar Créditos ---
-  const saveCreditsMutation = useMutation({
-    mutationFn: ({ gnd3, gnd4 }: { gnd3: number, gnd4: number }) => 
-      updateUserCredits(user!.id, gnd3, gnd4),
-    onSuccess: () => {
-      // Invalida as queries para forçar a atualização dos totais e créditos
-      queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
-      queryClient.invalidateQueries({ queryKey: ['userCredits', user?.id] });
-      toast.success("Créditos disponíveis atualizados e salvos!");
-    },
-    onError: (error) => {
-      toast.error(error.message || "Falha ao salvar créditos.");
+  useEffect(() => {
+    if (ptrabId) {
+      loadPTrab(ptrabId);
+      fetchClasseIICosts(ptrabId);
+    } else {
+      setPtrabData(initialFormState);
+      setIsEditing(false);
     }
-  });
-
-
-  useEffect(() => {
-    const loadPTrab = async () => {
-      if (!ptrabId) {
-        toast.error("P Trab não selecionado");
-        navigate('/ptrab');
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('p_trab')
-        .select('*')
-        .eq('id', ptrabId)
-        .single();
-
-      if (error || !data) {
-        toast.error("Não foi possível carregar o P Trab");
-        navigate('/ptrab');
-        return;
-      }
-
-      setPtrabData({
-        ...data,
-        efetivo_empregado: String(data.efetivo_empregado), // Garante que seja string ao carregar
-      });
-      setLoadingPTrab(false);
-    };
-
-    loadPTrab();
-  }, [ptrabId, navigate]);
-
-  // Função para buscar os totais e atualizar os estados de custo
-  const fetchAndSetTotals = async () => {
-    if (!ptrabId) return;
-    
-    // Simulação de busca de totais (usando a mesma lógica do PTrabCostSummary)
-    const { data: classeIData } = await supabase
-      .from('classe_i_registros')
-      .select('total_qs, total_qr')
-      .eq('p_trab_id', ptrabId);
-
-    const totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
-
-    const { data: classeIIIData } = await supabase
-      .from('classe_iii_registros')
-      .select('valor_total')
-      .eq('p_trab_id', ptrabId);
-
-    const totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
-    
-    // NOVO: Buscar totais da Classe II
-    const { data: classeIIData } = await supabase
-      .from('classe_ii_registros')
-      .select('valor_total')
-      .eq('p_trab_id', ptrabId);
-
-    const totalClasseII = (classeIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
-    
-    // GND 3 = Logística (Classe I + Classe II + Classe III) + Operacional (0) + Aviação (0)
-    const calculatedGND3 = totalClasseI + totalClasseII + totalClasseIII;
-    
-    // GND 4 = Material Permanente (0)
-    const calculatedGND4 = 0; 
-
-    setTotalGND3Cost(calculatedGND3);
-    setTotalGND4Cost(calculatedGND4);
-  };
-  
-  // Efeito para carregar os totais iniciais e manter a atualização
-  useEffect(() => {
-    fetchAndSetTotals();
-    const interval = setInterval(fetchAndSetTotals, 10000); // Atualiza a cada 10s
-    return () => clearInterval(interval);
   }, [ptrabId]);
 
-  const handleSaveCredit = (gnd3: number, gnd4: number) => {
-    if (!user?.id) {
-      toast.error("Erro: Usuário não identificado para salvar créditos.");
-      return;
-    }
-    saveCreditsMutation.mutate({ gnd3, gnd4 });
-  };
+  const loadPTrab = async (id: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("p_trab")
+        .select("*")
+        .eq("id", id)
+        .single();
 
-  const handleItemClick = (itemId: string, type: string) => {
-    if (ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado') {
-      toast.warning("Este P Trab está completo ou arquivado e não pode ser editado.");
-      return;
+      if (error) throw error;
+
+      // Ajuste de tipagem e conversão de número para string para o input
+      setPtrabData({
+        ...(data as PTrabData),
+        efetivo_empregado: String(data.efetivo_empregado), // Garante que seja string ao carregar
+      });
+    } catch (error: any) {
+      toast.error("Erro ao carregar P Trab: " + sanitizeError(error));
+      navigate("/ptrab");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const fetchClasseIICosts = async (id: string) => {
+    // Usando 'as any' para contornar o erro de sobrecarga do Supabase Client
+    const { data: classeIIData, error: errorII } = await supabase
+      .from('classe_ii_registros' as any)
+      .select('valor_total')
+      .eq('p_trab_id', id);
+    
+    if (errorII) {
+        console.error("Erro ao carregar custos Classe II:", errorII);
+        return;
     }
     
-    if (itemId === 'classe-i') {
-      navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`);
-    } else if (itemId === 'classe-ii') {
-      navigate(`/ptrab/classe-ii?ptrabId=${ptrabId}`); // Nova navegação
-    } else if (itemId === 'classe-iii') {
-      navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
-    } else {
-      console.log(`Selecionado: ${itemId} do tipo ${type}`);
-      // Aqui será implementada a navegação para outros formulários específicos
+    // Soma os valores totais dos registros de Classe II
+    const totalClasseII = (classeIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+    setTotalClasseII(totalClasseII);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setPtrabData(prev => (prev ? { ...prev, [id]: value } : null));
+  };
+
+  const handleSelectChange = (id: keyof PTrabData, value: string) => {
+    setPtrabData(prev => (prev ? { ...prev, [id]: value } : null));
+  };
+
+  const handleDateChange = (field: 'data_inicio' | 'data_fim', date: Date | undefined) => {
+    if (date) {
+      setPtrabData(prev => (prev ? { ...prev, [field]: format(date, 'yyyy-MM-dd') } : null));
     }
   };
 
-  if (loadingSession || loadingPTrab || isLoadingCredits) {
+  const handleOMChange = (omData: OMData | undefined) => {
+    if (omData) {
+      setPtrabData(prev => (prev ? { 
+        ...prev, 
+        organizacao: omData.nome_om, 
+        codug_om: omData.codug_om,
+        nome_om_extenso: omData.nome_om_extenso,
+        rm_vinculacao: omData.rm_vinculacao,
+        codug_rm_vinculacao: omData.codug_rm_vinculacao,
+        comando_militar_area: omData.comando_militar_area,
+      } : null));
+    } else {
+      setPtrabData(prev => (prev ? { 
+        ...prev, 
+        organizacao: "", 
+        codug_om: "",
+        nome_om_extenso: "",
+        rm_vinculacao: "",
+        codug_rm_vinculacao: "",
+        comando_militar_area: "",
+      } : null));
+    }
+  };
+  
+  const handleRMChange = (rmName: string, rmCodug: string) => {
+    setPtrabData(prev => (prev ? { 
+      ...prev, 
+      rm_vinculacao: rmName,
+      codug_rm_vinculacao: rmCodug,
+    } : null));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ptrabData) return;
+
+    const dataToValidate = {
+      ...ptrabData,
+      efetivo_empregado: Number(ptrabData.efetivo_empregado),
+    };
+
+    const validationResult = pTrabSchema.safeParse(dataToValidate);
+
+    if (!validationResult.success) {
+      toast.error(validationResult.error.errors[0].message);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { user } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado.");
+
+      const dataToSave: TablesInsert<'p_trab'> = {
+        ...ptrabData,
+        user_id: user.id,
+        efetivo_empregado: Number(ptrabData.efetivo_empregado),
+        // Garantir que campos opcionais sejam null se vazios
+        comentario: ptrabData.comentario || null,
+        nome_om_extenso: ptrabData.nome_om_extenso || null,
+        acoes: ptrabData.acoes || "",
+        valor_total: ptrabData.valor_total || 0,
+      };
+      
+      // Remove campos que não devem ser inseridos/atualizados (como id e created_at em inserts)
+      delete (dataToSave as any).id;
+      delete (dataToSave as any).created_at;
+      delete (dataToSave as any).updated_at;
+
+      let result;
+      if (isEditing && ptrabId) {
+        // Update
+        result = await supabase
+          .from("p_trab")
+          .update(dataToSave)
+          .eq("id", ptrabId)
+          .select()
+          .single();
+        toast.success("P Trab atualizado com sucesso!");
+      } else {
+        // Insert
+        result = await supabase
+          .from("p_trab")
+          .insert([dataToSave])
+          .select()
+          .single();
+        toast.success("P Trab criado com sucesso!");
+        navigate(`/ptrab/form?ptrabId=${result.data.id}`);
+      }
+      
+      setPtrabData({
+        ...(result.data as PTrabData),
+        efetivo_empregado: String(result.data.efetivo_empregado),
+      });
+      setIsEditing(true);
+
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading && !ptrabData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <span className="ml-2 text-muted-foreground">Carregando...</span>
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR');
-  };
+  if (!ptrabData) return null;
 
-  const calculateDays = (inicio: string, fim: string) => {
-    const start = new Date(inicio);
-    const end = new Date(fim);
-    const diff = end.getTime() - start.getTime();
-    return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
-  };
+  const startDate = ptrabData.data_inicio ? new Date(ptrabData.data_inicio + 'T00:00:00') : undefined;
+  const endDate = ptrabData.data_fim ? new Date(ptrabData.data_fim + 'T00:00:00') : undefined;
 
   return (
-    <div className="min-h-screen bg-background py-4 px-4">
-      <div className="container max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-4">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/ptrab')}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar para Gerenciamento
-          </Button>
-        </div>
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/ptrab")}
+          className="mb-4"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar para Gerenciamento
+        </Button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Coluna Esquerda: Dados do P Trab, Resumo de Custos e Crédito Disponível */}
-          <div className="lg:col-span-1 space-y-4">
-            <Card className="shadow-lg">
-              <CardHeader className="pb-1 pt-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <FileText className="h-5 w-5 text-primary" />
-                  Dados do P Trab
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-2 pb-3">
-                <div className="grid grid-cols-2 gap-y-1 gap-x-4">
-                  <div className="space-y-0.5">
-                    <Label className="text-muted-foreground text-xs">Número do PTrab</Label>
-                    <p className="text-sm font-medium">{ptrabData?.numero_ptrab}</p>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-6 w-6 text-primary" />
+              {isEditing ? "Editar P-Trab" : "Novo P-Trab"}
+            </CardTitle>
+            <CardDescription>
+              {isEditing ? `Editando: ${ptrabData.numero_ptrab} - ${ptrabData.nome_operacao}` : "Preencha os dados básicos do seu Plano de Trabalho."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              
+              {/* Seção 1: Identificação */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                <h3 className="text-lg font-semibold">1. Identificação</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="numero_ptrab">Número do P-Trab *</Label>
+                    <Input
+                      id="numero_ptrab"
+                      value={ptrabData.numero_ptrab}
+                      onChange={handleChange}
+                      placeholder="Ex: 01/2024"
+                      onKeyDown={handleEnterToNextField}
+                      disabled={loading}
+                    />
                   </div>
-                  <div className="space-y-0.5">
-                    <Label className="text-muted-foreground text-xs">Nome da Operação</Label>
-                    <p className="text-sm font-medium">{ptrabData?.nome_operacao}</p>
-                  </div>
-                  <div className="space-y-0.5 col-span-2">
-                    <Label className="text-muted-foreground text-xs flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Período
-                    </Label>
-                    <p className="text-sm font-medium">
-                      {ptrabData && 
-                        `${formatDate(ptrabData.periodo_inicio)} a ${formatDate(ptrabData.periodo_fim)} - ${calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim)} dias`
-                      }
-                    </p>
-                  </div>
-                  <div className="space-y-0.5 col-span-2">
-                    <Label className="text-muted-foreground text-xs flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      Efetivo Empregado
-                    </Label>
-                    <p className="text-sm font-medium">{ptrabData?.efetivo_empregado}</p>
+                  <div className="space-y-2">
+                    <Label htmlFor="nome_operacao">Nome da Operação/Atividade *</Label>
+                    <Input
+                      id="nome_operacao"
+                      value={ptrabData.nome_operacao}
+                      onChange={handleChange}
+                      placeholder="Ex: Operação Acolhida"
+                      onKeyDown={handleEnterToNextField}
+                      disabled={loading}
+                    />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            
-            {/* Resumo de Custos */}
-            {ptrabId && (
-              <PTrabCostSummary 
-                ptrabId={ptrabId} 
-                onOpenCreditDialog={() => setShowCreditDialog(true)}
-                creditGND3={credits.credit_gnd3}
-                creditGND4={credits.credit_gnd4}
-              />
-            )}
-          </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tipo_operacao">Tipo de Operação *</Label>
+                  <Select
+                    value={ptrabData.tipo_operacao}
+                    onValueChange={(value) => handleSelectChange('tipo_operacao', value)}
+                    disabled={loading}
+                  >
+                    <SelectTrigger id="tipo_operacao">
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Operação">Operação</SelectItem>
+                      <SelectItem value="Adestramento">Adestramento</SelectItem>
+                      <SelectItem value="Missão">Missão</SelectItem>
+                      <SelectItem value="Outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-          {/* Coluna Direita: Seleção de Classes/Itens */}
-          <div className="lg:col-span-2">
-            <Card className="shadow-lg">
+              {/* Seção 2: Organização e Comando */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                <h3 className="text-lg font-semibold">2. Organização e Comando</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="organizacao">OM Responsável *</Label>
+                    <OmSelector
+                      selectedOmId={ptrabData.organizacao} // Usando o nome da OM como ID temporário para busca
+                      onChange={handleOMChange}
+                      placeholder="Selecione a OM..."
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="codug_om">UG da OM</Label>
+                    <Input
+                      id="codug_om"
+                      value={ptrabData.codug_om}
+                      readOnly
+                      disabled
+                      onKeyDown={handleEnterToNextField}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rm_vinculacao">RM de Vinculação</Label>
+                    <RmSelector
+                      value={ptrabData.rm_vinculacao}
+                      onChange={handleRMChange}
+                      placeholder="Selecione a RM..."
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="codug_rm_vinculacao">UG da RM</Label>
+                    <Input
+                      id="codug_rm_vinculacao"
+                      value={ptrabData.codug_rm_vinculacao}
+                      readOnly
+                      disabled
+                      onKeyDown={handleEnterToNextField}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="comando_militar_area">Comando Militar de Área *</Label>
+                  <Select
+                    value={ptrabData.comando_militar_area}
+                    onValueChange={(value) => handleSelectChange('comando_militar_area', value)}
+                    disabled={loading}
+                  >
+                    <SelectTrigger id="comando_militar_area">
+                      <SelectValue placeholder="Selecione o CMA" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["CMSE", "CML", "CMN", "CMNE", "CMO", "CMP", "CMR", "CMS", "CMA", "CMAM"].map(cma => (
+                        <SelectItem key={cma} value={cma}>{cma}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Seção 3: Datas e Efetivo */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                <h3 className="text-lg font-semibold">3. Período e Efetivo</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Data Início *</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !startDate && "text-muted-foreground"
+                          )}
+                          disabled={loading}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {startDate ? format(startDate, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={(date) => handleDateChange('data_inicio', date)}
+                          initialFocus
+                          locale={ptBR}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Data Fim *</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !endDate && "text-muted-foreground"
+                          )}
+                          disabled={loading}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {endDate ? format(endDate, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={(date) => handleDateChange('data_fim', date)}
+                          initialFocus
+                          locale={ptBR}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="efetivo_empregado">Efetivo Empregado *</Label>
+                    <Input
+                      id="efetivo_empregado"
+                      type="number"
+                      className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      value={ptrabData.efetivo_empregado}
+                      onChange={handleChange}
+                      placeholder="Ex: 500"
+                      onKeyDown={handleEnterToNextField}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Seção 4: Ações e Comentários */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                <h3 className="text-lg font-semibold">4. Detalhamento</h3>
+                <div className="space-y-2">
+                  <Label htmlFor="acoes">Ações Previstas *</Label>
+                  <Textarea
+                    id="acoes"
+                    value={ptrabData.acoes || ""}
+                    onChange={handleChange}
+                    placeholder="Descreva as principais ações e objetivos do P-Trab."
+                    rows={4}
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="comentario">Comentários (Opcional)</Label>
+                  <Textarea
+                    id="comentario"
+                    value={ptrabData.comentario || ""}
+                    onChange={handleChange}
+                    placeholder="Adicione observações relevantes."
+                    rows={3}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button type="submit" disabled={loading}>
+                  {loading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Users className="mr-2 h-4 w-4" />
+                  )}
+                  {isEditing ? "Atualizar P-Trab" : "Criar P-Trab"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Navegação para Classes e Resumo de Custos */}
+        {isEditing && ptrabId && (
+          <div className="mt-8 space-y-6">
+            <PTrabCostSummary ptrabId={ptrabId} ptrabData={ptrabData} />
+
+            <Card>
               <CardHeader>
-                <CardTitle>Selecione o Tipo de Material</CardTitle>
-                <CardDescription>
-                  Escolha entre logística ou operacional
-                </CardDescription>
+                <CardTitle>Configuração de Custos</CardTitle>
+                <CardDescription>Acesse as seções para detalhar os custos por Classe de Suprimento.</CardDescription>
               </CardHeader>
-              <CardContent>
-
-                <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-6">
-                    <TabsTrigger value="logistica" className="flex items-center gap-2">
-                      <Package className="h-4 w-4" />
-                      Aba Logística
-                    </TabsTrigger>
-                    <TabsTrigger value="operacional" className="flex items-center gap-2">
-                      <Briefcase className="h-4 w-4" />
-                      Aba Operacional
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="logistica" className="space-y-4">
-                    <h3 className="text-lg font-semibold text-foreground mb-4">
-                      Selecione a Classe de Material
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {classesLogistica.map((classe) => (
-                        <Button
-                          key={classe.id}
-                          variant="outline"
-                          className="h-auto py-4 px-6 justify-start text-left hover:bg-primary/10 hover:border-primary transition-all"
-                          onClick={() => handleItemClick(classe.id, "logistica")}
-                          disabled={ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado'}
-                        >
-                          <div>
-                            <div className="font-semibold">{classe.name.split(" - ")[0]}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {classe.name.split(" - ")[1]}
-                            </div>
-                          </div>
-                        </Button>
-                      ))}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="operacional" className="space-y-4">
-                    <h3 className="text-lg font-semibold text-foreground mb-4">
-                      Selecione o Item Operacional
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {itensOperacional.map((item) => (
-                        <Button
-                          key={item.id}
-                          variant="outline"
-                          className="h-auto py-4 px-6 justify-start text-left hover:bg-secondary/10 hover:border-secondary transition-all"
-                          onClick={() => handleItemClick(item.id, "operacional")}
-                          disabled={ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado'}
-                        >
-                          <div className="font-semibold">{item.name}</div>
-                        </Button>
-                      ))}
-                    </div>
-                  </TabsContent>
-                </Tabs>
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`)}
+                  className="h-20 flex flex-col items-start justify-center"
+                >
+                  <Users className="h-5 w-5 mb-1 text-green-600" />
+                  <span className="font-semibold">Classe I (Subsistência)</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate(`/ptrab/classe-ii?ptrabId=${ptrabId}`)}
+                  className="h-20 flex flex-col items-start justify-center"
+                >
+                  <Briefcase className="h-5 w-5 mb-1 text-blue-600" />
+                  <span className="font-semibold">Classe II (Intendência)</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`)}
+                  className="h-20 flex flex-col items-start justify-center"
+                >
+                  <Fuel className="h-5 w-5 mb-1 text-amber-600" />
+                  <span className="font-semibold">Classe III (Combustível)</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate(`/ptrab/export-import?ptrabId=${ptrabId}`)}
+                  className="h-20 flex flex-col items-start justify-center md:col-span-3"
+                >
+                  <Package className="h-5 w-5 mb-1 text-gray-600" />
+                  <span className="font-semibold">Exportar / Importar Dados</span>
+                </Button>
               </CardContent>
             </Card>
           </div>
-        </div>
+        )}
       </div>
-      
-      {/* Diálogo de Crédito */}
-      <CreditInputDialog
-        open={showCreditDialog}
-        onOpenChange={setShowCreditDialog}
-        totalGND3Cost={totalGND3Cost}
-        totalGND4Cost={totalGND4Cost}
-        initialCreditGND3={credits.credit_gnd3}
-        initialCreditGND4={credits.credit_gnd4}
-        onSave={handleSaveCredit}
-      />
     </div>
   );
-};
-
-export default PTrabForm;
+}

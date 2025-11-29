@@ -1,50 +1,41 @@
-import { useEffect, useState, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, Sparkles, Tractor } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getEquipamentosPorTipo, TipoEquipamentoDetalhado } from "@/data/classeIIIData";
+import { ArrowLeft, Fuel, Plane, HardHat, Droplet, Sparkles, Pencil, Trash2, XCircle, Check } from "lucide-react";
+import { sanitizeError } from "@/lib/errorUtils";
 import { RefLPC } from "@/types/refLPC";
-import RefLPCFormSection from "@/components/RefLPCFormSection";
+import { TipoEquipamentoDetalhado } from "@/data/classeIIIData";
+import { ClasseIIIViaturaForm } from "@/components/ClasseIIIViaturaForm";
 import { ClasseIIIGeradorForm } from "@/components/ClasseIIIGeradorForm";
-import { ClasseIIIViaturaForm } from "@/components/ClasseIIIViaturaForm"; // NOVO
-import { ClasseIIIEmbarcacaoForm } from "@/components/ClasseIIIEmbarcacaoForm"; // NOVO
-import { ClasseIIIEngenhariaForm } from "@/components/ClasseIIIEngenhariaForm"; // NOVO
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { TablesInsert } from "@/integrations/supabase/types";
+import { ClasseIIIEngenhariaForm } from "@/components/ClasseIIIEngenhariaForm";
+import { ClasseIIIEmbarcacaoForm } from "@/components/ClasseIIIEmbarcacaoForm";
+import { formatCurrency } from "@/lib/formatUtils";
+import { Tables } from "@/integrations/supabase/types";
+import { Textarea } from "@/components/ui/textarea"; // Importar Textarea
+import { Label } from "@/components/ui/label"; // Importar Label
+import { cn } from "@/lib/utils";
 
-type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
+type TipoEquipamento = 'MOTOMECANIZACAO' | 'GERADOR' | 'EQUIPAMENTO_ENGENHARIA' | 'EMBARCACAO' | 'LUBRIFICANTE_GERADOR' | 'LUBRIFICANTE_EMBARCACAO';
 
-interface ClasseIIIRegistro {
-  id: string;
-  tipo_equipamento: string;
-  organizacao: string;
-  ug: string;
-  quantidade: number;
-  potencia_hp?: number;
-  horas_dia?: number;
-  dias_operacao: number;
-  consumo_hora?: number;
-  consumo_km_litro?: number;
-  km_dia?: number;
-  tipo_combustivel: string;
-  preco_litro: number;
-  tipo_equipamento_detalhe?: string;
-  total_litros: number;
-  valor_total: number;
-  detalhamento?: string;
-  detalhamento_customizado?: string | null;
-  itens_equipamentos?: any;
-  total_litros_sem_margem?: number;
-  fase_atividade?: string;
-  consumo_lubrificante_litro?: number;
-  preco_lubrificante?: number;
+type ClasseIIIRegistroDB = Tables<'classe_iii_registros'>;
+
+interface ClasseIIIRegistro extends ClasseIIIRegistroDB {
+  // Adicionar campos que podem ser nulos no DB mas são úteis aqui
+  detalhamento_customizado: string | null;
+}
+
+interface FormInitialData {
+  form: any; // Depende do tipo de equipamento
+  rmFornecimento: string;
+  codugRmFornecimento: string;
+  omLubrificante: string;
+  ugLubrificante: string;
+  selectedOmLubrificanteId?: string;
+  fasesAtividade: string[];
+  customFaseAtividade: string;
 }
 
 export default function ClasseIIIForm() {
@@ -52,22 +43,17 @@ export default function ClasseIIIForm() {
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get("ptrabId");
   
-  const [tipoSelecionado, setTipoSelecionado] = useState<TipoEquipamento | null>(null);
-  const [registros, setRegistros] = useState<ClasseIIIRegistro[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
   const [equipamentosDisponiveis, setEquipamentosDisponiveis] = useState<TipoEquipamentoDetalhado[]>([]);
-  
+  const [registros, setRegistros] = useState<ClasseIIIRegistro[]>([]);
+  const [selectedTab, setSelectedTab] = useState<TipoEquipamento>('MOTOMECANIZACAO');
+  const [editingRegistroId, setEditingRegistroId] = useState<string | null>(null);
+  const [initialData, setInitialData] = useState<FormInitialData | undefined>(undefined);
+
   // Estados para edição de memória de cálculo
   const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
   const [memoriaEdit, setMemoriaEdit] = useState<string>("");
-  
-  const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
-  
-  const lpcRef = useRef<HTMLDivElement>(null);
-  
-  // Estado para edição de registro (passado para os sub-formulários)
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [initialData, setInitialData] = useState<any>(null); // Dados iniciais para o sub-formulário
 
   useEffect(() => {
     if (!ptrabId) {
@@ -75,71 +61,198 @@ export default function ClasseIIIForm() {
       navigate("/ptrab");
       return;
     }
-    loadRefLPC();
-    fetchRegistros();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    loadData();
   }, [ptrabId]);
 
-  useEffect(() => {
-    if (tipoSelecionado) {
-      carregarEquipamentos();
-    }
-  }, [tipoSelecionado]);
+  const loadData = async () => {
+    setLoading(true);
+    await Promise.all([loadRefLPC(), loadEquipamentos(), fetchRegistros()]);
+    setLoading(false);
+  };
 
   const loadRefLPC = async () => {
     try {
       const { data, error } = await supabase
         .from("p_trab_ref_lpc")
         .select("*")
-        .eq("p_trab_id", ptrabId!)
-        .maybeSingle();
+        .eq("p_trab_id", ptrabId)
+        .single();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') throw error; // PGRST116 = No rows found
 
       if (data) {
         setRefLPC(data as RefLPC);
       } else {
         setRefLPC(null);
+        toast.warning("Referência LPC não configurada para este P Trab.");
       }
-    } catch (error: any) {
-      console.error("Erro ao carregar referência LPC:", error);
-      setRefLPC(null);
+    } catch (error) {
+      console.error("Erro ao carregar LPC:", error);
+      toast.error("Erro ao carregar Referência LPC.");
     }
   };
-  
-  const handleRefLPCUpdate = (newRefLPC: RefLPC) => {
-    setRefLPC(newRefLPC);
-    toast.success("Referência LPC atualizada!");
+
+  const loadEquipamentos = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const currentYear = new Date().getFullYear();
+      let anoReferencia = currentYear;
+
+      const { data: diretrizCusteio } = await supabase
+        .from("diretrizes_custeio")
+        .select("ano_referencia")
+        .eq("user_id", user.id)
+        .order("ano_referencia", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (diretrizCusteio) {
+        anoReferencia = diretrizCusteio.ano_referencia;
+      }
+
+      const { data, error } = await supabase
+        .from("diretrizes_equipamentos_classe_iii")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", anoReferencia)
+        .eq("ativo", true);
+
+      if (error) throw error;
+
+      setEquipamentosDisponiveis((data || []) as TipoEquipamentoDetalhado[]);
+    } catch (error) {
+      console.error("Erro ao carregar equipamentos:", error);
+      toast.error("Erro ao carregar diretrizes de equipamentos.");
+    }
   };
 
-  const carregarEquipamentos = async () => {
-    if (!tipoSelecionado) return;
-    const equipamentos = await getEquipamentosPorTipo(tipoSelecionado);
-    setEquipamentosDisponiveis(equipamentos);
-  };
-  
   const fetchRegistros = async () => {
     if (!ptrabId) return;
-    
-    const { data, error } = await supabase
-      .from("classe_iii_registros")
-      .select("*, detalhamento_customizado, consumo_lubrificante_litro, preco_lubrificante")
-      .eq("p_trab_id", ptrabId)
-      .order("created_at", { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from("classe_iii_registros")
+        .select("*, detalhamento_customizado")
+        .eq("p_trab_id", ptrabId)
+        .order("organizacao", { ascending: true });
 
-    if (error) {
-      toast.error("Erro ao carregar registros");
-      console.error(error);
-      return;
+      if (error) throw error;
+
+      setRegistros((data || []) as ClasseIIIRegistro[]);
+    } catch (error) {
+      console.error("Erro ao carregar registros Classe III:", error);
+      toast.error("Erro ao carregar registros Classe III.");
     }
-
-    setRegistros((data || []) as ClasseIIIRegistro[]);
-    setEditingId(null); // Reset editing state after fetch
-    setInitialData(null);
-    setTipoSelecionado(null);
   };
 
-  // Funções de gerenciamento de memória customizada
+  const handleEditRegistro = (registro: ClasseIIIRegistro) => {
+    setEditingRegistroId(registro.id);
+    setSelectedTab(registro.tipo_equipamento);
+    
+    // 1. Reconstruir o formulário de itens (form.itens)
+    const itens = (registro.itens_equipamentos || []) as any[];
+    
+    // 2. Determinar a OM Detentora (organizacao/ug)
+    const omDetentora = registro.organizacao;
+    const ugDetentora = registro.ug;
+    
+    // 3. Determinar a OM/UG de Lubrificante (se for lubrificante)
+    let omLubrificante = "";
+    let ugLubrificante = "";
+    let selectedOmLubrificanteId: string | undefined = undefined;
+    
+    if (registro.tipo_equipamento.startsWith('LUBRIFICANTE')) {
+        omLubrificante = registro.organizacao;
+        ugLubrificante = registro.ug;
+        // Tenta buscar o ID da OM de lubrificante (que é a OM de destino)
+        supabase.from('organizacoes_militares')
+            .select('id')
+            .eq('nome_om', omLubrificante)
+            .eq('codug_om', ugLubrificante)
+            .maybeSingle()
+            .then(({ data }) => {
+                if (data) selectedOmLubrificanteId = data.id;
+            });
+    }
+    
+    // 4. Determinar a RM de Fornecimento (precisa ser buscada)
+    let rmFornecimento = "";
+    let codugRmFornecimento = "";
+    
+    // Para fins de edição, precisamos buscar a RM de vinculação da OM detentora
+    supabase.from('organizacoes_militares')
+        .select('rm_vinculacao, codug_rm_vinculacao, id')
+        .eq('nome_om', omDetentora)
+        .eq('codug_om', ugDetentora)
+        .maybeSingle()
+        .then(({ data }) => {
+            if (data) {
+                rmFornecimento = data.rm_vinculacao;
+                codugRmFornecimento = data.codug_rm_vinculacao;
+                
+                // 5. Preencher o estado inicial
+                const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+                const fasesPadrao = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
+                const fasesAtividade = fasesSalvas.filter(f => fasesPadrao.includes(f));
+                const customFaseAtividade = fasesSalvas.find(f => !fasesPadrao.includes(f)) || "";
+
+                setInitialData({
+                    form: {
+                        selectedOmId: data.id,
+                        organizacao: omDetentora,
+                        ug: ugDetentora,
+                        dias_operacao: registro.dias_operacao,
+                        itens: itens,
+                    },
+                    rmFornecimento,
+                    codugRmFornecimento,
+                    omLubrificante,
+                    ugLubrificante,
+                    selectedOmLubrificanteId,
+                    fasesAtividade,
+                    customFaseAtividade,
+                });
+            } else {
+                toast.error("Não foi possível encontrar a OM detentora para carregar a RM de fornecimento.");
+            }
+        })
+        .catch(err => {
+            console.error("Erro ao buscar OM para edição:", err);
+            toast.error("Erro ao carregar dados da OM para edição.");
+        });
+  };
+
+  const handleRemoverRegistro = async (id: string) => {
+    if (!confirm("Tem certeza que deseja remover este registro?")) return;
+
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from("classe_iii_registros")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success("Registro removido com sucesso!");
+      setEditingRegistroId(null);
+      setInitialData(undefined);
+      await fetchRegistros();
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveSuccess = () => {
+    setInitialData(undefined);
+    fetchRegistros();
+  };
+
+  // --- Handlers de Edição de Memória de Cálculo ---
+  
   const handleIniciarEdicaoMemoria = (registro: ClasseIIIRegistro) => {
     setEditingMemoriaId(registro.id);
     setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento || "");
@@ -151,25 +264,23 @@ export default function ClasseIIIForm() {
   };
 
   const handleSalvarMemoriaCustomizada = async (registroId: string) => {
-    setLoading(true);
     try {
+      setLoading(true);
+      
       const { error } = await supabase
         .from("classe_iii_registros")
         .update({
-          detalhamento_customizado: memoriaEdit.trim() || null,
-          updated_at: new Date().toISOString(),
-        } as TablesInsert<'classe_iii_registros'>)
+          detalhamento_customizado: memoriaEdit,
+        })
         .eq("id", registroId);
 
       if (error) throw error;
 
-      toast.success("Memória de cálculo atualizada com sucesso!");
-      setEditingMemoriaId(null);
-      setMemoriaEdit("");
+      toast.success("Memória de cálculo customizada salva!");
+      handleCancelarEdicaoMemoria();
       fetchRegistros();
-    } catch (error) {
-      console.error("Erro ao salvar memória:", error);
-      toast.error("Erro ao salvar memória de cálculo");
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
     } finally {
       setLoading(false);
     }
@@ -180,211 +291,62 @@ export default function ClasseIIIForm() {
       return;
     }
     
-    setLoading(true);
     try {
+      setLoading(true);
+      
       const { error } = await supabase
         .from("classe_iii_registros")
         .update({
           detalhamento_customizado: null,
-          updated_at: new Date().toISOString(),
-        } as TablesInsert<'classe_iii_registros'>)
+        })
         .eq("id", registroId);
 
       if (error) throw error;
 
       toast.success("Memória de cálculo restaurada!");
       fetchRegistros();
-    } catch (error) {
-      console.error("Erro ao restaurar memória:", error);
-      toast.error("Erro ao restaurar memória automática");
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeletar = async (id: string) => {
-    if (!confirm("Deseja realmente deletar este registro?")) return;
+  const totalGeral = registros.reduce((sum, r) => sum + (r.valor_total || 0), 0);
 
-    const { error } = await supabase
-      .from("classe_iii_registros")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      toast.error("Erro ao deletar registro");
-      console.error(error);
-      return;
-    }
-
-    toast.success("Registro deletado!");
-    fetchRegistros();
-  };
-
-  const getTipoLabel = (tipo: TipoEquipamento | 'LUBRIFICANTE_GERADOR' | 'LUBRIFICANTE_EMBARCACAO') => {
+  const getIcon = (tipo: TipoEquipamento) => {
     switch (tipo) {
-      case 'GERADOR': return 'Gerador';
-      case 'EMBARCACAO': return 'Embarcação';
-      case 'EQUIPAMENTO_ENGENHARIA': return 'Equipamento de Engenharia';
-      case 'MOTOMECANIZACAO': return 'Motomecanização';
-      case 'LUBRIFICANTE_GERADOR': return 'Gerador (Lubrificante)';
-      case 'LUBRIFICANTE_EMBARCACAO': return 'Embarcação (Lubrificante)';
+      case 'MOTOMECANIZACAO': return <Fuel className="h-5 w-5 text-amber-500" />;
+      case 'GERADOR': return <Sparkles className="h-5 w-5 text-yellow-500" />;
+      case 'EQUIPAMENTO_ENGENHARIA': return <HardHat className="h-5 w-5 text-stone-500" />;
+      case 'EMBARCACAO': return <Plane className="h-5 w-5 text-blue-500" />;
+      case 'LUBRIFICANTE_GERADOR':
+      case 'LUBRIFICANTE_EMBARCACAO': return <Droplet className="h-5 w-5 text-purple-500" />;
+      default: return <Fuel className="h-5 w-5 text-gray-500" />;
     }
   };
 
-  const handleSelectEquipmentType = (type: TipoEquipamento) => {
-    if (!refLPC) {
-      toast.error("Configure a referência LPC antes de adicionar equipamentos.");
-      if (lpcRef.current) {
-        lpcRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-      return;
+  const getTitle = (tipo: TipoEquipamento) => {
+    switch (tipo) {
+      case 'MOTOMECANIZACAO': return 'Viaturas (Motomecanização)';
+      case 'GERADOR': return 'Geradores';
+      case 'EQUIPAMENTO_ENGENHARIA': return 'Equipamentos de Engenharia';
+      case 'EMBARCACAO': return 'Embarcações';
+      case 'LUBRIFICANTE_GERADOR': return 'Lubrificante (Gerador)';
+      case 'LUBRIFICANTE_EMBARCACAO': return 'Lubrificante (Embarcação)';
+      default: return 'Outros';
     }
-    setEditingId(null);
-    setInitialData(null);
-    setTipoSelecionado(type);
   };
 
-  const handleEditar = async (registro: ClasseIIIRegistro) => {
-    setLoading(true);
-    setEditingId(registro.id);
-    setTipoSelecionado(registro.tipo_equipamento as TipoEquipamento);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    let defaultRmName = "";
-    let defaultRmCodug = "";
-    let selectedOmIdForEdit: string | undefined = undefined;
-
-    if (registro.organizacao) {
-      try {
-        const { data: omData, error: omError } = await supabase
-          .from('organizacoes_militares')
-          .select('id, rm_vinculacao, codug_rm_vinculacao')
-          .eq('nome_om', registro.organizacao)
-          .eq('codug_om', registro.ug)
-          .maybeSingle();
-        if (omData && !omError) {
-          selectedOmIdForEdit = omData.id;
-          defaultRmName = omData.rm_vinculacao;
-          defaultRmCodug = omData.codug_rm_vinculacao;
-        }
-      } catch (error) {
-        console.error("Erro ao buscar OM para edição:", error);
-      }
+  const getEquipamentosFiltrados = (tipo: TipoEquipamento) => {
+    switch (tipo) {
+      case 'MOTOMECANIZACAO': return equipamentosDisponiveis.filter(e => e.tipo === 'Viatura');
+      case 'GERADOR': return equipamentosDisponiveis.filter(e => e.tipo === 'Gerador');
+      case 'EQUIPAMENTO_ENGENHARIA': return equipamentosDisponiveis.filter(e => e.tipo === 'Engenharia');
+      case 'EMBARCACAO': return equipamentosDisponiveis.filter(e => e.tipo === 'Embarcacao');
+      default: return [];
     }
-
-    // Tenta extrair RM/CODUG do detalhamento (para registros antigos ou importados)
-    const rmMatch = registro.detalhamento?.match(/Fornecido por: (.*?) \(CODUG: (.*?)\)/);
-    const rmName = rmMatch ? rmMatch[1] : defaultRmName;
-    const rmCodug = rmMatch ? rmMatch[2] : defaultRmCodug;
-    
-    const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
-    const fasesPadrao = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
-    const fasesAtividade = fasesSalvas.filter(f => fasesPadrao.includes(f));
-    const customFaseAtividade = fasesSalvas.find(f => !fasesPadrao.includes(f)) || "";
-
-    const baseData = {
-        form: {
-            selectedOmId: selectedOmIdForEdit,
-            organizacao: registro.organizacao,
-            ug: registro.ug,
-            dias_operacao: registro.dias_operacao,
-            itens: (registro.itens_equipamentos as any) || [],
-        },
-        rmFornecimento: rmName,
-        codugRmFornecimento: rmCodug,
-        fasesAtividade: fasesAtividade,
-        customFaseAtividade: customFaseAtividade,
-    };
-
-    if (registro.tipo_equipamento === 'GERADOR' || registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR') {
-      const { data: relatedRecords } = await supabase
-        .from("classe_iii_registros")
-        .select("*, consumo_lubrificante_litro, preco_lubrificante")
-        .eq("p_trab_id", ptrabId!)
-        .in("tipo_equipamento", ["GERADOR", "LUBRIFICANTE_GERADOR"])
-        .eq("organizacao", registro.organizacao)
-        .eq("ug", registro.ug);
-        
-      const lubrificanteRecord = relatedRecords?.find(r => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR');
-      
-      let lubOmId: string | undefined = selectedOmIdForEdit;
-      let lubOmName = registro.organizacao;
-      let lubUg = registro.ug;
-
-      if (lubrificanteRecord) {
-        lubOmName = lubrificanteRecord.organizacao;
-        lubUg = lubrificanteRecord.ug;
-        try {
-          const { data: lubOmData } = await supabase
-            .from('organizacoes_militares')
-            .select('id')
-            .eq('nome_om', lubOmName)
-            .eq('codug_om', lubUg)
-            .maybeSingle();
-          lubOmId = lubOmData?.id;
-        } catch (error) {
-          console.error("Erro ao buscar OM de lubrificante para edição:", error);
-        }
-      }
-      
-      setInitialData({
-        ...baseData,
-        omLubrificante: lubOmName,
-        ugLubrificante: lubUg,
-        selectedOmLubrificanteId: lubOmId,
-      });
-
-    } else if (registro.tipo_equipamento === 'EMBARCACAO' || registro.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO') {
-      const { data: relatedRecords } = await supabase
-        .from("classe_iii_registros")
-        .select("*, consumo_lubrificante_litro, preco_lubrificante")
-        .eq("p_trab_id", ptrabId!)
-        .in("tipo_equipamento", ["EMBARCACAO", "LUBRIFICANTE_EMBARCACAO"])
-        .eq("organizacao", registro.organizacao)
-        .eq("ug", registro.ug);
-        
-      const lubrificanteRecord = relatedRecords?.find(r => r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO');
-      
-      let lubOmId: string | undefined = selectedOmIdForEdit;
-      let lubOmName = registro.organizacao;
-      let lubUg = registro.ug;
-
-      if (lubrificanteRecord) {
-        lubOmName = lubrificanteRecord.organizacao;
-        lubUg = lubrificanteRecord.ug;
-        try {
-          const { data: lubOmData } = await supabase
-            .from('organizacoes_militares')
-            .select('id')
-            .eq('nome_om', lubOmName)
-            .eq('codug_om', lubUg)
-            .maybeSingle();
-          lubOmId = lubOmData?.id;
-        } catch (error) {
-          console.error("Erro ao buscar OM de lubrificante para edição:", error);
-        }
-      }
-      
-      setInitialData({
-        ...baseData,
-        omLubrificante: lubOmName,
-        ugLubrificante: lubUg,
-        selectedOmLubrificanteId: lubOmId,
-      });
-    } else {
-        setInitialData(baseData);
-    }
-    
-    setLoading(false);
   };
-
-  // Cálculo dos totais separados
-  const registrosCombustivel = registros.filter(r => r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR' && r.tipo_equipamento !== 'LUBRIFICANTE_EMBARCACAO');
-  const totalGasolinaValor = registrosCombustivel.filter(r => r.tipo_combustivel === 'GASOLINA' || r.tipo_combustivel === 'GAS').reduce((sum, r) => sum + r.valor_total, 0);
-  const totalDieselValor = registrosCombustivel.filter(r => r.tipo_combustivel === 'DIESEL' || r.tipo_combustivel === 'OD').reduce((sum, r) => sum + r.valor_total, 0);
-  const registrosLubrificante = registros.filter(r => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO');
-  const totalLubrificanteValor = registrosLubrificante.reduce((sum, r) => sum + r.valor_total, 0);
-  const custoTotalClasseIII = totalGasolinaValor + totalDieselValor + totalLubrificanteValor;
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -398,346 +360,222 @@ export default function ClasseIIIForm() {
           Voltar
         </Button>
 
-        {/* NOVO COMPONENTE LPC */}
-        <div ref={lpcRef}>
-          <RefLPCFormSection 
-            ptrabId={ptrabId!} 
-            refLPC={refLPC} 
-            onUpdate={handleRefLPCUpdate} 
-          />
-        </div>
-
         <Card>
           <CardHeader>
-            <CardTitle>Classe III - Combustíveis e Lubrificantes</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Fuel className="h-6 w-6 text-primary" />
+              Classe III - Combustíveis e Lubrificantes
+            </CardTitle>
             <CardDescription>
-              Selecione o tipo de equipamento para cadastrar as necessidades
+              Configure o consumo de combustível e lubrificante para viaturas, geradores, engenharia e embarcações.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {!refLPC && (
-              <Alert className="mb-4">
-                <Fuel className="h-4 w-4" />
-                <AlertDescription>
-                  Configure a referência LPC antes de adicionar equipamentos.
-                </AlertDescription>
-              </Alert>
-            )}
             
-            {/* SELEÇÃO DE TIPO DE EQUIPAMENTO */}
-            {!tipoSelecionado && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button
-                  variant="outline"
-                  className="h-24 text-lg"
-                  onClick={() => handleSelectEquipmentType('GERADOR')}
-                  disabled={!refLPC}
-                >
-                  <Zap className="mr-3 h-6 w-6" />
-                  Gerador
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-24 text-lg"
-                  onClick={() => handleSelectEquipmentType('EMBARCACAO')}
-                  disabled={!refLPC}
-                >
-                  <Ship className="mr-3 h-6 w-6" />
-                  Embarcação
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-24 text-lg"
-                  onClick={() => handleSelectEquipmentType('EQUIPAMENTO_ENGENHARIA')}
-                  disabled={!refLPC}
-                >
-                  <Tractor className="mr-3 h-6 w-6" />
-                  Equipamento de Engenharia
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-24 text-lg"
-                  onClick={() => handleSelectEquipmentType('MOTOMECANIZACAO')}
-                  disabled={!refLPC}
-                >
-                  <Truck className="mr-3 h-6 w-6" />
-                  Motomecanização
-                </Button>
+            {!refLPC && (
+              <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                <p className="font-semibold">Atenção: Referência LPC não configurada.</p>
+                <p className="text-sm">Configure a Referência LPC em "Configurações" para calcular os custos de combustível.</p>
               </div>
             )}
 
-            {/* RENDERIZAÇÃO DOS SUB-FORMULÁRIOS */}
-            {tipoSelecionado === 'GERADOR' && refLPC && (
-              <ClasseIIIGeradorForm
-                ptrabId={ptrabId!}
-                refLPC={refLPC}
-                equipamentosDisponiveis={equipamentosDisponiveis}
-                onSaveSuccess={fetchRegistros}
-                editingRegistroId={editingId}
-                setEditingRegistroId={setEditingId}
-                initialData={initialData}
-              />
-            )}
-            
-            {tipoSelecionado === 'MOTOMECANIZACAO' && refLPC && (
-              <ClasseIIIViaturaForm
-                ptrabId={ptrabId!}
-                refLPC={refLPC}
-                equipamentosDisponiveis={equipamentosDisponiveis}
-                onSaveSuccess={fetchRegistros}
-                editingRegistroId={editingId}
-                setEditingRegistroId={setEditingId}
-                initialData={initialData}
-              />
-            )}
-            
-            {tipoSelecionado === 'EMBARCACAO' && refLPC && (
-              <ClasseIIIEmbarcacaoForm
-                ptrabId={ptrabId!}
-                refLPC={refLPC}
-                equipamentosDisponiveis={equipamentosDisponiveis}
-                onSaveSuccess={fetchRegistros}
-                editingRegistroId={editingId}
-                setEditingRegistroId={setEditingId}
-                initialData={initialData}
-              />
-            )}
-            
-            {tipoSelecionado === 'EQUIPAMENTO_ENGENHARIA' && refLPC && (
-              <ClasseIIIEngenhariaForm
-                ptrabId={ptrabId!}
-                refLPC={refLPC}
-                equipamentosDisponiveis={equipamentosDisponiveis}
-                onSaveSuccess={fetchRegistros}
-                editingRegistroId={editingId}
-                setEditingRegistroId={setEditingId}
-                initialData={initialData}
-              />
-            )}
-            
-            {/* RENDERIZAÇÃO DE REGISTROS SALVOS */}
-            {registros.length > 0 && !tipoSelecionado && (
-              <>
-                <div className="space-y-4 mt-8">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-bold flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-amber-500" />
-                      OMs Cadastradas
-                    </h3>
-                    <Badge variant="secondary" className="text-sm">
-                      {registros.length} {registros.length === 1 ? 'registro' : 'registros'}
-                    </Badge>
-                  </div>
-                  
-                  <div className="border rounded-lg overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full table-fixed">
-                        <thead className="bg-muted">
-                          <tr>
-                            <th className="text-left p-3 font-semibold text-sm w-[20%]">OM</th>
-                            <th className="text-left p-3 font-semibold text-sm w-[12%]">UG</th>
-                            <th className="text-left p-3 font-semibold text-sm w-[15%]">Tipo</th>
-                            <th className="text-left p-3 font-semibold text-sm w-[12%]">Suprimento</th>
-                            <th className="text-right p-3 font-semibold text-sm w-[13%]">Total Litros</th>
-                            <th className="text-right p-3 font-semibold text-sm w-[13%]">Valor Total</th>
-                            <th className="text-center p-3 font-semibold text-sm w-[15%]">Ações</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {registros.map((registro) => {
-                            const isLubrificante = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || registro.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO';
-                            const tipoLabel = getTipoLabel(registro.tipo_equipamento as TipoEquipamento | 'LUBRIFICANTE_GERADOR' | 'LUBRIFICANTE_EMBARCACAO');
-                            
-                            let suprimentoBadgeClass = '';
-                            let suprimentoText = '';
+            <Tabs value={selectedTab} onValueChange={(value) => {
+                setSelectedTab(value as TipoEquipamento);
+                setEditingRegistroId(null);
+                setInitialData(undefined);
+            }}>
+              <Card className="p-4">
+                <TabsList className="grid w-full grid-cols-4 h-auto">
+                  <TabsTrigger value="MOTOMECANIZACAO" className="py-2">
+                    <Fuel className="h-4 w-4 mr-2" /> Viaturas
+                  </TabsTrigger>
+                  <TabsTrigger value="GERADOR" className="py-2">
+                    <Sparkles className="h-4 w-4 mr-2" /> Geradores
+                  </TabsTrigger>
+                  <TabsTrigger value="EQUIPAMENTO_ENGENHARIA" className="py-2">
+                    <HardHat className="h-4 w-4 mr-2" /> Engenharia
+                  </TabsTrigger>
+                  <TabsTrigger value="EMBARCACAO" className="py-2">
+                    <Plane className="h-4 w-4 mr-2" /> Embarcações
+                  </TabsTrigger>
+                </TabsList>
+              </Card>
 
-                            if (isLubrificante) {
-                              suprimentoBadgeClass = 'bg-purple-600 text-white hover:bg-purple-700';
-                              suprimentoText = 'Lubrificante';
-                            } else if (registro.tipo_combustivel === 'DIESEL' || registro.tipo_combustivel === 'OD') {
-                              suprimentoBadgeClass = 'bg-cyan-600 text-white hover:bg-cyan-700';
-                              suprimentoText = 'Diesel';
-                            } else if (registro.tipo_combustivel === 'GASOLINA' || registro.tipo_combustivel === 'GAS') {
-                              suprimentoBadgeClass = 'bg-amber-500 text-white hover:bg-amber-600';
-                              suprimentoText = 'Gasolina';
-                            } else {
-                              suprimentoBadgeClass = 'bg-primary text-primary-foreground';
-                              suprimentoText = 'Combustível';
-                            }
-                            
-                            return (
-                              <tr key={registro.id} className="border-t hover:bg-muted/50 transition-colors">
-                                <td className="p-3 text-sm">{registro.organizacao}</td>
-                                <td className="p-3 text-sm">{registro.ug}</td>
-                                <td className="p-3 text-sm">{tipoLabel}</td>
-                                <td className="p-3 text-sm">
-                                  <Badge variant="default" className={suprimentoBadgeClass}>
-                                    {suprimentoText}
-                                  </Badge>
-                                </td>
-                                <td className="p-3 text-sm text-right font-medium">{formatNumber(registro.total_litros)} L</td>
-                                <td className="p-3 text-sm text-right font-medium">{formatCurrency(registro.valor_total)}</td>
-                                <td className="p-3 text-sm">
-                                  <div className="flex gap-1 justify-center">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      onClick={() => handleEditar(registro)}
-                                      disabled={!refLPC}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleDeletar(registro.id)}
-                                      disabled={loading}
-                                      className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                        <tfoot className="bg-muted/50 border-t-2">
-                          <tr className="bg-primary/10 border-t-2">
-                            <td colSpan={5} className="p-3 text-sm font-bold text-primary text-right">
-                              CUSTO TOTAL CLASSE III
-                            </td>
-                            <td className="p-3 text-sm text-right font-extrabold text-primary text-base">
-                              {formatCurrency(custoTotalClasseIII)}
-                            </td>
-                            <td></td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
+              <TabsContent value="MOTOMECANIZACAO" className="mt-4">
+                <ClasseIIIViaturaForm
+                  ptrabId={ptrabId!}
+                  refLPC={refLPC}
+                  equipamentosDisponiveis={getEquipamentosFiltrados('MOTOMECANIZACAO')}
+                  onSaveSuccess={handleSaveSuccess}
+                  editingRegistroId={editingRegistroId}
+                  setEditingRegistroId={setEditingRegistroId}
+                  initialData={initialData}
+                />
+              </TabsContent>
+
+              <TabsContent value="GERADOR" className="mt-4">
+                <ClasseIIIGeradorForm
+                  ptrabId={ptrabId!}
+                  refLPC={refLPC}
+                  equipamentosDisponiveis={getEquipamentosFiltrados('GERADOR')}
+                  onSaveSuccess={handleSaveSuccess}
+                  editingRegistroId={editingRegistroId}
+                  setEditingRegistroId={setEditingRegistroId}
+                  initialData={initialData}
+                />
+              </TabsContent>
+
+              <TabsContent value="EQUIPAMENTO_ENGENHARIA" className="mt-4">
+                <ClasseIIIEngenhariaForm
+                  ptrabId={ptrabId!}
+                  refLPC={refLPC}
+                  equipamentosDisponiveis={getEquipamentosFiltrados('EQUIPAMENTO_ENGENHARIA')}
+                  onSaveSuccess={handleSaveSuccess}
+                  editingRegistroId={editingRegistroId}
+                  setEditingRegistroId={setEditingRegistroId}
+                  initialData={initialData}
+                />
+              </TabsContent>
+
+              <TabsContent value="EMBARCACAO" className="mt-4">
+                <ClasseIIIEmbarcacaoForm
+                  ptrabId={ptrabId!}
+                  refLPC={refLPC}
+                  equipamentosDisponiveis={getEquipamentosFiltrados('EMBARCACAO')}
+                  onSaveSuccess={handleSaveSuccess}
+                  editingRegistroId={editingRegistroId}
+                  setEditingRegistroId={setEditingRegistroId}
+                  initialData={initialData}
+                />
+              </TabsContent>
+            </Tabs>
+
+            {/* Registros Salvos */}
+            {registros.length > 0 && (
+              <div className="space-y-4 pt-6 border-t">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-bold">Registros Salvos ({registros.length})</h3>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Total Geral</p>
+                    <p className="text-2xl font-extrabold text-primary">{formatCurrency(totalGeral)}</p>
                   </div>
                 </div>
 
-                <div className="space-y-4 mt-8">
-                  <h3 className="text-xl font-bold flex items-center gap-2">
-                    📋 Memórias de Cálculo Detalhadas
-                  </h3>
-                  
+                <div className="space-y-4">
                   {registros.map((registro) => {
-                    const isEditing = editingMemoriaId === registro.id;
+                    const isEditingMemoria = editingMemoriaId === registro.id;
+                    const memoriaFinal = isEditingMemoria ? memoriaEdit : (registro.detalhamento_customizado || registro.detalhamento || "");
                     const hasCustomMemoria = !!registro.detalhamento_customizado;
-                    const memoriaExibida = registro.detalhamento_customizado || registro.detalhamento || "";
-                    const isLubrificante = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || registro.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO';
                     
-                    let suprimentoTipo = isLubrificante ? 'Lubrificante' : (registro.tipo_combustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel');
-                    let equipamentoTipo = getTipoLabel(registro.tipo_equipamento as TipoEquipamento | 'LUBRIFICANTE_GERADOR' | 'LUBRIFICANTE_EMBARCACAO');
-                    
-                    const tituloOM = `${registro.organizacao} (UG: ${registro.ug})`;
-                    const tituloEquipamento = equipamentoTipo;
-
                     return (
-                      <Card key={`memoria-${registro.id}`} className="p-6 bg-muted/30">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-lg font-semibold text-foreground">
-                              {tituloOM}
-                            </h4>
-                            <span className="text-lg font-semibold text-muted-foreground/80">
-                              | {tituloEquipamento}
-                            </span>
-                            {hasCustomMemoria && !isEditing && (
-                              <Badge variant="outline" className="text-xs">
-                                Editada manualmente
-                              </Badge>
-                            )}
+                      <Card key={registro.id} className="p-4 bg-muted/30">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              {getIcon(registro.tipo_equipamento)}
+                              <p className="font-semibold text-lg">{getTitle(registro.tipo_equipamento)}</p>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {registro.organizacao} (UG: {registro.ug}) | Dias: {registro.dias_operacao}
+                            </p>
                           </div>
-                          <Badge 
-                            variant="default" 
-                            className={isLubrificante 
-                              ? 'bg-purple-600 text-primary-foreground' 
-                              : (registro.tipo_combustivel === 'GASOLINA' || registro.tipo_combustivel === 'GAS'
-                                  ? 'bg-amber-500 text-primary-foreground' 
-                                  : 'bg-cyan-600 text-primary-foreground')}
-                          >
-                            {suprimentoTipo}
-                          </Badge>
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">{registro.tipo_combustivel}</p>
+                            <p className="text-xl font-bold text-primary">{formatCurrency(registro.valor_total || 0)}</p>
+                          </div>
                         </div>
                         
-                        <div className="h-px bg-border my-4" />
-                        
-                        <div className="flex items-center justify-end gap-2 mb-4">
-                          {!isEditing ? (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleIniciarEdicaoMemoria(registro)}
-                                disabled={loading}
-                                className="gap-2"
-                              >
-                                <Pencil className="h-4 w-4" />
-                                Editar Memória
-                              </Button>
-                              
-                              {hasCustomMemoria && (
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <Label>Memória de Cálculo</Label>
+                            {!isEditingMemoria ? (
+                              <div className="flex gap-2">
                                 <Button
                                   size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                                  variant="outline"
+                                  onClick={() => handleIniciarEdicaoMemoria(registro)}
                                   disabled={loading}
-                                  className="gap-2 text-muted-foreground"
+                                  className="gap-2"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                  Editar
+                                </Button>
+                                {hasCustomMemoria && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                                    disabled={loading}
+                                    className="gap-2 text-muted-foreground"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                    Restaurar
+                                  </Button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                  disabled={loading}
+                                  className="gap-2"
+                                >
+                                  <Check className="h-4 w-4" />
+                                  Salvar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleCancelarEdicaoMemoria}
+                                  disabled={loading}
+                                  className="gap-2"
                                 >
                                   <XCircle className="h-4 w-4" />
-                                  Restaurar Automática
+                                  Cancelar
                                 </Button>
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
-                                disabled={loading}
-                                className="gap-2"
-                              >
-                                <Check className="h-4 w-4" />
-                                Salvar
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleCancelarEdicaoMemoria}
-                                disabled={loading}
-                                className="gap-2"
-                              >
-                                <XCircle className="h-4 w-4" />
-                                Cancelar
-                              </Button>
-                            </>
-                          )}
+                              </div>
+                            )}
+                          </div>
+                          
+                          <Textarea
+                            value={memoriaFinal}
+                            onChange={(e) => isEditingMemoria && setMemoriaEdit(e.target.value)}
+                            readOnly={!isEditingMemoria}
+                            rows={10}
+                            className={cn(
+                              "font-mono text-xs whitespace-pre-wrap text-foreground",
+                              isEditingMemoria && "border-primary focus:ring-2 focus:ring-primary"
+                            )}
+                          />
                         </div>
-                        
-                        <Card className="p-4 bg-background rounded-lg border">
-                          {isEditing ? (
-                            <Textarea
-                              value={memoriaEdit}
-                              onChange={(e) => setMemoriaEdit(e.target.value)}
-                              className="min-h-[300px] font-mono text-sm"
-                              placeholder="Digite a memória de cálculo..."
-                            />
-                          ) : (
-                            <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
-                              {memoriaExibida}
-                            </pre>
-                          )}
-                        </Card>
+
+                        <div className="flex justify-end gap-2 mt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditRegistro(registro)}
+                            disabled={loading}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Editar Registro
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleRemoverRegistro(registro.id)}
+                            disabled={loading}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remover
+                          </Button>
+                        </div>
                       </Card>
                     );
                   })}
                 </div>
-              </>
+              </div>
             )}
           </CardContent>
         </Card>
