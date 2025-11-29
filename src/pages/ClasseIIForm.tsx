@@ -23,6 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { defaultClasseIIConfig } from "@/data/classeIIData";
+import { cn } from "@/lib/utils";
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -201,7 +202,7 @@ export default function ClasseIIForm() {
     return `${demaisFases} e ${ultimaFase}`;
   };
 
-  // Função de Detalhamento CONSOLIDADA
+  // Função de Detalhamento CONSOLIDADA (mantida para salvar no DB)
   const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organizacao: string, faseAtividade: string): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
@@ -236,6 +237,23 @@ ${detalhamentoItens}
 
 Valor Total: ${formatCurrency(valorTotal)}.`;
   };
+  
+  // NOVA FUNÇÃO: Detalhamento INDIVIDUAL por Item
+  const generateItemMemoriaCalculo = (item: ItemClasseII, diasOperacao: number, organizacao: string, ug: string, faseAtividade: string): string => {
+    const faseFormatada = formatFasesParaTexto(faseAtividade);
+    const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
+
+    return `33.90.30 - Aquisição de Material de Intendência (${item.categoria}) - Item: ${item.item}
+OM de Destino: ${organizacao} (UG: ${ug})
+Período: ${diasOperacao} dias de ${faseFormatada}
+
+Cálculo:
+Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
+
+- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.
+
+Valor Total do Item: ${formatCurrency(valorItem)}.`;
+  };
 
   const resetFormFields = () => {
     setEditingId(null);
@@ -250,7 +268,7 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
       item: "",
       quantidade: 0,
       valor_mnt_dia: 0,
-      categoria: CATEGORIAS[0],
+      categoria: CATEGORIAS[0], // Inicializa com a primeira categoria
     });
     setEditingItemIndex(null);
     setEditingMemoriaId(null);
@@ -797,7 +815,7 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
                       <div className="flex items-center justify-between mb-3 border-b pb-2">
                         <div className="flex items-center gap-2">
                           <h4 className="text-lg font-semibold text-foreground">{om} (UG: {ug})</h4>
-                          <Badge variant="secondary" className="text-xs">Consolidado</Badge>
+                          <Badge variant="secondary" className="ml-2 text-xs">Consolidado</Badge>
                         </div>
                         <div className="flex gap-1">
                           <Button
@@ -861,7 +879,7 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
               </div>
             )}
 
-            {/* 5. Memórias de Cálculos Detalhadas - NEW SECTION */}
+            {/* 5. Memórias de Cálculos Detalhadas - AJUSTADO PARA ITERAR SOBRE ITENS */}
             {registros.length > 0 && (
               <div className="space-y-4 mt-8">
                 <h2 className="text-xl font-bold flex items-center gap-2">
@@ -872,74 +890,117 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
                 {registros.map(registro => {
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
-                  const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || registro.detalhamento || "");
                   
+                  // Se estiver editando, a Textarea é exibida para o registro consolidado
+                  if (isEditing) {
+                    return (
+                      <Card key={`memoria-edit-${registro.id}`} className="p-4 bg-muted/30">
+                        <div className="flex items-center justify-between mb-2">
+                          <h6 className="font-bold text-sm text-primary">
+                            Edição Consolidada: {registro.organizacao} ({registro.ug})
+                          </h6>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                              disabled={loading}
+                              className="gap-2 h-8"
+                            >
+                              <Check className="h-4 w-4" />
+                              Salvar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={handleCancelarEdicaoMemoria}
+                              disabled={loading}
+                              className="gap-2 h-8"
+                            >
+                              <XCircle className="h-4 w-4" />
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                        <Textarea
+                          value={memoriaEdit}
+                          onChange={(e) => setMemoriaEdit(e.target.value)}
+                          rows={15}
+                          className="font-mono text-xs whitespace-pre-wrap text-foreground"
+                          placeholder="Edite a memória de cálculo consolidada aqui..."
+                        />
+                      </Card>
+                    );
+                  }
+                  
+                  // Se não estiver editando, exibe a memória individual para cada item
                   return (
-                    <Card key={`memoria-${registro.id}`} className="p-4 bg-muted/30">
-                      <div className="flex items-center justify-between mb-2">
-                        <h6 className="font-bold text-sm text-primary">
-                          {registro.organizacao} ({registro.ug}) - {registro.categoria}
-                        </h6>
+                    <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-lg font-semibold text-foreground">
+                          OM: {registro.organizacao} ({registro.ug})
+                        </h4>
                         <div className="flex items-center gap-2">
-                          {!isEditing ? (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleIniciarEdicaoMemoria(registro)}
-                                disabled={loading}
-                                className="gap-2 h-8"
-                              >
-                                <Pencil className="h-4 w-4" />
-                                Editar
-                              </Button>
-                              {hasCustomMemoria && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
-                                  disabled={loading}
-                                  className="gap-2 text-muted-foreground h-8"
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                  Restaurar
-                                </Button>
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
-                                disabled={loading}
-                                className="gap-2 h-8"
-                              >
-                                <Check className="h-4 w-4" />
-                                Salvar
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleCancelarEdicaoMemoria}
-                                disabled={loading}
-                                className="gap-2 h-8"
-                              >
-                                <XCircle className="h-4 w-4" />
-                                Cancelar
-                              </Button>
-                            </>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleIniciarEdicaoMemoria(registro)}
+                            disabled={loading}
+                            className="gap-2 h-8"
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Editar Memória Consolidada
+                          </Button>
+                          {hasCustomMemoria && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                              disabled={loading}
+                              className="gap-2 text-muted-foreground h-8"
+                            >
+                              <XCircle className="h-4 w-4" />
+                              Restaurar Automática
+                            </Button>
                           )}
                         </div>
                       </div>
-                      <Textarea
-                        value={memoriaExibida}
-                        onChange={(e) => isEditing && setMemoriaEdit(e.target.value)}
-                        readOnly={!isEditing}
-                        rows={8}
-                        className="font-mono text-xs whitespace-pre-wrap text-foreground"
-                      />
-                    </Card>
+                      
+                      <div className="space-y-3">
+                        {registro.itens_equipamentos.map((item, itemIndex) => {
+                          const itemMemoria = generateItemMemoriaCalculo(
+                            item, 
+                            registro.dias_operacao, 
+                            registro.organizacao, 
+                            registro.ug, 
+                            registro.fase_atividade || 'Execução'
+                          );
+                          
+                          return (
+                            <Card key={itemIndex} className="p-3 bg-background border-l-4 border-primary/50">
+                              <h6 className="font-bold text-sm mb-2">
+                                {item.item} ({item.quantidade} un.)
+                              </h6>
+                              <pre className="font-mono text-xs whitespace-pre-wrap text-foreground">
+                                {itemMemoria}
+                              </pre>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Exibir a memória consolidada customizada, se existir */}
+                      {hasCustomMemoria && (
+                        <div className="pt-4 border-t">
+                          <h6 className="font-bold text-sm mb-2 text-destructive">
+                            Memória Consolidada Customizada (Usada na Exportação)
+                          </h6>
+                          <pre className="font-mono text-xs whitespace-pre-wrap text-muted-foreground border p-2 rounded">
+                            {registro.detalhamento_customizado}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
