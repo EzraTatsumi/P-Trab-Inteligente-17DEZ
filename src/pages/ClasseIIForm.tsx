@@ -40,7 +40,8 @@ interface ItemClasseII {
   item: string;
   quantidade: number;
   valor_mnt_dia: number;
-  categoria: Categoria; // Adicionado categoria ao item para detalhamento
+  categoria: Categoria;
+  memoria_customizada?: string | null; // NOVO CAMPO
 }
 
 interface FormDataClasseII {
@@ -57,7 +58,7 @@ interface ClasseIIRegistro {
   organizacao: string;
   ug: string;
   dias_operacao: number;
-  categoria: string; // Agora será 'CONSOLIDADO' ou a categoria do único item
+  categoria: string;
   itens_equipamentos: ItemClasseII[]; // Tipo corrigido
   valor_total: number;
   detalhamento: string;
@@ -89,7 +90,8 @@ export default function ClasseIIForm() {
     item: "",
     quantidade: 0,
     valor_mnt_dia: 0,
-    categoria: CATEGORIAS[0], // Inicializa com a primeira categoria
+    categoria: CATEGORIAS[0],
+    memoria_customizada: null,
   });
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   
@@ -97,9 +99,9 @@ export default function ClasseIIForm() {
   const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
-  // Removendo estados de edição de memória consolidada
-  const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
-  const [memoriaEdit, setMemoriaEdit] = useState<string>("");
+  // NOVOS ESTADOS para edição de memória de cálculo por item
+  const [editingItemMemoriaId, setEditingItemMemoriaId] = useState<{ registroId: string, itemIndex: number } | null>(null);
+  const [memoriaItemEdit, setMemoriaItemEdit] = useState<string>("");
 
   const { handleEnterToNextField } = useFormNavigation();
   const formRef = useRef<HTMLDivElement>(null);
@@ -164,7 +166,6 @@ export default function ClasseIIForm() {
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
-    // Agora buscamos apenas registros que não são 'LUBRIFICANTE' para evitar duplicação na exibição
     const { data, error } = await supabase
       .from("classe_ii_registros")
       .select("*, itens_equipamentos, detalhamento_customizado")
@@ -177,12 +178,14 @@ export default function ClasseIIForm() {
       return;
     }
 
-    // Filtra para garantir que apenas um registro por OM/UG seja exibido (o consolidado)
     const uniqueRecordsMap = new Map<string, ClasseIIRegistro>();
     (data || []).forEach(r => {
         const key = `${r.organizacao}-${r.ug}`;
-        // Como agora só deve haver um registro por OM/UG, o último encontrado é o que vale.
-        uniqueRecordsMap.set(key, r as ClasseIIRegistro);
+        const record = {
+            ...r,
+            itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseII[],
+        } as ClasseIIRegistro;
+        uniqueRecordsMap.set(key, record);
     });
 
     setRegistros(Array.from(uniqueRecordsMap.values()));
@@ -209,7 +212,6 @@ export default function ClasseIIForm() {
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const valorTotal = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
 
-    // Agrupar itens por categoria para melhor visualização na memória
     const itensPorCategoria = itens.reduce((acc, item) => {
         if (!acc[item.categoria]) { acc[item.categoria] = []; }
         acc[item.categoria].push(item);
@@ -226,7 +228,6 @@ export default function ClasseIIForm() {
         });
     });
     
-    // Remove a primeira quebra de linha
     detalhamentoItens = detalhamentoItens.trim();
 
     return `33.90.30 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
@@ -239,8 +240,12 @@ ${detalhamentoItens}
 Valor Total: ${formatCurrency(valorTotal)}.`;
   };
   
-  // NOVA FUNÇÃO: Detalhamento INDIVIDUAL por Item
+  // NOVA FUNÇÃO: Detalhamento INDIVIDUAL por Item (usa customizada se existir)
   const generateItemMemoriaCalculo = (item: ItemClasseII, diasOperacao: number, organizacao: string, ug: string, faseAtividade: string): string => {
+    if (item.memoria_customizada) {
+      return item.memoria_customizada;
+    }
+    
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
 
@@ -269,11 +274,12 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
       item: "",
       quantidade: 0,
       valor_mnt_dia: 0,
-      categoria: CATEGORIAS[0], // Inicializa com a primeira categoria
+      categoria: CATEGORIAS[0],
+      memoria_customizada: null,
     });
     setEditingItemIndex(null);
-    setEditingMemoriaId(null);
-    setMemoriaEdit("");
+    setEditingItemMemoriaId(null);
+    setMemoriaItemEdit("");
     setFasesAtividade(["Execução"]);
     setCustomFaseAtividade("");
   };
@@ -301,7 +307,8 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
         ...prev,
         item: itemName,
         valor_mnt_dia: Number(diretriz.valor_mnt_dia),
-        categoria: diretriz.categoria as Categoria, // Define a categoria do item
+        categoria: diretriz.categoria as Categoria,
+        memoria_customizada: null,
       }));
     }
   };
@@ -312,13 +319,20 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
       return;
     }
 
-    const novoItem: ItemClasseII = { ...itemTemp };
+    const novoItem: ItemClasseII = { 
+        ...itemTemp, 
+        categoria: selectedTab,
+        memoria_customizada: itemTemp.memoria_customizada || null,
+    };
+    
     let novosItens = [...form.itens];
     
-    // Verifica se o item já existe no formulário (exceto se estiver editando)
     const existingIndex = novosItens.findIndex(i => i.item === novoItem.item);
     
     if (editingItemIndex !== null) {
+      const originalItem = form.itens[editingItemIndex];
+      novoItem.memoria_customizada = originalItem.memoria_customizada || null;
+      
       novosItens[editingItemIndex] = novoItem;
       toast.success("Item atualizado!");
     } else if (existingIndex !== -1) {
@@ -334,11 +348,11 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
       item: "",
       quantidade: 0,
       valor_mnt_dia: 0,
-      categoria: selectedTab, // Mantém a categoria da aba atual para o próximo item
+      categoria: selectedTab,
+      memoria_customizada: null,
     });
     setEditingItemIndex(null);
     
-    // Foca de volta no seletor de item para adicionar o próximo
     if (itemSelectRef.current) {
       itemSelectRef.current.focus();
     }
@@ -347,12 +361,12 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
   const handleEditItem = (item: ItemClasseII, index: number) => {
     setItemTemp(item);
     setEditingItemIndex(index);
-    setSelectedTab(item.categoria); // Muda a aba para a categoria do item
+    setSelectedTab(item.categoria);
     if (formRef.current) { formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   };
 
   const handleCancelEditItem = () => {
-    setItemTemp({ item: "", quantidade: 0, valor_mnt_dia: 0, categoria: selectedTab });
+    setItemTemp({ item: "", quantidade: 0, valor_mnt_dia: 0, categoria: selectedTab, memoria_customizada: null });
     setEditingItemIndex(null);
   };
 
@@ -377,26 +391,30 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
 
     setLoading(true);
     
-    // --- CONSOLIDAÇÃO EM UM ÚNICO REGISTRO ---
     const valorTotal = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
     const detalhamento = generateDetalhamento(form.itens, form.dias_operacao, form.organizacao, faseFinalString);
+    
+    // Mapear itens para garantir que 'memoria_customizada' seja explicitamente null se estiver faltando
+    const finalItensToSave = form.itens.map(item => ({
+        ...item,
+        memoria_customizada: item.memoria_customizada || null,
+    }));
     
     const registroParaSalvar: TablesInsert<'classe_ii_registros'> = {
       p_trab_id: ptrabId,
       organizacao: form.organizacao,
       ug: form.ug,
       dias_operacao: form.dias_operacao,
-      categoria: 'CONSOLIDADO', // Usar um valor genérico para o registro consolidado
-      itens_equipamentos: JSON.parse(JSON.stringify(form.itens)),
+      categoria: 'CONSOLIDADO',
+      itens_equipamentos: finalItensToSave as any, // Salvar o array atualizado
       valor_total: valorTotal,
       detalhamento: detalhamento,
       fase_atividade: faseFinalString,
-      // Limpar detalhamento_customizado ao salvar um novo registro/atualização
-      detalhamento_customizado: null, 
+      detalhamento_customizado: null, // Ignorar o campo de detalhamento consolidado
     };
     
     try {
-      // 1. Deletar registros existentes para esta OM/UG (agora só deve haver um)
+      // 1. Deletar registros existentes para esta OM/UG
       const { error: deleteError } = await supabase
         .from("classe_ii_registros")
         .delete()
@@ -409,7 +427,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
       const { error: insertError } = await supabase.from("classe_ii_registros").insert([registroParaSalvar]);
       if (insertError) throw insertError;
       
-      toast.success("Registro de Classe II salvo com sucesso!");
+      toast.success(editingId ? "Registro de Classe II atualizado com sucesso!" : "Registro de Classe II salvo com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
       resetFormFields();
       fetchRegistros();
@@ -425,11 +443,9 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
     setLoading(true);
     resetFormFields();
     
-    // 1. O registro já contém todos os itens em itens_equipamentos
     const consolidatedItems = registro.itens_equipamentos || [];
     let selectedOmIdForEdit: string | undefined = undefined;
     
-    // 2. Buscar ID da OM
     try {
       const { data: omData, error: omError } = await supabase
         .from('organizacoes_militares')
@@ -444,7 +460,6 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
       console.error("Erro ao buscar OM para edição:", error);
     }
     
-    // 3. Preencher o formulário principal
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
@@ -454,33 +469,125 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
       itens: consolidatedItems,
     });
     
-    // 4. Preencher as fases
     const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
-    // 5. Rolar para o topo
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setLoading(false);
   };
-
-  // Funções de gerenciamento de memória customizada (REMOVIDAS)
-  // ...
-
-  // Filtra as diretrizes disponíveis para a aba selecionada
-  const itensDisponiveis = useMemo(() => {
-    return diretrizes.filter(d => d.categoria === selectedTab);
-  }, [diretrizes, selectedTab]);
   
-  // Calcula o valor total do item temporário
-  const valorItemTemp = itemTemp.quantidade * itemTemp.valor_mnt_dia * form.dias_operacao;
+  // --- Handlers para Edição de Memória por Item ---
+  const handleIniciarEdicaoMemoriaItem = (registroId: string, itemIndex: number) => {
+    const registro = registros.find(r => r.id === registroId);
+    if (!registro) return;
+    
+    const item = registro.itens_equipamentos[itemIndex];
+    if (!item) return;
+    
+    // Gerar memória automática (passando item sem customização para forçar a geração)
+    const autoMemoria = generateItemMemoriaCalculo(
+      { ...item, memoria_customizada: null }, 
+      registro.dias_operacao,
+      registro.organizacao,
+      registro.ug,
+      registro.fase_atividade || 'Execução'
+    );
+    
+    setEditingItemMemoriaId({ registroId, itemIndex });
+    setMemoriaItemEdit(item.memoria_customizada || autoMemoria);
+  };
+
+  const handleCancelarEdicaoMemoriaItem = () => {
+    setEditingItemMemoriaId(null);
+    setMemoriaItemEdit("");
+  };
+
+  const handleSalvarMemoriaCustomizadaItem = async () => {
+    if (!editingItemMemoriaId) return;
+    
+    const { registroId, itemIndex } = editingItemMemoriaId;
+    const registroToUpdate = registros.find(r => r.id === registroId);
+    if (!registroToUpdate) return;
+    
+    setLoading(true);
+    
+    try {
+      // 1. Atualizar o item na lista de itens_equipamentos
+      const novosItens = [...registroToUpdate.itens_equipamentos];
+      novosItens[itemIndex] = {
+        ...novosItens[itemIndex],
+        memoria_customizada: memoriaItemEdit.trim() || null,
+      };
+      
+      // 2. Salvar o registro completo de volta no DB
+      const { error } = await supabase
+        .from("classe_ii_registros")
+        .update({
+          itens_equipamentos: novosItens as any,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", registroId);
+
+      if (error) throw error;
+
+      toast.success("Memória de cálculo do item atualizada!");
+      handleCancelarEdicaoMemoriaItem();
+      fetchRegistros();
+    } catch (error) {
+      console.error("Erro ao salvar memória customizada do item:", error);
+      toast.error("Erro ao salvar memória customizada do item.");
+    } finally {
+      setLoading(false);
+    }
+  };
   
-  // Calcula o valor total do formulário
+  const handleRestaurarMemoriaAutomaticaItem = async () => {
+    if (!editingItemMemoriaId) return;
+    
+    if (!confirm("Deseja restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
+      return;
+    }
+    
+    const { registroId, itemIndex } = editingItemMemoriaId;
+    const registroToUpdate = registros.find(r => r.id === registroId);
+    if (!registroToUpdate) return;
+    
+    setLoading(true);
+    
+    try {
+      // 1. Atualizar o item na lista de itens_equipamentos, removendo a customização
+      const novosItens = [...registroToUpdate.itens_equipamentos];
+      novosItens[itemIndex] = {
+        ...novosItens[itemIndex],
+        memoria_customizada: null,
+      };
+      
+      // 2. Salvar o registro completo de volta no DB
+      const { error } = await supabase
+        .from("classe_ii_registros")
+        .update({
+          itens_equipamentos: novosItens as any,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", registroId);
+
+      if (error) throw error;
+
+      toast.success("Memória de cálculo do item restaurada!");
+      handleCancelarEdicaoMemoriaItem();
+      fetchRegistros();
+    } catch (error) {
+      console.error("Erro ao restaurar memória customizada do item:", error);
+      toast.error("Erro ao restaurar memória customizada do item.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  // --- Fim Handlers para Edição de Memória por Item ---
+
   const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
-  
-  // Agrupa os registros salvos por OM/UG para exibição na tabela (agora é apenas uma lista de registros)
   const registrosAgrupados = useMemo(() => {
-    // Como agora cada OM/UG deve ter apenas um registro consolidado, a lista de registros é o que precisamos.
     return registros;
   }, [registros]);
 
@@ -705,7 +812,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                             variant="ghost"
                             size="icon"
                             onClick={() => removerItem(index)}
-                            className="text-destructive hover:bg-destructive/10"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -777,7 +884,6 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                             size="icon"
                             onClick={() => {
                               if (confirm(`Deseja realmente deletar o registro de Classe II para ${om}?`)) {
-                                // Deletar o único registro desta OM/UG
                                 supabase.from("classe_ii_registros")
                                   .delete()
                                   .eq("id", registro.id)
@@ -800,9 +906,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                       <div className="space-y-2">
                         <p className="text-sm text-muted-foreground">Dias: {registro.dias_operacao} | Fases: {fases}</p>
                         
-                        {/* Detalhes por Categoria */}
                         <div className="space-y-1 pt-2">
-                          {/* Exibir resumo dos itens por categoria */}
                           {Object.entries(registro.itens_equipamentos.reduce((acc, item) => {
                             acc[item.categoria] = (acc[item.categoria] || 0) + item.quantidade;
                             return acc;
@@ -825,7 +929,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
               </div>
             )}
 
-            {/* 5. Memórias de Cálculos Detalhadas - AJUSTADO PARA ITERAR SOBRE ITENS */}
+            {/* 5. Memórias de Cálculos Detalhadas - AGORA COM EDIÇÃO POR ITEM */}
             {registros.length > 0 && (
               <div className="space-y-4 mt-8">
                 <h2 className="text-xl font-bold flex items-center gap-2">
@@ -834,43 +938,112 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                 </h2>
                 
                 {registros.map(registro => {
-                  // const isEditing = editingMemoriaId === registro.id; // Não é mais necessário
-                  // const hasCustomMemoria = !!registro.detalhamento_customizado; // Não é mais necessário
+                  const om = registro.organizacao;
+                  const ug = registro.ug;
                   
-                  // Apenas exibe a memória individual para cada item
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
-                      <div className="flex justify-between items-center">
-                        <h4 className="text-lg font-semibold text-foreground">
-                          OM: {registro.organizacao} ({registro.ug})
-                        </h4>
-                        {/* Botões de edição de memória consolidada removidos */}
-                      </div>
+                      <h4 className="text-lg font-semibold text-foreground">
+                        OM: {om} ({ug})
+                      </h4>
                       
                       <div className="space-y-3">
                         {registro.itens_equipamentos.map((item, itemIndex) => {
-                          const itemMemoria = generateItemMemoriaCalculo(
-                            item, 
-                            registro.dias_operacao, 
-                            registro.organizacao, 
-                            registro.ug, 
-                            registro.fase_atividade || 'Execução'
-                          );
+                          const isEditing = editingItemMemoriaId?.registroId === registro.id && editingItemMemoriaId?.itemIndex === itemIndex;
+                          const hasCustomMemoria = !!item.memoria_customizada;
+                          
+                          const itemMemoria = isEditing 
+                            ? memoriaItemEdit 
+                            : generateItemMemoriaCalculo(
+                                item, 
+                                registro.dias_operacao, 
+                                registro.organizacao, 
+                                registro.ug, 
+                                registro.fase_atividade || 'Execução'
+                              );
                           
                           return (
-                            <Card key={itemIndex} className="p-3 bg-background">
-                              <h6 className="font-bold text-sm mb-2">
-                                {item.item} ({item.quantidade} un.) - {item.categoria}
-                              </h6>
-                              <pre className="font-mono text-xs whitespace-pre-wrap text-foreground">
-                                {itemMemoria}
-                              </pre>
+                            <Card key={itemIndex} className="p-4 bg-background">
+                              <div className="flex items-center justify-between mb-2">
+                                <h6 className="font-bold text-sm">
+                                  {item.item} ({item.quantidade} un.) - {item.categoria}
+                                </h6>
+                                
+                                <div className="flex items-center gap-2">
+                                  {hasCustomMemoria && !isEditing && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Editada manualmente
+                                    </Badge>
+                                  )}
+                                  
+                                  {!isEditing ? (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleIniciarEdicaoMemoriaItem(registro.id, itemIndex)}
+                                        disabled={loading}
+                                        className="gap-2"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                        Editar
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="default"
+                                        onClick={handleSalvarMemoriaCustomizadaItem}
+                                        disabled={loading}
+                                        className="gap-2"
+                                      >
+                                        <Check className="h-4 w-4" />
+                                        Salvar
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={handleCancelarEdicaoMemoriaItem}
+                                        disabled={loading}
+                                        className="gap-2"
+                                      >
+                                        <XCircle className="h-4 w-4" />
+                                        Cancelar
+                                      </Button>
+                                      {hasCustomMemoria && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={handleRestaurarMemoriaAutomaticaItem}
+                                          disabled={loading}
+                                          className="gap-2 text-muted-foreground"
+                                        >
+                                          <XCircle className="h-4 w-4" />
+                                          Restaurar
+                                        </Button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <Card className="p-3 bg-muted/50">
+                                <Textarea
+                                  value={itemMemoria}
+                                  onChange={(e) => isEditing && setMemoriaItemEdit(e.target.value)}
+                                  readOnly={!isEditing}
+                                  rows={10}
+                                  className={cn(
+                                    "font-mono text-xs whitespace-pre-wrap text-foreground",
+                                    isEditing && "border-primary focus:ring-2 focus:ring-primary"
+                                  )}
+                                />
+                              </Card>
                             </Card>
                           );
                         })}
                       </div>
-                      
-                      {/* Memória Consolidada Customizada removida */}
                     </div>
                   );
                 })}
