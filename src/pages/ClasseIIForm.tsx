@@ -792,7 +792,7 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
               </div>
             )}
 
-            {/* 4. Registros Salvos (OMs Cadastradas) - SUMMARY SECTION */}
+            {/* 4. Registros Salvos (OMs Cadastradas) */}
             {registrosAgrupados.length > 0 && (
               <div className="space-y-4 mt-6">
                 <h2 className="text-xl font-bold flex items-center gap-2">
@@ -866,91 +866,83 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
                           <span className="font-bold text-base">TOTAL OM</span>
                           <span className="font-extrabold text-xl text-primary">{formatCurrency(totalOM)}</span>
                         </div>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* 5. Memórias de Cálculos Detalhadas - NEW SECTION */}
-            {registros.length > 0 && (
-              <div className="space-y-4 mt-8">
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  <ClipboardList className="h-5 w-5 text-primary" />
-                  Memórias de Cálculos Detalhadas
-                </h2>
-                
-                {registros.map(registro => {
-                  const isEditing = editingMemoriaId === registro.id;
-                  const hasCustomMemoria = !!registro.detalhamento_customizado;
-                  const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || registro.detalhamento || "");
-                  
-                  return (
-                    <Card key={`memoria-${registro.id}`} className="p-4 bg-muted/30">
-                      <div className="flex items-center justify-between mb-2">
-                        <h6 className="font-bold text-sm text-primary">
-                          {registro.organizacao} ({registro.ug}) - {registro.categoria}
-                        </h6>
-                        <div className="flex items-center gap-2">
-                          {!isEditing ? (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleIniciarEdicaoMemoria(registro)}
-                                disabled={loading}
-                                className="gap-2 h-8"
-                              >
-                                <Pencil className="h-4 w-4" />
-                                Editar
-                              </Button>
-                              {hasCustomMemoria && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
-                                  disabled={loading}
-                                  className="gap-2 text-muted-foreground h-8"
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                  Restaurar
-                                </Button>
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
-                                disabled={loading}
-                                className="gap-2 h-8"
-                              >
-                                <Check className="h-4 w-4" />
-                                Salvar
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleCancelarEdicaoMemoria}
-                                disabled={loading}
-                                className="gap-2 h-8"
-                              >
-                                <XCircle className="h-4 w-4" />
-                                Cancelar
-                              </Button>
-                            </>
-                          )}
+                        
+                        {/* Memórias de Cálculo */}
+                        <div className="space-y-4 pt-4">
+                          <h5 className="font-semibold text-sm">Memórias de Cálculo por Categoria:</h5>
+                          {registrosOM.map(registro => {
+                            const isEditing = editingMemoriaId === registro.id;
+                            const hasCustomMemoria = !!registro.detalhamento_customizado;
+                            const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || registro.detalhamento || "");
+                            
+                            return (
+                              <Card key={`memoria-${registro.id}`} className="p-4 bg-background">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h6 className="font-bold text-sm text-primary">{registro.categoria}</h6>
+                                  <div className="flex items-center gap-2">
+                                    {!isEditing ? (
+                                      <>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleIniciarEdicaoMemoria(registro)}
+                                          disabled={loading}
+                                          className="gap-2 h-8"
+                                        >
+                                          <Pencil className="h-4 w-4" />
+                                          Editar
+                                        </Button>
+                                        {hasCustomMemoria && (
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                                            disabled={loading}
+                                            className="gap-2 text-muted-foreground h-8"
+                                          >
+                                            <XCircle className="h-4 w-4" />
+                                            Restaurar
+                                          </Button>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Button
+                                          size="sm"
+                                          variant="default"
+                                          onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                          disabled={loading}
+                                          className="gap-2 h-8"
+                                        >
+                                          <Check className="h-4 w-4" />
+                                          Salvar
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={handleCancelarEdicaoMemoria}
+                                          disabled={loading}
+                                          className="gap-2 h-8"
+                                        >
+                                          <XCircle className="h-4 w-4" />
+                                          Cancelar
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                <Textarea
+                                  value={memoriaExibida}
+                                  onChange={(e) => isEditing && setMemoriaEdit(e.target.value)}
+                                  readOnly={!isEditing}
+                                  rows={8}
+                                  className="font-mono text-xs whitespace-pre-wrap text-foreground"
+                                />
+                              </Card>
+                            );
+                          })}
                         </div>
                       </div>
-                      <Textarea
-                        value={memoriaExibida}
-                        onChange={(e) => isEditing && setMemoriaEdit(e.target.value)}
-                        readOnly={!isEditing}
-                        rows={8}
-                        className="font-mono text-xs whitespace-pre-wrap text-foreground"
-                      />
                     </Card>
                   );
                 })}
