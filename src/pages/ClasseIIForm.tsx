@@ -86,14 +86,8 @@ export default function ClasseIIForm() {
     itens: [],
   });
   
-  const [itemTemp, setItemTemp] = useState<ItemClasseII>({
-    item: "",
-    quantidade: 0,
-    valor_mnt_dia: 0,
-    categoria: CATEGORIAS[0],
-    memoria_customizada: null,
-  });
-  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  // NOVO ESTADO: Lista de itens da categoria atual com quantidades editáveis
+  const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemClasseII[]>([]);
   
   const [fasesAtividade, setFasesAtividade] = useState<string[]>(["Execução"]);
   const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
@@ -105,7 +99,6 @@ export default function ClasseIIForm() {
 
   const { handleEnterToNextField } = useFormNavigation();
   const formRef = useRef<HTMLDivElement>(null);
-  const itemSelectRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!ptrabId) {
@@ -118,13 +111,56 @@ export default function ClasseIIForm() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId]);
 
-  // Define itensDisponiveis com base na aba selecionada
+  // Efeito para gerenciar a lista de itens da categoria atual
+  useEffect(() => {
+    // Só carrega se as diretrizes estiverem prontas e a OM estiver selecionada (para evitar resetar o form.itens)
+    if (diretrizes.length > 0 && form.organizacao) {
+        // 1. Obter todos os itens disponíveis para a aba atual
+        const availableItems = diretrizes
+            .filter(d => d.categoria === selectedTab)
+            .map(d => ({
+                item: d.item,
+                quantidade: 0, // Quantidade padrão
+                valor_mnt_dia: Number(d.valor_mnt_dia),
+                categoria: d.categoria as Categoria,
+                memoria_customizada: null,
+            }));
+
+        // 2. Mapear itens existentes no formulário principal para a categoria atual
+        const existingItemsMap = new Map<string, ItemClasseII>();
+        form.itens.filter(i => i.categoria === selectedTab).forEach(item => {
+            existingItemsMap.set(item.item, item);
+        });
+
+        // 3. Mesclar: usar o item existente (com quantidade e memória) ou o item disponível (com quantidade 0)
+        const mergedItems = availableItems.map(availableItem => {
+            const existing = existingItemsMap.get(availableItem.item);
+            return existing || availableItem;
+        });
+
+        setCurrentCategoryItems(mergedItems);
+    } else if (diretrizes.length > 0 && !form.organizacao) {
+        // Se a OM não estiver selecionada, apenas mostra os itens disponíveis com quantidade 0
+        const availableItems = diretrizes
+            .filter(d => d.categoria === selectedTab)
+            .map(d => ({
+                item: d.item,
+                quantidade: 0,
+                valor_mnt_dia: Number(d.valor_mnt_dia),
+                categoria: d.categoria as Categoria,
+                memoria_customizada: null,
+            }));
+        setCurrentCategoryItems(availableItems);
+    } else {
+        setCurrentCategoryItems([]);
+    }
+  }, [selectedTab, diretrizes, form.itens, form.organizacao, form.dias_operacao]);
+
+
   const itensDisponiveis = useMemo(() => {
     return diretrizes.filter(d => d.categoria === selectedTab);
   }, [diretrizes, selectedTab]);
-
-  // Calcula o valor total do item temporário
-  const valorItemTemp = itemTemp.quantidade * itemTemp.valor_mnt_dia * form.dias_operacao;
+  
 
   const loadDiretrizes = async () => {
     try {
@@ -199,7 +235,6 @@ export default function ClasseIIForm() {
     setRegistros(Array.from(uniqueRecordsMap.values()));
   };
 
-  // Função para formatar as fases de forma natural no texto
   const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
     if (!faseCSV) return 'operação';
     
@@ -214,7 +249,6 @@ export default function ClasseIIForm() {
     return `${demaisFases} e ${ultimaFase}`;
   };
 
-  // Função de Detalhamento CONSOLIDADA (mantida para salvar no DB)
   const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organizacao: string, faseAtividade: string): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
@@ -248,8 +282,7 @@ ${detalhamentoItens}
 Valor Total: ${formatCurrency(valorTotal)}.`;
   };
   
-  // NOVA FUNÇÃO: Detalhamento INDIVIDUAL por Item (usa customizada se existir)
-  const generateItemMemoriaCalculo = (item: ItemClasseII, diasOperacao: number, organizacao: string, ug: string, faseAtividade: string): string => {
+  const generateItemMemoriaCalculo = (item: ItemClasseII, diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
     if (item.memoria_customizada) {
       return item.memoria_customizada;
     }
@@ -278,16 +311,12 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
       dias_operacao: 0,
       itens: [],
     });
-    setItemTemp({
-      item: "",
-      quantidade: 0,
-      valor_mnt_dia: 0,
-      categoria: CATEGORIAS[0],
-      memoria_customizada: null,
-    });
-    setEditingItemIndex(null);
+    // Resetar estados de edição de item
     setEditingItemMemoriaId(null);
     setMemoriaItemEdit("");
+    // Resetar currentCategoryItems (será re-populado pelo useEffect)
+    setCurrentCategoryItems([]);
+    
     setFasesAtividade(["Execução"]);
     setCustomFaseAtividade("");
   };
@@ -302,89 +331,38 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
 
   const handleFaseChange = (fase: string, checked: boolean) => {
     if (checked) {
-      setFasesAtividade([...fasesAtividade, fase]);
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
     } else {
-      setFasesAtividade(fasesAtividade.filter(f => f !== fase));
+      setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
   };
 
-  const handleItemSelect = (itemName: string) => {
-    const diretriz = diretrizes.find(d => d.item === itemName && d.categoria === selectedTab);
-    if (diretriz) {
-      setItemTemp(prev => ({
-        ...prev,
-        item: itemName,
-        valor_mnt_dia: Number(diretriz.valor_mnt_dia),
-        categoria: diretriz.categoria as Categoria,
-        memoria_customizada: null,
-      }));
-    }
+  // NOVO HANDLER: Atualiza a quantidade de um item na lista expandida
+  const handleQuantityChange = (itemIndex: number, quantity: number) => {
+    const newItems = [...currentCategoryItems];
+    // Garante que a quantidade não seja negativa
+    newItems[itemIndex].quantidade = Math.max(0, quantity);
+    setCurrentCategoryItems(newItems);
   };
 
-  const adicionarOuAtualizarItem = () => {
-    if (!itemTemp.item || itemTemp.quantidade <= 0 || itemTemp.valor_mnt_dia <= 0) {
-      toast.error("Preencha todos os campos do item (Item, Quantidade, Valor)");
-      return;
+  // NOVO HANDLER: Salva os itens da lista expandida para o form.itens principal
+  const handleUpdateCategoryItems = () => {
+    if (!form.organizacao || form.dias_operacao <= 0) {
+        toast.error("Preencha a OM e os Dias de Operação antes de salvar itens.");
+        return;
     }
 
-    const novoItem: ItemClasseII = { 
-        ...itemTemp, 
-        categoria: selectedTab,
-        memoria_customizada: itemTemp.memoria_customizada || null,
-    };
-    
-    let novosItens = [...form.itens];
-    
-    const existingIndex = novosItens.findIndex(i => i.item === novoItem.item);
-    
-    if (editingItemIndex !== null) {
-      const originalItem = form.itens[editingItemIndex];
-      // Ao atualizar, mantemos a memória customizada original do item, se houver
-      novoItem.memoria_customizada = originalItem.memoria_customizada || null;
-      
-      novosItens[editingItemIndex] = novoItem;
-      toast.success("Item atualizado!");
-    } else if (existingIndex !== -1) {
-      toast.error("Este item já foi adicionado. Edite o item existente ou remova-o primeiro.");
-      return;
-    } else {
-      novosItens.push(novoItem);
-      toast.success("Item adicionado!");
-    }
-    
-    setForm({ ...form, itens: novosItens });
-    setItemTemp({
-      item: "",
-      quantidade: 0,
-      valor_mnt_dia: 0,
-      categoria: selectedTab,
-      memoria_customizada: null,
-    });
-    setEditingItemIndex(null);
-    
-    if (itemSelectRef.current) {
-      itemSelectRef.current.focus();
-    }
-  };
+    // 1. Itens válidos da categoria atual (quantidade > 0)
+    const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
 
-  const handleEditItem = (item: ItemClasseII, index: number) => {
-    setItemTemp(item);
-    setEditingItemIndex(index);
-    setSelectedTab(item.categoria);
-    if (formRef.current) { formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-  };
+    // 2. Itens de outras categorias no formulário principal
+    const otherCategoryItems = form.itens.filter(item => item.categoria !== selectedTab);
 
-  const handleCancelEditItem = () => {
-    setItemTemp({ item: "", quantidade: 0, valor_mnt_dia: 0, categoria: selectedTab, memoria_customizada: null });
-    setEditingItemIndex(null);
-  };
+    // 3. Mesclar as listas
+    const newFormItems = [...otherCategoryItems, ...itemsToKeep];
 
-  const removerItem = (index: number) => {
-    if (!confirm("Deseja realmente remover este item?")) return;
-    const novosItens = form.itens.filter((_, i) => i !== index);
-    setForm({ ...form, itens: novosItens });
-    if (editingItemIndex === index) { handleCancelEditItem(); }
-    toast.success("Item removido!");
+    setForm({ ...form, itens: newFormItems });
+    toast.success(`Itens da categoria ${selectedTab} atualizados!`);
   };
 
   const handleSalvarRegistros = async () => {
@@ -475,12 +453,20 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
       organizacao: registro.organizacao,
       ug: registro.ug,
       dias_operacao: registro.dias_operacao,
-      itens: consolidatedItems,
+      itens: consolidatedItems, // Load all items here
     });
     
     const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
+    
+    // Set the initial tab to the category of the first item, if available
+    if (consolidatedItems.length > 0) {
+        const firstCategory = consolidatedItems[0].categoria;
+        setSelectedTab(firstCategory);
+    } else {
+        setSelectedTab(CATEGORIAS[0]);
+    }
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setLoading(false);
@@ -500,7 +486,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
       registro.dias_operacao,
       registro.organizacao,
       registro.ug,
-      registro.fase_atividade || 'Execução'
+      registro.fase_atividade
     );
     
     setEditingItemMemoriaId({ registroId, itemIndex });
@@ -707,10 +693,10 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
               </div>
             </div>
 
-            {/* 2. Adicionar Itens por Categoria (Aba) */}
+            {/* 2. Adicionar Itens por Categoria (Aba) - REESTRUTURADO */}
             {form.organizacao && form.dias_operacao > 0 && (
               <div className="space-y-4 border-b pb-4" ref={formRef}>
-                <h3 className="text-lg font-semibold">2. Adicionar Itens</h3>
+                <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
                 <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as Categoria)}>
                   <TabsList className="grid w-full grid-cols-3">
@@ -722,69 +708,68 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                   {CATEGORIAS.map(cat => (
                     <TabsContent key={cat} value={cat} className="mt-4">
                       <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                          <div className="space-y-2 col-span-2">
-                            <Label>Item *</Label>
-                            <Select 
-                              value={itemTemp.item}
-                              onValueChange={handleItemSelect}
-                            >
-                              <SelectTrigger ref={itemSelectRef}>
-                                <SelectValue placeholder="Selecione o item..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {itensDisponiveis.map(d => (
-                                  <SelectItem key={d.item} value={d.item}>
-                                    {d.item} ({formatCurrency(Number(d.valor_mnt_dia))}/dia)
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label>Quantidade *</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={itemTemp.quantidade === 0 ? "" : itemTemp.quantidade.toString()}
-                              onChange={(e) => setItemTemp({ ...itemTemp, quantidade: parseInt(e.target.value) || 0 })}
-                              placeholder="Ex: 10"
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Button 
-                              type="button" 
-                              onClick={adicionarOuAtualizarItem} 
-                              className="w-full" 
-                              disabled={!itemTemp.item || itemTemp.quantidade <= 0}
-                            >
-                              {editingItemIndex !== null ? "Atualizar Item" : "Adicionar Item"}
-                            </Button>
-                          </div>
+                        
+                        <div className="max-h-[400px] overflow-y-auto space-y-3">
+                            {currentCategoryItems.length === 0 ? (
+                                <p className="text-muted-foreground text-center py-4">
+                                    Nenhum item de diretriz encontrado para esta categoria.
+                                </p>
+                            ) : (
+                                currentCategoryItems.map((item, index) => {
+                                    const itemTotal = item.quantidade * item.valor_mnt_dia * form.dias_operacao;
+                                    
+                                    return (
+                                        <div key={item.item} className="grid grid-cols-12 gap-4 items-center p-2 border-b border-border/50 hover:bg-background/50 transition-colors">
+                                            <div className="col-span-6">
+                                                <Label className="font-medium text-sm">{item.item}</Label>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {formatCurrency(item.valor_mnt_dia)}/dia
+                                                </p>
+                                            </div>
+                                            
+                                            <div className="col-span-3 space-y-1">
+                                                <Label htmlFor={`qty-${item.item}`} className="text-xs">Quantidade</Label>
+                                                <Input
+                                                    id={`qty-${item.item}`}
+                                                    type="number"
+                                                    min="0"
+                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8"
+                                                    value={item.quantidade === 0 ? "" : item.quantidade.toString()}
+                                                    onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
+                                                    placeholder="0"
+                                                    onKeyDown={handleEnterToNextField}
+                                                />
+                                            </div>
+                                            
+                                            <div className="col-span-3 text-right">
+                                                <Label className="text-xs text-muted-foreground">Total</Label>
+                                                <p className="font-semibold text-sm">
+                                                    {formatCurrency(itemTotal)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
                         
-                        {itemTemp.item && (
-                          <div className="flex justify-between items-center text-sm p-2 bg-background rounded-md border">
-                            <span className="text-muted-foreground">Valor Mnt/Dia: {formatCurrency(itemTemp.valor_mnt_dia)}</span>
-                            <span className="font-bold">Valor Calculado: {formatCurrency(valorItemTemp)}</span>
-                          </div>
-                        )}
-                        
-                        {editingItemIndex !== null && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleCancelEditItem}
-                            className="mt-2"
-                          >
-                            <XCircle className="h-4 w-4 mr-2" />
-                            Cancelar Edição do Item
-                          </Button>
-                        )}
+                        <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
+                            <span className="font-bold text-sm">TOTAL DA CATEGORIA</span>
+                            <span className="font-extrabold text-lg text-primary">
+                                {formatCurrency(currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0))}
+                            </span>
+                        </div>
+
+                        <div className="flex justify-end">
+                            <Button 
+                                type="button" 
+                                onClick={handleUpdateCategoryItems} 
+                                className="w-full md:w-auto" 
+                                disabled={!form.organizacao || form.dias_operacao <= 0}
+                            >
+                                Salvar Itens da Categoria
+                            </Button>
+                        </div>
                       </div>
                     </TabsContent>
                   ))}
@@ -799,32 +784,13 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                 
                 <div className="space-y-2">
                   {form.itens.map((item, index) => (
-                    <Card key={index} className="p-3">
+                    <Card key={item.item} className="p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <p className="font-medium">{item.item} <Badge variant="secondary" className="ml-2 text-xs">{item.categoria}</Badge></p>
                           <p className="text-sm text-muted-foreground">
                             {item.quantidade} unidade(s) • {formatCurrency(item.valor_mnt_dia)}/dia • Total: {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
                           </p>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditItem(item, index)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removerItem(index)}
-                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </div>
                       </div>
                     </Card>
@@ -968,7 +934,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                                 registro.dias_operacao, 
                                 registro.organizacao, 
                                 registro.ug, 
-                                registro.fase_atividade || 'Execução'
+                                registro.fase_atividade
                               );
                           
                           return (
