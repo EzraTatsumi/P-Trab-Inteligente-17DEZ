@@ -763,7 +763,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
         grupo.linhasClasseII.forEach((linha) => {
           const row = worksheet.getRow(currentRow);
           // Coluna A: DESPESAS
-          row.getCell('A').value = `CLASSE II - MATERIAL DE INTENDÊNCIA\n${linha.item.categoria.toUpperCase()}\n${linha.item.item.toUpperCase()}`;
+          row.getCell('A').value = `CLASSE II - MATERIAL DE INTENDÊNCIA\n${linha.item.categoria.toUpperCase()}`;
           
           row.getCell('B').value = `${linha.organizacao}\n(${linha.ug})`;
           row.getCell('C').value = linha.valor_total_item;
@@ -1273,9 +1273,8 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                     <tr key={`classe-ii-${linha.registroId}-${itemIndex}`}>
                       <td className="col-despesas">
                         <div>CLASSE II - MATERIAL DE INTENDÊNCIA</div>
-                        {/* CORREÇÃO: Exibir apenas a categoria e o item em CAIXA ALTA */}
+                        {/* CORREÇÃO: Exibir apenas a categoria em CAIXA ALTA */}
                         <div className="uppercase">{linha.item.categoria}</div>
-                        <div className="uppercase">{linha.item.item}</div>
                       </td>
                       <td className="col-om">
                         <div>{linha.organizacao}</div>
