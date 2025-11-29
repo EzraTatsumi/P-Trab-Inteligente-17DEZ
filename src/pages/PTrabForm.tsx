@@ -228,13 +228,13 @@ const PTrabForm = () => {
           {/* Coluna Esquerda: Dados do P Trab, Resumo de Custos e Crédito Disponível */}
           <div className="lg:col-span-1 space-y-4">
             <Card className="shadow-lg">
-              <CardHeader className="pb-2 pt-3">
+              <CardHeader className="pb-1 pt-3"> {/* Reduzido padding vertical */}
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <FileText className="h-5 w-5 text-primary" />
                   Dados do P Trab
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-2">
+              <CardContent className="pt-2 pb-3"> {/* Reduzido padding vertical */}
                 <div className="grid grid-cols-2 gap-y-1 gap-x-4">
                   <div className="space-y-0.5">
                     <Label className="text-muted-foreground text-xs">Número do PTrab</Label>
@@ -279,7 +279,7 @@ const PTrabForm = () => {
 
           {/* Coluna Direita: Seleção de Classes/Itens */}
           <div className="lg:col-span-2">
-            <Card className="shadow-lg h-full">
+            <Card className="shadow-lg">
               <CardHeader>
                 <CardTitle>Selecione o Tipo de Material</CardTitle>
                 <CardDescription>
