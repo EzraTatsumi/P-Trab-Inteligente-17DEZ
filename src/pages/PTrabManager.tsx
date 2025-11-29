@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, LogOut, FileText, Printer, Settings, MoreVertical, Pencil, Copy, Download, MessageSquare, ArrowRight } from "lucide-react";
+import { Plus, Trash2, LogOut, FileText, Printer, Settings, MoreVertical, Pencil, Copy, Download, MessageSquare, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
@@ -11,7 +11,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PTrabConsolidationDialog } from "@/components/PTrabConsolidationDialog";
 import { sanitizeError } from "@/lib/errorUtils";
-import { Loader2 } from "@/components/ui/loader";
 
 type PTrab = Tables<'p_trab'>;
 type ClasseIRegistro = Tables<'classe_i_registros'>;
@@ -251,7 +250,7 @@ export default function PTrabManager() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Gerenciamento de P-Trabs</h1>
           <div className="flex gap-3">
-            <Button variant="outline" onClick={() => navigate("/config")}>
+            <Button variant="outline" onClick={() => navigate("/config/visualizacao")}>
               <Settings className="mr-2 h-4 w-4" />
               Configurações
             </Button>
@@ -295,7 +294,7 @@ export default function PTrabManager() {
                           {ptrab.organizacao} ({ptrab.codug_om}) | {ptrab.comando_militar_area}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Início: {ptrab.data_inicio} | Fim: {ptrab.data_fim}
+                          Início: {ptrab.periodo_inicio} | Fim: {ptrab.periodo_fim}
                         </p>
                       </div>
 
