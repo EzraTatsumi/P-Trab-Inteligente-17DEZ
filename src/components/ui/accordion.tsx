@@ -21,7 +21,7 @@ const AccordionItem = React.forwardRef<
 AccordionItem.displayName = "AccordionItem"
 
 interface AccordionTriggerProps extends React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger> {
-  simple?: boolean; // Novo prop para desativar os textos de detalhe
+  simple?: boolean; // Novo prop para estilo simplificado
 }
 
 const AccordionTrigger = React.forwardRef<
@@ -32,39 +32,18 @@ const AccordionTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>div>svg]:rotate-180",
+        "flex flex-1 items-center justify-between py-4 font-medium transition-all [&[data-state=open]>svg]:rotate-180",
+        simple ? "text-sm" : "text-base", // Ajuste de tamanho de fonte
         className
       )}
       {...props}
     >
       {children}
-      <div className="flex items-center space-x-2">
-        {!simple && (
-          <>
-            {/* Aviso para mais detalhes (Visível quando fechado) */}
-            <span className={cn(
-              "text-sm text-muted-foreground",
-              "group-data-[state=open]:hidden"
-            )}>
-              Mais detalhes
-            </span>
-            
-            {/* Aviso para menos detalhes (Visível quando aberto) */}
-            <span className={cn(
-              "text-sm text-muted-foreground",
-              "group-data-[state=closed]:hidden"
-            )}>
-              Menos detalhes
-            </span>
-          </>
-        )}
-        
-        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 text-muted-foreground" />
-      </div>
+      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ))
-AccordionTrigger.displayName = "AccordionTrigger"
+AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
 
 const AccordionContent = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Content>,
@@ -78,6 +57,7 @@ const AccordionContent = React.forwardRef<
     <div className={cn("pb-4 pt-0", className)}>{children}</div>
   </AccordionPrimitive.Content>
 ))
+
 AccordionContent.displayName = "AccordionContent"
 
 export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }

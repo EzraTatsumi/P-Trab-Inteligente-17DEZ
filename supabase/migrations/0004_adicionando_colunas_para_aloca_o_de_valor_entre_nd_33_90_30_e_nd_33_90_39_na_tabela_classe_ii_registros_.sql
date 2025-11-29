@@ -1,3 +1,0 @@
-ALTER TABLE public.classe_ii_registros
-ADD COLUMN valor_nd_30 NUMERIC DEFAULT 0 NOT NULL,
-ADD COLUMN valor_nd_39 NUMERIC DEFAULT 0 NOT NULL;
