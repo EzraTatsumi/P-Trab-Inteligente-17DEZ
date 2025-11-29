@@ -87,6 +87,11 @@ const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
     'Material de Estacionamento': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
 };
 
+// Função para comparar números de ponto flutuante com tolerância
+const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
+    return Math.abs(a - b) < tolerance;
+};
+
 // Helper para agrupar itens de um registro por categoria
 const groupRecordItemsByCategory = (items: ItemClasseII[]) => {
     return items.reduce((acc, item) => {
@@ -505,8 +510,13 @@ export default function ClasseIIForm() {
     const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
     const finalND30Value = categoryTotalValue - finalND39Value;
     
-    if (categoryTotalValue > 0 && (finalND30Value + finalND39Value) !== categoryTotalValue) {
+    if (categoryTotalValue > 0 && !areNumbersEqual(finalND30Value + finalND39Value, categoryTotalValue)) {
         toast.error("Erro de cálculo: A soma de ND 30 e ND 39 deve ser igual ao Total da Categoria.");
+        return;
+    }
+    
+    if (categoryTotalValue > 0 && (!categoryAllocations[selectedTab].om_destino_recurso || !categoryAllocations[selectedTab].ug_destino_recurso)) {
+        toast.error("Selecione a OM de destino do recurso antes de salvar a alocação.");
         return;
     }
 
@@ -542,6 +552,8 @@ export default function ClasseIIForm() {
   const totalND39Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_39_value, 0);
 
   const totalAlocado = totalND30Final + totalND39Final;
+  
+  const isTotalAlocadoCorrect = areNumbersEqual(valorTotalForm, totalAlocado);
 
 
   const handleSalvarRegistros = async () => {
@@ -554,6 +566,11 @@ export default function ClasseIIForm() {
     if (customFaseAtividade.trim()) { fasesFinais = [...fasesFinais, customFaseAtividade.trim()]; }
     const faseFinalString = fasesFinais.filter(f => f).join('; ');
     if (!faseFinalString) { toast.error("Selecione ou digite pelo menos uma Fase da Atividade."); return; }
+    
+    if (!isTotalAlocadoCorrect) {
+        toast.error("O valor total dos itens não corresponde ao total alocado. Clique em 'Salvar Itens da Categoria' em todas as abas ativas.");
+        return;
+    }
 
     setLoading(true);
     
@@ -592,7 +609,7 @@ export default function ClasseIIForm() {
         const valorTotalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
         
         // Final check: Ensure total allocated matches total calculated value for this category
-        if (valorTotalCategoria !== (allocation.nd_30_value + allocation.nd_39_value)) {
+        if (!areNumbersEqual(valorTotalCategoria, (allocation.nd_30_value + allocation.nd_39_value))) {
             toast.error(`Erro de alocação na categoria ${categoria}: O valor total dos itens (${formatCurrency(valorTotalCategoria)}) não corresponde ao total alocado (${formatCurrency(allocation.nd_30_value + allocation.nd_39_value)}). Salve a categoria novamente.`);
             setLoading(false);
             return;
@@ -1008,7 +1025,7 @@ export default function ClasseIIForm() {
                                 </div>
                                 <div className="flex justify-between text-sm font-bold border-t pt-2">
                                     <span>TOTAL ALOCADO:</span>
-                                    <span className={cn(currentCategoryTotalValue === (nd30ValueTemp + nd39ValueTemp) ? "text-primary" : "text-destructive")}>
+                                    <span className={cn(areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) ? "text-primary" : "text-destructive")}>
                                         {formatCurrency(nd30ValueTemp + nd39ValueTemp)}
                                     </span>
                                 </div>
@@ -1021,7 +1038,7 @@ export default function ClasseIIForm() {
                                 type="button" 
                                 onClick={handleUpdateCategoryItems} 
                                 className="w-full md:w-auto" 
-                                disabled={!form.organizacao || form.dias_operacao <= 0 || currentCategoryTotalValue !== (nd30ValueTemp + nd39ValueTemp) || !categoryAllocations[cat].om_destino_recurso}
+                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || !categoryAllocations[cat].om_destino_recurso}
                             >
                                 Salvar Itens da Categoria
                             </Button>
@@ -1038,6 +1055,17 @@ export default function ClasseIIForm() {
               <div className="space-y-4 border-b pb-4">
                 <h3 className="text-lg font-semibold">3. Itens Adicionados ({form.itens.length})</h3>
                 
+                {/* Alerta de Validação Final */}
+                {!isTotalAlocadoCorrect && (
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="font-medium">
+                            Atenção: O Custo Total dos Itens ({formatCurrency(valorTotalForm)}) não corresponde ao Total Alocado ({formatCurrency(totalAlocado)}). 
+                            Certifique-se de clicar em "Salvar Itens da Categoria" em todas as abas que contêm itens.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 <div className="space-y-4">
                   {Object.entries(itensAgrupadosPorCategoria).map(([categoria, itens]) => {
                     const totalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
@@ -1080,7 +1108,7 @@ export default function ClasseIIForm() {
                                 <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
                                 <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
                             </div>
-                            {allocation.total_valor !== totalCategoria && (
+                            {!areNumbersEqual(allocation.total_valor, totalCategoria) && (
                                 <p className="text-xs text-destructive flex items-center gap-1 pt-1">
                                     <AlertCircle className="h-3 w-3" />
                                     Valores desatualizados. Salve a categoria novamente.
@@ -1099,8 +1127,6 @@ export default function ClasseIIForm() {
                   </span>
                 </div>
                 
-                {/* REMOVIDO: NOVO BLOCO DE ALOCAÇÃO GLOBAL (RESUMO) */}
-                
                 <div className="flex gap-3 pt-4 justify-end">
                   <Button
                     variant="outline"
@@ -1113,7 +1139,7 @@ export default function ClasseIIForm() {
                   <Button 
                     type="button" 
                     onClick={handleSalvarRegistros} 
-                    disabled={loading || !form.organizacao || form.itens.length === 0 || valorTotalForm !== totalAlocado}
+                    disabled={loading || !form.organizacao || form.itens.length === 0 || !isTotalAlocadoCorrect}
                   >
                     {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")}
                   </Button>
