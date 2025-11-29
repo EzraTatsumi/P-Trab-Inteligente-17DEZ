@@ -281,10 +281,12 @@ Total QR: ${formatCurrency(total_qr)}.`;
 
     const detalhamentoItens = itens_equipamentos.map((item: any) => {
       const valorItem = item.quantidade * item.valor_mnt_dia * dias_operacao;
-      return `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${dias_operacao} dias = ${formatCurrency(valorItem)}.`;
+      // Item e Categoria em CAIXA ALTA
+      return `- ${item.quantidade} ${item.item.toUpperCase()} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${dias_operacao} dias = ${formatCurrency(valorItem)}.`;
     }).join('\n');
 
-    return `33.90.30 - Aquisição de Material de Intendência (${categoria}) para ${totalItens} itens, durante ${dias_operacao} dias de ${faseFormatada}, para ${organizacao} (UG: ${ug}).
+    // Categoria em CAIXA ALTA
+    return `33.90.30 - Aquisição de Material de Intendência (${categoria.toUpperCase()}) para ${totalItens} itens, durante ${dias_operacao} dias de ${faseFormatada}, para ${organizacao} (UG: ${ug}).
 
 Cálculo:
 Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
@@ -738,7 +740,8 @@ Valor Total: ${formatCurrency(valor_total)}.`;
         // 3. Linhas Classe II (NOVO)
         grupo.linhasClasseII.forEach((linha) => {
           const row = worksheet.getRow(currentRow);
-          row.getCell('A').value = `CLASSE II - MATERIAL DE INTENDÊNCIA\n${linha.registro.categoria}`;
+          // Categoria em CAIXA ALTA
+          row.getCell('A').value = `CLASSE II - MATERIAL DE INTENDÊNCIA\n${linha.registro.categoria.toUpperCase()}`;
           row.getCell('B').value = `${linha.registro.organizacao}\n(${linha.registro.ug})`;
           row.getCell('C').value = linha.registro.valor_total;
           row.getCell('C').numFmt = 'R$ #,##0.00';
@@ -1242,7 +1245,7 @@ Valor Total: ${formatCurrency(valor_total)}.`;
                     <tr key={`classe-ii-${linha.registro.id}`}>
                       <td className="col-despesas">
                         <div>CLASSE II - MATERIAL DE INTENDÊNCIA</div>
-                        <div>{linha.registro.categoria}</div>
+                        <div className="uppercase">{linha.registro.categoria}</div> {/* Categoria em CAIXA ALTA */}
                       </td>
                       <td className="col-om">
                         <div>{linha.registro.organizacao}</div>
