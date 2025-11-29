@@ -219,15 +219,12 @@ export const PTrabCostSummary = ({
   if (isLoading) {
     return (
       <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">Resumo de Custos</CardTitle>
-          <CardDescription>
-            Visão consolidada dos custos logísticos e operacionais.
-          </CardDescription>
+        <CardHeader className="py-3">
+          <CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span className="ml-2 text-muted-foreground">Calculando...</span>
+        <CardContent className="flex items-center justify-center py-4">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="ml-2 text-sm text-muted-foreground">Calculando...</span>
         </CardContent>
       </Card>
     );
@@ -236,13 +233,10 @@ export const PTrabCostSummary = ({
   if (error) {
     return (
       <Card className="shadow-lg border-destructive">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-destructive">Erro no Cálculo</CardTitle>
-          <CardDescription>
-            Não foi possível carregar os totais.
-          </CardDescription>
+        <CardHeader className="py-3">
+          <CardTitle className="text-xl font-bold text-destructive">Erro no Cálculo</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-4">
           <p className="text-sm text-muted-foreground">Ocorreu um erro ao buscar os dados de custeio.</p>
         </CardContent>
       </Card>
@@ -290,79 +284,75 @@ export const PTrabCostSummary = ({
 
   return (
     <Card className="shadow-lg">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-2xl font-bold">Resumo de Custos</CardTitle>
-        <CardDescription>
-          Visão consolidada dos custos logísticos e operacionais.
+      <CardHeader className="pb-3 pt-4">
+        <CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle>
+        <CardDescription className="text-xs">
+          Visão consolidada dos custos logísticos e orçamentários.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 p-0 pb-6">
+      <CardContent className="space-y-4 p-0 pb-4">
+        
+        {/* Resumo de Custos (sempre visível) */}
+        <div className="w-full space-y-1 text-sm px-6 pt-1">
+            <div className="flex justify-between text-orange-600">
+              <span className="font-semibold text-sm">Aba Logística</span>
+              <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
+            </div>
+            <div className="flex justify-between text-blue-600">
+              <span className="font-semibold text-sm">Aba Operacional</span>
+              <span className="font-bold text-sm">{formatCurrency(totals.totalOperacional)}</span>
+            </div>
+            <div className="flex justify-between text-green-600">
+              <span className="font-semibold text-sm">Aba Material Permanente</span>
+              <span className="font-bold text-sm">{formatCurrency(totals.totalMaterialPermanente)}</span>
+            </div>
+            <div className="flex justify-between text-purple-600">
+              <span className="font-semibold text-sm">Aba Aviação do Exército</span>
+              <span className="font-bold text-sm">{formatCurrency(totals.totalAviacaoExercito)}</span>
+            </div>
+            <div className="flex justify-between text-foreground font-bold border-t border-border/50 pt-1">
+              <span className="text-base">Total Geral</span>
+              <span className="text-lg">{formatCurrency(totalGeralFinal)}</span>
+            </div>
+        </div>
         
         <Accordion type="single" collapsible className="w-full px-6">
           <AccordionItem value="summary-details" className="border-b-0">
             
-            {/* Accordion Trigger Principal: Contém o resumo e o indicador de detalhes */}
-            <AccordionTrigger className="py-3 px-0 hover:no-underline flex flex-col items-start gap-2 group">
-              
-              {/* Resumo de Custos (sempre visível) */}
-              <div className="w-full space-y-1 text-sm pt-1">
-                <div className="flex justify-between text-orange-600">
-                  <span className="font-semibold text-base">Aba Logística</span>
-                  <span className="font-bold text-base">{formatCurrency(totals.totalLogisticoGeral)}</span>
-                </div>
-                <div className="flex justify-between text-blue-600">
-                  <span className="font-semibold text-base">Aba Operacional</span>
-                  <span className="font-bold text-base">{formatCurrency(totals.totalOperacional)}</span>
-                </div>
-                {/* Adicionando Material Permanente */}
-                <div className="flex justify-between text-green-600">
-                  <span className="font-semibold text-base">Aba Material Permanente</span>
-                  <span className="font-bold text-base">{formatCurrency(totals.totalMaterialPermanente)}</span>
-                </div>
-                {/* Adicionando Aviação do Exército */}
-                <div className="flex justify-between text-purple-600">
-                  <span className="font-semibold text-base">Aba Aviação do Exército</span>
-                  <span className="font-bold text-base">{formatCurrency(totals.totalAviacaoExercito)}</span>
-                </div>
-                <div className="flex justify-between text-foreground font-bold border-t border-border/50 pt-1">
-                  <span className="text-lg">Total Geral</span>
-                  <span className="text-xl">{formatCurrency(totalGeralFinal)}</span>
-                </div>
-              </div>
-              
-              {/* Indicador de Detalhes (alinhado à direita) - REMOVIDO */}
-              {/* O AccordionTrigger nativamente adiciona o ChevronDown à direita. */}
+            {/* Accordion Trigger Principal: Contém o indicador de detalhes */}
+            <AccordionTrigger className="py-1 px-0 hover:no-underline flex flex-col items-start gap-1 group text-xs text-muted-foreground">
+              Ver Detalhes do Custeio
             </AccordionTrigger>
             
-            <AccordionContent className="pt-4 pb-0">
+            <AccordionContent className="pt-2 pb-0">
               <div className="space-y-4">
                 
                 {/* Aba Logística */}
                 <div className="space-y-3 border-l-4 border-orange-500 pl-3">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-orange-600 mb-3">
-                    <Package className="h-4 w-4" />
-                    Aba Logística
+                  <div className="flex items-center gap-2 text-xs font-semibold text-orange-600 mb-2">
+                    <Package className="h-3 w-3" />
+                    Logística ({formatCurrency(totals.totalLogisticoGeral)})
                   </div>
                   
                   {/* Classe I - Subsistência */}
                   <Accordion type="single" collapsible className="w-full pt-0">
                     <AccordionItem value="item-classe-i" className="border-b-0">
                       <AccordionTrigger simple className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-sm border-b pb-2 border-border/50">
-                          <div className="flex items-center gap-2 text-foreground">
-                            <Utensils className="h-4 w-4 text-orange-500" />
-                            Classe I (Subsistência)
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                          <div className="flex items-center gap-1 text-foreground">
+                            <Utensils className="h-3 w-3 text-orange-500" />
+                            Classe I
                           </div>
-                          <span className={cn(valueClasses, "mr-6")}>
+                          <span className={cn(valueClasses, "mr-6 text-xs")}>
                             {formatCurrency(totals.totalClasseI)}
                           </span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-6 text-xs">
+                        <div className="space-y-1 pl-4 text-[10px]">
                           {/* Detalhe 1: Valor Complemento */}
                           <div className="flex justify-between text-muted-foreground">
-                            <span className={descriptionClasses}>Valor Complemento (Ref. Intermediárias)</span>
+                            <span className={descriptionClasses}>Complemento (Ref. Int.)</span>
                             <span className={quantityClasses}>
                               {formatNumber(totals.totalRefeicoesIntermediarias)}
                             </span>
@@ -372,7 +362,7 @@ export const PTrabCostSummary = ({
                           </div>
                           {/* Detalhe 2: Valor Etapa Solicitada */}
                           <div className="flex justify-between text-muted-foreground">
-                            <span className={descriptionClasses}>Valor Etapa Solicitada</span>
+                            <span className={descriptionClasses}>Etapa Solicitada</span>
                             <span className={quantityClasses}>
                               {formatNumber(totals.totalDiasEtapaSolicitada)} dias
                             </span>
@@ -385,26 +375,25 @@ export const PTrabCostSummary = ({
                     </AccordionItem>
                   </Accordion>
                   
-                  {/* Classe II - Material de Intendência (NOVO) */}
-                  <Accordion type="single" collapsible className="w-full pt-2">
+                  {/* Classe II - Material de Intendência */}
+                  <Accordion type="single" collapsible className="w-full pt-1">
                     <AccordionItem value="item-classe-ii" className="border-b-0">
                       <AccordionTrigger simple className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-sm border-b pb-2 border-border/50">
-                          <div className="flex items-center gap-2 text-foreground">
-                            <ClipboardList className="h-4 w-4 text-orange-500" />
-                            Classe II (Intendência)
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                          <div className="flex items-center gap-1 text-foreground">
+                            <ClipboardList className="h-3 w-3 text-orange-500" />
+                            Classe II
                           </div>
-                          <span className={cn(valueClasses, "mr-6")}>
+                          <span className={cn(valueClasses, "mr-6 text-xs")}>
                             {formatCurrency(totals.totalClasseII)}
                           </span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-6 text-xs">
+                        <div className="space-y-1 pl-4 text-[10px]">
                           {sortedGroupedClasseIIItems.length === 0 ? (
                             <div className="text-muted-foreground">Nenhum item cadastrado.</div>
                           ) : (
-                            // Display grouped items
                             sortedGroupedClasseIIItems.map((item, index) => (
                               <div key={index} className="flex justify-between text-muted-foreground">
                                 <span className={descriptionClasses}>
@@ -419,38 +408,27 @@ export const PTrabCostSummary = ({
                               </div>
                             ))
                           )}
-                          
-                          {/* Total line remains the same */}
-                          <div className="flex justify-between text-foreground font-bold border-t pt-1 mt-1">
-                            <span className={descriptionClasses}>Total Classe II</span>
-                            <span className={quantityClasses}>
-                              {formatNumber(totals.totalItensClasseII)} itens
-                            </span>
-                            <span className={cn(valueClasses, "mr-6")}>
-                              {formatCurrency(totals.totalClasseII)}
-                            </span>
-                          </div>
                         </div>
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
 
-                  {/* Classe III - Combustíveis e Lubrificantes (Item principal) */}
-                  <Accordion type="single" collapsible className="w-full pt-2">
+                  {/* Classe III - Combustíveis e Lubrificantes */}
+                  <Accordion type="single" collapsible className="w-full pt-1">
                     <AccordionItem value="item-classe-iii" className="border-b-0">
                       <AccordionTrigger simple className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-sm border-b pb-2 border-border/50">
-                          <div className="flex items-center gap-2 text-foreground">
-                            <Fuel className="h-4 w-4 text-orange-500" />
-                            Classe III (Combustíveis e Lubrificantes)
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                          <div className="flex items-center gap-1 text-foreground">
+                            <Fuel className="h-3 w-3 text-orange-500" />
+                            Classe III
                           </div>
-                          <span className={cn(valueClasses, "mr-6")}>
+                          <span className={cn(valueClasses, "mr-6 text-xs")}>
                             {formatCurrency(totals.totalCombustivel + totals.totalLubrificanteValor)}
                           </span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-6 text-xs">
+                        <div className="space-y-1 pl-4 text-[10px]">
                           {/* Linha Óleo Diesel */}
                           <div className="flex justify-between text-muted-foreground">
                             <span className={descriptionClasses}>Óleo Diesel</span>
@@ -486,88 +464,57 @@ export const PTrabCostSummary = ({
                     </AccordionItem>
                   </Accordion>
                   
-                  {/* SUBTOTAL LOGÍSTICA */}
-                  <div className="flex justify-between items-center pt-3 border-t border-border/50">
-                    <span className="font-bold text-sm text-foreground">SUBTOTAL LOGÍSTICA</span>
-                    <span className="font-bold text-lg text-orange-600">
-                      {formatCurrency(totals.totalLogisticoGeral)}
+                  {/* Outras Abas Logísticas (Placeholder) */}
+                  <div className="flex justify-between text-xs text-muted-foreground pt-2">
+                    <span>Outras Classes (IV a X)</span>
+                    <span className={cn(valueClasses, "mr-6")}>
+                      {formatCurrency(0)}
                     </span>
                   </div>
                 </div>
 
-                {/* Aba Operacional */}
+                {/* Aba Operacional (Placeholder) */}
                 <div className="space-y-3 border-l-4 border-blue-500 pl-3 pt-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-blue-600">
-                    <Briefcase className="h-4 w-4" />
-                    Aba Operacional
+                  <div className="flex items-center gap-2 text-xs font-semibold text-blue-600">
+                    <Briefcase className="h-3 w-3" />
+                    Operacional ({formatCurrency(totals.totalOperacional)})
                   </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
+                  <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Itens Operacionais</span>
                     <span className={cn(valueClasses, "mr-6")}>
                       {formatCurrency(totals.totalOperacional)}
                     </span>
                   </div>
-                  
-                  {/* SUBTOTAL OPERACIONAL */}
-                  <div className="flex justify-between items-center pt-3 border-t border-border/50">
-                    <span className="font-bold text-sm text-foreground">SUBTOTAL OPERACIONAL</span>
-                    <span className="font-bold text-lg text-blue-600">
-                      {formatCurrency(totals.totalOperacional)}
-                    </span>
-                  </div>
                 </div>
                 
-                {/* Aba Material Permanente (NOVO) */}
+                {/* Aba Material Permanente (Placeholder) */}
                 <div className="space-y-3 border-l-4 border-green-500 pl-3 pt-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-green-600">
-                    <HardHat className="h-4 w-4" />
-                    Aba Material Permanente
+                  <div className="flex items-center gap-2 text-xs font-semibold text-green-600">
+                    <HardHat className="h-3 w-3" />
+                    Material Permanente ({formatCurrency(totals.totalMaterialPermanente)})
                   </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
+                  <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Itens de Material Permanente</span>
                     <span className={cn(valueClasses, "mr-6")}>
                       {formatCurrency(totals.totalMaterialPermanente)}
                     </span>
                   </div>
-                  
-                  {/* SUBTOTAL MATERIAL PERMANENTE */}
-                  <div className="flex justify-between items-center pt-3 border-t border-border/50">
-                    <span className="font-bold text-sm text-foreground">SUBTOTAL MATERIAL PERMANENTE</span>
-                    <span className="font-bold text-lg text-green-600">
-                      {formatCurrency(totals.totalMaterialPermanente)}
-                    </span>
-                  </div>
                 </div>
                 
-                {/* Aba Aviação do Exército (NOVO) */}
+                {/* Aba Aviação do Exército (Placeholder) */}
                 <div className="space-y-3 border-l-4 border-purple-500 pl-3 pt-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-purple-600">
-                    <Plane className="h-4 w-4" />
-                    Aba Aviação do Exército
+                  <div className="flex items-center gap-2 text-xs font-semibold text-purple-600">
+                    <Plane className="h-3 w-3" />
+                    Aviação do Exército ({formatCurrency(totals.totalAviacaoExercito)})
                   </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
+                  <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Itens de Aviação</span>
                     <span className={cn(valueClasses, "mr-6")}>
                       {formatCurrency(totals.totalAviacaoExercito)}
                     </span>
                   </div>
-                  
-                  {/* SUBTOTAL AVIAÇÃO DO EXÉRCITO */}
-                  <div className="flex justify-between items-center pt-3 border-t border-border/50">
-                    <span className="font-bold text-sm text-foreground">SUBTOTAL AVIAÇÃO DO EXÉRCITO</span>
-                    <span className="font-bold text-lg text-purple-600">
-                      {formatCurrency(totals.totalAviacaoExercito)}
-                    </span>
-                  </div>
                 </div>
                 
-                {/* Total Geral (Movido para o final) */}
-                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-6">
-                  <span className="font-bold text-base text-primary">TOTAL GERAL</span>
-                  <span className="font-extrabold text-xl text-primary">
-                    {formatCurrency(totalGeralFinal)}
-                  </span>
-                </div>
               </div>
             </AccordionContent>
           </AccordionItem>

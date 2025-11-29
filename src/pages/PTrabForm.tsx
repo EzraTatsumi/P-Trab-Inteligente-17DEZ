@@ -226,19 +226,19 @@ const PTrabForm = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Coluna Esquerda: Dados do P Trab, Resumo de Custos e Crédito Disponível */}
-          <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-4 lg:self-start">
+          <div className="lg:col-span-1 space-y-6">
             <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-6 w-6 text-primary" />
+              <CardHeader className="pb-3 pt-4">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <FileText className="h-5 w-5 text-primary" />
                   Dados do P Trab
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   Informações do Plano de Trabalho selecionado
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-y-2 gap-x-4 mb-4">
+              <CardContent className="pt-2">
+                <div className="grid grid-cols-2 gap-y-2 gap-x-4">
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Número do PTrab</Label>
                     <p className="text-sm font-medium">{ptrabData?.numero_ptrab}</p>
@@ -247,7 +247,7 @@ const PTrabForm = () => {
                     <Label className="text-muted-foreground text-xs">Nome da Operação</Label>
                     <p className="text-sm font-medium">{ptrabData?.nome_operacao}</p>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 col-span-2">
                     <Label className="text-muted-foreground text-xs flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
                       Período
@@ -258,7 +258,7 @@ const PTrabForm = () => {
                       }
                     </p>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 col-span-2">
                     <Label className="text-muted-foreground text-xs flex items-center gap-1">
                       <Users className="h-3 w-3" />
                       Efetivo Empregado
