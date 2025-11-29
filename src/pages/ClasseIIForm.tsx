@@ -885,28 +885,11 @@ export default function ClasseIIForm() {
                             </span>
                         </div>
                         
-                        {/* NOVO BLOCO DE ALOCAÇÃO ND 30/39 - ORDEM INVERTIDA */}
+                        {/* NOVO BLOCO DE ALOCAÇÃO ND 30/39 - MOVIDO PARA AQUI */}
                         {currentCategoryTotalValue > 0 && (
                             <div className="space-y-4 p-4 border rounded-lg bg-background">
                                 <h4 className="font-semibold text-sm">Alocação de Recursos para {cat}</h4>
                                 <div className="grid grid-cols-2 gap-4">
-                                    {/* ND 30 (Material) - ESQUERDA */}
-                                    <div className="space-y-2">
-                                        <Label>ND 33.90.30 (Material)</Label>
-                                        <div className="relative">
-                                            <Input
-                                                value={formatNumberForInput(nd30ValueTemp, 2)}
-                                                readOnly
-                                                disabled
-                                                className="pl-8 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
-                                            />
-                                            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            Calculado por diferença (Total - ND 39).
-                                        </p>
-                                    </div>
-                                    {/* ND 39 (Serviço) - DIREITA */}
                                     <div className="space-y-2">
                                         <Label htmlFor="nd39-input">ND 33.90.39 (Serviço)</Label>
                                         <div className="relative">
@@ -926,6 +909,21 @@ export default function ClasseIIForm() {
                                         </div>
                                         <p className="text-xs text-muted-foreground">
                                             Valor alocado para contratação de serviço.
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>ND 33.90.30 (Material)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                value={formatNumberForInput(nd30ValueTemp, 2)}
+                                                readOnly
+                                                disabled
+                                                className="pl-8 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
+                                            />
+                                            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Calculado por diferença (Total - ND 39).
                                         </p>
                                     </div>
                                 </div>
@@ -1016,27 +1014,13 @@ export default function ClasseIIForm() {
                   </span>
                 </div>
                 
-                {/* NOVO BLOCO DE ALOCAÇÃO GLOBAL (RESUMO) - ORDEM INVERTIDA */}
+                {/* NOVO BLOCO DE ALOCAÇÃO GLOBAL (RESUMO) */}
                 <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
                     <h4 className="font-semibold text-sm">Resumo da Alocação de Recursos (ND 30/39)</h4>
                     <p className="text-xs text-muted-foreground">
                         A alocação foi definida por categoria. O total deve ser igual ao Valor Total da OM.
                     </p>
                     <div className="grid grid-cols-2 gap-4">
-                        {/* ND 30 (Material) - ESQUERDA */}
-                        <div className="space-y-2">
-                            <Label>ND 33.90.30 (Material)</Label>
-                            <div className="relative">
-                                <Input
-                                    value={formatNumberForInput(totalND30Final, 2)}
-                                    readOnly
-                                    disabled
-                                    className="pl-8 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
-                                />
-                                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            </div>
-                        </div>
-                        {/* ND 39 (Serviço) - DIREITA */}
                         <div className="space-y-2">
                             <Label>ND 33.90.39 (Serviço)</Label>
                             <div className="relative">
@@ -1045,6 +1029,18 @@ export default function ClasseIIForm() {
                                     readOnly
                                     disabled
                                     className="pl-8 text-lg font-bold bg-blue-500/10 text-blue-600 disabled:opacity-100"
+                                />
+                                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>ND 33.90.30 (Material)</Label>
+                            <div className="relative">
+                                <Input
+                                    value={formatNumberForInput(totalND30Final, 2)}
+                                    readOnly
+                                    disabled
+                                    className="pl-8 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
                                 />
                                 <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             </div>
@@ -1103,7 +1099,7 @@ export default function ClasseIIForm() {
                     <Card key={registro.id} className="p-4 bg-muted/30">
                       <div className="flex items-center justify-between mb-3 border-b pb-2">
                         <div className="flex items-center gap-2">
-                          <h4 className="text-lg font-semibold text-foreground}>{om} (UG: {ug})</h4>
+                          <h4 className="text-lg font-semibold text-foreground">{om} (UG: {ug})</h4>
                           <Badge variant="secondary" className="ml-2 text-xs">Consolidado</Badge>
                         </div>
                         <div className="flex gap-1">
