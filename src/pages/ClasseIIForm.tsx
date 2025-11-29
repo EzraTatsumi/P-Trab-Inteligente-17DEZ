@@ -176,6 +176,17 @@ export default function ClasseIIForm() {
     return diretrizes.filter(d => d.categoria === selectedTab);
   }, [diretrizes, selectedTab]);
   
+  // NOVO MEMO: Agrupa os itens do formulário por categoria para exibição consolidada
+  const itensAgrupadosPorCategoria = useMemo(() => {
+    return form.itens.reduce((acc, item) => {
+      if (!acc[item.categoria]) {
+        acc[item.categoria] = [];
+      }
+      acc[item.categoria].push(item);
+      return acc;
+    }, {} as Record<Categoria, ItemClasseII[]>);
+  }, [form.itens]);
+  
 
   const loadDiretrizes = async () => {
     try {
@@ -940,22 +951,34 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
               <div className="space-y-4 border-b pb-4">
                 <h3 className="text-lg font-semibold">3. Itens Adicionados ({form.itens.length})</h3>
                 
-                <div className="space-y-2">
-                  {form.itens.map((item, index) => (
-                    <Card key={item.item} className="p-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <p className="font-medium">{item.item} <Badge variant="secondary" className="ml-2 text-xs">{item.categoria}</Badge></p>
-                          <p className="text-sm text-muted-foreground">
-                            {item.quantidade} unidade(s) • {formatCurrency(item.valor_mnt_dia)}/dia • Total: {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
-                          </p>
+                <div className="space-y-4">
+                  {Object.entries(itensAgrupadosPorCategoria).map(([categoria, itens]) => {
+                    const totalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
+                    
+                    return (
+                      <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
+                        <div className="flex items-center justify-between mb-3 border-b pb-2">
+                          <h4 className="font-bold text-base text-primary">{categoria} ({totalQuantidade} itens)</h4>
+                          <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
                         </div>
-                      </div>
-                    </Card>
-                  ))}
+                        
+                        <div className="space-y-2">
+                          {itens.map((item, index) => (
+                            <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
+                              <span className="font-medium">{item.item}</span>
+                              <span className="text-right">
+                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                    );
+                  })}
                 </div>
                 
-                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20">
+                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
                   <span className="font-bold text-base text-primary">VALOR TOTAL DA OM</span>
                   <span className="font-extrabold text-xl text-primary">
                     {formatCurrency(valorTotalForm)}
