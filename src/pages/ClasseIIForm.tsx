@@ -77,6 +77,44 @@ interface ClasseIIRegistro {
   valor_nd_39: number;
 }
 
+// Helper para agrupar itens de um registro por categoria
+const groupRecordItemsByCategory = (items: ItemClasseII[]) => {
+    return items.reduce((acc, item) => {
+        if (!acc[item.categoria]) {
+            acc[item.categoria] = [];
+        }
+        acc[item.categoria].push(item);
+        return acc;
+    }, {} as Record<Categoria, ItemClasseII[]>);
+};
+
+// NOVO: Gera a memória de cálculo detalhada para uma categoria
+const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
+    const faseFormatada = formatFasesParaTexto(faseAtividade);
+    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
+    const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
+
+    let detalhamentoItens = "";
+    itens.forEach(item => {
+        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
+        detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
+    });
+
+    return `33.90.30 - Aquisição de Material de Intendência (${categoria})
+OM de Destino: ${organizacao} (UG: ${ug})
+Período: ${diasOperacao} dias de ${faseFormatada}
+Total de Itens na Categoria: ${totalQuantidade}
+
+Cálculo:
+Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
+
+Detalhes dos Itens:
+${detalhamentoItens.trim()}
+
+Valor Total da Categoria: ${formatCurrency(totalValor)}.`;
+};
+
+
 export default function ClasseIIForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -108,9 +146,9 @@ export default function ClasseIIForm() {
   const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
-  // NOVOS ESTADOS para edição de memória de cálculo por item
-  const [editingItemMemoriaId, setEditingItemMemoriaId] = useState<{ registroId: string, itemIndex: number } | null>(null);
-  const [memoriaItemEdit, setMemoriaItemEdit] = useState<string>("");
+  // REMOVIDOS: Estados para edição de memória de cálculo por item
+  // const [editingItemMemoriaId, setEditingItemMemoriaId] = useState<{ registroId: string, itemIndex: number } | null>(null);
+  // const [memoriaItemEdit, setMemoriaItemEdit] = useState<string>("");
 
   const { handleEnterToNextField } = useFormNavigation();
   const formRef = useRef<HTMLDivElement>(null);
@@ -176,7 +214,7 @@ export default function ClasseIIForm() {
     return diretrizes.filter(d => d.categoria === selectedTab);
   }, [diretrizes, selectedTab]);
   
-  // NOVO MEMO: Agrupa os itens do formulário por categoria para exibição consolidada
+  // MEMO: Agrupa os itens do formulário por categoria para exibição consolidada
   const itensAgrupadosPorCategoria = useMemo(() => {
     return form.itens.reduce((acc, item) => {
       if (!acc[item.categoria]) {
@@ -332,25 +370,7 @@ ${detalhamentoItens}
 Valor Total: ${formatCurrency(valorTotal)}.`;
   };
   
-  const generateItemMemoriaCalculo = (item: ItemClasseII, diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
-    if (item.memoria_customizada) {
-      return item.memoria_customizada;
-    }
-    
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-
-    return `33.90.30 - Aquisição de Material de Intendência (${item.categoria}) - Item: ${item.item}
-OM de Destino: ${organizacao} (UG: ${ug})
-Período: ${diasOperacao} dias de ${faseFormatada}
-
-Cálculo:
-Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
-
-- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.
-
-Valor Total do Item: ${formatCurrency(valorItem)}.`;
-  };
+  // REMOVIDO: generateItemMemoriaCalculo
 
   const resetFormFields = () => {
     setEditingId(null);
@@ -365,9 +385,9 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
       selectedOmDestinoId: undefined,
       valor_nd_39_input: "",
     });
-    // Resetar estados de edição de item
-    setEditingItemMemoriaId(null);
-    setMemoriaItemEdit("");
+    // REMOVIDOS: Resetar estados de edição de item
+    // setEditingItemMemoriaId(null);
+    // setMemoriaItemEdit("");
     // Resetar currentCategoryItems (será re-populado pelo useEffect)
     setCurrentCategoryItems([]);
     
@@ -509,9 +529,10 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
     );
     
     // Mapear itens para garantir que 'memoria_customizada' seja explicitamente null se estiver faltando
+    // NOTA: Como removemos a edição por item, a memória customizada deve ser sempre null aqui.
     const finalItensToSave = form.itens.map(item => ({
         ...item,
-        memoria_customizada: item.memoria_customizada || null,
+        memoria_customizada: null, // Força null, pois a edição por item foi removida
     }));
     
     const registroParaSalvar: TablesInsert<'classe_ii_registros'> = {
@@ -565,10 +586,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
     
     try {
       // Buscar OM Detentora (usando o nome da OM do primeiro item, se houver)
-      // Nota: O item não armazena OM/UG, mas o registro consolidado sim.
-      // Para fins de edição, assumimos que a OM Detentora é a mesma que a OM de Destino do Recurso,
-      // a menos que tenhamos uma forma de rastrear a OM Detentora original.
-      // Por enquanto, vamos assumir que a OM Detentora é a mesma que a OM de Destino do Recurso.
+      // Para fins de edição, assumimos que a OM Detentora é a mesma que a OM de Destino do Recurso.
       
       const omDetentoraNome = registro.organizacao;
       const omDetentoraUg = registro.ug;
@@ -618,114 +636,7 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
     setLoading(false);
   };
   
-  // --- Handlers para Edição de Memória por Item ---
-  const handleIniciarEdicaoMemoriaItem = (registroId: string, itemIndex: number) => {
-    const registro = registros.find(r => r.id === registroId);
-    if (!registro) return;
-    
-    const item = registro.itens_equipamentos[itemIndex];
-    if (!item) return;
-    
-    // Gerar memória automática (passando item sem customização para forçar a geração)
-    const autoMemoria = generateItemMemoriaCalculo(
-      { ...item, memoria_customizada: null }, 
-      registro.dias_operacao,
-      registro.organizacao,
-      registro.ug,
-      registro.fase_atividade
-    );
-    
-    setEditingItemMemoriaId({ registroId, itemIndex });
-    setMemoriaItemEdit(item.memoria_customizada || autoMemoria);
-  };
-
-  const handleCancelarEdicaoMemoriaItem = () => {
-    setEditingItemMemoriaId(null);
-    setMemoriaItemEdit("");
-  };
-
-  const handleSalvarMemoriaCustomizadaItem = async () => {
-    if (!editingItemMemoriaId) return;
-    
-    const { registroId, itemIndex } = editingItemMemoriaId;
-    const registroToUpdate = registros.find(r => r.id === registroId);
-    if (!registroToUpdate) return;
-    
-    setLoading(true);
-    
-    try {
-      // 1. Atualizar o item na lista de itens_equipamentos
-      const novosItens = [...registroToUpdate.itens_equipamentos];
-      novosItens[itemIndex] = {
-        ...novosItens[itemIndex],
-        memoria_customizada: memoriaItemEdit.trim() || null,
-      };
-      
-      // 2. Salvar o registro completo de volta no DB
-      const { error } = await supabase
-        .from("classe_ii_registros")
-        .update({
-          itens_equipamentos: novosItens as any,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", registroId);
-
-      if (error) throw error;
-
-      toast.success("Memória de cálculo do item atualizada!");
-      handleCancelarEdicaoMemoriaItem();
-      fetchRegistros();
-    } catch (error) {
-      console.error("Erro ao salvar memória customizada do item:", error);
-      toast.error("Erro ao salvar memória customizada do item.");
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleRestaurarMemoriaAutomaticaItem = async () => {
-    if (!editingItemMemoriaId) return;
-    
-    if (!confirm("Deseja restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
-      return;
-    }
-    
-    const { registroId, itemIndex } = editingItemMemoriaId;
-    const registroToUpdate = registros.find(r => r.id === registroId);
-    if (!registroToUpdate) return;
-    
-    setLoading(true);
-    
-    try {
-      // 1. Atualizar o item na lista de itens_equipamentos, removendo a customização
-      const novosItens = [...registroToUpdate.itens_equipamentos];
-      novosItens[itemIndex] = {
-        ...novosItens[itemIndex],
-        memoria_customizada: null,
-      };
-      
-      // 2. Salvar o registro completo de volta no DB
-      const { error } = await supabase
-        .from("classe_ii_registros")
-        .update({
-          itens_equipamentos: novosItens as any,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", registroId);
-
-      if (error) throw error;
-
-      toast.success("Memória de cálculo do item restaurada!");
-      handleCancelarEdicaoMemoriaItem();
-      fetchRegistros();
-    } catch (error) {
-      console.error("Erro ao restaurar memória customizada do item:", error);
-      toast.error("Erro ao restaurar memória customizada do item.");
-    } finally {
-      setLoading(false);
-    }
-  };
-  // --- Fim Handlers para Edição de Memória por Item ---
+  // REMOVIDOS: Handlers para Edição de Memória por Item
 
   const registrosAgrupados = useMemo(() => {
     return registros;
@@ -1147,17 +1058,18 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
               </div>
             )}
 
-            {/* 5. Memórias de Cálculos Detalhadas - AGORA COM EDIÇÃO POR ITEM */}
+            {/* 5. Memórias de Cálculos Detalhadas - AGORA POR CATEGORIA */}
             {registros.length > 0 && (
               <div className="space-y-4 mt-8">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <ClipboardList className="h-5 w-5 text-primary" />
-                  Memórias de Cálculos Detalhadas
+                  Memórias de Cálculos Detalhadas (Por Categoria)
                 </h2>
                 
                 {registros.map(registro => {
                   const om = registro.organizacao;
                   const ug = registro.ug;
+                  const itensPorCategoria = groupRecordItemsByCategory(registro.itens_equipamentos);
                   
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
@@ -1166,96 +1078,33 @@ Valor Total do Item: ${formatCurrency(valorItem)}.`;
                       </h4>
                       
                       <div className="space-y-3">
-                        {registro.itens_equipamentos.map((item, itemIndex) => {
-                          const isEditing = editingItemMemoriaId?.registroId === registro.id && editingItemMemoriaId?.itemIndex === itemIndex;
-                          const hasCustomMemoria = !!item.memoria_customizada;
+                        {Object.entries(itensPorCategoria).map(([categoria, itens]) => {
+                          const categoriaKey = categoria as Categoria;
                           
-                          const itemMemoria = isEditing 
-                            ? memoriaItemEdit 
-                            : generateItemMemoriaCalculo(
-                                item, 
-                                registro.dias_operacao, 
-                                registro.organizacao, 
-                                registro.ug, 
-                                registro.fase_atividade
-                              );
+                          // Gera a memória de cálculo para a categoria
+                          const categoriaMemoria = generateCategoryMemoriaCalculo(
+                            categoriaKey,
+                            itens,
+                            registro.dias_operacao,
+                            registro.organizacao,
+                            registro.ug,
+                            registro.fase_atividade
+                          );
                           
                           return (
-                            <Card key={itemIndex} className="p-4 bg-background">
+                            <Card key={categoriaKey} className="p-4 bg-background">
                               <div className="flex items-center justify-between mb-2">
                                 <h6 className="font-bold text-sm">
-                                  {item.item} ({item.quantidade} un.) - {item.categoria}
+                                  {categoriaKey} ({itens.reduce((sum, i) => sum + i.quantidade, 0)} un.)
                                 </h6>
-                                
-                                <div className="flex items-center gap-2">
-                                  {hasCustomMemoria && !isEditing && (
-                                    <Badge variant="outline" className="text-xs">
-                                      Editada manualmente
-                                    </Badge>
-                                  )}
-                                  
-                                  {!isEditing ? (
-                                    <>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => handleIniciarEdicaoMemoriaItem(registro.id, itemIndex)}
-                                        disabled={loading}
-                                        className="gap-2"
-                                      >
-                                        <Pencil className="h-4 w-4" />
-                                        Editar
-                                      </Button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Button
-                                        size="sm"
-                                        variant="default"
-                                        onClick={handleSalvarMemoriaCustomizadaItem}
-                                        disabled={loading}
-                                        className="gap-2"
-                                      >
-                                        <Check className="h-4 w-4" />
-                                        Salvar
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={handleCancelarEdicaoMemoriaItem}
-                                        disabled={loading}
-                                        className="gap-2"
-                                      >
-                                        <XCircle className="h-4 w-4" />
-                                        Cancelar
-                                      </Button>
-                                      {hasCustomMemoria && (
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={handleRestaurarMemoriaAutomaticaItem}
-                                          disabled={loading}
-                                          className="gap-2 text-muted-foreground"
-                                        >
-                                          <XCircle className="h-4 w-4" />
-                                          Restaurar
-                                        </Button>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
                               </div>
                               
                               <Card className="p-3 bg-muted/50">
                                 <Textarea
-                                  value={itemMemoria}
-                                  onChange={(e) => isEditing && setMemoriaItemEdit(e.target.value)}
-                                  readOnly={!isEditing}
+                                  value={categoriaMemoria}
+                                  readOnly
                                   rows={10}
-                                  className={cn(
-                                    "font-mono text-xs whitespace-pre-wrap text-foreground",
-                                    isEditing && "border-primary focus:ring-2 focus:ring-primary"
-                                  )}
+                                  className="font-mono text-xs whitespace-pre-wrap text-foreground"
                                 />
                               </Card>
                             </Card>
