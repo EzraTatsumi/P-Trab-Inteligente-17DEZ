@@ -20,6 +20,19 @@ interface PTrabCostSummaryProps {
   creditGND4: number;
 }
 
+// Define the structure of the item from ClasseIIForm for local use
+interface ItemClasseII {
+  item: string;
+  quantidade: number;
+  valor_mnt_dia: number;
+  categoria: string;
+}
+
+interface DetailedItemClasseII extends ItemClasseII {
+  parent_dias_operacao: number;
+  parent_organizacao: string;
+}
+
 // Helper function to calculate days of requested stage (diasEtapaSolicitada)
 const calculateDiasEtapaSolicitada = (diasOperacao: number): number => {
   const diasRestantesNoCiclo = diasOperacao % 30;
@@ -66,19 +79,28 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // 2. Fetch Classe II totals (33.90.30)
   const { data: classeIIData, error: classeIIError } = await supabase
     .from('classe_ii_registros')
-    .select('valor_total, itens_equipamentos')
+    .select('valor_total, itens_equipamentos, dias_operacao, organizacao') // ADD dias_operacao, organizacao
     .eq('p_trab_id', ptrabId);
 
   if (classeIIError) throw classeIIError;
   
   let totalClasseII = 0;
   let totalItensClasseII = 0;
+  let allClasseIIItems: DetailedItemClasseII[] = []; // Array to hold all individual items
   
   (classeIIData || []).forEach(record => {
     totalClasseII += record.valor_total;
-    // Soma a quantidade de itens dentro do JSONB
+    // Sum the quantity of items and flatten the list
     if (Array.isArray(record.itens_equipamentos)) {
-      totalItensClasseII += record.itens_equipamentos.reduce((sum, item: any) => sum + (item.quantidade || 0), 0);
+      const items = record.itens_equipamentos as ItemClasseII[];
+      totalItensClasseII += items.reduce((sum, item) => sum + (item.quantidade || 0), 0);
+      
+      const detailedItems: DetailedItemClasseII[] = items.map(item => ({
+        ...item,
+        parent_dias_operacao: record.dias_operacao,
+        parent_organizacao: record.organizacao,
+      }));
+      allClasseIIItems = allClasseIIItems.concat(detailedItems); // Flatten the items
     }
   });
 
@@ -141,8 +163,9 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalLogisticoGeral,
     totalOperacional,
     totalClasseI,
-    totalClasseII, // Novo total
-    totalItensClasseII, // Nova quantidade
+    totalClasseII,
+    totalItensClasseII,
+    allClasseIIItems, // NEW: Return the list of individual items
     totalComplemento,
     totalEtapaSolicitadaValor,
     totalDiasEtapaSolicitada,
@@ -176,6 +199,7 @@ export const PTrabCostSummary = ({
       totalClasseI: 0,
       totalClasseII: 0,
       totalItensClasseII: 0,
+      allClasseIIItems: [], // Initialize new field
       totalComplemento: 0,
       totalEtapaSolicitadaValor: 0,
       totalDiasEtapaSolicitada: 0,
@@ -286,8 +310,6 @@ export const PTrabCostSummary = ({
               
               {/* Indicador de Detalhes (alinhado à direita) - REMOVIDO */}
               {/* O AccordionTrigger nativamente adiciona o ChevronDown à direita. */}
-              {/* Se o ChevronDown estiver duplicado, o problema pode estar no componente AccordionTrigger de shadcn/ui. */}
-              {/* Se o ChevronDown estiver duplicado, o problema pode estar no componente AccordionTrigger de shadcn/ui. */}
             </AccordionTrigger>
             
             <AccordionContent className="pt-4 pb-0">
@@ -357,10 +379,34 @@ export const PTrabCostSummary = ({
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-0">
                         <div className="space-y-1 pl-6 text-xs">
-                          <div className="flex justify-between text-muted-foreground">
-                            <span className={descriptionClasses}>Itens Solicitados</span>
+                          {totals.allClasseIIItems.length === 0 ? (
+                            <div className="text-muted-foreground">Nenhum item cadastrado.</div>
+                          ) : (
+                            // Display individual items
+                            totals.allClasseIIItems.map((item, index) => {
+                              const itemTotal = item.quantidade * item.valor_mnt_dia * item.parent_dias_operacao;
+                              
+                              return (
+                                <div key={index} className="flex justify-between text-muted-foreground">
+                                  <span className={descriptionClasses}>
+                                    {item.item} ({item.parent_organizacao})
+                                  </span>
+                                  <span className={quantityClasses}>
+                                    {item.quantidade} un.
+                                  </span>
+                                  <span className={cn(valueClasses, "mr-6")}>
+                                    {formatCurrency(itemTotal)}
+                                  </span>
+                                </div>
+                              );
+                            })
+                          )}
+                          
+                          {/* Total line remains the same */}
+                          <div className="flex justify-between text-foreground font-bold border-t pt-1 mt-1">
+                            <span className={descriptionClasses}>Total Classe II</span>
                             <span className={quantityClasses}>
-                              {formatNumber(totals.totalItensClasseII)} unidades
+                              {formatNumber(totals.totalItensClasseII)} itens
                             </span>
                             <span className={cn(valueClasses, "mr-6")}>
                               {formatCurrency(totals.totalClasseII)}
