@@ -232,13 +232,16 @@ export const PTrabCostSummary = ({
   const detailsRef = useRef<HTMLDivElement>(null);
 
   const handleSummaryClick = () => {
-    const newState = true; // Sempre abre ao clicar no resumo
+    // Alterna o estado de abertura
+    const newState = !isDetailsOpen;
     setIsDetailsOpen(newState);
     
-    // Pequeno atraso para garantir que o acordeão abriu antes de rolar
-    setTimeout(() => {
-        detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100); 
+    // Se estiver abrindo, rola para o início dos detalhes
+    if (newState) {
+      setTimeout(() => {
+          detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100); 
+    }
   };
 
 
@@ -345,15 +348,27 @@ export const PTrabCostSummary = ({
         <Accordion 
           type="single" 
           collapsible 
-          className="w-full px-6 pt-1" // Adicionado pt-1 para diminuir a distância
+          className="w-full px-6 pt-0" // Ajustado pt-0 para diminuir a distância
           value={isDetailsOpen ? "summary-details" : undefined}
           onValueChange={(value) => setIsDetailsOpen(value === "summary-details")}
         >
           <AccordionItem value="summary-details" className="border-b-0">
             
-            {/* Removido o AccordionTrigger principal para evitar duplicação do aviso */}
+            {/* Accordion Trigger Principal: Contém o indicador de detalhes */}
+            <AccordionTrigger 
+              className="py-1 px-0 hover:no-underline flex items-center justify-center w-full text-xs text-muted-foreground border-t border-border/50 mt-1" // Adicionado border-t e mt-1 para aproximar do Total Geral
+              onClick={(e) => {
+                // Previne que o clique no trigger duplique a ação do handleSummaryClick
+                e.preventDefault(); 
+                handleSummaryClick();
+              }}
+            >
+              <span className="font-semibold text-primary">
+                {isDetailsOpen ? "MENOS DETALHES" : "MAIS DETALHES"}
+              </span>
+            </AccordionTrigger>
             
-            <AccordionContent className="pt-0 pb-0"> {/* Ajustado pt-0 para diminuir a distância */}
+            <AccordionContent className="pt-2 pb-0"> {/* Ajustado pt-2 para dar um pequeno espaço */}
               <div className="space-y-4" ref={detailsRef}>
                 
                 {/* Aba Logística */}
