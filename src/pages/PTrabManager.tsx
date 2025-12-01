@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -41,6 +41,7 @@ import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberD
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
+import { HelpDialog } from "@/components/HelpDialog"; // Importar o novo componente
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -524,13 +525,13 @@ const PTrabManager = () => {
 
       // 2. Create the new PTrab object
       // Destructure only fields present in the DB schema (PTrabDB)
-      const { id, created_at, updated_at, ...restOfPTrab } = typedOriginalPTrab; 
+      const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = typedOriginalPTrab; 
       
       const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
         ...restOfPTrab,
         numero_ptrab: newNumeroPTrab,
         status: "aberto",
-        user_id: typedOriginalPTrab.user_id,
+        user_id: (await supabase.auth.getUser()).data.user?.id!,
         origem: typedOriginalPTrab.origem,
       };
 
@@ -1153,6 +1154,9 @@ const PTrabManager = () => {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+
+            {/* NOVO BOTÃO DE AJUDA */}
+            <HelpDialog />
 
             <DropdownMenu open={settingsDropdownOpen} onOpenChange={setSettingsDropdownOpen}>
               <DropdownMenuTrigger asChild>
