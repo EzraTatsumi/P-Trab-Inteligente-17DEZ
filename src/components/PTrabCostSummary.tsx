@@ -346,10 +346,9 @@ export const PTrabCostSummary = ({
             >
               <div className="flex justify-between items-center w-full">
                 <span className="text-base font-bold text-foreground">Total Geral</span>
-                <div className="flex items-center gap-2">
-                    {/* Revertido: Valor Total Geral fora do span de detalhes */}
+                <div className="flex flex-col items-end gap-0"> {/* Usar flex-col para empilhar */}
                     <span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>
-                    <span className="font-semibold text-primary flex items-center gap-1 ml-2">
+                    <span className="font-semibold text-primary flex items-center gap-1 text-xs">
                         {isDetailsOpen ? "MENOS DETALHES" : "MAIS DETALHES"}
                         <ChevronDown className={cn(
                           "h-4 w-4 shrink-0 transition-transform duration-200",
