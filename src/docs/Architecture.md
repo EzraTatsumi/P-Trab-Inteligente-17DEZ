@@ -1,4 +1,4 @@
-# Arquitetura do PTrab Inteligente
+## Arquitetura do PTrab Inteligente
 
 Este documento descreve a arquitetura técnica do projeto PTrab Inteligente, focando na pilha de tecnologia e nos padrões de interação entre o cliente e o servidor.
 
