@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HelpCircle, Code, FileText, Loader2 } from "lucide-react";
-import { MarkdownAccordion } from './MarkdownAccordion'; // Importar o novo componente
+import { HelpCircle, Code, FileText, Loader2, BookOpen } from "lucide-react";
+import { MarkdownAccordion } from './MarkdownAccordion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Importar o conteúdo dos arquivos Markdown como strings
 import architectureContent from '@/docs/Architecture.md?raw';
 import businessRulesContent from '@/docs/BusinessRules.md?raw';
+import userGuideContent from '@/docs/UserGuide.md?raw'; // NOVO IMPORT
 
 export const HelpDialog: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -40,8 +41,12 @@ export const HelpDialog: React.FC = () => {
           </DialogTitle>
         </DialogHeader>
         
-        <Tabs defaultValue="business-rules" className="flex flex-col flex-1 overflow-hidden">
-          <TabsList className="mx-6 mt-4 grid grid-cols-2 w-[calc(100%-3rem)]">
+        <Tabs defaultValue="user-guide" className="flex flex-col flex-1 overflow-hidden">
+          <TabsList className="mx-6 mt-4 grid grid-cols-3 w-[calc(100%-3rem)]">
+            <TabsTrigger value="user-guide" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Guia do Usuário
+            </TabsTrigger>
             <TabsTrigger value="business-rules" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Regras de Negócio
@@ -60,6 +65,11 @@ export const HelpDialog: React.FC = () => {
               </div>
             ) : (
               <>
+                <TabsContent value="user-guide" className="mt-0 h-full">
+                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                    <MarkdownAccordion content={userGuideContent} />
+                  </ScrollArea>
+                </TabsContent>
                 <TabsContent value="business-rules" className="mt-0 h-full">
                   <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
                     <MarkdownAccordion content={businessRulesContent} />
