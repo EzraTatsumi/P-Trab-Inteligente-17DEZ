@@ -338,13 +338,13 @@ export const PTrabCostSummary = ({
             {/* Accordion Trigger Principal: Contém o Total Geral e o botão Mais Detalhes */}
             <AccordionTrigger 
               simple // Usa o modo simples (sem seta)
-              className="py-1 px-0 hover:no-underline flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50" // Alterado py-2 para py-1
+              className="py-0 px-0 hover:no-underline flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50" // Alterado py-1 para py-0
               onClick={(e) => {
                 e.preventDefault(); 
                 handleSummaryClick();
               }}
             >
-              <div className="flex justify-between items-center w-full">
+              <div className="flex justify-between items-center w-full py-1"> {/* Adicionado py-1 interno para manter o conteúdo legível */}
                 <span className="text-base font-bold text-foreground">Total Geral</span>
                 <div className="flex flex-col items-end gap-0"> {/* Usar flex-col para empilhar */}
                     <span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>
@@ -565,7 +565,7 @@ export const PTrabCostSummary = ({
         </Accordion>
         
         {/* Seção de Crédito (abaixo do Accordion) */}
-        <div className="px-6 pt-0 border-t border-border/50 space-y-2 mt-[-0.5rem]"> {/* Mantido pt-0 e mt-[-0.5rem] */}
+        <div className="px-6 pt-0 border-t border-border/50 space-y-2 mt-[-1rem]"> {/* Aumentado mt-[-0.5rem] para mt-[-1rem] */}
             <div className="flex justify-between items-center">
                 <h4 className="font-bold text-sm text-accent flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
