@@ -6,9 +6,9 @@ import { formatCurrency, formatNumber } from "@/lib/formatUtils";
 import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Droplet, ClipboardList } from "lucide-react"; // Importar Droplet e ClipboardList
 import {
   Accordion,
-  AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  AccordionContent,
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button"; // Importar Button
@@ -356,7 +356,7 @@ export const PTrabCostSummary = ({
             
             {/* Accordion Trigger Principal: Contém o indicador de detalhes */}
             <AccordionTrigger 
-              className="py-1 px-0 hover:no-underline flex items-center justify-center w-full text-xs text-muted-foreground border-t border-border/50 mt-1" // Adicionado border-t e mt-1 para aproximar do Total Geral
+              className="py-1 px-0 hover:no-underline flex items-center justify-center w-full text-xs text-muted-foreground" // REMOVIDO border-t e mt-1
               onClick={(e) => {
                 // Previne que o clique no trigger duplique a ação do handleSummaryClick
                 e.preventDefault(); 
