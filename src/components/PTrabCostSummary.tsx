@@ -438,23 +438,6 @@ export const PTrabCostSummary = ({
                                 </div>
                             </div>
                           ))}
-                          {/* Totais ND 30/39 (Mantidos no final da seção Classe II) */}
-                          <div className="pt-2 border-t border-border/50 mt-2">
-                            <div className="flex justify-between text-muted-foreground">
-                                <span className="w-1/2 text-left font-bold text-green-600">ND 33.90.30 (Material)</span>
-                                <span className="w-1/4 text-right font-medium"></span>
-                                <span className="w-1/4 text-right font-bold text-green-600">
-                                    {formatCurrency(totals.totalClasseII_ND30)}
-                                </span>
-                            </div>
-                            <div className="flex justify-between text-muted-foreground">
-                                <span className="w-1/2 text-left font-bold text-blue-600">ND 33.90.39 (Serviço)</span>
-                                <span className="w-1/4 text-right font-medium"></span>
-                                <span className="w-1/4 text-right font-bold text-blue-600">
-                                    {formatCurrency(totals.totalClasseII_ND39)}
-                                </span>
-                            </div>
-                          </div>
                         </div>
                       </AccordionContent>
                     </AccordionItem>
