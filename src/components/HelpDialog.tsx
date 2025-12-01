@@ -52,24 +52,26 @@ export const HelpDialog: React.FC = () => {
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex-1 overflow-hidden p-6 pt-4">
-            <ScrollArea className="h-full w-full">
-              {loading ? (
-                <div className="flex items-center justify-center h-64">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  <span className="ml-2 text-muted-foreground">Carregando documentação...</span>
-                </div>
-              ) : (
-                <>
-                  <TabsContent value="business-rules" className="mt-0">
+          <div className="flex-1 overflow-hidden px-6 pb-6 pt-4">
+            {loading ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Carregando documentação...</span>
+              </div>
+            ) : (
+              <>
+                <TabsContent value="business-rules" className="mt-0 h-full">
+                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4"> {/* Altura calculada para caber no diálogo */}
                     <MarkdownViewer content={businessRulesContent} />
-                  </TabsContent>
-                  <TabsContent value="architecture" className="mt-0">
+                  </ScrollArea>
+                </TabsContent>
+                <TabsContent value="architecture" className="mt-0 h-full">
+                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4"> {/* Altura calculada para caber no diálogo */}
                     <MarkdownViewer content={architectureContent} />
-                  </TabsContent>
-                </>
-              )}
-            </ScrollArea>
+                  </ScrollArea>
+                </TabsContent>
+              </>
+            )}
           </div>
         </Tabs>
       </DialogContent>
