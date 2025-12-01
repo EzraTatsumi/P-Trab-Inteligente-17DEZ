@@ -345,18 +345,15 @@ export const PTrabCostSummary = ({
         <Accordion 
           type="single" 
           collapsible 
-          className="w-full px-6"
+          className="w-full px-6 pt-1" // Adicionado pt-1 para diminuir a distância
           value={isDetailsOpen ? "summary-details" : undefined}
           onValueChange={(value) => setIsDetailsOpen(value === "summary-details")}
         >
           <AccordionItem value="summary-details" className="border-b-0">
             
-            {/* Accordion Trigger Principal: Contém o indicador de detalhes */}
-            <AccordionTrigger className="py-1 px-0 hover:no-underline flex flex-col items-start gap-1 group text-xs text-muted-foreground">
-              Ver Detalhes do Custeio
-            </AccordionTrigger>
+            {/* Removido o AccordionTrigger principal para evitar duplicação do aviso */}
             
-            <AccordionContent className="pt-2 pb-0">
+            <AccordionContent className="pt-0 pb-0"> {/* Ajustado pt-0 para diminuir a distância */}
               <div className="space-y-4" ref={detailsRef}>
                 
                 {/* Aba Logística */}
