@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -41,7 +41,7 @@ import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberD
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
-import { HelpDialog } from "@/components/HelpDialog"; // Importar o novo componente
+import { HelpDialog } from "@/components/HelpDialog";
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -60,6 +60,7 @@ const PTrabManager = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // existingPTrabNumbers agora armazena o número COMPLETO (ex: 1/2025/OM)
   const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
   
   // Estado para controlar a abertura do DropdownMenu de configurações
@@ -81,8 +82,8 @@ const PTrabManager = () => {
   const [showCloneOptionsDialog, setShowCloneOptionsDialog] = useState(false);
   const [ptrabToClone, setPtrabToClone] = useState<PTrab | null>(null);
   const [cloneType, setCloneType, ] = useState<'new' | 'variation'>('new');
-  const [suggestedCloneNumber, setSuggestedCloneNumber] = useState<string>("");
-  const [customCloneNumber, setCustomCloneNumber] = useState<string>("");
+  const [suggestedCloneNumber, setSuggestedCloneNumber] = useState<string>(""); // Ex: 1/2025
+  const [customCloneNumber, setCustomCloneNumber] = useState<string>(""); // Ex: 1/2025
 
   // Estados para o diálogo de comentário
   const [showComentarioDialog, setShowComentarioDialog] = useState(false);
@@ -91,6 +92,13 @@ const PTrabManager = () => {
 
   // NOVO ESTADO: Diálogo de Consolidação
   const [showConsolidationDialog, setShowConsolidationDialog] = useState(false);
+  
+  // NOVO ESTADO: Diálogo de Aprovação/Numeração
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [ptrabToApprove, setPtrabToApprove] = useState<PTrab | null>(null);
+  const [suggestedApproveNumber, setSuggestedApproveNumber] = useState<string>(""); // Ex: 1/2025
+  const [customApproveNumber, setCustomApproveNumber] = useState<string>(""); // Ex: 1/2025
+
 
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
@@ -100,7 +108,7 @@ const PTrabManager = () => {
     setEditingId(null);
     setSelectedOmId(undefined);
     setFormData({
-      numero_ptrab: generateUniquePTrabNumber(existingPTrabNumbers),
+      numero_ptrab: "MINUTA", // Valor obrigatório para Minuta
       comando_militar_area: "",
       nome_om: "",
       nome_om_extenso: "",
@@ -114,13 +122,13 @@ const PTrabManager = () => {
       acoes: "",
       nome_cmt_om: "",
       local_om: "",
-      status: "aberto",
+      status: "minuta", // Novo status inicial
       origem: 'original',
     });
-  }, [existingPTrabNumbers]);
+  }, []);
 
   const [formData, setFormData] = useState({
-    numero_ptrab: generateUniquePTrabNumber(existingPTrabNumbers),
+    numero_ptrab: "MINUTA",
     comando_militar_area: "",
     nome_om: "",
     nome_om_extenso: "",
@@ -134,7 +142,7 @@ const PTrabManager = () => {
     acoes: "",
     nome_cmt_om: "",
     local_om: "",
-    status: "aberto",
+    status: "minuta" as 'minuta' | 'aberto' | 'em_andamento' | 'completo' | 'arquivado' | 'aprovado',
     origem: 'original' as 'original' | 'importado' | 'consolidado',
   });
 
@@ -150,16 +158,29 @@ const PTrabManager = () => {
   // Efeito para atualizar o número sugerido no diálogo de clonagem
   useEffect(() => {
     if (ptrabToClone) {
+      // Se o PTrab original não tem número (é minuta), usa o próximo número base
+      const baseNumber = ptrabToClone.numero_ptrab || generateUniquePTrabNumber(existingPTrabNumbers);
+      
       let newSuggestedNumber = "";
       if (cloneType === 'new') {
         newSuggestedNumber = generateUniquePTrabNumber(existingPTrabNumbers);
       } else { // 'variation'
-        newSuggestedNumber = generateVariationPTrabNumber(ptrabToClone.numero_ptrab, existingPTrabNumbers);
+        // Se for variação, usa o número base do original (se existir)
+        newSuggestedNumber = generateVariationPTrabNumber(baseNumber, existingPTrabNumbers);
       }
       setSuggestedCloneNumber(newSuggestedNumber);
       setCustomCloneNumber(newSuggestedNumber); // Inicializa o campo editável com a sugestão
     }
   }, [ptrabToClone, cloneType, existingPTrabNumbers]);
+  
+  // Efeito para atualizar o número sugerido no diálogo de aprovação
+  useEffect(() => {
+    if (ptrabToApprove) {
+      const newSuggestedNumber = generateUniquePTrabNumber(existingPTrabNumbers);
+      setSuggestedApproveNumber(newSuggestedNumber);
+      setCustomApproveNumber(newSuggestedNumber);
+    }
+  }, [ptrabToApprove, existingPTrabNumbers]);
 
 
   const checkAuth = async () => {
@@ -194,7 +215,12 @@ const PTrabManager = () => {
       // Cast pTrabsData to the expected structure PTrabDB[]
       const typedPTrabsData = pTrabsData as unknown as PTrabDB[];
 
-      const numbers = (typedPTrabsData || []).map(p => p.numero_ptrab);
+      // Filtra apenas números válidos (não 'MINUTA') para a lista de números existentes
+      // Agora, armazena o número COMPLETO (ex: 1/2025/OM)
+      const numbers = (typedPTrabsData || [])
+        .map(p => p.numero_ptrab)
+        .filter((num): num is string => !!num && num !== 'MINUTA');
+        
       setExistingPTrabNumbers(numbers);
 
       const pTrabsWithTotals: PTrab[] = await Promise.all(
@@ -260,7 +286,7 @@ const PTrabManager = () => {
           !promptedForArchive.current.has(ptrab.id)
         ) {
           setPtrabToArchiveId(ptrab.id);
-          setPtrabToArchiveName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
+          setPtrabToArchiveName(`${ptrab.numero_ptrab || 'MINUTA'} - ${ptrab.nome_operacao}`);
           setShowArchiveStatusDialog(true);
           promptedForArchive.current.add(ptrab.id);
           break;
@@ -304,6 +330,11 @@ const PTrabManager = () => {
   };
 
   const statusConfig = {
+    'minuta': { 
+      variant: 'outline' as const, 
+      label: 'Minuta',
+      className: 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+    },
     'aberto': { 
       variant: 'default' as const, 
       label: 'Aberto',
@@ -319,6 +350,11 @@ const PTrabManager = () => {
       label: 'Completo',
       className: 'bg-green-100 text-green-800 hover:bg-green-200'
     },
+    'aprovado': { 
+      variant: 'default' as const, 
+      label: 'Aprovado',
+      className: 'bg-primary/10 text-primary hover:bg-primary/20'
+    },
     'arquivado': { 
       variant: 'outline' as const, 
       label: 'Arquivado',
@@ -331,10 +367,20 @@ const PTrabManager = () => {
       const ptrab = pTrabs.find(p => p.id === ptrabId);
       if (ptrab) {
         setPtrabToReactivateId(ptrab.id);
-        setPtrabToReactivateName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
+        setPtrabToReactivateName(`${ptrab.numero_ptrab || 'MINUTA'} - ${ptrab.nome_operacao}`);
         setShowReactivateStatusDialog(true);
       }
       return;
+    }
+    
+    // Se tentar mudar de 'minuta' para 'aprovado', abre o diálogo de aprovação
+    if (oldStatus === 'minuta' && newStatus === 'aprovado') {
+        const ptrab = pTrabs.find(p => p.id === ptrabId);
+        if (ptrab) {
+            setPtrabToApprove(ptrab);
+            setShowApproveDialog(true);
+        }
+        return;
     }
 
     try {
@@ -415,13 +461,7 @@ const PTrabManager = () => {
     navigate("/");
   };
 
-  const handleNumeroPTrabChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value;
-    // Extrai apenas a parte numérica antes da barra, se houver
-    const numericPart = inputValue.split('/')[0].replace(/\D/g, '');
-    // Sempre formata como NUMERO/ANO
-    setFormData((prev) => ({ ...prev, numero_ptrab: `${numericPart}${yearSuffix}` }));
-  };
+  // Removido handleNumeroPTrabChange pois o campo foi removido do formulário principal
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -431,20 +471,24 @@ const PTrabManager = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Validação de número de P Trab único
-      // Compara o formData.numero_ptrab (já formatado como NUMERO/ANO)
-      // com os números existentes. Exclui o próprio PTrab se estiver em modo de edição.
-      const isDuplicate = isPTrabNumberDuplicate(formData.numero_ptrab, existingPTrabNumbers) && 
-                         formData.numero_ptrab !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
+      // Se estiver editando um PTrab JÁ NUMERADO, verifica duplicidade
+      if (editingId && formData.numero_ptrab && formData.numero_ptrab !== 'MINUTA') {
+        const isDuplicate = isPTrabNumberDuplicate(formData.numero_ptrab, existingPTrabNumbers) && 
+                           formData.numero_ptrab !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
 
-      if (isDuplicate) {
-        toast.error("Já existe um P Trab com este número. Por favor, proponha outro.");
-        setLoading(false);
-        return;
+        if (isDuplicate) {
+          toast.error("Já existe um P Trab com este número. Por favor, proponha outro.");
+          setLoading(false);
+          return;
+        }
       }
+      
+      // O numero_ptrab é sempre 'MINUTA' na criação/edição de minuta
+      const finalNumeroPTrab = formData.status === 'minuta' ? 'MINUTA' : formData.numero_ptrab;
 
       const ptrabData = {
         ...formData,
+        numero_ptrab: finalNumeroPTrab,
         user_id: user.id,
         origem: editingId ? formData.origem : 'original',
       };
@@ -456,7 +500,7 @@ const PTrabManager = () => {
       } else {
         const { error } = await supabase.from("p_trab").insert([ptrabData]);
         if (error) throw error;
-        toast.success("P Trab criado!");
+        toast.success("Minuta criada!");
       }
 
       setDialogOpen(false);
@@ -471,9 +515,9 @@ const PTrabManager = () => {
 
   const handleEdit = (ptrab: PTrab) => {
     setEditingId(ptrab.id);
-    setSelectedOmId(undefined);
+    setSelectedOmId(ptrab.codug_om ? ptrab.codug_om : undefined); // Usando CODUG como ID temporário para OmSelector
     setFormData({
-      numero_ptrab: ptrab.numero_ptrab,
+      numero_ptrab: ptrab.numero_ptrab || "MINUTA",
       comando_militar_area: ptrab.comando_militar_area,
       nome_om: ptrab.nome_om,
       nome_om_extenso: ptrab.nome_om_extenso || "",
@@ -487,7 +531,7 @@ const PTrabManager = () => {
       acoes: ptrab.acoes || "",
       nome_cmt_om: ptrab.nome_cmt_om || "",
       local_om: ptrab.local_om || "",
-      status: ptrab.status,
+      status: ptrab.status as 'minuta' | 'aberto' | 'em_andamento' | 'completo' | 'arquivado' | 'aprovado',
       origem: ptrab.origem,
     });
     setDialogOpen(true);
@@ -505,7 +549,7 @@ const PTrabManager = () => {
     }
   };
 
-  // Nova função para executar o processo de clonagem
+  // Função para executar o processo de clonagem
   const executeCloningProcess = async (originalPTrabId: string, newNumeroPTrab: string) => {
     setLoading(true);
     try {
@@ -525,12 +569,12 @@ const PTrabManager = () => {
 
       // 2. Create the new PTrab object
       // Destructure only fields present in the DB schema (PTrabDB)
-      const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = typedOriginalPTrab; 
+      const { id, created_at, updated_at, totalLogistica, totalOperacional, numero_ptrab, status, ...restOfPTrab } = typedOriginalPTrab; 
       
       const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
         ...restOfPTrab,
-        numero_ptrab: newNumeroPTrab,
-        status: "aberto",
+        numero_ptrab: "MINUTA", // Sempre começa como MINUTA
+        status: "minuta", // Clones sempre começam como minuta
         user_id: (await supabase.auth.getUser()).data.user?.id!,
         origem: typedOriginalPTrab.origem,
       };
@@ -682,7 +726,7 @@ const PTrabManager = () => {
         }
       }
 
-      toast.success(`P Trab ${newNumeroPTrab} clonado com sucesso!`);
+      toast.success(`Minuta clonada com sucesso!`);
       await loadPTrabs();
       
       // Limpar todos os estados relacionados ao diálogo de clonagem
@@ -709,21 +753,27 @@ const PTrabManager = () => {
 
   // Função para confirmar a clonagem a partir do diálogo
   const handleConfirmClone = async () => {
-    if (!ptrabToClone || !customCloneNumber.trim()) {
-      toast.error("Número do P Trab para o clone é obrigatório.");
-      return;
-    }
-
-    // Validação de número de P Trab único para o novo clone
-    const isDuplicate = isPTrabNumberDuplicate(customCloneNumber, existingPTrabNumbers);
-
-    if (isDuplicate) {
-      toast.error("Já existe um P Trab com este número. Por favor, proponha outro.");
-      return;
+    if (!ptrabToClone) return;
+    
+    // O número sugerido/customizado é apenas o número base (ex: 1/2025)
+    let finalNumberBase = "";
+    if (cloneType === 'variation') {
+        // Se for variação, usa o número base do original (se existir)
+        finalNumberBase = generateVariationPTrabNumber(ptrabToClone.numero_ptrab || `1${yearSuffix}`, existingPTrabNumbers);
+    } else {
+        // Se for novo, usa o campo customizável e valida
+        if (!customCloneNumber.trim()) {
+            toast.error("Número do P Trab para o clone é obrigatório.");
+            return;
+        }
+        // A validação de duplicidade é complexa aqui, pois o número final inclui a OM.
+        // Por enquanto, validamos apenas o número base para evitar conflitos óbvios.
+        // A validação final de duplicidade (com OM) ocorrerá na aprovação.
+        finalNumberBase = customCloneNumber;
     }
 
     // Não fechar o diálogo aqui - deixar executeCloningProcess fazer isso após sucesso
-    await executeCloningProcess(ptrabToClone.id, customCloneNumber);
+    await executeCloningProcess(ptrabToClone.id, finalNumberBase);
   };
 
   const handleSelectPTrab = (ptrabId: string) => {
@@ -761,13 +811,58 @@ const PTrabManager = () => {
   };
 
   // =================================================================
+  // LÓGICA DE APROVAÇÃO / NUMERAÇÃO
+  // =================================================================
+  
+  const handleConfirmApprove = async () => {
+    if (!ptrabToApprove || !customApproveNumber.trim()) {
+        toast.error("O número do P Trab é obrigatório.");
+        return;
+    }
+    
+    // 1. Construir o número final no formato: número/ano/OM
+    const omSigla = ptrabToApprove.nome_om.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const finalNumeroPTrab = `${customApproveNumber}/${omSigla}`;
+    
+    // 2. Validar duplicidade do número COMPLETO
+    const isDuplicate = isPTrabNumberDuplicate(finalNumeroPTrab, existingPTrabNumbers);
+    if (isDuplicate) {
+        toast.error(`O número ${finalNumeroPTrab} já existe. Por favor, altere o número base.`);
+        return;
+    }
+    
+    setLoading(true);
+    try {
+        const { error } = await supabase
+            .from("p_trab")
+            .update({ 
+                numero_ptrab: finalNumeroPTrab, 
+                status: 'aprovado' 
+            })
+            .eq("id", ptrabToApprove.id);
+
+        if (error) throw error;
+
+        toast.success(`P Trab ${finalNumeroPTrab} aprovado e numerado com sucesso!`);
+        setShowApproveDialog(false);
+        setPtrabToApprove(null);
+        loadPTrabs();
+    } catch (error) {
+        console.error("Erro ao aprovar P Trab:", error);
+        toast.error(sanitizeError(error));
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  // =================================================================
   // LÓGICA DE CONSOLIDAÇÃO
   // =================================================================
 
   const handleConfirmConsolidation = async (
     sourcePTrabIds: string[],
     targetPTrabId: string | 'new',
-    newPTrabNumber?: string,
+    newPTrabNumberBase?: string, // Agora é o número base (ex: 1/2025)
     templatePTrabId?: string
   ) => {
     if (!sourcePTrabIds.length) return;
@@ -776,23 +871,32 @@ const PTrabManager = () => {
     setShowConsolidationDialog(false);
     let finalTargetPTrabId: string;
     let targetPTrab: PTrab | undefined;
+    let finalNumeroPTrab: string | null = null;
 
     try {
       // 1. Determinar ou Criar o P Trab de Destino
       if (targetPTrabId === 'new') {
-        if (!newPTrabNumber || !templatePTrabId) throw new Error("Dados de criação incompletos.");
+        if (!newPTrabNumberBase || !templatePTrabId) throw new Error("Dados de criação incompletos.");
         
-        // Usar o PTrab selecionado como template
         const templatePTrab = pTrabs.find(p => p.id === templatePTrabId);
         if (!templatePTrab) throw new Error("P Trab template não encontrado.");
+        
+        // Construir o número final (número/ano/OM)
+        const omSigla = templatePTrab.nome_om.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        finalNumeroPTrab = `${newPTrabNumberBase}/${omSigla}`;
+        
+        // Validar duplicidade do número COMPLETO
+        if (isPTrabNumberDuplicate(finalNumeroPTrab, existingPTrabNumbers)) {
+            throw new Error(`O número consolidado ${finalNumeroPTrab} já existe. Por favor, altere o número base.`);
+        }
 
         // FIX: Explicitly exclude calculated fields and IDs
-        const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = templatePTrab;
+        const { id, created_at, updated_at, totalLogistica, totalOperacional, numero_ptrab, status, ...restOfPTrab } = templatePTrab;
         
         const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
           ...restOfPTrab,
-          numero_ptrab: newPTrabNumber,
-          status: "aberto",
+          numero_ptrab: finalNumeroPTrab, // Número completo
+          status: "aprovado", // PTrabs consolidados são aprovados diretamente
           user_id: (await supabase.auth.getUser()).data.user?.id!,
           nome_operacao: `CONSOLIDADO - ${templatePTrab.nome_operacao}`,
           origem: 'consolidado',
@@ -807,23 +911,24 @@ const PTrabManager = () => {
         if (insertPTrabError || !newPTrab) throw insertPTrabError;
         finalTargetPTrabId = newPTrab.id;
         targetPTrab = { ...newPTrab, origem: 'consolidado' } as PTrab;
-        toast.success(`Novo P Trab ${newPTrabNumber} criado para consolidação.`);
+        toast.success(`Novo P Trab ${finalNumeroPTrab} criado para consolidação.`);
       } else {
         finalTargetPTrabId = targetPTrabId;
         targetPTrab = pTrabs.find(p => p.id === finalTargetPTrabId);
         if (!targetPTrab) throw new Error("P Trab de destino existente não encontrado.");
         
-        // Se o P Trab de destino já existe, atualize a origem para 'consolidado'
+        // Se o P Trab de destino já existe, atualize a origem para 'consolidado' e status para 'aprovado'
         const { error: updateOriginError } = await supabase
           .from("p_trab")
-          .update({ origem: 'consolidado' } as TablesUpdate<'p_trab'>)
+          .update({ origem: 'consolidado', status: 'aprovado' } as TablesUpdate<'p_trab'>)
           .eq("id", finalTargetPTrabId);
           
         if (updateOriginError) console.error("Erro ao atualizar origem para consolidado:", updateOriginError);
         targetPTrab = { ...targetPTrab, origem: 'consolidado' } as PTrab;
+        finalNumeroPTrab = targetPTrab.numero_ptrab;
       }
 
-      // 2. Clonar e Inserir Registros de Classe I, Classe II e Classe III
+      // 2. Clonar e Inserir Registros de Classes (Lógica de clonagem mantida)
       let totalRecordsCloned = 0;
 
       for (const sourceId of sourcePTrabIds) {
@@ -897,7 +1002,7 @@ const PTrabManager = () => {
         }
       }
 
-      toast.success(`Consolidação concluída! ${totalRecordsCloned} registros copiados para ${targetPTrab?.numero_ptrab}.`);
+      toast.success(`Consolidação concluída! ${totalRecordsCloned} registros copiados para ${finalNumeroPTrab}.`);
       loadPTrabs();
     } catch (error: any) {
       toast.error(sanitizeError(error));
@@ -932,27 +1037,28 @@ const PTrabManager = () => {
               <DialogTrigger asChild>
                 <Button onClick={() => { resetForm(); setDialogOpen(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Novo P Trab
+                  Nova Minuta
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>{editingId ? "Editar P Trab" : "Novo P Trab"}</DialogTitle>
+                  <DialogTitle>{editingId ? "Editar P Trab" : "Nova Minuta de P Trab"}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* L1L: Número do P Trab */}
+                    {/* L1L: Número do P Trab (REMOVIDO DO FORMULÁRIO PRINCIPAL) */}
                     <div className="space-y-2">
-                      <Label htmlFor="numero_ptrab">Número do P Trab *</Label>
+                      <Label htmlFor="numero_ptrab_display">Número do P Trab</Label>
                       <Input
-                        id="numero_ptrab"
+                        id="numero_ptrab_display"
                         value={formData.numero_ptrab}
-                        onChange={handleNumeroPTrabChange}
-                        placeholder={`Ex: 1${yearSuffix}`}
-                        maxLength={10}
-                        required
-                        onKeyDown={handleEnterToNextField}
+                        readOnly
+                        disabled
+                        className="disabled:opacity-100 font-bold"
                       />
+                      <p className="text-xs text-muted-foreground">
+                          O número será atribuído no momento da aprovação.
+                      </p>
                     </div>
                     {/* L1R: Nome da Operação */}
                     <div className="space-y-2">
@@ -1108,7 +1214,7 @@ const PTrabManager = () => {
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button type="submit" disabled={loading}>
-                      {loading ? "Aguarde..." : (editingId ? "Atualizar" : "Criar")}
+                      {loading ? "Aguarde..." : (editingId ? "Atualizar" : "Criar Minuta")}
                     </Button>
                     <Button variant="outline" type="button" onClick={() => setDialogOpen(false)}>
                       Cancelar
@@ -1215,11 +1321,14 @@ const PTrabManager = () => {
               <TableBody>
                 {pTrabs.map((ptrab) => {
                   const originBadge = getOriginBadge(ptrab.origem);
+                  const isMinuta = ptrab.status === 'minuta';
+                  const isApproved = ptrab.status === 'aprovado';
+                  
                   return (
                   <TableRow key={ptrab.id}>
                     <TableCell className="font-medium">
                       <div className="flex flex-col items-center">
-                        <span>{ptrab.numero_ptrab}</span>
+                        <span>{ptrab.numero_ptrab || 'MINUTA'}</span>
                         <Badge 
                           variant="outline" 
                           className={`mt-1 text-xs font-semibold ${originBadge.className}`}
@@ -1242,6 +1351,7 @@ const PTrabManager = () => {
                         <Select
                           value={ptrab.status}
                           onValueChange={(value) => handleStatusChange(ptrab.id, ptrab.status, value)}
+                          disabled={isApproved} // Não permite mudar o status de um PTrab aprovado
                         >
                           <SelectTrigger className={`w-[140px] h-7 text-xs ${statusConfig[ptrab.status as keyof typeof statusConfig]?.className || 'bg-background'}`}>
                             <SelectValue>
@@ -1254,6 +1364,7 @@ const PTrabManager = () => {
                                 key={key} 
                                 value={key}
                                 className="cursor-pointer hover:bg-accent"
+                                disabled={isApproved && key !== 'aprovado'} // Se aprovado, só pode ser selecionado 'aprovado'
                               >
                                 <span className={`inline-block px-2 py-1 rounded text-xs ${config.className}`}>
                                   {config.label}
@@ -1323,11 +1434,25 @@ const PTrabManager = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        {isMinuta && (
+                            <Button
+                                onClick={() => {
+                                    setPtrabToApprove(ptrab);
+                                    setShowApproveDialog(true);
+                                }}
+                                size="sm"
+                                variant="default"
+                                className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                            >
+                                <CheckCircle className="h-4 w-4" />
+                                Aprovar
+                            </Button>
+                        )}
                         <Button
                           onClick={() => handleSelectPTrab(ptrab.id)}
                           size="sm"
                           className="flex items-center gap-2"
-                          disabled={ptrab.status === 'completo' || ptrab.status === 'arquivado'}
+                          disabled={ptrab.status === 'completo' || ptrab.status === 'arquivado' || isApproved}
                         >
                           <FileText className="h-4 w-4" />
                           Preencher
@@ -1403,13 +1528,62 @@ const PTrabManager = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Novo Diálogo de Opções de Clonagem */}
+      {/* Diálogo de Aprovação / Numeração */}
+      <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+                <CheckCircle className="h-5 w-5" />
+                Aprovar e Numerar P Trab
+            </DialogTitle>
+            <DialogDescription>
+              Atribua o número oficial do P Trab para a minuta: <span className="font-medium">{ptrabToApprove?.nome_operacao}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="approve-number">Número Base do P Trab (Ex: 1/2025) *</Label>
+              <Input
+                id="approve-number"
+                value={customApproveNumber}
+                onChange={(e) => setCustomApproveNumber(e.target.value)}
+                placeholder={suggestedApproveNumber}
+                maxLength={10}
+                required
+                onKeyDown={handleEnterToNextField}
+              />
+              <p className="text-xs text-muted-foreground">
+                Sugestão: {suggestedApproveNumber}
+              </p>
+            </div>
+            <div className="space-y-2 p-3 border rounded-md bg-muted/50">
+                <Label>Número Final Proposto</Label>
+                <p className="font-bold text-sm">
+                    {customApproveNumber.trim() ? `${customApproveNumber}/${ptrabToApprove?.nome_om.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()}` : 'Aguardando número base...'}
+                </p>
+                <p className="text-xs text-destructive">
+                    Atenção: O número final deve ser único.
+                </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleConfirmApprove} disabled={loading || !customApproveNumber.trim() || isPTrabNumberDuplicate(`${customApproveNumber}/${ptrabToApprove?.nome_om.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()}`, existingPTrabNumbers)}>
+              {loading ? "Aprovando..." : "Aprovar e Numerar"}
+            </Button>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancelar</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Opções de Clonagem */}
       <Dialog open={showCloneOptionsDialog} onOpenChange={setShowCloneOptionsDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Clonar Plano de Trabalho</DialogTitle>
             <p className="text-sm text-muted-foreground">
-              Clonando: <span className="font-medium">{ptrabToClone?.numero_ptrab} - {ptrabToClone?.nome_operacao}</span>
+              Clonando: <span className="font-medium">{ptrabToClone?.numero_ptrab || 'MINUTA'} - {ptrabToClone?.nome_operacao}</span>
             </p>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -1425,7 +1599,7 @@ const PTrabManager = () => {
                 <RadioGroupItem id="clone-new" value="new" className="sr-only" />
                 <span className="mb-3 text-lg font-semibold">Novo Trabalho</span>
                 <p className="text-sm text-muted-foreground text-center">
-                  Cria um P Trab totalmente novo com o próximo número disponível.
+                  Cria uma nova Minuta com o próximo número oficial sugerido.
                 </p>
               </Label>
               <Label
@@ -1435,21 +1609,25 @@ const PTrabManager = () => {
                 <RadioGroupItem id="clone-variation" value="variation" className="sr-only" />
                 <span className="mb-3 text-lg font-semibold">Variação do Trabalho</span>
                 <p className="text-sm text-muted-foreground text-center">
-                  Cria uma variação do P Trab atual (ex: {ptrabToClone?.numero_ptrab.split('/')[0]}.1/{currentYear}).
+                  Cria uma nova Minuta com um número de variação (ex: {ptrabToClone?.numero_ptrab?.split('/')[0] || '1'}.1/{currentYear}).
                 </p>
               </Label>
             </RadioGroup>
 
             <div className="space-y-2">
-              <Label htmlFor="clone-number">Número do Novo P Trab</Label>
+              <Label htmlFor="clone-number">Número Base Sugerido (Ex: 1/2025)</Label>
               <Input
                 id="clone-number"
                 value={customCloneNumber}
                 onChange={(e) => setCustomCloneNumber(e.target.value)}
                 placeholder={suggestedCloneNumber}
                 maxLength={10}
+                disabled={cloneType === 'variation'}
                 onKeyDown={handleEnterToNextField}
               />
+              <p className="text-xs text-muted-foreground">
+                Este número será usado como base para a numeração oficial na aprovação.
+              </p>
             </div>
           </div>
           <DialogFooter>
@@ -1468,7 +1646,7 @@ const PTrabManager = () => {
             <DialogTitle>Comentário do P Trab</DialogTitle>
             {ptrabComentario && (
               <p className="text-sm text-muted-foreground">
-                {ptrabComentario.numero_ptrab} - {ptrabComentario.nome_operacao}
+                {ptrabComentario.numero_ptrab || 'MINUTA'} - {ptrabComentario.nome_operacao}
               </p>
             )}
           </DialogHeader>
@@ -1495,7 +1673,7 @@ const PTrabManager = () => {
       <PTrabConsolidationDialog
         open={showConsolidationDialog}
         onOpenChange={setShowConsolidationDialog}
-        pTrabsList={pTrabs.map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))}
+        pTrabsList={pTrabs.map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab || 'MINUTA', nome_operacao: p.nome_operacao }))}
         existingPTrabNumbers={existingPTrabNumbers}
         onConfirm={handleConfirmConsolidation}
         loading={loading}
