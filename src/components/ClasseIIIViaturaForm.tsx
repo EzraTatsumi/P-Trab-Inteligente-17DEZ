@@ -242,7 +242,7 @@ export const ClasseIIIViaturaForm = ({
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
       
-      const detalhamento = `33.90.39 - Aquisição de Combustível (${combustivelLabel}) para ${totalViaturas} viaturas, durante ${formViatura.dias_operacao} dias de ${faseFormatada}, para ${formViatura.organizacao}.
+      const detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalViaturas} viaturas, durante ${formViatura.dias_operacao} dias de ${faseFormatada}, para ${formViatura.organizacao}.
 Fornecido por: ${rmFornecimentoViatura} (CODUG: ${codugRmFornecimentoViatura})
 
 Rendimento das viaturas:

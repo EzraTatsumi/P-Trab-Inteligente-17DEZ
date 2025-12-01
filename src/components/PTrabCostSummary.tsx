@@ -76,20 +76,25 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalRefeicoesIntermediarias += record.efetivo * record.nr_ref_int * record.dias_operacao;
   });
   
-  // 2. Fetch Classe II totals (33.90.30)
+  // 2. Fetch Classe II totals (33.90.30 e 33.90.39)
   const { data: classeIIData, error: classeIIError } = await supabase
     .from('classe_ii_registros')
-    .select('valor_total, itens_equipamentos, dias_operacao, organizacao') // ADD dias_operacao, organizacao
+    .select('valor_total, itens_equipamentos, dias_operacao, organizacao, valor_nd_30, valor_nd_39') // ADD valor_nd_30, valor_nd_39
     .eq('p_trab_id', ptrabId);
 
   if (classeIIError) throw classeIIError;
   
   let totalClasseII = 0;
+  let totalClasseII_ND30 = 0;
+  let totalClasseII_ND39 = 0;
   let totalItensClasseII = 0;
   let allClasseIIItems: DetailedItemClasseII[] = []; // Array to hold all individual items
   
   (classeIIData || []).forEach(record => {
     totalClasseII += record.valor_total;
+    totalClasseII_ND30 += Number(record.valor_nd_30);
+    totalClasseII_ND39 += Number(record.valor_nd_39);
+    
     // Sum the quantity of items and flatten the list
     if (Array.isArray(record.itens_equipamentos)) {
       const items = record.itens_equipamentos as ItemClasseII[];
@@ -113,17 +118,17 @@ const fetchPTrabTotals = async (ptrabId: string) => {
 
   if (classeIIIError) throw classeIIIError;
 
-  // Filtra registros de Combustível (ND 39)
+  // Combustível (ND 33.90.30)
   const combustivelRecords = (classeIIIData || []).filter(r => 
     r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR' && r.tipo_equipamento !== 'LUBRIFICANTE_EMBARCACAO'
   );
   
-  // Filtra registros de Lubrificante (ND 30)
+  // Lubrificante (ND 33.90.30)
   const lubrificanteRecords = (classeIIIData || []).filter(r => 
     r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO'
   );
 
-  // Totais de Combustível (ND 39)
+  // Totais de Combustível (ND 33.90.30)
   const totalDieselValor = combustivelRecords
     .filter(r => r.tipo_combustivel === 'DIESEL' || r.tipo_combustivel === 'OD')
     .reduce((sum, record) => sum + record.valor_total, 0);
@@ -142,15 +147,16 @@ const fetchPTrabTotals = async (ptrabId: string) => {
 
   const totalCombustivel = totalDieselValor + totalGasolinaValor;
   
-  // Totais de Lubrificante (ND 30)
+  // Totais de Lubrificante (ND 33.90.30)
   const totalLubrificanteValor = lubrificanteRecords
     .reduce((sum, record) => sum + record.valor_total, 0);
     
   const totalLubrificanteLitros = lubrificanteRecords
     .reduce((sum, record) => sum + record.total_litros, 0);
 
-  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classe II (ND 30) + Lubrificante (ND 30) + Combustível (ND 39)
-  const totalLogisticoGeral = totalClasseI + totalClasseII + totalLubrificanteValor + totalCombustivel;
+  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classe II (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
+  // Todos os itens de Classe I, Classe II (Material e Serviço) e Classe III (Combustível e Lubrificante) são GND 3.
+  const totalLogisticoGeral = totalClasseI + totalClasseII + totalCombustivel + totalLubrificanteValor;
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
@@ -164,6 +170,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalOperacional,
     totalClasseI,
     totalClasseII,
+    totalClasseII_ND30, // NEW
+    totalClasseII_ND39, // NEW
     totalItensClasseII,
     allClasseIIItems, // NEW: Return the list of individual items
     totalComplemento,
@@ -198,6 +206,8 @@ export const PTrabCostSummary = ({
       totalOperacional: 0,
       totalClasseI: 0,
       totalClasseII: 0,
+      totalClasseII_ND30: 0, // Initialize new field
+      totalClasseII_ND39: 0, // Initialize new field
       totalItensClasseII: 0,
       allClasseIIItems: [], // Initialize new field
       totalComplemento: 0,
@@ -391,23 +401,36 @@ export const PTrabCostSummary = ({
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-0">
                         <div className="space-y-1 pl-4 text-[10px]">
-                          {sortedGroupedClasseIIItems.length === 0 ? (
-                            <div className="text-muted-foreground">Nenhum item cadastrado.</div>
-                          ) : (
-                            sortedGroupedClasseIIItems.map((item, index) => (
-                              <div key={index} className="flex justify-between text-muted-foreground">
-                                <span className={descriptionClasses}>
-                                  {item.item}
-                                </span>
-                                <span className={quantityClasses}>
-                                  {item.totalQuantidade} un.
-                                </span>
-                                <span className={cn(valueClasses, "mr-6")}>
-                                  {formatCurrency(item.totalValor)}
-                                </span>
-                              </div>
-                            ))
-                          )}
+                          {/* Detalhe ND 30 */}
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className={descriptionClasses}>ND 33.90.30 (Material)</span>
+                            <span className={quantityClasses}>
+                              {/* Vazio */}
+                            </span>
+                            <span className={cn(valueClasses, "mr-6 text-green-600")}>
+                              {formatCurrency(totals.totalClasseII_ND30)}
+                            </span>
+                          </div>
+                          {/* Detalhe ND 39 */}
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className={descriptionClasses}>ND 33.90.39 (Serviço)</span>
+                            <span className={quantityClasses}>
+                              {/* Vazio */}
+                            </span>
+                            <span className={cn(valueClasses, "mr-6 text-blue-600")}>
+                              {formatCurrency(totals.totalClasseII_ND39)}
+                            </span>
+                          </div>
+                          {/* Detalhe Total Itens */}
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className={descriptionClasses}>Total Itens</span>
+                            <span className={quantityClasses}>
+                              {formatNumber(totals.totalItensClasseII)} un.
+                            </span>
+                            <span className={cn(valueClasses, "mr-6")}>
+                              {/* Vazio */}
+                            </span>
+                          </div>
                         </div>
                       </AccordionContent>
                     </AccordionItem>

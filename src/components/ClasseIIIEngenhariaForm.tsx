@@ -240,7 +240,7 @@ export const ClasseIIIEngenhariaForm = ({
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
       
-      const detalhamento = `33.90.39 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos de engenharia, durante ${formEngenharia.dias_operacao} dias de ${faseFormatada}, para ${formEngenharia.organizacao}.
+      const detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos de engenharia, durante ${formEngenharia.dias_operacao} dias de ${faseFormatada}, para ${formEngenharia.organizacao}.
 Fornecido por: ${rmFornecimentoEngenharia} (CODUG: ${codugRmFornecimentoEngenharia})
 
 Cálculo:

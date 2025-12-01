@@ -165,7 +165,7 @@ export const ClasseIIIGeradorForm = ({
       const numericValue = parseInputToNumber(input);
       const formattedDisplay = formatNumberForInput(numericValue, minDecimals);
       setInput(formattedDisplay);
-      updateNumericItemGerador(field, formattedDisplay);
+      updateNumericItemGerador(field, numericValue); // Corrigido para usar numericValue
   };
   // Fim Input Handlers
 
@@ -315,7 +315,7 @@ export const ClasseIIIGeradorForm = ({
       return { consolidadosCombustivel: [], consolidadoLubrificante: null }; 
     }
     
-    // --- CÁLCULO DE COMBUSTÍVEL (ND 33.90.39) ---
+    // --- CÁLCULO DE COMBUSTÍVEL (ND 33.90.30) ---
     const gruposCombustivel = itens.reduce((acc, item) => {
       if (!acc[item.tipo_combustivel]) { acc[item.tipo_combustivel] = []; }
       acc[item.tipo_combustivel].push(item);
@@ -347,7 +347,7 @@ export const ClasseIIIGeradorForm = ({
       if (customFaseAtividade.trim()) { fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividade.trim()]; }
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
-      const detalhamento = `33.90.39 - Aquisição de Combustível (${combustivelLabel}) para ${totalGeradores} geradores, durante ${formGerador.dias_operacao} dias de ${faseFormatada}, para ${formGerador.organizacao}.
+      const detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalGeradores} geradores, durante ${formGerador.dias_operacao} dias de ${faseFormatada}, para ${formGerador.organizacao}.
 Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
 
 Cálculo:
@@ -385,7 +385,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(preco)}
       totalLitrosLubrificante += litrosItem;
       totalValorLubrificante += valorItem;
       
-      detalhesLubrificante.push(`- ${item.quantidade} ${item.tipo_equipamento_especifico}: (${formatNumber(totalHoras)} horas / 100h) x ${formatNumber(item.consumo_lubrificante_litro, 2)} L/100h = ${formatNumber(litrosItem, 2)} L. Valor: ${formatCurrency(valorItem)}.`);
+      detalhesLubrificante.push(`- ${item.quantidade} ${item.tipo_equipamento_especifico}: (${formatNumber(totalHoras)} horas) / 100h x ${formatNumber(item.consumo_lubrificante_litro, 2)} L/100h = ${formatNumber(litrosItem, 2)} L. Valor: ${formatCurrency(valorItem)}.`);
     });
     
     let consolidadoLubrificante: ConsolidadoLubrificante | null = null;
@@ -443,7 +443,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
     
     const registrosParaSalvar: TablesInsert<'classe_iii_registros'>[] = [];
     
-    // 1. Preparar registros de COMBUSTÍVEL (ND 33.90.39)
+    // 1. Preparar registros de COMBUSTÍVEL (ND 33.90.30)
     for (const consolidado of consolidadosCombustivel) {
       const registro: TablesInsert<'classe_iii_registros'> = {
         p_trab_id: ptrabId,

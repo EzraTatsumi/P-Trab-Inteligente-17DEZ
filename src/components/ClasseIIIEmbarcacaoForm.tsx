@@ -164,7 +164,7 @@ export const ClasseIIIEmbarcacaoForm = ({
       const numericValue = parseInputToNumber(input);
       const formattedDisplay = formatNumberForInput(numericValue, minDecimals);
       setInput(formattedDisplay);
-      updateNumericItemEmbarcacao(field, numericValue); // Usar numericValue para o estado interno
+      updateNumericItemEmbarcacao(field, numericValue); // Corrigido para usar numericValue
   };
   // Fim Input Handlers
 
@@ -314,7 +314,7 @@ export const ClasseIIIEmbarcacaoForm = ({
       return { consolidadosCombustivel: [], consolidadoLubrificante: null }; 
     }
     
-    // --- CÁLCULO DE COMBUSTÍVEL (ND 33.90.39) ---
+    // --- CÁLCULO DE COMBUSTÍVEL (ND 33.90.30) ---
     const gruposPorCombustivel = itens.reduce((grupos, item) => {
       if (!grupos[item.tipo_combustivel]) { grupos[item.tipo_combustivel] = []; }
       grupos[item.tipo_combustivel].push(item);
@@ -340,13 +340,15 @@ export const ClasseIIIEmbarcacaoForm = ({
       
       const totalLitros = totalLitrosSemMargem * 1.3;
       const valorTotal = totalLitros * precoLitro;
+      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
+      const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
       const formatarData = (data: string) => { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; };
       const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
       const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
       const localConsulta = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? `(${refLPC.nome_local})` : '';
       const totalEmbarcacoes = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
       
-      let detalhamento = `33.90.39 - Aquisição de Combustível (${combustivelLabel}) para ${totalEmbarcacoes} embarcações, durante ${formEmbarcacao.dias_operacao} dias de ${faseFormatada}, para ${formEmbarcacao.organizacao}.
+      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEmbarcacoes} embarcações, durante ${formEmbarcacao.dias_operacao} dias de ${faseFormatada}, para ${formEmbarcacao.organizacao}.
 Fornecido por: ${rmFornecimentoEmbarcacao} (CODUG: ${codugRmFornecimentoEmbarcacao})
 
 Cálculo:
@@ -357,8 +359,8 @@ Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: $
 Fórmula: (Nr Embarcações x Nr Horas utilizadas/dia x Consumo/hora) x Nr dias de operação.
 ${detalhes.join('\n')}
 
-Total: ${formatNumber(totalLitrosSemMargem)} L ${tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD'} + 30% = ${formatNumber(totalLitros)} L ${tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD'}.
-Valor: ${formatNumber(totalLitros)} L x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
+Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}.
+Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
       
       novosConsolidados.push({
         tipo_combustivel: tipoCombustivel,
@@ -435,7 +437,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
     
     const registrosParaSalvar: TablesInsert<'classe_iii_registros'>[] = [];
     
-    // 1. Preparar registros de COMBUSTÍVEL (ND 33.90.39)
+    // 1. Preparar registros de COMBUSTÍVEL (ND 33.90.30)
     for (const consolidado of consolidadosCombustivel) {
       const precoLitro = consolidado.tipo_combustivel === 'GASOLINA' ? refLPC.preco_gasolina : refLPC.preco_diesel;
       const registro: TablesInsert<'classe_iii_registros'> = {
