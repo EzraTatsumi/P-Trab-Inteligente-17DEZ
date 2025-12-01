@@ -1,4 +1,4 @@
-## Regras de Negócio e Cálculo (Diretrizes COLOG/COTER)
+# Regras de Negócio e Cálculo (Diretrizes COLOG/COTER)
 
 Este documento detalha as regras de cálculo e as diretrizes de custeio implementadas no sistema PTrab Inteligente, garantindo a conformidade com as normas do COLOG e COTER.
 
@@ -45,6 +45,8 @@ O complemento é o valor destinado às refeições intermediárias.
 
 **Total Geral Classe I:** `Total QS + Total QR`
 
+---
+
 ## 2. Classe II - Material de Intendência
 
 A Classe II cobre a manutenção de material de intendência (barracas, coletes, etc.). O valor é calculado com base em um valor de manutenção por dia (`Valor Mnt/Dia`) definido na Diretriz de Custeio.
@@ -66,6 +68,8 @@ O valor total da categoria é dividido entre **ND 33.90.30 (Material)** e **ND 3
 
 **Regra de Negócio:** O sistema garante que a soma de ND 30 e ND 39 seja exatamente igual ao `Total Categoria`.
 
+---
+
 ## 3. Classe III - Combustíveis e Lubrificantes
 
 A Classe III é dividida em Combustível (para Geradores, Embarcações, Motomecanização, Engenharia) e Lubrificantes. Ambos são alocados na ND **33.90.30** (exceto o valor do combustível, que é alocado na coluna de Combustível do PTrab).
@@ -76,7 +80,7 @@ O cálculo depende dos preços unitários de Diesel e Gasolina, que são configu
 
 ### 3.2. Fórmulas de Cálculo de Combustível (ND 33.90.30)
 
-O cálculo é feito por tipo de equipamento (Gerador, Embarcação, Motomecanização, Engenharia) e consolidado por tipo de combustível (Diesel/Gasolina).
+O cálculo é feito por tipo de equipamento (Gerador, Embarcação, etc.) e consolidado por tipo de combustível (Diesel/Gasolina).
 
 **Fórmula Base (Consumo por Hora - Geradores, Embarcações, Engenharia):**
 1. `Litros Sem Margem = (Quantidade x Horas/dia x Consumo Fixo (L/h)) x Dias Operação`

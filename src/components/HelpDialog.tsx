@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HelpCircle, Code, FileText, Loader2, ChevronDown } from "lucide-react";
+import { HelpCircle, Code, FileText, Loader2 } from "lucide-react";
 import { MarkdownViewer } from './MarkdownViewer';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { parseMarkdownToSections, MarkdownSection } from '@/lib/markdownParser'; // Importar parser
 
 // Importar o conteúdo dos arquivos Markdown como strings
 import architectureContent from '@/docs/Architecture.md?raw';
@@ -15,10 +13,6 @@ import businessRulesContent from '@/docs/BusinessRules.md?raw';
 export const HelpDialog: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  
-  // Analisar o conteúdo Markdown em seções
-  const businessSections = useMemo(() => parseMarkdownToSections(businessRulesContent), []);
-  const architectureSections = useMemo(() => parseMarkdownToSections(architectureContent), []);
   
   // Simular um pequeno atraso para garantir que o conteúdo seja carregado
   useEffect(() => {
@@ -30,22 +24,6 @@ export const HelpDialog: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [open]);
-
-  const renderSections = (sections: MarkdownSection[]) => (
-    <Accordion type="multiple" className="w-full">
-      {sections.map((section) => (
-        <AccordionItem key={section.id} value={section.id}>
-          <AccordionTrigger className="text-base font-semibold text-foreground hover:no-underline">
-            {section.title}
-          </AccordionTrigger>
-          <AccordionContent className="pb-4">
-            {/* O MarkdownViewer renderiza o conteúdo da seção */}
-            <MarkdownViewer content={section.content} className="pl-4" />
-          </AccordionContent>
-        </AccordionItem>
-      ))}
-    </Accordion>
-  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -83,13 +61,13 @@ export const HelpDialog: React.FC = () => {
             ) : (
               <>
                 <TabsContent value="business-rules" className="mt-0 h-full">
-                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
-                    {renderSections(businessSections)}
+                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4"> {/* Altura calculada para caber no diálogo */}
+                    <MarkdownViewer content={businessRulesContent} />
                   </ScrollArea>
                 </TabsContent>
                 <TabsContent value="architecture" className="mt-0 h-full">
-                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
-                    {renderSections(architectureSections)}
+                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4"> {/* Altura calculada para caber no diálogo */}
+                    <MarkdownViewer content={architectureContent} />
                   </ScrollArea>
                 </TabsContent>
               </>
