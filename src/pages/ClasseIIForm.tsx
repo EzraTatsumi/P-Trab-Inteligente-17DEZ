@@ -37,11 +37,13 @@ const CATEGORIAS: Categoria[] = [
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
 
+// ... (Interfaces e tipos mantidos)
+
 interface ItemClasseII {
   item: string;
   quantidade: number;
   valor_mnt_dia: number;
-  categoria: Categoria;
+  categoria: string;
   memoria_customizada?: string | null;
 }
 
@@ -56,8 +58,8 @@ interface FormDataClasseII {
 
 interface ClasseIIRegistro {
   id: string;
-  organizacao: string; // OM de Destino do Recurso (ND 30)
-  ug: string; // UG de Destino do Recurso (ND 30)
+  organizacao: string; // OM de Destino do Recurso (ND 30/39)
+  ug: string; // UG de Destino do Recurso (ND 30/39)
   dias_operacao: number;
   categoria: string;
   itens_equipamentos: ItemClasseII[]; // Tipo corrigido
@@ -650,6 +652,8 @@ export default function ClasseIIForm() {
     }
 
     try {
+      setLoading(true);
+      
       // 3. Deletar TODOS os registros existentes para o PTrab (pois estamos salvando por categoria)
       const { error: deleteError } = await supabase
         .from("classe_ii_registros")
@@ -1065,9 +1069,9 @@ export default function ClasseIIForm() {
                                                 value={formatNumberForInput(nd30ValueTemp, 2)}
                                                 readOnly
                                                 disabled
-                                                className="pl-8 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
+                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
                                             />
-                                            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                         </div>
                                         <p className="text-xs text-muted-foreground">
                                             Calculado por diferença (Total - ND 39).
@@ -1085,11 +1089,11 @@ export default function ClasseIIForm() {
                                                 onChange={handleND39InputChange}
                                                 onBlur={handleND39InputBlur}
                                                 placeholder="0,00"
-                                                className="pl-8 text-lg"
+                                                className="pl-12 text-lg"
                                                 disabled={currentCategoryTotalValue === 0}
                                                 onKeyDown={handleEnterToNextField}
                                             />
-                                            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                         </div>
                                         <p className="text-xs text-muted-foreground">
                                             Valor alocado para contratação de serviço.
