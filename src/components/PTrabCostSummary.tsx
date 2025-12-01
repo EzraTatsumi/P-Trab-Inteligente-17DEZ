@@ -348,8 +348,8 @@ export const PTrabCostSummary = ({
                 <span className="text-base font-bold text-foreground">Total Geral</span>
                 <div className="flex flex-col items-end gap-0"> {/* Usar flex-col para empilhar */}
                     <span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>
-                    <span className="font-semibold text-primary flex items-center gap-1 text-xs">
-                        {isDetailsOpen ? "MENOS DETALHES" : "MAIS DETALHES"}
+                    <span className="font-semibold text-primary flex items-center gap-1 text-xs lowercase">
+                        {isDetailsOpen ? "menos detalhes" : "mais detalhes"}
                         <ChevronDown className={cn(
                           "h-4 w-4 shrink-0 transition-transform duration-200",
                           isDetailsOpen ? "rotate-180" : "rotate-0"
