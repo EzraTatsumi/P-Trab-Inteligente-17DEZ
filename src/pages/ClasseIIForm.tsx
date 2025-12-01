@@ -794,6 +794,66 @@ export default function ClasseIIForm() {
     }, {} as Record<string, ClasseIIRegistro[]>);
   }, [registros]);
 
+  const handleIniciarEdicaoMemoria = (registro: ClasseIIRegistro) => {
+    setEditingMemoriaId(registro.id);
+    setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento || "");
+  };
+
+  const handleCancelarEdicaoMemoria = () => {
+    setEditingMemoriaId(null);
+    setMemoriaEdit("");
+  };
+
+  const handleSalvarMemoriaCustomizada = async (registroId: string) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("classe_ii_registros")
+        .update({
+          detalhamento_customizado: memoriaEdit.trim() || null,
+        })
+        .eq("id", registroId);
+
+      if (error) throw error;
+
+      toast.success("Memória de cálculo atualizada com sucesso!");
+      handleCancelarEdicaoMemoria();
+      await fetchRegistros();
+    } catch (error) {
+      console.error("Erro ao salvar memória:", error);
+      toast.error(sanitizeError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
+    if (!confirm("Deseja restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("classe_ii_registros")
+        .update({
+          detalhamento_customizado: null,
+        })
+        .eq("id", registroId);
+
+      if (error) throw error;
+
+      toast.success("Memória de cálculo restaurada!");
+      await fetchRegistros();
+    } catch (error) {
+      console.error("Erro ao restaurar memória:", error);
+      toast.error(sanitizeError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
