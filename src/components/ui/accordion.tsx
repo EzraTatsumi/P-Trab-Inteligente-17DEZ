@@ -41,11 +41,12 @@ const AccordionTrigger = React.forwardRef<
       {...props}
     >
       {children}
-      {!simple && ( // Only render ChevronDown if not simple
-        <ChevronDown
-          className="h-4 w-4 shrink-0 transition-transform duration-200"
-        />
-      )}
+      <ChevronDown
+        className={cn(
+          "h-4 w-4 shrink-0 transition-transform duration-200",
+          simple && "hidden" // Hide the default icon if simple is true
+        )}
+      />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));

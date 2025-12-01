@@ -364,8 +364,12 @@ export const PTrabCostSummary = ({
                 handleSummaryClick();
               }}
             >
-              <span className="font-semibold text-primary">
+              <span className="font-semibold text-primary flex items-center gap-1">
                 {isDetailsOpen ? "MENOS DETALHES" : "MAIS DETALHES"}
+                <ChevronDown className={cn(
+                  "h-4 w-4 shrink-0 transition-transform duration-200",
+                  isDetailsOpen ? "rotate-180" : "rotate-0"
+                )} />
               </span>
             </AccordionTrigger>
             
@@ -382,13 +386,13 @@ export const PTrabCostSummary = ({
                   {/* Classe I - Subsistência */}
                   <Accordion type="single" collapsible className="w-full pt-0">
                     <AccordionItem value="item-classe-i" className="border-b-0">
-                      <AccordionTrigger simple className="p-0 hover:no-underline">
+                      <AccordionTrigger className="p-0 hover:no-underline">
                         <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
                           <div className="flex items-center gap-1 text-foreground">
                             <Utensils className="h-3 w-3 text-orange-500" />
                             Classe I
                           </div>
-                          <span className={cn(valueClasses, "text-xs")}>
+                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
                             {formatCurrency(totals.totalClasseI)}
                           </span>
                         </div>
@@ -423,13 +427,13 @@ export const PTrabCostSummary = ({
                   {/* Classe II - Material de Intendência */}
                   <Accordion type="single" collapsible className="w-full pt-1">
                     <AccordionItem value="item-classe-ii" className="border-b-0">
-                      <AccordionTrigger simple className="p-0 hover:no-underline">
+                      <AccordionTrigger className="p-0 hover:no-underline">
                         <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
                           <div className="flex items-center gap-1 text-foreground">
                             <ClipboardList className="h-3 w-3 text-orange-500" />
                             Classe II
                           </div>
-                          <span className={cn(valueClasses, "text-xs")}>
+                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
                             {formatCurrency(totals.totalClasseII)}
                           </span>
                         </div>
@@ -474,13 +478,13 @@ export const PTrabCostSummary = ({
                   {/* Classe III - Combustíveis e Lubrificantes */}
                   <Accordion type="single" collapsible className="w-full pt-1">
                     <AccordionItem value="item-classe-iii" className="border-b-0">
-                      <AccordionTrigger simple className="p-0 hover:no-underline">
+                      <AccordionTrigger className="p-0 hover:no-underline">
                         <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
                           <div className="flex items-center gap-1 text-foreground">
                             <Fuel className="h-3 w-3 text-orange-500" />
                             Classe III
                           </div>
-                          <span className={cn(valueClasses, "text-xs")}>
+                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
                             {formatCurrency(totals.totalCombustivel + totals.totalLubrificanteValor)}
                           </span>
                         </div>
