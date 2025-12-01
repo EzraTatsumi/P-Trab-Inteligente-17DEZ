@@ -359,8 +359,8 @@ export const PTrabCostSummary = ({
               </div>
             </AccordionTrigger>
             
-            <AccordionContent className="pt-2 pb-0"> {/* Removido pb-0 do AccordionContent */}
-              <div className="space-y-4" ref={detailsRef}>
+            <AccordionContent className="pt-2 pb-0">
+              <div className="space-y-2" ref={detailsRef}> {/* Alterado space-y-4 para space-y-2 */}
                 
                 {/* Aba Logística */}
                 <div className="space-y-3 border-l-4 border-orange-500 pl-3">
@@ -565,7 +565,7 @@ export const PTrabCostSummary = ({
         </Accordion>
         
         {/* Seção de Crédito (abaixo do Accordion) */}
-        <div className="px-6 pt-0 border-t border-border/50 space-y-2"> {/* Removido pt-3 */}
+        <div className="px-6 pt-0 border-t border-border/50 space-y-2 mt-[-0.5rem]"> {/* Adicionado mt-[-0.5rem] */}
             <div className="flex justify-between items-center">
                 <h4 className="font-bold text-sm text-accent flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
