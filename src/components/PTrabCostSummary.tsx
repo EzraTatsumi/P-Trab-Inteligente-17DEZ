@@ -338,7 +338,7 @@ export const PTrabCostSummary = ({
             {/* Accordion Trigger Principal: Contém o Total Geral e o botão Mais Detalhes */}
             <AccordionTrigger 
               simple // Usa o modo simples (sem seta)
-              className="py-2 px-0 hover:no-underline flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50"
+              className="py-1 px-0 hover:no-underline flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50" // Alterado py-2 para py-1
               onClick={(e) => {
                 e.preventDefault(); 
                 handleSummaryClick();
@@ -565,7 +565,7 @@ export const PTrabCostSummary = ({
         </Accordion>
         
         {/* Seção de Crédito (abaixo do Accordion) */}
-        <div className="px-6 pt-0 border-t border-border/50 space-y-2 mt-[-0.5rem]"> {/* Adicionado mt-[-0.5rem] */}
+        <div className="px-6 pt-0 border-t border-border/50 space-y-2 mt-[-0.5rem]"> {/* Mantido pt-0 e mt-[-0.5rem] */}
             <div className="flex justify-between items-center">
                 <h4 className="font-bold text-sm text-accent flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
