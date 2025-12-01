@@ -80,7 +80,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // 2. Fetch Classe II totals (33.90.30 e 33.90.39)
   const { data: classeIIData, error: classeIIError } = await supabase
     .from('classe_ii_registros')
-    .select('valor_total, itens_equipamentos, dias_operacao, organizacao, valor_nd_30, valor_nd_39') // ADD valor_nd_30, valor_nd_39
+    .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
     .eq('p_trab_id', ptrabId);
 
   if (classeIIError) throw classeIIError;
@@ -89,25 +89,33 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   let totalClasseII_ND30 = 0;
   let totalClasseII_ND39 = 0;
   let totalItensClasseII = 0;
-  let allClasseIIItems: DetailedItemClasseII[] = []; // Array to hold all individual items
+  
+  // Novo agrupamento por categoria para exibição detalhada
+  const groupedClasseIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
   
   (classeIIData || []).forEach(record => {
     totalClasseII += record.valor_total;
     totalClasseII_ND30 += Number(record.valor_nd_30);
     totalClasseII_ND39 += Number(record.valor_nd_39);
     
-    // Sum the quantity of items and flatten the list
-    if (Array.isArray(record.itens_equipamentos)) {
-      const items = record.itens_equipamentos as ItemClasseII[];
-      totalItensClasseII += items.reduce((sum, item) => sum + (item.quantidade || 0), 0);
-      
-      const detailedItems: DetailedItemClasseII[] = items.map(item => ({
-        ...item,
-        parent_dias_operacao: record.dias_operacao,
-        parent_organizacao: record.organizacao,
-      }));
-      allClasseIIItems = allClasseIIItems.concat(detailedItems); // Flatten the items
+    const category = record.categoria;
+    const items = (record.itens_equipamentos || []) as ItemClasseII[];
+    const totalItemsCategory = items.reduce((sum, item) => sum + (item.quantidade || 0), 0);
+    totalItensClasseII += totalItemsCategory;
+    
+    if (!groupedClasseIICategories[category]) {
+        groupedClasseIICategories[category] = {
+            totalValor: 0,
+            totalND30: 0,
+            totalND39: 0,
+            totalItens: 0,
+        };
     }
+    
+    groupedClasseIICategories[category].totalValor += record.valor_total;
+    groupedClasseIICategories[category].totalND30 += Number(record.valor_nd_30);
+    groupedClasseIICategories[category].totalND39 += Number(record.valor_nd_39);
+    groupedClasseIICategories[category].totalItens += totalItemsCategory;
   });
 
 
@@ -171,10 +179,10 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalOperacional,
     totalClasseI,
     totalClasseII,
-    totalClasseII_ND30, // NEW
-    totalClasseII_ND39, // NEW
+    totalClasseII_ND30,
+    totalClasseII_ND39,
     totalItensClasseII,
-    allClasseIIItems, // NEW: Return the list of individual items
+    groupedClasseIICategories, // NEW: Return grouped categories
     totalComplemento,
     totalEtapaSolicitadaValor,
     totalDiasEtapaSolicitada,
@@ -207,10 +215,10 @@ export const PTrabCostSummary = ({
       totalOperacional: 0,
       totalClasseI: 0,
       totalClasseII: 0,
-      totalClasseII_ND30: 0, // Initialize new field
-      totalClasseII_ND39: 0, // Initialize new field
+      totalClasseII_ND30: 0,
+      totalClasseII_ND39: 0,
       totalItensClasseII: 0,
-      allClasseIIItems: [], // Initialize new field
+      groupedClasseIICategories: {}, // Initialize new field
       totalComplemento: 0,
       totalEtapaSolicitadaValor: 0,
       totalDiasEtapaSolicitada: 0,
@@ -289,27 +297,8 @@ export const PTrabCostSummary = ({
   // Classes para a coluna de descrição (ajustada para 1/3)
   const descriptionClasses = "w-1/3";
   
-  // --- NOVA LÓGICA DE AGRUPAMENTO CLASSE II ---
-  const groupedClasseIIItems = totals.allClasseIIItems.reduce((acc, item) => {
-    const key = item.item;
-    const itemTotal = item.quantidade * item.valor_mnt_dia * item.parent_dias_operacao;
-    
-    if (!acc[key]) {
-      acc[key] = {
-        item: item.item,
-        totalQuantidade: 0,
-        totalValor: 0,
-      };
-    }
-    
-    acc[key].totalQuantidade += item.quantidade;
-    acc[key].totalValor += itemTotal;
-    
-    return acc;
-  }, {} as Record<string, { item: string, totalQuantidade: number, totalValor: number }>);
-  
-  const sortedGroupedClasseIIItems = Object.values(groupedClasseIIItems).sort((a, b) => a.item.localeCompare(b.item));
-  // --- FIM NOVA LÓGICA DE AGRUPAMENTO CLASSE II ---
+  // Ordenar categorias da Classe II
+  const sortedClasseIICategories = Object.entries(totals.groupedClasseIICategories).sort(([a], [b]) => a.localeCompare(b));
 
   return (
     <Card className="shadow-lg">
@@ -440,36 +429,35 @@ export const PTrabCostSummary = ({
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-0">
                         <div className="space-y-1 pl-4 text-[10px]">
-                          {/* Detalhe ND 30 */}
-                          <div className="flex justify-between text-muted-foreground">
-                            <span className="w-1/2 text-left">ND 33.90.30 (Material)</span>
-                            <span className="w-1/4 text-right font-medium">
-                              {/* Vazio */}
-                            </span>
-                            <span className="w-1/4 text-right font-medium text-green-600">
-                              {formatCurrency(totals.totalClasseII_ND30)}
-                            </span>
-                          </div>
-                          {/* Detalhe ND 39 */}
-                          <div className="flex justify-between text-muted-foreground">
-                            <span className="w-1/2 text-left">ND 33.90.39 (Serviço)</span>
-                            <span className="w-1/4 text-right font-medium">
-                              {/* Vazio */}
-                            </span>
-                            <span className="w-1/4 text-right font-medium text-blue-600">
-                              {formatCurrency(totals.totalClasseII_ND39)}
-                            </span>
-                          </div>
-                          {/* Detalhe Total Itens */}
-                          <div className="flex justify-between text-muted-foreground">
-                            <span className="w-1/2 text-left">Total Itens</span>
-                            <span className="w-1/4 text-right font-medium">
-                              {formatNumber(totals.totalItensClasseII)} un.
-                            </span>
-                            <span className="w-1/4 text-right font-medium">
-                              {/* Vazio */}
-                            </span>
-                          </div>
+                          {/* Detalhes por Categoria */}
+                          {sortedClasseIICategories.map(([category, data]) => (
+                            <div key={category} className="space-y-1">
+                                <div className="flex justify-between text-muted-foreground font-semibold pt-1">
+                                    <span className="w-1/2 text-left">{category}</span>
+                                    <span className="w-1/4 text-right font-medium">
+                                        {formatNumber(data.totalItens)} un.
+                                    </span>
+                                    <span className="w-1/4 text-right font-medium">
+                                        {formatCurrency(data.totalValor)}
+                                    </span>
+                                </div>
+                                {/* Sub-detalhes ND 30/39 */}
+                                <div className="flex justify-between text-muted-foreground pl-2">
+                                    <span className="w-1/2 text-left text-[9px]">ND 30 (Material)</span>
+                                    <span className="w-1/4 text-right font-medium text-[9px]"></span>
+                                    <span className="w-1/4 text-right font-medium text-green-600 text-[9px]">
+                                        {formatCurrency(data.totalND30)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-muted-foreground pl-2">
+                                    <span className="w-1/2 text-left text-[9px]">ND 39 (Serviço)</span>
+                                    <span className="w-1/4 text-right font-medium text-[9px]"></span>
+                                    <span className="w-1/4 text-right font-medium text-blue-600 text-[9px]">
+                                        {formatCurrency(data.totalND39)}
+                                    </span>
+                                </div>
+                            </div>
+                          ))}
                         </div>
                       </AccordionContent>
                     </AccordionItem>
