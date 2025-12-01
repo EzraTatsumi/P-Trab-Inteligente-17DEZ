@@ -35,15 +35,17 @@ const AccordionTrigger = React.forwardRef<
         "flex flex-1 items-center justify-between font-medium transition-all",
         !simple && "py-4 hover:underline",
         simple && "py-2", // Reduced padding for simple variant
-        "[&[data-state=open]>svg]:rotate-180",
+        !simple && "[&[data-state=open]>svg]:rotate-180", // Only rotate if not simple
         className
       )}
       {...props}
     >
       {children}
-      <ChevronDown
-        className="h-4 w-4 shrink-0 transition-transform duration-200"
-      />
+      {!simple && ( // Only render ChevronDown if not simple
+        <ChevronDown
+          className="h-4 w-4 shrink-0 transition-transform duration-200"
+        />
+      )}
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));
