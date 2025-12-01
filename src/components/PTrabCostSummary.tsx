@@ -345,240 +345,250 @@ export const PTrabCostSummary = ({
             </div>
         </div>
         
-        {/* NOVO WRAPPER PARA ALINHAR O TOGGLE À DIREITA */}
-        <div className="flex justify-end px-6">
-          <Accordion 
-            type="single" 
-            collapsible 
-            className="w-auto" // Permite que o Accordion se ajuste ao conteúdo
-            value={isDetailsOpen ? "summary-details" : undefined}
-            onValueChange={(value) => setIsDetailsOpen(value === "summary-details")}
-          >
-            <AccordionItem value="summary-details" className="border-b-0">
-              
-              {/* Accordion Trigger Principal: Contém o indicador de detalhes */}
-              <AccordionTrigger 
-                simple // Usa o modo simples (sem seta)
-                className="py-0 px-0 hover:no-underline flex items-center justify-end w-full text-xs text-muted-foreground"
-                onClick={(e) => {
-                  e.preventDefault(); 
-                  handleSummaryClick();
-                }}
-              >
-                <span className="font-semibold text-primary">
-                  {isDetailsOpen ? "MENOS DETALHES" : "MAIS DETALHES"}
-                </span>
-              </AccordionTrigger>
-              
-              <AccordionContent className="pt-2 pb-0">
-                <div className="space-y-4 w-[300px]" ref={detailsRef}> {/* Definindo largura para o conteúdo */}
+        {/* Accordion para Detalhes */}
+        <Accordion 
+          type="single" 
+          collapsible 
+          className="w-full px-6 pt-0"
+          value={isDetailsOpen ? "summary-details" : undefined}
+          onValueChange={(value) => setIsDetailsOpen(value === "summary-details")}
+        >
+          <AccordionItem value="summary-details" className="border-b-0">
+            
+            {/* Accordion Trigger Principal: Alinhado à direita */}
+            <AccordionTrigger 
+              simple // Usa o modo simples (sem seta)
+              className="py-0 px-0 hover:no-underline flex items-center justify-end w-full text-xs text-muted-foreground"
+              onClick={(e) => {
+                e.preventDefault(); 
+                handleSummaryClick();
+              }}
+            >
+              <span className="font-semibold text-primary">
+                {isDetailsOpen ? "MENOS DETALHES" : "MAIS DETALHES"}
+              </span>
+            </AccordionTrigger>
+            
+            <AccordionContent className="pt-2 pb-0">
+              <div className="space-y-4" ref={detailsRef}>
+                
+                {/* Aba Logística */}
+                <div className="space-y-3 border-l-4 border-orange-500 pl-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-orange-600 mb-2">
+                    <Package className="h-3 w-3" />
+                    Logística ({formatCurrency(totals.totalLogisticoGeral)})
+                  </div>
                   
-                  {/* Aba Logística */}
-                  <div className="space-y-3 border-l-4 border-orange-500 pl-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-orange-600 mb-2">
-                      <Package className="h-3 w-3" />
-                      Logística ({formatCurrency(totals.totalLogisticoGeral)})
-                    </div>
-                    
-                    {/* Classe I - Subsistência */}
-                    <Accordion type="single" collapsible className="w-full pt-0">
-                      <AccordionItem value="item-classe-i" className="border-b-0">
-                        <AccordionTrigger simple className="p-0 hover:no-underline">
-                          <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground">
-                              <Utensils className="h-3 w-3 text-orange-500" />
-                              Classe I
-                            </div>
-                            <span className={cn(valueClasses, "mr-6 text-xs")}>
-                              {formatCurrency(totals.totalClasseI)}
+                  {/* Classe I - Subsistência */}
+                  <Accordion type="single" collapsible className="w-full pt-0">
+                    <AccordionItem value="item-classe-i" className="border-b-0">
+                      <AccordionTrigger simple className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                          <div className="flex items-center gap-1 text-foreground">
+                            <Utensils className="h-3 w-3 text-orange-500" />
+                            Classe I
+                          </div>
+                          <span className={cn(valueClasses, "text-xs")}>
+                            {formatCurrency(totals.totalClasseI)}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                          {/* Detalhe 1: Valor Complemento */}
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className="w-1/2 text-left">Complemento (Ref. Int.)</span>
+                            <span className="w-1/4 text-right font-medium">
+                              {formatNumber(totals.totalRefeicoesIntermediarias)}
+                            </span>
+                            <span className="w-1/4 text-right font-medium">
+                              {formatCurrency(totals.totalComplemento)}
                             </span>
                           </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-1 pb-0">
-                          <div className="space-y-1 pl-4 text-[10px]">
-                            {/* Detalhe 1: Valor Complemento */}
-                            <div className="flex justify-between text-muted-foreground">
-                              <span className={descriptionClasses}>Complemento (Ref. Int.)</span>
-                              <span className={quantityClasses}>
-                                {formatNumber(totals.totalRefeicoesIntermediarias)}
-                              </span>
-                              <span className={cn(valueClasses, "mr-6")}>
-                                {formatCurrency(totals.totalComplemento)}
-                              </span>
-                            </div>
-                            {/* Detalhe 2: Valor Etapa Solicitada */}
-                            <div className="flex justify-between text-muted-foreground">
-                              <span className={descriptionClasses}>Etapa Solicitada</span>
-                              <span className={quantityClasses}>
-                                {formatNumber(totals.totalDiasEtapaSolicitada)} dias
-                              </span>
-                              <span className={cn(valueClasses, "mr-6")}>
-                                {formatCurrency(totals.totalEtapaSolicitadaValor)}
-                              </span>
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                    
-                    {/* Classe II - Material de Intendência */}
-                    <Accordion type="single" collapsible className="w-full pt-1">
-                      <AccordionItem value="item-classe-ii" className="border-b-0">
-                        <AccordionTrigger simple className="p-0 hover:no-underline">
-                          <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground">
-                              <ClipboardList className="h-3 w-3 text-orange-500" />
-                              Classe II
-                            </div>
-                            <span className={cn(valueClasses, "mr-6 text-xs")}>
-                              {formatCurrency(totals.totalClasseII)}
+                          {/* Detalhe 2: Valor Etapa Solicitada */}
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className="w-1/2 text-left">Etapa Solicitada</span>
+                            <span className="w-1/4 text-right font-medium">
+                              {formatNumber(totals.totalDiasEtapaSolicitada)} dias
+                            </span>
+                            <span className="w-1/4 text-right font-medium">
+                              {formatCurrency(totals.totalEtapaSolicitadaValor)}
                             </span>
                           </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-1 pb-0">
-                          <div className="space-y-1 pl-4 text-[10px]">
-                            {/* Detalhe ND 30 */}
-                            <div className="flex justify-between text-muted-foreground">
-                              <span className={descriptionClasses}>ND 33.90.30 (Material)</span>
-                              <span className={quantityClasses}>
-                                {/* Vazio */}
-                              </span>
-                              <span className={cn(valueClasses, "mr-6 text-green-600")}>
-                                {formatCurrency(totals.totalClasseII_ND30)}
-                              </span>
-                            </div>
-                            {/* Detalhe ND 39 */}
-                            <div className="flex justify-between text-muted-foreground">
-                              <span className={descriptionClasses}>ND 33.90.39 (Serviço)</span>
-                              <span className={quantityClasses}>
-                                {/* Vazio */}
-                              </span>
-                              <span className={cn(valueClasses, "mr-6 text-blue-600")}>
-                                {formatCurrency(totals.totalClasseII_ND39)}
-                              </span>
-                            </div>
-                            {/* Detalhe Total Itens */}
-                            <div className="flex justify-between text-muted-foreground">
-                              <span className={descriptionClasses}>Total Itens</span>
-                              <span className={quantityClasses}>
-                                {formatNumber(totals.totalItensClasseII)} un.
-                              </span>
-                              <span className={cn(valueClasses, "mr-6")}>
-                                {/* Vazio */}
-                              </span>
-                            </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                  
+                  {/* Classe II - Material de Intendência */}
+                  <Accordion type="single" collapsible className="w-full pt-1">
+                    <AccordionItem value="item-classe-ii" className="border-b-0">
+                      <AccordionTrigger simple className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                          <div className="flex items-center gap-1 text-foreground">
+                            <ClipboardList className="h-3 w-3 text-orange-500" />
+                            Classe II
                           </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
+                          <span className={cn(valueClasses, "text-xs")}>
+                            {formatCurrency(totals.totalClasseII)}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                          {/* Detalhe ND 30 */}
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className="w-1/2 text-left">ND 33.90.30 (Material)</span>
+                            <span className="w-1/4 text-right font-medium">
+                              {/* Vazio */}
+                            </span>
+                            <span className="w-1/4 text-right font-medium text-green-600">
+                              {formatCurrency(totals.totalClasseII_ND30)}
+                            </span>
+                          </div>
+                          {/* Detalhe ND 39 */}
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className="w-1/2 text-left">ND 33.90.39 (Serviço)</span>
+                            <span className="w-1/4 text-right font-medium">
+                              {/* Vazio */}
+                            </span>
+                            <span className="w-1/4 text-right font-medium text-blue-600">
+                              {formatCurrency(totals.totalClasseII_ND39)}
+                            </span>
+                          </div>
+                          {/* Detalhe Total Itens */}
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className="w-1/2 text-left">Total Itens</span>
+                            <span className="w-1/4 text-right font-medium">
+                              {formatNumber(totals.totalItensClasseII)} un.
+                            </span>
+                            <span className="w-1/4 text-right font-medium">
+                              {/* Vazio */}
+                            </span>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
 
-                    {/* Classe III - Combustíveis e Lubrificantes */}
-                    <Accordion type="single" collapsible className="w-full pt-1">
-                      <AccordionItem value="item-classe-iii" className="border-b-0">
-                        <AccordionTrigger simple className="p-0 hover:no-underline">
-                          <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground">
-                              <Fuel className="h-3 w-3 text-orange-500" />
-                              Classe III
-                            </div>
-                            <span className={cn(valueClasses, "mr-6 text-xs")}>
-                              {formatCurrency(totals.totalCombustivel + totals.totalLubrificanteValor)}
+                  {/* Classe III - Combustíveis e Lubrificantes */}
+                  <Accordion type="single" collapsible className="w-full pt-1">
+                    <AccordionItem value="item-classe-iii" className="border-b-0">
+                      <AccordionTrigger simple className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                          <div className="flex items-center gap-1 text-foreground">
+                            <Fuel className="h-3 w-3 text-orange-500" />
+                            Classe III
+                          </div>
+                          <span className={cn(valueClasses, "text-xs")}>
+                            {formatCurrency(totals.totalCombustivel + totals.totalLubrificanteValor)}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                          {/* Linha Óleo Diesel */}
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className="w-1/2 text-left">Óleo Diesel</span>
+                            <span className="w-1/4 text-right font-medium">
+                              {formatNumber(totals.totalDieselLitros)} L
+                            </span>
+                            <span className="w-1/4 text-right font-medium">
+                              {formatCurrency(totals.totalDieselValor)}
                             </span>
                           </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-1 pb-0">
-                          <div className="space-y-1 pl-4 text-[10px]">
-                            {/* Linha Óleo Diesel */}
-                            <div className="flex justify-between text-muted-foreground">
-                              <span className={descriptionClasses}>Óleo Diesel</span>
-                              <span className={quantityClasses}>
-                                {formatNumber(totals.totalDieselLitros)} L
-                              </span>
-                              <span className={cn(valueClasses, "mr-6")}>
-                                {formatCurrency(totals.totalDieselValor)}
-                              </span>
-                            </div>
-                            {/* Linha Gasolina */}
-                            <div className="flex justify-between text-muted-foreground">
-                              <span className={descriptionClasses}>Gasolina</span>
-                              <span className={quantityClasses}>
-                                {formatNumber(totals.totalGasolinaLitros)} L
-                              </span>
-                              <span className={cn(valueClasses, "mr-6")}>
-                                {formatCurrency(totals.totalGasolinaValor)}
-                              </span>
-                            </div>
-                            {/* Linha Lubrificante */}
-                            <div className="flex justify-between text-muted-foreground">
-                              <span className={descriptionClasses}>Lubrificante</span>
-                              <span className={quantityClasses}>
-                                {formatNumber(totals.totalLubrificanteLitros, 2)} L
-                              </span>
-                              <span className={cn(valueClasses, "mr-6")}>
-                                {formatCurrency(totals.totalLubrificanteValor)}
-                              </span>
-                            </div>
+                          {/* Linha Gasolina */}
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className="w-1/2 text-left">Gasolina</span>
+                            <span className="w-1/4 text-right font-medium">
+                              {formatNumber(totals.totalGasolinaLitros)} L
+                            </span>
+                            <span className="w-1/4 text-right font-medium">
+                              {formatCurrency(totals.totalGasolinaValor)}
+                            </span>
                           </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                    
-                    {/* Outras Abas Logísticas (Placeholder) */}
-                    <div className="flex justify-between text-xs text-muted-foreground pt-2">
-                      <span>Outras Classes (IV a X)</span>
-                      <span className={cn(valueClasses, "mr-6")}>
-                        {formatCurrency(0)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Aba Operacional (Placeholder) */}
-                  <div className="space-y-3 border-l-4 border-blue-500 pl-3 pt-4">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-blue-600">
-                      <Briefcase className="h-3 w-3" />
-                      Operacional ({formatCurrency(totals.totalOperacional)})
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Itens Operacionais</span>
-                      <span className={cn(valueClasses, "mr-6")}>
-                        {formatCurrency(totals.totalOperacional)}
-                      </span>
-                    </div>
-                  </div>
+                          {/* Linha Lubrificante */}
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className="w-1/2 text-left">Lubrificante</span>
+                            <span className="w-1/4 text-right font-medium">
+                              {formatNumber(totals.totalLubrificanteLitros, 2)} L
+                            </span>
+                            <span className="w-1/4 text-right font-medium">
+                              {formatCurrency(totals.totalLubrificanteValor)}
+                            </span>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                   
-                  {/* Aba Material Permanente (Placeholder) */}
-                  <div className="space-y-3 border-l-4 border-green-500 pl-3 pt-4">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-green-600">
-                      <HardHat className="h-3 w-3" />
-                      Material Permanente ({formatCurrency(totals.totalMaterialPermanente)})
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Itens de Material Permanente</span>
-                      <span className={cn(valueClasses, "mr-6")}>
-                        {formatCurrency(totals.totalMaterialPermanente)}
-                      </span>
-                    </div>
+                  {/* Outras Abas Logísticas (Placeholder) */}
+                  <div className="flex justify-between text-xs text-muted-foreground pt-2">
+                    <span className="w-1/2 text-left">Outras Classes (IV a X)</span>
+                    <span className="w-1/4 text-right font-medium">
+                      {/* Vazio */}
+                    </span>
+                    <span className="w-1/4 text-right font-medium">
+                      {formatCurrency(0)}
+                    </span>
                   </div>
-                  
-                  {/* Aba Aviação do Exército (Placeholder) */}
-                  <div className="space-y-3 border-l-4 border-purple-500 pl-3 pt-4">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-purple-600">
-                      <Plane className="h-3 w-3" />
-                      Aviação do Exército ({formatCurrency(totals.totalAviacaoExercito)})
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Itens de Aviação</span>
-                      <span className={cn(valueClasses, "mr-6")}>
-                        {formatCurrency(totals.totalAviacaoExercito)}
-                      </span>
-                    </div>
-                  </div>
-                  
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
+
+                {/* Aba Operacional (Placeholder) */}
+                <div className="space-y-3 border-l-4 border-blue-500 pl-3 pt-4">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-blue-600">
+                    <Briefcase className="h-3 w-3" />
+                    Operacional ({formatCurrency(totals.totalOperacional)})
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span className="w-1/2 text-left">Itens Operacionais</span>
+                    <span className="w-1/4 text-right font-medium">
+                      {/* Vazio */}
+                    </span>
+                    <span className="w-1/4 text-right font-medium">
+                      {formatCurrency(totals.totalOperacional)}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Aba Material Permanente (Placeholder) */}
+                <div className="space-y-3 border-l-4 border-green-500 pl-3 pt-4">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-green-600">
+                    <HardHat className="h-3 w-3" />
+                    Material Permanente ({formatCurrency(totals.totalMaterialPermanente)})
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span className="w-1/2 text-left">Itens de Material Permanente</span>
+                    <span className="w-1/4 text-right font-medium">
+                      {/* Vazio */}
+                    </span>
+                    <span className="w-1/4 text-right font-medium">
+                      {formatCurrency(totals.totalMaterialPermanente)}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Aba Aviação do Exército (Placeholder) */}
+                <div className="space-y-3 border-l-4 border-purple-500 pl-3 pt-4">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-purple-600">
+                    <Plane className="h-3 w-3" />
+                    Aviação do Exército ({formatCurrency(totals.totalAviacaoExercito)})
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span className="w-1/2 text-left">Itens de Aviação</span>
+                    <span className="w-1/4 text-right font-medium">
+                      {/* Vazio */}
+                    </span>
+                    <span className="w-1/4 text-right font-medium">
+                      {formatCurrency(totals.totalAviacaoExercito)}
+                    </span>
+                  </div>
+                </div>
+                
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
         
         {/* Seção de Crédito (abaixo do Accordion) */}
         <div className="px-6 pt-3 border-t border-border/50 space-y-2"> {/* Reduzido padding vertical */}
