@@ -1,3 +1,4 @@
+import React, { useState, useRef } from 'react'; // Adicionado useState e useRef
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"; // Importar CardDescription
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -225,6 +226,21 @@ export const PTrabCostSummary = ({
       totalAviacaoExercito: 0,
     },
   });
+  
+  // Estado e Ref para controlar o acordeão e a rolagem
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const detailsRef = useRef<HTMLDivElement>(null);
+
+  const handleSummaryClick = () => {
+    const newState = true; // Sempre abre ao clicar no resumo
+    setIsDetailsOpen(newState);
+    
+    // Pequeno atraso para garantir que o acordeão abriu antes de rolar
+    setTimeout(() => {
+        detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100); 
+  };
+
 
   if (isLoading) {
     return (
@@ -304,19 +320,19 @@ export const PTrabCostSummary = ({
         
         {/* Resumo de Custos (sempre visível) */}
         <div className="w-full space-y-1 text-sm px-6 pt-1">
-            <div className="flex justify-between text-orange-600">
+            <div className="flex justify-between text-orange-600 cursor-pointer" onClick={handleSummaryClick}>
               <span className="font-semibold text-sm">Aba Logística</span>
               <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
             </div>
-            <div className="flex justify-between text-blue-600">
+            <div className="flex justify-between text-blue-600 cursor-pointer" onClick={handleSummaryClick}>
               <span className="font-semibold text-sm">Aba Operacional</span>
               <span className="font-bold text-sm">{formatCurrency(totals.totalOperacional)}</span>
             </div>
-            <div className="flex justify-between text-green-600">
+            <div className="flex justify-between text-green-600 cursor-pointer" onClick={handleSummaryClick}>
               <span className="font-semibold text-sm">Aba Material Permanente</span>
               <span className="font-bold text-sm">{formatCurrency(totals.totalMaterialPermanente)}</span>
             </div>
-            <div className="flex justify-between text-purple-600">
+            <div className="flex justify-between text-purple-600 cursor-pointer" onClick={handleSummaryClick}>
               <span className="font-semibold text-sm">Aba Aviação do Exército</span>
               <span className="font-bold text-sm">{formatCurrency(totals.totalAviacaoExercito)}</span>
             </div>
@@ -326,7 +342,13 @@ export const PTrabCostSummary = ({
             </div>
         </div>
         
-        <Accordion type="single" collapsible className="w-full px-6">
+        <Accordion 
+          type="single" 
+          collapsible 
+          className="w-full px-6"
+          value={isDetailsOpen ? "summary-details" : undefined}
+          onValueChange={(value) => setIsDetailsOpen(value === "summary-details")}
+        >
           <AccordionItem value="summary-details" className="border-b-0">
             
             {/* Accordion Trigger Principal: Contém o indicador de detalhes */}
@@ -335,7 +357,7 @@ export const PTrabCostSummary = ({
             </AccordionTrigger>
             
             <AccordionContent className="pt-2 pb-0">
-              <div className="space-y-4">
+              <div className="space-y-4" ref={detailsRef}>
                 
                 {/* Aba Logística */}
                 <div className="space-y-3 border-l-4 border-orange-500 pl-3">
