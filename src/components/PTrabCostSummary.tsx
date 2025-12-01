@@ -347,6 +347,7 @@ export const PTrabCostSummary = ({
               <div className="flex justify-between items-center w-full">
                 <span className="text-base font-bold text-foreground">Total Geral</span>
                 <div className="flex items-center gap-2">
+                    {/* Revertido: Valor Total Geral fora do span de detalhes */}
                     <span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>
                     <span className="font-semibold text-primary flex items-center gap-1 ml-2">
                         {isDetailsOpen ? "MENOS DETALHES" : "MAIS DETALHES"}
