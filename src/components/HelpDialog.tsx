@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HelpCircle, Code, FileText, Loader2 } from "lucide-react";
-import { MarkdownViewer } from './MarkdownViewer';
+import { MarkdownAccordion } from './MarkdownAccordion'; // Importar o novo componente
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Importar o conteúdo dos arquivos Markdown como strings
@@ -61,13 +61,13 @@ export const HelpDialog: React.FC = () => {
             ) : (
               <>
                 <TabsContent value="business-rules" className="mt-0 h-full">
-                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4"> {/* Altura calculada para caber no diálogo */}
-                    <MarkdownViewer content={businessRulesContent} />
+                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                    <MarkdownAccordion content={businessRulesContent} />
                   </ScrollArea>
                 </TabsContent>
                 <TabsContent value="architecture" className="mt-0 h-full">
-                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4"> {/* Altura calculada para caber no diálogo */}
-                    <MarkdownViewer content={architectureContent} />
+                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                    <MarkdownAccordion content={architectureContent} />
                   </ScrollArea>
                 </TabsContent>
               </>
