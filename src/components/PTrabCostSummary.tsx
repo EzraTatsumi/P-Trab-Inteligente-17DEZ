@@ -303,7 +303,7 @@ export const PTrabCostSummary = ({
           Visão consolidada dos custos logísticos e orçamentários.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 p-0 pb-3"> {/* Reduzido padding vertical */}
+      <CardContent className="space-y-4 p-0 pb-3"> {/* Ajustado padding vertical */}
         
         {/* Resumo de Custos (sempre visível) */}
         <div className="w-full space-y-1 text-sm px-6 pt-1">
@@ -563,7 +563,7 @@ export const PTrabCostSummary = ({
         </Accordion>
         
         {/* Seção de Crédito (abaixo do Accordion) */}
-        <div className="px-6 pt-3 border-t border-border/50 space-y-2"> {/* Reduzido padding vertical */}
+        <div className="px-6 pt-3 border-t border-border/50 space-y-2"> {/* Ajustado padding vertical */}
             <div className="flex justify-between items-center">
                 <h4 className="font-bold text-sm text-accent flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
