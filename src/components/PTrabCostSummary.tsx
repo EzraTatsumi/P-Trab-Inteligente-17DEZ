@@ -303,7 +303,7 @@ export const PTrabCostSummary = ({
           Visão consolidada dos custos logísticos e orçamentários.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 p-0 pb-3"> {/* Ajustado padding vertical */}
+      <CardContent className="space-y-4 p-0 pb-3"> {/* Removido padding vertical do CardContent */}
         
         {/* Resumo de Custos (sempre visível) */}
         <div className="w-full space-y-1 text-sm px-6 pt-1">
@@ -323,10 +323,6 @@ export const PTrabCostSummary = ({
               <span className="font-semibold text-sm">Aba Aviação do Exército</span>
               <span className="font-bold text-sm">{formatCurrency(totals.totalAviacaoExercito)}</span>
             </div>
-            <div className="flex justify-between text-foreground font-bold border-t border-border/50 pt-1">
-              <span className="text-base">Total Geral</span>
-              <span className="text-lg">{formatCurrency(totalGeralFinal)}</span>
-            </div>
         </div>
         
         {/* Accordion para Detalhes */}
@@ -339,22 +335,28 @@ export const PTrabCostSummary = ({
         >
           <AccordionItem value="summary-details" className="border-b-0">
             
-            {/* Accordion Trigger Principal: Alinhado à direita */}
+            {/* Accordion Trigger Principal: Contém o Total Geral e o botão Mais Detalhes */}
             <AccordionTrigger 
               simple // Usa o modo simples (sem seta)
-              className="py-0 px-0 hover:no-underline flex items-center justify-end w-full text-xs text-muted-foreground"
+              className="py-2 px-0 hover:no-underline flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50"
               onClick={(e) => {
                 e.preventDefault(); 
                 handleSummaryClick();
               }}
             >
-              <span className="font-semibold text-primary flex items-center gap-1">
-                {isDetailsOpen ? "MENOS DETALHES" : "MAIS DETALHES"}
-                <ChevronDown className={cn(
-                  "h-4 w-4 shrink-0 transition-transform duration-200",
-                  isDetailsOpen ? "rotate-180" : "rotate-0"
-                )} />
-              </span>
+              <div className="flex justify-between items-center w-full">
+                <span className="text-base font-bold text-foreground">Total Geral</span>
+                <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>
+                    <span className="font-semibold text-primary flex items-center gap-1 ml-2">
+                        {isDetailsOpen ? "MENOS DETALHES" : "MAIS DETALHES"}
+                        <ChevronDown className={cn(
+                          "h-4 w-4 shrink-0 transition-transform duration-200",
+                          isDetailsOpen ? "rotate-180" : "rotate-0"
+                        )} />
+                    </span>
+                </div>
+              </div>
             </AccordionTrigger>
             
             <AccordionContent className="pt-2 pb-0">
@@ -563,7 +565,7 @@ export const PTrabCostSummary = ({
         </Accordion>
         
         {/* Seção de Crédito (abaixo do Accordion) */}
-        <div className="px-6 pt-3 border-t border-border/50 space-y-2"> {/* Ajustado padding vertical */}
+        <div className="px-6 pt-3 border-t border-border/50 space-y-2"> {/* Reduzido padding vertical */}
             <div className="flex justify-between items-center">
                 <h4 className="font-bold text-sm text-accent flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
@@ -580,7 +582,7 @@ export const PTrabCostSummary = ({
                 </h4>
                 <span className={cn("font-bold text-lg", saldoGND4 >= 0 ? "text-green-600" : "text-destructive")}>
                     {formatCurrency(saldoGND4)}
-                </span>
+                </span<ctrl63>
             </div>
             <Button 
                 onClick={onOpenCreditDialog} 
