@@ -292,11 +292,6 @@ export const PTrabCostSummary = ({
   // Classe para garantir largura e alinhamento consistentes para os valores
   const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
   
-  // Classes para a coluna de quantidade (ajustada para 1/3)
-  const quantityClasses = "text-right font-medium w-1/3";
-  // Classes para a coluna de descrição (ajustada para 1/3)
-  const descriptionClasses = "w-1/3";
-  
   // Ordenar categorias da Classe II
   const sortedClasseIICategories = Object.entries(totals.groupedClasseIICategories).sort(([a], [b]) => a.localeCompare(b));
 
@@ -441,23 +436,25 @@ export const PTrabCostSummary = ({
                                         {formatCurrency(data.totalValor)}
                                     </span>
                                 </div>
-                                {/* Sub-detalhes ND 30/39 */}
-                                <div className="flex justify-between text-muted-foreground pl-2">
-                                    <span className="w-1/2 text-left text-[9px]">ND 30 (Material)</span>
-                                    <span className="w-1/4 text-right font-medium text-[9px]"></span>
-                                    <span className="w-1/4 text-right font-medium text-green-600 text-[9px]">
-                                        {formatCurrency(data.totalND30)}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-muted-foreground pl-2">
-                                    <span className="w-1/2 text-left text-[9px]">ND 39 (Serviço)</span>
-                                    <span className="w-1/4 text-right font-medium text-[9px]"></span>
-                                    <span className="w-1/4 text-right font-medium text-blue-600 text-[9px]">
-                                        {formatCurrency(data.totalND39)}
-                                    </span>
-                                </div>
                             </div>
                           ))}
+                          {/* Totais ND 30/39 (Mantidos no final da seção Classe II) */}
+                          <div className="pt-2 border-t border-border/50 mt-2">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left font-bold text-green-600">ND 33.90.30 (Material)</span>
+                                <span className="w-1/4 text-right font-medium"></span>
+                                <span className="w-1/4 text-right font-bold text-green-600">
+                                    {formatCurrency(totals.totalClasseII_ND30)}
+                                </span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left font-bold text-blue-600">ND 33.90.39 (Serviço)</span>
+                                <span className="w-1/4 text-right font-medium"></span>
+                                <span className="w-1/4 text-right font-bold text-blue-600">
+                                    {formatCurrency(totals.totalClasseII_ND39)}
+                                </span>
+                            </div>
+                          </div>
                         </div>
                       </AccordionContent>
                     </AccordionItem>
