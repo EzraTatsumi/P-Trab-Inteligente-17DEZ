@@ -58,7 +58,7 @@ const PTrabManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [pTrabs, setPTrabs] = useState<PTrab[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = true;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
@@ -1330,6 +1330,9 @@ const PTrabManager = () => {
                   const isMinuta = ptrab.status === 'minuta';
                   const isApproved = ptrab.status === 'aprovado';
                   
+                  // Determina se o Select deve ser desabilitado
+                  const isSelectDisabled = isApproved || isMinuta;
+                  
                   return (
                   <TableRow key={ptrab.id}>
                     <TableCell className="font-medium">
@@ -1357,7 +1360,7 @@ const PTrabManager = () => {
                         <Select
                           value={ptrab.status}
                           onValueChange={(value) => handleStatusChange(ptrab.id, ptrab.status, value)}
-                          disabled={isApproved} // Não permite mudar o status de um PTrab aprovado
+                          disabled={isSelectDisabled} // Desabilita se for minuta ou aprovado
                         >
                           <SelectTrigger className={`w-[140px] h-7 text-xs ${statusConfig[ptrab.status as keyof typeof statusConfig]?.className || 'bg-background'}`}>
                             <SelectValue>
@@ -1365,15 +1368,14 @@ const PTrabManager = () => {
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent className="bg-background border shadow-lg z-50">
-                            {/* Filtra para mostrar apenas os 4 status principais, mas inclui o status atual se for 'minuta' ou 'completo' */}
+                            {/* Filtra para mostrar apenas os 4 status principais */}
                             {Object.entries(statusConfig)
-                                .filter(([key]) => selectableStatuses.includes(key) || key === ptrab.status)
+                                .filter(([key]) => selectableStatuses.includes(key))
                                 .map(([key, config]) => (
                               <SelectItem 
                                 key={key} 
                                 value={key}
                                 className="cursor-pointer hover:bg-accent"
-                                disabled={isApproved && key !== 'aprovado'} // Se aprovado, só pode ser selecionado 'aprovado'
                               >
                                 <span className={`inline-block px-2 py-1 rounded text-xs ${config.className}`}>
                                   {config.label}
