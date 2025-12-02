@@ -859,6 +859,9 @@ const PTrabManager = () => {
       toast.success(`P Trab ${newNumeroPTrab} clonado com sucesso!`);
       await loadPTrabs();
       
+      // *** NOVO: Redireciona para o formulário do P Trab recém-clonado (Variação) ***
+      navigate(`/ptrab/form?ptrabId=${newPTrabId}`); 
+      
       // Limpar estados de clonagem
       setPtrabToClone(null);
       setCloneType('new');
