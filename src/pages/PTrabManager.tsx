@@ -601,28 +601,23 @@ const PTrabManager = () => {
   };
 
   // Função para confirmar a clonagem a partir do diálogo de opções
-  const handleConfirmCloneOptions = () => {
+  const handleConfirmCloneOptions = async () => { // AGORA É ASYNC
     if (!ptrabToClone) return;
 
     if (cloneType === 'new') {
-      // Fluxo 1: Novo P Trab (abre o diálogo de edição)
+      // Fluxo 1: Novo P Trab (Clonagem completa imediata + Navegação)
       setShowCloneOptionsDialog(false);
       
-      // Preenche o formulário de edição com os dados clonados e o novo número de minuta
-      const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = ptrabToClone;
+      // Usa o número de minuta único gerado no useEffect
+      const newNumeroPTrab = suggestedCloneNumber; 
       
-      setEditingId(null); // Garante que é uma nova inserção
-      setSelectedOmId(ptrabToClone.codug_om ? 'temp' : undefined); // Placeholder para forçar a seleção da OM
-      setFormData({
-        ...restOfPTrab,
-        // NOVO: Usa o número de minuta único gerado no useEffect
-        numero_ptrab: suggestedCloneNumber, 
-        status: "aberto",
-        origem: 'original',
-      });
+      // Executa o processo de clonagem (cria PTrab e clona registros relacionados)
+      const newPTrabId = await executeCloningProcess(ptrabToClone.id, newNumeroPTrab, null, true); 
       
-      // Abre o diálogo de edição para o usuário revisar e salvar
-      setDialogOpen(true);
+      if (newPTrabId) {
+        // Navega para a página de preenchimento do novo PTrab para edição
+        handleSelectPTrab(newPTrabId); 
+      }
       
     } else {
       // Fluxo 2: Variação do Trabalho (abre o diálogo de nome da versão)
@@ -642,14 +637,14 @@ const PTrabManager = () => {
     const newNumeroPTrab = suggestedCloneNumber;
     
     // 1. Executar a clonagem
-    await executeCloningProcess(ptrabToClone.id, newNumeroPTrab, versionName);
+    await executeCloningProcess(ptrabToClone.id, newNumeroPTrab, versionName, false);
     
     // 2. Fechar o diálogo de variação
     setShowCloneVariationDialog(false);
   };
 
   // Função para executar o processo de clonagem
-  const executeCloningProcess = async (originalPTrabId: string, newNumeroPTrab: string, versionName: string | null = null) => {
+  const executeCloningProcess = async (originalPTrabId: string, newNumeroPTrab: string, versionName: string | null = null, isNewClone: boolean = false): Promise<string | null> => {
     setLoading(true);
     try {
       // 1. Fetch the original PTrab
@@ -670,11 +665,14 @@ const PTrabManager = () => {
       // Destructure only fields present in the DB schema (PTrabDB) AND the ID
       const { id: originalId, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = typedOriginalPTrab; 
       
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
       const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
         ...restOfPTrab,
         numero_ptrab: newNumeroPTrab,
         status: "aberto",
-        user_id: (await supabase.auth.getUser()).data.user?.id!,
+        user_id: user.id,
         origem: typedOriginalPTrab.origem,
         comentario: versionName || typedOriginalPTrab.comentario, // Salva o nome da versão no comentário
       };
@@ -691,6 +689,16 @@ const PTrabManager = () => {
       }
 
       const newPTrabId = newPTrab.id;
+      
+      // NOVO: ZERAR CRÉDITOS DISPONÍVEIS APÓS A CRIAÇÃO DE UM NOVO P TRAB (Se for um clone 'new')
+      if (isNewClone) {
+          try {
+              await updateUserCredits(user.id, 0, 0);
+          } catch (creditError) {
+              console.error("Erro ao zerar créditos após criação do P Trab:", creditError);
+              toast.warning("Aviso: Ocorreu um erro ao zerar os créditos disponíveis.");
+          }
+      }
 
       // 3. Clone Classe I records
       const { data: originalClasseIRecords, error: fetchClasseIError } = await supabase
@@ -835,9 +843,12 @@ const PTrabManager = () => {
       setSuggestedCloneNumber("");
       setCustomCloneNumber("");
       setShowCloneOptionsDialog(false);
+      
+      return newPTrabId; // Retorna o ID do novo P Trab
     } catch (error: any) {
       console.error("ERRO GERAL AO CLONAR P TRAB (RAW):", error);
       toast.error(sanitizeError(error));
+      return null;
     } finally {
       setLoading(false);
     }
