@@ -189,15 +189,7 @@ const PTrabForm = () => {
     saveCreditsMutation.mutate({ gnd3, gnd4 });
   };
   
-  const handleResetCredit = () => {
-    if (!user?.id) {
-      toast.error("Erro: Usuário não identificado.");
-      return;
-    }
-    if (window.confirm("Tem certeza que deseja zerar seus créditos disponíveis (GND 3 e GND 4) no banco de dados?")) {
-      saveCreditsMutation.mutate({ gnd3: 0, gnd4: 0 });
-    }
-  };
+  // Removida a função handleResetCredit
   
   const handlePromptConfirm = () => {
     setShowCreditPromptDialog(false);
@@ -312,16 +304,7 @@ const PTrabForm = () => {
               />
             )}
             
-            {/* Botão de Reset de Créditos */}
-            <Button 
-              onClick={handleResetCredit} 
-              variant="ghost" 
-              className="w-full text-xs text-destructive hover:bg-destructive/10"
-              disabled={saveCreditsMutation.isPending}
-            >
-              <RefreshCw className="h-3 w-3 mr-2" />
-              {saveCreditsMutation.isPending ? "Zerando..." : "Zerar Créditos Disponíveis (DB)"}
-            </Button>
+            {/* Botão de Reset de Créditos REMOVIDO */}
           </div>
 
           {/* Coluna Direita: Seleção de Classes/Itens */}

@@ -305,20 +305,8 @@ export const PTrabCostSummary = ({
       </CardHeader>
       <CardContent className="space-y-4 p-0 pb-3"> {/* Removido padding vertical do CardContent */}
         
-        {/* NOVO: Crédito Disponível (Sempre visível) */}
-        <div className="w-full space-y-1 text-sm px-6 pt-3 border-b pb-3">
-            <div className="flex justify-between text-foreground">
-              <span className="font-semibold text-sm text-muted-foreground">Crédito GND 3 (Custeio)</span>
-              <span className="font-bold text-sm">{formatCurrency(creditGND3)}</span>
-            </div>
-            <div className="flex justify-between text-foreground">
-              <span className="font-semibold text-sm text-muted-foreground">Crédito GND 4 (Investimento)</span>
-              <span className="font-bold text-sm">{formatCurrency(creditGND4)}</span>
-            </div>
-        </div>
-        
         {/* Resumo de Custos (sempre visível) */}
-        <div className="w-full space-y-1 text-sm px-6 pt-1">
+        <div className="w-full space-y-1 text-sm px-6 pt-3"> {/* Ajustado pt-1 para pt-3 */}
             <div className="flex justify-between text-orange-600 cursor-pointer" onClick={handleSummaryClick}>
               <span className="font-semibold text-sm">Aba Logística</span>
               <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
