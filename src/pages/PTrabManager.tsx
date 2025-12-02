@@ -58,7 +58,7 @@ const PTrabManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [pTrabs, setPTrabs] = useState<PTrab[]>([]);
-  const [loading, setLoading] = true;
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
