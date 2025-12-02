@@ -36,12 +36,12 @@ export const CreditPromptDialog: React.FC<CreditPromptDialogProps> = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>
-            Não, continuar com R$ 0,00
-          </AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm}>
             Sim, informar agora
           </AlertDialogAction>
+          <AlertDialogCancel onClick={onCancel}>
+            Não, continuar com R$ 0,00
+          </AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
