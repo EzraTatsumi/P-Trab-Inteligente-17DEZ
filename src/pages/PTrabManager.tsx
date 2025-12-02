@@ -1645,7 +1645,7 @@ const PTrabManager = () => {
                 <RadioGroupItem id="clone-variation" value="variation" className="sr-only" />
                 <span className="mb-3 text-lg font-semibold">Variação do Trabalho</span>
                 <p className="text-sm text-muted-foreground text-center">
-                  Cria uma variação do P Trab atual (ex: {ptrabToClone?.numero_ptrab.split('/')[0]}.1/{currentYear}).
+                  Cria uma variação do P Trab atual.
                 </p>
               </Label>
             </RadioGroup>
