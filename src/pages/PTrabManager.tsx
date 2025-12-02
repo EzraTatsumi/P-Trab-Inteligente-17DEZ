@@ -40,6 +40,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -49,6 +57,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tables } from "@/integrations/supabase/types";
 import { formatCurrency } from "@/lib/formatUtils";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -68,6 +83,7 @@ type PTrabStatus = 'minuta' | 'aberto' | 'em_andamento' | 'completo' | 'arquivad
 const yearSuffix = `/${new Date().getFullYear()}`;
 
 const fetchPTrabs = async (userId: string): Promise<PTrab[]> => {
+// ... (restante do código da função fetchPTrabs)
   const { data, error } = await supabase
     .from('p_trab')
     .select('*')
