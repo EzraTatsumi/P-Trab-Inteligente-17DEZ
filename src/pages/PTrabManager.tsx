@@ -664,22 +664,49 @@ const PTrabManager = () => {
     
     // 1. Captura o rótulo e fecha o diálogo de variação
     setShowCloneVariationDialog(false);
-    
-    // 2. Prepara o formulário com os dados do original e o novo número de minuta
-    const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = ptrabToClone;
-    
-    setFormData({
-      ...restOfPTrab,
-      numero_ptrab: suggestedCloneNumber, // Usa o número de minuta gerado
-      status: "aberto",
-      origem: ptrabToClone.origem,
-      comentario: versionName, // Define o comentário/rótulo aqui
-    });
-    setSelectedOmId(ptrabToClone.codug_om ? 'temp' : undefined);
-    setOriginalPTrabIdToClone(ptrabToClone.id); // Salva o ID para clonar os registros no submit
-    
-    // 3. Abre o diálogo de edição do cabeçalho
-    setDialogOpen(true);
+    setLoading(true);
+
+    try {
+        // 2. Cria o novo P Trab com os dados do original, novo número de minuta e o rótulo no comentário
+        const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = ptrabToClone;
+        
+        const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
+            ...restOfPTrab,
+            numero_ptrab: suggestedCloneNumber, // Usa o número de minuta gerado
+            status: "aberto",
+            origem: ptrabToClone.origem,
+            comentario: versionName, // Salva o rótulo aqui
+            user_id: (await supabase.auth.getUser()).data.user?.id!,
+        };
+
+        const { data: newPTrab, error: insertError } = await supabase
+            .from("p_trab")
+            .insert([newPTrabData as TablesInsert<'p_trab'>])
+            .select()
+            .single();
+            
+        if (insertError || !newPTrab) throw insertError;
+        
+        const newPTrabId = newPTrab.id;
+        
+        // 3. Clona os registros relacionados (Classes I, II, III e LPC)
+        await cloneRelatedRecords(ptrabToClone.id, newPTrabId);
+        
+        // 4. ZERAR CRÉDITOS DISPONÍVEIS
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            await updateUserCredits(user.id, 0, 0);
+        }
+        
+        toast.success(`Variação "${versionName}" criada como Minuta ${suggestedCloneNumber} e registros clonados!`);
+        loadPTrabs();
+        
+    } catch (error: any) {
+        console.error("Erro ao clonar variação:", error);
+        toast.error(sanitizeError(error));
+    } finally {
+        setLoading(false);
+    }
   };
 
   // Função para clonar os registros relacionados (Chamada APENAS no handleSubmit para novos PTrabs clonados)
@@ -1217,6 +1244,7 @@ const PTrabManager = () => {
                       onKeyDown={handleEnterToNextField}
                     />
                   </div>
+                  {/* REMOVIDO: Campo de Comentário */}
                   <DialogFooter>
                     <Button type="submit" disabled={loading}>
                       {loading ? "Aguarde..." : (editingId ? "Atualizar" : "Criar")}
@@ -1441,7 +1469,7 @@ const PTrabManager = () => {
                             >
                               <MessageSquare 
                                 className={`h-5 w-5 transition-all ${
-                                  ptrab.comentario 
+                                  ptrab.comentario && !ptrab.numero_ptrab.startsWith("Minuta")
                                     ? "text-green-600 fill-green-600" 
                                     : "text-gray-300"
                                 }`}
@@ -1449,7 +1477,7 @@ const PTrabManager = () => {
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>{ptrab.comentario ? "Editar comentário" : "Adicionar comentário"}</p>
+                            <p>{ptrab.comentario && !ptrab.numero_ptrab.startsWith("Minuta") ? "Editar comentário" : "Adicionar comentário"}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
