@@ -11,7 +11,7 @@ export const generateUniquePTrabNumber = (existingNumbers: string[]): string => 
   
   // 1. Encontrar o maior número base existente para o ano atual
   const numbersForCurrentYear = existingNumbers
-    .filter(num => num.endsWith(`/${currentYearStr}`) && !num.includes('.')) // Filter base numbers for current year
+    .filter(num => num && typeof num === 'string' && num.endsWith(`/${currentYearStr}`) && !num.includes('.'))
     .map(num => parseInt(num.split('/')[0]))
     .filter(num => !isNaN(num));
 
@@ -46,7 +46,7 @@ export const generateVariationPTrabNumber = (originalPTrabNumber: string, existi
   if (!baseNumber) return `1.1${yearSuffix}`;
 
   const variationNumbers = existingNumbers
-    .filter(num => num.startsWith(`${baseNumber}.`) && num.endsWith(`/${year}`))
+    .filter(num => num && typeof num === 'string' && num.startsWith(`${baseNumber}.`) && num.endsWith(`/${year}`))
     .map(num => {
       const variationPart = num.split('/')[0].split('.')[1];
       return parseInt(variationPart);
