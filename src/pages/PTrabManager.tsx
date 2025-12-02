@@ -13,7 +13,7 @@ import {
   DialogTrigger,
   DialogFooter,
   DialogClose,
-  DialogDescription // Adicionado DialogDescription
+  DialogDescription
 } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -329,7 +329,7 @@ const PTrabManager = () => {
   const statusConfig = {
     'minuta': { 
       variant: 'outline' as const, 
-      label: 'Minuta',
+      label: 'Rascunho', // Alterado de 'Minuta' para 'Rascunho'
       className: 'bg-gray-100 text-gray-800 hover:bg-gray-200'
     },
     'aberto': { 
