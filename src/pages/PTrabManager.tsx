@@ -103,9 +103,6 @@ const PTrabManager = () => {
 
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
-  
-  // Função auxiliar para verificar se o número é uma minuta
-  const isMinuta = (numero: string) => numero.startsWith("Minuta-");
 
   // Função de reset do formulário (usando useCallback para evitar recriação desnecessária)
   const resetForm = useCallback(() => {
@@ -436,10 +433,7 @@ const PTrabManager = () => {
 
   // Removida a lógica de formatação automática do número do P Trab
   const handleNumeroPTrabChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Permite a edição apenas se não for uma minuta
-    if (!isMinuta(formData.numero_ptrab)) {
-      setFormData((prev) => ({ ...prev, numero_ptrab: e.target.value }));
-    }
+    setFormData((prev) => ({ ...prev, numero_ptrab: e.target.value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -452,14 +446,10 @@ const PTrabManager = () => {
 
       const currentNumber = formData.numero_ptrab.trim();
       
-      // Se o número for uma minuta, usamos o valor interno (Minuta-N)
-      const isCurrentMinuta = isMinuta(currentNumber);
-      const finalNumeroPTrab = isCurrentMinuta ? currentNumber : currentNumber || generateUniqueMinutaNumber(existingPTrabNumbers);
-      
       // Validação: Se o número não for "Minuta", ele deve ser único (exceto se for o próprio registro em edição)
-      if (!isCurrentMinuta) {
-        const isDuplicate = isPTrabNumberDuplicate(finalNumeroPTrab, existingPTrabNumbers) && 
-                           finalNumeroPTrab !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
+      if (currentNumber) {
+        const isDuplicate = isPTrabNumberDuplicate(currentNumber, existingPTrabNumbers) && 
+                           currentNumber !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
 
         if (isDuplicate) {
           toast.error("Já existe um P Trab com este número. Por favor, proponha outro.");
@@ -468,6 +458,9 @@ const PTrabManager = () => {
         }
       }
       
+      // Se estiver criando, o numero_ptrab deve ser o valor único gerado pelo resetForm ou o valor customizado.
+      const finalNumeroPTrab = currentNumber || generateUniqueMinutaNumber(existingPTrabNumbers);
+
       const ptrabData = {
         ...formData,
         user_id: user.id,
@@ -1041,7 +1034,7 @@ const PTrabManager = () => {
   // Função para verificar se o PTrab precisa ser numerado
   const needsNumbering = (ptrab: PTrab) => {
     // Verifica se o numero_ptrab é "Minuta" ou não termina com /YYYY (formato de número oficial)
-    return isMinuta(ptrab.numero_ptrab) || !ptrab.numero_ptrab || !ptrab.numero_ptrab.includes(yearSuffix);
+    return ptrab.numero_ptrab.startsWith("Minuta") || !ptrab.numero_ptrab || !ptrab.numero_ptrab.includes(yearSuffix);
   };
 
   return (
@@ -1076,19 +1069,18 @@ const PTrabManager = () => {
                       <Label htmlFor="numero_ptrab">Número do P Trab *</Label>
                       <Input
                         id="numero_ptrab"
-                        // Exibe "Minuta" se for uma minuta, senão exibe o número real
-                        value={isMinuta(formData.numero_ptrab) ? "Minuta" : formData.numero_ptrab}
+                        value={formData.numero_ptrab}
                         onChange={handleNumeroPTrabChange}
                         placeholder="Minuta"
                         maxLength={50}
                         required
                         onKeyDown={handleEnterToNextField}
                         // NEW: Disable if it's a Minuta number (Minuta-N)
-                        disabled={isMinuta(formData.numero_ptrab)}
-                        className={isMinuta(formData.numero_ptrab) ? "bg-muted/50 cursor-not-allowed" : ""}
+                        disabled={formData.numero_ptrab.startsWith("Minuta")}
+                        className={formData.numero_ptrab.startsWith("Minuta") ? "bg-muted/50 cursor-not-allowed" : ""}
                       />
                       <p className="text-xs text-muted-foreground">
-                        {isMinuta(formData.numero_ptrab) 
+                        {formData.numero_ptrab.startsWith("Minuta") 
                           ? "A numeração oficial (padrão: número/ano/OM) será atribuída após a aprovação."
                           : "O número oficial já foi atribuído."
                         }
@@ -1362,8 +1354,8 @@ const PTrabManager = () => {
                   <TableRow key={ptrab.id}>
                     <TableCell className="font-medium">
                       <div className="flex flex-col items-center">
-                        {isMinuta(ptrab.numero_ptrab) ? (
-                          <span className="text-red-500 font-bold">MINUTA</span>
+                        {ptrab.numero_ptrab.startsWith("Minuta") ? (
+                          <span className="text-red-500 font-bold">{ptrab.numero_ptrab.toUpperCase()}</span>
                         ) : isNumbered ? (
                           <span>{ptrab.numero_ptrab}</span>
                         ) : (
@@ -1588,7 +1580,7 @@ const PTrabManager = () => {
           <DialogHeader>
             <DialogTitle>Clonar Plano de Trabalho</DialogTitle>
             <p className="text-sm text-muted-foreground">
-              Clonando: <span className="font-medium">{isMinuta(ptrabToClone?.numero_ptrab || "") ? "Minuta" : ptrabToClone?.numero_ptrab} - {ptrabToClone?.nome_operacao}</span>
+              Clonando: <span className="font-medium">{ptrabToClone?.numero_ptrab} - {ptrabToClone?.nome_operacao}</span>
             </p>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -1646,7 +1638,7 @@ const PTrabManager = () => {
             <DialogTitle>Comentário do P Trab</DialogTitle>
             {ptrabComentario && (
               <p className="text-sm text-muted-foreground">
-                {isMinuta(ptrabComentario.numero_ptrab) ? "Minuta" : ptrabComentario.numero_ptrab} - {ptrabComentario.nome_operacao}
+                {ptrabComentario.numero_ptrab} - {ptrabComentario.nome_operacao}
               </p>
             )}
           </DialogHeader>
