@@ -466,11 +466,15 @@ const PTrabManager = () => {
       };
 
       if (editingId) {
+        // Edição: O ID já está no escopo do editingId, não precisamos nos preocupar com ele aqui.
         const { error } = await supabase.from("p_trab").update(ptrabData).eq("id", editingId);
         if (error) throw error;
         toast.success("P Trab atualizado!");
       } else {
-        const { error } = await supabase.from("p_trab").insert([ptrabData]);
+        // Criação: Removemos o ID do objeto para garantir que o DB gere um novo UUID.
+        const { id, ...insertData } = ptrabData as Partial<PTrab> & { id?: string };
+        
+        const { error } = await supabase.from("p_trab").insert([insertData as TablesInsert<'p_trab'>]);
         if (error) throw error;
         toast.success("P Trab criado!");
       }
@@ -650,8 +654,8 @@ const PTrabManager = () => {
       const typedOriginalPTrab = originalPTrab as unknown as PTrabDB; // Cast to PTrabDB
 
       // 2. Create the new PTrab object
-      // Destructure only fields present in the DB schema (PTrabDB)
-      const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = typedOriginalPTrab; 
+      // Destructure only fields present in the DB schema (PTrabDB) AND the ID
+      const { id: originalId, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = typedOriginalPTrab; 
       
       const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
         ...restOfPTrab,
@@ -685,7 +689,7 @@ const PTrabManager = () => {
         console.error("Erro ao carregar registros da Classe I:", fetchClasseIError);
       } else {
         const newClasseIRecords = (originalClasseIRecords || []).map(record => {
-          const { id, created_at, updated_at, ...restOfRecord } = record;
+          const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
           return {
             ...restOfRecord,
             p_trab_id: newPTrabId,
@@ -726,7 +730,7 @@ const PTrabManager = () => {
         console.error("Erro ao carregar registros da Classe II:", fetchClasseIIError);
       } else {
         const newClasseIIRecords = (originalClasseIIRecords || []).map(record => {
-          const { id, created_at, updated_at, ...restOfRecord } = record;
+          const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
           return {
             ...restOfRecord,
             p_trab_id: newPTrabId,
@@ -758,7 +762,7 @@ const PTrabManager = () => {
         console.error("Erro ao carregar registros da Classe III:", fetchClasseIIIError);
       } else {
         const newClasseIIIRecords = (originalClasseIIIRecords || []).map(record => {
-          const { id, created_at, updated_at, ...restOfRecord } = record;
+          const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
           return {
             ...restOfRecord,
             p_trab_id: newPTrabId,
@@ -795,7 +799,7 @@ const PTrabManager = () => {
       if (fetchRefLPCError) {
         console.error("Erro ao carregar referência LPC:", fetchRefLPCError);
       } else if (originalRefLPC) {
-        const { id, created_at, updated_at, ...restOfRefLPC } = originalRefLPC;
+        const { id, created_at, updated_at, ...restOfRefLPC } = originalRefLPC; // REMOVE ID
         const newRefLPCData = {
           ...restOfRefLPC,
           p_trab_id: newPTrabId,
@@ -935,7 +939,7 @@ const PTrabManager = () => {
 
         if (classeIRecords && classeIRecords.length > 0) {
           const recordsToInsert = classeIRecords.map(record => {
-            const { id, created_at, updated_at, ...rest } = record;
+            const { id, created_at, updated_at, ...rest } = record; // REMOVE ID
             return { ...rest, p_trab_id: finalTargetPTrabId };
           });
           const { error } = await supabase.from("classe_i_registros").insert(recordsToInsert as Tables<'classe_i_registros'>[]);
@@ -951,7 +955,7 @@ const PTrabManager = () => {
 
         if (classeIIRecords && classeIIRecords.length > 0) {
           const recordsToInsert = classeIIRecords.map(record => {
-            const { id, created_at, updated_at, ...rest } = record;
+            const { id, created_at, updated_at, ...rest } = record; // REMOVE ID
             return { ...rest, p_trab_id: finalTargetPTrabId, itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null };
           });
           const { error } = await supabase.from("classe_ii_registros").insert(recordsToInsert as Tables<'classe_ii_registros'>[]);
@@ -967,7 +971,7 @@ const PTrabManager = () => {
 
         if (classeIIIRecords && classeIIIRecords.length > 0) {
           const recordsToInsert = classeIIIRecords.map(record => {
-            const { id, created_at, updated_at, ...rest } = record;
+            const { id, created_at, updated_at, ...rest } = record; // REMOVE ID
             return { ...rest, p_trab_id: finalTargetPTrabId, itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null };
           });
           const { error } = await supabase.from("classe_iii_registros").insert(recordsToInsert as Tables<'classe_iii_registros'>[]);
@@ -991,7 +995,7 @@ const PTrabManager = () => {
           .maybeSingle();
         
         if (sourceRefLPC) {
-          const { id, created_at, updated_at, ...rest } = sourceRefLPC;
+          const { id, created_at, updated_at, ...rest } = sourceRefLPC; // REMOVE ID
           const { error } = await supabase.from("p_trab_ref_lpc").insert([{ ...rest, p_trab_id: finalTargetPTrabId }]);
           if (error) console.error("Erro ao clonar Ref LPC:", error);
         }
