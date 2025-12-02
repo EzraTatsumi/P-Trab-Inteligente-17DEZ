@@ -1450,7 +1450,7 @@ const PTrabManager = () => {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => handleNavigateToPrintOrExport(ptrab.id)}
-                              disabled={!isNumbered}
+                              // REMOVIDO: disabled={!isNumbered}
                             >
                               <Printer className="mr-2 h-4 w-4" />
                               Visualizar Impressão
