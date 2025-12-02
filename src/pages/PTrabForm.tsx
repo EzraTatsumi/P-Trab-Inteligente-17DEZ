@@ -12,6 +12,7 @@ import { CreditInputDialog } from "@/components/CreditInputDialog"; // Importar 
 import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"; // Importar TanStack Query
 import { fetchUserCredits, updateUserCredits } from "@/lib/creditUtils"; // Importar utilitários de crédito
+import { CreditPromptDialog } from "@/components/CreditPromptDialog"; // NOVO IMPORT
 
 interface PTrabData {
   numero_ptrab: string;
@@ -44,6 +45,8 @@ const PTrabForm = () => {
   
   // NOVOS ESTADOS PARA CRÉDITO E DIÁLOGO
   const [showCreditDialog, setShowCreditDialog] = useState(false);
+  const [showCreditPromptDialog, setShowCreditPromptDialog] = useState(false); // NOVO ESTADO
+  const [hasCheckedCredits, setHasCheckedCredits] = useState(false); // NOVO ESTADO PARA CONTROLE DE PRIMEIRA VEZ
 
   const classesLogistica = [
     { id: "classe-i", name: "Classe I - Subsistência" },
@@ -121,6 +124,19 @@ const PTrabForm = () => {
     loadPTrab();
   }, [ptrabId, navigate]);
 
+  // Efeito para verificar se deve mostrar o prompt de crédito
+  useEffect(() => {
+    if (!isLoadingCredits && !loadingSession && user?.id && !hasCheckedCredits) {
+      const gnd3 = Number(credits.credit_gnd3);
+      const gnd4 = Number(credits.credit_gnd4);
+      
+      if (gnd3 === 0 && gnd4 === 0) {
+        setShowCreditPromptDialog(true);
+      }
+      setHasCheckedCredits(true); // Marca que a verificação foi feita
+    }
+  }, [isLoadingCredits, loadingSession, user?.id, credits, hasCheckedCredits]);
+
   // Função para buscar os totais e atualizar os estados de custo
   const fetchAndSetTotals = async () => {
     if (!ptrabId) return;
@@ -171,6 +187,16 @@ const PTrabForm = () => {
       return;
     }
     saveCreditsMutation.mutate({ gnd3, gnd4 });
+  };
+  
+  const handlePromptConfirm = () => {
+    setShowCreditPromptDialog(false);
+    setShowCreditDialog(true); // Abre o diálogo de input
+  };
+  
+  const handlePromptCancel = () => {
+    setShowCreditPromptDialog(false);
+    // Continua com os valores zerados
   };
 
   const handleItemClick = (itemId: string, type: string) => {
@@ -358,6 +384,13 @@ const PTrabForm = () => {
         initialCreditGND3={credits.credit_gnd3}
         initialCreditGND4={credits.credit_gnd4}
         onSave={handleSaveCredit}
+      />
+      
+      {/* Diálogo de Prompt de Crédito (NOVO) */}
+      <CreditPromptDialog
+        open={showCreditPromptDialog}
+        onConfirm={handlePromptConfirm}
+        onCancel={handlePromptCancel}
       />
     </div>
   );
