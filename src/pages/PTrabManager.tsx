@@ -160,10 +160,12 @@ const PTrabManager = () => {
   useEffect(() => {
     if (ptrabToClone) {
       let newSuggestedNumber = "";
-      if (cloneType === 'new') {
-        newSuggestedNumber = generateUniquePTrabNumber(existingPTrabNumbers);
-      } else { // 'variation'
+      // Apenas calcula o número de variação, pois o 'new' sempre será 'Minuta'
+      if (cloneType === 'variation') {
         newSuggestedNumber = generateVariationPTrabNumber(ptrabToClone.numero_ptrab, existingPTrabNumbers);
+      } else {
+        // Se for 'new', o número sugerido não é relevante para o fluxo, mas mantemos o estado limpo
+        newSuggestedNumber = ""; 
       }
       setSuggestedCloneNumber(newSuggestedNumber);
       setCustomCloneNumber(newSuggestedNumber); // Inicializa o campo editável com a sugestão
@@ -596,7 +598,8 @@ const PTrabManager = () => {
       setSelectedOmId(ptrabToClone.codug_om ? 'temp' : undefined); // Placeholder para forçar a seleção da OM
       setFormData({
         ...restOfPTrab,
-        numero_ptrab: suggestedCloneNumber, // Usa o número sequencial sugerido
+        // ALTERADO: O novo P Trab deve começar como Minuta
+        numero_ptrab: "Minuta", 
         status: "aberto",
         origem: 'original',
       });
@@ -1576,7 +1579,7 @@ const PTrabManager = () => {
                 <RadioGroupItem id="clone-new" value="new" className="sr-only" />
                 <span className="mb-3 text-lg font-semibold">Novo P Trab</span>
                 <p className="text-sm text-muted-foreground text-center">
-                  Cria um P Trab totalmente novo com o próximo número sequencial.
+                  Cria um P Trab totalmente novo, iniciando como Minuta para posterior numeração.
                 </p>
               </Label>
               <Label
