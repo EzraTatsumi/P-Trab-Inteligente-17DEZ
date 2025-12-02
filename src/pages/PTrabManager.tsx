@@ -326,10 +326,11 @@ const PTrabManager = () => {
     setPtrabToArchiveName(null);
   };
 
+  // NOVO statusConfig com cores ajustadas e rótulos simplificados
   const statusConfig = {
     'minuta': { 
       variant: 'outline' as const, 
-      label: 'Rascunho', // Alterado de 'Minuta' para 'Rascunho'
+      label: 'Rascunho',
       className: 'bg-gray-100 text-gray-800 hover:bg-gray-200'
     },
     'aberto': { 
@@ -358,6 +359,10 @@ const PTrabManager = () => {
       className: 'bg-gray-100 text-gray-800 hover:bg-gray-200'
     }
   };
+  
+  // Status que podem ser selecionados no dropdown (os 4 principais)
+  const selectableStatuses = ['aberto', 'em_andamento', 'aprovado', 'arquivado'];
+
 
   const handleStatusChange = async (ptrabId: string, oldStatus: string, newStatus: string) => {
     if (oldStatus === 'completo' && newStatus === 'em_andamento') {
@@ -1360,7 +1365,10 @@ const PTrabManager = () => {
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent className="bg-background border shadow-lg z-50">
-                            {Object.entries(statusConfig).map(([key, config]) => (
+                            {/* Filtra para mostrar apenas os 4 status principais, mas inclui o status atual se for 'minuta' ou 'completo' */}
+                            {Object.entries(statusConfig)
+                                .filter(([key]) => selectableStatuses.includes(key) || key === ptrab.status)
+                                .map(([key, config]) => (
                               <SelectItem 
                                 key={key} 
                                 value={key}
