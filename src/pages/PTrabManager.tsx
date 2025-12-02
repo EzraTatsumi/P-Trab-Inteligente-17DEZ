@@ -564,15 +564,14 @@ const PTrabManager = () => {
 
   // Função para abrir o diálogo de aprovação
   const handleOpenApproveDialog = (ptrab: PTrab) => {
-    // 1. Limpar a sigla da OM para usar no sufixo do número oficial (necessário para padronização)
-    const omSiglaLimpa = ptrab.nome_om.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    // 1. A sigla da OM é usada como está (ptrab.nome_om)
+    const omSigla = ptrab.nome_om;
     
-    // 2. Gerar o número no novo padrão N/YYYY/OM_SIGLA_LIMPA
-    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSiglaLimpa);
+    // 2. Gerar o número no novo padrão N/YYYY/OM_SIGLA
+    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSigla);
     
     setPtrabToApprove(ptrab);
     setSuggestedApproveNumber(suggestedNumber);
-    // REMOVIDO: setOmSiglaLimpa(omSigla);
     setShowApproveDialog(true);
   };
 
