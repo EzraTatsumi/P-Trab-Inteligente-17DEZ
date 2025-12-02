@@ -134,6 +134,7 @@ const PTrabManager = () => {
       local_om: "",
       status: "aberto",
       origem: 'original',
+      comentario: "", // Adicionado
     });
   }, [existingPTrabNumbers]);
 
@@ -154,6 +155,7 @@ const PTrabManager = () => {
     local_om: "",
     status: "aberto",
     origem: 'original' as 'original' | 'importado' | 'consolidado',
+    comentario: "", // Adicionado
   });
 
   const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
@@ -169,17 +171,14 @@ const PTrabManager = () => {
   useEffect(() => {
     if (ptrabToClone) {
       let newSuggestedNumber = "";
-      // Apenas calcula o número de variação, pois o 'new' sempre será 'Minuta-N'
-      if (cloneType === 'variation') {
-        newSuggestedNumber = generateVariationPTrabNumber(ptrabToClone.numero_ptrab, existingPTrabNumbers);
-      } else {
-        // Se for 'new', gera uma nova minuta única
-        newSuggestedNumber = generateUniqueMinutaNumber(existingPTrabNumbers); 
-      }
+      
+      // Tanto 'new' quanto 'variation' agora geram um número de Minuta único
+      newSuggestedNumber = generateUniqueMinutaNumber(existingPTrabNumbers); 
+      
       setSuggestedCloneNumber(newSuggestedNumber);
       setCustomCloneNumber(newSuggestedNumber); // Inicializa o campo editável com a sugestão
     }
-  }, [ptrabToClone, cloneType, existingPTrabNumbers]);
+  }, [ptrabToClone, existingPTrabNumbers]); // Removido cloneType da dependência, pois a lógica é a mesma
 
 
   const checkAuth = async () => {
@@ -546,6 +545,7 @@ const PTrabManager = () => {
       local_om: ptrab.local_om || "",
       status: ptrab.status,
       origem: ptrab.origem,
+      comentario: ptrab.comentario || "",
     });
     setDialogOpen(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -640,6 +640,7 @@ const PTrabManager = () => {
         numero_ptrab: suggestedCloneNumber, // Usa o número de minuta gerado
         status: "aberto",
         origem: ptrabToClone.origem,
+        comentario: null, // Limpa o comentário para um novo P Trab
       });
       setSelectedOmId(ptrabToClone.codug_om ? 'temp' : undefined);
       setOriginalPTrabIdToClone(ptrabToClone.id); // Salva o ID para clonar os registros no submit
@@ -648,7 +649,7 @@ const PTrabManager = () => {
       setDialogOpen(true);
       
     } else {
-      // Fluxo 2: Variação do Trabalho (abre o diálogo de nome da versão)
+      // Fluxo 2: Variação do Trabalho (abre o diálogo de nome da versão para CAPTURAR O RÓTULO)
       setShowCloneOptionsDialog(false);
       setShowCloneVariationDialog(true);
     }
@@ -661,14 +662,24 @@ const PTrabManager = () => {
       return;
     }
     
-    // O número de variação já foi calculado em suggestedCloneNumber
-    const newNumeroPTrab = suggestedCloneNumber;
-    
-    // 1. Executar a clonagem (Variação não precisa de edição de cabeçalho, clona direto)
-    await executeCloningProcess(ptrabToClone.id, newNumeroPTrab, versionName, false);
-    
-    // 2. Fechar o diálogo de variação
+    // 1. Captura o rótulo e fecha o diálogo de variação
     setShowCloneVariationDialog(false);
+    
+    // 2. Prepara o formulário com os dados do original e o novo número de minuta
+    const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = ptrabToClone;
+    
+    setFormData({
+      ...restOfPTrab,
+      numero_ptrab: suggestedCloneNumber, // Usa o número de minuta gerado
+      status: "aberto",
+      origem: ptrabToClone.origem,
+      comentario: versionName, // Define o comentário/rótulo aqui
+    });
+    setSelectedOmId(ptrabToClone.codug_om ? 'temp' : undefined);
+    setOriginalPTrabIdToClone(ptrabToClone.id); // Salva o ID para clonar os registros no submit
+    
+    // 3. Abre o diálogo de edição do cabeçalho
+    setDialogOpen(true);
   };
 
   // Função para clonar os registros relacionados (Chamada APENAS no handleSubmit para novos PTrabs clonados)
@@ -803,76 +814,6 @@ const PTrabManager = () => {
         console.error("ERRO DE INSERÇÃO REF LPC:", insertRefLPCError);
         toast.error(`Erro ao clonar referência LPC: ${sanitizeError(insertRefLPCError)}`);
       }
-    }
-  };
-
-  // Função para executar o processo de clonagem (usada apenas para Variação)
-  const executeCloningProcess = async (originalPTrabId: string, newNumeroPTrab: string, versionName: string | null = null, isNewClone: boolean = false): Promise<string | null> => {
-    setLoading(true);
-    try {
-      // 1. Fetch the original PTrab
-      const { data: originalPTrab, error: fetchPTrabError } = await supabase
-        .from("p_trab")
-        .select("*, origem") // Ensure 'origem' is selected
-        .eq("id", originalPTrabId)
-        .single();
-
-      if (fetchPTrabError || !originalPTrab) {
-        console.error("ERRO AO CARREGAR P TRAB ORIGINAL:", fetchPTrabError);
-        throw new Error("Erro ao carregar o P Trab original.");
-      }
-      
-      const typedOriginalPTrab = originalPTrab as unknown as PTrabDB; // Cast to PTrabDB
-
-      // 2. Create the new PTrab object
-      // Destructure only fields present in the DB schema (PTrabDB) AND the ID
-      const { id: originalId, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = typedOriginalPTrab; 
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
-
-      const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
-        ...restOfPTrab,
-        numero_ptrab: newNumeroPTrab,
-        status: "aberto",
-        user_id: user.id,
-        origem: typedOriginalPTrab.origem,
-        comentario: versionName || typedOriginalPTrab.comentario, // Salva o nome da versão no comentário
-      };
-
-      const { data: newPTrab, error: insertPTrabError } = await supabase
-        .from("p_trab")
-        .insert([newPTrabData as TablesInsert<'p_trab'>]) // Cast to TablesInsert<'p_trab'>
-        .select()
-        .single();
-
-      if (insertPTrabError || !newPTrab) {
-        console.error("ERRO DE INSERÇÃO P TRAB:", insertPTrabError);
-        throw new Error("Erro ao criar o novo P Trab.");
-      }
-
-      const newPTrabId = newPTrab.id;
-      
-      // 3. Clonar registros relacionados
-      await cloneRelatedRecords(originalPTrabId, newPTrabId);
-
-      toast.success(`P Trab ${newNumeroPTrab} clonado com sucesso!`);
-      await loadPTrabs();
-      
-      // Limpar estados de clonagem
-      setPtrabToClone(null);
-      setCloneType('new');
-      setSuggestedCloneNumber("");
-      setCustomCloneNumber("");
-      setShowCloneOptionsDialog(false);
-      
-      return newPTrabId; // Retorna o ID do novo P Trab
-    } catch (error: any) {
-      console.error("ERRO GERAL AO CLONAR P TRAB (RAW):", error);
-      toast.error(sanitizeError(error));
-      return null;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -1412,7 +1353,7 @@ const PTrabManager = () => {
                       <div className="flex flex-col items-start">
                         <span>{ptrab.nome_operacao}</span>
                         {/* NOVO RÓTULO DE VERSÃO */}
-                        {ptrab.comentario && ptrab.numero_ptrab.includes('.') && (
+                        {ptrab.comentario && ptrab.numero_ptrab.startsWith("Minuta") && (
                           <Badge variant="secondary" className="mt-1 text-xs bg-secondary/20 text-secondary-foreground/80">
                             <GitBranch className="h-3 w-3 mr-1" />
                             {ptrab.comentario}
@@ -1645,7 +1586,7 @@ const PTrabManager = () => {
                 <RadioGroupItem id="clone-variation" value="variation" className="sr-only" />
                 <span className="mb-3 text-lg font-semibold">Variação do Trabalho</span>
                 <p className="text-sm text-muted-foreground text-center">
-                  Cria uma variação do P Trab atual (ex: {ptrabToClone?.numero_ptrab.split('/')[0]}.1/{currentYear}).
+                  Cria uma variação do P Trab atual, gerando um novo número de Minuta.
                 </p>
               </Label>
             </RadioGroup>

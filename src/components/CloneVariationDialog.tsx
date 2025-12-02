@@ -54,7 +54,7 @@ export const CloneVariationDialog = ({
             Clonar como Variação
           </DialogTitle>
           <DialogDescription>
-            Crie uma nova versão do P Trab original.
+            Crie uma nova versão do P Trab original. O novo P Trab será gerado como Minuta.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
