@@ -44,6 +44,7 @@ import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/type
 import { Badge } from "@/components/ui/badge";
 import { HelpDialog } from "@/components/HelpDialog";
 import { CloneVariationDialog } from "@/components/CloneVariationDialog"; // NOVO IMPORT
+import { updateUserCredits } from "@/lib/creditUtils"; // Importar utilitário de crédito
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -477,6 +478,15 @@ const PTrabManager = () => {
         const { error } = await supabase.from("p_trab").insert([insertData as TablesInsert<'p_trab'>]);
         if (error) throw error;
         toast.success("P Trab criado!");
+        
+        // NOVO: ZERAR CRÉDITOS DISPONÍVEIS APÓS A CRIAÇÃO DE UM NOVO P TRAB
+        try {
+            await updateUserCredits(user.id, 0, 0);
+            // Não precisa de toast de sucesso aqui, pois o sucesso principal já foi dado.
+        } catch (creditError) {
+            console.error("Erro ao zerar créditos após criação do P Trab:", creditError);
+            toast.warning("Aviso: Ocorreu um erro ao zerar os créditos disponíveis. Por favor, verifique manualmente.");
+        }
       }
 
       setDialogOpen(false);
