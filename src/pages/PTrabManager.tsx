@@ -45,8 +45,6 @@ import { Badge } from "@/components/ui/badge";
 import { HelpDialog } from "@/components/HelpDialog";
 import { CloneVariationDialog } from "@/components/CloneVariationDialog";
 import { updateUserCredits } from "@/lib/creditUtils";
-import { cn } from "@/lib/utils";
-import { StatusCell } from "@/components/PTrabManager"; // IMPORTAR O NOVO COMPONENTE
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -324,7 +322,6 @@ const PTrabManager = () => {
     setPtrabToArchiveName(null);
   };
 
-  // Ajuste do statusConfig para refletir as novas regras
   const statusConfig = {
     'aberto': { 
       variant: 'default' as const, 
@@ -336,9 +333,9 @@ const PTrabManager = () => {
       label: 'Em Andamento',
       className: 'bg-blue-100 text-blue-800 hover:bg-blue-200'
     },
-    'completo': { // Renomeado para 'aprovado' na interface, mas mantido 'completo' no DB por enquanto
+    'completo': { 
       variant: 'default' as const, 
-      label: 'Aprovado',
+      label: 'Completo',
       className: 'bg-green-100 text-green-800 hover:bg-green-200'
     },
     'arquivado': { 
@@ -684,7 +681,7 @@ const PTrabManager = () => {
 
         const { data: newPTrab, error: insertError } = await supabase
             .from("p_trab")
-            .insert([newPTrabData as TablesInsert<'p_trab'>]) // Cast to TablesInsert<'p_trab'>
+            .insert([newPTrabData as TablesInsert<'p_trab'>])
             .select()
             .single();
             
@@ -1380,7 +1377,7 @@ const PTrabManager = () => {
                         )}
                         <Badge 
                           variant="outline" 
-                          className={cn("mt-1 text-xs font-semibold", originBadge.className)}
+                          className={`mt-1 text-xs font-semibold ${originBadge.className}`}
                         >
                           {originBadge.label}
                         </Badge>
@@ -1407,11 +1404,35 @@ const PTrabManager = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <StatusCell 
-                        ptrab={ptrab} 
-                        isNumbered={isNumbered} 
-                        handleStatusChange={handleStatusChange} 
-                      />
+                      <div className="flex flex-col items-center">
+                        <Select
+                          value={ptrab.status}
+                          onValueChange={(value) => handleStatusChange(ptrab.id, ptrab.status, value)}
+                          disabled={!isNumbered} // Desabilita a mudança de status se não estiver numerado
+                        >
+                          <SelectTrigger className={`w-[140px] h-7 text-xs ${statusConfig[ptrab.status as keyof typeof statusConfig]?.className || 'bg-background'}`}>
+                            <SelectValue>
+                              {statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border shadow-lg z-50">
+                            {Object.entries(statusConfig).map(([key, config]) => (
+                              <SelectItem 
+                                key={key} 
+                                value={key}
+                                className="cursor-pointer hover:bg-accent"
+                              >
+                                <span className={`inline-block px-2 py-1 rounded text-xs ${config.className}`}>
+                                  {config.label}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Última alteração: {formatDateTime(ptrab.updated_at)}
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex flex-col items-center text-xs">
@@ -1453,10 +1474,11 @@ const PTrabManager = () => {
                               onClick={() => handleOpenComentario(ptrab)}
                             >
                               <MessageSquare 
-                                className={cn("h-5 w-5 transition-all", {
-                                  "text-green-600 fill-green-600": ptrab.comentario && !ptrab.numero_ptrab.startsWith("Minuta"),
-                                  "text-gray-300": !ptrab.comentario || ptrab.numero_ptrab.startsWith("Minuta")
-                                })}
+                                className={`h-5 w-5 transition-all ${
+                                  ptrab.comentario && !ptrab.numero_ptrab.startsWith("Minuta")
+                                    ? "text-green-600 fill-green-600" 
+                                    : "text-gray-300"
+                                }`}
                               />
                             </Button>
                           </TooltipTrigger>
@@ -1541,7 +1563,7 @@ const PTrabManager = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Arquivar P Trab?</AlertDialogTitle>
             <AlertDialogDescription>
-              O P Trab "{ptrabToArchiveName}" está com status "Aprovado" há mais de 10 dias. Deseja arquivá-lo?
+              O P Trab "{ptrabToArchiveName}" está com status "Completo" há mais de 10 dias. Deseja arquivá-lo?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
