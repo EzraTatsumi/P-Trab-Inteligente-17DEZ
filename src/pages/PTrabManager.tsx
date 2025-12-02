@@ -87,6 +87,9 @@ const PTrabManager = () => {
   const [cloneType, setCloneType, ] = useState<'new' | 'variation'>('new');
   const [suggestedCloneNumber, setSuggestedCloneNumber] = useState<string>("");
   const [customCloneNumber, setCustomCloneNumber] = useState<string>("");
+  
+  // NOVO: ID do PTrab original a ser clonado (usado no handleSubmit)
+  const [originalPTrabIdToClone, setOriginalPTrabIdToClone] = useState<string | null>(null);
 
   // Estados para o diálogo de comentário
   const [showComentarioDialog, setShowComentarioDialog] = useState(false);
@@ -108,6 +111,7 @@ const PTrabManager = () => {
   const resetForm = useCallback(() => {
     setEditingId(null);
     setSelectedOmId(undefined);
+    setOriginalPTrabIdToClone(null); // Resetar o ID de clonagem
     
     // Gera um número de minuta único ao iniciar um novo P Trab
     const uniqueMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
@@ -478,18 +482,38 @@ const PTrabManager = () => {
         // Criação: Removemos o ID do objeto para garantir que o DB gere um novo UUID.
         const { id, ...insertData } = ptrabData as Partial<PTrab> & { id?: string };
         
-        const { error } = await supabase.from("p_trab").insert([insertData as TablesInsert<'p_trab'>]);
-        if (error) throw error;
-        toast.success("P Trab criado!");
+        const { data: newPTrab, error: insertError } = await supabase
+          .from("p_trab")
+          .insert([insertData as TablesInsert<'p_trab'>])
+          .select()
+          .single();
+          
+        if (insertError || !newPTrab) throw insertError;
         
-        // NOVO: ZERAR CRÉDITOS DISPONÍVEIS APÓS A CRIAÇÃO DE UM NOVO P TRAB
+        const newPTrabId = newPTrab.id;
+        
+        // --- NOVO FLUXO DE CLONAGEM DE REGISTROS APÓS CRIAÇÃO DO CABEÇALHO ---
+        if (originalPTrabIdToClone) {
+            await cloneRelatedRecords(originalPTrabIdToClone, newPTrabId);
+            toast.success("P Trab criado e registros clonados!");
+        } else {
+            toast.success("P Trab criado!");
+        }
+        
+        // ZERAR CRÉDITOS DISPONÍVEIS APÓS A CRIAÇÃO DE UM NOVO P TRAB
         try {
             await updateUserCredits(user.id, 0, 0);
-            // Não precisa de toast de sucesso aqui, pois o sucesso principal já foi dado.
         } catch (creditError) {
             console.error("Erro ao zerar créditos após criação do P Trab:", creditError);
             toast.warning("Aviso: Ocorreu um erro ao zerar os créditos disponíveis. Por favor, verifique manualmente.");
         }
+        
+        // Redireciona para a página de preenchimento do novo P Trab
+        setDialogOpen(false);
+        resetForm();
+        loadPTrabs();
+        navigate(`/ptrab/form?ptrabId=${newPTrabId}`);
+        return; // Sai da função para evitar o resetForm e loadPTrabs duplicados abaixo
       }
 
       setDialogOpen(false);
@@ -601,23 +625,27 @@ const PTrabManager = () => {
   };
 
   // Função para confirmar a clonagem a partir do diálogo de opções
-  const handleConfirmCloneOptions = async () => { // AGORA É ASYNC
+  const handleConfirmCloneOptions = async () => {
     if (!ptrabToClone) return;
 
     if (cloneType === 'new') {
-      // Fluxo 1: Novo P Trab (Clonagem completa imediata + Navegação)
+      // Fluxo 1: Novo P Trab (Abre o diálogo de edição do cabeçalho)
       setShowCloneOptionsDialog(false);
       
-      // Usa o número de minuta único gerado no useEffect
-      const newNumeroPTrab = suggestedCloneNumber; 
+      // 1. Prepara o formulário com os dados do original e o novo número de minuta
+      const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = ptrabToClone;
       
-      // Executa o processo de clonagem (cria PTrab e clona registros relacionados)
-      const newPTrabId = await executeCloningProcess(ptrabToClone.id, newNumeroPTrab, null, true); 
+      setFormData({
+        ...restOfPTrab,
+        numero_ptrab: suggestedCloneNumber, // Usa o número de minuta gerado
+        status: "aberto",
+        origem: ptrabToClone.origem,
+      });
+      setSelectedOmId(ptrabToClone.codug_om ? 'temp' : undefined);
+      setOriginalPTrabIdToClone(ptrabToClone.id); // Salva o ID para clonar os registros no submit
       
-      if (newPTrabId) {
-        // Navega para a página de preenchimento do novo PTrab para edição
-        handleSelectPTrab(newPTrabId); 
-      }
+      // 2. Abre o diálogo de edição
+      setDialogOpen(true);
       
     } else {
       // Fluxo 2: Variação do Trabalho (abre o diálogo de nome da versão)
@@ -636,14 +664,149 @@ const PTrabManager = () => {
     // O número de variação já foi calculado em suggestedCloneNumber
     const newNumeroPTrab = suggestedCloneNumber;
     
-    // 1. Executar a clonagem
+    // 1. Executar a clonagem (Variação não precisa de edição de cabeçalho, clona direto)
     await executeCloningProcess(ptrabToClone.id, newNumeroPTrab, versionName, false);
     
     // 2. Fechar o diálogo de variação
     setShowCloneVariationDialog(false);
   };
 
-  // Função para executar o processo de clonagem
+  // Função para clonar os registros relacionados (Chamada APENAS no handleSubmit para novos PTrabs clonados)
+  const cloneRelatedRecords = async (originalPTrabId: string, newPTrabId: string) => {
+    // 1. Clone Classe I records
+    const { data: originalClasseIRecords, error: fetchClasseIError } = await supabase
+      .from("classe_i_registros")
+      .select("*")
+      .eq("p_trab_id", originalPTrabId);
+
+    if (fetchClasseIError) {
+      console.error("Erro ao carregar registros da Classe I:", fetchClasseIError);
+    } else {
+      const newClasseIRecords = (originalClasseIRecords || []).map(record => {
+        const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
+        return {
+          ...restOfRecord,
+          p_trab_id: newPTrabId,
+          // Garantir que campos numéricos NOT NULL sejam números
+          complemento_qr: record.complemento_qr ?? 0,
+          complemento_qs: record.complemento_qs ?? 0,
+          dias_operacao: record.dias_operacao ?? 0,
+          efetivo: record.efetivo ?? 0,
+          etapa_qr: record.etapa_qr ?? 0,
+          etapa_qs: record.etapa_qs ?? 0,
+          nr_ref_int: record.nr_ref_int ?? 0,
+          total_geral: record.total_geral ?? 0,
+          total_qr: record.total_qr ?? 0,
+          total_qs: record.total_qs ?? 0,
+          valor_qr: record.valor_qr ?? 0,
+          valor_qs: record.valor_qs ?? 0,
+        };
+      });
+
+      if (newClasseIRecords.length > 0) {
+        const { error: insertClasseIError } = await supabase
+          .from("classe_i_registros")
+          .insert(newClasseIRecords);
+        if (insertClasseIError) {
+          console.error("ERRO DE INSERÇÃO CLASSE I:", insertClasseIError);
+          toast.error(`Erro ao clonar registros da Classe I: ${sanitizeError(insertClasseIError)}`);
+        }
+      }
+    }
+    
+    // 2. Clone Classe II records
+    const { data: originalClasseIIRecords, error: fetchClasseIIError } = await supabase
+      .from("classe_ii_registros")
+      .select("*, itens_equipamentos")
+      .eq("p_trab_id", originalPTrabId);
+
+    if (fetchClasseIIError) {
+      console.error("Erro ao carregar registros da Classe II:", fetchClasseIIError);
+    } else {
+      const newClasseIIRecords = (originalClasseIIRecords || []).map(record => {
+        const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
+        return {
+          ...restOfRecord,
+          p_trab_id: newPTrabId,
+          itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null,
+          dias_operacao: record.dias_operacao ?? 0,
+          valor_total: record.valor_total ?? 0,
+        };
+      });
+
+      if (newClasseIIRecords.length > 0) {
+        const { error: insertClasseIIError } = await supabase
+          .from("classe_ii_registros")
+          .insert(newClasseIIRecords);
+        if (insertClasseIIError) {
+          console.error("ERRO DE INSERÇÃO CLASSE II:", insertClasseIIError);
+          toast.error(`Erro ao clonar registros da Classe II: ${sanitizeError(insertClasseIIError)}`);
+        }
+      }
+    }
+
+    // 3. Clone Classe III records
+    const { data: originalClasseIIIRecords, error: fetchClasseIIIError } = await supabase
+      .from("classe_iii_registros")
+      .select("*")
+      .eq("p_trab_id", originalPTrabId);
+
+    if (fetchClasseIIIError) {
+      console.error("Erro ao carregar registros da Classe III:", fetchClasseIIIError);
+    } else {
+      const newClasseIIIRecords = (originalClasseIIIRecords || []).map(record => {
+        const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
+        return {
+          ...restOfRecord,
+          p_trab_id: newPTrabId,
+          itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null,
+          dias_operacao: record.dias_operacao ?? 0,
+          preco_litro: record.preco_litro ?? 0,
+          quantidade: record.quantidade ?? 0,
+          total_litros: record.total_litros ?? 0,
+          valor_total: record.valor_total ?? 0,
+          consumo_lubrificante_litro: record.consumo_lubrificante_litro ?? 0,
+          preco_lubrificante: record.preco_lubrificante ?? 0,
+        };
+      });
+
+      if (newClasseIIIRecords.length > 0) {
+        const { error: insertClasseIIIError } = await supabase
+          .from("classe_iii_registros")
+          .insert(newClasseIIIRecords);
+        if (insertClasseIIIError) {
+          console.error("ERRO DE INSERÇÃO CLASSE III:", insertClasseIIIError);
+          toast.error(`Erro ao clonar registros da Classe III: ${sanitizeError(insertClasseIIIError)}`);
+        }
+      }
+    }
+
+    // 4. Clone p_trab_ref_lpc record (if exists)
+    const { data: originalRefLPC, error: fetchRefLPCError } = await supabase
+      .from("p_trab_ref_lpc")
+      .select("*")
+      .eq("p_trab_id", originalPTrabId)
+      .maybeSingle();
+
+    if (fetchRefLPCError) {
+      console.error("Erro ao carregar referência LPC:", fetchRefLPCError);
+    } else if (originalRefLPC) {
+      const { id, created_at, updated_at, ...restOfRefLPC } = originalRefLPC; // REMOVE ID
+      const newRefLPCData = {
+        ...restOfRefLPC,
+        p_trab_id: newPTrabId,
+      };
+      const { error: insertRefLPCError } = await supabase
+        .from("p_trab_ref_lpc")
+        .insert([newRefLPCData]);
+      if (insertRefLPCError) {
+        console.error("ERRO DE INSERÇÃO REF LPC:", insertRefLPCError);
+        toast.error(`Erro ao clonar referência LPC: ${sanitizeError(insertRefLPCError)}`);
+      }
+    }
+  };
+
+  // Função para executar o processo de clonagem (usada apenas para Variação)
   const executeCloningProcess = async (originalPTrabId: string, newNumeroPTrab: string, versionName: string | null = null, isNewClone: boolean = false): Promise<string | null> => {
     setLoading(true);
     try {
@@ -690,149 +853,8 @@ const PTrabManager = () => {
 
       const newPTrabId = newPTrab.id;
       
-      // NOVO: ZERAR CRÉDITOS DISPONÍVEIS APÓS A CRIAÇÃO DE UM NOVO P TRAB (Se for um clone 'new')
-      if (isNewClone) {
-          try {
-              await updateUserCredits(user.id, 0, 0);
-          } catch (creditError) {
-              console.error("Erro ao zerar créditos após criação do P Trab:", creditError);
-              toast.warning("Aviso: Ocorreu um erro ao zerar os créditos disponíveis.");
-          }
-      }
-
-      // 3. Clone Classe I records
-      const { data: originalClasseIRecords, error: fetchClasseIError } = await supabase
-        .from("classe_i_registros")
-        .select("*")
-        .eq("p_trab_id", originalPTrabId);
-
-      if (fetchClasseIError) {
-        console.error("Erro ao carregar registros da Classe I:", fetchClasseIError);
-      } else {
-        const newClasseIRecords = (originalClasseIRecords || []).map(record => {
-          const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
-          return {
-            ...restOfRecord,
-            p_trab_id: newPTrabId,
-            // Garantir que campos numéricos NOT NULL sejam números
-            complemento_qr: record.complemento_qr ?? 0,
-            complemento_qs: record.complemento_qs ?? 0,
-            dias_operacao: record.dias_operacao ?? 0,
-            efetivo: record.efetivo ?? 0,
-            etapa_qr: record.etapa_qr ?? 0,
-            etapa_qs: record.etapa_qs ?? 0,
-            nr_ref_int: record.nr_ref_int ?? 0,
-            total_geral: record.total_geral ?? 0,
-            total_qr: record.total_qr ?? 0,
-            total_qs: record.total_qs ?? 0,
-            valor_qr: record.valor_qr ?? 0,
-            valor_qs: record.valor_qs ?? 0,
-          };
-        });
-
-        if (newClasseIRecords.length > 0) {
-          const { error: insertClasseIError } = await supabase
-            .from("classe_i_registros")
-            .insert(newClasseIRecords);
-          if (insertClasseIError) {
-            console.error("ERRO DE INSERÇÃO CLASSE I:", insertClasseIError);
-            toast.error(`Erro ao clonar registros da Classe I: ${sanitizeError(insertClasseIError)}`);
-          }
-        }
-      }
-      
-      // 4. Clone Classe II records (NOVO)
-      const { data: originalClasseIIRecords, error: fetchClasseIIError } = await supabase
-        .from("classe_ii_registros")
-        .select("*, itens_equipamentos")
-        .eq("p_trab_id", originalPTrabId);
-
-      if (fetchClasseIIError) {
-        console.error("Erro ao carregar registros da Classe II:", fetchClasseIIError);
-      } else {
-        const newClasseIIRecords = (originalClasseIIRecords || []).map(record => {
-          const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
-          return {
-            ...restOfRecord,
-            p_trab_id: newPTrabId,
-            itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null,
-            // Garantir que campos numéricos NOT NULL sejam números
-            dias_operacao: record.dias_operacao ?? 0,
-            valor_total: record.valor_total ?? 0,
-          };
-        });
-
-        if (newClasseIIRecords.length > 0) {
-          const { error: insertClasseIIError } = await supabase
-            .from("classe_ii_registros")
-            .insert(newClasseIIRecords);
-          if (insertClasseIIError) {
-            console.error("ERRO DE INSERÇÃO CLASSE II:", insertClasseIIError);
-            toast.error(`Erro ao clonar registros da Classe II: ${sanitizeError(insertClasseIIError)}`);
-          }
-        }
-      }
-
-      // 5. Clone Classe III records
-      const { data: originalClasseIIIRecords, error: fetchClasseIIIError } = await supabase
-        .from("classe_iii_registros")
-        .select("*")
-        .eq("p_trab_id", originalPTrabId);
-
-      if (fetchClasseIIIError) {
-        console.error("Erro ao carregar registros da Classe III:", fetchClasseIIIError);
-      } else {
-        const newClasseIIIRecords = (originalClasseIIIRecords || []).map(record => {
-          const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
-          return {
-            ...restOfRecord,
-            p_trab_id: newPTrabId,
-            itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null,
-            // Garantir que campos numéricos NOT NULL sejam números
-            dias_operacao: record.dias_operacao ?? 0,
-            preco_litro: record.preco_litro ?? 0,
-            quantidade: record.quantidade ?? 0,
-            total_litros: record.total_litros ?? 0,
-            valor_total: record.valor_total ?? 0,
-            consumo_lubrificante_litro: record.consumo_lubrificante_litro ?? 0,
-            preco_lubrificante: record.preco_lubrificante ?? 0,
-          };
-        });
-
-        if (newClasseIIIRecords.length > 0) {
-          const { error: insertClasseIIIError } = await supabase
-            .from("classe_iii_registros")
-            .insert(newClasseIIIRecords);
-          if (insertClasseIIIError) {
-            console.error("ERRO DE INSERÇÃO CLASSE III:", insertClasseIIIError);
-            toast.error(`Erro ao clonar registros da Classe III: ${sanitizeError(insertClasseIIIError)}`);
-          }
-        }
-      }
-
-      // 6. Clone p_trab_ref_lpc record (if exists)
-      const { data: originalRefLPC, error: fetchRefLPCError } = await supabase
-        .from("p_trab_ref_lpc")
-        .select("*")
-        .eq("p_trab_id", originalPTrabId)
-        .maybeSingle();
-
-      if (fetchRefLPCError) {
-        console.error("Erro ao carregar referência LPC:", fetchRefLPCError);
-      } else if (originalRefLPC) {
-        const { id, created_at, updated_at, ...restOfRefLPC } = originalRefLPC; // REMOVE ID
-        const newRefLPCData = {
-          ...restOfRefLPC,
-          p_trab_id: newPTrabId,
-        };
-        const { error: insertRefLPCError } = await supabase
-          .from("p_trab_ref_lpc")
-          .insert([newRefLPCData]);
-        if (insertRefLPCError) {
-          console.error("ERRO DE INSERÇÃO REF LPC:", insertRefLPCError);
-          toast.error(`Erro ao clonar referência LPC: ${sanitizeError(insertRefLPCError)}`);
-        }
-      }
+      // 3. Clonar registros relacionados
+      await cloneRelatedRecords(originalPTrabId, newPTrabId);
 
       toast.success(`P Trab ${newNumeroPTrab} clonado com sucesso!`);
       await loadPTrabs();
@@ -1072,6 +1094,11 @@ const PTrabManager = () => {
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingId ? "Editar P Trab" : "Novo P Trab"}</DialogTitle>
+                  {originalPTrabIdToClone && (
+                    <DialogDescription className="text-green-600 font-medium">
+                      Clonando dados de classes do P Trab original. Edite o cabeçalho e clique em Criar.
+                    </DialogDescription>
+                  )}
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1087,8 +1114,8 @@ const PTrabManager = () => {
                         required
                         onKeyDown={handleEnterToNextField}
                         // NEW: Disable if it's a Minuta number (Minuta-N)
-                        disabled={formData.numero_ptrab.startsWith("Minuta")}
-                        className={formData.numero_ptrab.startsWith("Minuta") ? "bg-muted/50 cursor-not-allowed" : ""}
+                        disabled={formData.numero_ptrab.startsWith("Minuta") && !editingId}
+                        className={formData.numero_ptrab.startsWith("Minuta") && !editingId ? "bg-muted/50 cursor-not-allowed" : ""}
                       />
                       <p className="text-xs text-muted-foreground">
                         {formData.numero_ptrab.startsWith("Minuta") 
