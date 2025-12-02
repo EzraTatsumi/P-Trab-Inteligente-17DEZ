@@ -62,7 +62,7 @@ export const CloneVariationDialog = ({
             P Trab Original: <span className="font-medium">{originalNumber}</span>
           </p>
           <p className="text-sm text-muted-foreground">
-            Número Sugerido: <span className="font-medium text-primary">{suggestedCloneNumber}</span>
+            Próximo Número: <span className="font-medium text-primary">{suggestedCloneNumber}</span>
           </p>
           
           <div className="space-y-2">
