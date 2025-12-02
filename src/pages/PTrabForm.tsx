@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { FileText, Package, Briefcase, ArrowLeft, Calendar, Users, MapPin, Loader2 } from "lucide-react";
+import { FileText, Package, Briefcase, ArrowLeft, Calendar, Users, MapPin, Loader2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner"; // Importar toast do sonner
 import { PTrabCostSummary } from "@/components/PTrabCostSummary";
@@ -189,6 +189,16 @@ const PTrabForm = () => {
     saveCreditsMutation.mutate({ gnd3, gnd4 });
   };
   
+  const handleResetCredit = () => {
+    if (!user?.id) {
+      toast.error("Erro: Usuário não identificado.");
+      return;
+    }
+    if (window.confirm("Tem certeza que deseja zerar seus créditos disponíveis (GND 3 e GND 4) no banco de dados?")) {
+      saveCreditsMutation.mutate({ gnd3: 0, gnd4: 0 });
+    }
+  };
+  
   const handlePromptConfirm = () => {
     setShowCreditPromptDialog(false);
     setShowCreditDialog(true); // Abre o diálogo de input
@@ -301,6 +311,17 @@ const PTrabForm = () => {
                 creditGND4={credits.credit_gnd4}
               />
             )}
+            
+            {/* Botão de Reset de Créditos */}
+            <Button 
+              onClick={handleResetCredit} 
+              variant="ghost" 
+              className="w-full text-xs text-destructive hover:bg-destructive/10"
+              disabled={saveCreditsMutation.isPending}
+            >
+              <RefreshCw className="h-3 w-3 mr-2" />
+              {saveCreditsMutation.isPending ? "Zerando..." : "Zerar Créditos Disponíveis (DB)"}
+            </Button>
           </div>
 
           {/* Coluna Direita: Seleção de Classes/Itens */}
