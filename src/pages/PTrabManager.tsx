@@ -12,7 +12,8 @@ import {
   DialogTitle, 
   DialogTrigger,
   DialogFooter,
-  DialogClose
+  DialogClose,
+  DialogDescription // Adicionado DialogDescription
 } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -1169,14 +1170,14 @@ const PTrabManager = () => {
                       onKeyDown={handleEnterToNextField}
                     />
                   </div>
-                  <div className="flex justify-end gap-2">
+                  <DialogFooter>
                     <Button type="submit" disabled={loading}>
                       {loading ? "Aguarde..." : (editingId ? "Atualizar" : "Criar")}
                     </Button>
                     <Button variant="outline" type="button" onClick={() => setDialogOpen(false)}>
                       Cancelar
                     </Button>
-                  </div>
+                  </DialogFooter>
                 </form>
               </DialogContent>
             </Dialog>
