@@ -12,7 +12,8 @@ import {
   DialogTitle, 
   DialogTrigger,
   DialogFooter,
-  DialogClose
+  DialogClose,
+  DialogDescription // Adicionado DialogDescription
 } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -1036,6 +1037,9 @@ const PTrabManager = () => {
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingId ? "Editar P Trab" : "Nova Minuta de P Trab"}</DialogTitle>
+                  <DialogDescription>
+                    {editingId ? "Edite os dados básicos do Plano de Trabalho." : "Preencha os dados básicos para criar uma nova minuta."}
+                  </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
