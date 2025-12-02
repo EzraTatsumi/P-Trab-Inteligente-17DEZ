@@ -508,11 +508,11 @@ const PTrabManager = () => {
             toast.warning("Aviso: Ocorreu um erro ao zerar os créditos disponíveis. Por favor, verifique manualmente.");
         }
         
-        // Redireciona para a página de preenchimento do novo P Trab
+        // Não redireciona, apenas fecha o diálogo e recarrega a lista.
         setDialogOpen(false);
         resetForm();
         loadPTrabs();
-        navigate(`/ptrab/form?ptrabId=${newPTrabId}`);
+        // navigate(`/ptrab/form?ptrabId=${newPTrabId}`); // REMOVIDO
         return; // Sai da função para evitar o resetForm e loadPTrabs duplicados abaixo
       }
 
