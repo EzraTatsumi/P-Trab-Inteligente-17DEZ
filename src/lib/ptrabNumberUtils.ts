@@ -10,6 +10,7 @@ export const generateUniquePTrabNumber = (existingNumbers: string[]): string => 
   const currentYearStr = String(currentYear);
   
   // 1. Encontrar o maior número base existente para o ano atual
+  // Filtra por números que terminam com /YYYY e não contêm variações (ponto)
   const numbersForCurrentYear = existingNumbers
     .filter(num => num && typeof num === 'string' && num.endsWith(`/${currentYearStr}`) && !num.includes('.'))
     .map(num => parseInt(num.split('/')[0]))
@@ -20,7 +21,7 @@ export const generateUniquePTrabNumber = (existingNumbers: string[]): string => 
   let nextNumber = maxNumber + 1;
   let suggestedNumber = `${nextNumber}${yearSuffix}`;
 
-  // 2. Garantir que o número sugerido seja realmente único (caso o cálculo do maxNumber tenha falhado ou haja números não sequenciais)
+  // 2. Garantir que o número sugerido seja realmente único
   while (isPTrabNumberDuplicate(suggestedNumber, existingNumbers)) {
     nextNumber++;
     suggestedNumber = `${nextNumber}${yearSuffix}`;
