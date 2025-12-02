@@ -25,6 +25,7 @@ export async function fetchUserCredits(userId: string): Promise<{ credit_gnd3: n
 
     const profileData = data as unknown as ProfileCredits | null; // Cast data to the expected structure
 
+    // Garante que os valores sejam números, caindo para 0 se forem null/undefined
     return {
       credit_gnd3: Number(profileData?.credit_gnd3 || 0),
       credit_gnd4: Number(profileData?.credit_gnd4 || 0),
