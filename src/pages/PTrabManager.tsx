@@ -1,192 +1,555 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { useSession } from "@/components/SessionContextProvider";
+import { toast } from "sonner";
+import { ArrowLeft, Plus, FileText, Pencil, Trash2, Copy, GitBranch, Check, AlertCircle, Loader2, RefreshCw, Settings, TrendingUp, MessageSquare, UploadCloud, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-  DialogDescription
-} from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { sanitizeError } from "@/lib/errorUtils";
-import { useFormNavigation } from "@/hooks/useFormNavigation";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatCurrency } from "@/lib/formatUtils";
-import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate, generateApprovalPTrabNumber, generateUniqueMinutaNumber } from "@/lib/ptrabNumberUtils";
+import { generateUniqueMinutaNumber, isPTrabNumberDuplicate, generateApprovalPTrabNumber } from "@/lib/ptrabNumberUtils";
+import { sanitizeError } from "@/lib/errorUtils";
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
-import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
-import { Badge } from "@/components/ui/badge";
-import { HelpDialog } from "@/components/HelpDialog";
 import { CloneVariationDialog } from "@/components/CloneVariationDialog";
-import { updateUserCredits } from "@/lib/creditUtils";
+import { CreditInputDialog } from "@/components/CreditInputDialog";
+import { fetchUserCredits, updateUserCredits } from "@/lib/creditUtils";
+import { CreditPromptDialog } from "@/components/CreditPromptDialog";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
-  origem: 'original' | 'importado' | 'consolidado';
+  origem: 'original' | 'importado' | 'variacao' | 'consolidado';
 };
 
 interface PTrab extends PTrabDB {
-  totalLogistica?: number;
-  totalOperacional?: number;
+  // Adicione campos calculados ou de UI aqui se necessário
 }
 
 const PTrabManager = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [pTrabs, setPTrabs] = useState<PTrab[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
+  const queryClient = useQueryClient();
+  const { user, loading: loadingSession } = useSession();
+
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [ptrabToClone, setPTrabToClone] = useState<PTrab | null>(null);
+  const [cloneType, setCloneType] = useState<'new' | 'variation' | null>(null);
+  const [isCloneDialogOpen, setIsCloneDialogOpen] = useState(false);
+  const [suggestedCloneNumber, setSuggestedCloneNumber] = useState('');
+  const [customCloneNumber, setCustomCloneNumber] = useState('');
+  const [cloneVersionName, setCloneVersionName] = useState('');
+  const [ptrabToDelete, setPTrabToDelete] = useState<PTrab | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [ptrabToComment, setPTrabToComment] = useState<PTrab | null>(null);
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
+  const [currentComment, setCurrentComment] = useState('');
+  const [ptrabToApprove, setPTrabToApprove] = useState<PTrab | null>(null);
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
+  const [omToApprove, setOmToApprove] = useState<OMData | undefined>(undefined);
+  const [isConsolidationDialogOpen, setIsConsolidationDialogOpen] = useState(false);
+  const [consolidationLoading, setConsolidationLoading] = useState(false);
+  const [showCreditDialog, setShowCreditDialog] = useState(false);
+  const [showCreditPromptDialog, setShowCreditPromptDialog] = useState(false);
+  const [hasCheckedCredits, setHasCheckedCredits] = useState(false);
   
-  // Estado para controlar a abertura do DropdownMenu de configurações
-  const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
-
-  // Estados para o AlertDialog de status "arquivado"
-  const [showArchiveStatusDialog, setShowArchiveStatusDialog] = useState(false);
-  const [ptrabToArchiveId, setPtrabToArchiveId] = useState<string | null>(null);
-  const [ptrabToArchiveName, setPtrabToArchiveName] = useState<string | null>(null);
-  // Ref para controlar quais PTrabs já foram oferecidos para arquivamento na sessão atual
-  const promptedForArchive = useRef(new Set<string>());
-
-  // Novos estados para o AlertDialog de reativação
-  const [showReactivateStatusDialog, setShowReactivateStatusDialog] = useState(false);
-  const [ptrabToReactivateId, setPtrabToReactivateId] = useState<string | null>(null);
-  const [ptrabToReactivateName, setPtrabToReactivateName] = useState<string | null>(null);
-
-  // Novos estados para o diálogo de clonagem
-  const [showCloneOptionsDialog, setShowCloneOptionsDialog] = useState(false);
+  // NOVO ESTADO para o diálogo de variação
   const [showCloneVariationDialog, setShowCloneVariationDialog] = useState(false);
-  const [ptrabToClone, setPtrabToClone] = useState<PTrab | null>(null);
-  const [cloneType, setCloneType, ] = useState<'new' | 'variation'>('new');
-  const [suggestedCloneNumber, setSuggestedCloneNumber] = useState<string>("");
-  const [customCloneNumber, setCustomCloneNumber] = useState<string>("");
-  
-  // NOVO: ID do PTrab original a ser clonado (usado no handleSubmit)
-  const [originalPTrabIdToClone, setOriginalPTrabIdToClone] = useState<string | null>(null);
 
-  // Estados para o diálogo de comentário
-  const [showComentarioDialog, setShowComentarioDialog] = useState(false);
-  const [ptrabComentario, setPtrabComentario] = useState<PTrab | null>(null);
-  const [comentarioText, setComentarioText] = useState("");
-
-  // NOVO ESTADO: Diálogo de Consolidação
-  const [showConsolidationDialog, setShowConsolidationDialog] = useState(false);
-  
-  // NOVO ESTADO: Diálogo de Aprovação/Numeração
-  const [showApproveDialog, setShowApproveDialog] = useState(false);
-  const [ptrabToApprove, setPtrabToApprove] = useState<PTrab | null>(null);
-  const [suggestedApproveNumber, setSuggestedApproveNumber] = useState<string>("");
-
-  const currentYear = new Date().getFullYear();
-  const yearSuffix = `/${currentYear}`;
-
-  // Função de reset do formulário (usando useCallback para evitar recriação desnecessária)
-  const resetForm = useCallback(() => {
-    setEditingId(null);
-    setSelectedOmId(undefined);
-    setOriginalPTrabIdToClone(null); // Resetar o ID de clonagem
-    
-    // Gera um número de minuta único ao iniciar um novo P Trab
-    const uniqueMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
-    
-    setFormData({
-      // Inicializa o número do PTrab como a Minuta única
-      numero_ptrab: uniqueMinutaNumber, 
-      comando_militar_area: "",
-      nome_om: "",
-      nome_om_extenso: "",
-      codug_om: "",
-      rm_vinculacao: "",
-      codug_rm_vinculacao: "",
-      nome_operacao: "",
-      periodo_inicio: "",
-      periodo_fim: "",
-      efetivo_empregado: "",
-      acoes: "",
-      nome_cmt_om: "",
-      local_om: "",
-      status: "aberto",
-      origem: 'original',
-    });
-  }, [existingPTrabNumbers]);
-
-  const [formData, setFormData] = useState({
-    numero_ptrab: "Minuta", // Inicializa como 'Minuta'
-    comando_militar_area: "",
-    nome_om: "",
-    nome_om_extenso: "",
-    codug_om: "",
-    rm_vinculacao: "",
-    codug_rm_vinculacao: "",
-    nome_operacao: "",
-    periodo_inicio: "",
-    periodo_fim: "",
-    efetivo_empregado: "",
-    acoes: "",
-    nome_cmt_om: "",
-    local_om: "",
-    status: "aberto",
-    origem: 'original' as 'original' | 'importado' | 'consolidado',
+  // Estado para OMs do usuário (necessário para o diálogo de aprovação)
+  const { data: userOms, isLoading: isLoadingOms } = useQuery({
+    queryKey: ['userOms', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('organizacoes_militares')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('ativo', true)
+        .order('nome_om');
+      if (error) throw error;
+      return (data || []) as OMData[];
+    },
+    enabled: !!user?.id,
   });
 
-  const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
+  // Fetch PTrabs
+  const { data: pTrabs, isLoading: isLoadingPTrabs, refetch: refetchPTrabs } = useQuery({
+    queryKey: ['pTrabs', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('p_trab')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('numero_ptrab', { ascending: false });
+      if (error) throw error;
+      return (data || []) as PTrab[];
+    },
+    enabled: !!user?.id,
+  });
 
-  const { handleEnterToNextField } = useFormNavigation();
+  // Fetch Existing PTrab Numbers
+  const existingPTrabNumbers = useMemo(() => {
+    return (pTrabs || []).map(p => p.numero_ptrab);
+  }, [pTrabs]);
 
-  useEffect(() => {
-    checkAuth();
-    loadPTrabs();
-  }, []);
+  // Fetch User Credits
+  const { data: credits, isLoading: isLoadingCredits } = useQuery({
+    queryKey: ['userCredits', user?.id],
+    queryFn: () => fetchUserCredits(user!.id),
+    enabled: !!user?.id,
+    initialData: { credit_gnd3: 0, credit_gnd4: 0 },
+  });
 
   // Efeito para atualizar o número sugerido no diálogo de clonagem
   useEffect(() => {
     if (ptrabToClone) {
-      let newSuggestedNumber = "";
-      // Apenas calcula o número de variação, pois o 'new' sempre será 'Minuta-N'
-      if (cloneType === 'variation') {
-        newSuggestedNumber = generateVariationPTrabNumber(ptrabToClone.numero_ptrab, existingPTrabNumbers);
-      } else {
-        // Se for 'new', gera uma nova minuta única
-        newSuggestedNumber = generateUniqueMinutaNumber(existingPTrabNumbers); 
-      }
+      // Tanto para 'new' quanto para 'variation', o novo P Trab deve começar como uma Minuta única
+      const newSuggestedNumber = generateUniqueMinutaNumber(existingPTrabNumbers); 
+      
       setSuggestedCloneNumber(newSuggestedNumber);
       setCustomCloneNumber(newSuggestedNumber); // Inicializa o campo editável com a sugestão
     }
-  }, [ptrabToClone, cloneType, existingPTrabNumbers]);
+  }, [ptrabToClone, existingPTrabNumbers]);
 
 
   const checkAuth = async () => {
-    const { data: { session } = {} } = await supabase.auth.getSession();
-    if (!session) {
-      navigate("/login");
+    if (!user && !loadingSession) {
+      navigate('/login');
+      toast.error("Sessão expirada. Faça login novamente.");
     }
+  };
+
+  useEffect(() => {
+    checkAuth();
+  }, [user, loadingSession, navigate]);
+
+  // Filtros
+  const filteredPTrabs = useMemo(() => {
+    let filtered = pTrabs || [];
+
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(p => p.status === filterStatus);
+    }
+
+    if (searchTerm) {
+      const lowerCaseSearch = searchTerm.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.numero_ptrab.toLowerCase().includes(lowerCaseSearch) ||
+        p.nome_operacao.toLowerCase().includes(lowerCaseSearch) ||
+        p.nome_om.toLowerCase().includes(lowerCaseSearch)
+      );
+    }
+
+    return filtered;
+  }, [pTrabs, filterStatus, searchTerm]);
+
+  // --- Funções de Clonagem ---
+
+  // Função para clonar os registros relacionados
+  const cloneRelatedRecords = async (originalPTrabId: string, newPTrabId: string) => {
+    const dependentTables = [
+      'classe_i_registros',
+      'classe_ii_registros',
+      'classe_iii_registros',
+      'p_trab_ref_lpc',
+    ];
+
+    for (const table of dependentTables) {
+      const { data: oldRecords, error: fetchError } = await supabase
+        .from(table as 'classe_i_registros')
+        .select('*')
+        .eq('p_trab_id', originalPTrabId);
+
+      if (fetchError) {
+        console.error(`Erro ao buscar registros de ${table}:`, fetchError);
+        continue;
+      }
+
+      if (oldRecords && oldRecords.length > 0) {
+        const recordsToInsert = oldRecords.map(record => {
+          const newRecord = { ...record };
+          delete (newRecord as any).id;
+          delete (newRecord as any).created_at;
+          delete (newRecord as any).updated_at;
+          (newRecord as any).p_trab_id = newPTrabId;
+          
+          // Limpar campos customizados na clonagem (opcional, mas seguro)
+          if (table === 'classe_i_registros') {
+            (newRecord as any).memoria_calculo_qs_customizada = null;
+            (newRecord as any).memoria_calculo_qr_customizada = null;
+          }
+          if (table === 'classe_ii_registros' || table === 'classe_iii_registros') {
+            (newRecord as any).detalhamento_customizado = null;
+          }
+          
+          return newRecord;
+        });
+
+        const { error: insertError } = await supabase.from(table as 'classe_i_registros').insert(recordsToInsert);
+        if (insertError) console.error(`Erro ao inserir registros de ${table}:`, insertError);
+      }
+    }
+  };
+
+  // Função unificada para executar a clonagem (usada por 'new' e 'variation')
+  const executeCloningProcess = async (originalPTrab: PTrab, newNumeroPTrab: string, versionName: string | null = null, isVariation: boolean = false): Promise<string | null> => {
+    if (!user?.id) return null;
+    setLoadingPTrabs(true);
+
+    try {
+      // 1. Criar o novo P Trab
+      const { id: originalId, created_at, updated_at, ...restOfPTrab } = originalPTrab; 
+      
+      const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
+        ...restOfPTrab,
+        user_id: user.id,
+        numero_ptrab: newNumeroPTrab,
+        status: 'minuta', // Sempre começa como minuta
+        origem: isVariation ? 'variacao' : 'original',
+        comentario: versionName || originalPTrab.comentario,
+      };
+
+      const { data: newPTrab, error: insertPTrabError } = await supabase
+        .from('p_trab')
+        .insert([newPTrabData as TablesInsert<'p_trab'>])
+        .select()
+        .single();
+
+      if (insertPTrabError || !newPTrab) throw new Error(`Erro ao criar novo P Trab: ${insertPTrabError?.message}`);
+      const newPTrabId = newPTrab.id;
+
+      // 2. Clonar registros dependentes
+      await cloneRelatedRecords(originalPTrab.id, newPTrabId);
+
+      // 3. Zerar créditos disponíveis após a criação de um novo P Trab
+      await updateUserCredits(user.id, 0, 0);
+
+      toast.success(`P Trab ${newPTrab.numero_ptrab} criado com sucesso!`);
+      queryClient.invalidateQueries({ queryKey: ['pTrabs', user.id] });
+      
+      return newPTrabId;
+    } catch (error: any) {
+      console.error("ERRO GERAL AO CLONAR P TRAB:", error);
+      toast.error(sanitizeError(error));
+      return null;
+    } finally {
+      setLoadingPTrabs(false);
+    }
+  };
+
+  const handleCreateNewPTrab = async () => {
+    if (!user?.id) return;
+    setLoadingPTrabs(true);
+    
+    try {
+      const newMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
+      
+      const newPTrabData: TablesInsert<'p_trab'> = {
+        user_id: user.id,
+        numero_ptrab: newMinutaNumber,
+        comando_militar_area: "CMDO MILITAR DE ÁREA",
+        nome_om: "OM SIGLA",
+        nome_operacao: "NOVA OPERAÇÃO",
+        periodo_inicio: new Date().toISOString().split('T')[0],
+        periodo_fim: new Date().toISOString().split('T')[0],
+        efetivo_empregado: "0",
+        acoes: "Ações a serem definidas",
+        status: 'minuta',
+        origem: 'original',
+      };
+
+      const { data: newPTrab, error: insertPTrabError } = await supabase
+        .from('p_trab')
+        .insert([newPTrabData])
+        .select()
+        .single();
+
+      if (insertPTrabError || !newPTrab) throw new Error(`Erro ao criar novo P Trab: ${insertPTrabError?.message}`);
+      
+      // Zerar créditos disponíveis após a criação de um novo P Trab
+      await updateUserCredits(user.id, 0, 0);
+
+      toast.success(`Novo P Trab Minuta criado: ${newPTrab.numero_ptrab}`);
+      queryClient.invalidateQueries({ queryKey: ['pTrabs', user.id] });
+      navigate(`/ptrab/form?ptrabId=${newPTrab.id}`);
+      
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
+    } finally {
+      setLoadingPTrabs(false);
+    }
+  };
+
+  // Fluxo 1: Clonagem Simples (Novo P Trab)
+  const handleConfirmCloneNew = async () => {
+    if (!ptrabToClone || !customCloneNumber.trim()) return;
+    
+    const newPTrabId = await executeCloningProcess(ptrabToClone, customCloneNumber, cloneVersionName, false);
+    
+    if (newPTrabId) {
+      setIsCloneDialogOpen(false);
+      navigate(`/ptrab/form?ptrabId=${newPTrabId}`);
+    }
+  };
+
+  // Fluxo 2: Clonagem Variação (Abre o diálogo de nome da versão)
+  const handleVariationClick = (ptrab: PTrab) => {
+    setPTrabToClone(ptrab);
+    setCloneType('variation');
+    setCloneVersionName(`Variação ${ptrab.numero_ptrab.split('.').pop() || '1'}`); // Sugere nome da versão
+    setShowCloneVariationDialog(true);
+  };
+
+  // Fluxo 2.1: Confirmação da Variação (Chamado pelo CloneVariationDialog)
+  const handleConfirmCloneVariation = async (versionName: string) => {
+    if (!ptrabToClone || !suggestedCloneNumber.trim()) return;
+    
+    const newPTrabId = await executeCloningProcess(ptrabToClone, suggestedCloneNumber, versionName, true);
+    
+    if (newPTrabId) {
+      setShowCloneVariationDialog(false);
+      navigate(`/ptrab/form?ptrabId=${newPTrabId}`);
+    }
+  };
+
+  // --- Handlers de Ação (Continuação) ---
+
+  const handleEdit = (ptrab: PTrab) => {
+    // Redireciona para a tela de edição de cabeçalho (que não existe mais, então vamos para o formulário)
+    navigate(`/ptrab/form?ptrabId=${ptrab.id}`);
+  };
+
+  const handleDeleteClick = (ptrab: PTrab) => {
+    setPTrabToDelete(ptrab);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!ptrabToDelete || !user?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('p_trab')
+        .delete()
+        .eq('id', ptrabToDelete.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast.success(`P Trab ${ptrabToDelete.numero_ptrab} excluído com sucesso!`);
+      queryClient.invalidateQueries({ queryKey: ['pTrabs', user.id] });
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setPTrabToDelete(null);
+    }
+  };
+
+  const handleCommentClick = (ptrab: PTrab) => {
+    setPTrabToComment(ptrab);
+    setCurrentComment(ptrab.comentario || '');
+    setCommentDialogOpen(true);
+  };
+
+  const handleSaveComment = async () => {
+    if (!ptrabToComment || !user?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('p_trab')
+        .update({ comentario: currentComment.trim() || null })
+        .eq('id', ptrabToComment.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast.success("Comentário salvo!");
+      queryClient.invalidateQueries({ queryKey: ['pTrabs', user.id] });
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
+    } finally {
+      setCommentDialogOpen(false);
+      setPTrabToComment(null);
+      setCurrentComment('');
+    }
+  };
+
+  const handleApproveClick = (ptrab: PTrab) => {
+    if (userOms.length === 0) {
+      toast.error("Cadastre pelo menos uma OM em Configurações > Relação de OM antes de numerar.");
+      navigate('/config/om');
+      return;
+    }
+    setPTrabToApprove(ptrab);
+    setOmToApprove(userOms.find(om => om.nome_om === ptrab.nome_om));
+    setIsApproveDialogOpen(true);
+  };
+
+  const handleConfirmApprove = async () => {
+    if (!ptrabToApprove || !omToApprove || !user?.id) {
+      toast.error("Selecione a OM e o P Trab.");
+      return;
+    }
+
+    setLoadingPTrabs(true);
+    setIsApproveDialogOpen(false);
+
+    try {
+      const newOfficialNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omToApprove.nome_om);
+
+      const { error } = await supabase
+        .from('p_trab')
+        .update({
+          numero_ptrab: newOfficialNumber,
+          status: 'aberto',
+          nome_om: omToApprove.nome_om,
+          codug_om: omToApprove.codug_om,
+          rm_vinculacao: omToApprove.rm_vinculacao,
+          codug_rm_vinculacao: omToApprove.codug_rm_vinculacao,
+          comando_militar_area: omToApprove.rm_vinculacao,
+        })
+        .eq('id', ptrabToApprove.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast.success(`P Trab numerado: ${newOfficialNumber}. Status alterado para ABERTO.`);
+      queryClient.invalidateQueries({ queryKey: ['pTrabs', user.id] });
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
+    } finally {
+      setLoadingPTrabs(false);
+      setPTrabToApprove(null);
+      setOmToApprove(undefined);
+    }
+  };
+
+  const handleConsolidationClick = () => {
+    if ((pTrabs?.length || 0) < 2) {
+      toast.info("É necessário ter pelo menos 2 Planos de Trabalho cadastrados para realizar a consolidação.");
+      return;
+    }
+    setIsConsolidationDialogOpen(true);
+  };
+
+  const handleConsolidationConfirm = async (
+    sourcePTrabIds: string[],
+    targetPTrabId: string | 'new',
+    newPTrabNumber?: string,
+    templatePTrabId?: string
+  ) => {
+    if (!user?.id) return;
+    setConsolidationLoading(true);
+    setIsConsolidationDialogOpen(false);
+
+    try {
+      let finalTargetPTrabId: string;
+      let targetPTrab: PTrab | null = null;
+
+      // 1. Criar novo P Trab de destino, se necessário
+      if (targetPTrabId === 'new') {
+        if (!newPTrabNumber || !templatePTrabId) throw new Error("Dados incompletos para novo P Trab.");
+        
+        const template = pTrabs?.find(p => p.id === templatePTrabId);
+        if (!template) throw new Error("Template de cabeçalho não encontrado.");
+
+        const { id, created_at, updated_at, ...rest } = template;
+        
+        const newPTrabData = {
+          ...rest,
+          user_id: user.id,
+          numero_ptrab: newPTrabNumber,
+          status: 'aberto',
+          origem: 'consolidado',
+          comentario: `Consolidado de múltiplos P Trabs. Baseado em ${template.numero_ptrab}.`,
+        };
+
+        const { data: newPTrab, error: insertPTrabError } = await supabase
+          .from('p_trab')
+          .insert([newPTrabData])
+          .select()
+          .single();
+
+        if (insertPTrabError || !newPTrab) throw new Error(`Erro ao criar P Trab consolidado: ${insertPTrabError?.message}`);
+        finalTargetPTrabId = newPTrab.id;
+        targetPTrab = newPTrab;
+      } else {
+        finalTargetPTrabId = targetPTrabId;
+        targetPTrab = pTrabs?.find(p => p.id === finalTargetPTrabId) || null;
+        if (!targetPTrab) throw new Error("P Trab de destino não encontrado.");
+      }
+
+      // 2. Copiar registros de origem para o destino
+      const dependentTables = [
+        'classe_i_registros',
+        'classe_ii_registros',
+        'classe_iii_registros',
+      ];
+      
+      let totalRecordsCopied = 0;
+
+      for (const sourceId of sourcePTrabIds) {
+        for (const table of dependentTables) {
+          const { data: sourceRecords, error: fetchError } = await supabase
+            .from(table as 'classe_i_registros')
+            .select('*')
+            .eq('p_trab_id', sourceId);
+
+          if (fetchError) {
+            console.error(`Erro ao buscar registros de ${table} para cópia:`, fetchError);
+            continue;
+          }
+
+          if (sourceRecords && sourceRecords.length > 0) {
+            const recordsToInsert = sourceRecords.map(record => {
+              const newRecord = { ...record };
+              delete (newRecord as any).id;
+              delete (newRecord as any).created_at;
+              delete (newRecord as any).updated_at;
+              (newRecord as any).p_trab_id = finalTargetPTrabId;
+              return newRecord;
+            });
+
+            const { error: insertError } = await supabase.from(table as 'classe_i_registros').insert(recordsToInsert);
+            if (insertError) console.error(`Erro ao inserir registros de ${table} no destino:`, insertError);
+            totalRecordsCopied += recordsToInsert.length;
+          }
+        }
+      }
+      
+      // 3. Atualizar status do PTrab de destino para 'em_andamento'
+      await updatePTrabStatusIfAberto(finalTargetPTrabId);
+
+      toast.success(`Consolidação concluída! ${totalRecordsCopied} registros copiados para ${targetPTrab.numero_ptrab}.`);
+      queryClient.invalidateQueries({ queryKey: ['pTrabs', user.id] });
+      
+      // Redireciona para o formulário do P Trab consolidado
+      navigate(`/ptrab/form?ptrabId=${finalTargetPTrabId}`);
+
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
+    } finally {
+      setConsolidationLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
   };
 
   const calculateDays = (inicio: string, fim: string) => {
@@ -196,1171 +559,26 @@ const PTrabManager = () => {
     return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
   };
 
-  const loadPTrabs = async () => {
-    try {
-      const { data: pTrabsData, error: pTrabsError } = await supabase
-        .from("p_trab")
-        .select("*, comentario, origem")
-        .order("created_at", { ascending: false });
-
-      if (pTrabsError) throw pTrabsError;
-
-      if (!Array.isArray(pTrabsData)) {
-        console.error("Invalid data received from p_trab table");
-        setPTrabs([]);
-        return;
-      }
-
-      // Cast pTrabsData to the expected structure PTrabDB[]
-      const typedPTrabsData = pTrabsData as unknown as PTrabDB[];
-
-      const numbers = (typedPTrabsData || []).map(p => p.numero_ptrab);
-      setExistingPTrabNumbers(numbers);
-
-      const pTrabsWithTotals: PTrab[] = await Promise.all(
-        (typedPTrabsData || []).map(async (ptrab) => {
-          let totalOperacionalCalculado = 0;
-
-          // 1. Fetch Classe I totals (33.90.30)
-          const { data: classeIData, error: classeIError } = await supabase
-            .from('classe_i_registros')
-            .select('total_qs, total_qr')
-            .eq('p_trab_id', ptrab.id);
-
-          let totalClasseI = 0;
-          if (classeIError) console.error("Erro ao carregar Classe I para PTrab", ptrab.numero_ptrab, classeIError);
-          else {
-            totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
-          }
-          
-          // 2. Fetch Classe II totals (33.90.30)
-          const { data: classeIIData, error: classeIIError } = await supabase
-            .from('classe_ii_registros')
-            .select('valor_total')
-            .eq('p_trab_id', ptrab.id);
-
-          let totalClasseII = 0;
-          if (classeIIError) console.error("Erro ao carregar Classe II para PTrab", ptrab.numero_ptrab, classeIIError);
-          else {
-            totalClasseII = (classeIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
-          }
-
-          // 3. Fetch Classe III totals (Combustível)
-          const { data: classeIIIData, error: classeIIIError } = await supabase
-            .from('classe_iii_registros')
-            .select('valor_total')
-            .eq('p_trab_id', ptrab.id);
-
-          let totalClasseIII = 0;
-          if (classeIIIError) console.error("Erro ao carregar Classe III para PTrab", ptrab.numero_ptrab, classeIIIError);
-          else {
-            totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
-          }
-
-          const totalLogisticaCalculado = totalClasseI + totalClasseII + totalClasseIII;
-
-          return {
-            ...ptrab,
-            totalLogistica: totalLogisticaCalculado,
-            totalOperacional: totalOperacionalCalculado,
-          } as PTrab;
-        })
-      );
-
-      setPTrabs(pTrabsWithTotals);
-
-      // Lógica para perguntar sobre arquivamento
-      const tenDaysAgo = new Date();
-      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-
-      for (const ptrab of pTrabsWithTotals) {
-        if (
-          ptrab.status === 'completo' &&
-          new Date(ptrab.updated_at) < tenDaysAgo &&
-          !promptedForArchive.current.has(ptrab.id)
-        ) {
-          setPtrabToArchiveId(ptrab.id);
-          setPtrabToArchiveName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
-          setShowArchiveStatusDialog(true);
-          promptedForArchive.current.add(ptrab.id);
-          break;
-        }
-      }
-
-    } catch (error: any) {
-      toast.error("Erro ao carregar P Trabs e seus totais");
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleConfirmArchiveStatus = async () => {
-    if (!ptrabToArchiveId) return;
-
-    try {
-      const { error } = await supabase
-        .from("p_trab")
-        .update({ status: "arquivado" })
-        .eq("id", ptrabToArchiveId);
-
-      if (error) throw error;
-
-      toast.success(`P Trab ${ptrabToArchiveName} arquivado com sucesso!`);
-      setShowArchiveStatusDialog(false);
-      setPtrabToArchiveId(null);
-      setPtrabToArchiveName(null);
-      loadPTrabs();
-    } catch (error) {
-      console.error("Erro ao arquivar P Trab:", error);
-      toast.error("Erro ao arquivar P Trab.");
-    }
-  };
-
-  const handleCancelArchiveStatus = () => {
-    setShowArchiveStatusDialog(false);
-    setPtrabToArchiveId(null);
-    setPtrabToArchiveName(null);
-  };
-
-  const statusConfig = {
-    'aberto': { 
-      variant: 'default' as const, 
-      label: 'Aberto',
-      className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-    },
-    'em_andamento': { 
-      variant: 'secondary' as const, 
-      label: 'Em Andamento',
-      className: 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-    },
-    'completo': { 
-      variant: 'default' as const, 
-      label: 'Completo',
-      className: 'bg-green-100 text-green-800 hover:bg-green-200'
-    },
-    'arquivado': { 
-      variant: 'outline' as const, 
-      label: 'Arquivado',
-      className: 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-    }
-  };
-
-  const handleStatusChange = async (ptrabId: string, oldStatus: string, newStatus: string) => {
-    if (oldStatus === 'completo' && newStatus === 'em_andamento') {
-      const ptrab = pTrabs.find(p => p.id === ptrabId);
-      if (ptrab) {
-        setPtrabToReactivateId(ptrab.id);
-        setPtrabToReactivateName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
-        setShowReactivateStatusDialog(true);
-      }
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from("p_trab")
-        .update({ status: newStatus })
-        .eq("id", ptrabId);
-
-      if (error) throw error;
-
-      toast.success("Status atualizado com sucesso!");
-      loadPTrabs();
-    } catch (error: any) {
-      toast.error("Erro ao atualizar status");
-      console.error(error);
-    }
-  };
-
-  const handleConfirmReactivateStatus = async () => {
-    if (!ptrabToReactivateId) return;
-
-    try {
-      const { error } = await supabase
-        .from("p_trab")
-        .update({ status: "em_andamento" })
-        .eq("id", ptrabToReactivateId);
-
-      if (error) throw error;
-
-      toast.success(`P Trab ${ptrabToReactivateName} reativado para "Em Andamento"!`);
-      setShowReactivateStatusDialog(false);
-      setPtrabToReactivateId(null);
-      setPtrabToReactivateName(null);
-      loadPTrabs();
-    } catch (error) {
-      console.error("Erro ao reativar P Trab:", error);
-      toast.error("Erro ao reativar P Trab.");
-    }
-  };
-
-  const handleCancelReactivateStatus = () => {
-    setShowReactivateStatusDialog(false);
-    setPtrabToReactivateId(null);
-    setPtrabToReactivateName(null);
-    loadPTrabs(); 
-  };
-
-  const handleOpenComentario = (ptrab: PTrab) => {
-    setPtrabComentario(ptrab);
-    setComentarioText(ptrab.comentario || "");
-    setShowComentarioDialog(true);
-  };
-
-  const handleSaveComentario = async () => {
-    if (!ptrabComentario) return;
-
-    try {
-      const { error } = await supabase
-        .from('p_trab')
-        .update({ comentario: comentarioText || null })
-        .eq('id', ptrabComentario.id);
-
-      if (error) throw error;
-
-      toast.success("Comentário salvo com sucesso!");
-      setShowComentarioDialog(false);
-      setPtrabComentario(null);
-      setComentarioText("");
-      loadPTrabs();
-    } catch (error) {
-      console.error("Erro ao salvar comentário:", error);
-      toast.error("Erro ao salvar comentário. Tente novamente.");
-    }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
-  };
-
-  // Removida a lógica de formatação automática do número do P Trab
-  const handleNumeroPTrabChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, numero_ptrab: e.target.value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
-
-      const currentNumber = formData.numero_ptrab.trim();
-      
-      // Validação: Se o número não for "Minuta", ele deve ser único (exceto se for o próprio registro em edição)
-      if (currentNumber) {
-        const isDuplicate = isPTrabNumberDuplicate(currentNumber, existingPTrabNumbers) && 
-                           currentNumber !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
-
-        if (isDuplicate) {
-          toast.error("Já existe um P Trab com este número. Por favor, proponha outro.");
-          setLoading(false);
-          return;
-        }
-      }
-      
-      // Se estiver criando, o numero_ptrab deve ser o valor único gerado pelo resetForm ou o valor customizado.
-      const finalNumeroPTrab = currentNumber || generateUniqueMinutaNumber(existingPTrabNumbers);
-
-      const ptrabData = {
-        ...formData,
-        user_id: user.id,
-        origem: editingId ? formData.origem : 'original',
-        // Garante que o numero_ptrab seja salvo como o valor final
-        numero_ptrab: finalNumeroPTrab, 
-      };
-
-      if (editingId) {
-        // Edição: O ID já está no escopo do editingId, não precisamos nos preocupar com ele aqui.
-        const { error } = await supabase.from("p_trab").update(ptrabData).eq("id", editingId);
-        if (error) throw error;
-        toast.success("P Trab atualizado!");
-      } else {
-        // Criação: Removemos o ID do objeto para garantir que o DB gere um novo UUID.
-        const { id, ...insertData } = ptrabData as Partial<PTrab> & { id?: string };
-        
-        const { data: newPTrab, error: insertError } = await supabase
-          .from("p_trab")
-          .insert([insertData as TablesInsert<'p_trab'>])
-          .select()
-          .single();
-          
-        if (insertError || !newPTrab) throw insertError;
-        
-        const newPTrabId = newPTrab.id;
-        
-        // --- NOVO FLUXO DE CLONAGEM DE REGISTROS APÓS CRIAÇÃO DO CABEÇALHO ---
-        if (originalPTrabIdToClone) {
-            await cloneRelatedRecords(originalPTrabIdToClone, newPTrabId);
-            toast.success("P Trab criado e registros clonados!");
-        } else {
-            toast.success("P Trab criado!");
-        }
-        
-        // ZERAR CRÉDITOS DISPONÍVEIS APÓS A CRIAÇÃO DE UM NOVO P TRAB
-        try {
-            await updateUserCredits(user.id, 0, 0);
-        } catch (creditError) {
-            console.error("Erro ao zerar créditos após criação do P Trab:", creditError);
-            toast.warning("Aviso: Ocorreu um erro ao zerar os créditos disponíveis. Por favor, verifique manualmente.");
-        }
-        
-        // Não redireciona, apenas fecha o diálogo e recarrega a lista.
-        setDialogOpen(false);
-        resetForm();
-        loadPTrabs();
-        // navigate(`/ptrab/form?ptrabId=${newPTrabId}`); // REMOVIDO
-        return; // Sai da função para evitar o resetForm e loadPTrabs duplicados abaixo
-      }
-
-      setDialogOpen(false);
-      resetForm();
-      loadPTrabs();
-    } catch (error: any) {
-      toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEdit = (ptrab: PTrab) => {
-    setEditingId(ptrab.id);
-    setSelectedOmId(ptrab.codug_om ? 'temp' : undefined); // Placeholder para forçar a seleção da OM
-    setFormData({
-      numero_ptrab: ptrab.numero_ptrab,
-      comando_militar_area: ptrab.comando_militar_area,
-      nome_om: ptrab.nome_om,
-      nome_om_extenso: ptrab.nome_om_extenso || "",
-      codug_om: ptrab.codug_om || "",
-      rm_vinculacao: ptrab.rm_vinculacao || "",
-      codug_rm_vinculacao: ptrab.codug_rm_vinculacao || "",
-      nome_operacao: ptrab.nome_operacao,
-      periodo_inicio: ptrab.periodo_inicio,
-      periodo_fim: ptrab.periodo_fim,
-      efetivo_empregado: ptrab.efetivo_empregado,
-      acoes: ptrab.acoes || "",
-      nome_cmt_om: ptrab.nome_cmt_om || "",
-      local_om: ptrab.local_om || "",
-      status: ptrab.status,
-      origem: ptrab.origem,
-    });
-    setDialogOpen(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza?")) return;
-    try {
-      await supabase.from("p_trab").delete().eq("id", id);
-      toast.success("P Trab excluído!");
-      loadPTrabs();
-    } catch (error: any) {
-      toast.error("Erro ao excluir");
-    }
-  };
-
-  // Função para abrir o diálogo de aprovação
-  const handleOpenApproveDialog = (ptrab: PTrab) => {
-    // 1. Limpar a sigla da OM para usar no sufixo
-    const omSigla = ptrab.nome_om.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    
-    // 2. Gerar o número no novo padrão N/YYYY/OM_SIGLA
-    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSigla);
-    
-    setPtrabToApprove(ptrab);
-    setSuggestedApproveNumber(suggestedNumber);
-    setShowApproveDialog(true);
-  };
-
-  // Função para confirmar a aprovação e numeração
-  const handleApproveAndNumber = async () => {
-    if (!ptrabToApprove) return;
-
-    const newNumber = suggestedApproveNumber.trim();
-    if (!newNumber) {
-      toast.error("O número do P Trab não pode ser vazio.");
-      return;
-    }
-    
-    // Verifica se o número sugerido (ou customizado) já existe
-    const isDuplicate = isPTrabNumberDuplicate(newNumber, existingPTrabNumbers);
-    if (isDuplicate) {
-      toast.error("O número sugerido já existe. Tente novamente ou use outro número.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from("p_trab")
-        .update({ 
-          numero_ptrab: newNumber,
-          status: 'em_andamento', // Define o status como 'em_andamento' após a numeração
-        })
-        .eq("id", ptrabToApprove.id);
-
-      if (error) throw error;
-
-      toast.success(`P Trab ${newNumber} aprovado e numerado com sucesso!`);
-      setShowApproveDialog(false);
-      setPtrabToApprove(null);
-      setSuggestedApproveNumber("");
-      loadPTrabs();
-    } catch (error: any) {
-      toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Função para abrir o diálogo de opções de clonagem
-  const handleOpenCloneOptions = (ptrab: PTrab) => {
-    setPtrabToClone(ptrab);
-    setCloneType('new');
-    // O useEffect acima cuidará de definir suggestedCloneNumber e customCloneNumber
-    setShowCloneOptionsDialog(true);
-  };
-
-  // Função para confirmar a clonagem a partir do diálogo de opções
-  const handleConfirmCloneOptions = async () => {
-    if (!ptrabToClone) return;
-
-    if (cloneType === 'new') {
-      // Fluxo 1: Novo P Trab (Abre o diálogo de edição do cabeçalho)
-      setShowCloneOptionsDialog(false);
-      
-      // 1. Prepara o formulário com os dados do original e o novo número de minuta
-      const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = ptrabToClone;
-      
-      setFormData({
-        ...restOfPTrab,
-        numero_ptrab: suggestedCloneNumber, // Usa o número de minuta gerado
-        status: "aberto",
-        origem: ptrabToClone.origem,
-      });
-      setSelectedOmId(ptrabToClone.codug_om ? 'temp' : undefined);
-      setOriginalPTrabIdToClone(ptrabToClone.id); // Salva o ID para clonar os registros no submit
-      
-      // 2. Abre o diálogo de edição
-      setDialogOpen(true);
-      
-    } else {
-      // Fluxo 2: Variação do Trabalho (abre o diálogo de nome da versão)
-      setShowCloneOptionsDialog(false);
-      setShowCloneVariationDialog(true);
-    }
-  };
-  
-  // Função para confirmar a clonagem de variação (chamada pelo CloneVariationDialog)
-  const handleConfirmCloneVariation = async (versionName: string) => {
-    if (!ptrabToClone || !suggestedCloneNumber.trim()) {
-      toast.error("Erro: Dados de clonagem incompletos.");
-      return;
-    }
-    
-    // O número de variação já foi calculado em suggestedCloneNumber
-    const newNumeroPTrab = suggestedCloneNumber;
-    
-    // 1. Executar a clonagem (Variação não precisa de edição de cabeçalho, clona direto)
-    await executeCloningProcess(ptrabToClone.id, newNumeroPTrab, versionName, false);
-    
-    // 2. Fechar o diálogo de variação
-    setShowCloneVariationDialog(false);
-  };
-
-  // Função para clonar os registros relacionados (Chamada APENAS no handleSubmit para novos PTrabs clonados)
-  const cloneRelatedRecords = async (originalPTrabId: string, newPTrabId: string) => {
-    // 1. Clone Classe I records
-    const { data: originalClasseIRecords, error: fetchClasseIError } = await supabase
-      .from("classe_i_registros")
-      .select("*")
-      .eq("p_trab_id", originalPTrabId);
-
-    if (fetchClasseIError) {
-      console.error("Erro ao carregar registros da Classe I:", fetchClasseIError);
-    } else {
-      const newClasseIRecords = (originalClasseIRecords || []).map(record => {
-        const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
-        return {
-          ...restOfRecord,
-          p_trab_id: newPTrabId,
-          // Garantir que campos numéricos NOT NULL sejam números
-          complemento_qr: record.complemento_qr ?? 0,
-          complemento_qs: record.complemento_qs ?? 0,
-          dias_operacao: record.dias_operacao ?? 0,
-          efetivo: record.efetivo ?? 0,
-          etapa_qr: record.etapa_qr ?? 0,
-          etapa_qs: record.etapa_qs ?? 0,
-          nr_ref_int: record.nr_ref_int ?? 0,
-          total_geral: record.total_geral ?? 0,
-          total_qr: record.total_qr ?? 0,
-          total_qs: record.total_qs ?? 0,
-          valor_qr: record.valor_qr ?? 0,
-          valor_qs: record.valor_qs ?? 0,
-        };
-      });
-
-      if (newClasseIRecords.length > 0) {
-        const { error: insertClasseIError } = await supabase
-          .from("classe_i_registros")
-          .insert(newClasseIRecords);
-        if (insertClasseIError) {
-          console.error("ERRO DE INSERÇÃO CLASSE I:", insertClasseIError);
-          toast.error(`Erro ao clonar registros da Classe I: ${sanitizeError(insertClasseIError)}`);
-        }
-      }
-    }
-    
-    // 2. Clone Classe II records
-    const { data: originalClasseIIRecords, error: fetchClasseIIError } = await supabase
-      .from("classe_ii_registros")
-      .select("*, itens_equipamentos")
-      .eq("p_trab_id", originalPTrabId);
-
-    if (fetchClasseIIError) {
-      console.error("Erro ao carregar registros da Classe II:", fetchClasseIIError);
-    } else {
-      const newClasseIIRecords = (originalClasseIIRecords || []).map(record => {
-        const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
-        return {
-          ...restOfRecord,
-          p_trab_id: newPTrabId,
-          itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null,
-          dias_operacao: record.dias_operacao ?? 0,
-          valor_total: record.valor_total ?? 0,
-        };
-      });
-
-      if (newClasseIIRecords.length > 0) {
-        const { error: insertClasseIIError } = await supabase
-          .from("classe_ii_registros")
-          .insert(newClasseIIRecords);
-        if (insertClasseIIError) {
-          console.error("ERRO DE INSERÇÃO CLASSE II:", insertClasseIIError);
-          toast.error(`Erro ao clonar registros da Classe II: ${sanitizeError(insertClasseIIError)}`);
-        }
-      }
-    }
-
-    // 3. Clone Classe III records
-    const { data: originalClasseIIIRecords, error: fetchClasseIIIError } = await supabase
-      .from("classe_iii_registros")
-      .select("*")
-      .eq("p_trab_id", originalPTrabId);
-
-    if (fetchClasseIIIError) {
-      console.error("Erro ao carregar registros da Classe III:", fetchClasseIIIError);
-    } else {
-      const newClasseIIIRecords = (originalClasseIIIRecords || []).map(record => {
-        const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
-        return {
-          ...restOfRecord,
-          p_trab_id: newPTrabId,
-          itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null,
-          dias_operacao: record.dias_operacao ?? 0,
-          preco_litro: record.preco_litro ?? 0,
-          quantidade: record.quantidade ?? 0,
-          total_litros: record.total_litros ?? 0,
-          valor_total: record.valor_total ?? 0,
-          consumo_lubrificante_litro: record.consumo_lubrificante_litro ?? 0,
-          preco_lubrificante: record.preco_lubrificante ?? 0,
-        };
-      });
-
-      if (newClasseIIIRecords.length > 0) {
-        const { error: insertClasseIIIError } = await supabase
-          .from("classe_iii_registros")
-          .insert(newClasseIIIRecords);
-        if (insertClasseIIIError) {
-          console.error("ERRO DE INSERÇÃO CLASSE III:", insertClasseIIIError);
-          toast.error(`Erro ao clonar registros da Classe III: ${sanitizeError(insertClasseIIIError)}`);
-        }
-      }
-    }
-
-    // 4. Clone p_trab_ref_lpc record (if exists)
-    const { data: originalRefLPC, error: fetchRefLPCError } = await supabase
-      .from("p_trab_ref_lpc")
-      .select("*")
-      .eq("p_trab_id", originalPTrabId)
-      .maybeSingle();
-
-    if (fetchRefLPCError) {
-      console.error("Erro ao carregar referência LPC:", fetchRefLPCError);
-    } else if (originalRefLPC) {
-      const { id, created_at, updated_at, ...restOfRefLPC } = originalRefLPC; // REMOVE ID
-      const newRefLPCData = {
-        ...restOfRefLPC,
-        p_trab_id: newPTrabId,
-      };
-      const { error: insertRefLPCError } = await supabase
-        .from("p_trab_ref_lpc")
-        .insert([newRefLPCData]);
-      if (insertRefLPCError) {
-        console.error("ERRO DE INSERÇÃO REF LPC:", insertRefLPCError);
-        toast.error(`Erro ao clonar referência LPC: ${sanitizeError(insertRefLPCError)}`);
-      }
-    }
-  };
-
-  // Função para executar o processo de clonagem (usada apenas para Variação)
-  const executeCloningProcess = async (originalPTrabId: string, newNumeroPTrab: string, versionName: string | null = null, isNewClone: boolean = false): Promise<string | null> => {
-    setLoading(true);
-    try {
-      // 1. Fetch the original PTrab
-      const { data: originalPTrab, error: fetchPTrabError } = await supabase
-        .from("p_trab")
-        .select("*, origem") // Ensure 'origem' is selected
-        .eq("id", originalPTrabId)
-        .single();
-
-      if (fetchPTrabError || !originalPTrab) {
-        console.error("ERRO AO CARREGAR P TRAB ORIGINAL:", fetchPTrabError);
-        throw new Error("Erro ao carregar o P Trab original.");
-      }
-      
-      const typedOriginalPTrab = originalPTrab as unknown as PTrabDB; // Cast to PTrabDB
-
-      // 2. Create the new PTrab object
-      // Destructure only fields present in the DB schema (PTrabDB) AND the ID
-      const { id: originalId, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = typedOriginalPTrab; 
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
-
-      const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
-        ...restOfPTrab,
-        numero_ptrab: newNumeroPTrab,
-        status: "aberto",
-        user_id: user.id,
-        origem: typedOriginalPTrab.origem,
-        comentario: versionName || typedOriginalPTrab.comentario, // Salva o nome da versão no comentário
-      };
-
-      const { data: newPTrab, error: insertPTrabError } = await supabase
-        .from("p_trab")
-        .insert([newPTrabData as TablesInsert<'p_trab'>]) // Cast to TablesInsert<'p_trab'>
-        .select()
-        .single();
-
-      if (insertPTrabError || !newPTrab) {
-        console.error("ERRO DE INSERÇÃO P TRAB:", insertPTrabError);
-        throw new Error("Erro ao criar o novo P Trab.");
-      }
-
-      const newPTrabId = newPTrab.id;
-      
-      // 3. Clonar registros relacionados
-      await cloneRelatedRecords(originalPTrabId, newPTrabId);
-
-      toast.success(`P Trab ${newNumeroPTrab} clonado com sucesso!`);
-      await loadPTrabs();
-      
-      // *** NOVO: Redireciona para o formulário do P Trab recém-clonado (Variação) ***
-      navigate(`/ptrab/form?ptrabId=${newPTrabId}`); 
-      
-      // Limpar estados de clonagem
-      setPtrabToClone(null);
-      setCloneType('new');
-      setSuggestedCloneNumber("");
-      setCustomCloneNumber("");
-      setShowCloneOptionsDialog(false);
-      
-      return newPTrabId; // Retorna o ID do novo P Trab
-    } catch (error: any) {
-      console.error("ERRO GERAL AO CLONAR P TRAB (RAW):", error);
-      toast.error(sanitizeError(error));
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSelectPTrab = (ptrabId: string) => {
-    navigate(`/ptrab/form?ptrabId=${ptrabId}`);
-  };
-
-  // Nova função para navegar para a página de impressão/exportação
-  const handleNavigateToPrintOrExport = (ptrabId: string) => {
-    // Agora, esta função apenas navega para a página de visualização de impressão
-    navigate(`/ptrab/print?ptrabId=${ptrabId}`);
-  };
-
-  const formatDateTime = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  // Função para determinar a cor e o texto do Badge de Origem
-  const getOriginBadge = (origem: PTrab['origem']) => {
-    switch (origem) {
-      case 'importado':
-        return { label: 'IMPORTADO', className: 'bg-purple-100 text-purple-800 border-purple-300' };
-      case 'consolidado':
-        return { label: 'CONSOLIDADO', className: 'bg-orange-100 text-orange-800 border-orange-300' };
-      case 'original':
-      default:
-        return { label: 'ORIGINAL', className: 'bg-blue-100 text-blue-800 border-blue-300' };
-    }
-  };
-
-  // =================================================================
-  // LÓGICA DE CONSOLIDAÇÃO
-  // =================================================================
-
-  const handleConfirmConsolidation = async (
-    sourcePTrabIds: string[],
-    targetPTrabId: string | 'new',
-    newPTrabNumber?: string,
-    templatePTrabId?: string
-  ) => {
-    if (!sourcePTrabIds.length) return;
-
-    setLoading(true);
-    setShowConsolidationDialog(false);
-    let finalTargetPTrabId: string;
-    let targetPTrab: PTrab | undefined;
-
-    try {
-      // 1. Determinar ou Criar o P Trab de Destino
-      if (targetPTrabId === 'new') {
-        if (!newPTrabNumber || !templatePTrabId) throw new Error("Dados de criação incompletos.");
-        
-        // Usar o PTrab selecionado como template
-        const templatePTrab = pTrabs.find(p => p.id === templatePTrabId);
-        if (!templatePTrab) throw new Error("P Trab template não encontrado.");
-
-        // FIX: Explicitly exclude calculated fields and IDs
-        const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = templatePTrab;
-        
-        const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
-          ...restOfPTrab,
-          numero_ptrab: newPTrabNumber,
-          status: "aberto",
-          user_id: (await supabase.auth.getUser()).data.user?.id!,
-          nome_operacao: `CONSOLIDADO - ${templatePTrab.nome_operacao}`,
-          origem: 'consolidado',
-        };
-
-        const { data: newPTrab, error: insertPTrabError } = await supabase
-          .from("p_trab")
-          .insert([newPTrabData as TablesInsert<'p_trab'>]) // Cast to TablesInsert<'p_trab'>
-          .select()
-          .single();
-
-        if (insertPTrabError || !newPTrab) throw insertPTrabError;
-        finalTargetPTrabId = newPTrab.id;
-        targetPTrab = { ...newPTrab, origem: 'consolidado' } as PTrab;
-        toast.success(`Novo P Trab ${newPTrabNumber} criado para consolidação.`);
-      } else {
-        finalTargetPTrabId = targetPTrabId;
-        targetPTrab = pTrabs.find(p => p.id === finalTargetPTrabId);
-        if (!targetPTrab) throw new Error("P Trab de destino existente não encontrado.");
-        
-        // Se o P Trab de destino já existe, atualize a origem para 'consolidado'
-        const { error: updateOriginError } = await supabase
-          .from("p_trab")
-          .update({ origem: 'consolidado' } as TablesUpdate<'p_trab'>)
-          .eq("id", finalTargetPTrabId);
-          
-        if (updateOriginError) console.error("Erro ao atualizar origem para consolidado:", updateOriginError);
-        targetPTrab = { ...targetPTrab, origem: 'consolidado' } as PTrab;
-      }
-
-      // 2. Clonar e Inserir Registros de Classe I, Classe II e Classe III
-      let totalRecordsCloned = 0;
-
-      for (const sourceId of sourcePTrabIds) {
-        // Clonar Classe I
-        const { data: classeIRecords } = await supabase
-          .from("classe_i_registros")
-          .select("*")
-          .eq("p_trab_id", sourceId);
-
-        if (classeIRecords && classeIRecords.length > 0) {
-          const recordsToInsert = classeIRecords.map(record => {
-            const { id, created_at, updated_at, ...rest } = record; // REMOVE ID
-            return { ...rest, p_trab_id: finalTargetPTrabId };
-          });
-          const { error } = await supabase.from("classe_i_registros").insert(recordsToInsert as Tables<'classe_i_registros'>[]);
-          if (error) console.error(`Erro ao clonar Classe I de ${sourceId}:`, error);
-          totalRecordsCloned += recordsToInsert.length;
-        }
-        
-        // Clonar Classe II (NOVO)
-        const { data: classeIIRecords } = await supabase
-          .from("classe_ii_registros")
-          .select("*, itens_equipamentos")
-          .eq("p_trab_id", sourceId);
-
-        if (classeIIRecords && classeIIRecords.length > 0) {
-          const recordsToInsert = classeIIRecords.map(record => {
-            const { id, created_at, updated_at, ...rest } = record; // REMOVE ID
-            return { ...rest, p_trab_id: finalTargetPTrabId, itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null };
-          });
-          const { error } = await supabase.from("classe_ii_registros").insert(recordsToInsert as Tables<'classe_ii_registros'>[]);
-          if (error) console.error(`Erro ao clonar Classe II de ${sourceId}:`, error);
-          totalRecordsCloned += recordsToInsert.length;
-        }
-
-        // Clonar Classe III
-        const { data: classeIIIRecords } = await supabase
-          .from("classe_iii_registros")
-          .select("*")
-          .eq("p_trab_id", sourceId);
-
-        if (classeIIIRecords && classeIIIRecords.length > 0) {
-          const recordsToInsert = classeIIIRecords.map(record => {
-            const { id, created_at, updated_at, ...rest } = record; // REMOVE ID
-            return { ...rest, p_trab_id: finalTargetPTrabId, itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null };
-          });
-          const { error } = await supabase.from("classe_iii_registros").insert(recordsToInsert as Tables<'classe_iii_registros'>[]);
-          if (error) console.error(`Erro ao clonar Classe III de ${sourceId}:`, error);
-          totalRecordsCloned += recordsToInsert.length;
-        }
-      }
-      
-      // 3. Clonar Ref LPC (se existir no primeiro source e não existir no target)
-      const { data: targetRefLPC } = await supabase
-        .from("p_trab_ref_lpc")
-        .select("id")
-        .eq("p_trab_id", finalTargetPTrabId)
-        .maybeSingle();
-
-      if (!targetRefLPC) {
-        const { data: sourceRefLPC } = await supabase
-          .from("p_trab_ref_lpc")
-          .select("*")
-          .eq("p_trab_id", sourcePTrabIds[0])
-          .maybeSingle();
-        
-        if (sourceRefLPC) {
-          const { id, created_at, updated_at, ...rest } = sourceRefLPC; // REMOVE ID
-          const { error } = await supabase.from("p_trab_ref_lpc").insert([{ ...rest, p_trab_id: finalTargetPTrabId }]);
-          if (error) console.error("Erro ao clonar Ref LPC:", error);
-        }
-      }
-
-      toast.success(`Consolidação concluída! ${totalRecordsCloned} registros copiados para ${targetPTrab?.numero_ptrab}.`);
-      loadPTrabs();
-    } catch (error: any) {
-      toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isConsolidationDisabled = pTrabs.length < 2;
-  const consolidationTooltipText = "Consolidar dados de múltiplos P Trabs em um único destino.";
-    
-  // Mensagem detalhada para quando a consolidação está desativada
-  const getConsolidationDisabledMessage = () => {
-    return "É necessário ter pelo menos 2 Planos de Trabalho cadastrados para realizar a consolidação. Cadastre mais P Trabs para habilitar esta função.";
-  };
-
-  // Função para verificar se o PTrab precisa ser numerado
-  const needsNumbering = (ptrab: PTrab) => {
-    // Verifica se o numero_ptrab é "Minuta" ou não termina com /YYYY (formato de número oficial)
-    return ptrab.numero_ptrab.startsWith("Minuta") || !ptrab.numero_ptrab || !ptrab.numero_ptrab.includes(yearSuffix);
-  };
-
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold">Planos de Trabalho</h1>
-              <p className="text-muted-foreground">Gerencie seu P Trab</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            
-            {/* BOTÃO NOVO P TRAB */}
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => { resetForm(); setDialogOpen(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Novo P Trab
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{editingId ? "Editar P Trab" : "Novo P Trab"}</DialogTitle>
-                  {originalPTrabIdToClone && (
-                    <DialogDescription className="text-green-600 font-medium">
-                      Clonando dados de classes do P Trab original. Edite o cabeçalho e clique em Criar.
-                    </DialogDescription>
-                  )}
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* L1L: Número do P Trab (Agora Minuta/Obrigatório) */}
-                    <div className="space-y-2">
-                      <Label htmlFor="numero_ptrab">Número do P Trab *</Label>
-                      <Input
-                        id="numero_ptrab"
-                        value={formData.numero_ptrab}
-                        onChange={handleNumeroPTrabChange}
-                        placeholder="Minuta"
-                        maxLength={50}
-                        required
-                        onKeyDown={handleEnterToNextField}
-                        // NEW: Disable if it's a Minuta number (Minuta-N)
-                        disabled={formData.numero_ptrab.startsWith("Minuta") && !editingId}
-                        className={formData.numero_ptrab.startsWith("Minuta") && !editingId ? "bg-muted/50 cursor-not-allowed" : ""}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        {formData.numero_ptrab.startsWith("Minuta") 
-                          ? "A numeração oficial (padrão: número/ano/OM) será atribuída após a aprovação."
-                          : "O número oficial já foi atribuído."
-                        }
-                      </p>
-                    </div>
-                    {/* L1R: Nome da Operação */}
-                    <div className="space-y-2">
-                      <Label htmlFor="nome_operacao">Nome da Operação *</Label>
-                      <Input
-                        id="nome_operacao"
-                        value={formData.nome_operacao}
-                        onChange={(e) => setFormData({ ...formData, nome_operacao: e.target.value })}
-                        required
-                        onKeyDown={handleEnterToNextField}
-                      />
-                    </div>
-                    
-                    {/* L2L: Comando Militar de Área */}
-                    <div className="space-y-2">
-                      <Label htmlFor="comando_militar_area">Comando Militar de Área *</Label>
-                      <Input
-                        id="comando_militar_area"
-                        value={formData.comando_militar_area}
-                        onChange={(e) => setFormData({ ...formData, comando_militar_area: e.target.value })}
-                        placeholder="Ex: Comando Militar da Amazônia"
-                        maxLength={100}
-                        required
-                        onKeyDown={handleEnterToNextField}
-                      />
-                    </div>
-                    {/* L2R: Nome da OM (por extenso) */}
-                    <div className="space-y-2">
-                      <Label htmlFor="nome_om_extenso">Nome da OM (por extenso) *</Label>
-                      <Input
-                        id="nome_om_extenso"
-                        value={formData.nome_om_extenso}
-                        onChange={(e) => setFormData({ ...formData, nome_om_extenso: e.target.value })}
-                        placeholder="Ex: Comando da 23ª Brigada de Infantaria de Selva"
-                        maxLength={300}
-                        required
-                        onKeyDown={handleEnterToNextField}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Este nome será usado no cabeçalho do P Trab impresso
-                      </p>
-                    </div>
-
-                    {/* L3L: Nome da OM (sigla) */}
-                    <div className="space-y-2">
-                      <Label htmlFor="nome_om">Nome da OM (sigla) *</Label>
-                      <OmSelector
-                        selectedOmId={selectedOmId}
-                        onChange={(omData: OMData | undefined) => {
-                          if (omData) {
-                            setSelectedOmId(omData.id);
-                            setFormData({
-                              ...formData,
-                              nome_om: omData.nome_om,
-                              nome_om_extenso: formData.nome_om_extenso,
-                              codug_om: omData.codug_om,
-                              rm_vinculacao: omData.rm_vinculacao,
-                              codug_rm_vinculacao: omData.codug_rm_vinculacao,
-                            });
-                          } else {
-                            setSelectedOmId(undefined);
-                            setFormData({
-                              ...formData,
-                              nome_om: "",
-                              nome_om_extenso: formData.nome_om_extenso,
-                              codug_om: "",
-                              rm_vinculacao: "",
-                              codug_rm_vinculacao: "",
-                            });
-                          }
-                        }}
-                        placeholder="Selecione uma OM..."
-                        disabled={loading}
-                      />
-                      {formData.codug_om && (
-                        <p className="text-xs text-muted-foreground">
-                          CODUG: {formData.codug_om} | RM: {formData.rm_vinculacao}
-                        </p>
-                      )}
-                    </div>
-                    {/* L3R: Efetivo Empregado */}
-                    <div className="space-y-2">
-                      <Label htmlFor="efetivo_empregado">Efetivo Empregado *</Label>
-                      <Input
-                        id="efetivo_empregado"
-                        value={formData.efetivo_empregado}
-                        onChange={(e) => setFormData({ ...formData, efetivo_empregado: e.target.value })}
-                        placeholder="Ex: 110 militares e 250 OSP"
-                        required
-                        onKeyDown={handleEnterToNextField}
-                      />
-                    </div>
-
-                    {/* L4L: Período Início */}
-                    <div className="space-y-2">
-                      <Label htmlFor="periodo_inicio">Período Início *</Label>
-                      <Input
-                        id="periodo_inicio"
-                        type="date"
-                        value={formData.periodo_inicio}
-                        onChange={(e) => setFormData({ ...formData, periodo_inicio: e.target.value })}
-                        required
-                        onKeyDown={handleEnterToNextField}
-                      />
-                    </div>
-                    {/* L4R: Período Fim */}
-                    <div className="space-y-2">
-                      <Label htmlFor="periodo_fim">Período Fim *</Label>
-                      <Input
-                        id="periodo_fim"
-                        type="date"
-                        value={formData.periodo_fim}
-                        onChange={(e) => setFormData({ ...formData, periodo_fim: e.target.value })}
-                        required
-                        onKeyDown={handleEnterToNextField}
-                      />
-                    </div>
-                    
-                    {/* L5L: Local da OM */}
-                    <div className="space-y-2">
-                      <Label htmlFor="local_om">Local da OM</Label>
-                      <Input
-                        id="local_om"
-                        value={formData.local_om}
-                        onChange={(e) => setFormData({ ...formData, local_om: e.target.value })}
-                        placeholder="Ex: Marabá/PA"
-                        maxLength={200}
-                        onKeyDown={handleEnterToNextField}
-                      />
-                    </div>
-                    {/* L5R: Nome do Comandante da OM */}
-                    <div className="space-y-2">
-                      <Label htmlFor="nome_cmt_om">Nome do Comandante da OM</Label>
-                      <Input
-                        id="nome_cmt_om"
-                        value={formData.nome_cmt_om}
-                        onChange={(e) => setFormData({ ...formData, nome_cmt_om: e.target.value })}
-                        maxLength={200}
-                        onKeyDown={handleEnterToNextField}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="acoes">Ações realizadas ou a serem realizadas</Label>
-                    <Textarea
-                      id="acoes"
-                      value={formData.acoes}
-                      onChange={(e) => setFormData({ ...formData, acoes: e.target.value })}
-                      rows={4}
-                      maxLength={2000}
-                      onKeyDown={handleEnterToNextField}
-                    />
-                  </div>
-                  <DialogFooter>
-                    <Button type="submit" disabled={loading}>
-                      {loading ? "Aguarde..." : (editingId ? "Atualizar" : "Criar")}
-                    </Button>
-                    <Button variant="outline" type="button" onClick={() => setDialogOpen(false)}>
-                      Cancelar
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-            
-            {/* BOTÃO DE CONSOLIDAÇÃO ENVOLVIDO POR TOOLTIP */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  {/* O span é necessário para que o Tooltip funcione em elementos desabilitados */}
-                  <span className="inline-block">
-                    <Button 
-                      onClick={() => {
-                        if (!isConsolidationDisabled) {
-                          setShowConsolidationDialog(true);
-                        } else {
-                          // Dispara o toast ao clicar no botão desativado
-                          toast.info(getConsolidationDisabledMessage());
-                        }
-                      }} 
-                      variant="secondary"
-                      disabled={isConsolidationDisabled}
-                      // Adiciona style para garantir que o clique seja capturado pelo Button e não pelo span
-                      style={isConsolidationDisabled ? { pointerEvents: 'auto' } : {}} 
-                    >
-                      <ArrowRight className="mr-2 h-4 w-4" />
-                      Consolidar P Trab
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isConsolidationDisabled ? (
-                    <p className="text-xs text-orange-400 max-w-xs">
-                      {getConsolidationDisabledMessage()}
-                    </p>
-                  ) : (
-                    <p>{consolidationTooltipText}</p>
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            {/* NOVO BOTÃO DE AJUDA */}
-            <HelpDialog />
-
-            <DropdownMenu open={settingsDropdownOpen} onOpenChange={setSettingsDropdownOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent 
-                align="end" 
-                className="w-56"
-                onPointerLeave={() => setSettingsDropdownOpen(false)}
-              >
-                <DropdownMenuLabel>Configurações</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/config/diretrizes")}>
-                  Diretriz de Custeio
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/config/visualizacao")}>
-                  Opção de Visualização
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/config/om")}>
-                  Relação de OM (CODUG)
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/config/ptrab-export-import")}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar/Importar P Trab
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold font-display">Planos de Trabalho</h1>
+          <div className="flex gap-2">
+            <Button onClick={() => navigate('/config/diretrizes')} variant="outline" size="icon" title="Configurações">
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => navigate('/config/ptrab-export-import')} variant="outline" size="icon" title="Exportar/Importar">
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button onClick={handleConsolidationClick} variant="outline" disabled={isDataLoading || (pTrabs?.length || 0) < 2}>
+              <GitBranch className="mr-2 h-4 w-4" />
+              Consolidar P Trab
+            </Button>
+            <Button onClick={handleCreateNewPTrab}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo P Trab
+            </Button>
             <Button onClick={handleLogout} variant="outline">
               <LogOut className="mr-2 h-4 w-4" />
               Sair
@@ -1370,299 +588,231 @@ const PTrabManager = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Planos de Trabalho Cadastrados</CardTitle>
+            <CardTitle>Gerenciamento de P Trabs</CardTitle>
+            <CardDescription>
+              Visualize, edite e gerencie o ciclo de vida dos seus Planos de Trabalho.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-center border-b border-border">Número</TableHead>
-                  <TableHead className="text-center border-b border-border">Operação</TableHead>
-                  <TableHead className="text-center border-b border-border">Período</TableHead>
-                  <TableHead className="text-center border-b border-border">Status</TableHead>
-                  <TableHead className="text-center border-b border-border">Valor P Trab</TableHead>
-                  <TableHead className="text-center border-b border-border w-[50px]"></TableHead>
-                  <TableHead className="text-center border-b border-border">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pTrabs.map((ptrab) => {
-                  const originBadge = getOriginBadge(ptrab.origem);
-                  const isMinuta = ptrab.numero_ptrab.startsWith("Minuta");
-                  const isNumbered = !needsNumbering(ptrab);
-                  const isEditable = ptrab.status !== 'completo' && ptrab.status !== 'arquivado';
-                  
-                  return (
-                  <TableRow key={ptrab.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex flex-col items-center">
-                        {isMinuta ? (
-                          <span className="text-red-500 font-bold">MINUTA</span>
-                        ) : isNumbered ? (
-                          <span>{ptrab.numero_ptrab}</span>
-                        ) : (
-                          <span className="text-red-500 font-bold">PENDENTE</span>
-                        )}
-                        <Badge 
-                          variant="outline" 
-                          className={`mt-1 text-xs font-semibold ${originBadge.className}`}
-                        >
-                          {originBadge.label}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col items-start">
-                        <span>{ptrab.nome_operacao}</span>
-                        {/* NOVO RÓTULO DE VERSÃO */}
-                        {ptrab.comentario && ptrab.numero_ptrab.includes('.') && (
-                          <Badge variant="secondary" className="mt-1 text-xs bg-secondary/20 text-secondary-foreground/80">
-                            <GitBranch className="h-3 w-3 mr-1" />
-                            {ptrab.comentario}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div>
-                        {new Date(ptrab.periodo_inicio).toLocaleDateString('pt-BR')} - {new Date(ptrab.periodo_fim).toLocaleDateString('pt-BR')}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {calculateDays(ptrab.periodo_inicio, ptrab.periodo_fim)} dias
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col items-center">
-                        <Select
-                          value={ptrab.status}
-                          onValueChange={(value) => handleStatusChange(ptrab.id, ptrab.status, value)}
-                          disabled={!isNumbered} // Desabilita a mudança de status se não estiver numerado
-                        >
-                          <SelectTrigger className={`w-[140px] h-7 text-xs ${statusConfig[ptrab.status as keyof typeof statusConfig]?.className || 'bg-background'}`}>
-                            <SelectValue>
-                              {statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="bg-background border shadow-lg z-50">
-                            {Object.entries(statusConfig).map(([key, config]) => (
-                              <SelectItem 
-                                key={key} 
-                                value={key}
-                                className="cursor-pointer hover:bg-accent"
-                              >
-                                <span className={`inline-block px-2 py-1 rounded text-xs ${config.className}`}>
-                                  {config.label}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Última alteração: {formatDateTime(ptrab.updated_at)}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex flex-col items-center text-xs">
-                        {/* P Trab Logístico (Classe I + Classe II + Classe III) - AGORA EM LARANJA */}
-                        {ptrab.totalLogistica !== undefined && (
-                          <span className="text-orange-600 font-medium">
-                            {formatCurrency(ptrab.totalLogistica)}
-                          </span>
-                        )}
-                        {/* P Trab Operacional (atualmente 0) - AGORA EM AZUL */}
-                        {ptrab.totalOperacional !== undefined && (
-                          <span className="text-blue-600 font-medium">
-                            {formatCurrency(ptrab.totalOperacional)}
-                          </span>
-                        )}
-                        {/* Separador e Total Geral */}
-                        {((ptrab.totalLogistica || 0) > 0 || (ptrab.totalOperacional || 0) > 0) && (
-                          <>
-                            <div className="w-full h-px bg-muted-foreground/30 my-1" />
-                            <span className="font-bold text-sm text-foreground">
-                              {formatCurrency((ptrab.totalLogistica || 0) + (ptrab.totalOperacional || 0))}
-                            </span>
-                          </>
-                        )}
-                        {/* Caso não haja nenhum valor */}
-                        {((ptrab.totalLogistica || 0) === 0 && (ptrab.totalOperacional || 0) === 0) && (
-                          <span className="text-muted-foreground">N/A</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleOpenComentario(ptrab)}
-                            >
-                              <MessageSquare 
-                                className={`h-5 w-5 transition-all ${
-                                  ptrab.comentario 
-                                    ? "text-green-600 fill-green-600" 
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{ptrab.comentario ? "Editar comentário" : "Adicionar comentário"}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        
-                        {/* Botão Numerar: Aparece APENAS se precisar de numeração */}
-                        {needsNumbering(ptrab) && (
-                          <Button
-                            onClick={() => handleOpenApproveDialog(ptrab)}
-                            size="sm"
-                            className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                            disabled={loading}
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                            Numerar
-                          </Button>
-                        )}
+          <CardContent className="space-y-4">
+            {/* Filtros e Busca */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
+                <Input
+                  placeholder="Buscar por número, operação ou OM..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filtrar por Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Status</SelectItem>
+                    <SelectItem value="minuta">Minuta</SelectItem>
+                    <SelectItem value="aberto">Aberto</SelectItem>
+                    <SelectItem value="em_andamento">Em Andamento</SelectItem>
+                    <SelectItem value="completo">Completo</SelectItem>
+                    <SelectItem value="arquivado">Arquivado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-                        {/* Botão Preencher: Aparece SEMPRE, mas desabilitado se não for editável */}
-                        <Button
-                          onClick={() => handleSelectPTrab(ptrab.id)}
-                          size="sm"
-                          className="flex items-center gap-2"
-                          disabled={!isEditable}
-                        >
-                          <FileText className="h-4 w-4" />
-                          Preencher
-                        </Button>
-                        
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleNavigateToPrintOrExport(ptrab.id)}
-                            >
-                              <Printer className="mr-2 h-4 w-4" />
-                              Visualizar Impressão
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(ptrab)}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Editar P Trab
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleOpenCloneOptions(ptrab)}>
-                              <Copy className="mr-2 h-4 w-4" />
-                              Clonar P Trab
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleDelete(ptrab.id)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
+            {/* Tabela de P Trabs */}
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[15%]">Número</TableHead>
+                    <TableHead className="w-[25%]">Operação / OM</TableHead>
+                    <TableHead className="w-[15%]">Status</TableHead>
+                    <TableHead className="w-[10%]">Origem</TableHead>
+                    <TableHead className="w-[35%] text-right">Ações</TableHead>
                   </TableRow>
-                );})}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {isDataLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center">
+                        <Loader2 className="h-5 w-5 animate-spin inline mr-2" />
+                        Carregando Planos de Trabalho...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredPTrabs.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        Nenhum P Trab encontrado.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredPTrabs.map((ptrab) => (
+                      <TableRow key={ptrab.id}>
+                        <TableCell className="font-medium">
+                          {ptrab.numero_ptrab}
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium">{ptrab.nome_operacao}</p>
+                          <p className="text-xs text-muted-foreground">{ptrab.nome_om}</p>
+                          {ptrab.comentario && ptrab.origem === 'variacao' && (
+                            <Badge variant="secondary" className="mt-1 text-xs bg-secondary/20 text-secondary-foreground/80">
+                              <GitBranch className="h-3 w-3 mr-1" />
+                              {ptrab.comentario}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(ptrab.status)}
+                        </TableCell>
+                        <TableCell>
+                          {getOriginBadge(ptrab.origem)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            {/* Botão Numerar/Aprovar (Apenas Minuta) */}
+                            {ptrab.status === 'minuta' && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleApproveClick(ptrab)}
+                                title="Numerar e Aprovar"
+                              >
+                                Numerar
+                              </Button>
+                            )}
+                            
+                            {/* Botão de Preencher/Editar (Aberto/Em Andamento) */}
+                            {(ptrab.status === 'aberto' || ptrab.status === 'em_andamento' || ptrab.status === 'minuta') && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => navigate(`/ptrab/form?ptrabId=${ptrab.id}`)}
+                                title="Preencher Classes"
+                              >
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Preencher
+                              </Button>
+                            )}
+                            
+                            {/* Botão de Visualizar Impressão (Todos, exceto Minuta) */}
+                            {ptrab.status !== 'minuta' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/ptrab/print?ptrabId=${ptrab.id}`)}
+                                title="Visualizar Impressão"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            )}
+                            
+                            {/* Dropdown de Ações */}
+                            <Select onValueChange={(value) => {
+                              if (value === 'clone') handleClone(ptrab);
+                              if (value === 'variation') handleVariationClick(ptrab);
+                              if (value === 'delete') handleDeleteClick(ptrab);
+                              if (value === 'comment') handleCommentClick(ptrab);
+                              if (value.startsWith('status:')) handleStatusChange(ptrab, value.split(':')[1]);
+                            }}>
+                              <SelectTrigger className="w-[40px] h-9">
+                                <SelectValue placeholder="..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="clone">
+                                  <div className="flex items-center gap-2">
+                                    <Copy className="h-4 w-4" /> Clonar (Novo P Trab)
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="variation">
+                                  <div className="flex items-center gap-2">
+                                    <GitBranch className="h-4 w-4" /> Clonar (Variação)
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="comment">
+                                  <div className="flex items-center gap-2">
+                                    <MessageSquare className="h-4 w-4" /> Comentário
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="delete" className="text-destructive">
+                                  <div className="flex items-center gap-2">
+                                    <Trash2 className="h-4 w-4" /> Excluir
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="status:aberto" disabled={ptrab.status === 'aberto'}>
+                                  <div className="flex items-center gap-2">
+                                    <RefreshCw className="h-4 w-4" /> Mudar para Aberto
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="status:completo" disabled={ptrab.status === 'completo'}>
+                                  <div className="flex items-center gap-2">
+                                    <Check className="h-4 w-4" /> Mudar para Completo
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="status:arquivado" disabled={ptrab.status === 'arquivado'}>
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4" /> Mudar para Arquivado
+                                  </div>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <AlertDialog open={showArchiveStatusDialog} onOpenChange={setShowArchiveStatusDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Arquivar P Trab?</AlertDialogTitle>
-            <AlertDialogDescription>
-              O P Trab "{ptrabToArchiveName}" está com status "Completo" há mais de 10 dias. Deseja arquivá-lo?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancelArchiveStatus}>Agora não</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmArchiveStatus}>Sim, arquivar</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={showReactivateStatusDialog} onOpenChange={setShowReactivateStatusDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reativar P Trab?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja reativar o P Trab "{ptrabToReactivateName}" para "Em Andamento"? Isso permitirá novas edições.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleConfirmReactivateStatus}>Confirmar Reativação</AlertDialogAction>
-            <AlertDialogCancel onClick={handleCancelReactivateStatus}>Cancelar</AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Diálogo de Opções de Clonagem */}
-      <Dialog open={showCloneOptionsDialog} onOpenChange={setShowCloneOptionsDialog}>
-        <DialogContent>
+      {/* Dialog de Clonagem Simples (Novo P Trab) */}
+      <Dialog open={isCloneDialogOpen && cloneType === 'new'} onOpenChange={setIsCloneDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Clonar Plano de Trabalho</DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              Clonando: <span className="font-medium">{ptrabToClone?.numero_ptrab} - {ptrabToClone?.nome_operacao}</span>
-            </p>
+            <DialogTitle className="flex items-center gap-2">
+              <Copy className="h-5 w-5 text-primary" />
+              Clonar P Trab
+            </DialogTitle>
+            <DialogDescription>
+              Crie uma cópia completa do P Trab: {ptrabToClone?.numero_ptrab}.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <RadioGroup 
-              value={cloneType} 
-              onValueChange={(value: 'new' | 'variation') => setCloneType(value)}
-              className="grid grid-cols-2 gap-4"
-            >
-              <Label
-                htmlFor="clone-new"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary"
-              >
-                <RadioGroupItem id="clone-new" value="new" className="sr-only" />
-                <span className="mb-3 text-lg font-semibold">Novo P Trab</span>
-                <p className="text-sm text-muted-foreground text-center">
-                  Cria um P Trab totalmente novo, iniciando como Minuta para posterior numeração.
-                </p>
-              </Label>
-              <Label
-                htmlFor="clone-variation"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary"
-              >
-                <RadioGroupItem id="clone-variation" value="variation" className="sr-only" />
-                <span className="mb-3 text-lg font-semibold">Variação do Trabalho</span>
-                <p className="text-sm text-muted-foreground text-center">
-                  Cria uma variação do P Trab atual.
-                </p>
-              </Label>
-            </RadioGroup>
+            <div className="space-y-2">
+              <Label htmlFor="new-number">Número Sugerido (Minuta)</Label>
+              <Input
+                id="new-number"
+                value={customCloneNumber}
+                onChange={(e) => setCustomCloneNumber(e.target.value)}
+                placeholder={suggestedCloneNumber}
+              />
+              <p className="text-xs text-muted-foreground">
+                Sugestão: {suggestedCloneNumber}
+              </p>
+              {isPTrabNumberDuplicate(customCloneNumber, existingPTrabNumbers) && (
+                <Badge variant="destructive">Número já existe</Badge>
+              )}
+            </div>
           </div>
           <DialogFooter>
-            <Button type="button" onClick={handleConfirmCloneOptions}>Continuar</Button>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">Cancelar</Button>
-            </DialogClose>
+            <Button 
+              onClick={handleConfirmCloneNew} 
+              disabled={!customCloneNumber.trim() || isPTrabNumberDuplicate(customCloneNumber, existingPTrabNumbers)}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Confirmar Clonagem
+            </Button>
+            <Button variant="outline" onClick={() => setIsCloneDialogOpen(false)}>
+              Cancelar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo de Variação do Trabalho (NOVO) */}
+      {/* Dialog de Variação do Trabalho */}
       {ptrabToClone && (
         <CloneVariationDialog
           open={showCloneVariationDialog}
@@ -1673,83 +823,115 @@ const PTrabManager = () => {
         />
       )}
 
+      {/* Dialog de Exclusão */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o P Trab "{ptrabToDelete?.numero_ptrab} - {ptrabToDelete?.nome_operacao}"? Esta ação não pode ser desfeita e removerá todos os registros de classes associados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPTrabToDelete(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
       {/* Dialog de Comentário */}
-      <Dialog open={showComentarioDialog} onOpenChange={setShowComentarioDialog}>
-        <DialogContent className="sm:max-w-[500px]">
+      <Dialog open={commentDialogOpen} onOpenChange={setCommentDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Comentário do P Trab</DialogTitle>
-            {ptrabComentario && (
-              <p className="text-sm text-muted-foreground">
-                {ptrabComentario.numero_ptrab} - {ptrabComentario.nome_operacao}
-              </p>
-            )}
+            <DialogTitle>Comentário - {ptrabToComment?.numero_ptrab}</DialogTitle>
+            <DialogDescription>
+              Adicione um comentário interno sobre este Plano de Trabalho.
+            </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="grid gap-4 py-4">
             <Textarea
-              placeholder="Digite seu comentário sobre este P Trab..."
-              value={comentarioText}
-              onChange={(e) => setComentarioText(e.target.value)}
-              className="min-h-[150px]"
+              value={currentComment}
+              onChange={(e) => setCurrentComment(e.target.value)}
+              placeholder="Digite seu comentário aqui..."
+              rows={5}
             />
           </div>
           <DialogFooter>
-            <Button onClick={handleSaveComentario}>
-              Salvar
-            </Button>
-            <Button variant="outline" onClick={() => setShowComentarioDialog(false)}>
-              Cancelar
-            </Button>
+            <Button onClick={handleSaveComment}>Salvar Comentário</Button>
+            <Button variant="outline" onClick={() => setCommentDialogOpen(false)}>Cancelar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo de Aprovação e Numeração */}
-      <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
-        <DialogContent className="sm:max-w-[450px]">
+      {/* Dialog de Aprovação/Numeração */}
+      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              Aprovar e Numerar P Trab
+              <Check className="h-5 w-5 text-green-600" />
+              Numerar P Trab (Minuta)
             </DialogTitle>
             <DialogDescription>
-              Atribua o número oficial ao P Trab "{ptrabToApprove?.nome_operacao}".
+              O P Trab "{ptrabToApprove?.numero_ptrab}" será numerado no padrão oficial (N/AAAA/OM_SIGLA) e terá o status alterado para "Aberto".
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="approve-number">Número Oficial do P Trab *</Label>
-              <Input
-                id="approve-number"
-                value={suggestedApproveNumber}
-                onChange={(e) => setSuggestedApproveNumber(e.target.value)}
-                placeholder={`Ex: 1${yearSuffix}/${ptrabToApprove?.nome_om.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()}`}
-                maxLength={50}
-                onKeyDown={handleEnterToNextField}
+              <Label>OM de Destino (Para Numeração)</Label>
+              <OmSelector
+                selectedOmId={omToApprove?.id}
+                onChange={setOmToApprove}
+                placeholder="Selecione a OM..."
+                omsList={userOms}
               />
-              <p className="text-xs text-muted-foreground">
-                Padrão sugerido: Número/Ano/Sigla da OM.
-              </p>
+              {omToApprove && (
+                <p className="text-xs text-muted-foreground">
+                  OM Selecionada: {omToApprove.nome_om} (UG: {omToApprove.codug_om})
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleApproveAndNumber} disabled={loading || !suggestedApproveNumber.trim()}>
-              {loading ? "Aguarde..." : "Confirmar Numeração"}
+            <Button onClick={handleConfirmApprove} disabled={!omToApprove}>
+              Confirmar Numeração
             </Button>
-            <Button variant="outline" onClick={() => setShowApproveDialog(false)}>
+            <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)}>
               Cancelar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Diálogo de Consolidação */}
+      
+      {/* Dialog de Consolidação */}
       <PTrabConsolidationDialog
-        open={showConsolidationDialog}
-        onOpenChange={setShowConsolidationDialog}
-        pTrabsList={pTrabs.map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))}
+        open={isConsolidationDialogOpen}
+        onOpenChange={setIsConsolidationDialogOpen}
+        pTrabsList={(pTrabs || []).map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))}
         existingPTrabNumbers={existingPTrabNumbers}
-        onConfirm={handleConfirmConsolidation}
-        loading={loading}
+        onConfirm={handleConsolidationConfirm}
+        loading={consolidationLoading}
+      />
+
+      {/* Diálogo de Crédito */}
+      <CreditInputDialog
+        open={showCreditDialog}
+        onOpenChange={setShowCreditDialog}
+        totalGND3Cost={0}
+        totalGND4Cost={0}
+        initialCreditGND3={credits.credit_gnd3}
+        initialCreditGND4={credits.credit_gnd4}
+        onSave={handleSaveCredit}
+      />
+      
+      {/* Diálogo de Prompt de Crédito */}
+      <CreditPromptDialog
+        open={showCreditPromptDialog}
+        onConfirm={handlePromptConfirm}
+        onCancel={handlePromptCancel}
       />
     </div>
   );

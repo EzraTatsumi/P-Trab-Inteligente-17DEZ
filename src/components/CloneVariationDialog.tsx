@@ -17,7 +17,7 @@ interface CloneVariationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   originalNumber: string;
-  suggestedCloneNumber: string;
+  suggestedCloneNumber: string; // Agora será o número de Minuta
   onConfirm: (versionName: string) => void;
 }
 
@@ -28,21 +28,22 @@ export const CloneVariationDialog = ({
   suggestedCloneNumber,
   onConfirm,
 }: CloneVariationDialogProps) => {
-  const [versionName, setVersionName] = useState("Variação 1.0");
+  const [versionName, setVersionName] = useState("");
   const { handleEnterToNextField } = useFormNavigation();
 
   useEffect(() => {
     if (open) {
       // Resetar para o valor padrão ao abrir
-      setVersionName("Variação 1.0");
+      setVersionName("");
     }
   }, [open]);
 
   const handleConfirm = () => {
     if (!versionName.trim()) {
-      setVersionName("Variação 1.0");
+      onConfirm("Variação"); // Usa um nome padrão se o usuário não digitar
+    } else {
+      onConfirm(versionName.trim());
     }
-    onConfirm(versionName.trim());
   };
 
   return (
@@ -54,7 +55,7 @@ export const CloneVariationDialog = ({
             Clonar como Variação
           </DialogTitle>
           <DialogDescription>
-            Crie uma nova versão do P Trab original.
+            Crie uma nova versão (Minuta) do P Trab original.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -66,14 +67,18 @@ export const CloneVariationDialog = ({
           </p>
           
           <div className="space-y-2">
-            <Label htmlFor="version-name">Nome da Versão (Rótulo)</Label>
+            <Label htmlFor="version-name">Nome da Versão (Rótulo) *</Label>
             <Input
               id="version-name"
               value={versionName}
               onChange={(e) => setVersionName(e.target.value)}
               placeholder="Ex: Variação 1.0"
+              required
               onKeyDown={handleEnterToNextField}
             />
+            <p className="text-xs text-muted-foreground">
+              Este rótulo será exibido na tabela para identificar a variação.
+            </p>
           </div>
         </div>
         <DialogFooter>
