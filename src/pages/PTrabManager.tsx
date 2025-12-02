@@ -28,6 +28,7 @@ import { fetchUserCredits, updateUserCredits } from "@/lib/creditUtils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label"; // Adicionado Label
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -668,6 +669,9 @@ const PTrabManager = () => {
           <div className="flex gap-2">
             <Button onClick={() => navigate('/config/diretrizes')} variant="outline" size="icon" title="Configurações">
               <Settings className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => navigate('/config/visualizacao')} variant="outline" size="icon" title="Visualização">
+              <TrendingUp className="h-4 w-4" />
             </Button>
             <Button onClick={() => navigate('/config/ptrab-export-import')} variant="outline" size="icon" title="Exportar/Importar">
               <Download className="h-4 w-4" />
