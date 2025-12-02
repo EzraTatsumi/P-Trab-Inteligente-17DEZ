@@ -195,7 +195,7 @@ const PTrabManager = () => {
     return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
   };
 
-  const loadPTrabs = useCallback(async () => {
+  const loadPTrabs = async () => {
     try {
       const { data: pTrabsData, error: pTrabsError } = await supabase
         .from("p_trab")
@@ -292,39 +292,6 @@ const PTrabManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setPTrabs, setExistingPTrabNumbers, navigate, toast]);
-
-  useEffect(() => {
-    checkAuth();
-    loadPTrabs();
-  }, [loadPTrabs]);
-
-  // Efeito para atualizar o número sugerido no diálogo de clonagem
-  useEffect(() => {
-    if (ptrabToClone) {
-      let newSuggestedNumber = "";
-      
-      // Tanto 'new' quanto 'variation' agora geram um número de Minuta único
-      newSuggestedNumber = generateUniqueMinutaNumber(existingPTrabNumbers); 
-      
-      setSuggestedCloneNumber(newSuggestedNumber);
-      setCustomCloneNumber(newSuggestedNumber); // Inicializa o campo editável com a sugestão
-    }
-  }, [ptrabToClone, existingPTrabNumbers]); // Removido cloneType da dependência, pois a lógica é a mesma
-
-
-  const checkAuth = async () => {
-    const { data: { session } = {} } = await supabase.auth.getSession();
-    if (!session) {
-      navigate("/login");
-    }
-  };
-
-  const calculateDays = (inicio: string, fim: string) => {
-    const start = new Date(inicio);
-    const end = new Date(fim);
-    const diff = end.getTime() - start.getTime();
-    return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
   };
 
   const handleConfirmArchiveStatus = async () => {
@@ -915,7 +882,7 @@ const PTrabManager = () => {
   // LÓGICA DE CONSOLIDAÇÃO
   // =================================================================
 
-  const handleConfirmConsolidation = useCallback(async (
+  const handleConfirmConsolidation = async (
     sourcePTrabIds: string[],
     targetPTrabId: string | 'new',
     newPTrabNumber?: string,
@@ -932,12 +899,6 @@ const PTrabManager = () => {
       // 1. Determinar ou Criar o P Trab de Destino
       if (targetPTrabId === 'new') {
         if (!newPTrabNumber || !templatePTrabId) throw new Error("Dados de criação incompletos.");
-        
-        // Verifica se o número sugerido (ou customizado) já existe
-        const isDuplicate = isPTrabNumberDuplicate(newPTrabNumber, existingPTrabNumbers);
-        if (isDuplicate) {
-          throw new Error("O número sugerido já existe. Tente novamente ou use outro número.");
-        }
         
         // Usar o PTrab selecionado como template
         const templatePTrab = pTrabs.find(p => p.id === templatePTrabId);
@@ -1061,7 +1022,7 @@ const PTrabManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [existingPTrabNumbers, pTrabs, loadPTrabs]);
+  };
 
   const isConsolidationDisabled = pTrabs.length < 2;
   const consolidationTooltipText = "Consolidar dados de múltiplos P Trabs em um único destino.";
@@ -1419,9 +1380,9 @@ const PTrabManager = () => {
                     <TableCell>
                       <div className="flex flex-col items-start">
                         <span>{ptrab.nome_operacao}</span>
-                        {/* NOVO RÓTULO DE VERSÃO - AGORA SEM OPACIDADE */}
+                        {/* NOVO RÓTULO DE VERSÃO */}
                         {ptrab.comentario && ptrab.numero_ptrab.startsWith("Minuta") && (
-                          <Badge variant="secondary" className="mt-1 text-xs bg-secondary text-secondary-foreground">
+                          <Badge variant="secondary" className="mt-1 text-xs bg-secondary/20 text-secondary-foreground/80">
                             <GitBranch className="h-3 w-3 mr-1" />
                             {ptrab.comentario}
                           </Badge>
