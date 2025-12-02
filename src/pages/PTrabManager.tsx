@@ -566,8 +566,15 @@ const PTrabManager = () => {
     // 1. Limpar a sigla da OM para usar no sufixo
     const omSigla = ptrab.nome_om.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     
-    // 2. Gerar o número no novo padrão N/YYYY/OM_SIGLA
-    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSigla);
+    // 2. Gerar o número base (N/YYYY). O utilitário usa omSigla para verificar unicidade, mas pode retornar apenas N/YYYY.
+    const baseNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSigla);
+    
+    // 3. Garantir que a sigla da OM esteja no final do número sugerido (N/YYYY/OM_SIGLA)
+    let suggestedNumber = baseNumber;
+    if (omSigla && !baseNumber.includes(omSigla)) {
+        // Se a sigla da OM não estiver presente, anexa-a.
+        suggestedNumber = `${baseNumber.replace(/\/$/, '')}/${omSigla}`;
+    }
     
     setPtrabToApprove(ptrab);
     setSuggestedApproveNumber(suggestedNumber);
