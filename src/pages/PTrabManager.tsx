@@ -1414,7 +1414,9 @@ const PTrabManager = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        {needsNumbering(ptrab) ? (
+                        
+                        {/* Botão Numerar: Aparece APENAS se precisar de numeração */}
+                        {needsNumbering(ptrab) && (
                           <Button
                             onClick={() => handleOpenApproveDialog(ptrab)}
                             size="sm"
@@ -1424,17 +1426,18 @@ const PTrabManager = () => {
                             <CheckCircle className="h-4 w-4" />
                             Numerar
                           </Button>
-                        ) : (
-                          <Button
-                            onClick={() => handleSelectPTrab(ptrab.id)}
-                            size="sm"
-                            className="flex items-center gap-2"
-                            disabled={!isEditable}
-                          >
-                            <FileText className="h-4 w-4" />
-                            Preencher
-                          </Button>
                         )}
+
+                        {/* Botão Preencher: Aparece SEMPRE, mas desabilitado se não for editável */}
+                        <Button
+                          onClick={() => handleSelectPTrab(ptrab.id)}
+                          size="sm"
+                          className="flex items-center gap-2"
+                          disabled={!isEditable}
+                        >
+                          <FileText className="h-4 w-4" />
+                          Preencher
+                        </Button>
                         
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -1506,7 +1509,7 @@ const PTrabManager = () => {
           <AlertDialogFooter>
             <AlertDialogAction onClick={handleConfirmReactivateStatus}>Confirmar Reativação</AlertDialogAction>
             <AlertDialogCancel onClick={handleCancelReactivateStatus}>Cancelar</AlertDialogCancel>
-          </AlertDialogFooter>
+          </DialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
