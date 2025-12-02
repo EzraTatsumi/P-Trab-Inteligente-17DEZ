@@ -1297,6 +1297,7 @@ const PTrabManager = () => {
                 {pTrabs.map((ptrab) => {
                   const originBadge = getOriginBadge(ptrab.origem);
                   const isNumbered = !needsNumbering(ptrab);
+                  const isEditable = ptrab.status !== 'completo' && ptrab.status !== 'arquivado';
                   
                   return (
                   <TableRow key={ptrab.id}>
@@ -1428,7 +1429,7 @@ const PTrabManager = () => {
                             onClick={() => handleSelectPTrab(ptrab.id)}
                             size="sm"
                             className="flex items-center gap-2"
-                            disabled={ptrab.status === 'completo' || ptrab.status === 'arquivado'}
+                            disabled={!isEditable}
                           >
                             <FileText className="h-4 w-4" />
                             Preencher
