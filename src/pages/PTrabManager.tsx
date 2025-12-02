@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { useSession } from "@/components/SessionContextProvider";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, FileText, Pencil, Trash2, Copy, GitBranch, Check, AlertCircle, Loader2, RefreshCw, Settings, TrendingUp, MessageSquare, UploadCloud, Download } from "lucide-react";
+import { ArrowLeft, Plus, FileText, Pencil, Trash2, Copy, GitBranch, Check, AlertCircle, Loader2, RefreshCw, Settings, TrendingUp, MessageSquare, UploadCloud, Download, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,7 @@ import { OMData } from "@/lib/omUtils";
 import { formatCurrency } from "@/lib/formatUtils";
 import { generateUniqueMinutaNumber, isPTrabNumberDuplicate, generateApprovalPTrabNumber } from "@/lib/ptrabNumberUtils";
 import { sanitizeError } from "@/lib/errorUtils";
+import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
 import { CloneVariationDialog } from "@/components/CloneVariationDialog";
 import { CreditInputDialog } from "@/components/CreditInputDialog";
@@ -85,7 +86,7 @@ const PTrabManager = () => {
   });
 
   // Fetch PTrabs
-  const { data: pTrabs, isLoading: isLoadingPTrabs, refetch: refetchPTrabs } = useQuery({
+  const { data: pTrabs, isLoading: isLoadingPTrabs } = useQuery({
     queryKey: ['pTrabs', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -155,6 +156,9 @@ const PTrabManager = () => {
 
     return filtered;
   }, [pTrabs, filterStatus, searchTerm]);
+
+  // Variável de carregamento consolidada
+  const isDataLoading = isLoadingPTrabs || loadingSession || isLoadingOms;
 
   // --- Funções de Clonagem ---
 
@@ -294,10 +298,16 @@ const PTrabManager = () => {
   };
 
   // Fluxo 1: Clonagem Simples (Novo P Trab)
+  const handleClone = (ptrab: PTrab) => {
+    setPTrabToClone(ptrab);
+    setCloneType('new');
+    setIsCloneDialogOpen(true);
+  };
+
   const handleConfirmCloneNew = async () => {
     if (!ptrabToClone || !customCloneNumber.trim()) return;
     
-    const newPTrabId = await executeCloningProcess(ptrabToClone, customCloneNumber, cloneVersionName, false);
+    const newPTrabId = await executeCloningProcess(ptrabToClone, customCloneNumber, null, false);
     
     if (newPTrabId) {
       setIsCloneDialogOpen(false);
@@ -309,7 +319,6 @@ const PTrabManager = () => {
   const handleVariationClick = (ptrab: PTrab) => {
     setPTrabToClone(ptrab);
     setCloneType('variation');
-    setCloneVersionName(`Variação ${ptrab.numero_ptrab.split('.').pop() || '1'}`); // Sugere nome da versão
     setShowCloneVariationDialog(true);
   };
 
@@ -317,6 +326,7 @@ const PTrabManager = () => {
   const handleConfirmCloneVariation = async (versionName: string) => {
     if (!ptrabToClone || !suggestedCloneNumber.trim()) return;
     
+    // O suggestedCloneNumber já é o Minuta-N
     const newPTrabId = await executeCloningProcess(ptrabToClone, suggestedCloneNumber, versionName, true);
     
     if (newPTrabId) {
@@ -326,11 +336,6 @@ const PTrabManager = () => {
   };
 
   // --- Handlers de Ação (Continuação) ---
-
-  const handleEdit = (ptrab: PTrab) => {
-    // Redireciona para a tela de edição de cabeçalho (que não existe mais, então vamos para o formulário)
-    navigate(`/ptrab/form?ptrabId=${ptrab.id}`);
-  };
 
   const handleDeleteClick = (ptrab: PTrab) => {
     setPTrabToDelete(ptrab);
@@ -356,6 +361,34 @@ const PTrabManager = () => {
     } finally {
       setIsDeleteDialogOpen(false);
       setPTrabToDelete(null);
+    }
+  };
+
+  const handleStatusChange = async (ptrab: PTrab, newStatus: string) => {
+    if (newStatus === 'minuta' && ptrab.origem !== 'original' && ptrab.origem !== 'variacao') {
+      toast.error("Apenas P Trabs originais ou variações podem ser alterados para Minuta.");
+      return;
+    }
+    
+    if (newStatus === 'completo' || newStatus === 'arquivado') {
+      if (!confirm(`Tem certeza que deseja alterar o status de ${ptrab.numero_ptrab} para "${newStatus.toUpperCase()}"?`)) {
+        return;
+      }
+    }
+
+    try {
+      const { error } = await supabase
+        .from('p_trab')
+        .update({ status: newStatus })
+        .eq('id', ptrab.id)
+        .eq('user_id', user!.id);
+
+      if (error) throw error;
+
+      toast.success(`Status de ${ptrab.numero_ptrab} atualizado para ${newStatus.toUpperCase()}!`);
+      queryClient.invalidateQueries({ queryKey: ['pTrabs', user!.id] });
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
     }
   };
 
@@ -552,11 +585,79 @@ const PTrabManager = () => {
     navigate("/");
   };
 
-  const calculateDays = (inicio: string, fim: string) => {
-    const start = new Date(inicio);
-    const end = new Date(fim);
-    const diff = end.getTime() - start.getTime();
-    return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
+  // --- Handlers de Crédito ---
+  const handleSaveCredit = (gnd3: number, gnd4: number) => {
+    if (!user?.id) {
+      toast.error("Erro: Usuário não identificado para salvar créditos.");
+      return;
+    }
+    saveCreditsMutation.mutate({ gnd3, gnd4 });
+  };
+
+  const saveCreditsMutation = useMutation({
+    mutationFn: ({ gnd3, gnd4 }: { gnd3: number, gnd4: number }) => 
+      updateUserCredits(user!.id, gnd3, gnd4),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userCredits', user?.id] });
+      toast.success("Créditos disponíveis atualizados e salvos!");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Falha ao salvar créditos.");
+    }
+  });
+
+  const handlePromptConfirm = () => {
+    setShowCreditPromptDialog(false);
+    setShowCreditDialog(true);
+  };
+  
+  const handlePromptCancel = () => {
+    setShowCreditPromptDialog(false);
+  };
+
+  // Efeito para verificar se deve mostrar o prompt de crédito
+  useEffect(() => {
+    if (!isLoadingCredits && !loadingSession && user?.id && !hasCheckedCredits) {
+      const gnd3 = Number(credits.credit_gnd3);
+      const gnd4 = Number(credits.credit_gnd4);
+      
+      if (gnd3 === 0 && gnd4 === 0) {
+        setShowCreditPromptDialog(true);
+      }
+      setHasCheckedCredits(true);
+    }
+  }, [isLoadingCredits, loadingSession, user?.id, credits, hasCheckedCredits]);
+
+  // --- Renderização ---
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'minuta':
+        return <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-300">Minuta</Badge>;
+      case 'aberto':
+        return <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">Aberto</Badge>;
+      case 'em_andamento':
+        return <Badge variant="default" className="bg-orange-500 hover:bg-orange-600">Em Andamento</Badge>;
+      case 'completo':
+        return <Badge variant="default" className="bg-green-600 hover:bg-green-700">Completo</Badge>;
+      case 'arquivado':
+        return <Badge variant="secondary" className="bg-gray-500 hover:bg-gray-600">Arquivado</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  const getOriginBadge = (origem: string) => {
+    switch (origem) {
+      case 'importado':
+        return <Badge variant="outline" className="bg-purple-100 text-purple-600 border-purple-300">Importado</Badge>;
+      case 'variacao':
+        return <Badge variant="outline" className="bg-yellow-100 text-yellow-600 border-yellow-300">Variação</Badge>;
+      case 'consolidado':
+        return <Badge variant="outline" className="bg-teal-100 text-teal-600 border-teal-300">Consolidado</Badge>;
+      default:
+        return null;
+    }
   };
 
   return (
