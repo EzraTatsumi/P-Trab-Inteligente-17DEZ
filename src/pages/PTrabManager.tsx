@@ -1380,9 +1380,9 @@ const PTrabManager = () => {
                     <TableCell>
                       <div className="flex flex-col items-start">
                         <span>{ptrab.nome_operacao}</span>
-                        {/* NOVO RÓTULO DE VERSÃO */}
+                        {/* NOVO RÓTULO DE VERSÃO - AGORA SEM OPACIDADE */}
                         {ptrab.comentario && ptrab.numero_ptrab.startsWith("Minuta") && (
-                          <Badge variant="secondary" className="mt-1 text-xs bg-secondary/20 text-secondary-foreground/80">
+                          <Badge variant="secondary" className="mt-1 text-xs">
                             <GitBranch className="h-3 w-3 mr-1" />
                             {ptrab.comentario}
                           </Badge>
@@ -1713,7 +1713,7 @@ const PTrabManager = () => {
         open={showConsolidationDialog}
         onOpenChange={setShowConsolidationDialog}
         pTrabsList={pTrabs.map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))}
-        existingPTrabNumbers={existingPTrabNumbers}
+        existingPTrabNumbers={existingPTrabsNumbers}
         onConfirm={handleConfirmConsolidation}
         loading={loading}
       />
