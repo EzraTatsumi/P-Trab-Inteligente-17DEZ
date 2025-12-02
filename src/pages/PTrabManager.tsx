@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -43,6 +43,7 @@ import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { HelpDialog } from "@/components/HelpDialog";
+import { CloneVariationDialog } from "@/components/CloneVariationDialog"; // NOVO IMPORT
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -80,6 +81,7 @@ const PTrabManager = () => {
 
   // Novos estados para o diálogo de clonagem
   const [showCloneOptionsDialog, setShowCloneOptionsDialog] = useState(false);
+  const [showCloneVariationDialog, setShowCloneVariationDialog] = useState(false); // NOVO
   const [ptrabToClone, setPtrabToClone] = useState<PTrab | null>(null);
   const [cloneType, setCloneType, ] = useState<'new' | 'variation'>('new');
   const [suggestedCloneNumber, setSuggestedCloneNumber] = useState<string>("");
@@ -579,27 +581,55 @@ const PTrabManager = () => {
     setShowCloneOptionsDialog(true);
   };
 
-  // Função para confirmar a clonagem a partir do diálogo
-  const handleConfirmClone = async () => {
-    if (!ptrabToClone || !customCloneNumber.trim()) {
-      toast.error("Número do P Trab para o clone é obrigatório.");
+  // Função para confirmar a clonagem a partir do diálogo de opções
+  const handleConfirmCloneOptions = () => {
+    if (!ptrabToClone) return;
+
+    if (cloneType === 'new') {
+      // Fluxo 1: Novo P Trab (abre o diálogo de edição)
+      setShowCloneOptionsDialog(false);
+      
+      // Preenche o formulário de edição com os dados clonados e o novo número
+      const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = ptrabToClone;
+      
+      setEditingId(null); // Garante que é uma nova inserção
+      setSelectedOmId(ptrabToClone.codug_om ? 'temp' : undefined); // Placeholder para forçar a seleção da OM
+      setFormData({
+        ...restOfPTrab,
+        numero_ptrab: suggestedCloneNumber, // Usa o número sequencial sugerido
+        status: "aberto",
+        origem: 'original',
+      });
+      
+      // Abre o diálogo de edição para o usuário revisar e salvar
+      setDialogOpen(true);
+      
+    } else {
+      // Fluxo 2: Variação do Trabalho (abre o diálogo de nome da versão)
+      setShowCloneOptionsDialog(false);
+      setShowCloneVariationDialog(true);
+    }
+  };
+  
+  // Função para confirmar a clonagem de variação (chamada pelo CloneVariationDialog)
+  const handleConfirmCloneVariation = async (versionName: string) => {
+    if (!ptrabToClone || !suggestedCloneNumber.trim()) {
+      toast.error("Erro: Dados de clonagem incompletos.");
       return;
     }
-
-    // Validação de número de P Trab único para o novo clone
-    const isDuplicate = isPTrabNumberDuplicate(customCloneNumber, existingPTrabNumbers);
-
-    if (isDuplicate) {
-      toast.error("Já existe um P Trab com este número. Por favor, proponha outro.");
-      return;
-    }
-
-    // Não fechar o diálogo aqui - deixar executeCloningProcess fazer isso após sucesso
-    await executeCloningProcess(ptrabToClone.id, customCloneNumber);
+    
+    // O número de variação já foi calculado em suggestedCloneNumber
+    const newNumeroPTrab = suggestedCloneNumber;
+    
+    // 1. Executar a clonagem
+    await executeCloningProcess(ptrabToClone.id, newNumeroPTrab, versionName);
+    
+    // 2. Fechar o diálogo de variação
+    setShowCloneVariationDialog(false);
   };
 
   // Função para executar o processo de clonagem
-  const executeCloningProcess = async (originalPTrabId: string, newNumeroPTrab: string) => {
+  const executeCloningProcess = async (originalPTrabId: string, newNumeroPTrab: string, versionName: string | null = null) => {
     setLoading(true);
     try {
       // 1. Fetch the original PTrab
@@ -626,6 +656,7 @@ const PTrabManager = () => {
         status: "aberto",
         user_id: (await supabase.auth.getUser()).data.user?.id!,
         origem: typedOriginalPTrab.origem,
+        comentario: versionName || typedOriginalPTrab.comentario, // Salva o nome da versão no comentário
       };
 
       const { data: newPTrab, error: insertPTrabError } = await supabase
@@ -778,7 +809,7 @@ const PTrabManager = () => {
       toast.success(`P Trab ${newNumeroPTrab} clonado com sucesso!`);
       await loadPTrabs();
       
-      // Limpar todos os estados relacionados ao diálogo de clonagem
+      // Limpar estados de clonagem
       setPtrabToClone(null);
       setCloneType('new');
       setSuggestedCloneNumber("");
@@ -1318,7 +1349,18 @@ const PTrabManager = () => {
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell>{ptrab.nome_operacao}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col items-start">
+                        <span>{ptrab.nome_operacao}</span>
+                        {/* NOVO RÓTULO DE VERSÃO */}
+                        {ptrab.comentario && ptrab.numero_ptrab.includes('.') && (
+                          <Badge variant="secondary" className="mt-1 text-xs bg-secondary/20 text-secondary-foreground/80">
+                            <GitBranch className="h-3 w-3 mr-1" />
+                            {ptrab.comentario}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-center">
                       <div>
                         {new Date(ptrab.periodo_inicio).toLocaleDateString('pt-BR')} - {new Date(ptrab.periodo_fim).toLocaleDateString('pt-BR')}
@@ -1450,7 +1492,6 @@ const PTrabManager = () => {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => handleNavigateToPrintOrExport(ptrab.id)}
-                              // REMOVIDO: disabled={!isNumbered}
                             >
                               <Printer className="mr-2 h-4 w-4" />
                               Visualizar Impressão
@@ -1533,9 +1574,9 @@ const PTrabManager = () => {
                 className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary"
               >
                 <RadioGroupItem id="clone-new" value="new" className="sr-only" />
-                <span className="mb-3 text-lg font-semibold">Novo Trabalho</span>
+                <span className="mb-3 text-lg font-semibold">Novo P Trab</span>
                 <p className="text-sm text-muted-foreground text-center">
-                  Cria um P Trab totalmente novo com o próximo número disponível.
+                  Cria um P Trab totalmente novo com o próximo número sequencial.
                 </p>
               </Label>
               <Label
@@ -1549,27 +1590,26 @@ const PTrabManager = () => {
                 </p>
               </Label>
             </RadioGroup>
-
-            <div className="space-y-2">
-              <Label htmlFor="clone-number">Número do Novo P Trab</Label>
-              <Input
-                id="clone-number"
-                value={customCloneNumber}
-                onChange={(e) => setCustomCloneNumber(e.target.value)}
-                placeholder={suggestedCloneNumber}
-                maxLength={50}
-                onKeyDown={handleEnterToNextField}
-              />
-            </div>
           </div>
           <DialogFooter>
-            <Button type="button" onClick={handleConfirmClone}>Confirmar Clone</Button>
+            <Button type="button" onClick={handleConfirmCloneOptions}>Continuar</Button>
             <DialogClose asChild>
               <Button type="button" variant="outline">Cancelar</Button>
             </DialogClose>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Diálogo de Variação do Trabalho (NOVO) */}
+      {ptrabToClone && (
+        <CloneVariationDialog
+          open={showCloneVariationDialog}
+          onOpenChange={setShowCloneVariationDialog}
+          originalNumber={ptrabToClone.numero_ptrab}
+          suggestedCloneNumber={suggestedCloneNumber}
+          onConfirm={handleConfirmCloneVariation}
+        />
+      )}
 
       {/* Dialog de Comentário */}
       <Dialog open={showComentarioDialog} onOpenChange={setShowComentarioDialog}>
