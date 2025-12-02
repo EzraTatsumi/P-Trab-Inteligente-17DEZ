@@ -1,84 +1,99 @@
-import { useState } from "react";
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { HelpCircle, Shield, Mail, Info } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { HelpCircle, Code, FileText, Loader2, BookOpen, ShieldCheck } from "lucide-react"; // Importar ShieldCheck
+import { MarkdownAccordion } from './MarkdownAccordion';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-export const HelpDialog = () => {
+// Importar o conteúdo dos arquivos Markdown como strings
+import architectureContent from '@/docs/Architecture.md?raw';
+import businessRulesContent from '@/docs/BusinessRules.md?raw';
+import userGuideContent from '@/docs/UserGuide.md?raw';
+import securityComplianceContent from '@/docs/SecurityCompliance.md?raw'; // NOVO IMPORT
+
+export const HelpDialog: React.FC = () => {
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   
-  // Hardcoded version for now
-  const appVersion = "v1.0.0-beta"; 
+  // Simular um pequeno atraso para garantir que o conteúdo seja carregado
+  useEffect(() => {
+    if (open) {
+      setLoading(true);
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon">
+        <Button variant="outline" size="icon" title="Ajuda e Documentação">
           <HelpCircle className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-primary">
-            <Shield className="h-5 w-5" />
-            Sobre o PTrab Inteligente
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
+        <DialogHeader className="p-6 pb-0">
+          <DialogTitle className="flex items-center gap-2">
+            <HelpCircle className="h-6 w-6 text-primary" />
+            Ajuda e Documentação
           </DialogTitle>
-          <DialogDescription>
-            Informações sobre a versão atual e suporte.
-          </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
-          <div className="flex justify-between items-center">
-            <span className="font-medium text-sm">Versão do Sistema</span>
-            <Badge variant="secondary" className="text-base font-bold">
-              {appVersion}
-            </Badge>
+        <Tabs defaultValue="user-guide" className="flex flex-col flex-1 overflow-hidden">
+          <TabsList className="mx-6 mt-4 grid grid-cols-4 w-[calc(100%-3rem)]"> {/* Ajustado para 4 colunas */}
+            <TabsTrigger value="user-guide" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Guia
+            </TabsTrigger>
+            <TabsTrigger value="business-rules" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Regras
+            </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center gap-2"> {/* Nova aba */}
+              <ShieldCheck className="h-4 w-4" />
+              Segurança
+            </TabsTrigger>
+            <TabsTrigger value="architecture" className="flex items-center gap-2">
+              <Code className="h-4 w-4" />
+              Arquitetura
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="flex-1 overflow-hidden px-6 pb-6 pt-4">
+            {loading ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Carregando documentação...</span>
+              </div>
+            ) : (
+              <>
+                <TabsContent value="user-guide" className="mt-0 h-full">
+                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                    <MarkdownAccordion content={userGuideContent} />
+                  </ScrollArea>
+                </TabsContent>
+                <TabsContent value="business-rules" className="mt-0 h-full">
+                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                    <MarkdownAccordion content={businessRulesContent} />
+                  </ScrollArea>
+                </TabsContent>
+                <TabsContent value="security" className="mt-0 h-full"> {/* Novo conteúdo */}
+                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                    <MarkdownAccordion content={securityComplianceContent} />
+                  </ScrollArea>
+                </TabsContent>
+                <TabsContent value="architecture" className="mt-0 h-full">
+                  <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                    <MarkdownAccordion content={architectureContent} />
+                  </ScrollArea>
+                </TabsContent>
+              </>
+            )}
           </div>
-          
-          <Separator />
-          
-          <div className="space-y-2">
-            <h4 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground">
-                <Info className="h-4 w-4" />
-                Desenvolvimento
-            </h4>
-            <p className="text-sm text-foreground">
-                Plataforma desenvolvida pelo Exército Brasileiro em parceria com a TATSUMI.
-            </p>
-          </div>
-          
-          <div className="space-y-2">
-            <h4 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground">
-                <Mail className="h-4 w-4" />
-                Suporte Técnico
-            </h4>
-            <p className="text-sm text-foreground">
-                Para dúvidas ou problemas, entre em contato:
-            </p>
-            <a 
-                href="mailto:suporte@ptrab.eb.mil.br" 
-                className="text-primary hover:underline text-sm font-medium block"
-            >
-                suporte@ptrab.eb.mil.br
-            </a>
-          </div>
-        </div>
-        
-        <DialogFooter>
-          <Button onClick={() => setOpen(false)}>
-            Fechar
-          </Button>
-        </DialogFooter>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
