@@ -103,8 +103,7 @@ const PTrabManager = () => {
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [ptrabToApprove, setPtrabToApprove] = useState<PTrab | null>(null);
   const [suggestedApproveNumber, setSuggestedApproveNumber] = useState<string>("");
-  // NOVO ESTADO: Sigla da OM limpa para o placeholder
-  const [omSiglaLimpa, setOmSiglaLimpa] = useState<string>("");
+  // REMOVIDO: omSiglaLimpa não é mais necessário como estado
 
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
@@ -565,15 +564,15 @@ const PTrabManager = () => {
 
   // Função para abrir o diálogo de aprovação
   const handleOpenApproveDialog = (ptrab: PTrab) => {
-    // 1. Limpar a sigla da OM para usar no sufixo
-    const omSigla = ptrab.nome_om.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    // 1. Limpar a sigla da OM para usar no sufixo do número oficial (necessário para padronização)
+    const omSiglaLimpa = ptrab.nome_om.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     
-    // 2. Gerar o número no novo padrão N/YYYY/OM_SIGLA
-    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSigla);
+    // 2. Gerar o número no novo padrão N/YYYY/OM_SIGLA_LIMPA
+    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSiglaLimpa);
     
     setPtrabToApprove(ptrab);
     setSuggestedApproveNumber(suggestedNumber);
-    setOmSiglaLimpa(omSigla); // Salva a sigla limpa para o placeholder
+    // REMOVIDO: setOmSiglaLimpa(omSigla);
     setShowApproveDialog(true);
   };
 
@@ -1696,7 +1695,7 @@ const PTrabManager = () => {
                 id="approve-number"
                 value={suggestedApproveNumber}
                 onChange={(e) => setSuggestedApproveNumber(e.target.value)}
-                placeholder={`Ex: N${yearSuffix}/${omSiglaLimpa}`}
+                placeholder={`Ex: N${yearSuffix}/${ptrabToApprove?.nome_om}`}
                 maxLength={50}
                 onKeyDown={handleEnterToNextField}
               />
