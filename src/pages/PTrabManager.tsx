@@ -13,7 +13,7 @@ import {
   DialogTrigger,
   DialogFooter,
   DialogClose,
-  DialogDescription // Adicionado DialogDescription
+  DialogDescription
 } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -106,8 +106,8 @@ const PTrabManager = () => {
     setEditingId(null);
     setSelectedOmId(undefined);
     setFormData({
-      // Inicializa o número do PTrab como vazio
-      numero_ptrab: "", 
+      // Inicializa o número do PTrab como 'Minuta'
+      numero_ptrab: "Minuta", 
       comando_militar_area: "",
       nome_om: "",
       nome_om_extenso: "",
@@ -127,7 +127,7 @@ const PTrabManager = () => {
   }, []);
 
   const [formData, setFormData] = useState({
-    numero_ptrab: "", // Inicializa vazio
+    numero_ptrab: "Minuta", // Inicializa como 'Minuta'
     comando_militar_area: "",
     nome_om: "",
     nome_om_extenso: "",
@@ -435,10 +435,12 @@ const PTrabManager = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Se estiver editando e o número foi alterado, ou se estiver criando e o número foi preenchido, valida a unicidade
-      if (formData.numero_ptrab.trim()) {
-        const isDuplicate = isPTrabNumberDuplicate(formData.numero_ptrab, existingPTrabNumbers) && 
-                           formData.numero_ptrab !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
+      const currentNumber = formData.numero_ptrab.trim();
+      
+      // Validação: Se o número não for "Minuta", ele deve ser único (exceto se for o próprio registro em edição)
+      if (currentNumber && currentNumber !== "Minuta") {
+        const isDuplicate = isPTrabNumberDuplicate(currentNumber, existingPTrabNumbers) && 
+                           currentNumber !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
 
         if (isDuplicate) {
           toast.error("Já existe um P Trab com este número. Por favor, proponha outro.");
@@ -447,13 +449,16 @@ const PTrabManager = () => {
         }
       }
       
-      // Se estiver criando, o numero_ptrab pode ser vazio. Se estiver editando, usa o valor atual.
+      // Se estiver criando, o numero_ptrab deve ser "Minuta" se o usuário não o alterou.
+      // Se estiver editando, o valor atual é mantido.
+      const finalNumeroPTrab = editingId ? currentNumber : (currentNumber || "Minuta");
+
       const ptrabData = {
         ...formData,
         user_id: user.id,
         origem: editingId ? formData.origem : 'original',
-        // Garante que o numero_ptrab seja salvo como null se estiver vazio
-        numero_ptrab: formData.numero_ptrab.trim() || "", 
+        // Garante que o numero_ptrab seja salvo como 'Minuta' ou o valor customizado
+        numero_ptrab: finalNumeroPTrab, 
       };
 
       if (editingId) {
@@ -972,8 +977,8 @@ const PTrabManager = () => {
 
   // Função para verificar se o PTrab precisa ser numerado
   const needsNumbering = (ptrab: PTrab) => {
-    // Verifica se o numero_ptrab é vazio ou não termina com /YYYY (formato de número oficial)
-    return !ptrab.numero_ptrab || !ptrab.numero_ptrab.endsWith(yearSuffix);
+    // Verifica se o numero_ptrab é "Minuta" ou não termina com /YYYY (formato de número oficial)
+    return ptrab.numero_ptrab === "Minuta" || !ptrab.numero_ptrab || !ptrab.numero_ptrab.endsWith(yearSuffix);
   };
 
   return (
@@ -1003,15 +1008,16 @@ const PTrabManager = () => {
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* L1L: Número do P Trab (Agora opcional na criação) */}
+                    {/* L1L: Número do P Trab (Agora Minuta/Obrigatório) */}
                     <div className="space-y-2">
-                      <Label htmlFor="numero_ptrab">Número do P Trab (Opcional)</Label>
+                      <Label htmlFor="numero_ptrab">Número do P Trab *</Label>
                       <Input
                         id="numero_ptrab"
                         value={formData.numero_ptrab}
                         onChange={handleNumeroPTrabChange}
-                        placeholder={`Será numerado após aprovação (Ex: 1${yearSuffix})`}
+                        placeholder="Minuta"
                         maxLength={50}
+                        required
                         onKeyDown={handleEnterToNextField}
                       />
                       <p className="text-xs text-muted-foreground">
@@ -1285,7 +1291,9 @@ const PTrabManager = () => {
                   <TableRow key={ptrab.id}>
                     <TableCell className="font-medium">
                       <div className="flex flex-col items-center">
-                        {isNumbered ? (
+                        {ptrab.numero_ptrab === "Minuta" ? (
+                          <span className="text-red-500 font-bold">MINUTA</span>
+                        ) : isNumbered ? (
                           <span>{ptrab.numero_ptrab}</span>
                         ) : (
                           <span className="text-red-500 font-bold">PENDENTE</span>
