@@ -103,6 +103,8 @@ const PTrabManager = () => {
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [ptrabToApprove, setPtrabToApprove] = useState<PTrab | null>(null);
   const [suggestedApproveNumber, setSuggestedApproveNumber] = useState<string>("");
+  // NOVO ESTADO: Sigla da OM limpa para o placeholder
+  const [omSiglaLimpa, setOmSiglaLimpa] = useState<string>("");
 
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
@@ -571,6 +573,7 @@ const PTrabManager = () => {
     
     setPtrabToApprove(ptrab);
     setSuggestedApproveNumber(suggestedNumber);
+    setOmSiglaLimpa(omSigla); // Salva a sigla limpa para o placeholder
     setShowApproveDialog(true);
   };
 
@@ -1693,7 +1696,7 @@ const PTrabManager = () => {
                 id="approve-number"
                 value={suggestedApproveNumber}
                 onChange={(e) => setSuggestedApproveNumber(e.target.value)}
-                placeholder={`Ex: N${yearSuffix}/${ptrabToApprove?.nome_om}`}
+                placeholder={`Ex: N${yearSuffix}/${omSiglaLimpa}`}
                 maxLength={50}
                 onKeyDown={handleEnterToNextField}
               />
