@@ -42,7 +42,7 @@ export const generateVariationPTrabNumber = (originalPTrabNumber: string, existi
   const year = parts[1] || String(currentYear);
 
   const baseNumberMatch = baseNumberAndYear.match(/^(\d+)/);
-  const baseNumber = baseNumberMatch ? baseNumberMatch[1] : '';
+  const baseNumber = baseNumberMatch ? baseNumberAndYear.split('.')[0] : ''; // Use base number before variation dot
 
   if (!baseNumber) return `1.1${yearSuffix}`;
 
@@ -57,6 +57,45 @@ export const generateVariationPTrabNumber = (originalPTrabNumber: string, existi
   const maxVariation = variationNumbers.length > 0 ? Math.max(...variationNumbers) : 0;
   return `${baseNumber}.${maxVariation + 1}${yearSuffix}`;
 };
+
+/**
+ * Generates the next sequential PTrab number in the format N/YYYY/OM_SIGLA.
+ * @param existingNumbers Array of existing PTrab numbers.
+ * @param omSigla The OM Sigla to append.
+ * @returns The next unique number in the new format.
+ */
+export const generateApprovalPTrabNumber = (existingNumbers: string[], omSigla: string): string => {
+  const currentYearStr = String(currentYear);
+  const omSuffix = omSigla.toUpperCase().replace(/[^A-Z0-9]/g, ''); // Clean OM Sigla
+  
+  // 1. Find the largest base number for the current year, regardless of OM Sigla
+  // We look for numbers matching the pattern N/YYYY/OM_SIGLA or N/YYYY
+  const numbersForCurrentYear = existingNumbers
+    .filter(num => num && typeof num === 'string' && num.includes(`/${currentYearStr}`))
+    .map(num => {
+      const parts = num.split('/');
+      // If format is N/YYYY/OM, take N
+      if (parts.length === 3) return parseInt(parts[0]);
+      // If format is N/YYYY, take N
+      if (parts.length === 2 && !parts[0].includes('.')) return parseInt(parts[0]);
+      return NaN;
+    })
+    .filter(num => !isNaN(num));
+
+  let maxNumber = numbersForCurrentYear.length > 0 ? Math.max(...numbersForCurrentYear) : 0;
+  
+  let nextNumber = maxNumber + 1;
+  let suggestedNumber = `${nextNumber}${yearSuffix}/${omSuffix}`;
+
+  // 2. Ensure the suggested number is unique
+  while (isPTrabNumberDuplicate(suggestedNumber, existingNumbers)) {
+    nextNumber++;
+    suggestedNumber = `${nextNumber}${yearSuffix}/${omSuffix}`;
+  }
+  
+  return suggestedNumber;
+};
+
 
 /**
  * Checks if a PTrab number already exists in the list.

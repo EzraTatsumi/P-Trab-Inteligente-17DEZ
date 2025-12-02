@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatCurrency } from "@/lib/formatUtils";
-import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils";
+import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate, generateApprovalPTrabNumber } from "@/lib/ptrabNumberUtils";
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
@@ -519,7 +519,12 @@ const PTrabManager = () => {
 
   // Função para abrir o diálogo de aprovação
   const handleOpenApproveDialog = (ptrab: PTrab) => {
-    const suggestedNumber = generateUniquePTrabNumber(existingPTrabNumbers);
+    // 1. Limpar a sigla da OM para usar no sufixo
+    const omSigla = ptrab.nome_om.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    
+    // 2. Gerar o número no novo padrão N/YYYY/OM_SIGLA
+    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSigla);
+    
     setPtrabToApprove(ptrab);
     setSuggestedApproveNumber(suggestedNumber);
     setShowApproveDialog(true);
@@ -978,7 +983,7 @@ const PTrabManager = () => {
   // Função para verificar se o PTrab precisa ser numerado
   const needsNumbering = (ptrab: PTrab) => {
     // Verifica se o numero_ptrab é "Minuta" ou não termina com /YYYY (formato de número oficial)
-    return ptrab.numero_ptrab === "Minuta" || !ptrab.numero_ptrab || !ptrab.numero_ptrab.endsWith(yearSuffix);
+    return ptrab.numero_ptrab === "Minuta" || !ptrab.numero_ptrab || !ptrab.numero_ptrab.includes(yearSuffix);
   };
 
   return (
@@ -1019,9 +1024,15 @@ const PTrabManager = () => {
                         maxLength={50}
                         required
                         onKeyDown={handleEnterToNextField}
+                        // NEW: Disable if it's "Minuta"
+                        disabled={formData.numero_ptrab === "Minuta"}
+                        className={formData.numero_ptrab === "Minuta" ? "bg-muted/50 cursor-not-allowed" : ""}
                       />
                       <p className="text-xs text-muted-foreground">
-                        O número oficial será atribuído após a aprovação.
+                        {formData.numero_ptrab === "Minuta" 
+                          ? "A numeração oficial (padrão: número/ano/OM) será atribuída após a aprovação."
+                          : "O número oficial já foi atribuído."
+                        }
                       </p>
                     </div>
                     {/* L1R: Nome da Operação */}
@@ -1605,12 +1616,12 @@ const PTrabManager = () => {
                 id="approve-number"
                 value={suggestedApproveNumber}
                 onChange={(e) => setSuggestedApproveNumber(e.target.value)}
-                placeholder={`Ex: 1${yearSuffix}`}
+                placeholder={`Ex: 1${yearSuffix}/${ptrabToApprove?.nome_om.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()}`}
                 maxLength={50}
                 onKeyDown={handleEnterToNextField}
               />
               <p className="text-xs text-muted-foreground">
-                Sugestão: {generateUniquePTrabNumber(existingPTrabNumbers)}
+                Padrão sugerido: Número/Ano/Sigla da OM.
               </p>
             </div>
           </div>

@@ -19,6 +19,7 @@ Permite combinar os registros de Classe I, II e III de múltiplos P Trabs de ori
 - **Visualizar Impressão (Ação):** Abre a tela de visualização do P Trab no formato oficial, permitindo exportação para PDF e Excel.
 - **Clonar P Trab (Ação):** Cria uma cópia exata do P Trab, incluindo todos os registros de Classes I, II, III e a Referência LPC, com um novo número sequencial.
 - **Comentário (Ícone):** Permite adicionar ou editar um comentário interno sobre o P Trab.
+- **Numerar (Botão):** Disponível para P Trabs em status "Minuta". Permite atribuir o número oficial no padrão **Número/Ano/Sigla da OM** e alterar o status para "Em Andamento".
 
 ## 2. Configurações
 
