@@ -1347,6 +1347,7 @@ const PTrabManager = () => {
               <TableBody>
                 {pTrabs.map((ptrab) => {
                   const originBadge = getOriginBadge(ptrab.origem);
+                  const isMinuta = ptrab.numero_ptrab.startsWith("Minuta");
                   const isNumbered = !needsNumbering(ptrab);
                   const isEditable = ptrab.status !== 'completo' && ptrab.status !== 'arquivado';
                   
@@ -1354,8 +1355,8 @@ const PTrabManager = () => {
                   <TableRow key={ptrab.id}>
                     <TableCell className="font-medium">
                       <div className="flex flex-col items-center">
-                        {ptrab.numero_ptrab.startsWith("Minuta") ? (
-                          <span className="text-red-500 font-bold">{ptrab.numero_ptrab.toUpperCase()}</span>
+                        {isMinuta ? (
+                          <span className="text-red-500 font-bold">MINUTA</span>
                         ) : isNumbered ? (
                           <span>{ptrab.numero_ptrab}</span>
                         ) : (
