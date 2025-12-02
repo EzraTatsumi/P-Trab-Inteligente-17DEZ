@@ -96,6 +96,41 @@ export const generateApprovalPTrabNumber = (existingNumbers: string[], omSigla: 
   return suggestedNumber;
 };
 
+/**
+ * Generates a unique 'Minuta' number (e.g., 'Minuta-1', 'Minuta-2').
+ * @param existingNumbers Array of existing PTrab numbers.
+ * @returns A unique Minuta number string.
+ */
+export const generateUniqueMinutaNumber = (existingNumbers: string[]): string => {
+  const minutaPrefix = "Minuta";
+  
+  // 1. Encontrar o maior número de Minuta existente
+  const minutaNumbers = existingNumbers
+    .filter(num => num && typeof num === 'string' && num.startsWith(minutaPrefix))
+    .map(num => {
+      const parts = num.split('-');
+      if (parts.length === 2) {
+        return parseInt(parts[1]);
+      }
+      // Se for apenas "Minuta", considera 1 para começar a contagem
+      return parts.length === 1 ? 1 : 0;
+    })
+    .filter(num => !isNaN(num));
+
+  let maxNumber = minutaNumbers.length > 0 ? Math.max(...minutaNumbers) : 0;
+  
+  let nextNumber = maxNumber + 1;
+  let suggestedNumber = `${minutaPrefix}-${nextNumber}`;
+
+  // 2. Garantir que o número sugerido seja realmente único
+  while (isPTrabNumberDuplicate(suggestedNumber, existingNumbers)) {
+    nextNumber++;
+    suggestedNumber = `${minutaPrefix}-${nextNumber}`;
+  }
+  
+  return suggestedNumber;
+};
+
 
 /**
  * Checks if a PTrab number already exists in the list.

@@ -38,13 +38,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatCurrency } from "@/lib/formatUtils";
-import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate, generateApprovalPTrabNumber } from "@/lib/ptrabNumberUtils";
+import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate, generateApprovalPTrabNumber, generateUniqueMinutaNumber } from "@/lib/ptrabNumberUtils";
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { HelpDialog } from "@/components/HelpDialog";
-import { CloneVariationDialog } from "@/components/CloneVariationDialog"; // NOVO IMPORT
-import { updateUserCredits } from "@/lib/creditUtils"; // Importar utilitário de crédito
+import { CloneVariationDialog } from "@/components/CloneVariationDialog";
+import { updateUserCredits } from "@/lib/creditUtils";
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -82,7 +82,7 @@ const PTrabManager = () => {
 
   // Novos estados para o diálogo de clonagem
   const [showCloneOptionsDialog, setShowCloneOptionsDialog] = useState(false);
-  const [showCloneVariationDialog, setShowCloneVariationDialog] = useState(false); // NOVO
+  const [showCloneVariationDialog, setShowCloneVariationDialog] = useState(false);
   const [ptrabToClone, setPtrabToClone] = useState<PTrab | null>(null);
   const [cloneType, setCloneType, ] = useState<'new' | 'variation'>('new');
   const [suggestedCloneNumber, setSuggestedCloneNumber] = useState<string>("");
@@ -108,9 +108,13 @@ const PTrabManager = () => {
   const resetForm = useCallback(() => {
     setEditingId(null);
     setSelectedOmId(undefined);
+    
+    // Gera um número de minuta único ao iniciar um novo P Trab
+    const uniqueMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
+    
     setFormData({
-      // Inicializa o número do PTrab como 'Minuta'
-      numero_ptrab: "Minuta", 
+      // Inicializa o número do PTrab como a Minuta única
+      numero_ptrab: uniqueMinutaNumber, 
       comando_militar_area: "",
       nome_om: "",
       nome_om_extenso: "",
@@ -127,7 +131,7 @@ const PTrabManager = () => {
       status: "aberto",
       origem: 'original',
     });
-  }, []);
+  }, [existingPTrabNumbers]);
 
   const [formData, setFormData] = useState({
     numero_ptrab: "Minuta", // Inicializa como 'Minuta'
@@ -161,12 +165,12 @@ const PTrabManager = () => {
   useEffect(() => {
     if (ptrabToClone) {
       let newSuggestedNumber = "";
-      // Apenas calcula o número de variação, pois o 'new' sempre será 'Minuta'
+      // Apenas calcula o número de variação, pois o 'new' sempre será 'Minuta-N'
       if (cloneType === 'variation') {
         newSuggestedNumber = generateVariationPTrabNumber(ptrabToClone.numero_ptrab, existingPTrabNumbers);
       } else {
-        // Se for 'new', o número sugerido não é relevante para o fluxo, mas mantemos o estado limpo
-        newSuggestedNumber = ""; 
+        // Se for 'new', gera uma nova minuta única
+        newSuggestedNumber = generateUniqueMinutaNumber(existingPTrabNumbers); 
       }
       setSuggestedCloneNumber(newSuggestedNumber);
       setCustomCloneNumber(newSuggestedNumber); // Inicializa o campo editável com a sugestão
@@ -443,7 +447,7 @@ const PTrabManager = () => {
       const currentNumber = formData.numero_ptrab.trim();
       
       // Validação: Se o número não for "Minuta", ele deve ser único (exceto se for o próprio registro em edição)
-      if (currentNumber && currentNumber !== "Minuta") {
+      if (currentNumber) {
         const isDuplicate = isPTrabNumberDuplicate(currentNumber, existingPTrabNumbers) && 
                            currentNumber !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
 
@@ -454,15 +458,14 @@ const PTrabManager = () => {
         }
       }
       
-      // Se estiver criando, o numero_ptrab deve ser "Minuta" se o usuário não o alterou.
-      // Se estiver editando, o valor atual é mantido.
-      const finalNumeroPTrab = editingId ? currentNumber : (currentNumber || "Minuta");
+      // Se estiver criando, o numero_ptrab deve ser o valor único gerado pelo resetForm ou o valor customizado.
+      const finalNumeroPTrab = currentNumber || generateUniqueMinutaNumber(existingPTrabNumbers);
 
       const ptrabData = {
         ...formData,
         user_id: user.id,
         origem: editingId ? formData.origem : 'original',
-        // Garante que o numero_ptrab seja salvo como 'Minuta' ou o valor customizado
+        // Garante que o numero_ptrab seja salvo como o valor final
         numero_ptrab: finalNumeroPTrab, 
       };
 
@@ -501,7 +504,7 @@ const PTrabManager = () => {
 
   const handleEdit = (ptrab: PTrab) => {
     setEditingId(ptrab.id);
-    setSelectedOmId(undefined);
+    setSelectedOmId(ptrab.codug_om ? 'temp' : undefined); // Placeholder para forçar a seleção da OM
     setFormData({
       numero_ptrab: ptrab.numero_ptrab,
       comando_militar_area: ptrab.comando_militar_area,
@@ -605,15 +608,15 @@ const PTrabManager = () => {
       // Fluxo 1: Novo P Trab (abre o diálogo de edição)
       setShowCloneOptionsDialog(false);
       
-      // Preenche o formulário de edição com os dados clonados e o novo número
+      // Preenche o formulário de edição com os dados clonados e o novo número de minuta
       const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = ptrabToClone;
       
       setEditingId(null); // Garante que é uma nova inserção
       setSelectedOmId(ptrabToClone.codug_om ? 'temp' : undefined); // Placeholder para forçar a seleção da OM
       setFormData({
         ...restOfPTrab,
-        // ALTERADO: O novo P Trab deve começar como Minuta
-        numero_ptrab: "Minuta", 
+        // NOVO: Usa o número de minuta único gerado no useEffect
+        numero_ptrab: suggestedCloneNumber, 
         status: "aberto",
         origem: 'original',
       });
@@ -1031,7 +1034,7 @@ const PTrabManager = () => {
   // Função para verificar se o PTrab precisa ser numerado
   const needsNumbering = (ptrab: PTrab) => {
     // Verifica se o numero_ptrab é "Minuta" ou não termina com /YYYY (formato de número oficial)
-    return ptrab.numero_ptrab === "Minuta" || !ptrab.numero_ptrab || !ptrab.numero_ptrab.includes(yearSuffix);
+    return ptrab.numero_ptrab.startsWith("Minuta") || !ptrab.numero_ptrab || !ptrab.numero_ptrab.includes(yearSuffix);
   };
 
   return (
@@ -1072,12 +1075,12 @@ const PTrabManager = () => {
                         maxLength={50}
                         required
                         onKeyDown={handleEnterToNextField}
-                        // NEW: Disable if it's "Minuta"
-                        disabled={formData.numero_ptrab === "Minuta"}
-                        className={formData.numero_ptrab === "Minuta" ? "bg-muted/50 cursor-not-allowed" : ""}
+                        // NEW: Disable if it's a Minuta number (Minuta-N)
+                        disabled={formData.numero_ptrab.startsWith("Minuta")}
+                        className={formData.numero_ptrab.startsWith("Minuta") ? "bg-muted/50 cursor-not-allowed" : ""}
                       />
                       <p className="text-xs text-muted-foreground">
-                        {formData.numero_ptrab === "Minuta" 
+                        {formData.numero_ptrab.startsWith("Minuta") 
                           ? "A numeração oficial (padrão: número/ano/OM) será atribuída após a aprovação."
                           : "O número oficial já foi atribuído."
                         }
@@ -1351,8 +1354,8 @@ const PTrabManager = () => {
                   <TableRow key={ptrab.id}>
                     <TableCell className="font-medium">
                       <div className="flex flex-col items-center">
-                        {ptrab.numero_ptrab === "Minuta" ? (
-                          <span className="text-red-500 font-bold">MINUTA</span>
+                        {ptrab.numero_ptrab.startsWith("Minuta") ? (
+                          <span className="text-red-500 font-bold">{ptrab.numero_ptrab.toUpperCase()}</span>
                         ) : isNumbered ? (
                           <span>{ptrab.numero_ptrab}</span>
                         ) : (
