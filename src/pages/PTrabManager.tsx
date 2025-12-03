@@ -376,23 +376,41 @@ const PTrabManager = () => {
   const handleConfirmReactivateStatus = async () => {
     if (!ptrabToReactivateId) return;
 
+    setLoading(true); // Start loading
+
     try {
-      // MUDANÇA: Reativa para 'em_andamento'
-      const { error } = await supabase
+      // 1. Fetch PTrab data to check its number
+      const { data: ptrab, error: fetchError } = await supabase
         .from("p_trab")
-        .update({ status: "em_andamento" })
+        .select("numero_ptrab")
+        .eq("id", ptrabToReactivateId)
+        .single();
+
+      if (fetchError || !ptrab) throw new Error("P Trab não encontrado.");
+
+      // Check if the number starts with "Minuta"
+      const isMinuta = ptrab.numero_ptrab.startsWith("Minuta");
+      
+      // Determine the new status: 'aberto' if Minuta, 'aprovado' if officially numbered
+      const newStatus = isMinuta ? 'aberto' : 'aprovado';
+
+      // 2. Update status
+      const { error: updateError } = await supabase
+        .from("p_trab")
+        .update({ status: newStatus })
         .eq("id", ptrabToReactivateId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      toast.success(`P Trab ${ptrabToReactivateName} reativado para "Em Andamento"!`);
+      toast.success(`P Trab ${ptrabToReactivateName} reativado para "${newStatus.toUpperCase()}"!`);
       setShowReactivateStatusDialog(false);
       setPtrabToReactivateId(null);
       setPtrabToReactivateName(null);
       loadPTrabs();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao reativar P Trab:", error);
-      toast.error("Erro ao reativar P Trab.");
+      toast.error(error.message || "Erro ao reativar P Trab.");
+      setLoading(false); // Ensure loading is stopped on error
     }
   };
 
@@ -1687,12 +1705,16 @@ const PTrabManager = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Reativar P Trab?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja reativar o P Trab "{ptrabToReactivateName}" para "Em Andamento"? Isso permitirá novas edições.
+              Tem certeza que deseja reativar o P Trab "{ptrabToReactivateName}"? Ele retornará ao status de "Aprovado" (se já numerado) ou "Aberto" (se for Minuta), permitindo novas edições.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={handleConfirmReactivateStatus}>Confirmar Reativação</AlertDialogAction>
-            <AlertDialogCancel onClick={handleCancelReactivateStatus}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmReactivateStatus} disabled={loading}>
+              {loading ? "Aguarde..." : "Confirmar Reativação"}
+            </AlertDialogAction>
+            <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
+              Cancelar
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
