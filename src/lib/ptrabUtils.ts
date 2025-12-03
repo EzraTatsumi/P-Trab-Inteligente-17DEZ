@@ -28,7 +28,8 @@ export async function updatePTrabStatusIfAberto(ptrabId: string) {
         console.error("Erro ao atualizar status do PTrab para 'em_andamento':", updateError);
         toast.error("Erro ao atualizar status do PTrab.");
       } else {
-        toast.success("Status do PTrab atualizado para 'Em Andamento'!");
+        // Não mostra o toast para não poluir a UX, a mudança é automática
+        // toast.success("Status do PTrab atualizado para 'Em Andamento'!");
       }
     }
   } catch (error) {

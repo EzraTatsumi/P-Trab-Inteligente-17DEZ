@@ -303,10 +303,11 @@ Total QR: ${formatCurrency(total_qr)}.`;
   };
 
   const handleExportSuccess = () => {
-    if (ptrabData && ptrabData.status !== 'completo' && ptrabData.status !== 'arquivado') {
+    // MUDANÇA: Verifica se o status é 'em_andamento' ou 'aprovado'
+    if (ptrabData && (ptrabData.status === 'em_andamento' || ptrabData.status === 'aprovado')) {
       setShowCompleteStatusDialog(true);
     } else {
-      navigate('/ptrab'); // Redireciona se o status já for completo/arquivado ou se não houver dados
+      navigate('/ptrab'); // Redireciona se o status já for arquivado ou aberto/minuta
     }
   };
 
@@ -314,21 +315,22 @@ Total QR: ${formatCurrency(total_qr)}.`;
     if (!ptrabData) return;
 
     try {
+      // MUDANÇA: Altera o status para "arquivado"
       const { error } = await supabase
         .from("p_trab")
-        .update({ status: "completo" })
+        .update({ status: "arquivado" })
         .eq("id", ptrabData.id);
 
       if (error) throw error;
 
       toast({
         title: "Status atualizado!",
-        description: `O status do P Trab ${ptrabData.numero_ptrab} foi alterado para "Completo".`,
+        description: `O status do P Trab ${ptrabData.numero_ptrab} foi alterado para "Arquivado".`,
         duration: 3000,
       });
       navigate('/ptrab');
     } catch (error) {
-      console.error("Erro ao atualizar status para completo:", error);
+      console.error("Erro ao atualizar status para arquivado:", error);
       toast({
         title: "Erro ao atualizar status",
         description: "Não foi possível alterar o status do P Trab.",
@@ -1536,14 +1538,14 @@ Total QR: ${formatCurrency(total_qr)}.`;
       <AlertDialog open={showCompleteStatusDialog} onOpenChange={setShowCompleteStatusDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Atualizar Status do P Trab</AlertDialogTitle>
+            <AlertDialogTitle>Arquivar P Trab?</AlertDialogTitle>
             <AlertDialogDescription>
-              Deseja alterar o status do P Trab "{ptrabData?.numero_ptrab} - {ptrabData?.nome_operacao}" para "Completo" após a exportação?
+              O P Trab "{ptrabData?.numero_ptrab} - {ptrabData?.nome_operacao}" foi exportado. Deseja alterar o status para "Arquivado"?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={handleConfirmCompleteStatus}>Sim, alterar</AlertDialogAction>
-            <AlertDialogCancel onClick={handleCancelCompleteStatus}>Não, obrigado</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmCompleteStatus}>Sim, arquivar</AlertDialogAction>
+            <AlertDialogCancel onClick={handleCancelCompleteStatus}>Não, manter status atual</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

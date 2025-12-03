@@ -257,7 +257,7 @@ const PTrabManager = () => {
 
       for (const ptrab of pTrabsWithTotals) {
         if (
-          ptrab.status === 'completo' &&
+          ptrab.status === 'aprovado' && // MUDANÇA: De 'completo' para 'aprovado'
           new Date(ptrab.updated_at) < tenDaysAgo &&
           !promptedForArchive.current.has(ptrab.id)
         ) {
@@ -323,60 +323,37 @@ const PTrabManager = () => {
     setPtrabToArchiveName(null);
   };
 
+  // MUDANÇA: Nova configuração de status
   const statusConfig = {
     'aberto': { 
       variant: 'default' as const, 
       label: 'Aberto',
-      className: 'bg-yellow-500 text-white hover:bg-yellow-600' // Cor sólida
+      className: 'bg-yellow-500 text-white hover:bg-yellow-600'
     },
     'em_andamento': { 
       variant: 'secondary' as const, 
       label: 'Em Andamento',
-      className: 'bg-blue-600 text-white hover:bg-blue-700' // Cor sólida
+      className: 'bg-blue-600 text-white hover:bg-blue-700'
     },
-    'completo': { 
+    'aprovado': { // NOVO STATUS
       variant: 'default' as const, 
-      label: 'Completo',
-      className: 'bg-green-600 text-white hover:bg-green-700' // Cor sólida
+      label: 'Aprovado',
+      className: 'bg-green-600 text-white hover:bg-green-700'
     },
     'arquivado': { 
       variant: 'outline' as const, 
       label: 'Arquivado',
-      className: 'bg-gray-500 text-white hover:bg-gray-600' // Cor sólida
+      className: 'bg-gray-500 text-white hover:bg-gray-600'
     }
   };
 
-  const handleStatusChange = async (ptrabId: string, oldStatus: string, newStatus: string) => {
-    if (oldStatus === 'completo' && newStatus === 'em_andamento') {
-      const ptrab = pTrabs.find(p => p.id === ptrabId);
-      if (ptrab) {
-        setPtrabToReactivateId(ptrab.id);
-        setPtrabToReactivateName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
-        setShowReactivateStatusDialog(true);
-      }
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from("p_trab")
-        .update({ status: newStatus })
-        .eq("id", ptrabId);
-
-      if (error) throw error;
-
-      toast.success("Status atualizado com sucesso!");
-      loadPTrabs();
-    } catch (error: any) {
-      toast.error("Erro ao atualizar status");
-      console.error(error);
-    }
-  };
+  // REMOVIDA: handleStatusChange (pois o status é automático)
 
   const handleConfirmReactivateStatus = async () => {
     if (!ptrabToReactivateId) return;
 
     try {
+      // MUDANÇA: Reativa para 'em_andamento'
       const { error } = await supabase
         .from("p_trab")
         .update({ status: "em_andamento" })
@@ -489,7 +466,7 @@ const PTrabManager = () => {
       // --- FIM VALIDAÇÃO ---
 
       // Validação: Se o número não for "Minuta", ele deve ser único (exceto se for o próprio registro em edição)
-      if (currentNumber) {
+      if (currentNumber && !currentNumber.startsWith("Minuta")) {
         const isDuplicate = isPTrabNumberDuplicate(currentNumber, existingPTrabNumbers) && 
                            currentNumber !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
 
@@ -509,6 +486,8 @@ const PTrabManager = () => {
         origem: editingId ? formData.origem : 'original',
         // Garante que o numero_ptrab seja salvo como o valor final
         numero_ptrab: finalNumeroPTrab, 
+        // MUDANÇA: Status inicial é sempre 'aberto'
+        status: editingId ? formData.status : 'aberto',
       };
 
       if (editingId) {
@@ -550,7 +529,6 @@ const PTrabManager = () => {
         setDialogOpen(false);
         resetForm();
         loadPTrabs();
-        // navigate(`/ptrab/form?ptrabId=${newPTrabId}`); // REMOVIDO
         return; // Sai da função para evitar o resetForm e loadPTrabs duplicados abaixo
       }
 
@@ -637,7 +615,7 @@ const PTrabManager = () => {
         .from("p_trab")
         .update({ 
           numero_ptrab: newNumber,
-          status: 'em_andamento', // Define o status como 'em_andamento' após a numeração
+          status: 'aprovado', // MUDANÇA: Define o status como 'aprovado' após a numeração
         })
         .eq("id", ptrabToApprove.id);
 
@@ -1079,8 +1057,8 @@ const PTrabManager = () => {
 
   // Função para verificar se o PTrab precisa ser numerado
   const needsNumbering = (ptrab: PTrab) => {
-    // Verifica se o numero_ptrab é "Minuta" ou não termina com /YYYY (formato de número oficial)
-    return ptrab.numero_ptrab.startsWith("Minuta") || !ptrab.numero_ptrab || !ptrab.numero_ptrab.includes(yearSuffix);
+    // Verifica se o numero_ptrab é "Minuta" ou se o status é 'aberto' ou 'em_andamento'
+    return ptrab.status === 'aberto' || ptrab.status === 'em_andamento';
   };
 
   return (
@@ -1404,18 +1382,18 @@ const PTrabManager = () => {
                   const originBadge = getOriginBadge(ptrab.origem);
                   const isMinuta = ptrab.numero_ptrab.startsWith("Minuta");
                   const isNumbered = !needsNumbering(ptrab);
-                  const isEditable = ptrab.status !== 'completo' && ptrab.status !== 'arquivado';
+                  const isEditable = ptrab.status !== 'aprovado' && ptrab.status !== 'arquivado'; // MUDANÇA: Editável se não for aprovado/arquivado
                   
                   return (
                   <TableRow key={ptrab.id}>
                     <TableCell className="font-medium">
                       <div className="flex flex-col items-center">
-                        {isMinuta ? (
-                          <span className="text-red-500 font-bold">MINUTA</span>
-                        ) : isNumbered ? (
+                        {ptrab.status === 'aprovado' ? (
                           <span>{ptrab.numero_ptrab}</span>
                         ) : (
-                          <span className="text-red-500 font-bold">PENDENTE</span>
+                          <span className="text-red-500 font-bold">
+                            {ptrab.numero_ptrab.startsWith("Minuta") ? "MINUTA" : "PENDENTE"}
+                          </span>
                         )}
                         <Badge 
                           variant="outline" 
@@ -1447,35 +1425,15 @@ const PTrabManager = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col items-center">
-                        <Select
-                          value={ptrab.status}
-                          onValueChange={(value) => handleStatusChange(ptrab.id, ptrab.status, value)}
-                          disabled={!isNumbered} // Desabilita a mudança de status se não estiver numerado
+                        {/* MUDANÇA: Substituído Select por Badge estático */}
+                        <Badge 
+                          className={cn(
+                            "w-[140px] h-7 text-xs flex items-center justify-center",
+                            statusConfig[ptrab.status as keyof typeof statusConfig]?.className || 'bg-background'
+                          )}
                         >
-                          <SelectTrigger 
-                            className={cn(
-                              "w-[140px] h-7 text-xs [&>span]:hidden", // Oculta o ChevronDown
-                              statusConfig[ptrab.status as keyof typeof statusConfig]?.className || 'bg-background'
-                            )}
-                          >
-                            <SelectValue>
-                              {statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="bg-background border shadow-lg z-50">
-                            {Object.entries(statusConfig).map(([key, config]) => (
-                              <SelectItem 
-                                key={key} 
-                                value={key}
-                                className="cursor-pointer hover:bg-accent"
-                              >
-                                <span className={`inline-block px-2 py-1 rounded text-xs ${config.className}`}>
-                                  {config.label}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          {statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}
+                        </Badge>
                         <div className="text-xs text-muted-foreground mt-1">
                           Última alteração: {formatDateTime(ptrab.updated_at)}
                         </div>
@@ -1522,7 +1480,7 @@ const PTrabManager = () => {
                             >
                               <MessageSquare 
                                 className={`h-5 w-5 transition-all ${
-                                  ptrab.comentario && !ptrab.numero_ptrab.startsWith("Minuta")
+                                  ptrab.comentario && ptrab.status !== 'arquivado'
                                     ? "text-green-600 fill-green-600" 
                                     : "text-gray-300"
                                 }`}
@@ -1530,7 +1488,7 @@ const PTrabManager = () => {
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>{ptrab.comentario && !ptrab.numero_ptrab.startsWith("Minuta") ? "Editar comentário" : "Adicionar comentário"}</p>
+                            <p>{ptrab.comentario && ptrab.status !== 'arquivado' ? "Editar comentário" : "Adicionar comentário"}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1585,6 +1543,18 @@ const PTrabManager = () => {
                               <Copy className="mr-2 h-4 w-4" />
                               Clonar P Trab
                             </DropdownMenuItem>
+                            {ptrab.status === 'arquivado' && (
+                                <DropdownMenuItem 
+                                    onClick={() => {
+                                        setPtrabToReactivateId(ptrab.id);
+                                        setPtrabToReactivateName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
+                                        setShowReactivateStatusDialog(true);
+                                    }}
+                                >
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                    Reativar
+                                </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => handleDelete(ptrab.id)}
@@ -1610,7 +1580,7 @@ const PTrabManager = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Arquivar P Trab?</AlertDialogTitle>
             <AlertDialogDescription>
-              O P Trab "{ptrabToArchiveName}" está com status "Completo" há mais de 10 dias. Deseja arquivá-lo?
+              O P Trab "{ptrabToArchiveName}" está com status "Aprovado" há mais de 10 dias. Deseja arquivá-lo?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
