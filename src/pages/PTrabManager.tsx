@@ -598,7 +598,7 @@ const PTrabManager = () => {
         .from("p_trab")
         .update({ 
           numero_ptrab: newNumber,
-          status: 'em_andamento', // Define o status como 'em_andamento' após a numeração
+          status: 'completo', // MUDANÇA: Define o status como 'completo' após a numeração
         })
         .eq("id", ptrabToApprove.id);
 
@@ -1530,7 +1530,10 @@ const PTrabManager = () => {
                               <Printer className="mr-2 h-4 w-4" />
                               Visualizar Impressão
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(ptrab)}>
+                            <DropdownMenuItem 
+                              onClick={() => handleEdit(ptrab)}
+                              disabled={!isEditable} // DESABILITA EDIÇÃO DO CABEÇALHO SE NÃO FOR EDITÁVEL
+                            >
                               <Pencil className="mr-2 h-4 w-4" />
                               Editar P Trab
                             </DropdownMenuItem>
