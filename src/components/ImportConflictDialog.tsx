@@ -51,7 +51,7 @@ export const ImportConflictDialog: React.FC<ImportConflictDialogProps> = ({
                 >
                     <RefreshCw className="h-5 w-5 mb-1" />
                     <span className="font-bold">Sobrescrever (Atualizar)</span>
-                    <span className="text-xs font-normal opacity-80">Substitui o P Trab existente.</span>
+                    <span className="text-xs font-normal opacity-80">Substitui o P Trab<br />existente.</span>
                 </Button>
                 <Button 
                     variant="secondary" 
@@ -60,7 +60,7 @@ export const ImportConflictDialog: React.FC<ImportConflictDialogProps> = ({
                 >
                     <Copy className="h-5 w-5 mb-1" />
                     <span className="font-bold">Criar Novo Número</span>
-                    <span className="text-xs font-normal opacity-80">Importa como um novo P Trab (Minuta).</span>
+                    <span className="text-xs font-normal opacity-80">Importa como um novo<br />P Trab (Minuta).</span>
                 </Button>
             </div>
         </div>
