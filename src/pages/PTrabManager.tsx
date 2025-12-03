@@ -45,6 +45,7 @@ import { Badge } from "@/components/ui/badge";
 import { HelpDialog } from "@/components/HelpDialog";
 import { CloneVariationDialog } from "@/components/CloneVariationDialog";
 import { updateUserCredits } from "@/lib/creditUtils";
+import { cn } from "@/lib/utils";
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -1629,7 +1630,7 @@ const PTrabManager = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction onClick={handleConfirmReactivateStatus}>Confirmar Reativação</AlertDialogAction>
-            <AlertDialogCancel onClick={handleCancelReactivateStatus}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCancelReactivateStatus}>Cancelar</AlertDialogção>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
