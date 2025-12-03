@@ -14,7 +14,7 @@ import {
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tables } from "@/integrations/supabase/types";
-import { generateUniquePTrabNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils";
+import { generateUniquePTrabNumber, isPTrabNumberDuplicate, generateUniqueMinutaNumber } from "@/lib/ptrabNumberUtils";
 import { OmSelector } from "./OmSelector";
 import { OMData } from "@/lib/omUtils";
 
@@ -41,6 +41,8 @@ export const ImportPTrabOptionsDialog = ({
 
   const importedOmName = importedPTrab.nome_om;
   const originalPTrabNumber = importedPTrab.numero_ptrab;
+  
+  const isOriginalNumberOfficial = originalPTrabNumber && !originalPTrabNumber.startsWith("Minuta");
 
   // 1. Lógica de Análise de Numeração
   const analysis = useMemo(() => {
@@ -48,6 +50,7 @@ export const ImportPTrabOptionsDialog = ({
     let suggestedNumber = originalPTrabNumber;
     let isConflict = false;
     let message = "";
+    let forceMinuta = false;
 
     if (!selectedOm) {
       message = "Selecione a OM de destino para analisar a numeração.";
@@ -55,19 +58,16 @@ export const ImportPTrabOptionsDialog = ({
       suggestedNumber = ""; 
     } else {
       const isSameOm = importedOmName.trim().toLowerCase() === targetOmName!.trim().toLowerCase();
+      
+      // Verifica se o número original já existe
+      const isOriginalDuplicate = isPTrabNumberDuplicate(originalPTrabNumber, existingPTrabNumbers);
 
-      if (isSameOm) {
-        // Cenário 1: Mesma OM. Verificar conflito de número.
-        isConflict = isPTrabNumberDuplicate(originalPTrabNumber, existingPTrabNumbers);
-
-        if (isConflict) {
-          suggestedNumber = generateUniquePTrabNumber(existingPTrabNumbers);
-          message = `Conflito detectado! O P Trab original já existe. Foi sugerido o próximo número base único.`;
-        } else {
-          message = `OM de destino é a mesma. O número original será mantido.`;
-          suggestedNumber = originalPTrabNumber;
-        }
-      } else {
+      if (isOriginalDuplicate) {
+        // Se o número original já existe, forçamos a criação de uma Minuta única
+        forceMinuta = true;
+        suggestedNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
+        message = `Conflito detectado! O número original (${originalPTrabNumber}) já existe. Foi sugerido um novo número de Minuta.`;
+      } else if (!isSameOm) {
         // Cenário 2: OM Diferente. Adicionar sufixo /OM_ORIGEM.
         const omSigla = importedOmName.trim().toUpperCase();
         const newNumberWithSuffix = `${originalPTrabNumber}/${omSigla}`;
@@ -75,16 +75,22 @@ export const ImportPTrabOptionsDialog = ({
         isConflict = isPTrabNumberDuplicate(newNumberWithSuffix, existingPTrabNumbers);
         
         if (isConflict) {
-          suggestedNumber = generateUniquePTrabNumber(existingPTrabNumbers);
-          message = `OM de destino diferente da original (${importedOmName}). O número proposto (${newNumberWithSuffix}) conflita. Foi sugerido o próximo número base único.`;
+          // Se o número com sufixo conflita, sugere Minuta
+          forceMinuta = true;
+          suggestedNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
+          message = `OM de destino diferente da original (${importedOmName}). O número proposto (${newNumberWithSuffix}) conflita. Foi sugerido um novo número de Minuta.`;
         } else {
           suggestedNumber = newNumberWithSuffix;
           message = `OM de destino diferente da original (${importedOmName}). Sugestão: ${newNumberWithSuffix}`;
         }
+      } else {
+        // Cenário 3: Mesma OM, sem conflito. Mantém o número original.
+        message = `OM de destino é a mesma. O número original será mantido.`;
+        suggestedNumber = originalPTrabNumber;
       }
     }
 
-    return { isSameOm: !!selectedOm && importedOmName.trim().toLowerCase() === targetOmName!.trim().toLowerCase(), isConflict, suggestedNumber, message };
+    return { isSameOm: !!selectedOm && importedOmName.trim().toLowerCase() === targetOmName!.trim().toLowerCase(), isConflict: isConflict || forceMinuta, suggestedNumber, message };
   }, [selectedOm, importedOmName, originalPTrabNumber, existingPTrabNumbers]);
 
   // 2. Efeito para preencher o campo com a sugestão quando a OM é selecionada
@@ -111,10 +117,19 @@ export const ImportPTrabOptionsDialog = ({
     
     // Final check for duplication before saving
     const isFinalNumberDuplicate = isPTrabNumberDuplicate(customPTrabNumber, existingPTrabNumbers);
-    if (isFinalNumberDuplicate) {
+    
+    // Se o número final for diferente do original E for duplicado, bloqueia.
+    if (isFinalNumberDuplicate && customPTrabNumber !== originalPTrabNumber) {
         toast.error(`O número ${customPTrabNumber} já existe. Por favor, altere.`);
         return;
     }
+    
+    // Se o número final for igual ao original, mas o original já estava em conflito (e o usuário não mudou), bloqueia.
+    if (isFinalNumberDuplicate && customPTrabNumber === originalPTrabNumber && isOriginalNumberOfficial) {
+        toast.error(`O número oficial ${customPTrabNumber} já existe. Por favor, use a sugestão de Minuta ou altere.`);
+        return;
+    }
+
 
     setLoading(true);
     
@@ -124,6 +139,7 @@ export const ImportPTrabOptionsDialog = ({
         numero_ptrab: customPTrabNumber,
         nome_om: selectedOm.nome_om, // Usar o nome da OM selecionada
         comando_militar_area: selectedOm.rm_vinculacao, // Usar a RM como CMA (simplificação)
+        // O status será definido no PTrabExportImportPage.tsx com base no numero_ptrab final
     };
 
     onConfirmImport(finalPTrabData);
@@ -145,7 +161,7 @@ export const ImportPTrabOptionsDialog = ({
         <div className="grid gap-4 py-4">
           
           {/* Passo 1: Seleção da OM de Destino */}
-          <div className="space-y-2 p-3 border rounded-md bg-muted/50">
+          <div className="space-y-2 p-3 border rounded-lg bg-muted/50">
             <h4 className="font-semibold text-sm flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-primary" />
                 1. Selecione a OM que está importando o P Trab
@@ -200,7 +216,7 @@ export const ImportPTrabOptionsDialog = ({
           </Button>
           <Button 
             onClick={handleFinalConfirm} 
-            disabled={loading || !selectedOm || isFinalNumberDuplicate || !customPTrabNumber.trim()}
+            disabled={loading || !selectedOm || (isFinalNumberDuplicate && customPTrabNumber !== analysis.suggestedNumber) || !customPTrabNumber.trim()}
           >
             {loading ? "Importando..." : "Confirmar Importação"}
           </Button>
