@@ -1630,7 +1630,7 @@ const PTrabManager = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction onClick={handleConfirmReactivateStatus}>Confirmar Reativação</AlertDialogAction>
-            <AlertDialogCancel onClick={handleCancelReactivateStatus}>Cancelar</AlertDialogção>
+            <AlertDialogCancel onClick={handleCancelReactivateStatus}>Cancelar</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
