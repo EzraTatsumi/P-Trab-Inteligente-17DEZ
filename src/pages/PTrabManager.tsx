@@ -1011,7 +1011,8 @@ const PTrabManager = () => {
           numero_ptrab: newPTrabNumber,
           status: "aberto",
           user_id: (await supabase.auth.getUser()).data.user?.id!,
-          nome_operacao: `CONSOLIDADO - ${templatePTrab.nome_operacao}`,
+          // REMOVIDO: nome_operacao: `CONSOLIDADO - ${templatePTrab.nome_operacao}`,
+          nome_operacao: templatePTrab.nome_operacao, // Mantém o nome da operação do template
           origem: 'consolidado',
           rotulo_versao: templatePTrab.rotulo_versao, // Copia o rótulo da versão do template
         };
@@ -1806,7 +1807,7 @@ const PTrabManager = () => {
               Cancelar
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogFooter>
       </Dialog>
 
       {/* Diálogo de Aprovação e Numeração */}
