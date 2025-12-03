@@ -30,3 +30,6 @@ bun.lockb
 tsconfig.app.json
 tsconfig.node.json
 supabase/migrations/
+
+# Excluir documentação para economizar tokens de contexto
+src/docs/
