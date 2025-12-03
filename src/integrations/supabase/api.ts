@@ -4,8 +4,7 @@ const DIESEL_API_URL = "https://api-preco-combustivel.onrender.com/diesel";
 const GASOLINA_API_URL = "https://api-preco-combustivel.onrender.com/gasolina";
 
 interface PriceResponse {
-  price: number;
-  source: string;
+  preco: number; // Corrigido para 'preco'
 }
 
 /**
@@ -13,7 +12,7 @@ interface PriceResponse {
  * @param fuelType 'diesel' or 'gasolina'
  * @returns The price and source information.
  */
-export async function fetchFuelPrice(fuelType: 'diesel' | 'gasolina'): Promise<PriceResponse> {
+export async function fetchFuelPrice(fuelType: 'diesel' | 'gasolina'): Promise<{ price: number, source: string }> {
   const url = fuelType === 'diesel' ? DIESEL_API_URL : GASOLINA_API_URL;
   
   try {
@@ -21,15 +20,15 @@ export async function fetchFuelPrice(fuelType: 'diesel' | 'gasolina'): Promise<P
     if (!response.ok) {
       throw new Error(`Failed to fetch ${fuelType} price: ${response.statusText}`);
     }
-    const data = await response.json();
+    const data: PriceResponse = await response.json();
     
-    if (typeof data.price !== 'number' || !data.source) {
-        throw new Error("Invalid response format from external API.");
+    if (typeof data.preco !== 'number') {
+        throw new Error("Invalid response format from external API: 'preco' field missing or invalid.");
     }
     
     return {
-      price: data.price,
-      source: data.source,
+      price: data.preco,
+      source: "ANP (API Externa)", // Definindo a fonte conforme solicitado
     };
   } catch (error) {
     console.error(`Error fetching ${fuelType} price:`, error);
