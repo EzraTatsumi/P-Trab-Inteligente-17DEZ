@@ -453,20 +453,20 @@ const PTrabManager = () => {
       const requiredFields: (keyof typeof formData)[] = [
         'numero_ptrab', 'nome_operacao', 'comando_militar_area', 
         'nome_om_extenso', 'nome_om', 'efetivo_empregado', 
-        'periodo_inicio', 'periodo_fim', 'acoes' // ADICIONADO 'acoes'
+        'periodo_inicio', 'periodo_fim', 'acoes',
+        'local_om', // TORNADO OBRIGATÓRIO
+        'nome_cmt_om', // TORNADO OBRIGATÓRIO
       ];
       
       for (const field of requiredFields) {
         if (!formData[field] || String(formData[field]).trim() === "") {
-          // Exceção: se for edição e o campo for opcional (como nome_cmt_om ou local_om), permite.
-          if (editingId && (field === 'nome_cmt_om' || field === 'local_om')) {
-            continue;
-          }
           
           let fieldName = field.replace(/_/g, ' ');
           if (fieldName === 'nome om') fieldName = 'Nome da OM (sigla)';
           if (fieldName === 'nome om extenso') fieldName = 'Nome da OM (extenso)';
           if (fieldName === 'acoes') fieldName = 'Ações realizadas ou a serem realizadas';
+          if (fieldName === 'local om') fieldName = 'Local da OM';
+          if (fieldName === 'nome cmt om') fieldName = 'Nome do Comandante da OM';
           
           toast.error(`O campo '${fieldName}' é obrigatório.`);
           setLoading(false);
@@ -1255,24 +1255,26 @@ const PTrabManager = () => {
                     
                     {/* L5L: Local da OM */}
                     <div className="space-y-2">
-                      <Label htmlFor="local_om">Local da OM</Label>
+                      <Label htmlFor="local_om">Local da OM *</Label>
                       <Input
                         id="local_om"
                         value={formData.local_om}
                         onChange={(e) => setFormData({ ...formData, local_om: e.target.value })}
                         placeholder="Ex: Marabá/PA"
                         maxLength={200}
+                        required
                         onKeyDown={handleEnterToNextField}
                       />
                     </div>
                     {/* L5R: Nome do Comandante da OM */}
                     <div className="space-y-2">
-                      <Label htmlFor="nome_cmt_om">Nome do Comandante da OM</Label>
+                      <Label htmlFor="nome_cmt_om">Nome do Comandante da OM *</Label>
                       <Input
                         id="nome_cmt_om"
                         value={formData.nome_cmt_om}
                         onChange={(e) => setFormData({ ...formData, nome_cmt_om: e.target.value })}
                         maxLength={200}
+                        required
                         onKeyDown={handleEnterToNextField}
                       />
                     </div>
