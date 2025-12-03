@@ -577,8 +577,6 @@ const PTrabManager = () => {
             }
             
             toast.success("P Trab criado e registros clonados!");
-        } else {
-            toast.success("P Trab criado!");
         }
         
         // ZERAR CRÉDITOS DISPONÍVEIS APÓS A CRIAÇÃO DE UM NOVO P TRAB
@@ -1774,7 +1772,7 @@ const PTrabManager = () => {
             <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
               Cancelar
             </AlertDialogCancel>
-          </DialogFooter>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
