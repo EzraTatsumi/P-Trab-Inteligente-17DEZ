@@ -1611,8 +1611,12 @@ const PTrabManager = () => {
                               Editar P Trab
                             </DropdownMenuItem>
                             
-                            {/* Ação 3: Clonar P Trab (Sempre disponível) */}
-                            <DropdownMenuItem onClick={() => handleOpenCloneOptions(ptrab)}>
+                            {/* Ação 3: Clonar P Trab (Desabilitado se arquivado) */}
+                            <DropdownMenuItem 
+                              onClick={() => ptrab.status !== 'arquivado' && handleOpenCloneOptions(ptrab)}
+                              disabled={ptrab.status === 'arquivado'}
+                              className={ptrab.status === 'arquivado' ? "opacity-50 cursor-not-allowed" : ""}
+                            >
                               <Copy className="mr-2 h-4 w-4" />
                               Clonar P Trab
                             </DropdownMenuItem>
