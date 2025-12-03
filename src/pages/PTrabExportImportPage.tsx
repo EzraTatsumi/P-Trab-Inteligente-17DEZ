@@ -531,9 +531,10 @@ const PTrabExportImportPage = () => {
         };
     } else {
         const pTrab = data.data.p_trab as Tables<'p_trab'>;
-        const classeICount = data.data.classe_i_registros.length;
-        const classeIICount = data.data.classe_ii_registros.length;
-        const classeIIICount = data.data.classe_iii_registros.length;
+        // FIX: Use (array || []).length to safely access length
+        const classeICount = (data.data.classe_i_registros || []).length;
+        const classeIICount = (data.data.classe_ii_registros || []).length;
+        const classeIIICount = (data.data.classe_iii_registros || []).length;
         const refLPCExists = !!data.data.p_trab_ref_lpc;
         
         return {
