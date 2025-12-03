@@ -453,19 +453,20 @@ const PTrabManager = () => {
       const requiredFields: (keyof typeof formData)[] = [
         'numero_ptrab', 'nome_operacao', 'comando_militar_area', 
         'nome_om_extenso', 'nome_om', 'efetivo_empregado', 
-        'periodo_inicio', 'periodo_fim'
+        'periodo_inicio', 'periodo_fim', 'acoes' // ADICIONADO 'acoes'
       ];
       
       for (const field of requiredFields) {
         if (!formData[field] || String(formData[field]).trim() === "") {
-          // Exceção: se for edição e o campo for opcional (como nome_om_extenso), permite.
-          if (editingId && (field === 'nome_om_extenso' || field === 'nome_cmt_om' || field === 'local_om' || field === 'acoes')) {
+          // Exceção: se for edição e o campo for opcional (como nome_cmt_om ou local_om), permite.
+          if (editingId && (field === 'nome_cmt_om' || field === 'local_om')) {
             continue;
           }
           
           let fieldName = field.replace(/_/g, ' ');
           if (fieldName === 'nome om') fieldName = 'Nome da OM (sigla)';
           if (fieldName === 'nome om extenso') fieldName = 'Nome da OM (extenso)';
+          if (fieldName === 'acoes') fieldName = 'Ações realizadas ou a serem realizadas';
           
           toast.error(`O campo '${fieldName}' é obrigatório.`);
           setLoading(false);
@@ -1277,13 +1278,14 @@ const PTrabManager = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="acoes">Ações realizadas ou a serem realizadas</Label>
+                    <Label htmlFor="acoes">Ações realizadas ou a serem realizadas *</Label>
                     <Textarea
                       id="acoes"
                       value={formData.acoes}
                       onChange={(e) => setFormData({ ...formData, acoes: e.target.value })}
                       rows={4}
                       maxLength={2000}
+                      required // Adicionado required aqui
                       onKeyDown={handleEnterToNextField}
                     />
                   </div>
