@@ -1807,7 +1807,7 @@ const PTrabManager = () => {
               Cancelar
             </Button>
           </DialogFooter>
-        </DialogFooter>
+        </DialogContent>
       </Dialog>
 
       {/* Diálogo de Aprovação e Numeração */}
