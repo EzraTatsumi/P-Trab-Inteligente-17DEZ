@@ -17,13 +17,16 @@ export async function fetchFuelPrice(fuelType: 'diesel' | 'gasolina'): Promise<{
   
   try {
     const response = await fetch(url);
+    
     if (!response.ok) {
-      throw new Error(`Failed to fetch ${fuelType} price: ${response.statusText}`);
+      // Se a resposta não for OK, lança um erro com o status
+      throw new Error(`Falha na requisição: Status ${response.status} - ${response.statusText}`);
     }
+    
     const data: PriceResponse = await response.json();
     
     if (typeof data.preco !== 'number') {
-        throw new Error("Invalid response format from external API: 'preco' field missing or invalid.");
+        throw new Error("Formato de resposta inválido: campo 'preco' ausente ou não numérico.");
     }
     
     return {
@@ -31,8 +34,19 @@ export async function fetchFuelPrice(fuelType: 'diesel' | 'gasolina'): Promise<{
       source: "ANP (API Externa)", // Definindo a fonte conforme solicitado
     };
   } catch (error) {
-    console.error(`Error fetching ${fuelType} price:`, error);
-    toast.error(`Falha ao consultar preço da ${fuelType}. Verifique a conexão.`);
+    console.error(`Erro ao buscar preço de ${fuelType}:`, error);
+    
+    let errorMessage = "Verifique sua conexão com a internet.";
+    if (error instanceof Error) {
+        // Se for um erro de requisição (ex: status 404, 500), mostra a mensagem detalhada
+        if (error.message.includes("Falha na requisição")) {
+            errorMessage = error.message;
+        } else if (error.message.includes("Formato de resposta inválido")) {
+            errorMessage = error.message;
+        }
+    }
+    
+    toast.error(`Falha ao consultar preço da ${fuelType}. ${errorMessage}`);
     throw error;
   }
 }
