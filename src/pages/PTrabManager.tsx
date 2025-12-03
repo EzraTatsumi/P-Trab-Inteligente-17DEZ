@@ -44,6 +44,7 @@ import { usePTrabManager, PTrab } from "@/hooks/usePTrabManager"; // Importar o 
 import { PTrabFormDialog } from "@/components/PTrabFormDialog"; // Importar o novo diálogo de formulário
 import { PTrabActionsMenu } from "@/components/PTrabActionsMenu"; // Importar o novo menu de ações
 import { PTrabApproveDialog } from "@/components/PTrabApproveDialog"; // Importar o novo diálogo de aprovação
+import { RadioGroup } from "@/components/ui/radio-group"; // Importar RadioGroup
 
 const PTrabManager = () => {
   const navigate = useNavigate();
@@ -147,8 +148,9 @@ const PTrabManager = () => {
       // --- FIM VALIDAÇÃO ---
 
       if (currentNumber && !currentNumber.startsWith("Minuta")) {
-        const isDuplicate = isPTrabNumberDuplicate(currentNumber, existingPTrabNumbers) && 
-                           currentNumber !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
+        const isDuplicate = existingPTrabNumbers.some(num => 
+          num === currentNumber && num !== pTrabs.find(p => p.id === editingId)?.numero_ptrab
+        );
 
         if (isDuplicate) {
           toast.error("Já existe um P Trab com este número. Por favor, proponha outro.");
@@ -672,7 +674,7 @@ const PTrabManager = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setShowArchiveStatusDialog(false)}>Agora não</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { handleConfirmArchiveStatus(); setShowArchiveStatusDialog(false); }}>Sim, arquivar</AlertDialogAction>
+            <AlertDialogAction onClick={() => { handleArchive(ptrabToArchiveId!, ptrabToArchiveName!); setShowArchiveStatusDialog(false); }}>Sim, arquivar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
