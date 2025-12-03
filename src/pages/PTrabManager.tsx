@@ -1601,13 +1601,15 @@ const PTrabManager = () => {
                               Visualizar Impressão
                             </DropdownMenuItem>
                             
-                            {/* Ação 2: Editar P Trab (Disponível se não for aprovado ou arquivado) */}
-                            {isEditable && (
-                              <DropdownMenuItem onClick={() => handleEdit(ptrab)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Editar P Trab
-                              </DropdownMenuItem>
-                            )}
+                            {/* Ação 2: Editar P Trab (Sempre visível, desabilitado se aprovado ou arquivado) */}
+                            <DropdownMenuItem 
+                              onClick={() => isEditable && handleEdit(ptrab)}
+                              disabled={!isEditable}
+                              className={!isEditable ? "opacity-50 cursor-not-allowed" : ""}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Editar P Trab
+                            </DropdownMenuItem>
                             
                             {/* Ação 3: Clonar P Trab (Sempre disponível) */}
                             <DropdownMenuItem onClick={() => handleOpenCloneOptions(ptrab)}>
