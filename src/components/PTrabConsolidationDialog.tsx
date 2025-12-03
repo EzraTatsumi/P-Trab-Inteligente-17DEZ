@@ -256,12 +256,9 @@ const PTrabConsolidationDialog = ({
                 
                 {targetId === 'new' && (
                   <div className="mt-3 space-y-3">
-                    <Alert variant="default" className="py-2">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription className="text-xs">
-                        O novo P Trab será criado como Minuta ({suggestedNewNumber}) e terá o status "Aberto".
-                      </AlertDescription>
-                    </Alert>
+                    <p className="text-xs text-muted-foreground">
+                      O novo P Trab será criado como Minuta ({suggestedNewNumber}) e terá o status "Aberto".
+                    </p>
 
                     {/* CAMPO: Template de Cabeçalho */}
                     <div className="space-y-2">
