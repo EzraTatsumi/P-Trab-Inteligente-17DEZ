@@ -21,10 +21,10 @@ import { Check, FileText, ArrowRight, Plus, AlertCircle, ChevronsUpDown, XCircle
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
-import { generateUniquePTrabNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils";
+import { generateUniqueMinutaNumber } from "@/lib/ptrabNumberUtils"; // Importar apenas a função de Minuta
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Importar Select
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SimplePTrab {
   id: string;
@@ -56,8 +56,7 @@ const PTrabConsolidationDialog = ({
 }: PTrabConsolidationDialogProps) => {
   const [sourceIds, setSourceIds] = useState<string[]>([]);
   const [targetId, setTargetId] = useState<string | 'new'>('new');
-  const [newPTrabNumber, setNewPTrabNumber] = useState('');
-  const [templatePTrabId, setTemplatePTrabId] = useState<string>(''); // Novo estado para o template
+  const [templatePTrabId, setTemplatePTrabId] = useState<string>(''); // Estado para o template
   const contentRef = useRef<HTMLDivElement>(null);
   const [isSourcePopoverOpen, setIsSourcePopoverOpen] = useState(false);
   const [isTargetPopoverOpen, setIsTargetPopoverOpen] = useState(false);
@@ -65,15 +64,15 @@ const PTrabConsolidationDialog = ({
   const availableSourcePTrabs = pTrabsList.filter(p => p.id !== targetId);
   const availableTargetPTrabs = pTrabsList.filter(p => !sourceIds.includes(p.id));
 
+  // Gera o número de minuta sugerido (apenas para exibição/uso interno)
   const suggestedNewNumber = useMemo(() => {
-    return generateUniquePTrabNumber(existingPTrabNumbers);
+    return generateUniqueMinutaNumber(existingPTrabNumbers);
   }, [existingPTrabNumbers]);
 
   useEffect(() => {
     if (open) {
       setSourceIds([]);
       setTargetId('new');
-      setNewPTrabNumber(suggestedNewNumber);
       setTemplatePTrabId(''); // Resetar template
       
       setTimeout(() => {
@@ -112,25 +111,19 @@ const PTrabConsolidationDialog = ({
     }
 
     if (targetId === 'new') {
-      if (!newPTrabNumber.trim()) {
-        toast.error("O número do novo P Trab é obrigatório.");
-        return;
-      }
-      if (isPTrabNumberDuplicate(newPTrabNumber, existingPTrabNumbers)) {
-        toast.error("O número do novo P Trab já existe.");
-        return;
-      }
       if (!templatePTrabId) {
         toast.error("Selecione um P Trab para usar como template de cabeçalho.");
         return;
       }
+      
+      // Gera o número de minuta único no momento da confirmação
+      const newPTrabNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
+      
       onConfirm(sourceIds, 'new', newPTrabNumber, templatePTrabId);
     } else {
       onConfirm(sourceIds, targetId);
     }
   };
-
-  const isNewNumberDuplicate = targetId === 'new' && isPTrabNumberDuplicate(newPTrabNumber, existingPTrabNumbers);
   
   const selectedTargetPTrab = targetId !== 'new' ? pTrabsList.find(p => p.id === targetId) : undefined;
 
@@ -157,7 +150,7 @@ const PTrabConsolidationDialog = ({
               P Trab de Origem ({sourceIds.length})
             </Label>
             <p className="text-sm text-muted-foreground">
-              Os registros de Classe I e Classe III destes P Trabs serão copiados.
+              Os registros de Classes I, II e III destes P Trabs serão copiados.
             </p>
             
             <Popover open={isSourcePopoverOpen} onOpenChange={setIsSourcePopoverOpen}>
@@ -256,33 +249,21 @@ const PTrabConsolidationDialog = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Plus className="h-4 w-4" />
-                    <span className="font-medium">Criar Novo P Trab</span>
+                    <span className="font-medium">Criar Novo P Trab (Minuta)</span>
                   </div>
                   {targetId === 'new' && <Check className="h-4 w-4 text-primary" />}
                 </div>
                 
                 {targetId === 'new' && (
                   <div className="mt-3 space-y-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-ptrab-number" className="text-sm">Número do Novo P Trab</Label>
-                      <Input
-                        id="new-ptrab-number"
-                        value={newPTrabNumber}
-                        onChange={(e) => setNewPTrabNumber(e.target.value)}
-                        placeholder={suggestedNewNumber}
-                      />
-                      {isNewNumberDuplicate && (
-                        <Alert variant="destructive" className="py-2">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription className="text-xs">
-                            Este número já existe.
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                      <p className="text-xs text-muted-foreground">Sugestão: {suggestedNewNumber}</p>
-                    </div>
+                    <Alert variant="default" className="py-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        O novo P Trab será criado como Minuta ({suggestedNewNumber}) e terá o status "Aberto".
+                      </AlertDescription>
+                    </Alert>
 
-                    {/* NOVO CAMPO: Template de Cabeçalho */}
+                    {/* CAMPO: Template de Cabeçalho */}
                     <div className="space-y-2">
                       <Label htmlFor="template-ptrab" className="text-sm">Aproveitar Cabeçalho e Rodapé de *</Label>
                       <Select
@@ -388,7 +369,7 @@ const PTrabConsolidationDialog = ({
           </Button>
           <Button 
             onClick={handleConfirm} 
-            disabled={loading || sourceIds.length === 0 || (targetId === 'new' && (isNewNumberDuplicate || !newPTrabNumber.trim() || !templatePTrabId))}
+            disabled={loading || sourceIds.length === 0 || (targetId === 'new' && !templatePTrabId)}
           >
             {loading ? "Consolidando..." : `Consolidar ${sourceIds.length} P Trab(s)`}
           </Button>
