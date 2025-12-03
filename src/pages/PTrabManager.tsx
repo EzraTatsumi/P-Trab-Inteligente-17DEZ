@@ -692,7 +692,12 @@ const PTrabManager = () => {
       setShowCloneOptionsDialog(false);
       
       // 1. Prepara o formulário com os dados do original e o novo número de minuta
-      const { id, created_at, updated_at, totalLogistica, totalOperacional, rotulo_versao, ...restOfPTrab } = ptrabToClone;
+      // MUDANÇA AQUI: Extrair campos da OM para limpá-los
+      const { 
+        id, created_at, updated_at, totalLogistica, totalOperacional, 
+        rotulo_versao, nome_om, nome_om_extenso, codug_om, rm_vinculacao, codug_rm_vinculacao,
+        ...restOfPTrab 
+      } = ptrabToClone;
       
       setFormData({
         ...restOfPTrab,
@@ -701,8 +706,17 @@ const PTrabManager = () => {
         origem: ptrabToClone.origem,
         comentario: "", // Limpa o comentário para um novo P Trab
         rotulo_versao: ptrabToClone.rotulo_versao, // COPIA o rótulo da versão
+        
+        // NOVO: Limpa campos da OM para forçar a re-seleção/confirmação
+        nome_om: "",
+        nome_om_extenso: "",
+        codug_om: "",
+        rm_vinculacao: "",
+        codug_rm_vinculacao: "",
       });
-      setSelectedOmId(ptrabToClone.codug_om ? 'temp' : undefined);
+      
+      // Limpa o estado de seleção da OM para forçar a seleção no OmSelector
+      setSelectedOmId(undefined); 
       setOriginalPTrabIdToClone(ptrabToClone.id); // Salva o ID para clonar os registros no submit
       
       // 2. Abre o diálogo de edição
@@ -1673,7 +1687,7 @@ const PTrabManager = () => {
           <AlertDialogFooter>
             <AlertDialogAction onClick={handleConfirmReactivateStatus}>Confirmar Reativação</AlertDialogAction>
             <AlertDialogCancel onClick={handleCancelReactivateStatus}>Cancelar</AlertDialogCancel>
-          </AlertDialogFooter>
+          </DialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
