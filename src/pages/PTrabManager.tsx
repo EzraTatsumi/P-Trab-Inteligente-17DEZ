@@ -1453,7 +1453,7 @@ const PTrabManager = () => {
                   <TableRow key={ptrab.id}>
                     <TableCell className="font-medium">
                       <div className="flex flex-col items-center">
-                        {ptrab.status === 'aprovado' ? (
+                        {ptrab.status === 'aprovado' || ptrab.status === 'arquivado' ? (
                           <span>{ptrab.numero_ptrab}</span>
                         ) : (
                           <span className="text-red-500 font-bold">
