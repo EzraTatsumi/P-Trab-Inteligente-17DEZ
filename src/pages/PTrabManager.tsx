@@ -1471,11 +1471,14 @@ const PTrabManager = () => {
                   <TableRow key={ptrab.id}>
                     <TableCell className="font-medium">
                       <div className="flex flex-col items-center">
-                        {ptrab.status === 'aprovado' || ptrab.status === 'arquivado' ? (
+                        {/* Lógica de exibição do número: Se for Minuta arquivada, mostra apenas MINUTA */}
+                        {ptrab.status === 'arquivado' && isMinuta ? (
+                          <span className="text-gray-500 font-bold">MINUTA</span>
+                        ) : ptrab.status === 'aprovado' || ptrab.status === 'arquivado' ? (
                           <span>{ptrab.numero_ptrab}</span>
                         ) : (
                           <span className="text-red-500 font-bold">
-                            {ptrab.numero_ptrab.startsWith("Minuta") ? "MINUTA" : "PENDENTE"}
+                            {isMinuta ? "MINUTA" : "PENDENTE"}
                           </span>
                         )}
                         <Badge 
