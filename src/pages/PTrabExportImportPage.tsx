@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import { encryptData, decryptData } from "@/lib/cryptoUtils"; // Importar utilit
 import { ImportPTrabOptionsDialog } from "@/components/ImportPTrabOptionsDialog"; // Importar novo diálogo
 import { OMData } from "@/lib/omUtils"; // Importar OMData
 import { ImportConflictDialog } from "@/components/ImportConflictDialog"; // NOVO IMPORT
+import { generateUniqueMinutaNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils"; // Importar utilitários de numeração
 
 // Define the structure of the exported data
 interface ExportData {
@@ -361,10 +362,48 @@ const PTrabExportImportPage = () => {
     }
   };
 
-  const handleCreateNewNumber = () => {
+  // NOVO HANDLER: Cria um novo número de Minuta e importa diretamente
+  const handleCreateNewNumberAndImport = () => {
+    if (!importDataPreview || importDataPreview.type !== 'single_ptrab' || !userId) {
+        toast.error("Erro: Dados de importação inválidos.");
+        return;
+    }
+    
     setIsConflictDialogOpen(false);
-    // Vai para o fluxo de opções que forçará a atribuição de um novo número
-    setIsImportOptionsDialogOpen(true);
+    setLoading(true);
+    
+    try {
+        const importedPTrab = importDataPreview.data.p_trab as Tables<'p_trab'>;
+        
+        // 1. Gerar novo número de Minuta
+        const newMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
+        
+        // 2. Usar a primeira OM do usuário como OM de destino (se houver)
+        const defaultOm = userOms[0];
+        if (!defaultOm) {
+            throw new Error("Nenhuma OM cadastrada para o usuário. Cadastre uma OM antes de importar.");
+        }
+        
+        // 3. Preparar os dados finais para importação (Minuta, status aberto, OM do usuário)
+        const finalPTrabData: Tables<'p_trab'> = {
+            ...importedPTrab,
+            numero_ptrab: newMinutaNumber,
+            nome_om: defaultOm.nome_om,
+            codug_om: defaultOm.codug_om,
+            rm_vinculacao: defaultOm.rm_vinculacao,
+            codug_rm_vinculacao: defaultOm.codug_rm_vinculacao,
+            comando_militar_area: defaultOm.rm_vinculacao, // Usar a RM como CMA (simplificação)
+            status: 'aberto', // Forçar status aberto
+        };
+        
+        // 4. Chamar a função de importação final
+        handleConfirmSinglePTrabImport(finalPTrabData);
+        
+    } catch (error: any) {
+        console.error("Erro ao criar novo número e importar:", error);
+        toast.error(error.message || "Erro ao importar como Minuta.");
+        setLoading(false);
+    }
   };
 
   // Função para realizar a sobrescrita (Update)
@@ -737,7 +776,7 @@ const PTrabExportImportPage = () => {
           onOpenChange={setIsConflictDialogOpen}
           ptrabNumber={(importDataPreview.data.p_trab as Tables<'p_trab'>).numero_ptrab}
           onOverwrite={handleOverwrite}
-          onCreateNew={handleCreateNewNumber}
+          onCreateNew={handleCreateNewNumberAndImport} // CHAMA A NOVA FUNÇÃO
         />
       )}
 
