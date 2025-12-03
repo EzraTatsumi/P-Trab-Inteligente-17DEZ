@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -323,6 +323,29 @@ const PTrabManager = () => {
     setPtrabToArchiveName(null);
   };
 
+  // MUDANÇA: Nova função para arquivar manualmente
+  const handleArchive = async (ptrabId: string, ptrabName: string) => {
+    if (!confirm(`Tem certeza que deseja ARQUIVAR o P Trab "${ptrabName}"? Esta ação irá finalizar o trabalho e restringir edições.`)) return;
+
+    setLoading(true);
+    try {
+        const { error } = await supabase
+            .from("p_trab")
+            .update({ status: "arquivado" })
+            .eq("id", ptrabId);
+
+        if (error) throw error;
+
+        toast.success(`P Trab ${ptrabName} arquivado com sucesso!`);
+        loadPTrabs();
+    } catch (error) {
+        console.error("Erro ao arquivar P Trab:", error);
+        toast.error("Erro ao arquivar P Trab.");
+    } finally {
+        setLoading(false);
+    }
+  };
+
   // MUDANÇA: Nova configuração de status
   const statusConfig = {
     'aberto': { 
@@ -346,8 +369,6 @@ const PTrabManager = () => {
       className: 'bg-gray-500 text-white hover:bg-gray-600'
     }
   };
-
-  // REMOVIDA: handleStatusChange (pois o status é automático)
 
   const handleConfirmReactivateStatus = async () => {
     if (!ptrabToReactivateId) return;
@@ -1535,14 +1556,32 @@ const PTrabManager = () => {
                               <Printer className="mr-2 h-4 w-4" />
                               Visualizar Impressão
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(ptrab)}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Editar P Trab
-                            </DropdownMenuItem>
+                            
+                            {/* Ação 2: Editar P Trab (Disponível se não for aprovado ou arquivado) */}
+                            {isEditable && (
+                              <DropdownMenuItem onClick={() => handleEdit(ptrab)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Editar P Trab
+                              </DropdownMenuItem>
+                            )}
+                            
+                            {/* Ação 3: Clonar P Trab (Sempre disponível) */}
                             <DropdownMenuItem onClick={() => handleOpenCloneOptions(ptrab)}>
                               <Copy className="mr-2 h-4 w-4" />
                               Clonar P Trab
                             </DropdownMenuItem>
+                            
+                            {/* NOVO: Arquivar (Disponível se NÃO estiver arquivado) */}
+                            {ptrab.status !== 'arquivado' && (
+                              <DropdownMenuItem 
+                                onClick={() => handleArchive(ptrab.id, `${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`)}
+                              >
+                                <Archive className="mr-2 h-4 w-4" />
+                                Arquivar
+                              </DropdownMenuItem>
+                            )}
+                            
+                            {/* Ação 5: Reativar (Disponível APENAS se estiver arquivado) */}
                             {ptrab.status === 'arquivado' && (
                                 <DropdownMenuItem 
                                     onClick={() => {
@@ -1555,7 +1594,10 @@ const PTrabManager = () => {
                                     Reativar
                                 </DropdownMenuItem>
                             )}
+                            
                             <DropdownMenuSeparator />
+                            
+                            {/* Ação 6: Excluir (Sempre disponível) */}
                             <DropdownMenuItem 
                               onClick={() => handleDelete(ptrab.id)}
                               className="text-red-600"
