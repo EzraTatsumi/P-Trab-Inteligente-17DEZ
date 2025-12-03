@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { XCircle, Save, Fuel, Droplet } from "lucide-react";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils"; // Reutilizando formatNumber se existir, ou usando toFixed
+import { formatCurrency, formatNumber, formatNumberForInput } from "@/lib/formatUtils"; // Importando formatNumberForInput
 
 // Tipagem simplificada para o registro
 type ClasseIIIRegistry = Tables<'classe_iii_registros'>;
@@ -26,13 +26,12 @@ const formatDecimalInput = (value: string): string => {
   const cleanedValue = value.replace(',', '.');
   const numericValue = parseFloat(cleanedValue);
 
-  if (isNaN(numericValue)) {
-    // Se não for um número válido, retorna o valor original
-    return value; 
+  if (isNaN(numericValue) || numericValue === 0) {
+    return ""; // Retorna string vazia se for 0 ou NaN
   }
 
-  // 2. Format to 2 fixed decimals and replace dot back with comma
-  return numericValue.toFixed(2).replace('.', ',');
+  // 2. Usa a função utilitária para formatar com 2 casas decimais
+  return formatNumberForInput(numericValue, 2);
 };
 
 const ClasseIIIRegistryForm = ({
@@ -46,11 +45,11 @@ const ClasseIIIRegistryForm = ({
     p_trab_id: ptrabId,
     tipo_combustivel: initialData?.tipo_combustivel || 'gasolina',
     quantidade: initialData?.quantidade || 0,
-    preco_litro: initialData?.preco_litro ? formatDecimalInput(String(initialData.preco_litro)) : '0,00', // Formata inicial
+    preco_litro: initialData?.preco_litro ? formatDecimalInput(String(initialData.preco_litro)) : '', // Inicializa com string vazia se 0
     total_litros: initialData?.total_litros || 0,
     valor_total: initialData?.valor_total || 0,
     consumo_lubrificante_litro: initialData?.consumo_lubrificante_litro || 0,
-    preco_lubrificante: initialData?.preco_lubrificante ? formatDecimalInput(String(initialData.preco_lubrificante)) : '0,00', // Formata inicial
+    preco_lubrificante: initialData?.preco_lubrificante ? formatDecimalInput(String(initialData.preco_lubrificante)) : '', // Inicializa com string vazia se 0
     itens_equipamentos: initialData?.itens_equipamentos || null,
     dias_operacao: initialData?.dias_operacao || 0,
   });
@@ -74,6 +73,7 @@ const ClasseIIIRegistryForm = ({
 
   // Função para calcular totais
   const calculateTotals = useMemo(() => {
+    // Usamos parseInputToNumber para garantir que a string do input (com vírgula) seja lida corretamente
     const precoLitro = parseFloat(String(formData.preco_litro).replace(',', '.')) || 0;
     const precoLubrificante = parseFloat(String(formData.preco_lubrificante).replace(',', '.')) || 0;
     const quantidade = formData.quantidade || 0;
@@ -117,7 +117,7 @@ const ClasseIIIRegistryForm = ({
     setFormData(prev => ({ ...prev, [field]: cleanedValue }));
   };
 
-  // NOVO: Handler para formatar o preço ao perder o foco
+  // Handler para formatar o preço ao perder o foco
   const handlePriceBlur = (e: React.FocusEvent<HTMLInputElement>, field: 'preco_litro' | 'preco_lubrificante') => {
     const formattedValue = formatDecimalInput(e.target.value);
     setFormData(prev => ({ ...prev, [field]: formattedValue }));

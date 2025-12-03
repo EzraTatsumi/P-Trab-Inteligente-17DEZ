@@ -28,7 +28,7 @@ export const parseInputToNumber = (input: string): number => {
  * Ensures a minimum number of fraction digits.
  */
 export const formatNumberForInput = (num: number, minFractionDigits: number = 2): string => {
-  if (num === 0) return "";
+  if (num === 0) return ""; // Retorna string vazia se for zero
   
   // Use Intl.NumberFormat to format with thousand separator (dot) and decimal separator (comma)
   return new Intl.NumberFormat('pt-BR', {
