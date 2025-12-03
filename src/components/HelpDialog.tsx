@@ -6,11 +6,19 @@ import { HelpCircle, Code, FileText, Loader2, BookOpen, ShieldCheck } from "luci
 import { MarkdownAccordion } from './MarkdownAccordion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-// Importar o conteúdo dos arquivos Markdown como strings
-import architectureContent from '@/docs/Architecture.md?raw';
-import businessRulesContent from '@/docs/BusinessRules.md?raw';
-import userGuideContent from '@/docs/UserGuide.md?raw';
-import securityComplianceContent from '@/docs/SecurityCompliance.md?raw'; // NOVO IMPORT
+// Conteúdo dos arquivos Markdown substituído por placeholders
+const architectureContent = `# Arquitetura (Placeholder)
+O conteúdo de arquitetura foi removido do contexto para otimização.
+`;
+const businessRulesContent = `# Regras de Negócio (Placeholder)
+O conteúdo de regras de negócio foi removido do contexto para otimização.
+`;
+const userGuideContent = `# Guia do Usuário (Placeholder)
+O conteúdo do guia do usuário foi removido do contexto para otimização.
+`;
+const securityComplianceContent = `# Segurança e Conformidade (Placeholder)
+O conteúdo de segurança e conformidade foi removido do contexto para otimização.
+`;
 
 export const HelpDialog: React.FC = () => {
   const [open, setOpen] = useState(false);
