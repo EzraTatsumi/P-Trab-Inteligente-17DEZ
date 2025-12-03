@@ -44,8 +44,9 @@ import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/type
 import { Badge } from "@/components/ui/badge";
 import { HelpDialog } from "@/components/HelpDialog";
 import { CloneVariationDialog } from "@/components/CloneVariationDialog";
-import { updateUserCredits } from "@/lib/creditUtils";
+import { updateUserCredits, fetchUserCredits } from "@/lib/creditUtils";
 import { cn } from "@/lib/utils";
+import { CreditPromptDialog } from "@/components/CreditPromptDialog"; // Importar CreditPromptDialog
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -105,7 +106,11 @@ const PTrabManager = () => {
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [ptrabToApprove, setPtrabToApprove] = useState<PTrab | null>(null);
   const [suggestedApproveNumber, setSuggestedApproveNumber] = useState<string>("");
-  // REMOVIDO: omSiglaLimpa não é mais necessário como estado
+  
+  // NOVO ESTADO: Controle do Prompt de Crédito
+  const [showCreditPrompt, setShowCreditPrompt] = useState(false);
+  const [ptrabToFill, setPtrabToFill] = useState<PTrab | null>(null);
+  const hasBeenPrompted = useRef(new Set<string>()); // Armazena IDs dos PTrabs já perguntados
 
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
@@ -937,9 +942,59 @@ const PTrabManager = () => {
     }
   };
 
-  const handleSelectPTrab = (ptrabId: string) => {
-    navigate(`/ptrab/form?ptrabId=${ptrabId}`);
+  // --- NOVO FLUXO DE PROMPT DE CRÉDITO ---
+  const handleSelectPTrab = async (ptrab: PTrab) => {
+    if (ptrab.status === 'aprovado' || ptrab.status === 'arquivado') {
+      navigate(`/ptrab/form?ptrabId=${ptrab.id}`);
+      return;
+    }
+    
+    // Se o status for 'aberto' e ainda não perguntamos sobre este PTrab
+    if (ptrab.status === 'aberto' && !hasBeenPrompted.current.has(ptrab.id)) {
+      setPtrabToFill(ptrab);
+      setShowCreditPrompt(true);
+    } else {
+      // Se o status for 'em_andamento' ou já perguntamos, navega diretamente
+      navigate(`/ptrab/form?ptrabId=${ptrab.id}`);
+    }
   };
+  
+  const handlePromptConfirm = () => {
+    if (!ptrabToFill) return;
+    
+    // Marca como perguntado
+    hasBeenPrompted.current.add(ptrabToFill.id);
+    setShowCreditPrompt(false);
+    
+    // Navega para o formulário e adiciona o parâmetro para abrir o diálogo de crédito
+    navigate(`/ptrab/form?ptrabId=${ptrabToFill.id}&openCredit=true`);
+  };
+  
+  const handlePromptCancel = async () => {
+    if (!ptrabToFill) return;
+    
+    // Marca como perguntado
+    hasBeenPrompted.current.add(ptrabToFill.id);
+    setShowCreditPrompt(false);
+    
+    // MUDANÇA DE STATUS: Se o usuário cancelou o prompt, o PTrab passa para 'em_andamento'
+    // para que não perguntemos novamente.
+    try {
+        await supabase
+            .from("p_trab")
+            .update({ status: 'em_andamento' })
+            .eq("id", ptrabToFill.id);
+        
+        // Não precisa de toast, apenas recarrega a lista para refletir a mudança
+        loadPTrabs();
+    } catch (error) {
+        console.error("Erro ao atualizar status para 'em_andamento':", error);
+    }
+    
+    // Navega para o formulário
+    navigate(`/ptrab/form?ptrabId=${ptrabToFill.id}`);
+  };
+  // --- FIM NOVO FLUXO DE PROMPT DE CRÉDITO ---
 
   // Nova função para navegar para a página de impressão/exportação
   const handleNavigateToPrintOrExport = (ptrabId: string) => {
@@ -1598,7 +1653,7 @@ const PTrabManager = () => {
 
                         {/* Botão Preencher: Aparece SEMPRE, mas desabilitado se não for editável */}
                         <Button
-                          onClick={() => handleSelectPTrab(ptrab.id)}
+                          onClick={() => handleSelectPTrab(ptrab)}
                           size="sm"
                           className="flex items-center gap-2"
                           disabled={!isEditable}
@@ -1719,7 +1774,7 @@ const PTrabManager = () => {
             <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
               Cancelar
             </AlertDialogCancel>
-          </AlertDialogFooter>
+          </DialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
@@ -1857,6 +1912,13 @@ const PTrabManager = () => {
         existingPTrabNumbers={existingPTrabNumbers}
         onConfirm={handleConfirmConsolidation}
         loading={loading}
+      />
+      
+      {/* NOVO: Diálogo de Prompt de Crédito */}
+      <CreditPromptDialog
+        open={showCreditPrompt}
+        onConfirm={handlePromptConfirm}
+        onCancel={handlePromptCancel}
       />
     </div>
   );

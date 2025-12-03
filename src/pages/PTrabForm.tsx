@@ -45,8 +45,7 @@ const PTrabForm = () => {
   
   // NOVOS ESTADOS PARA CRÉDITO E DIÁLOGO
   const [showCreditDialog, setShowCreditDialog] = useState(false);
-  const [showCreditPromptDialog, setShowCreditPromptDialog] = useState(false); // NOVO ESTADO
-  const [hasCheckedCredits, setHasCheckedCredits] = useState(false); // NOVO ESTADO PARA CONTROLE DE PRIMEIRA VEZ
+  // Removido showCreditPromptDialog e hasCheckedCredits
 
   const classesLogistica = [
     { id: "classe-i", name: "Classe I - Subsistência" },
@@ -119,23 +118,21 @@ const PTrabForm = () => {
         efetivo_empregado: String(data.efetivo_empregado), // Garante que seja string ao carregar
       });
       setLoadingPTrab(false);
+      
+      // NOVO: Verifica se deve abrir o diálogo de crédito imediatamente (se veio do PTrabManager)
+      const shouldOpenCreditDialog = searchParams.get('openCredit') === 'true';
+      if (shouldOpenCreditDialog) {
+        setShowCreditDialog(true);
+        // Limpa o parâmetro da URL para evitar que abra novamente no refresh
+        searchParams.delete('openCredit');
+        navigate(`?${searchParams.toString()}`, { replace: true });
+      }
     };
 
     loadPTrab();
-  }, [ptrabId, navigate]);
+  }, [ptrabId, navigate, searchParams]);
 
-  // Efeito para verificar se deve mostrar o prompt de crédito
-  useEffect(() => {
-    if (!isLoadingCredits && !loadingSession && user?.id && !hasCheckedCredits) {
-      const gnd3 = Number(credits.credit_gnd3);
-      const gnd4 = Number(credits.credit_gnd4);
-      
-      if (gnd3 === 0 && gnd4 === 0) {
-        setShowCreditPromptDialog(true);
-      }
-      setHasCheckedCredits(true); // Marca que a verificação foi feita
-    }
-  }, [isLoadingCredits, loadingSession, user?.id, credits, hasCheckedCredits]);
+  // Removido o useEffect que gerencia o prompt de crédito
 
   // Função para buscar os totais e atualizar os estados de custo
   const fetchAndSetTotals = async () => {
@@ -189,17 +186,7 @@ const PTrabForm = () => {
     saveCreditsMutation.mutate({ gnd3, gnd4 });
   };
   
-  // Removida a função handleResetCredit
-  
-  const handlePromptConfirm = () => {
-    setShowCreditPromptDialog(false);
-    setShowCreditDialog(true); // Abre o diálogo de input
-  };
-  
-  const handlePromptCancel = () => {
-    setShowCreditPromptDialog(false);
-    // Continua com os valores zerados
-  };
+  // Removido handlePromptConfirm e handlePromptCancel
 
   const handleItemClick = (itemId: string, type: string) => {
     if (ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado') {
@@ -304,7 +291,6 @@ const PTrabForm = () => {
               />
             )}
             
-            {/* Botão de Reset de Créditos REMOVIDO */}
           </div>
 
           {/* Coluna Direita: Seleção de Classes/Itens */}
@@ -390,12 +376,12 @@ const PTrabForm = () => {
         onSave={handleSaveCredit}
       />
       
-      {/* Diálogo de Prompt de Crédito (NOVO) */}
-      <CreditPromptDialog
+      {/* Diálogo de Prompt de Crédito (REMOVIDO) */}
+      {/* <CreditPromptDialog
         open={showCreditPromptDialog}
         onConfirm={handlePromptConfirm}
         onCancel={handlePromptCancel}
-      />
+      /> */}
     </div>
   );
 };
