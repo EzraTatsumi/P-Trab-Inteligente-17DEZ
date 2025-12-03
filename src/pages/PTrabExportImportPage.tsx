@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label"; // Adicionado Label
 import { ArrowLeft, Download, Upload, Lock, AlertCircle, Check, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Tables } from "@/integrations/supabase/types";
+import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -17,6 +17,7 @@ import { ExportPasswordDialog } from "@/components/ExportPasswordDialog";
 import { encryptData, decryptData } from "@/lib/cryptoUtils"; // Importar utilitários de criptografia
 import { ImportPTrabOptionsDialog } from "@/components/ImportPTrabOptionsDialog"; // Importar novo diálogo
 import { OMData } from "@/lib/omUtils"; // Importar OMData
+import { ImportConflictDialog } from "@/components/ImportConflictDialog"; // NOVO IMPORT
 
 // Define the structure of the exported data
 interface ExportData {
@@ -27,6 +28,7 @@ interface ExportData {
   data: {
     p_trab: Tables<'p_trab'>[] | Tables<'p_trab'>; // Array for full, single object for single
     classe_i_registros: Tables<'classe_i_registros'>[];
+    classe_ii_registros: Tables<'classe_ii_registros'>[]; // Adicionado Classe II
     classe_iii_registros: Tables<'classe_iii_registros'>[];
     p_trab_ref_lpc: Tables<'p_trab_ref_lpc'> | null;
     // Global tables only included in full backup
@@ -71,12 +73,16 @@ const PTrabExportImportPage = () => {
   const [isExportPasswordDialogOpen, setIsExportPasswordDialogOpen] = useState(false);
   const [exportActionType, setExportActionType] = useState<'single' | null>(null); // Removido 'full'
 
-  // Novo estado para o diálogo de senha de importação
+  // Estados para o diálogo de senha de importação
   const [isImportPasswordDialogOpen, setIsImportPasswordDialogOpen] = useState(false);
   const [encryptedContent, setEncryptedContent] = useState<string | null>(null);
   
-  // Novo estado para o diálogo de opções de importação (OM/Numeração)
+  // Estados para o diálogo de opções de importação (OM/Numeração)
   const [isImportOptionsDialogOpen, setIsImportOptionsDialogOpen] = useState(false);
+  
+  // NOVO ESTADO: Diálogo de Conflito
+  const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
+  const [ptrabToOverwriteId, setPtrabToOverwriteId] = useState<string | null>(null); // ID do PTrab existente a ser sobrescrito
   
   // Novo estado para a lista de OMs do usuário
   const [userOms, setUserOms] = useState<OMData[]>([]);
@@ -178,8 +184,6 @@ const PTrabExportImportPage = () => {
     }
   };
 
-  // Removida a função exportFullBackup
-
   const exportSinglePTrab = async (ptrabId: string, password: string) => {
     // 1. Fetch PTrab principal
     const { data: pTrabData, error: pTrabError } = await supabase
@@ -194,15 +198,18 @@ const PTrabExportImportPage = () => {
     // 2. Fetch related records
     const [
       { data: classeIData, error: classeIError },
+      { data: classeIIData, error: classeIIError }, // Fetch Classe II
       { data: classeIIIData, error: classeIIIError },
       { data: refLPCData, error: refLPCError },
     ] = await Promise.all([
       supabase.from('classe_i_registros').select('*').eq('p_trab_id', ptrabId),
+      supabase.from('classe_ii_registros').select('*, itens_equipamentos').eq('p_trab_id', ptrabId), // Select itens_equipamentos
       supabase.from('classe_iii_registros').select('*, itens_equipamentos').eq('p_trab_id', ptrabId),
       supabase.from('p_trab_ref_lpc').select('*').eq('p_trab_id', ptrabId).maybeSingle(),
     ]);
 
     if (classeIError) console.error("Erro ao buscar Classe I:", classeIError);
+    if (classeIIError) console.error("Erro ao buscar Classe II:", classeIIError);
     if (classeIIIError) console.error("Erro ao buscar Classe III:", classeIIIError);
     if (refLPCError) console.error("Erro ao buscar Ref LPC:", refLPCError);
 
@@ -214,6 +221,7 @@ const PTrabExportImportPage = () => {
       data: {
         p_trab: pTrabData,
         classe_i_registros: classeIData || [],
+        classe_ii_registros: classeIIData || [], // Incluir Classe II
         classe_iii_registros: classeIIIData || [],
         p_trab_ref_lpc: refLPCData || null,
       },
@@ -319,21 +327,123 @@ const PTrabExportImportPage = () => {
 
   // Função chamada quando a análise está pronta
   const handleAnalysisReady = () => {
-    if (!importDataPreview) return;
-
-    if (importDataPreview.type === 'full_backup') {
-        // Se for backup completo, não permitimos mais a importação
+    if (!importDataPreview || importDataPreview.type === 'full_backup') {
+        // Block full backup import
         toast.error("Importação de Backup Completo não é mais suportada. Importe um P Trab individual.");
         setImportDataPreview(null);
         setImportFile(null);
         return;
+    }
+    
+    const importedPTrab = importDataPreview.data.p_trab as Tables<'p_trab'>;
+    const importedNumber = importedPTrab.numero_ptrab;
+    
+    const isOfficialNumber = importedNumber && !importedNumber.startsWith("Minuta");
+    const existingPTrab = pTrabsList.find(p => p.numero_ptrab === importedNumber);
+
+    if (isOfficialNumber && existingPTrab) {
+        // Conflito detectado para um número oficial
+        setPtrabToOverwriteId(existingPTrab.id);
+        setIsConflictDialogOpen(true);
     } else {
-        // Se for P Trab único, abre o diálogo de opções de importação
+        // Sem conflito, ou é uma Minuta (que deve ir para o diálogo de opções para nova numeração)
         setIsImportOptionsDialogOpen(true);
     }
   };
+  
+  // Handlers para resolução de conflito
+  const handleOverwrite = () => {
+    setIsConflictDialogOpen(false);
+    if (ptrabToOverwriteId) {
+        performOverwriteImport(ptrabToOverwriteId);
+    } else {
+        toast.error("Erro interno: ID do P Trab a ser sobrescrito não encontrado.");
+    }
+  };
 
-  // Função chamada pelo ImportPTrabOptionsDialog para iniciar a importação final
+  const handleCreateNewNumber = () => {
+    setIsConflictDialogOpen(false);
+    // Vai para o fluxo de opções que forçará a atribuição de um novo número
+    setIsImportOptionsDialogOpen(true);
+  };
+
+  // Função para realizar a sobrescrita (Update)
+  const performOverwriteImport = async (existingPTrabId: string) => {
+    if (!importDataPreview || !userId) return;
+
+    setLoading(true);
+
+    try {
+        const data = importDataPreview.data;
+        const importedPTrab = data.p_trab as Tables<'p_trab'>;
+        
+        // 1. Update existing PTrab header
+        const { id, created_at, updated_at, ...restOfPTrab } = importedPTrab;
+        const updatePTrabData = {
+            ...restOfPTrab,
+            user_id: userId,
+            status: 'aprovado', // Assume que se está sobrescrevendo um número oficial, o status é 'aprovado'
+            origem: 'importado',
+            updated_at: new Date().toISOString(),
+        };
+        
+        const { error: updatePTrabError } = await supabase
+            .from("p_trab")
+            .update(updatePTrabData as TablesUpdate<'p_trab'>)
+            .eq("id", existingPTrabId);
+
+        if (updatePTrabError) throw new Error(`Erro ao atualizar P Trab: ${updatePTrabError.message}`);
+        
+        // 2. Delete all existing dependent records for the existing PTrab
+        const dependentTables: (keyof ExportData['data'])[] = [
+            'p_trab_ref_lpc',
+            'classe_i_registros',
+            'classe_ii_registros',
+            'classe_iii_registros',
+        ];
+        
+        for (const table of dependentTables) {
+            const { error } = await supabase.from(table).delete().eq('p_trab_id', existingPTrabId);
+            if (error) console.error(`Erro ao deletar registros antigos de ${table}:`, error);
+        }
+        
+        // 3. Insert new dependent records from the imported data
+        for (const table of dependentTables) {
+            const records = data[table];
+            if (records) {
+                const recordsArray = Array.isArray(records) ? records : [records].filter(Boolean);
+                
+                if (recordsArray.length > 0) {
+                    const recordsToInsert = recordsArray.map(record => {
+                        const newRecord = { ...record };
+                        delete (newRecord as any).id;
+                        delete (newRecord as any).created_at;
+                        delete (newRecord as any).updated_at;
+                        (newRecord as any).p_trab_id = existingPTrabId; // Use the existing ID
+                        return newRecord;
+                    });
+                    
+                    const { error } = await supabase.from(table).insert(recordsToInsert);
+                    if (error) console.error(`Erro ao inserir registros de ${table}:`, error);
+                }
+            }
+        }
+        
+        toast.success(`P Trab ${importedPTrab.numero_ptrab} sobrescrito e atualizado com sucesso!`);
+        
+        setImportDataPreview(null);
+        setImportFile(null);
+        navigate("/ptrab"); // Redireciona para recarregar os dados
+    } catch (error: any) {
+        console.error("Erro na sobrescrita de P Trab:", error);
+        toast.error(error.message || "Erro desconhecido durante a sobrescrita.");
+    } finally {
+        setLoading(false);
+    }
+  };
+
+
+  // Função chamada pelo ImportPTrabOptionsDialog para iniciar a importação final (INSERT)
   const handleConfirmSinglePTrabImport = async (finalPTrabData: Tables<'p_trab'>) => {
     if (!importDataPreview || !userId) return;
 
@@ -345,10 +455,14 @@ const PTrabExportImportPage = () => {
         
         // 1. Inserir novo P Trab (usando os dados modificados pelo diálogo)
         const { id, created_at, updated_at, ...restOfPTrab } = finalPTrabData;
+        
+        // Determine status: if the number is official, set to 'aprovado', otherwise 'aberto' (Minuta)
+        const isOfficialNumber = finalPTrabData.numero_ptrab && !finalPTrabData.numero_ptrab.startsWith("Minuta");
+        
         const newPTrabData = {
             ...restOfPTrab,
             user_id: userId,
-            status: 'aberto', // Sempre importa como aberto
+            status: isOfficialNumber ? 'aprovado' : 'aberto', // Set status based on final number
             origem: 'importado', // MARCAR COMO IMPORTADO
         };
         
@@ -365,6 +479,7 @@ const PTrabExportImportPage = () => {
         const dependentTables: (keyof ExportData['data'])[] = [
             'p_trab_ref_lpc',
             'classe_i_registros',
+            'classe_ii_registros',
             'classe_iii_registros',
         ];
         
@@ -402,10 +517,6 @@ const PTrabExportImportPage = () => {
     }
   };
 
-  const handleImport = async () => {
-    // Removida a lógica de importação de backup completo, pois handleAnalysisReady agora bloqueia.
-  };
-
   const getImportSummary = (data: ExportData): ImportSummary => {
     const isFull = data.type === 'full_backup';
     
@@ -421,6 +532,7 @@ const PTrabExportImportPage = () => {
     } else {
         const pTrab = data.data.p_trab as Tables<'p_trab'>;
         const classeICount = data.data.classe_i_registros.length;
+        const classeIICount = data.data.classe_ii_registros.length;
         const classeIIICount = data.data.classe_iii_registros.length;
         const refLPCExists = !!data.data.p_trab_ref_lpc;
         
@@ -429,7 +541,7 @@ const PTrabExportImportPage = () => {
             omSigla: pTrab.nome_om,
             ptrabNumber: pTrab.numero_ptrab,
             operationName: pTrab.nome_operacao,
-            details: `Registros: ${classeICount} Classe I, ${classeIIICount} Classe III, Ref LPC: ${refLPCExists ? 'Sim' : 'Não'}.`
+            details: `Registros: ${classeICount} Classe I, ${classeIICount} Classe II, ${classeIIICount} Classe III, Ref LPC: ${refLPCExists ? 'Sim' : 'Não'}.`
         };
     }
   };
@@ -616,6 +728,17 @@ const PTrabExportImportPage = () => {
         description="Digite a senha usada para criptografar o arquivo para descriptografar o conteúdo."
         confirmButtonText="Confirmar Descriptografia" // Ajustado o texto do botão
       />
+      
+      {/* NOVO: Diálogo de Conflito */}
+      {importDataPreview && importDataPreview.type === 'single_ptrab' && (
+        <ImportConflictDialog
+          open={isConflictDialogOpen}
+          onOpenChange={setIsConflictDialogOpen}
+          ptrabNumber={(importDataPreview.data.p_trab as Tables<'p_trab'>).numero_ptrab}
+          onOverwrite={handleOverwrite}
+          onCreateNew={handleCreateNewNumber}
+        />
+      )}
 
       {/* Diálogo de Opções de Importação (OM/Numeração) */}
       {importDataPreview && importDataPreview.type === 'single_ptrab' && (
