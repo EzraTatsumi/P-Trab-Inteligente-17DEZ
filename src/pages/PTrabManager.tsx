@@ -642,7 +642,8 @@ const PTrabManager = () => {
                         </div>
                       </TableCell>
                     </TableRow>
-                  );})}
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
