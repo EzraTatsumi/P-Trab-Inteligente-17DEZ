@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { RefLPC, RefLPCForm } from "@/types/refLPC";
+import { getPreviousWeekRange, formatNumberForInput } from "@/lib/formatUtils";
+import { fetchFuelPrice } from "@/integrations/supabase/api"; // Importar a nova função
 
 interface RefLPCFormSectionProps {
   ptrabId: string;
@@ -31,6 +33,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
   const [formLPC, setFormLPC] = useState<RefLPCForm>(initialFormState);
   const [isLPCFormExpanded, setIsLPCFormExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [lastApiSource, setLastApiSource] = useState<string | null>(null); // Novo estado para a fonte da API
   const { handleEnterToNextField } = useFormNavigation();
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -45,6 +48,8 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         preco_gasolina: Number(refLPC.preco_gasolina),
       });
       setIsLPCFormExpanded(false);
+      // Se o registro existir, limpa a fonte da API (assumindo que foi salvo manualmente)
+      setLastApiSource(null); 
     } else {
       setFormLPC(initialFormState);
       setIsLPCFormExpanded(true);
@@ -100,11 +105,65 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
 
       onUpdate(result as RefLPC);
       setIsLPCFormExpanded(false);
+      setLastApiSource(null); // Limpa a fonte da API após salvar
     } catch (error: any) {
       toast.error(sanitizeError(error));
     } finally {
       setLoading(false);
     }
+  };
+  
+  const handleConsultarAPI = async () => {
+    setLoading(true);
+    try {
+      const { start, end } = getPreviousWeekRange();
+      
+      const [dieselResult, gasolinaResult] = await Promise.all([
+        fetchFuelPrice('diesel'),
+        fetchFuelPrice('gasolina'),
+      ]);
+      
+      setFormLPC(prev => ({
+        ...prev,
+        data_inicio_consulta: start,
+        data_fim_consulta: end,
+        ambito: 'Nacional',
+        nome_local: '',
+        preco_diesel: dieselResult.price,
+        preco_gasolina: gasolinaResult.price,
+      }));
+      
+      setLastApiSource(dieselResult.source);
+      toast.success("Preços de combustível atualizados via API!");
+      
+    } catch (error) {
+      // O erro já é tratado e exibido dentro de fetchFuelPrice
+      setLastApiSource(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handlers para inputs de preço (para permitir vírgula e formatação)
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'preco_diesel' | 'preco_gasolina') => {
+    const rawValue = e.target.value;
+    // Permite digitação livre, incluindo vírgula ou ponto, mas sem caracteres extras
+    const cleanedValue = rawValue.replace(/[^0-9,.]/g, '');
+    setFormLPC(prev => ({ ...prev, [field]: cleanedValue }));
+  };
+
+  const handlePriceBlur = (e: React.FocusEvent<HTMLInputElement>, field: 'preco_diesel' | 'preco_gasolina') => {
+    const numericValue = parseFloat(e.target.value.replace(/\./g, '').replace(',', '.')) || 0;
+    setFormLPC(prev => ({ ...prev, [field]: numericValue }));
+  };
+  
+  // Função para formatar o valor numérico para exibição no input
+  const formatPriceForInput = (price: number | string): string => {
+    if (typeof price === 'string') {
+        // Se for string (durante a digitação), retorna a string
+        return price;
+    }
+    return formatNumberForInput(price, 2);
   };
 
   return (
@@ -140,14 +199,24 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
             <div className="flex justify-end mb-4">
               <Button 
                 type="button" 
-                variant="outline" 
-                disabled 
-                className="gap-2 text-muted-foreground"
+                variant="secondary" 
+                onClick={handleConsultarAPI}
+                disabled={loading}
+                className="gap-2"
               >
                 <Cloud className="h-4 w-4" />
-                Consultar via API (Em breve)
+                {loading ? "Consultando API..." : "Consultar Preços via API"}
               </Button>
             </div>
+            
+            {lastApiSource && (
+                <Alert className="mb-4 bg-green-500/10 border-green-500/30">
+                    <AlertCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-700">
+                        Consulta realizada com sucesso! Fonte: {lastApiSource}
+                    </AlertDescription>
+                </Alert>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
@@ -209,11 +278,12 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
                 <Label>Preço Diesel</Label>
                 <div className="relative">
                   <Input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                    value={formLPC.preco_diesel.toFixed(2)}
-                    onChange={(e) => setFormLPC({...formLPC, preco_diesel: parseFloat(e.target.value) || 0})}
+                    value={formatPriceForInput(formLPC.preco_diesel)}
+                    onChange={(e) => handlePriceChange(e, 'preco_diesel')}
+                    onBlur={(e) => handlePriceBlur(e, 'preco_diesel')}
                     onKeyDown={handleEnterToNextField}
                     disabled={loading}
                   />
@@ -227,11 +297,12 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
                 <Label>Preço Gasolina</Label>
                 <div className="relative">
                   <Input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                    value={formLPC.preco_gasolina.toFixed(2)}
-                    onChange={(e) => setFormLPC({...formLPC, preco_gasolina: parseFloat(e.target.value) || 0})}
+                    value={formatPriceForInput(formLPC.preco_gasolina)}
+                    onChange={(e) => handlePriceChange(e, 'preco_gasolina')}
+                    onBlur={(e) => handlePriceBlur(e, 'preco_gasolina')}
                     onKeyDown={handleEnterToNextField}
                     disabled={loading}
                   />
