@@ -47,20 +47,20 @@ export const ImportConflictDialog: React.FC<ImportConflictDialogProps> = ({
                 <Button 
                     variant="destructive" 
                     onClick={onOverwrite}
-                    className="h-auto py-4 flex flex-col items-start text-left"
+                    className="h-auto py-4 flex flex-col items-center text-center"
                 >
                     <RefreshCw className="h-5 w-5 mb-1" />
                     <span className="font-bold">Sobrescrever (Atualizar)</span>
-                    <span className="text-xs font-normal opacity-80">Substitui o P Trab existente com os dados importados.</span>
+                    <span className="text-xs font-normal opacity-80">Substitui o P Trab existente.</span>
                 </Button>
                 <Button 
                     variant="secondary" 
                     onClick={onCreateNew}
-                    className="h-auto py-4 flex flex-col items-start text-left"
+                    className="h-auto py-4 flex flex-col items-center text-center"
                 >
                     <Copy className="h-5 w-5 mb-1" />
                     <span className="font-bold">Criar Novo Número</span>
-                    <span className="text-xs font-normal opacity-80">Gera um novo número de Minuta e importa como um novo P Trab.</span>
+                    <span className="text-xs font-normal opacity-80">Importa como um novo P Trab (Minuta).</span>
                 </Button>
             </div>
         </div>
