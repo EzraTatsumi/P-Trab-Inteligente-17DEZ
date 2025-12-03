@@ -326,22 +326,22 @@ const PTrabManager = () => {
     'aberto': { 
       variant: 'default' as const, 
       label: 'Aberto',
-      className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+      className: 'bg-yellow-500 text-white hover:bg-yellow-600' // Cor sólida
     },
     'em_andamento': { 
       variant: 'secondary' as const, 
       label: 'Em Andamento',
-      className: 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+      className: 'bg-blue-600 text-white hover:bg-blue-700' // Cor sólida
     },
     'completo': { 
       variant: 'default' as const, 
       label: 'Completo',
-      className: 'bg-green-100 text-green-800 hover:bg-green-200'
+      className: 'bg-green-600 text-white hover:bg-green-700' // Cor sólida
     },
     'arquivado': { 
       variant: 'outline' as const, 
       label: 'Arquivado',
-      className: 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+      className: 'bg-gray-500 text-white hover:bg-gray-600' // Cor sólida
     }
   };
 
@@ -1451,7 +1451,12 @@ const PTrabManager = () => {
                           onValueChange={(value) => handleStatusChange(ptrab.id, ptrab.status, value)}
                           disabled={!isNumbered} // Desabilita a mudança de status se não estiver numerado
                         >
-                          <SelectTrigger className={`w-[140px] h-7 text-xs ${statusConfig[ptrab.status as keyof typeof statusConfig]?.className || 'bg-background'}`}>
+                          <SelectTrigger 
+                            className={cn(
+                              "w-[140px] h-7 text-xs [&>span]:hidden", // Oculta o ChevronDown
+                              statusConfig[ptrab.status as keyof typeof statusConfig]?.className || 'bg-background'
+                            )}
+                          >
                             <SelectValue>
                               {statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}
                             </SelectValue>
