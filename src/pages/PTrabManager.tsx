@@ -412,7 +412,8 @@ const PTrabManager = () => {
     try {
       const { error } = await supabase
         .from('p_trab')
-        .update({ comentario: comentarioText || null })
+        // Garante que o comentário seja null se estiver vazio
+        .update({ comentario: comentarioText || null }) 
         .eq('id', ptrabComentario.id);
 
       if (error) throw error;
@@ -705,7 +706,7 @@ const PTrabManager = () => {
     setLoading(true);
 
     try {
-        // 2. Cria o novo P Trab com os dados do original, novo número de minuta e o rótulo no comentário
+        // 2. Cria o novo P Trab com os dados do original, novo número de minuta
         const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = ptrabToClone;
         
         const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
@@ -713,7 +714,8 @@ const PTrabManager = () => {
             numero_ptrab: suggestedCloneNumber, // Usa o número de minuta gerado
             status: "aberto",
             origem: ptrabToClone.origem,
-            comentario: versionName, // Salva o rótulo aqui
+            // MUDANÇA: Não armazena mais o rótulo da variação no campo de comentário.
+            comentario: null, 
             user_id: (await supabase.auth.getUser()).data.user?.id!,
         };
 
