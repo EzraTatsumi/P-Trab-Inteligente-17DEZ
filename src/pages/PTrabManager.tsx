@@ -1105,6 +1105,11 @@ const PTrabManager = () => {
     // Verifica se o numero_ptrab é "Minuta" ou se o status é 'aberto' ou 'em_andamento'
     return ptrab.status === 'aberto' || ptrab.status === 'em_andamento';
   };
+  
+  // Função para verificar se o PTrab está em um estado final
+  const isFinalStatus = (ptrab: PTrab) => {
+    return ptrab.status === 'aprovado' || ptrab.status === 'arquivado';
+  };
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1428,6 +1433,7 @@ const PTrabManager = () => {
                   const isMinuta = ptrab.numero_ptrab.startsWith("Minuta");
                   const isNumbered = !needsNumbering(ptrab);
                   const isEditable = ptrab.status !== 'aprovado' && ptrab.status !== 'arquivado'; // MUDANÇA: Editável se não for aprovado/arquivado
+                  const isApprovedOrArchived = isFinalStatus(ptrab); // NOVO: Verifica se está em status final
                   
                   return (
                   <TableRow key={ptrab.id}>
@@ -1541,13 +1547,13 @@ const PTrabManager = () => {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         
-                        {/* Botão Aprovar: Aparece APENAS se precisar de numeração */}
-                        {needsNumbering(ptrab) && (
+                        {/* Botão Aprovar: Aparece SEMPRE se precisar de numeração OU se estiver em status final */}
+                        {(needsNumbering(ptrab) || isApprovedOrArchived) && (
                           <Button
                             onClick={() => handleOpenApproveDialog(ptrab)}
                             size="sm"
                             className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                            disabled={loading}
+                            disabled={loading || isApprovedOrArchived} // Desabilita se estiver em status final
                           >
                             <CheckCircle className="h-4 w-4" />
                             Aprovar
