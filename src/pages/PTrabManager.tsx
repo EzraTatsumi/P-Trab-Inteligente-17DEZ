@@ -1694,7 +1694,7 @@ const PTrabManager = () => {
                 id="approve-number"
                 value={suggestedApproveNumber}
                 onChange={(e) => setSuggestedApproveNumber(e.target.value)}
-                placeholder={`Ex: N${yearSuffix}/${ptrabToApprove?.nome_om}`}
+                placeholder={`Ex: 1${yearSuffix}/${ptrabToApprove?.nome_om}`}
                 maxLength={50}
                 onKeyDown={handleEnterToNextField}
               />
