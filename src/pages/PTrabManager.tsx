@@ -449,6 +449,43 @@ const PTrabManager = () => {
 
       const currentNumber = formData.numero_ptrab.trim();
       
+      // --- VALIDAÇÃO DE CAMPOS OBRIGATÓRIOS ---
+      const requiredFields: (keyof typeof formData)[] = [
+        'numero_ptrab', 'nome_operacao', 'comando_militar_area', 
+        'nome_om_extenso', 'nome_om', 'efetivo_empregado', 
+        'periodo_inicio', 'periodo_fim'
+      ];
+      
+      for (const field of requiredFields) {
+        if (!formData[field] || String(formData[field]).trim() === "") {
+          // Exceção: se for edição e o campo for opcional (como nome_om_extenso), permite.
+          if (editingId && (field === 'nome_om_extenso' || field === 'nome_cmt_om' || field === 'local_om' || field === 'acoes')) {
+            continue;
+          }
+          
+          let fieldName = field.replace(/_/g, ' ');
+          if (fieldName === 'nome om') fieldName = 'Nome da OM (sigla)';
+          if (fieldName === 'nome om extenso') fieldName = 'Nome da OM (extenso)';
+          
+          toast.error(`O campo '${fieldName}' é obrigatório.`);
+          setLoading(false);
+          return;
+        }
+      }
+      
+      if (!formData.codug_om || !formData.rm_vinculacao || !formData.codug_rm_vinculacao) {
+        toast.error("A OM deve ser selecionada na lista para preencher os CODUGs e RM.");
+        setLoading(false);
+        return;
+      }
+      
+      if (new Date(formData.periodo_fim) < new Date(formData.periodo_inicio)) {
+        toast.error("A Data Fim deve ser posterior ou igual à Data Início.");
+        setLoading(false);
+        return;
+      }
+      // --- FIM VALIDAÇÃO ---
+
       // Validação: Se o número não for "Minuta", ele deve ser único (exceto se for o próprio registro em edição)
       if (currentNumber) {
         const isDuplicate = isPTrabNumberDuplicate(currentNumber, existingPTrabNumbers) && 
@@ -681,7 +718,7 @@ const PTrabManager = () => {
 
         const { data: newPTrab, error: insertError } = await supabase
             .from("p_trab")
-            .insert([newPTrabData as TablesInsert<'p_trab'>])
+            .insert([newPTrabData as TablesInsert<'p_trab'>]) // Cast to TablesInsert<'p_trab'>
             .select()
             .single();
             
