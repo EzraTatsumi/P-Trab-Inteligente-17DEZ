@@ -370,6 +370,7 @@ export type Database = {
           periodo_fim: string
           periodo_inicio: string
           rm_vinculacao: string | null
+          rotulo_versao: string | null
           status: string
           updated_at: string
           user_id: string
@@ -392,6 +393,7 @@ export type Database = {
           periodo_fim: string
           periodo_inicio: string
           rm_vinculacao?: string | null
+          rotulo_versao?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -414,6 +416,7 @@ export type Database = {
           periodo_fim?: string
           periodo_inicio?: string
           rm_vinculacao?: string | null
+          rotulo_versao?: string | null
           status?: string
           updated_at?: string
           user_id?: string

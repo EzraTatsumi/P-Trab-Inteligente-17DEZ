@@ -50,6 +50,7 @@ import { cn } from "@/lib/utils";
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
   origem: 'original' | 'importado' | 'consolidado';
+  rotulo_versao: string | null; // ADDED rotulo_versao
 };
 
 interface PTrab extends PTrabDB {
@@ -137,6 +138,7 @@ const PTrabManager = () => {
       status: "aberto",
       origem: 'original',
       comentario: "", // Adicionado
+      rotulo_versao: null, // ADDED
     });
   }, [existingPTrabNumbers]);
 
@@ -158,6 +160,7 @@ const PTrabManager = () => {
     status: "aberto",
     origem: 'original' as 'original' | 'importado' | 'consolidado',
     comentario: "", // Adicionado
+    rotulo_versao: null as string | null, // ADDED
   });
 
   const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
@@ -182,7 +185,7 @@ const PTrabManager = () => {
     try {
       const { data: pTrabsData, error: pTrabsError } = await supabase
         .from("p_trab")
-        .select("*, comentario, origem")
+        .select("*, comentario, origem, rotulo_versao") // ADDED rotulo_versao
         .order("created_at", { ascending: false });
 
       if (pTrabsError) throw pTrabsError;
@@ -533,7 +536,23 @@ const PTrabManager = () => {
         
         // --- NOVO FLUXO DE CLONAGEM DE REGISTROS APÓS CRIAÇÃO DO CABEÇALHO ---
         if (originalPTrabIdToClone) {
+            // 1. Clonar registros (Classes I, II, III, LPC)
             await cloneRelatedRecords(originalPTrabIdToClone, newPTrabId);
+            
+            // 2. Copiar rotulo_versao do original para o novo PTrab (se existir)
+            const { data: originalPTrabData } = await supabase
+                .from("p_trab")
+                .select("rotulo_versao")
+                .eq("id", originalPTrabIdToClone)
+                .single();
+                
+            if (originalPTrabData?.rotulo_versao) {
+                await supabase
+                    .from("p_trab")
+                    .update({ rotulo_versao: originalPTrabData.rotulo_versao })
+                    .eq("id", newPTrabId);
+            }
+            
             toast.success("P Trab criado e registros clonados!");
         } else {
             toast.success("P Trab criado!");
@@ -584,7 +603,8 @@ const PTrabManager = () => {
       local_om: ptrab.local_om || "",
       status: ptrab.status,
       origem: ptrab.origem,
-      comentario: ptrab.comentario || "",
+      comentario: ptrab.comentario || "", // Comentário continua sendo editável
+      rotulo_versao: ptrab.rotulo_versao || null, // ADDED
     });
     setDialogOpen(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -672,14 +692,15 @@ const PTrabManager = () => {
       setShowCloneOptionsDialog(false);
       
       // 1. Prepara o formulário com os dados do original e o novo número de minuta
-      const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = ptrabToClone;
+      const { id, created_at, updated_at, totalLogistica, totalOperacional, rotulo_versao, ...restOfPTrab } = ptrabToClone;
       
       setFormData({
         ...restOfPTrab,
         numero_ptrab: suggestedCloneNumber, // Usa o número de minuta gerado
         status: "aberto",
         origem: ptrabToClone.origem,
-        comentario: null, // Limpa o comentário para um novo P Trab
+        comentario: "", // Limpa o comentário para um novo P Trab
+        rotulo_versao: ptrabToClone.rotulo_versao, // COPIA o rótulo da versão
       });
       setSelectedOmId(ptrabToClone.codug_om ? 'temp' : undefined);
       setOriginalPTrabIdToClone(ptrabToClone.id); // Salva o ID para clonar os registros no submit
@@ -707,15 +728,15 @@ const PTrabManager = () => {
 
     try {
         // 2. Cria o novo P Trab com os dados do original, novo número de minuta
-        const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = ptrabToClone;
+        const { id, created_at, updated_at, totalLogistica, totalOperacional, rotulo_versao, ...restOfPTrab } = ptrabToClone;
         
         const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
             ...restOfPTrab,
             numero_ptrab: suggestedCloneNumber, // Usa o número de minuta gerado
             status: "aberto",
             origem: ptrabToClone.origem,
-            // MUDANÇA: Não armazena mais o rótulo da variação no campo de comentário.
-            comentario: null, 
+            comentario: null, // Comentário é limpo
+            rotulo_versao: versionName, // NEW: Salva o rótulo da versão fornecido pelo usuário
             user_id: (await supabase.auth.getUser()).data.user?.id!,
         };
 
@@ -951,7 +972,7 @@ const PTrabManager = () => {
         if (!templatePTrab) throw new Error("P Trab template não encontrado.");
 
         // FIX: Explicitly exclude calculated fields and IDs
-        const { id, created_at, updated_at, totalLogistica, totalOperacional, ...restOfPTrab } = templatePTrab;
+        const { id, created_at, updated_at, totalLogistica, totalOperacional, rotulo_versao, ...restOfPTrab } = templatePTrab;
         
         const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
           ...restOfPTrab,
@@ -960,6 +981,7 @@ const PTrabManager = () => {
           user_id: (await supabase.auth.getUser()).data.user?.id!,
           nome_operacao: `CONSOLIDADO - ${templatePTrab.nome_operacao}`,
           origem: 'consolidado',
+          rotulo_versao: templatePTrab.rotulo_versao, // Copia o rótulo da versão do template
         };
 
         const { data: newPTrab, error: insertPTrabError } = await supabase
@@ -1026,7 +1048,7 @@ const PTrabManager = () => {
         // Clonar Classe III
         const { data: classeIIIRecords } = await supabase
           .from("classe_iii_registros")
-          .select("*")
+          .select("*, itens_equipamentos")
           .eq("p_trab_id", sourceId);
 
         if (classeIIIRecords && classeIIIRecords.length > 0) {
@@ -1429,11 +1451,11 @@ const PTrabManager = () => {
                     <TableCell>
                       <div className="flex flex-col items-start">
                         <span>{ptrab.nome_operacao}</span>
-                        {/* NOVO RÓTULO DE VERSÃO - AGORA SEM OPACIDADE */}
-                        {ptrab.comentario && ptrab.numero_ptrab.startsWith("Minuta") && (
+                        {/* NOVO RÓTULO DE VERSÃO - AGORA VISÍVEL */}
+                        {ptrab.rotulo_versao && ( // Check rotulo_versao
                           <Badge variant="secondary" className="mt-1 text-xs bg-secondary text-secondary-foreground">
                             <GitBranch className="h-3 w-3 mr-1" />
-                            {ptrab.comentario}
+                            {ptrab.rotulo_versao}
                           </Badge>
                         )}
                       </div>
