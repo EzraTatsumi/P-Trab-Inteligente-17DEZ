@@ -339,15 +339,19 @@ const PTrabExportImportPage = () => {
     const importedPTrab = importDataPreview.data.p_trab as Tables<'p_trab'>;
     const importedNumber = importedPTrab.numero_ptrab;
     
-    const isOfficialNumber = importedNumber && !importedNumber.startsWith("Minuta");
+    const isMinuta = importedNumber && importedNumber.startsWith("Minuta");
+    const isOfficialNumber = importedNumber && !isMinuta;
     const existingPTrab = pTrabsList.find(p => p.numero_ptrab === importedNumber);
 
-    if (isOfficialNumber && existingPTrab) {
+    if (isMinuta) {
+        // Se for Minuta, importa diretamente como nova Minuta
+        handleCreateNewNumberAndImport();
+    } else if (isOfficialNumber && existingPTrab) {
         // Conflito detectado para um número oficial
         setPtrabToOverwriteId(existingPTrab.id);
         setIsConflictDialogOpen(true);
     } else {
-        // Sem conflito, ou é uma Minuta (que deve ir para o diálogo de opções para nova numeração)
+        // Sem conflito, ou é um número oficial que não existe (vai para o diálogo de opções para nova numeração)
         setIsImportOptionsDialogOpen(true);
     }
   };
