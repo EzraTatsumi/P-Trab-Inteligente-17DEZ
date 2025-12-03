@@ -196,18 +196,6 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
           )}
           
           <form onSubmit={(e) => { e.preventDefault(); handleSalvarRefLPC(); }}>
-            <div className="flex justify-end mb-4">
-              <Button 
-                type="button" 
-                variant="secondary" 
-                onClick={handleConsultarAPI}
-                disabled={loading}
-                className="gap-2"
-              >
-                <Cloud className="h-4 w-4" />
-                {loading ? "Consultando API..." : "Consultar Preços via API"}
-              </Button>
-            </div>
             
             {lastApiSource && (
                 <Alert className="mb-4 bg-green-500/10 border-green-500/30">
@@ -313,7 +301,17 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
               </div>
             </div>
             
-            <div className="flex justify-end mt-4">
+            <div className="flex justify-end mt-4 space-x-2">
+              <Button 
+                type="button" 
+                variant="secondary" 
+                onClick={handleConsultarAPI}
+                disabled={loading}
+                className="gap-2"
+              >
+                <Cloud className="h-4 w-4" />
+                {loading ? "Consultando API..." : "Consultar Preços via API"}
+              </Button>
               <Button type="submit" disabled={loading}>
                 {loading ? "Salvando..." : (refLPC ? "Atualizar Referência LPC" : "Salvar Referência LPC")}
               </Button>
