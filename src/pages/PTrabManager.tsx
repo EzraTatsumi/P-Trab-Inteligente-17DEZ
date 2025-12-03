@@ -1517,7 +1517,7 @@ const PTrabManager = () => {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         
-                        {/* Botão Numerar: Aparece APENAS se precisar de numeração */}
+                        {/* Botão Aprovar: Aparece APENAS se precisar de numeração */}
                         {needsNumbering(ptrab) && (
                           <Button
                             onClick={() => handleOpenApproveDialog(ptrab)}
@@ -1526,7 +1526,7 @@ const PTrabManager = () => {
                             disabled={loading}
                           >
                             <CheckCircle className="h-4 w-4" />
-                            Numerar
+                            Aprovar
                           </Button>
                         )}
 
@@ -1764,7 +1764,7 @@ const PTrabManager = () => {
           </div>
           <DialogFooter>
             <Button onClick={handleApproveAndNumber} disabled={loading || !suggestedApproveNumber.trim()}>
-              {loading ? "Aguarde..." : "Confirmar Numeração"}
+              {loading ? "Aguarde..." : "Confirmar Aprovação"}
             </Button>
             <Button variant="outline" onClick={() => setShowApproveDialog(false)}>
               Cancelar
