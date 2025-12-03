@@ -1,52 +1,51 @@
 import { toast } from "sonner";
+import { supabase } from "./client"; // Importar o cliente Supabase
 
-const DIESEL_API_URL = "https://api-preco-combustivel.onrender.com/diesel";
-const GASOLINA_API_URL = "https://api-preco-combustivel.onrender.com/gasolina";
-
-interface PriceResponse {
-  preco: number; // Corrigido para 'preco'
+// Interface para a resposta consolidada da Edge Function
+interface EdgeFunctionResponse {
+  diesel: { price: number, source: string };
+  gasolina: { price: number, source: string };
 }
 
 /**
- * Fetches the latest price for a given fuel type from the external API.
+ * Fetches the latest price for a given fuel type by invoking a Supabase Edge Function.
+ * This bypasses potential CORS issues with the external API.
  * @param fuelType 'diesel' or 'gasolina'
  * @returns The price and source information.
  */
 export async function fetchFuelPrice(fuelType: 'diesel' | 'gasolina'): Promise<{ price: number, source: string }> {
-  const url = fuelType === 'diesel' ? DIESEL_API_URL : GASOLINA_API_URL;
-  
   try {
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      // Se a resposta não for OK, lança um erro com o status
-      throw new Error(`Falha na requisição: Status ${response.status} - ${response.statusText}`);
+    // Invoca a Edge Function para buscar os preços
+    const { data, error } = await supabase.functions.invoke('fetch-fuel-prices');
+
+    if (error) {
+      throw new Error(error.message || "Falha na execução da Edge Function.");
     }
     
-    const data: PriceResponse = await response.json();
-    
-    if (typeof data.preco !== 'number') {
-        throw new Error("Formato de resposta inválido: campo 'preco' ausente ou não numérico.");
+    const responseData = data as EdgeFunctionResponse;
+
+    if (fuelType === 'diesel') {
+      if (typeof responseData.diesel?.price !== 'number' || responseData.diesel.price <= 0) {
+        throw new Error("Preço do Diesel inválido recebido.");
+      }
+      return responseData.diesel;
+    } else {
+      if (typeof responseData.gasolina?.price !== 'number' || responseData.gasolina.price <= 0) {
+        throw new Error("Preço da Gasolina inválido recebido.");
+      }
+      return responseData.gasolina;
     }
-    
-    return {
-      price: data.preco,
-      source: "ANP (API Externa)", // Definindo a fonte conforme solicitado
-    };
+
   } catch (error) {
-    console.error(`Erro ao buscar preço de ${fuelType}:`, error);
+    console.error(`Erro ao buscar preço de ${fuelType} via Edge Function:`, error);
+    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido.";
     
-    let errorMessage = "Verifique sua conexão com a internet.";
-    if (error instanceof Error) {
-        // Se for um erro de requisição (ex: status 404, 500), mostra a mensagem detalhada
-        if (error.message.includes("Falha na requisição")) {
-            errorMessage = error.message;
-        } else if (error.message.includes("Formato de resposta inválido")) {
-            errorMessage = error.message;
-        }
+    // Se for um erro de rede ou CORS, a mensagem será mais genérica
+    if (errorMessage.includes("Failed to fetch") || errorMessage.includes("Edge Function failed")) {
+        toast.error(`Falha ao consultar preço da ${fuelType}. Verifique a conexão ou tente novamente.`);
+    } else {
+        toast.error(`Falha ao consultar preço da ${fuelType}. Detalhes: ${errorMessage}`);
     }
-    
-    toast.error(`Falha ao consultar preço da ${fuelType}. ${errorMessage}`);
     throw error;
   }
 }
