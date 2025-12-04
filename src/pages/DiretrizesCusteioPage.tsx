@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings } from "lucide-react";
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
@@ -16,7 +16,8 @@ import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { tipoViaturas, tipoEquipamentosEngenharia } from "@/data/classeIIIData";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox"; // Importar Checkbox
+import { Checkbox } from "@/components/ui/checkbox";
+import { YearManagementDialog } from "@/components/YearManagementDialog"; // Importar o novo diálogo
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -89,7 +90,7 @@ const DiretrizesCusteioPage = () => {
   const [loading, setLoading] = useState(true);
   const [showClasseIAlimentacaoConfig, setShowClasseIAlimentacaoConfig] = useState(false);
   const [showClasseIIConfig, setShowClasseIIConfig] = useState(false);
-  const [showClasseIIIConfig, setShowClasseIIIConfig] = useState(false); // NOVO ESTADO PARA CLASSE III
+  const [showClasseIIIConfig, setShowClasseIIIConfig] = useState(false);
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
   const [embarcacaoConfig, setEmbarcacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultEmbarcacaoConfig);
@@ -102,9 +103,13 @@ const DiretrizesCusteioPage = () => {
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedClasseIITab, setSelectedClasseIITab] = useState<string>(CATEGORIAS_CLASSE_II[0]);
-  const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key); // Novo estado para a aba Classe III
+  const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key);
+  
+  // NOVO ESTADO: Diálogo de Gerenciamento de Anos
+  const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   
   const { handleEnterToNextField } = useFormNavigation();
+  const currentYear = new Date().getFullYear();
 
   useEffect(() => {
     checkAuthAndLoadYears();
@@ -141,12 +146,14 @@ const DiretrizesCusteioPage = () => {
       if (error) throw error;
 
       const years = data ? data.map(d => d.ano_referencia) : [];
-      const currentYear = new Date().getFullYear();
       
       const uniqueYears = Array.from(new Set([...years, currentYear])).sort((a, b) => b - a);
       setAvailableYears(uniqueYears);
 
-      setSelectedYear(uniqueYears.length > 0 ? uniqueYears[0] : currentYear);
+      // Se o ano selecionado não estiver mais disponível, volta para o mais recente
+      if (!uniqueYears.includes(selectedYear)) {
+        setSelectedYear(uniqueYears.length > 0 ? uniqueYears[0] : currentYear);
+      }
 
     } catch (error: any) {
       console.error("Erro ao carregar anos disponíveis:", error);
@@ -176,11 +183,11 @@ const DiretrizesCusteioPage = () => {
           id: data.id,
           user_id: data.user_id,
           ano_referencia: data.ano_referencia,
-          classe_i_valor_qs: data.classe_i_valor_qs,
-          classe_i_valor_qr: data.classe_i_valor_qr,
-          classe_iii_fator_gerador: data.classe_iii_fator_gerador,
-          classe_iii_fator_embarcacao: data.classe_iii_fator_embarcacao,
-          classe_iii_fator_equip_engenharia: data.classe_iii_fator_equip_engenharia,
+          classe_i_valor_qs: Number(data.classe_i_valor_qs),
+          classe_i_valor_qr: Number(data.classe_i_valor_qr),
+          classe_iii_fator_gerador: Number(data.classe_iii_fator_gerador),
+          classe_iii_fator_embarcacao: Number(data.classe_iii_fator_embarcacao),
+          classe_iii_fator_equip_engenharia: Number(data.classe_iii_fator_equip_engenharia),
           observacoes: data.observacoes || "",
         });
       } else {
@@ -205,85 +212,32 @@ const DiretrizesCusteioPage = () => {
         setClasseIIConfig(defaultClasseIIConfig);
       }
 
-      // --- Carregar Classe III - Geradores ---
-      const { data: equipamentosData } = await supabase
-        .from("diretrizes_equipamentos_classe_iii")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year)
-        .eq("categoria", "GERADOR")
-        .eq("ativo", true);
+      // --- Carregar Classe III - Equipamentos ---
+      const loadEquipamentos = async (categoria: string, setter: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, defaultData: DiretrizEquipamentoForm[]) => {
+        const { data: equipamentosData } = await supabase
+          .from("diretrizes_equipamentos_classe_iii")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("ano_referencia", year)
+          .eq("categoria", categoria)
+          .eq("ativo", true);
 
-      if (equipamentosData && equipamentosData.length > 0) {
-        setGeradorConfig(equipamentosData.map(eq => ({
-          nome_equipamento: eq.nome_equipamento,
-          tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
-          consumo: Number(eq.consumo),
-          unidade: eq.unidade as 'L/h' | 'km/L',
-        })));
-      } else {
-        setGeradorConfig(defaultGeradorConfig);
-      }
+        if (equipamentosData && equipamentosData.length > 0) {
+          setter(equipamentosData.map(eq => ({
+            nome_equipamento: eq.nome_equipamento,
+            tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
+            consumo: Number(eq.consumo),
+            unidade: eq.unidade as 'L/h' | 'km/L',
+          })));
+        } else {
+          setter(defaultData);
+        }
+      };
 
-      // --- Carregar Classe III - Embarcações ---
-      const { data: embarcacoesData } = await supabase
-        .from("diretrizes_equipamentos_classe_iii")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year)
-        .eq("categoria", "EMBARCACAO")
-        .eq("ativo", true);
-
-      if (embarcacoesData && embarcacoesData.length > 0) {
-        setEmbarcacaoConfig(embarcacoesData.map(eq => ({
-          nome_equipamento: eq.nome_equipamento,
-          tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
-          consumo: Number(eq.consumo),
-          unidade: eq.unidade as 'L/h' | 'km/L',
-        })));
-      } else {
-        setEmbarcacaoConfig(defaultEmbarcacaoConfig);
-      }
-      
-      // --- Carregar Classe III - Motomecanização ---
-      const { data: motomecanizacaoData } = await supabase
-        .from("diretrizes_equipamentos_classe_iii")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year)
-        .eq("categoria", "MOTOMECANIZACAO")
-        .eq("ativo", true);
-
-      if (motomecanizacaoData && motomecanizacaoData.length > 0) {
-        setMotomecanizacaoConfig(motomecanizacaoData.map(eq => ({
-          nome_equipamento: eq.nome_equipamento,
-          tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
-          consumo: Number(eq.consumo),
-          unidade: eq.unidade as 'L/h' | 'km/L',
-        })));
-      } else {
-        setMotomecanizacaoConfig(defaultMotomecanizacaoConfig);
-      }
-
-      // --- Carregar Classe III - Equipamentos de Engenharia ---
-      const { data: engenhariaData } = await supabase
-        .from("diretrizes_equipamentos_classe_iii")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year)
-        .eq("categoria", "EQUIPAMENTO_ENGENHARIA")
-        .eq("ativo", true);
-
-      if (engenhariaData && engenhariaData.length > 0) {
-        setEquipamentosEngenhariaConfig(engenhariaData.map(eq => ({
-          nome_equipamento: eq.nome_equipamento,
-          tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
-          consumo: Number(eq.consumo),
-          unidade: eq.unidade as 'L/h' | 'km/L',
-        })));
-      } else {
-        setEquipamentosEngenhariaConfig(defaultEquipamentosEngenhariaConfig);
-      }
+      await loadEquipamentos("GERADOR", setGeradorConfig, defaultGeradorConfig);
+      await loadEquipamentos("EMBARCACAO", setEmbarcacaoConfig, defaultEmbarcacaoConfig);
+      await loadEquipamentos("MOTOMECANIZACAO", setMotomecanizacaoConfig, defaultMotomecanizacaoConfig);
+      await loadEquipamentos("EQUIPAMENTO_ENGENHARIA", setEquipamentosEngenhariaConfig, defaultEquipamentosEngenhariaConfig);
         
     } catch (error: any) {
       console.error("Erro ao carregar diretrizes:", error);
@@ -409,6 +363,136 @@ const DiretrizesCusteioPage = () => {
     }
   };
   
+  // --- Lógica de Cópia e Exclusão ---
+  const handleCopyDiretrizes = async (sourceYear: number, targetYear: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+      
+      setLoading(true);
+      
+      // 1. Copiar Diretriz de Custeio (Valores e Fatores)
+      const { data: sourceCusteio, error: custeioError } = await supabase
+        .from("diretrizes_custeio")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", sourceYear)
+        .single();
+        
+      if (custeioError || !sourceCusteio) throw new Error(`Diretriz de custeio para o ano ${sourceYear} não encontrada.`);
+      
+      const { id: oldId, created_at, updated_at, ...restCusteio } = sourceCusteio;
+      const newCusteio = { ...restCusteio, ano_referencia: targetYear, user_id: user.id };
+      
+      const { error: insertCusteioError } = await supabase
+        .from("diretrizes_custeio")
+        .insert([newCusteio]);
+      if (insertCusteioError) throw insertCusteioError;
+      
+      // 2. Copiar Diretrizes de Equipamentos (Classe III)
+      const { data: sourceEquipamentos, error: equipamentosError } = await supabase
+        .from("diretrizes_equipamentos_classe_iii")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", sourceYear);
+        
+      if (equipamentosError) console.error("Erro ao buscar equipamentos para cópia:", equipamentosError);
+      
+      if (sourceEquipamentos && sourceEquipamentos.length > 0) {
+        const newEquipamentos = sourceEquipamentos.map(eq => {
+          const { id: oldEqId, created_at: oldEqCreated, updated_at: oldEqUpdated, ...restEq } = eq;
+          return { ...restEq, ano_referencia: targetYear, user_id: user.id };
+        });
+        const { error: insertEqError } = await supabase
+          .from("diretrizes_equipamentos_classe_iii")
+          .insert(newEquipamentos);
+        if (insertEqError) console.error("Erro ao inserir equipamentos copiados:", insertEqError);
+      }
+      
+      // 3. Copiar Diretrizes de Classe II
+      const { data: sourceClasseII, error: classeIIError } = await supabase
+        .from("diretrizes_classe_ii")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", sourceYear);
+        
+      if (classeIIError) console.error("Erro ao buscar Classe II para cópia:", classeIIError);
+      
+      if (sourceClasseII && sourceClasseII.length > 0) {
+        const newClasseII = sourceClasseII.map(c2 => {
+          const { id: oldC2Id, created_at: oldC2Created, updated_at: oldC2Updated, ...restC2 } = c2;
+          return { ...restC2, ano_referencia: targetYear, user_id: user.id };
+        });
+        const { error: insertC2Error } = await supabase
+          .from("diretrizes_classe_ii")
+          .insert(newClasseII);
+        if (insertC2Error) console.error("Erro ao inserir Classe II copiada:", insertC2Error);
+      }
+
+      toast.success(`Diretrizes do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
+      setIsYearManagementDialogOpen(false);
+      setSelectedYear(targetYear); // Seleciona o novo ano
+      await loadAvailableYears();
+      
+    } catch (error: any) {
+      console.error("Erro ao copiar diretrizes:", error);
+      toast.error(sanitizeError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteDiretrizes = async (year: number) => {
+    if (year === currentYear) {
+      toast.error("Não é possível excluir a diretriz do ano atual.");
+      return;
+    }
+    
+    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes para o ano ${year}? Esta ação é irreversível.`)) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+      
+      setLoading(true);
+      
+      // 1. Excluir Diretrizes de Equipamentos (Classe III)
+      await supabase
+        .from("diretrizes_equipamentos_classe_iii")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year);
+        
+      // 2. Excluir Diretrizes de Classe II
+      await supabase
+        .from("diretrizes_classe_ii")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year);
+        
+      // 3. Excluir Diretriz de Custeio (Valores e Fatores)
+      const { error: custeioError } = await supabase
+        .from("diretrizes_custeio")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year);
+        
+      if (custeioError) throw custeioError;
+
+      toast.success(`Diretrizes do ano ${year} excluídas com sucesso!`);
+      setIsYearManagementDialogOpen(false);
+      await loadAvailableYears();
+      
+    } catch (error: any) {
+      console.error("Erro ao excluir diretrizes:", error);
+      toast.error(sanitizeError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+  // --- Fim Lógica de Cópia e Exclusão ---
+
+
   // Função genérica para adicionar item (Classe III)
   const handleAddItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, unidade: 'L/h' | 'km/L') => {
     setConfig([
@@ -455,17 +539,15 @@ const DiretrizesCusteioPage = () => {
       <div className="space-y-4 pt-4">
         {filteredItems.map((item, index) => {
           // Encontrar o índice original no array completo para permitir a atualização/remoção
-          const indexToUse = classeIIConfig.findIndex(c => c.item === item.item && c.categoria === item.categoria);
+          const indexInMainArray = classeIIConfig.findIndex(c => c === item);
           
           const handleUpdateFilteredItem = (field: keyof DiretrizClasseIIForm, value: any) => {
-            const indexInMainArray = classeIIConfig.findIndex(c => c === item);
             if (indexInMainArray !== -1) {
               handleUpdateClasseIIItem(indexInMainArray, field, value);
             }
           };
 
           const handleRemoveFilteredItem = () => {
-            const indexInMainArray = classeIIConfig.findIndex(c => c === item);
             if (indexInMainArray !== -1) {
               handleRemoveClasseIIItem(indexInMainArray);
             }
@@ -607,10 +689,20 @@ const DiretrizesCusteioPage = () => {
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-3xl mx-auto space-y-6">
-        <Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para Planos de Trabalho
-        </Button>
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar para Planos de Trabalho
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsYearManagementDialogOpen(true)}
+            disabled={loading}
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            Gerenciar Anos
+          </Button>
+        </div>
 
         <Card>
           <CardHeader>
@@ -631,7 +723,7 @@ const DiretrizesCusteioPage = () => {
                   <SelectContent>
                     {availableYears.map((year) => (
                       <SelectItem key={year} value={year.toString()}>
-                        {year}
+                        {year} {year === currentYear && "(Atual)"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -767,11 +859,24 @@ const DiretrizesCusteioPage = () => {
                 />
               </div>
 
-              <Button type="submit" className="w-full mt-6">Salvar Diretrizes</Button>
+              <Button type="submit" className="w-full mt-6" disabled={loading}>
+                {loading ? "Salvando..." : "Salvar Diretrizes"}
+              </Button>
             </form>
           </CardContent>
         </Card>
       </div>
+      
+      {/* Diálogo de Gerenciamento de Anos */}
+      <YearManagementDialog
+        open={isYearManagementDialogOpen}
+        onOpenChange={setIsYearManagementDialogOpen}
+        availableYears={availableYears}
+        currentYear={currentYear}
+        onCopy={handleCopyDiretrizes}
+        onDelete={handleDeleteDiretrizes}
+        loading={loading}
+      />
     </div>
   );
 };
