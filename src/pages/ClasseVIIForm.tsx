@@ -1213,7 +1213,7 @@ export default function ClasseVIIForm() {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => {
-                                                                if (confirm(`Deseja realmente deletar o registro de Classe VII para ${omName} (${registro.categoria})?`)) {
+                                                                if (confirm(`Deseja realmente deletar o registro de Classe VI para ${omName} (${registro.categoria})?`)) {
                                                                     supabase.from("classe_ii_registros")
                                                                         .delete()
                                                                         .eq("id", registro.id)

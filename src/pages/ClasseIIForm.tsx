@@ -364,7 +364,8 @@ export default function ClasseIIForm() {
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", anoReferencia)
-        .eq("ativo", true);
+        .eq("ativo", true)
+        .in("categoria", CATEGORIAS);
 
       if (error) throw error;
 
@@ -389,6 +390,7 @@ export default function ClasseIIForm() {
       .from("classe_ii_registros")
       .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
       .eq("p_trab_id", ptrabId)
+      .in("categoria", CATEGORIAS)
       .order("organizacao", { ascending: true }) // Ordenar por OM
       .order("categoria", { ascending: true }); // E depois por categoria
 
@@ -672,11 +674,12 @@ export default function ClasseIIForm() {
     try {
       setLoading(true);
       
-      // 3. Deletar TODOS os registros existentes para o PTrab (pois estamos salvando por categoria)
+      // 3. Deletar TODOS os registros existentes de Classe II para o PTrab
       const { error: deleteError } = await supabase
         .from("classe_ii_registros")
         .delete()
-        .eq("p_trab_id", ptrabId);
+        .eq("p_trab_id", ptrabId)
+        .in("categoria", CATEGORIAS);
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
       // 4. Inserir os novos registros (um por categoria ativa)
@@ -699,11 +702,12 @@ export default function ClasseIIForm() {
     setLoading(true);
     resetFormFields();
     
-    // 1. Buscar TODOS os registros para este PTrab (pois a edição é consolidada)
+    // 1. Buscar TODOS os registros de CLASSE II para este PTrab
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_ii_registros")
         .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
-        .eq("p_trab_id", ptrabId);
+        .eq("p_trab_id", ptrabId)
+        .in("categoria", CATEGORIAS);
         
     if (fetchAllError) {
         toast.error("Erro ao carregar todos os registros para edição.");
@@ -740,8 +744,6 @@ export default function ClasseIIForm() {
         
         // Capturar a OM Detentora (assumindo que é a mesma que a OM de Destino do Recurso)
         if (!firstOmDetentora) {
-            // Nota: O campo 'organizacao' no DB é a OM de Destino do Recurso.
-            // Para fins de edição, assumimos que a OM Detentora é a mesma que a OM de Destino do Recurso (organizacao/ug)
             firstOmDetentora = { nome: r.organizacao, ug: r.ug };
         }
     });
@@ -874,7 +876,7 @@ export default function ClasseIIForm() {
       setLoading(false);
     }
   };
-  
+
   const displayFases = useMemo(() => {
     return [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
   }, [fasesAtividade, customFaseAtividade]);
