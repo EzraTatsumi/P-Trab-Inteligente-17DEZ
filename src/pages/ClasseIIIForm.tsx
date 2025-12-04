@@ -837,7 +837,8 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
   }, [registros]);
   
   const getMemoriaRecords = useMemo(() => {
-    return [...registrosAgrupadosPorOM].flatMap(([omKey, group]) => [
+    // CORREÇÃO: Usar Object.values para iterar sobre o objeto e depois flatMap
+    return Object.values(registrosAgrupadosPorOM).flatMap(group => [
         ...group.combustivel,
         ...group.lubrificante
     ]).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
@@ -1340,13 +1341,13 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                   Registros Consolidados Salvos
                 </h2>
                 
-                {Object.entries(registrosAgrupadosPorOM).map(([omKey, group]) => {
+                {Object.values(registrosAgrupadosPorOM).map((group) => {
                     const totalOM = [...group.combustivel, ...group.lubrificante].reduce((sum, r) => sum + r.valor_total, 0);
                     const omName = group.om;
                     const ug = group.ug;
                     
                     return (
-                        <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                        <Card key={omName} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h3 className="font-bold text-lg text-primary">
                                     {omName} (UG: {ug})
