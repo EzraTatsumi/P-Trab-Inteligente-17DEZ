@@ -571,8 +571,8 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
 
         consolidadosLubrificante.push({
             categoria: cat,
-            omLubrificante: alloc.om,
-            ugLubrificante: alloc.ug,
+            omLubrificante: alloc.omLubrificante,
+            ugLubrificante: alloc.ugLubrificante,
             total_litros: totalLitrosLubrificante,
             valor_total: totalValorLubrificante,
             itens: itensGrupo,
@@ -663,14 +663,21 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
     try {
       setLoading(true);
       
-      // Deletar TODOS os registros existentes de Classe III para este PTrab
+      // 3. Deletar TODOS os registros existentes de Classe III para este PTrab
       const { error: deleteError } = await supabase
         .from("classe_iii_registros")
         .delete()
         .eq("p_trab_id", ptrabId);
-      if (deleteError) { throw deleteError; }
       
-      // Inserir novos registros
+      if (deleteError) { 
+          console.error("Erro ao deletar registros existentes:", deleteError);
+          toast.error(`Erro ao deletar registros antigos: ${sanitizeError(deleteError)}`);
+          // Se a deleção falhar, interrompemos para evitar duplicação
+          setLoading(false);
+          return;
+      }
+      
+      // 4. Inserir novos registros
       const { error: insertError } = await supabase.from("classe_iii_registros").insert(registrosParaSalvar);
       if (insertError) throw insertError;
       
