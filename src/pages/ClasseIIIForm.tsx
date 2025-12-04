@@ -893,22 +893,6 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                             <TabsContent key={cat.key} value={cat.key} className="mt-4">
                                 <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
                                     
-                                    {/* OM de Destino do Lubrificante (Apenas Gerador/Embarcação) */}
-                                    {(cat.key === 'GERADOR' || cat.key === 'EMBARCACAO') && (
-                                        <div className="space-y-2 p-3 border rounded-lg bg-background">
-                                            <Label>OM Destino Recurso Lubrificante (ND 30) *</Label>
-                                            <OmSelector
-                                                selectedOmId={lubrificanteAlloc[cat.key].selectedOmId}
-                                                onChange={handleOMLubrificanteChange}
-                                                placeholder="Selecione a OM de destino..."
-                                                disabled={loading}
-                                            />
-                                            <p className="text-xs text-muted-foreground">
-                                                OM que receberá o recurso de lubrificante.
-                                            </p>
-                                        </div>
-                                    )}
-                                    
                                     {/* Formulário de Configuração de Item */}
                                     <ClasseIIIItemConfigurator
                                         categoria={cat.key}
@@ -918,6 +902,9 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                         editingItem={editingItem && editingItem.categoria === cat.key ? editingItem : null}
                                         onCancelEdit={handleCancelEdit}
                                         loading={loading}
+                                        // NOVOS PROPS
+                                        lubrificanteAlloc={lubrificanteAlloc[cat.key]}
+                                        onOMLubrificanteChange={handleOMLubrificanteChange}
                                     />
                                 </div>
                             </TabsContent>

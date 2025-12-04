@@ -4,12 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, XCircle, Pencil } from "lucide-react";
+import { Plus, XCircle, Pencil, Droplet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
 import { TipoEquipamentoDetalhado } from "@/data/classeIIIData";
 import { cn } from "@/lib/utils";
+import { OmSelector } from "./OmSelector"; // Importar OmSelector
+import { OMData } from "@/lib/omUtils"; // Importar OMData
 
 type CombustivelTipo = 'GASOLINA' | 'DIESEL';
 type Categoria = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
@@ -27,6 +29,12 @@ interface ItemClasseIII {
   categoria: Categoria;
 }
 
+interface LubrificanteAllocation {
+    om: string;
+    ug: string;
+    selectedOmId?: string;
+}
+
 interface ClasseIIIItemConfiguratorProps {
   categoria: Categoria;
   equipamentosDisponiveis: TipoEquipamentoDetalhado[];
@@ -35,6 +43,9 @@ interface ClasseIIIItemConfiguratorProps {
   editingItem: ItemClasseIII | null;
   onCancelEdit: () => void;
   loading: boolean;
+  // NOVOS PROPS PARA ALOCAÇÃO DE LUBRIFICANTE
+  lubrificanteAlloc: LubrificanteAllocation;
+  onOMLubrificanteChange: (omData: OMData | undefined) => void;
 }
 
 const initialItemState = (categoria: Categoria): ItemClasseIII => ({
@@ -58,6 +69,8 @@ export const ClasseIIIItemConfigurator: React.FC<ClasseIIIItemConfiguratorProps>
   editingItem,
   onCancelEdit,
   loading,
+  lubrificanteAlloc,
+  onOMLubrificanteChange,
 }) => {
   const [itemTemp, setItemTemp] = useState<ItemClasseIII>(initialItemState(categoria));
   const [inputConsumoLubrificante, setInputConsumoLubrificante] = useState<string>("");
@@ -159,6 +172,14 @@ export const ClasseIIIItemConfigurator: React.FC<ClasseIIIItemConfiguratorProps>
       toast.error("Consumo e preço do lubrificante não podem ser negativos.");
       return;
     }
+    
+    // Validação de OM de Lubrificante
+    if ((categoria === 'GERADOR' || categoria === 'EMBARCACAO') && (consumo_lubrificante_litro > 0 || preco_lubrificante > 0)) {
+        if (!lubrificanteAlloc.om || !lubrificanteAlloc.ug) {
+            toast.error("Se o lubrificante for preenchido, a OM de Destino do Recurso Lubrificante deve ser selecionada.");
+            return;
+        }
+    }
 
     if (editingItem) {
       onUpdateItem(itemTemp);
@@ -245,6 +266,27 @@ export const ClasseIIIItemConfigurator: React.FC<ClasseIIIItemConfiguratorProps>
         </div>
       </div>
       
+      {/* NOVO BLOCO: OM Destino Lubrificante (Apenas para Gerador/Embarcação) */}
+      {(categoria === 'GERADOR' || categoria === 'EMBARCACAO') && (
+        <div className="space-y-2 p-3 border rounded-lg bg-muted/50">
+            <Label className="flex items-center gap-1">
+                <Droplet className="h-4 w-4 text-purple-600" />
+                OM Destino Recurso Lubrificante (ND 30) *
+            </Label>
+            <OmSelector
+                selectedOmId={lubrificanteAlloc.selectedOmId}
+                onChange={onOMLubrificanteChange}
+                placeholder="Selecione a OM de destino..."
+                disabled={loading}
+            />
+            {lubrificanteAlloc.om && (
+                <p className="text-xs text-muted-foreground">
+                    UG de Destino: {lubrificanteAlloc.ug}
+                </p>
+            )}
+        </div>
+      )}
+
       {/* LINHA 2: DADOS DO LUBRIFICANTE (Apenas para Gerador/Embarcação) */}
       {(categoria === 'GERADOR' || categoria === 'EMBARCACAO') && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-background rounded-lg border">
