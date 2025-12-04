@@ -21,7 +21,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { defaultClasseIIConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -154,7 +153,7 @@ const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organ
 
     // 1. Agrupar itens por categoria e calcular o subtotal de valor por categoria
     const gruposPorCategoria = itens.reduce((acc, item) => {
-        const categoria = item.categoria;
+        const categoria = item.categoria as Categoria;
         const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
         
         if (!acc[categoria]) {
@@ -365,7 +364,8 @@ const ClasseIIForm = () => {
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", anoReferencia)
-        .eq("ativo", true);
+        .eq("ativo", true)
+        .in("categoria", CATEGORIAS); // FILTRO ADICIONADO AQUI
 
       if (error) throw error;
 
@@ -390,6 +390,7 @@ const ClasseIIForm = () => {
       .from("classe_ii_registros")
       .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
       .eq("p_trab_id", ptrabId)
+      .in("categoria", CATEGORIAS) // FILTRO ADICIONADO AQUI
       .order("organizacao", { ascending: true }) // Ordenar por OM
       .order("categoria", { ascending: true }); // E depois por categoria
 
@@ -550,7 +551,7 @@ const ClasseIIForm = () => {
     const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
 
     // 4. Itens de outras categorias no formulário principal
-    const otherCategoryItems = form.itens.filter(item => item.categoria !== selectedTab);
+    const otherCategoryItems = form.itens.filter(item => !CATEGORIAS.includes(item.categoria as Categoria)); // MUDANÇA AQUI: Filtra apenas as categorias que NÃO são Classe II
 
     // 5. Mesclar as listas
     const newFormItems = [...otherCategoryItems, ...itemsToKeep];
@@ -602,7 +603,7 @@ const ClasseIIForm = () => {
     
     // 1. Agrupar itens por categoria que possuem quantidade > 0
     const itemsByActiveCategory = form.itens.reduce((acc, item) => {
-        if (item.quantidade > 0) {
+        if (item.quantidade > 0 && CATEGORIAS.includes(item.categoria as Categoria)) { // FILTRO ADICIONADO AQUI
             if (!acc[item.categoria]) {
                 acc[item.categoria] = [];
             }
@@ -671,14 +672,12 @@ const ClasseIIForm = () => {
     }
 
     try {
-      setLoading(true);
-      
-      // 3. Deletar TODOS os registros existentes para o PTrab (pois estamos salvando por categoria)
+      // 3. Deletar APENAS registros de Classe II existentes para o PTrab
       const { error: deleteError } = await supabase
         .from("classe_ii_registros")
         .delete()
         .eq("p_trab_id", ptrabId)
-        .in("categoria", CATEGORIAS); // Deletar apenas registros de Classe II
+        .in("categoria", CATEGORIAS); // FILTRO ADICIONADO AQUI
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
       // 4. Inserir os novos registros (um por categoria ativa)
@@ -701,12 +700,12 @@ const ClasseIIForm = () => {
     setLoading(true);
     resetFormFields();
     
-    // 1. Buscar TODOS os registros para este PTrab (pois a edição é consolidada)
+    // 1. Buscar TODOS os registros de CLASSE II para este PTrab
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_ii_registros")
         .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
         .eq("p_trab_id", ptrabId)
-        .in("categoria", CATEGORIAS); // Filtrar apenas Classe II
+        .in("categoria", CATEGORIAS); // FILTRO ADICIONADO AQUI
         
     if (fetchAllError) {
         toast.error("Erro ao carregar todos os registros para edição.");
@@ -798,7 +797,7 @@ const ClasseIIForm = () => {
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
     if (consolidatedItems.length > 0) {
-        setSelectedTab(consolidatedItems[0].categoria);
+        setSelectedTab(consolidatedItems[0].categoria as Categoria);
     } else {
         setSelectedTab(CATEGORIAS[0]);
     }
@@ -1176,7 +1175,6 @@ const ClasseIIForm = () => {
                     const totalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
                     const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
                     
-                    // Busca a alocação salva para esta categoria
                     const allocation = categoryAllocations[categoria as Categoria];
                     
                     return (
@@ -1197,7 +1195,6 @@ const ClasseIIForm = () => {
                           ))}
                         </div>
                         
-                        {/* Exibe a alocação salva */}
                         <div className="pt-2 border-t mt-2">
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
