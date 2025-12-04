@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, Sparkles, Tractor, XCircle, ChevronDown, Check, Droplet } from "lucide-react";
+import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, Sparkles, Tractor, XCircle, ChevronDown, Check, Droplet, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getEquipamentosPorTipo, TipoEquipamentoDetalhado } from "@/data/classeIIIData";
@@ -375,6 +375,27 @@ export default function ClasseIIIForm() {
     setEditingItem(null);
   };
   
+  const handleDeletar = async (id: string) => {
+    if (!confirm("Tem certeza que deseja remover este registro?")) return;
+
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from("classe_iii_registros")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success("Registro removido com sucesso!");
+      fetchRegistros();
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRemoveItem = (id: string) => {
     if (!confirm("Deseja realmente remover este item?")) return;
     setForm(prev => ({
