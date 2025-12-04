@@ -943,7 +943,6 @@ const DiretrizesCusteioPage = () => {
                   onClick={() => setShowClasseVIConfig(!showClasseVIConfig)}
                 >
                   <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <HardHat className="h-5 w-5 text-secondary" />
                     Classe VI - Material de Engenharia
                   </h3>
                   {showClasseVIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
