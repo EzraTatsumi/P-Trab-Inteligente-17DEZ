@@ -18,15 +18,9 @@ const CATEGORIAS_CLASSE_II = ["Equipamento Individual", "Proteção Balística",
 const CATEGORIAS_CLASSE_V = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 // NOVO: Categorias da Classe VI
 const CATEGORIAS_CLASSE_VI = ["Embarcação", "Equipamento de Engenharia"];
+// NOVO: Categorias da Classe VII
+const CATEGORIAS_CLASSE_VII = ["Comunicações", "Informática"];
 
-interface PTrabCostSummaryProps {
-  ptrabId: string;
-  onOpenCreditDialog: () => void;
-  creditGND3: number;
-  creditGND4: number;
-}
-
-// Define the structure of the item from ClasseIIForm for local use
 interface ItemClasseII {
   item: string;
   quantidade: number;
@@ -74,7 +68,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalRefeicoesIntermediarias += record.efetivo * record.nr_ref_int * record.dias_operacao;
   });
   
-  // 2. Fetch Classe II/V/VI records
+  // 2. Fetch Classe II/V/VI/VII records
   const { data: classeIIData, error: classeIIError } = await supabase
     .from('classe_ii_registros')
     .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
@@ -100,6 +94,13 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   let totalClasseVI_ND39 = 0;
   let totalItensClasseVI = 0;
   const groupedClasseVICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
+  
+  // NOVO: Totais Classe VII
+  let totalClasseVII = 0;
+  let totalClasseVII_ND30 = 0;
+  let totalClasseVII_ND39 = 0;
+  let totalItensClasseVII = 0;
+  const groupedClasseVIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
   
   (classeIIData || []).forEach(record => {
     const category = record.categoria;
@@ -140,7 +141,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         groupedClasseVCategories[category].totalND39 += valorND39;
         groupedClasseVCategories[category].totalItens += totalItemsCategory;
     } else if (CATEGORIAS_CLASSE_VI.includes(category)) {
-        // NOVO: CLASSE VI
+        // CLASSE VI
         totalClasseVI += valorTotal;
         totalClasseVI_ND30 += valorND30;
         totalClasseVI_ND39 += valorND39;
@@ -153,6 +154,20 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         groupedClasseVICategories[category].totalND30 += valorND30;
         groupedClasseVICategories[category].totalND39 += valorND39;
         groupedClasseVICategories[category].totalItens += totalItemsCategory;
+    } else if (CATEGORIAS_CLASSE_VII.includes(category)) {
+        // CLASSE VII
+        totalClasseVII += valorTotal;
+        totalClasseVII_ND30 += valorND30;
+        totalClasseVII_ND39 += valorND39;
+        totalItensClasseVII += totalItemsCategory;
+
+        if (!groupedClasseVIICategories[category]) {
+            groupedClasseVIICategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
+        }
+        groupedClasseVIICategories[category].totalValor += valorTotal;
+        groupedClasseVIICategories[category].totalND30 += valorND30;
+        groupedClasseVIICategories[category].totalND39 += valorND39;
+        groupedClasseVIICategories[category].totalItens += totalItemsCategory;
     }
   });
   
@@ -200,8 +215,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const totalLubrificanteLitros = lubrificanteRecords
     .reduce((sum, record) => sum + record.total_litros, 0);
 
-  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classe II (ND 30 + ND 39) + Classe V (ND 30 + ND 39) + Classe VI (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
-  const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalCombustivel + totalLubrificanteValor;
+  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classe II (ND 30 + ND 39) + Classe V (ND 30 + ND 39) + Classe VI (ND 30 + ND 39) + Classe VII (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
+  const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalCombustivel + totalLubrificanteValor;
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
@@ -226,11 +241,17 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalItensClasseV,
     groupedClasseVCategories,
     
-    totalClasseVI, // NOVO
-    totalClasseVI_ND30, // NOVO
-    totalClasseVI_ND39, // NOVO
-    totalItensClasseVI, // NOVO
-    groupedClasseVICategories, // NOVO
+    totalClasseVI,
+    totalClasseVI_ND30,
+    totalClasseVI_ND39,
+    totalItensClasseVI,
+    groupedClasseVICategories,
+    
+    totalClasseVII, // NOVO
+    totalClasseVII_ND30, // NOVO
+    totalClasseVII_ND39, // NOVO
+    totalItensClasseVII, // NOVO
+    groupedClasseVIICategories, // NOVO
     
     totalComplemento,
     totalEtapaSolicitadaValor,
@@ -275,11 +296,16 @@ export const PTrabCostSummary = ({
       totalClasseV_ND39: 0,
       totalItensClasseV: 0,
       groupedClasseVCategories: {},
-      totalClasseVI: 0, // NOVO
-      totalClasseVI_ND30: 0, // NOVO
-      totalClasseVI_ND39: 0, // NOVO
-      totalItensClasseVI: 0, // NOVO
-      groupedClasseVICategories: {}, // NOVO
+      totalClasseVI: 0,
+      totalClasseVI_ND30: 0,
+      totalClasseVI_ND39: 0,
+      totalItensClasseVI: 0,
+      groupedClasseVICategories: {},
+      totalClasseVII: 0, // NOVO
+      totalClasseVII_ND30: 0, // NOVO
+      totalClasseVII_ND39: 0, // NOVO
+      totalItensClasseVII: 0, // NOVO
+      groupedClasseVIICategories: {}, // NOVO
       totalComplemento: 0,
       totalEtapaSolicitadaValor: 0,
       totalDiasEtapaSolicitada: 0,
@@ -350,7 +376,8 @@ export const PTrabCostSummary = ({
   // FIX: Add nullish coalescing operator (?? {}) to ensure Object.entries receives an object
   const sortedClasseIICategories = Object.entries(totals.groupedClasseIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const sortedClasseVCategories = Object.entries(totals.groupedClasseVCategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
-  const sortedClasseVICategories = Object.entries(totals.groupedClasseVICategories ?? {}).sort(([a], [b]) => a.localeCompare(b)); // NOVO
+  const sortedClasseVICategories = Object.entries(totals.groupedClasseVICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
+  const sortedClasseVIICategories = Object.entries(totals.groupedClasseVIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b)); // NOVO
 
   return (
     <Card className="shadow-lg">
@@ -608,7 +635,7 @@ export const PTrabCostSummary = ({
                     </AccordionItem>
                   </Accordion>
                   
-                  {/* NOVO: Classe VI - Material de Engenharia */}
+                  {/* Classe VI - Material de Engenharia */}
                   <Accordion type="single" collapsible className="w-full pt-1">
                     <AccordionItem value="item-classe-vi" className="border-b-0">
                       <AccordionTrigger className="p-0 hover:no-underline">
@@ -652,9 +679,53 @@ export const PTrabCostSummary = ({
                     </AccordionItem>
                   </Accordion>
                   
+                  {/* NOVO: Classe VII - Comunicações e Informática */}
+                  <Accordion type="single" collapsible className="w-full pt-1">
+                    <AccordionItem value="item-classe-vii" className="border-b-0">
+                      <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                          <div className="flex items-center gap-1 text-foreground">
+                            <Briefcase className="h-3 w-3 text-orange-500" />
+                            Classe VII
+                          </div>
+                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                            {formatCurrency(totals.totalClasseVII)}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                          {/* Detalhes por Categoria */}
+                          {sortedClasseVIICategories.map(([category, data]) => (
+                            <div key={category} className="space-y-1">
+                                <div className="flex justify-between text-muted-foreground font-semibold pt-1">
+                                    <span className="w-1/2 text-left">{category}</span>
+                                    <span className="w-1/4 text-right font-medium">
+                                        {formatNumber(data.totalItens)} un.
+                                    </span>
+                                    <span className="w-1/4 text-right font-medium">
+                                        {formatCurrency(data.totalValor)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
+                                    <span className="w-1/2 text-left">ND 30 / ND 39</span>
+                                    <span className="w-1/4 text-right text-green-600 font-medium">
+                                        {formatCurrency(data.totalND30)}
+                                    </span>
+                                    <span className="w-1/4 text-right text-blue-600 font-medium">
+                                        {formatCurrency(data.totalND39)}
+                                    </span>
+                                </div>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                  
                   {/* Outras Abas Logísticas (Placeholder) */}
                   <div className="flex justify-between text-xs text-muted-foreground pt-2">
-                    <span className="w-1/2 text-left">Outras Classes (IV, VII a X)</span>
+                    <span className="w-1/2 text-left">Outras Classes (IV, VIII a X)</span>
                     <span className="w-1/4 text-right font-medium">
                       {/* Vazio */}
                     </span>
