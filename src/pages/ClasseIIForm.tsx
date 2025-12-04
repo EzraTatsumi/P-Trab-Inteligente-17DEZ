@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Package, Pencil, Trash2, XCircle, Check, ChevronDown, ClipboardList, Sparkles, DollarSign, AlertCircle } from "lucide-react";
+import { ArrowLeft, Package, Pencil, Trash2, XCircle, Check, ChevronDown, ChevronsUpDown, ClipboardList, Sparkles, DollarSign, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
@@ -944,9 +944,7 @@ export default function ClasseIIForm() {
                         className="w-full justify-between"
                       >
                         <span className="truncate">
-                          {fasesAtividade.length === 0 && !customFaseAtividade.trim()
-                            ? "Selecione a(s) fase(s)..."
-                            : [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ')}
+                          {displayFases || "Selecione a(s) fase(s)..."}
                         </span>
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
