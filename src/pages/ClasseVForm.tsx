@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Package, Pencil, Trash2, XCircle, Check, ChevronDown, ChevronsUpDown, ClipboardList, Sparkles, DollarSign, AlertCircle, Swords } from "lucide-react";
+import { ArrowLeft, Package, Pencil, Trash2, XCircle, Check, ChevronDown, ChevronsUpDown, ClipboardList, Sparkles, DollarSign, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
@@ -807,7 +807,6 @@ export default function ClasseVForm() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Swords className="h-6 w-6 text-primary" />
               Classe V - Armamento
             </CardTitle>
             <CardDescription>
