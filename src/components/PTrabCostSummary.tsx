@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber } from "@/lib/formatUtils";
 import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Droplet, ClipboardList, Swords } from "lucide-react";
@@ -311,8 +311,21 @@ export const PTrabCostSummary = ({
 
   const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
   
-  const sortedClasseIICategories = Object.entries(totals.groupedClasseIICategories).sort(([a], [b]) => a.localeCompare(b));
-  const sortedClasseVCategories = Object.entries(totals.groupedClasseVCategories).sort(([a], [b]) => a.localeCompare(b));
+  // FIX: Add nullish coalescing operator (?? {}) to ensure Object.entries receives an object
+  const sortedClasseIICategories = Object.entries(totals.groupedClasseIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
+  const sortedClasseVCategories = Object.entries(totals.groupedClasseVCategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
+
+  const handleSummaryClick = () => {
+    const newState = !isDetailsOpen;
+    setIsDetailsOpen(newState);
+    
+    if (newState) {
+      setTimeout(() => {
+          detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100); 
+    }
+  };
+
 
   return (
     <Card className="shadow-lg">
