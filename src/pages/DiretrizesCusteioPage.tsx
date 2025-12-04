@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings, HardHat } from "lucide-react";
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
@@ -18,6 +18,7 @@ import { tipoViaturas, tipoEquipamentosEngenharia } from "@/data/classeIIIData";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { YearManagementDialog } from "@/components/YearManagementDialog"; // Importar o novo diálogo
+import { defaultClasseVIConfig } from "@/data/classeVIData"; // NOVO IMPORT
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -88,6 +89,11 @@ const CATEGORIAS_CLASSE_V = [
   "DQBRN",
 ];
 
+// NOVO: Lista de categorias da Classe VI
+const CATEGORIAS_CLASSE_VI = [
+  "Material de Engenharia",
+];
+
 const CATEGORIAS_CLASSE_III = [
   { key: "GERADOR", label: "Geradores" },
   { key: "EMBARCACAO", label: "Embarcações" },
@@ -110,7 +116,8 @@ const DiretrizesCusteioPage = () => {
   const [loading, setLoading] = useState(true);
   const [showClasseIAlimentacaoConfig, setShowClasseIAlimentacaoConfig] = useState(false);
   const [showClasseIIConfig, setShowClasseIIConfig] = useState(false);
-  const [showClasseVConfig, setShowClasseVConfig] = useState(false); // NOVO ESTADO
+  const [showClasseVConfig, setShowClasseVConfig] = useState(false);
+  const [showClasseVIConfig, setShowClasseVIConfig] = useState(false); // NOVO ESTADO CLASSE VI
   const [showClasseIIIConfig, setShowClasseIIIConfig] = useState(false);
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
@@ -119,19 +126,18 @@ const DiretrizesCusteioPage = () => {
   const [equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig] = useState<DiretrizEquipamentoForm[]>(defaultEquipamentosEngenhariaConfig);
   
   const [classeIIConfig, setClasseIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseIIConfig);
-  const [classeVConfig, setClasseVConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVConfig); // NOVO ESTADO
+  const [classeVConfig, setClasseVConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVConfig);
+  const [classeVIConfig, setClasseVIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIConfig); // NOVO ESTADO CLASSE VI
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedClasseIITab, setSelectedClasseIITab] = useState<string>(CATEGORIAS_CLASSE_II[0]);
-  const [selectedClasseVTab, setSelectedClasseVTab] = useState<string>(CATEGORIAS_CLASSE_V[0]); // NOVO ESTADO
+  const [selectedClasseVTab, setSelectedClasseVTab] = useState<string>(CATEGORIAS_CLASSE_V[0]);
+  const [selectedClasseVITab, setSelectedClasseVITab] = useState<string>(CATEGORIAS_CLASSE_VI[0]); // NOVO ESTADO CLASSE VI
   const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key);
   
-  // NOVO ESTADO: Diálogo de Gerenciamento de Anos
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
-  
-  // NOVO ESTADO: Ano padrão de cálculo
   const [defaultYear, setDefaultYear] = useState<number | null>(null);
   
   const { handleEnterToNextField } = useFormNavigation();
@@ -159,7 +165,6 @@ const DiretrizesCusteioPage = () => {
     await loadDefaultYear(session.user.id);
   };
   
-  // NOVO: Carregar ano padrão do perfil
   const loadDefaultYear = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -198,7 +203,6 @@ const DiretrizesCusteioPage = () => {
       const uniqueYears = Array.from(new Set([...years, currentYear])).sort((a, b) => b - a);
       setAvailableYears(uniqueYears);
 
-      // Se o ano selecionado não estiver mais disponível, volta para o mais recente
       if (!uniqueYears.includes(selectedYear)) {
         setSelectedYear(uniqueYears.length > 0 ? uniqueYears[0] : currentYear);
       }
@@ -242,17 +246,23 @@ const DiretrizesCusteioPage = () => {
         setDiretrizes(defaultDiretrizes(year));
       }
       
-      // --- Carregar Classe II ---
-      const { data: classeIIData } = await supabase
+      // --- Carregar Classe II, V e VI (usando a mesma tabela) ---
+      const allClasseIIAndVAndVI = [...CATEGORIAS_CLASSE_II, ...CATEGORIAS_CLASSE_V, ...CATEGORIAS_CLASSE_VI];
+      
+      const { data: classeItemsData } = await supabase
         .from("diretrizes_classe_ii")
         .select("categoria, item, valor_mnt_dia")
         .eq("user_id", user.id)
         .eq("ano_referencia", year)
         .eq("ativo", true)
-        .in("categoria", CATEGORIAS_CLASSE_II); // Filtrar apenas categorias da Classe II
+        .in("categoria", allClasseIIAndVAndVI);
 
-      if (classeIIData && classeIIData.length > 0) {
-        setClasseIIConfig(classeIIData.map(d => ({
+      const loadedItems = classeItemsData || [];
+      
+      // Filtrar e setar Classe II
+      const loadedClasseII = loadedItems.filter(d => CATEGORIAS_CLASSE_II.includes(d.categoria));
+      if (loadedClasseII.length > 0) {
+        setClasseIIConfig(loadedClasseII.map(d => ({
           categoria: d.categoria as DiretrizClasseIIForm['categoria'],
           item: d.item,
           valor_mnt_dia: Number(d.valor_mnt_dia),
@@ -261,23 +271,28 @@ const DiretrizesCusteioPage = () => {
         setClasseIIConfig(defaultClasseIIConfig);
       }
       
-      // --- Carregar Classe V (Armamento) ---
-      const { data: classeVData } = await supabase
-        .from("diretrizes_classe_ii") // Reutilizando a tabela, mas filtrando por categorias da Classe V
-        .select("categoria, item, valor_mnt_dia")
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year)
-        .eq("ativo", true)
-        .in("categoria", CATEGORIAS_CLASSE_V); // Filtrar apenas categorias da Classe V
-
-      if (classeVData && classeVData.length > 0) {
-        setClasseVConfig(classeVData.map(d => ({
+      // Filtrar e setar Classe V
+      const loadedClasseV = loadedItems.filter(d => CATEGORIAS_CLASSE_V.includes(d.categoria));
+      if (loadedClasseV.length > 0) {
+        setClasseVConfig(loadedClasseV.map(d => ({
           categoria: d.categoria as DiretrizClasseIIForm['categoria'],
           item: d.item,
           valor_mnt_dia: Number(d.valor_mnt_dia),
         })));
       } else {
         setClasseVConfig(defaultClasseVConfig);
+      }
+      
+      // Filtrar e setar Classe VI (NOVO)
+      const loadedClasseVI = loadedItems.filter(d => CATEGORIAS_CLASSE_VI.includes(d.categoria));
+      if (loadedClasseVI.length > 0) {
+        setClasseVIConfig(loadedClasseVI.map(d => ({
+          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
+          item: d.item,
+          valor_mnt_dia: Number(d.valor_mnt_dia),
+        })));
+      } else {
+        setClasseVIConfig(defaultClasseVIConfig);
       }
 
 
@@ -397,18 +412,18 @@ const DiretrizesCusteioPage = () => {
         }
       }
       
-      // 3. Salvar Configurações de Classe II e Classe V (usando a mesma tabela diretrizes_classe_ii)
+      // 3. Salvar Configurações de Classe II, V e VI (usando a mesma tabela diretrizes_classe_ii)
       
-      // Deletar registros antigos de Classe II e Classe V
+      // Deletar registros antigos de Classe II, V e VI
       await supabase
         .from("diretrizes_classe_ii")
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", diretrizes.ano_referencia!);
         
-      const allClasseIIAndVItems = [...classeIIConfig, ...classeVConfig];
+      const allClasseItems = [...classeIIConfig, ...classeVConfig, ...classeVIConfig];
         
-      const classeIIAndVPareSalvar = allClasseIIAndVItems
+      const classeItemsParaSalvar = allClasseItems
         .filter(item => item.item && item.valor_mnt_dia >= 0)
         .map(item => ({
           user_id: user.id,
@@ -419,10 +434,10 @@ const DiretrizesCusteioPage = () => {
           ativo: true,
         }));
         
-      if (classeIIAndVPareSalvar.length > 0) {
+      if (classeItemsParaSalvar.length > 0) {
         const { error: c2Error } = await supabase
           .from("diretrizes_classe_ii")
-          .insert(classeIIAndVPareSalvar);
+          .insert(classeItemsParaSalvar);
         if (c2Error) throw c2Error;
       }
 
@@ -436,7 +451,6 @@ const DiretrizesCusteioPage = () => {
     }
   };
   
-  // NOVO: Set the selected year as default
   const handleSetDefaultYear = async () => {
     if (!diretrizes.ano_referencia) {
       toast.error("Selecione um ano de referência válido.");
@@ -465,7 +479,6 @@ const DiretrizesCusteioPage = () => {
     }
   };
 
-  // --- Lógica de Cópia e Exclusão ---
   const handleCopyDiretrizes = async (sourceYear: number, targetYear: number) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -511,29 +524,29 @@ const DiretrizesCusteioPage = () => {
         if (insertEqError) console.error("Erro ao inserir equipamentos copiados:", insertEqError);
       }
       
-      // 3. Copiar Diretrizes de Classe II e Classe V
-      const { data: sourceClasseII, error: classeIIError } = await supabase
+      // 3. Copiar Diretrizes de Classe II, V e VI
+      const { data: sourceClasseItems, error: classeItemsError } = await supabase
         .from("diretrizes_classe_ii")
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", sourceYear);
         
-      if (classeIIError) console.error("Erro ao buscar Classe II/V para cópia:", classeIIError);
+      if (classeItemsError) console.error("Erro ao buscar Classe II/V/VI para cópia:", classeItemsError);
       
-      if (sourceClasseII && sourceClasseII.length > 0) {
-        const newClasseII = sourceClasseII.map(c2 => {
+      if (sourceClasseItems && sourceClasseItems.length > 0) {
+        const newClasseItems = sourceClasseItems.map(c2 => {
           const { id: oldC2Id, created_at: oldC2Created, updated_at: oldC2Updated, ...restC2 } = c2;
           return { ...restC2, ano_referencia: targetYear, user_id: user.id };
         });
         const { error: insertC2Error } = await supabase
           .from("diretrizes_classe_ii")
-          .insert(newClasseII);
-        if (insertC2Error) console.error("Erro ao inserir Classe II/V copiada:", insertC2Error);
+          .insert(newClasseItems);
+        if (insertC2Error) console.error("Erro ao inserir Classe II/V/VI copiada:", insertC2Error);
       }
 
       toast.success(`Diretrizes do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
       setIsYearManagementDialogOpen(false);
-      setSelectedYear(targetYear); // Seleciona o novo ano
+      setSelectedYear(targetYear);
       await loadAvailableYears();
       
     } catch (error: any) {
@@ -565,7 +578,7 @@ const DiretrizesCusteioPage = () => {
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
         
-      // 2. Excluir Diretrizes de Classe II e Classe V
+      // 2. Excluir Diretrizes de Classe II, V e VI
       await supabase
         .from("diretrizes_classe_ii")
         .delete()
@@ -592,7 +605,6 @@ const DiretrizesCusteioPage = () => {
       setLoading(false);
     }
   };
-  // --- Fim Lógica de Cópia e Exclusão ---
 
 
   // Função genérica para adicionar item (Classe III)
@@ -615,7 +627,7 @@ const DiretrizesCusteioPage = () => {
     setConfig(novosItens);
   };
   
-  // --- Funções de Gerenciamento da Classe II e V ---
+  // --- Funções de Gerenciamento da Classe II, V e VI ---
   const handleAddClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, categoria: DiretrizClasseIIForm['categoria']) => {
     setConfig(prev => [
       ...prev,
@@ -633,7 +645,7 @@ const DiretrizesCusteioPage = () => {
     setConfig(novosItens);
   };
   
-  // Função para renderizar a lista de itens da Classe II/V por categoria
+  // Função para renderizar a lista de itens da Classe II/V/VI por categoria
   const renderClasseList = (
     config: DiretrizClasseIIForm[], 
     setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>,
@@ -836,7 +848,6 @@ const DiretrizesCusteioPage = () => {
                   </SelectContent>
                 </Select>
                 
-                {/* NEW: Display current default year */}
                 <p className="text-sm text-muted-foreground pt-1">
                   Ano Padrão de Cálculo: 
                   <span className="font-semibold text-primary ml-1">
@@ -923,6 +934,40 @@ const DiretrizesCusteioPage = () => {
                   </Card>
                 )}
               </div>
+              
+              {/* SEÇÃO CLASSE VI - MATERIAL DE ENGENHARIA (NOVO) */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseVIConfig(!showClasseVIConfig)}
+                >
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <HardHat className="h-5 w-5 text-secondary" />
+                    Classe VI - Material de Engenharia
+                  </h3>
+                  {showClasseVIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseVIConfig && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <Tabs value={selectedClasseVITab} onValueChange={setSelectedClasseVITab}>
+                        <TabsList className="grid w-full grid-cols-1">
+                          {CATEGORIAS_CLASSE_VI.map(cat => (
+                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        {CATEGORIAS_CLASSE_VI.map(cat => (
+                          <TabsContent key={cat} value={cat}>
+                            {renderClasseList(classeVIConfig, setClasseVIConfig, CATEGORIAS_CLASSE_VI, cat)}
+                          </TabsContent>
+                        ))}
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
 
               {/* SEÇÃO CLASSE III - COMBUSTÍVEIS E LUBRIFICANTES */}
               <div className="border-t pt-4 mt-6">
@@ -964,7 +1009,7 @@ const DiretrizesCusteioPage = () => {
                 )}
               </div>
               
-              {/* SEÇÃO CLASSE V - ARMAMENTO (NOVO) */}
+              {/* SEÇÃO CLASSE V - ARMAMENTO */}
               <div className="border-t pt-4 mt-6">
                 <div 
                   className="flex items-center justify-between cursor-pointer py-2" 
