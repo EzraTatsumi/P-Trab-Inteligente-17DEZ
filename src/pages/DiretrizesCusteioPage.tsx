@@ -62,10 +62,16 @@ const defaultClasseIIConfig: DiretrizClasseIIForm[] = [
   { categoria: "Material de Estacionamento", item: "Colchão", valor_mnt_dia: 0.28 },
 ];
 
+// NOVO: Lista de itens padrão da Classe V (Armamento)
 const defaultClasseVConfig: DiretrizClasseIIForm[] = [
-  { categoria: "Armamento Leve", item: "Fuzil 5,56mm", valor_mnt_dia: 0.50 },
-  { categoria: "Armamento Leve", item: "Pistola 9mm", valor_mnt_dia: 0.20 },
-  { categoria: "Armamento Pesado", item: "Metralhadora .50", valor_mnt_dia: 5.00 },
+  { categoria: "Armt L", item: "Fuzil 5,56mm IA2 IMBEL", valor_mnt_dia: 1.40 },
+  { categoria: "Armt L", item: "Fuzil 7,62mm", valor_mnt_dia: 1.50 },
+  { categoria: "Armt L", item: "Pistola 9 mm", valor_mnt_dia: 0.40 },
+  { categoria: "Armt L", item: "Metralhadora FN MINIMI 5,56 x 45mm", valor_mnt_dia: 10.60 },
+  { categoria: "Armt L", item: "Metralhadora FN MINIMI 7,62 x 51mm", valor_mnt_dia: 11.00 },
+  { categoria: "Armt P", item: "Obuseiro", valor_mnt_dia: 175.00 },
+  { categoria: "IODCT", item: "OVN", valor_mnt_dia: 9.50 },
+  { categoria: "DQBRN", item: "Falcon 4GS", valor_mnt_dia: 723.30 },
 ];
 
 const CATEGORIAS_CLASSE_II = [
@@ -74,10 +80,12 @@ const CATEGORIAS_CLASSE_II = [
   "Material de Estacionamento",
 ];
 
+// NOVO: Lista de categorias da Classe V
 const CATEGORIAS_CLASSE_V = [
-  "Armamento Leve",
-  "Armamento Pesado",
-  "Equipamento Óptico",
+  "Armt L",
+  "Armt P",
+  "IODCT",
+  "DQBRN",
 ];
 
 const CATEGORIAS_CLASSE_III = [
@@ -932,7 +940,7 @@ const DiretrizesCusteioPage = () => {
                   <Card>
                     <CardContent className="pt-4">
                       <Tabs value={selectedClasseVTab} onValueChange={setSelectedClasseVTab}>
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className="grid w-full grid-cols-4">
                           {CATEGORIAS_CLASSE_V.map(cat => (
                             <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
                           ))}
