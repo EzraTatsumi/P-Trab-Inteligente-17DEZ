@@ -108,6 +108,9 @@ const DiretrizesCusteioPage = () => {
   // NOVO ESTADO: Diálogo de Gerenciamento de Anos
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   
+  // NOVO ESTADO: Ano padrão de cálculo
+  const [defaultYear, setDefaultYear] = useState<number | null>(null);
+  
   const { handleEnterToNextField } = useFormNavigation();
   const currentYear = new Date().getFullYear();
 
@@ -130,6 +133,28 @@ const DiretrizesCusteioPage = () => {
       return;
     }
     await loadAvailableYears();
+    await loadDefaultYear(session.user.id);
+  };
+  
+  // NOVO: Carregar ano padrão do perfil
+  const loadDefaultYear = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('default_diretriz_year')
+        .eq('id', userId)
+        .single();
+        
+      if (error && error.code !== 'PGRST116') throw error;
+      
+      if (data && data.default_diretriz_year) {
+        setDefaultYear(data.default_diretriz_year);
+      } else {
+        setDefaultYear(null);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar ano padrão:", error);
+    }
   };
 
   const loadAvailableYears = async () => {
@@ -363,6 +388,35 @@ const DiretrizesCusteioPage = () => {
     }
   };
   
+  // NOVO: Set the selected year as default
+  const handleSetDefaultYear = async () => {
+    if (!diretrizes.ano_referencia) {
+      toast.error("Selecione um ano de referência válido.");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ default_diretriz_year: diretrizes.ano_referencia })
+        .eq('id', user.id);
+        
+      if (error) throw error;
+      
+      setDefaultYear(diretrizes.ano_referencia);
+      toast.success(`Ano ${diretrizes.ano_referencia} definido como padrão para cálculos!`);
+      
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // --- Lógica de Cópia e Exclusão ---
   const handleCopyDiretrizes = async (sourceYear: number, targetYear: number) => {
     try {
@@ -728,6 +782,14 @@ const DiretrizesCusteioPage = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                
+                {/* NEW: Display current default year */}
+                <p className="text-sm text-muted-foreground pt-1">
+                  Ano Padrão de Cálculo: 
+                  <span className="font-semibold text-primary ml-1">
+                    {defaultYear ? defaultYear : 'Não definido (usando o mais recente)'}
+                  </span>
+                </p>
               </div>
 
               {/* SEÇÃO CLASSE I - ALIMENTAÇÃO */}
@@ -859,9 +921,20 @@ const DiretrizesCusteioPage = () => {
                 />
               </div>
 
-              <Button type="submit" className="w-full mt-6" disabled={loading}>
-                {loading ? "Salvando..." : "Salvar Diretrizes"}
-              </Button>
+              <div className="flex justify-end gap-3 mt-6">
+                <Button 
+                  type="button" 
+                  variant="secondary" 
+                  onClick={handleSetDefaultYear} 
+                  disabled={loading || diretrizes.ano_referencia === defaultYear || !diretrizes.ano_referencia}
+                >
+                  {diretrizes.ano_referencia === defaultYear ? "Padrão Atual" : "Adotar como Padrão"}
+                </Button>
+                
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Salvando..." : "Salvar Diretrizes"}
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>

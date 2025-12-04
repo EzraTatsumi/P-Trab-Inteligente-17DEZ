@@ -470,6 +470,39 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          credit_gnd3: number
+          credit_gnd4: number
+          default_diretriz_year: number | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          credit_gnd3?: number
+          credit_gnd4?: number
+          default_diretriz_year?: number | null
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          credit_gnd3?: number
+          credit_gnd4?: number
+          default_diretriz_year?: number | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

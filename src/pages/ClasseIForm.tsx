@@ -248,19 +248,55 @@ export default function ClasseIForm() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      let anoReferencia: number | null = null;
+
+      // 1. Tentar buscar o ano padrão do perfil do usuário
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("default_diretriz_year")
+        .eq("id", user.id)
+        .maybeSingle();
+        
+      if (profileData?.default_diretriz_year) {
+          anoReferencia = profileData.default_diretriz_year;
+      }
+
+      // 2. Se não houver ano padrão, buscar o ano mais recente na tabela de diretrizes
+      if (!anoReferencia) {
+          const { data: diretrizCusteio } = await supabase
+            .from("diretrizes_custeio")
+            .select("ano_referencia")
+            .eq("user_id", user.id)
+            .order("ano_referencia", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+            
+          if (diretrizCusteio) {
+            anoReferencia = diretrizCusteio.ano_referencia;
+          }
+      }
+      
+      if (!anoReferencia) {
+        // Se não houver diretriz configurada, usa os valores padrão e sai
+        setValorQS(9.0);
+        setValorQR(6.0);
+        setDiretrizAno(null);
+        return;
+      }
+
+      // 3. Buscar diretrizes de Custeio usando o ano de referência encontrado
       const { data, error } = await supabase
         .from("diretrizes_custeio")
         .select("*")
         .eq("user_id", user.id)
-        .order("ano_referencia", { ascending: false })
-        .limit(1)
+        .eq("ano_referencia", anoReferencia)
         .maybeSingle();
 
       if (error) throw error;
 
       if (data) {
-        setValorQS(data.classe_i_valor_qs);
-        setValorQR(data.classe_i_valor_qr);
+        setValorQS(Number(data.classe_i_valor_qs));
+        setValorQR(Number(data.classe_i_valor_qr));
         setDiretrizAno(data.ano_referencia);
       }
     } catch (error: any) {
@@ -382,7 +418,7 @@ export default function ClasseIForm() {
 
   const handleFaseChange = (fase: string, isChecked: boolean) => {
     if (isChecked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase]));
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }

@@ -324,23 +324,41 @@ export default function ClasseIIForm() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const currentYear = new Date().getFullYear();
-      let anoReferencia = currentYear;
+      let anoReferencia: number | null = null;
 
-      const { data: diretrizCusteio } = await supabase
-        .from("diretrizes_custeio")
-        .select("ano_referencia")
-        .eq("user_id", user.id)
-        .order("ano_referencia", { ascending: false })
-        .limit(1)
+      // 1. Tentar buscar o ano padrão do perfil do usuário
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("default_diretriz_year")
+        .eq("id", user.id)
         .maybeSingle();
-
-      if (diretrizCusteio) {
-        anoReferencia = diretrizCusteio.ano_referencia;
-      } else {
-        toast.warning(`Diretriz de Custeio não encontrada para o ano ${currentYear}. Por favor, configure em 'Configurações > Diretriz de Custeio'.`);
+        
+      if (profileData?.default_diretriz_year) {
+          anoReferencia = profileData.default_diretriz_year;
       }
 
+      // 2. Se não houver ano padrão, buscar o ano mais recente na tabela de diretrizes
+      if (!anoReferencia) {
+          const { data: diretrizCusteio } = await supabase
+            .from("diretrizes_custeio")
+            .select("ano_referencia")
+            .eq("user_id", user.id)
+            .order("ano_referencia", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+            
+          if (diretrizCusteio) {
+            anoReferencia = diretrizCusteio.ano_referencia;
+          }
+      }
+      
+      if (!anoReferencia) {
+        toast.warning(`Diretriz de Custeio não encontrada. Usando valores padrão.`);
+        setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
+        return;
+      }
+
+      // 3. Buscar diretrizes de Classe II usando o ano de referência encontrado
       const { data: classeIIData, error } = await supabase
         .from("diretrizes_classe_ii")
         .select("*")
@@ -472,7 +490,7 @@ export default function ClasseIIForm() {
 
   const handleFaseChange = (fase: string, checked: boolean) => {
     if (checked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase]));
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
