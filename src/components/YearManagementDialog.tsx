@@ -195,7 +195,7 @@ export const YearManagementDialog: React.FC<YearManagementDialogProps> = ({
           </div>
         )}
 
-        <DialogFooter className="sm:justify-start">
+        <DialogFooter>
           {selectedAction === 'copy' && (
             <Button 
               onClick={handleCopy} 
