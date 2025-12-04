@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Package, Pencil, Trash2, XCircle, Check, ChevronDown, ChevronsUpDown, ClipboardList, Sparkles, DollarSign, AlertCircle } from "lucide-react";
+import { ArrowLeft, Package, Pencil, Trash2, XCircle, Check, ChevronDown, ChevronsUpDown, Sparkles, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { defaultClasseVConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type Categoria = 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN';
 
@@ -159,7 +160,7 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
   };
 
 
-export default function ClasseVForm() {
+const ClasseVForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get("ptrabId");
@@ -1356,3 +1357,5 @@ export default function ClasseVForm() {
     </div>
   );
 }
+
+export default ClasseVForm;

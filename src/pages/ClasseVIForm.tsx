@@ -24,6 +24,7 @@ import { TablesInsert } from "@/integrations/supabase/types";
 import { defaultClasseVIConfig } from "@/data/classeVIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type Categoria = 'Embarcação' | 'Equipamento de Engenharia';
 
@@ -154,7 +155,7 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
   };
 
 
-export default function ClasseVIForm() {
+const ClasseVIForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get("ptrabId");
@@ -1353,3 +1354,5 @@ export default function ClasseVIForm() {
     </div>
   );
 }
+
+export default ClasseVIForm;
