@@ -14,6 +14,7 @@ import ClasseIForm from "./pages/ClasseIForm";
 import ClasseIIForm from "./pages/ClasseIIForm"; // Importar ClasseIIForm
 import ClasseVForm from "./pages/ClasseVForm"; // Importar ClasseVForm
 import ClasseIIIForm from "./pages/ClasseIIIForm";
+import ClasseVIForm from "./pages/ClasseVIForm"; // Importar ClasseVIForm
 import DiretrizesCusteioPage from "./pages/DiretrizesCusteioPage";
 import VisualizacaoConfigPage from "./pages/VisualizacaoConfigPage";
 import OmConfigPage from "./pages/OmConfigPage";
@@ -39,7 +40,8 @@ const App = () => (
               <Route path="/ptrab/print" element={<PTrabPrint />} />
               <Route path="/ptrab/classe-i" element={<ClasseIForm />} />
               <Route path="/ptrab/classe-ii" element={<ClasseIIForm />} />
-              <Route path="/ptrab/classe-v" element={<ClasseVForm />} /> {/* Nova Rota para Classe V */}
+              <Route path="/ptrab/classe-v" element={<ClasseVForm />} />
+              <Route path="/ptrab/classe-vi" element={<ClasseVIForm />} /> {/* Rota para Classe VI */}
               <Route path="/ptrab/classe-iii" element={<ClasseIIIForm />} />
               <Route path="/config/diretrizes" element={<DiretrizesCusteioPage />} />
               <Route path="/config/visualizacao" element={<VisualizacaoConfigPage />} />
