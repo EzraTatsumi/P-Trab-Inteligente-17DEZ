@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Droplet, ClipboardList, Swords } from "lucide-react";
+import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Droplet, ClipboardList, Swords, Radio, Activity } from "lucide-react";
 import {
   Accordion,
   AccordionItem,
@@ -685,7 +685,7 @@ export const PTrabCostSummary = ({
                       <AccordionTrigger className="p-0 hover:no-underline">
                         <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
                           <div className="flex items-center gap-1 text-foreground">
-                            <Briefcase className="h-3 w-3 text-orange-500" />
+                            <Radio className="h-3 w-3 text-orange-500" />
                             Classe VII
                           </div>
                           <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
@@ -738,7 +738,7 @@ export const PTrabCostSummary = ({
                 {/* Aba Operacional (Placeholder) */}
                 <div className="space-y-3 border-l-4 border-blue-500 pl-3 pt-4">
                   <div className="flex items-center gap-2 text-xs font-semibold text-blue-600">
-                    <Briefcase className="h-3 w-3" />
+                    <Activity className="h-3 w-3" />
                     Operacional ({formatCurrency(totals.totalOperacional)})
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
