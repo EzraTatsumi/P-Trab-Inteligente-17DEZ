@@ -43,3 +43,13 @@ src/integrations/supabase/types.ts
 # Excluir arquivos de dados estáticos e assets
 src/data/classeIIData.ts
 src/assets/
+
+# Excluir componentes da Landing Page
+src/pages/Index.tsx
+src/components/Hero.tsx
+src/components/Features.tsx
+src/components/Benefits.tsx
+src/components/Process.tsx
+src/components/Stakeholders.tsx
+src/components/Footer.tsx
+src/components/ScrollIndicatorButton.tsx
