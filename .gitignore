@@ -36,3 +36,6 @@ src/docs/
 
 # Excluir componentes de UI gerados pelo shadcn/ui (redução de contexto)
 src/components/ui/
+
+# Excluir tipos gerados pelo Supabase (grande economia de tokens)
+src/integrations/supabase/types.ts
