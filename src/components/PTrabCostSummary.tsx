@@ -513,8 +513,7 @@ export const PTrabCostSummary = ({
                           </div>
                           {/* Linha Lubrificante */}
                           <div className="flex justify-between text-muted-foreground">
-                            <span className="w-1/2 text-left flex items-center gap-1">
-                                <Droplet className="h-3 w-3" />
+                            <span className="w-1/2 text-left">
                                 Lubrificante
                             </span>
                             <span className="w-1/4 text-right font-medium">
