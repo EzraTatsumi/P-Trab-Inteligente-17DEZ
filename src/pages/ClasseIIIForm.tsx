@@ -113,6 +113,14 @@ const initialLubrificanteAllocation: Record<Categoria, LubrificanteAllocation> =
     'MOTOMECANIZACAO': { om: "", ug: "", selectedOmId: undefined },
 };
 
+const initialFormState: FormDataClasseIII = {
+    selectedOmId: undefined,
+    organizacao: "",
+    ug: "",
+    dias_operacao: 0,
+    itens: [],
+};
+
 // Função para formatar as fases de forma natural no texto
 const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
     if (!faseCSV) return 'operação';
@@ -138,13 +146,7 @@ export default function ClasseIIIForm() {
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
   const lpcRef = useRef<HTMLDivElement>(null);
   
-  const [form, setForm] = useState<FormDataClasseIII>({
-    selectedOmId: undefined,
-    organizacao: "",
-    ug: "",
-    dias_operacao: 0,
-    itens: [],
-  });
+  const [form, setForm] = useState<FormDataClasseIII>(initialFormState);
   
   const [rmFornecimento, setRmFornecimento] = useState("");
   const [codugRmFornecimento, setCodugRmFornecimento] = useState("");
@@ -209,13 +211,7 @@ export default function ClasseIIIForm() {
   };
   
   const resetFormFields = () => {
-    setForm({
-        selectedOmId: undefined,
-        organizacao: "",
-        ug: "",
-        dias_operacao: 0,
-        itens: [],
-    });
+    setForm(initialFormState);
     setRmFornecimento("");
     setCodugRmFornecimento("");
     setLubrificanteAlloc(initialLubrificanteAllocation);
@@ -251,16 +247,19 @@ export default function ClasseIIIForm() {
         // Se só houver lubrificante, a OM Detentora será a OM de destino do lubrificante.
         const omDetentoraRecord = loadedRegistros.find(r => !r.tipo_equipamento.startsWith('LUBRIFICANTE')) || firstRecord;
         
-        setForm({
-            ...form,
-            organizacao: omDetentoraRecord.organizacao,
-            ug: omDetentoraRecord.ug,
-            dias_operacao: omDetentoraRecord.dias_operacao,
-        });
-        
-        const fasesSalvas = (omDetentoraRecord.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
-        setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
-        setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
+        // Se a OM Detentora for encontrada, preenche os campos globais
+        if (omDetentoraRecord) {
+            setForm(prev => ({
+                ...prev,
+                organizacao: omDetentoraRecord.organizacao,
+                ug: omDetentoraRecord.ug,
+                dias_operacao: omDetentoraRecord.dias_operacao,
+            }));
+            
+            const fasesSalvas = (omDetentoraRecord.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+            setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
+            setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
+        }
         
         // 2. Itens consolidados
         let consolidatedItems: ItemClasseIII[] = [];
@@ -286,7 +285,7 @@ export default function ClasseIIIForm() {
         setLubrificanteAlloc(newLubAlloc);
         
         // 4. Buscar OM Detentora ID e RM Fornecimento
-        if (omDetentoraRecord.organizacao) {
+        if (omDetentoraRecord?.organizacao) {
             try {
                 const { data: omData } = await supabase
                     .from('organizacoes_militares')
@@ -672,7 +671,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       toast.success("Registros de Classe III atualizados com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
       
-      // --- NOVO: Limpar o formulário principal após o salvamento ---
+      // --- CORREÇÃO: Limpar o formulário principal após o salvamento ---
       resetFormFields();
       
       fetchRegistros();
@@ -1045,10 +1044,10 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                         <Button
                             variant="outline"
                             type="button"
-                            onClick={() => setForm({ ...form, itens: [] })}
+                            onClick={resetFormFields} // Usar resetFormFields para limpar tudo
                         >
                             <XCircle className="h-4 w-4 mr-2" />
-                            Limpar Todos os Itens
+                            Limpar Formulário
                         </Button>
                         <Button 
                             type="button" 
