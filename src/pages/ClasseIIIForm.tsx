@@ -239,85 +239,93 @@ export default function ClasseIIIForm() {
     const loadedRegistros = (data || []) as ClasseIIIRegistro[];
     setRegistros(loadedRegistros);
     
-    // Lógica de pré-preenchimento do formulário (apenas se houver registros)
-    if (loadedRegistros.length > 0) {
-        const firstRecord = loadedRegistros[0];
-        
-        // 1. Dados globais (OM Detentora, Dias, Fases)
-        const omDetentoraRecord = loadedRegistros.find(r => !r.tipo_equipamento.startsWith('LUBRIFICANTE')) || firstRecord;
-        
-        // Se a OM Detentora for encontrada, preenche os campos globais
-        if (omDetentoraRecord) {
-            setForm(prev => ({
-                ...prev,
-                organizacao: omDetentoraRecord.organizacao,
-                ug: omDetentoraRecord.ug,
-                dias_operacao: omDetentoraRecord.dias_operacao,
-            }));
-            
-            const fasesSalvas = (omDetentoraRecord.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
-            setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
-            setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
-        }
-        
-        // 2. Itens consolidados
-        let consolidatedItems: ItemClasseIII[] = [];
-        let newLubAlloc = { ...initialLubrificanteAllocation };
-        
-        loadedRegistros.forEach(r => {
-            if (r.itens_equipamentos) {
-                consolidatedItems = consolidatedItems.concat(r.itens_equipamentos.map(item => ({
-                    ...item,
-                    id: crypto.randomUUID(), // Novo ID temporário para o formulário
-                    categoria: item.categoria as Categoria,
-                })));
-            }
-            
-            // 3. Alocação de Lubrificante (se for um registro de lubrificante)
-            if (r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO') {
-                const cat: Categoria = r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCACAO';
-                newLubAlloc[cat] = { om: r.organizacao, ug: r.ug };
-            }
-        });
-        
-        setForm(prev => ({ ...prev, itens: consolidatedItems }));
-        setLubrificanteAlloc(newLubAlloc);
-        
-        // 4. Buscar OM Detentora ID e RM Fornecimento
-        if (omDetentoraRecord?.organizacao) {
-            try {
-                const { data: omData } = await supabase
-                    .from('organizacoes_militares')
-                    .select('id, rm_vinculacao, codug_rm_vinculacao')
-                    .eq('nome_om', omDetentoraRecord.organizacao)
-                    .eq('codug_om', omDetentoraRecord.ug)
-                    .maybeSingle();
-                
-                if (omData) {
-                    setForm(prev => ({ ...prev, selectedOmId: omData.id }));
-                    setRmFornecimento(omData.rm_vinculacao);
-                    setCodugRmFornecimento(omData.codug_rm_vinculacao);
-                    
-                    // Atualizar IDs de OM de Lubrificante
-                    const updatedAlloc = { ...newLubAlloc };
-                    for (const cat of ['GERADOR', 'EMBARCACAO'] as Categoria[]) {
-                        if (updatedAlloc[cat].om) {
-                            const { data: lubOmData } = await supabase
-                                .from('organizacoes_militares')
-                                .select('id')
-                                .eq('nome_om', updatedAlloc[cat].om)
-                                .eq('codug_om', updatedAlloc[cat].ug)
-                                .maybeSingle();
-                            updatedAlloc[cat].selectedOmId = lubOmData?.id;
-                        }
-                    }
-                    setLubrificanteAlloc(updatedAlloc);
-                }
-            } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
-        }
-    } else {
-        // Se não houver registros, limpa o formulário
+    // --- REMOVIDA A LÓGICA DE PRÉ-PREENCHIMENTO DO FORMULÁRIO AQUI ---
+    // O formulário só será preenchido se o usuário clicar em 'Editar' ou 'Recarregar'
+    
+    setEditingItem(null);
+    setEditingMemoriaId(null);
+    setLoading(false);
+  };
+  
+  // NOVO: Função para carregar os dados de um registro para o formulário (usada no botão Recarregar)
+  const loadRegistroToForm = async (loadedRegistros: ClasseIIIRegistro[]) => {
+    if (loadedRegistros.length === 0) {
         resetFormFields();
+        return;
+    }
+    
+    const firstRecord = loadedRegistros[0];
+    
+    // 1. Dados globais (OM Detentora, Dias, Fases)
+    const omDetentoraRecord = loadedRegistros.find(r => !r.tipo_equipamento.startsWith('LUBRIFICANTE')) || firstRecord;
+    
+    if (omDetentoraRecord) {
+        setForm(prev => ({
+            ...prev,
+            organizacao: omDetentoraRecord.organizacao,
+            ug: omDetentoraRecord.ug,
+            dias_operacao: omDetentoraRecord.dias_operacao,
+        }));
+        
+        const fasesSalvas = (omDetentoraRecord.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+        setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
+        setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
+    }
+    
+    // 2. Itens consolidados
+    let consolidatedItems: ItemClasseIII[] = [];
+    let newLubAlloc = { ...initialLubrificanteAllocation };
+    
+    loadedRegistros.forEach(r => {
+        if (r.itens_equipamentos) {
+            consolidatedItems = consolidatedItems.concat(r.itens_equipamentos.map(item => ({
+                ...item,
+                id: crypto.randomUUID(), // Novo ID temporário para o formulário
+                categoria: item.categoria as Categoria,
+            })));
+        }
+        
+        // 3. Alocação de Lubrificante (se for um registro de lubrificante)
+        if (r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO') {
+            const cat: Categoria = r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCACAO';
+            newLubAlloc[cat] = { om: r.organizacao, ug: r.ug };
+        }
+    });
+    
+    setForm(prev => ({ ...prev, itens: consolidatedItems }));
+    setLubrificanteAlloc(newLubAlloc);
+    
+    // 4. Buscar OM Detentora ID e RM Fornecimento
+    if (omDetentoraRecord?.organizacao) {
+        try {
+            const { data: omData } = await supabase
+                .from('organizacoes_militares')
+                .select('id, rm_vinculacao, codug_rm_vinculacao')
+                .eq('nome_om', omDetentoraRecord.organizacao)
+                .eq('codug_om', omDetentoraRecord.ug)
+                .maybeSingle();
+            
+            if (omData) {
+                setForm(prev => ({ ...prev, selectedOmId: omData.id }));
+                setRmFornecimento(omData.rm_vinculacao);
+                setCodugRmFornecimento(omData.codug_rm_vinculacao);
+                
+                // Atualizar IDs de OM de Lubrificante
+                const updatedAlloc = { ...newLubAlloc };
+                for (const cat of ['GERADOR', 'EMBARCACAO'] as Categoria[]) {
+                    if (updatedAlloc[cat].om) {
+                        const { data: lubOmData } = await supabase
+                            .from('organizacoes_militares')
+                            .select('id')
+                            .eq('nome_om', updatedAlloc[cat].om)
+                            .eq('codug_om', updatedAlloc[cat].ug)
+                            .maybeSingle();
+                        updatedAlloc[cat].selectedOmId = lubOmData?.id;
+                    }
+                }
+                setLubrificanteAlloc(updatedAlloc);
+            }
+        } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
     }
     
     setEditingItem(null);
@@ -1126,7 +1134,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                       variant="ghost"
                                       size="icon"
                                       className="h-8 w-8"
-                                      onClick={fetchRegistros} // Apenas recarrega para preencher o formulário principal
+                                      onClick={() => loadRegistroToForm(registros)} // NOVO: Carrega os dados para edição
                                       disabled={loading}
                                     >
                                       <RefreshCw className="h-4 w-4" />
