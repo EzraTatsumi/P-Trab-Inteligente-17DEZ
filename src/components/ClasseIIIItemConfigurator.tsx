@@ -285,7 +285,7 @@ export const ClasseIIIItemConfigurator: React.FC<ClasseIIIItemConfiguratorProps>
       {(categoria === 'GERADOR' || categoria === 'EMBARCACAO') && (
         <div className="space-y-2 p-3 border rounded-lg bg-muted/50">
             <Label className="flex items-center gap-1">
-                OM Destino Recurso Lubrificante *
+                OM Destino Recurso Lubrificante
             </Label>
             <OmSelector
                 selectedOmId={lubrificanteAlloc.selectedOmId}
