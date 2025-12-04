@@ -208,6 +208,22 @@ export default function ClasseIIIForm() {
     setLoading(false);
   };
   
+  const resetFormFields = () => {
+    setForm({
+        selectedOmId: undefined,
+        organizacao: "",
+        ug: "",
+        dias_operacao: 0,
+        itens: [],
+    });
+    setRmFornecimento("");
+    setCodugRmFornecimento("");
+    setLubrificanteAlloc(initialLubrificanteAllocation);
+    setEditingItem(null);
+    setFasesAtividade(["Execução"]);
+    setCustomFaseAtividade("");
+  };
+
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
@@ -231,14 +247,18 @@ export default function ClasseIIIForm() {
         const firstRecord = loadedRegistros[0];
         
         // 1. Dados globais (OM Detentora, Dias, Fases)
+        // NOTA: A OM Detentora é a OM do primeiro registro de COMBUSTÍVEL encontrado.
+        // Se só houver lubrificante, a OM Detentora será a OM de destino do lubrificante.
+        const omDetentoraRecord = loadedRegistros.find(r => !r.tipo_equipamento.startsWith('LUBRIFICANTE')) || firstRecord;
+        
         setForm({
             ...form,
-            organizacao: firstRecord.organizacao,
-            ug: firstRecord.ug,
-            dias_operacao: firstRecord.dias_operacao,
+            organizacao: omDetentoraRecord.organizacao,
+            ug: omDetentoraRecord.ug,
+            dias_operacao: omDetentoraRecord.dias_operacao,
         });
         
-        const fasesSalvas = (firstRecord.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+        const fasesSalvas = (omDetentoraRecord.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
         setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
         setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
         
@@ -266,13 +286,13 @@ export default function ClasseIIIForm() {
         setLubrificanteAlloc(newLubAlloc);
         
         // 4. Buscar OM Detentora ID e RM Fornecimento
-        if (firstRecord.organizacao) {
+        if (omDetentoraRecord.organizacao) {
             try {
                 const { data: omData } = await supabase
                     .from('organizacoes_militares')
                     .select('id, rm_vinculacao, codug_rm_vinculacao')
-                    .eq('nome_om', firstRecord.organizacao)
-                    .eq('codug_om', firstRecord.ug)
+                    .eq('nome_om', omDetentoraRecord.organizacao)
+                    .eq('codug_om', omDetentoraRecord.ug)
                     .maybeSingle();
                 
                 if (omData) {
@@ -297,6 +317,9 @@ export default function ClasseIIIForm() {
                 }
             } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
         }
+    } else {
+        // Se não houver registros, limpa o formulário
+        resetFormFields();
     }
     
     setEditingItem(null);
@@ -648,6 +671,10 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       
       toast.success("Registros de Classe III atualizados com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
+      
+      // --- NOVO: Limpar o formulário principal após o salvamento ---
+      resetFormFields();
+      
       fetchRegistros();
     } catch (error) {
       console.error("Erro ao salvar/atualizar registros de Classe III:", error);
