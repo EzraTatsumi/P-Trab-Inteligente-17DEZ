@@ -551,10 +551,11 @@ const ClasseIIForm = () => {
     const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
 
     // 4. Itens de outras categorias no formulário principal
-    const otherCategoryItems = form.itens.filter(item => !CATEGORIAS.includes(item.categoria as Categoria)); // MUDANÇA AQUI: Filtra apenas as categorias que NÃO são Classe II
+    // CORREÇÃO AQUI: Filtra APENAS os itens da categoria atual (selectedTab) para removê-los, mantendo todos os outros itens (de outras categorias ou classes).
+    const itemsFromOtherCategories = form.itens.filter(item => item.categoria !== selectedTab);
 
     // 5. Mesclar as listas
-    const newFormItems = [...otherCategoryItems, ...itemsToKeep];
+    const newFormItems = [...itemsFromOtherCategories, ...itemsToKeep];
 
     // 6. Update allocation state for the current category (including destination fields which might have been updated)
     setCategoryAllocations(prev => ({
@@ -1348,7 +1349,7 @@ const ClasseIIForm = () => {
               </div>
             )}
 
-            {/* 5. Memórias de Cálculos Detalhadas - AGORA POR CATEGORIA */}
+            {/* 5. Memórias de Cálculos Detalhadas */}
             {registros.length > 0 && (
               <div className="space-y-4 mt-8">
                 <h3 className="text-xl font-bold flex items-center gap-2">
