@@ -62,3 +62,10 @@ src/pages/VisualizacaoConfigPage.tsx
 # Excluir arquivos de consolidação e numeração
 src/components/PTrabConsolidationDialog.tsx
 src/lib/ptrabNumberUtils.ts
+
+# Excluir arquivos de Importação/Exportação
+src/pages/PTrabExportImportPage.tsx
+src/components/ExportPasswordDialog.tsx
+src/components/ImportPTrabOptionsDialog.tsx
+src/components/ImportConflictDialog.tsx
+src/lib/cryptoUtils.ts
