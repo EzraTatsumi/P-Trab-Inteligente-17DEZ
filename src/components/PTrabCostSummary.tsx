@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react'; // Adicionado useState e useRef
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"; // Importar CardDescription
+import React, { useState, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Droplet, ClipboardList } from "lucide-react"; // Importar Droplet e ClipboardList
+import { Package, Briefcase, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Droplet, ClipboardList, Swords } from "lucide-react";
 import {
   Accordion,
   AccordionItem,
@@ -11,12 +11,15 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button"; // Importar Button
-// Removendo Tooltip components
+import { Button } from "@/components/ui/button";
+
+// Define the category constants
+const CATEGORIAS_CLASSE_II = ["Equipamento Individual", "Proteção Balística", "Material de Estacionamento"];
+const CATEGORIAS_CLASSE_V = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 
 interface PTrabCostSummaryProps {
   ptrabId: string;
-  onOpenCreditDialog: () => void; // Novo prop para abrir o diálogo
+  onOpenCreditDialog: () => void;
   creditGND3: number;
   creditGND4: number;
 }
@@ -27,11 +30,6 @@ interface ItemClasseII {
   quantidade: number;
   valor_mnt_dia: number;
   categoria: string;
-}
-
-interface DetailedItemClasseII extends ItemClasseII {
-  parent_dias_operacao: number;
-  parent_organizacao: string;
 }
 
 // Helper function to calculate days of requested stage (diasEtapaSolicitada)
@@ -68,16 +66,13 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalComplemento += record.complemento_qs + record.complemento_qr;
     totalEtapaSolicitadaValor += record.etapa_qs + record.etapa_qr;
     
-    // Novos cálculos de quantidade
     const diasEtapaSolicitada = calculateDiasEtapaSolicitada(record.dias_operacao);
     totalDiasEtapaSolicitada += diasEtapaSolicitada;
     
-    // Refeições Intermediárias (Complemento)
-    // A quantidade total de refeições intermediárias é: Efetivo * Nr Ref Int * Dias Operação
     totalRefeicoesIntermediarias += record.efetivo * record.nr_ref_int * record.dias_operacao;
   });
   
-  // 2. Fetch Classe II totals (33.90.30 e 33.90.39)
+  // 2. Fetch Classe II/V records
   const { data: classeIIData, error: classeIIError } = await supabase
     .from('classe_ii_registros')
     .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
@@ -89,36 +84,55 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   let totalClasseII_ND30 = 0;
   let totalClasseII_ND39 = 0;
   let totalItensClasseII = 0;
-  
-  // Novo agrupamento por categoria para exibição detalhada
   const groupedClasseIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
+
+  let totalClasseV = 0;
+  let totalClasseV_ND30 = 0;
+  let totalClasseV_ND39 = 0;
+  let totalItensClasseV = 0;
+  const groupedClasseVCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
   
   (classeIIData || []).forEach(record => {
-    totalClasseII += record.valor_total;
-    totalClasseII_ND30 += Number(record.valor_nd_30);
-    totalClasseII_ND39 += Number(record.valor_nd_39);
-    
     const category = record.categoria;
     const items = (record.itens_equipamentos || []) as ItemClasseII[];
     const totalItemsCategory = items.reduce((sum, item) => sum + (item.quantidade || 0), 0);
-    totalItensClasseII += totalItemsCategory;
     
-    if (!groupedClasseIICategories[category]) {
-        groupedClasseIICategories[category] = {
-            totalValor: 0,
-            totalND30: 0,
-            totalND39: 0,
-            totalItens: 0,
-        };
+    const valorTotal = record.valor_total;
+    const valorND30 = Number(record.valor_nd_30);
+    const valorND39 = Number(record.valor_nd_39);
+
+    if (CATEGORIAS_CLASSE_II.includes(category)) {
+        // CLASSE II
+        totalClasseII += valorTotal;
+        totalClasseII_ND30 += valorND30;
+        totalClasseII_ND39 += valorND39;
+        totalItensClasseII += totalItemsCategory;
+        
+        if (!groupedClasseIICategories[category]) {
+            groupedClasseIICategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
+        }
+        groupedClasseIICategories[category].totalValor += valorTotal;
+        groupedClasseIICategories[category].totalND30 += valorND30;
+        groupedClasseIICategories[category].totalND39 += valorND39;
+        groupedClasseIICategories[category].totalItens += totalItemsCategory;
+
+    } else if (CATEGORIAS_CLASSE_V.includes(category)) {
+        // CLASSE V
+        totalClasseV += valorTotal;
+        totalClasseV_ND30 += valorND30;
+        totalClasseV_ND39 += valorND39;
+        totalItensClasseV += totalItemsCategory;
+
+        if (!groupedClasseVCategories[category]) {
+            groupedClasseVCategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
+        }
+        groupedClasseVCategories[category].totalValor += valorTotal;
+        groupedClasseVCategories[category].totalND30 += valorND30;
+        groupedClasseVCategories[category].totalND39 += valorND39;
+        groupedClasseVCategories[category].totalItens += totalItemsCategory;
     }
-    
-    groupedClasseIICategories[category].totalValor += record.valor_total;
-    groupedClasseIICategories[category].totalND30 += Number(record.valor_nd_30);
-    groupedClasseIICategories[category].totalND39 += Number(record.valor_nd_39);
-    groupedClasseIICategories[category].totalItens += totalItemsCategory;
   });
-
-
+  
   // 3. Fetch Classe III totals (Combustível e Lubrificante)
   const { data: classeIIIData, error: classeIIIError } = await supabase
     .from('classe_iii_registros')
@@ -163,9 +177,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const totalLubrificanteLitros = lubrificanteRecords
     .reduce((sum, record) => sum + record.total_litros, 0);
 
-  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classe II (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
-  // Todos os itens de Classe I, Classe II (Material e Serviço) e Classe III (Combustível e Lubrificante) são GND 3.
-  const totalLogisticoGeral = totalClasseI + totalClasseII + totalCombustivel + totalLubrificanteValor;
+  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classe II (ND 30 + ND 39) + Classe V (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
+  const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalCombustivel + totalLubrificanteValor;
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
@@ -182,7 +195,14 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalClasseII_ND30,
     totalClasseII_ND39,
     totalItensClasseII,
-    groupedClasseIICategories, // NEW: Return grouped categories
+    groupedClasseIICategories,
+    
+    totalClasseV,
+    totalClasseV_ND30,
+    totalClasseV_ND39,
+    totalItensClasseV,
+    groupedClasseVCategories,
+    
     totalComplemento,
     totalEtapaSolicitadaValor,
     totalDiasEtapaSolicitada,
@@ -209,7 +229,7 @@ export const PTrabCostSummary = ({
     queryKey: ['ptrabTotals', ptrabId],
     queryFn: () => fetchPTrabTotals(ptrabId),
     enabled: !!ptrabId,
-    refetchInterval: 10000, // Atualiza a cada 10 segundos
+    refetchInterval: 10000,
     initialData: {
       totalLogisticoGeral: 0,
       totalOperacional: 0,
@@ -218,7 +238,12 @@ export const PTrabCostSummary = ({
       totalClasseII_ND30: 0,
       totalClasseII_ND39: 0,
       totalItensClasseII: 0,
-      groupedClasseIICategories: {}, // Initialize new field
+      groupedClasseIICategories: {},
+      totalClasseV: 0,
+      totalClasseV_ND30: 0,
+      totalClasseV_ND39: 0,
+      totalItensClasseV: 0,
+      groupedClasseVCategories: {},
       totalComplemento: 0,
       totalEtapaSolicitadaValor: 0,
       totalDiasEtapaSolicitada: 0,
@@ -235,16 +260,13 @@ export const PTrabCostSummary = ({
     },
   });
   
-  // Estado e Ref para controlar o acordeão e a rolagem
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const detailsRef = useRef<HTMLDivElement>(null);
 
   const handleSummaryClick = () => {
-    // Alterna o estado de abertura
     const newState = !isDetailsOpen;
     setIsDetailsOpen(newState);
     
-    // Se estiver abrindo, rola para o início dos detalhes
     if (newState) {
       setTimeout(() => {
           detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -282,31 +304,28 @@ export const PTrabCostSummary = ({
   
   const totals = data!;
   
-  // O total geral agora inclui os novos placeholders
   const totalGeralFinal = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalMaterialPermanente + totals.totalAviacaoExercito;
 
-  // Cálculo do Saldo
   const saldoGND3 = creditGND3 - (totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito);
   const saldoGND4 = creditGND4 - totals.totalMaterialPermanente;
 
-  // Classe para garantir largura e alinhamento consistentes para os valores
   const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
   
-  // Ordenar categorias da Classe II
   const sortedClasseIICategories = Object.entries(totals.groupedClasseIICategories).sort(([a], [b]) => a.localeCompare(b));
+  const sortedClasseVCategories = Object.entries(totals.groupedClasseVCategories).sort(([a], [b]) => a.localeCompare(b));
 
   return (
     <Card className="shadow-lg">
-      <CardHeader className="pb-2 pt-3"> {/* Reduzido padding vertical */}
+      <CardHeader className="pb-2 pt-3">
         <CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle>
         <CardDescription className="text-xs">
           Visão consolidada dos custos logísticos e orçamentários.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 p-0 pb-3"> {/* Removido padding vertical do CardContent */}
+      <CardContent className="space-y-4 p-0 pb-3">
         
         {/* Resumo de Custos (sempre visível) */}
-        <div className="w-full space-y-1 text-sm px-6 pt-3"> {/* Ajustado pt-1 para pt-3 */}
+        <div className="w-full space-y-1 text-sm px-6 pt-3">
             <div className="flex justify-between text-orange-600 cursor-pointer" onClick={handleSummaryClick}>
               <span className="font-semibold text-sm">Aba Logística</span>
               <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
@@ -337,16 +356,16 @@ export const PTrabCostSummary = ({
             
             {/* Accordion Trigger Principal: Contém o Total Geral e o botão Mais Detalhes */}
             <AccordionTrigger 
-              simple // Usa o modo simples (sem seta)
-              className="py-0 px-0 hover:no-underline flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50" // py-0
+              simple
+              className="py-0 px-0 hover:no-underline flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50"
               onClick={(e) => {
                 e.preventDefault(); 
                 handleSummaryClick();
               }}
             >
-              <div className="flex justify-between items-center w-full"> {/* Removido py-1 interno */}
+              <div className="flex justify-between items-center w-full">
                 <span className="text-base font-bold text-foreground">Total Geral</span>
-                <div className="flex flex-col items-end gap-0"> {/* Usar flex-col para empilhar */}
+                <div className="flex flex-col items-end gap-0">
                     <span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>
                     <span className="font-semibold text-primary flex items-center gap-1 text-xs lowercase">
                         {isDetailsOpen ? "menos detalhes" : "mais detalhes"}
@@ -360,7 +379,7 @@ export const PTrabCostSummary = ({
             </AccordionTrigger>
             
             <AccordionContent className="pt-2 pb-0">
-              <div className="space-y-2" ref={detailsRef}> {/* Alterado space-y-4 para space-y-2 */}
+              <div className="space-y-2" ref={detailsRef}>
                 
                 {/* Aba Logística */}
                 <div className="space-y-3 border-l-4 border-orange-500 pl-3">
@@ -444,6 +463,41 @@ export const PTrabCostSummary = ({
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
+                  
+                  {/* Classe V - Armamento (NOVO) */}
+                  <Accordion type="single" collapsible className="w-full pt-1">
+                    <AccordionItem value="item-classe-v" className="border-b-0">
+                      <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                          <div className="flex items-center gap-1 text-foreground">
+                            <Swords className="h-3 w-3 text-orange-500" />
+                            Classe V
+                          </div>
+                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                            {formatCurrency(totals.totalClasseV)}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                          {/* Detalhes por Categoria */}
+                          {sortedClasseVCategories.map(([category, data]) => (
+                            <div key={category} className="space-y-1">
+                                <div className="flex justify-between text-muted-foreground font-semibold pt-1">
+                                    <span className="w-1/2 text-left">{category}</span>
+                                    <span className="w-1/4 text-right font-medium">
+                                        {formatNumber(data.totalItens)} un.
+                                    </span>
+                                    <span className="w-1/4 text-right font-medium">
+                                        {formatCurrency(data.totalValor)}
+                                    </span>
+                                </div>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
 
                   {/* Classe III - Combustíveis e Lubrificantes */}
                   <Accordion type="single" collapsible className="w-full pt-1">
@@ -498,7 +552,7 @@ export const PTrabCostSummary = ({
                   
                   {/* Outras Abas Logísticas (Placeholder) */}
                   <div className="flex justify-between text-xs text-muted-foreground pt-2">
-                    <span className="w-1/2 text-left">Outras Classes (IV a X)</span>
+                    <span className="w-1/2 text-left">Outras Classes (IV, VI a X)</span>
                     <span className="w-1/4 text-right font-medium">
                       {/* Vazio */}
                     </span>
@@ -565,7 +619,7 @@ export const PTrabCostSummary = ({
         </Accordion>
         
         {/* Seção de Crédito (abaixo do Accordion) */}
-        <div className="px-6 pt-0 border-t border-border/50 space-y-2 mt-[-1.5rem]"> {/* Aumentado mt-[-1rem] para mt-[-1.5rem] */}
+        <div className="px-6 pt-0 border-t border-border/50 space-y-2 mt-[-1.5rem]">
             <div className="flex justify-between items-center">
                 <h4 className="font-bold text-sm text-accent flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
@@ -587,7 +641,7 @@ export const PTrabCostSummary = ({
             <Button 
                 onClick={onOpenCreditDialog} 
                 variant="outline" 
-                className="w-full mt-2 border-accent text-accent hover:bg-accent/10 h-8 text-sm" // Reduzido altura do botão
+                className="w-full mt-2 border-accent text-accent hover:bg-accent/10 h-8 text-sm"
             >
                 Informar Crédito
             </Button>
@@ -597,3 +651,5 @@ export const PTrabCostSummary = ({
     </Card>
   );
 };
+
+export { fetchPTrabTotals };

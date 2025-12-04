@@ -6,13 +6,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { FileText, Package, Briefcase, ArrowLeft, Calendar, Users, MapPin, Loader2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner"; // Importar toast do sonner
-import { PTrabCostSummary } from "@/components/PTrabCostSummary";
-import { CreditInputDialog } from "@/components/CreditInputDialog"; // Importar o novo diálogo
-import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"; // Importar TanStack Query
-import { fetchUserCredits, updateUserCredits } from "@/lib/creditUtils"; // Importar utilitários de crédito
-import { CreditPromptDialog } from "@/components/CreditPromptDialog"; // NOVO IMPORT
+import { toast } from "sonner";
+import { PTrabCostSummary, fetchPTrabTotals } from "@/components/PTrabCostSummary";
+import { CreditInputDialog } from "@/components/CreditInputDialog";
+import { useSession } from "@/components/SessionContextProvider";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchUserCredits, updateUserCredits } from "@/lib/creditUtils";
+import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 
 interface PTrabData {
   numero_ptrab: string;
@@ -21,7 +21,7 @@ interface PTrabData {
   nome_operacao: string;
   periodo_inicio: string;
   periodo_fim: string;
-  efetivo_empregado: string; // Alterado de number para string
+  efetivo_empregado: string;
   acoes: string;
   status: string;
   nome_cmt_om?: string;
@@ -32,33 +32,25 @@ const PTrabForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get('ptrabId');
-  const { user, loading: loadingSession } = useSession(); // Obter usuário e estado de carregamento da sessão
+  const { user, loading: loadingSession } = useSession();
   const queryClient = useQueryClient();
   
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
   const [selectedTab, setSelectedTab] = useState("logistica");
   const [loadingPTrab, setLoadingPTrab] = useState(true);
   
-  // Estados para armazenar os custos totais (para passar ao CreditInputCard)
-  const [totalGND3Cost, setTotalGND3Cost] = useState(0);
-  const [totalGND4Cost, setTotalGND4Cost] = useState(0);
-  
   // NOVOS ESTADOS PARA CRÉDITO E DIÁLOGO
   const [showCreditDialog, setShowCreditDialog] = useState(false);
-  // Removido showCreditPromptDialog e hasCheckedCredits
 
   const classesLogistica = [
     { id: "classe-i", name: "Classe I - Subsistência" },
     { id: "classe-ii", name: "Classe II - Material de Intendência" },
     { id: "classe-iii", name: "Classe III - Combustíveis e Lubrificantes" },
-    { id: "classe-v", name: "Classe V - Armamento" }, // ADICIONADO CLASSE V
-    // { id: "classe-iv", name: "Classe IV - Material de Construção" }, // REMOVIDO
-    // { id: "classe-v", name: "Classe V - Munição" }, // REMOVIDO (AGORA É ARMAMENTO)
+    { id: "classe-v", name: "Classe V - Armamento" },
     { id: "classe-vi", name: "Classe VI - Material de Engenharia" },
     { id: "classe-vii", name: "Classe VII - Viaturas e Equipamentos" },
     { id: "classe-viii", name: "Classe VIII - Material de Saúde" },
     { id: "classe-ix", name: "Classe IX - Material de Manutenção" },
-    // { id: "classe-x", name: "Classe X - Material para Atividades Especiais" }, // REMOVIDO
   ];
 
   const itensOperacional = [
@@ -74,8 +66,27 @@ const PTrabForm = () => {
   const { data: credits, isLoading: isLoadingCredits } = useQuery({
     queryKey: ['userCredits', user?.id],
     queryFn: () => fetchUserCredits(user!.id),
-    enabled: !!user?.id, // Só executa se o user.id estiver disponível
+    enabled: !!user?.id,
     initialData: { credit_gnd3: 0, credit_gnd4: 0 },
+  });
+  
+  // --- Lógica de Busca de Totais (TanStack Query) ---
+  const { data: totals, isLoading: isLoadingTotals } = useQuery({
+    queryKey: ['ptrabTotals', ptrabId],
+    queryFn: () => fetchPTrabTotals(ptrabId!),
+    enabled: !!ptrabId,
+    refetchInterval: 10000,
+    initialData: {
+      totalLogisticoGeral: 0,
+      totalOperacional: 0,
+      totalMaterialPermanente: 0,
+      totalAviacaoExercito: 0,
+      totalClasseI: 0,
+      totalClasseII: 0,
+      totalClasseV: 0,
+      totalCombustivel: 0,
+      totalLubrificanteValor: 0,
+    } as any,
   });
   
   // --- Lógica de Mutação para Salvar Créditos ---
@@ -116,15 +127,13 @@ const PTrabForm = () => {
 
       setPtrabData({
         ...data,
-        efetivo_empregado: String(data.efetivo_empregado), // Garante que seja string ao carregar
+        efetivo_empregado: String(data.efetivo_empregado),
       });
       setLoadingPTrab(false);
       
-      // NOVO: Verifica se deve abrir o diálogo de crédito imediatamente (se veio do PTrabManager)
       const shouldOpenCreditDialog = searchParams.get('openCredit') === 'true';
       if (shouldOpenCreditDialog) {
         setShowCreditDialog(true);
-        // Limpa o parâmetro da URL para evitar que abra novamente no refresh
         searchParams.delete('openCredit');
         navigate(`?${searchParams.toString()}`, { replace: true });
       }
@@ -133,51 +142,9 @@ const PTrabForm = () => {
     loadPTrab();
   }, [ptrabId, navigate, searchParams]);
 
-  // Removido o useEffect que gerencia o prompt de crédito
-
-  // Função para buscar os totais e atualizar os estados de custo
-  const fetchAndSetTotals = async () => {
-    if (!ptrabId) return;
-    
-    // Simulação de busca de totais (usando a mesma lógica do PTrabCostSummary)
-    const { data: classeIData } = await supabase
-      .from('classe_i_registros')
-      .select('total_qs, total_qr')
-      .eq('p_trab_id', ptrabId);
-
-    const totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
-
-    const { data: classeIIIData } = await supabase
-      .from('classe_iii_registros')
-      .select('valor_total')
-      .eq('p_trab_id', ptrabId);
-
-    const totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
-    
-    // NOVO: Buscar totais da Classe II
-    const { data: classeIIData } = await supabase
-      .from('classe_ii_registros')
-      .select('valor_total')
-      .eq('p_trab_id', ptrabId);
-
-    const totalClasseII = (classeIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
-    
-    // GND 3 = Logística (Classe I + Classe II + Classe III) + Operacional (0) + Aviação (0)
-    const calculatedGND3 = totalClasseI + totalClasseII + totalClasseIII;
-    
-    // GND 4 = Material Permanente (0)
-    const calculatedGND4 = 0; 
-
-    setTotalGND3Cost(calculatedGND3);
-    setTotalGND4Cost(calculatedGND4);
-  };
-  
-  // Efeito para carregar os totais iniciais e manter a atualização
-  useEffect(() => {
-    fetchAndSetTotals();
-    const interval = setInterval(fetchAndSetTotals, 10000); // Atualiza a cada 10s
-    return () => clearInterval(interval);
-  }, [ptrabId]);
+  // Calculate costs based on query data
+  const calculatedGND3 = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito;
+  const calculatedGND4 = totals.totalMaterialPermanente;
 
   const handleSaveCredit = (gnd3: number, gnd4: number) => {
     if (!user?.id) {
@@ -187,8 +154,6 @@ const PTrabForm = () => {
     saveCreditsMutation.mutate({ gnd3, gnd4 });
   };
   
-  // Removido handlePromptConfirm e handlePromptCancel
-
   const handleItemClick = (itemId: string, type: string) => {
     if (ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado') {
       toast.warning("Este P Trab está completo ou arquivado e não pode ser editado.");
@@ -198,18 +163,17 @@ const PTrabForm = () => {
     if (itemId === 'classe-i') {
       navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-ii') {
-      navigate(`/ptrab/classe-ii?ptrabId=${ptrabId}`); // Nova navegação
+      navigate(`/ptrab/classe-ii?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-v') {
-      navigate(`/ptrab/classe-v?ptrabId=${ptrabId}`); // Nova navegação para Classe V
+      navigate(`/ptrab/classe-v?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-iii') {
       navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
     } else {
       console.log(`Selecionado: ${itemId} do tipo ${type}`);
-      // Aqui será implementada a navegação para outros formulários específicos
     }
   };
 
-  if (loadingSession || loadingPTrab || isLoadingCredits) {
+  if (loadingSession || loadingPTrab || isLoadingCredits || isLoadingTotals) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -372,19 +336,15 @@ const PTrabForm = () => {
       <CreditInputDialog
         open={showCreditDialog}
         onOpenChange={setShowCreditDialog}
-        totalGND3Cost={totalGND3Cost}
-        totalGND4Cost={totalGND4Cost}
+        totalGND3Cost={calculatedGND3}
+        totalGND4Cost={calculatedGND4}
         initialCreditGND3={credits.credit_gnd3}
         initialCreditGND4={credits.credit_gnd4}
         onSave={handleSaveCredit}
       />
       
-      {/* Diálogo de Prompt de Crédito (REMOVIDO) */}
-      {/* <CreditPromptDialog
-        open={showCreditPromptDialog}
-        onConfirm={handlePromptConfirm}
-        onCancel={handlePromptCancel}
-      /> */}
+      {/* Diálogo de Prompt de Crédito */}
+      {/* Removido CreditPromptDialog */}
     </div>
   );
 };
