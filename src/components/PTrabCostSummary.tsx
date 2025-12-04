@@ -474,50 +474,6 @@ export const PTrabCostSummary = ({
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
-                  
-                  {/* Classe V - Armamento (NOVO) */}
-                  <Accordion type="single" collapsible className="w-full pt-1">
-                    <AccordionItem value="item-classe-v" className="border-b-0">
-                      <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                          <div className="flex items-center gap-1 text-foreground">
-                            <Swords className="h-3 w-3 text-orange-500" />
-                            Classe V
-                          </div>
-                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                            {formatCurrency(totals.totalClasseV)}
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                          {/* Detalhes por Categoria */}
-                          {sortedClasseVCategories.map(([category, data]) => (
-                            <div key={category} className="space-y-1">
-                                <div className="flex justify-between text-muted-foreground font-semibold pt-1">
-                                    <span className="w-1/2 text-left">{category}</span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatNumber(data.totalItens)} un.
-                                    </span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatCurrency(data.totalValor)}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
-                                    <span className="w-1/2 text-left">ND 30 / ND 39</span>
-                                    <span className="w-1/4 text-right text-green-600 font-medium">
-                                        {formatCurrency(data.totalND30)}
-                                    </span>
-                                    <span className="w-1/4 text-right text-blue-600 font-medium">
-                                        {formatCurrency(data.totalND39)}
-                                    </span>
-                                </div>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
 
                   {/* Classe III - Combustíveis e Lubrificantes */}
                   <Accordion type="single" collapsible className="w-full pt-1">
@@ -568,6 +524,50 @@ export const PTrabCostSummary = ({
                               {formatCurrency(totals.totalLubrificanteValor)}
                             </span>
                           </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                  
+                  {/* Classe V - Armamento */}
+                  <Accordion type="single" collapsible className="w-full pt-1">
+                    <AccordionItem value="item-classe-v" className="border-b-0">
+                      <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                          <div className="flex items-center gap-1 text-foreground">
+                            <Swords className="h-3 w-3 text-orange-500" />
+                            Classe V
+                          </div>
+                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                            {formatCurrency(totals.totalClasseV)}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                          {/* Detalhes por Categoria */}
+                          {sortedClasseVCategories.map(([category, data]) => (
+                            <div key={category} className="space-y-1">
+                                <div className="flex justify-between text-muted-foreground font-semibold pt-1">
+                                    <span className="w-1/2 text-left">{category}</span>
+                                    <span className="w-1/4 text-right font-medium">
+                                        {formatNumber(data.totalItens)} un.
+                                    </span>
+                                    <span className="w-1/4 text-right font-medium">
+                                        {formatCurrency(data.totalValor)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
+                                    <span className="w-1/2 text-left">ND 30 / ND 39</span>
+                                    <span className="w-1/4 text-right text-green-600 font-medium">
+                                        {formatCurrency(data.totalND30)}
+                                    </span>
+                                    <span className="w-1/4 text-right text-blue-600 font-medium">
+                                        {formatCurrency(data.totalND39)}
+                                    </span>
+                                </div>
+                            </div>
+                          ))}
                         </div>
                       </AccordionContent>
                     </AccordionItem>
