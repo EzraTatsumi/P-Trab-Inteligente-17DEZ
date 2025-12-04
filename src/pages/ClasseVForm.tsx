@@ -479,10 +479,10 @@ const ClasseVForm = () => {
 
     const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
 
-    // MUDANÇA: Filtra apenas as categorias que NÃO são Classe V
-    const otherCategoryItems = form.itens.filter(item => !CATEGORIAS.includes(item.categoria as Categoria));
+    // FIX: Filtra APENAS os itens da categoria atual (selectedTab) para removê-los, mantendo todos os outros itens (de outras categorias ou classes).
+    const itemsFromOtherCategories = form.itens.filter(item => item.categoria !== selectedTab);
 
-    const newFormItems = [...otherCategoryItems, ...itemsToKeep];
+    const newFormItems = [...itemsFromOtherCategories, ...itemsToKeep];
 
     setCategoryAllocations(prev => ({
         ...prev,
