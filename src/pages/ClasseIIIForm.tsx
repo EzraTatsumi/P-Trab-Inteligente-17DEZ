@@ -670,7 +670,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       toast.success("Registros de Classe III atualizados com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
       
-      // --- CORREÇÃO: Limpar o formulário principal após o salvamento ---
+      // Limpar o formulário principal após o salvamento
       resetFormFields();
       
       fetchRegistros();
@@ -1066,7 +1066,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                   <div className="flex items-center justify-between">
                     <h3 className="text-xl font-bold flex items-center gap-2">
                       <Sparkles className="h-5 w-5 text-amber-500" />
-                      Registros Salvos
+                      OMs Cadastradas
                     </h3>
                     <Badge variant="secondary" className="text-sm">
                       {registros.length} {registros.length === 1 ? 'registro' : 'registros'}
