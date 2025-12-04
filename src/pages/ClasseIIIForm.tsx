@@ -671,8 +671,8 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       
       if (deleteError) { 
           console.error("Erro ao deletar registros existentes:", deleteError);
-          toast.error(`Erro ao deletar registros antigos: ${sanitizeError(deleteError)}`);
-          // Se a deleção falhar, interrompemos para evitar duplicação
+          toast.error(`Falha ao deletar registros antigos: ${sanitizeError(deleteError)}`);
+          // Se a deleção falhar, ABORTA a inserção
           setLoading(false);
           return;
       }
@@ -1084,9 +1084,16 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                       <Sparkles className="h-5 w-5 text-amber-500" />
                       OMs Cadastradas
                     </h3>
-                    <Badge variant="secondary" className="text-sm">
-                      {registros.length} {registros.length === 1 ? 'registro' : 'registros'}
-                    </Badge>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => fetchRegistros()} 
+                        disabled={loading}
+                        className="gap-1"
+                    >
+                        <RefreshCw className="h-3 w-3" />
+                        Recarregar
+                    </Button>
                   </div>
                   
                   <div className="border rounded-lg overflow-hidden">
