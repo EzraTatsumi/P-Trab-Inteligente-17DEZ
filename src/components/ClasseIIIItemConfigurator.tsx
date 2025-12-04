@@ -169,6 +169,11 @@ export const ClasseIIIItemConfigurator: React.FC<ClasseIIIItemConfiguratorProps>
         return;
     }
     
+    if (consumo_lubrificante_litro < 0 || preco_lubrificante < 0) {
+      toast.error("Consumo e preço do lubrificante não podem ser negativos.");
+      return;
+    }
+    
     // NOVO: Verifica se o usuário preencheu algum campo de lubrificante
     const isLubricantUsed = consumo_lubrificante_litro > 0 || preco_lubrificante > 0;
 
@@ -293,6 +298,9 @@ export const ClasseIIIItemConfigurator: React.FC<ClasseIIIItemConfiguratorProps>
                     UG de Destino: {lubrificanteAlloc.ug}
                 </p>
             )}
+            <p className="text-xs text-muted-foreground mt-1">
+                * A alocação de lubrificante é opcional. Se não houver recurso, deixe os campos de consumo e preço abaixo vazios.
+            </p>
         </div>
       )}
 
