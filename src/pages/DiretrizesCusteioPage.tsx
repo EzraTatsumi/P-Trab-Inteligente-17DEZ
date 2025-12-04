@@ -143,7 +143,9 @@ const DiretrizesCusteioPage = () => {
       const years = data ? data.map(d => d.ano_referencia) : [];
       const currentYear = new Date().getFullYear();
       
-      const uniqueYears = Array.from(new Set([...years, currentYear])).sort((a, b) => b - a);
+      // Inclui o ano atual e o próximo ano na lista de anos disponíveis, se ainda não estiverem lá
+      const nextYear = currentYear + 1;
+      const uniqueYears = Array.from(new Set([...years, currentYear, nextYear])).sort((a, b) => b - a);
       setAvailableYears(uniqueYears);
 
       setSelectedYear(uniqueYears.length > 0 ? uniqueYears[0] : currentYear);
@@ -154,6 +156,29 @@ const DiretrizesCusteioPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+  
+  const handleAddNextYear = async () => {
+    const nextYear = new Date().getFullYear() + 1;
+    if (availableYears.includes(nextYear)) {
+      toast.info(`O ano ${nextYear} já está disponível.`);
+      setSelectedYear(nextYear);
+      return;
+    }
+    
+    // Adiciona o próximo ano à lista e o seleciona
+    setAvailableYears(prev => [nextYear, ...prev].sort((a, b) => b - a));
+    setSelectedYear(nextYear);
+    
+    // Carrega as diretrizes padrão para o novo ano
+    setDiretrizes(defaultDiretrizes(nextYear));
+    setClasseIIConfig(defaultClasseIIConfig);
+    setGeradorConfig(defaultGeradorConfig);
+    setEmbarcacaoConfig(defaultEmbarcacaoConfig);
+    setMotomecanizacaoConfig(defaultMotomecanizacaoConfig);
+    setEquipamentosEngenhariaConfig(defaultEquipamentosEngenhariaConfig);
+    
+    toast.success(`Ano ${nextYear} adicionado. Configure as novas diretrizes e clique em Salvar.`);
   };
 
   const loadDiretrizesForYear = async (year: number) => {
@@ -184,6 +209,7 @@ const DiretrizesCusteioPage = () => {
           observacoes: data.observacoes || "",
         });
       } else {
+        // Se não houver diretriz salva, usa o default para o ano selecionado
         setDiretrizes(defaultDiretrizes(year));
       }
       
@@ -621,21 +647,32 @@ const DiretrizesCusteioPage = () => {
             <form onSubmit={(e) => { e.preventDefault(); handleSaveDiretrizes(); }}>
               <div className="space-y-2 mb-6">
                 <Label>Ano de Referência</Label>
-                <Select
-                  value={selectedYear.toString()}
-                  onValueChange={(value) => setSelectedYear(parseInt(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o ano" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableYears.map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                    <Select
+                      value={selectedYear.toString()}
+                      onValueChange={(value) => setSelectedYear(parseInt(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o ano" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableYears.map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleAddNextYear}
+                        disabled={loading}
+                        title="Adicionar o próximo ano de referência"
+                    >
+                        <Plus className="h-4 w-4" />
+                    </Button>
+                </div>
               </div>
 
               {/* SEÇÃO CLASSE I - ALIMENTAÇÃO */}
