@@ -211,6 +211,7 @@ export default function ClasseIIIForm() {
   };
   
   const resetFormFields = () => {
+    // Redefine o estado do formulário para o estado inicial
     setForm(initialFormState);
     setRmFornecimento("");
     setCodugRmFornecimento("");
@@ -238,13 +239,11 @@ export default function ClasseIIIForm() {
     const loadedRegistros = (data || []) as ClasseIIIRegistro[];
     setRegistros(loadedRegistros);
     
-    // Reconstruir o estado do formulário a partir dos registros (se houver)
+    // Lógica de pré-preenchimento do formulário (apenas se houver registros)
     if (loadedRegistros.length > 0) {
         const firstRecord = loadedRegistros[0];
         
         // 1. Dados globais (OM Detentora, Dias, Fases)
-        // NOTA: A OM Detentora é a OM do primeiro registro de COMBUSTÍVEL encontrado.
-        // Se só houver lubrificante, a OM Detentora será a OM de destino do lubrificante.
         const omDetentoraRecord = loadedRegistros.find(r => !r.tipo_equipamento.startsWith('LUBRIFICANTE')) || firstRecord;
         
         // Se a OM Detentora for encontrada, preenche os campos globais
@@ -1044,7 +1043,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                         <Button
                             variant="outline"
                             type="button"
-                            onClick={resetFormFields} // Usar resetFormFields para limpar tudo
+                            onClick={resetFormFields} // Chamando a função de reset completa
                         >
                             <XCircle className="h-4 w-4 mr-2" />
                             Limpar Formulário
