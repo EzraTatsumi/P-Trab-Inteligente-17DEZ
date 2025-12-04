@@ -51,8 +51,9 @@ const PTrabForm = () => {
     { id: "classe-i", name: "Classe I - Subsistência" },
     { id: "classe-ii", name: "Classe II - Material de Intendência" },
     { id: "classe-iii", name: "Classe III - Combustíveis e Lubrificantes" },
+    { id: "classe-v", name: "Classe V - Armamento" }, // ADICIONADO CLASSE V
     // { id: "classe-iv", name: "Classe IV - Material de Construção" }, // REMOVIDO
-    { id: "classe-v", name: "Classe V - Munição" },
+    // { id: "classe-v", name: "Classe V - Munição" }, // REMOVIDO (AGORA É ARMAMENTO)
     { id: "classe-vi", name: "Classe VI - Material de Engenharia" },
     { id: "classe-vii", name: "Classe VII - Viaturas e Equipamentos" },
     { id: "classe-viii", name: "Classe VIII - Material de Saúde" },
@@ -198,6 +199,8 @@ const PTrabForm = () => {
       navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-ii') {
       navigate(`/ptrab/classe-ii?ptrabId=${ptrabId}`); // Nova navegação
+    } else if (itemId === 'classe-v') {
+      navigate(`/ptrab/classe-v?ptrabId=${ptrabId}`); // Nova navegação para Classe V
     } else if (itemId === 'classe-iii') {
       navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
     } else {
