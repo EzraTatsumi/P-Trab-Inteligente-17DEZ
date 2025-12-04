@@ -1089,16 +1089,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                       <Sparkles className="h-5 w-5 text-amber-500" />
                       OMs Cadastradas
                     </h3>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => loadRegistroToForm(registros)} 
-                        disabled={loading}
-                        className="gap-1"
-                    >
-                        <RefreshCw className="h-3 w-3" />
-                        Recarregar para Edição
-                    </Button>
+                    {/* Botão Recarregar para Edição removido */}
                   </div>
                   
                   <div className="border rounded-lg overflow-hidden">
