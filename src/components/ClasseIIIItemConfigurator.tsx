@@ -121,7 +121,8 @@ export const ClasseIIIItemConfigurator: React.FC<ClasseIIIItemConfiguratorProps>
       field: keyof ItemClasseIII
   ) => {
       const numericValue = parseInputToNumber(input);
-      const formattedDisplay = formatNumberForInput(numericValue, minDecimals);
+      // Se o valor for 0, limpa o input para que o placeholder apareça
+      const formattedDisplay = numericValue === 0 ? "" : formatNumberForInput(numericValue, minDecimals);
       setInput(formattedDisplay);
       updateNumericItemTemp(field, numericValue);
   };
@@ -168,15 +169,23 @@ export const ClasseIIIItemConfigurator: React.FC<ClasseIIIItemConfiguratorProps>
         return;
     }
     
-    if (consumo_lubrificante_litro < 0 || preco_lubrificante < 0) {
-      toast.error("Consumo e preço do lubrificante não podem ser negativos.");
-      return;
-    }
-    
-    // Validação de OM de Lubrificante
-    if ((categoria === 'GERADOR' || categoria === 'EMBARCACAO') && (consumo_lubrificante_litro > 0 || preco_lubrificante > 0)) {
+    // NOVO: Verifica se o usuário preencheu algum campo de lubrificante
+    const isLubricantUsed = consumo_lubrificante_litro > 0 || preco_lubrificante > 0;
+
+    if (isLubricantUsed) {
+        // Se o lubrificante for usado, a OM de destino é obrigatória
         if (!lubrificanteAlloc.om || !lubrificanteAlloc.ug) {
             toast.error("Se o lubrificante for preenchido, a OM de Destino do Recurso Lubrificante deve ser selecionada.");
+            return;
+        }
+        
+        // Se o consumo ou preço for preenchido, o outro também deve ser
+        if (consumo_lubrificante_litro <= 0) {
+            toast.error("Informe o Consumo de Lubrificante.");
+            return;
+        }
+        if (preco_lubrificante <= 0) {
+            toast.error("Informe o Preço do Lubrificante.");
             return;
         }
     }
@@ -193,6 +202,7 @@ export const ClasseIIIItemConfigurator: React.FC<ClasseIIIItemConfiguratorProps>
     setInputPrecoLubrificante("");
   };
   
+  // isItemValid agora só verifica os campos obrigatórios de combustível/uso
   const isItemValid = itemTemp.tipo_equipamento_especifico && itemTemp.quantidade > 0 && 
                       (categoria === 'MOTOMECANIZACAO' ? itemTemp.km_dia > 0 : itemTemp.horas_dia > 0);
   
@@ -266,7 +276,7 @@ export const ClasseIIIItemConfigurator: React.FC<ClasseIIIItemConfiguratorProps>
         </div>
       </div>
       
-      {/* NOVO BLOCO: OM Destino Lubrificante (Apenas para Gerador/Embarcação) */}
+      {/* NOVO BLOCO: OM Destino Recurso Lubrificante (Apenas para Gerador/Embarcação) */}
       {(categoria === 'GERADOR' || categoria === 'EMBARCACAO') && (
         <div className="space-y-2 p-3 border rounded-lg bg-muted/50">
             <Label className="flex items-center gap-1">
