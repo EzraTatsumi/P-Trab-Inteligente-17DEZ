@@ -39,3 +39,7 @@ src/components/ui/
 
 # Excluir tipos gerados pelo Supabase (grande economia de tokens)
 src/integrations/supabase/types.ts
+
+# Excluir arquivos de dados estáticos e assets
+src/data/classeIIData.ts
+src/assets/
