@@ -788,6 +788,10 @@ export default function ClasseVForm() {
     }
   };
 
+  const displayFases = useMemo(() => {
+    return [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
+  }, [fasesAtividade, customFaseAtividade]);
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
