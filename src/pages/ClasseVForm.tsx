@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { defaultClasseVConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type Categoria = 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN';
 
