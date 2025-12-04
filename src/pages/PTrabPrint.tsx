@@ -128,6 +128,9 @@ interface GrupoOM {
 const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 // Categorias que representam a Classe VI (Material de Engenharia)
 const CLASSE_VI_CATEGORIES = ["Embarcação", "Equipamento de Engenharia"];
+// NOVO: Categorias que representam a Classe VII (Comunicações e Informática)
+const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
+
 
 const PTrabPrint = () => {
   const navigate = useNavigate();
@@ -303,13 +306,16 @@ Total QR: ${formatCurrency(total_qr)}.`;
     return registro.detalhamento;
   };
   
-  // Função auxiliar para determinar o rótulo da Classe II/V/VI
+  // Função auxiliar para determinar o rótulo da Classe II/V/VI/VII
   const getClasseIILabel = (categoria: string): string => {
       if (CLASSE_V_CATEGORIES.includes(categoria)) {
           return 'CLASSE V - ARMAMENTO';
       }
       if (CLASSE_VI_CATEGORIES.includes(categoria)) {
           return 'CLASSE VI - MATERIAL DE ENGENHARIA';
+      }
+      if (CLASSE_VII_CATEGORIES.includes(categoria)) {
+          return 'CLASSE VII - COMUNICAÇÕES E INFORMÁTICA';
       }
       return 'CLASSE II - MATERIAL DE INTENDÊNCIA';
   };
@@ -388,7 +394,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
   
   // 2. Processar Classe II (AGORA POR REGISTRO/CATEGORIA)
   registrosClasseII.forEach((registro) => {
-      // Classe II/V/VI goes to OM de destino do recurso (organizacao)
+      // Classe II/V/VI/VII goes to OM de destino do recurso (organizacao)
       initializeGroup(registro.organizacao);
       gruposPorOM[registro.organizacao].linhasClasseII.push({ 
           registro,
@@ -422,7 +428,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
     const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.total_qs, 0);
     const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + linha.registro.total_qr, 0);
     
-    // Total Classe II (ND 30 + ND 39)
+    // Total Classe II/V/VI/VII (ND 30 + ND 39)
     const totalClasseII_ND30 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
     const totalClasseII_ND39 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
     const totalClasseII = totalClasseII_ND30 + totalClasseII_ND39;
@@ -430,10 +436,10 @@ Total QR: ${formatCurrency(total_qr)}.`;
     // NEW: Total Lubrificante (ND 30)
     const totalLubrificante = grupo.linhasLubrificante.reduce((acc, linha) => acc + linha.registro.valor_total, 0);
     
-    // Total ND 30 (Coluna C) = Classe I + Classe II/V/VI (ND 30) + Lubrificante
+    // Total ND 30 (Coluna C) = Classe I + Classe II/V/VI/VII (ND 30) + Lubrificante
     const total_33_90_30 = totalQS + totalQR + totalClasseII_ND30 + totalLubrificante; 
     
-    // Total ND 39 (Coluna D) = Classe II/V/VI (ND 39)
+    // Total ND 39 (Coluna D) = Classe II/V/VI/VII (ND 39)
     const total_33_90_39 = totalClasseII_ND39;
     
     // Coluna E (TOTAL ND) = Coluna C + Coluna D
@@ -464,8 +470,8 @@ Total QR: ${formatCurrency(total_qr)}.`;
       .reduce((acc, reg) => acc + reg.total_litros, 0);
 
     return {
-      total_33_90_30, // Classe I + Classe II/V/VI (ND 30) + Lubrificante
-      total_33_90_39, // Classe II/V/VI (ND 39)
+      total_33_90_30, // Classe I + Classe II/V/VI/VII (ND 30) + Lubrificante
+      total_33_90_39, // Classe II/V/VI/VII (ND 39)
       total_parte_azul, // Total ND (C+D)
       total_combustivel: totalCombustivel, // Valor total da Classe III Combustível (Laranja)
       total_gnd3, // Valor Total Solicitado (GND 3)
@@ -763,7 +769,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
           currentRow++;
         });
         
-        // 3. Linhas Classe II/V/VI (POR CATEGORIA/REGISTRO)
+        // 3. Linhas Classe II/V/VI/VII (POR CATEGORIA/REGISTRO)
         grupo.linhasClasseII.forEach((linha) => {
           const registro = linha.registro;
           const omDestinoRecurso = registro.organizacao;
@@ -927,12 +933,12 @@ Total QR: ${formatCurrency(total_qr)}.`;
         subtotalRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
         subtotalRow.getCell('A').font = { name: 'Arial', size: 8, bold: true };
         
-        subtotalRow.getCell('C').value = totaisOM.total_33_90_30; // Total Classe I + Classe II/V/VI (ND 30) + Lubrificante
+        subtotalRow.getCell('C').value = totaisOM.total_33_90_30; // Total Classe I + Classe II/V/VI/VII (ND 30) + Lubrificante
         subtotalRow.getCell('C').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
         subtotalRow.getCell('C').font = { bold: true };
         subtotalRow.getCell('C').style = { ...subtotalRow.getCell('C').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
         
-        subtotalRow.getCell('D').value = totaisOM.total_33_90_39; // Total Classe II/V/VI (ND 39)
+        subtotalRow.getCell('D').value = totaisOM.total_33_90_39; // Total Classe II/V/VI/VII (ND 39)
         subtotalRow.getCell('D').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
         subtotalRow.getCell('D').font = { bold: true };
         subtotalRow.getCell('D').style = { ...subtotalRow.getCell('D').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
@@ -1006,13 +1012,13 @@ Total QR: ${formatCurrency(total_qr)}.`;
       somaRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
       somaRow.getCell('A').font = { bold: true };
       
-      somaRow.getCell('C').value = totalGeral_33_90_30; // Total Classe I + Classe II/V/VI (ND 30) + Lubrificante
+      somaRow.getCell('C').value = totalGeral_33_90_30; // Total Classe I + Classe II/V/VI/VII (ND 30) + Lubrificante
       somaRow.getCell('C').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       somaRow.getCell('C').font = { bold: true };
       somaRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
       somaRow.getCell('C').style = { ...somaRow.getCell('C').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
       
-      somaRow.getCell('D').value = totalGeral_33_90_39; // Total Classe II/V/VI (ND 39)
+      somaRow.getCell('D').value = totalGeral_33_90_39; // Total Classe II/V/VI/VII (ND 39)
       somaRow.getCell('D').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       somaRow.getCell('D').font = { bold: true };
       somaRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
@@ -1154,14 +1160,14 @@ Total QR: ${formatCurrency(total_qr)}.`;
   // O total geral agora inclui os novos placeholders
   const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39; // Soma das colunas azuis (C+D)
   
-  // O valor total solicitado é a soma de todos os itens (Classe I + Classe II/V/VI + Classe III)
+  // O valor total solicitado é a soma de todos os itens (Classe I + Classe II/V/VI/VII + Classe III)
   const valorTotalSolicitado = totalGeral_33_90_30 + totalGeral_33_90_39 + totalValorCombustivel;
   
   const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="print:hidden sticky top-0 z-50 bg-background border-b border-border shadow-sm">
+      <div className="print:hidden sticky top-0 z-50 bg-background border-b border-border/50 shadow-sm">
         <div className="container max-w-7xl mx-auto py-4 px-4 flex items-center justify-between">
           <Button variant="ghost" onClick={() => navigate('/ptrab')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -1287,7 +1293,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     </tr>
                   )),
                   
-                  // Renderizar linhas Classe II/V/VI (POR CATEGORIA/REGISTRO)
+                  // Renderizar linhas Classe II/V/VI/VII (POR CATEGORIA/REGISTRO)
                   ...grupo.linhasClasseII.map((linha) => {
                     const registro = linha.registro;
                     const omDestinoRecurso = registro.organizacao;
