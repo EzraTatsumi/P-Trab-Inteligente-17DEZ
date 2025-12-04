@@ -923,39 +923,6 @@ const DiretrizesCusteioPage = () => {
                   </Card>
                 )}
               </div>
-              
-              {/* SEÇÃO CLASSE V - ARMAMENTO (NOVO) */}
-              <div className="border-t pt-4 mt-6">
-                <div 
-                  className="flex items-center justify-between cursor-pointer py-2" 
-                  onClick={() => setShowClasseVConfig(!showClasseVConfig)}
-                >
-                  <h3 className="text-lg font-semibold">
-                    Classe V - Armamento
-                  </h3>
-                  {showClasseVConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </div>
-                
-                {showClasseVConfig && (
-                  <Card>
-                    <CardContent className="pt-4">
-                      <Tabs value={selectedClasseVTab} onValueChange={setSelectedClasseVTab}>
-                        <TabsList className="grid w-full grid-cols-4">
-                          {CATEGORIAS_CLASSE_V.map(cat => (
-                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                          ))}
-                        </TabsList>
-                        
-                        {CATEGORIAS_CLASSE_V.map(cat => (
-                          <TabsContent key={cat} value={cat}>
-                            {renderClasseList(classeVConfig, setClasseVConfig, CATEGORIAS_CLASSE_V, cat)}
-                          </TabsContent>
-                        ))}
-                      </Tabs>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
 
               {/* SEÇÃO CLASSE III - COMBUSTÍVEIS E LUBRIFICANTES */}
               <div className="border-t pt-4 mt-6">
@@ -991,6 +958,39 @@ const DiretrizesCusteioPage = () => {
                         <TabsContent value="EQUIPAMENTO_ENGENHARIA">
                           {renderClasseIIIList("EQUIPAMENTO_ENGENHARIA", equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig)}
                         </TabsContent>
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              
+              {/* SEÇÃO CLASSE V - ARMAMENTO (NOVO) */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseVConfig(!showClasseVConfig)}
+                >
+                  <h3 className="text-lg font-semibold">
+                    Classe V - Armamento
+                  </h3>
+                  {showClasseVConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseVConfig && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <Tabs value={selectedClasseVTab} onValueChange={setSelectedClasseVTab}>
+                        <TabsList className="grid w-full grid-cols-4">
+                          {CATEGORIAS_CLASSE_V.map(cat => (
+                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        {CATEGORIAS_CLASSE_V.map(cat => (
+                          <TabsContent key={cat} value={cat}>
+                            {renderClasseList(classeVConfig, setClasseVConfig, CATEGORIAS_CLASSE_V, cat)}
+                          </TabsContent>
+                        ))}
                       </Tabs>
                     </CardContent>
                   </Card>
