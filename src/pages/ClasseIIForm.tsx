@@ -874,6 +874,10 @@ export default function ClasseIIForm() {
       setLoading(false);
     }
   };
+  
+  const displayFases = useMemo(() => {
+    return [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
+  }, [fasesAtividade, customFaseAtividade]);
 
 
   return (
