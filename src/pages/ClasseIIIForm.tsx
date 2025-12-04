@@ -239,8 +239,6 @@ export default function ClasseIIIForm() {
     const loadedRegistros = (data || []) as ClasseIIIRegistro[];
     setRegistros(loadedRegistros);
     
-    // --- REMOVIDA A LÓGICA DE PRÉ-PREENCHIMENTO DO FORMULÁRIO AQUI ---
-    
     setEditingItem(null);
     setEditingMemoriaId(null);
     setLoading(false);
@@ -253,6 +251,13 @@ export default function ClasseIIIForm() {
         return;
     }
     
+    // --- CRITICAL FIX: Reset form state before loading new data ---
+    setForm(initialFormState);
+    setRmFornecimento("");
+    setCodugRmFornecimento("");
+    setLubrificanteAlloc(initialLubrificanteAllocation);
+    // --- END CRITICAL FIX ---
+
     const firstRecord = loadedRegistros[0];
     
     // 1. Dados globais (OM Detentora, Dias, Fases)
@@ -1022,7 +1027,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                         size="icon"
                                                         onClick={() => handleRemoveItem(item.id)}
                                                         disabled={loading}
-                                                        className="text-destructive hover:bg-destructive/10"
+                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
@@ -1087,12 +1092,12 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                     <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => fetchRegistros()} 
+                        onClick={() => loadRegistroToForm(registros)} 
                         disabled={loading}
                         className="gap-1"
                     >
                         <RefreshCw className="h-3 w-3" />
-                        Recarregar
+                        Recarregar para Edição
                     </Button>
                   </div>
                   
