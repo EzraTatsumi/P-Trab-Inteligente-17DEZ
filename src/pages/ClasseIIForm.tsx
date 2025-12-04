@@ -490,7 +490,7 @@ export default function ClasseIIForm() {
 
   const handleFaseChange = (fase: string, checked: boolean) => {
     if (checked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase]));
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
@@ -943,10 +943,12 @@ export default function ClasseIIForm() {
                         type="button"
                         className="w-full justify-between"
                       >
-                        {fasesAtividade.length === 0 && !customFaseAtividade.trim()
-                          ? "Selecione as fases..."
-                          : [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ')}
-                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        <span className="truncate">
+                          {fasesAtividade.length === 0 && !customFaseAtividade.trim()
+                            ? "Selecione a(s) fase(s)..."
+                            : [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ')}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[300px] p-0" align="start">
@@ -959,11 +961,14 @@ export default function ClasseIIForm() {
                               onSelect={() => handleFaseChange(fase, !fasesAtividade.includes(fase))}
                               className="flex items-center justify-between cursor-pointer"
                             >
-                              <span>{fase}</span>
-                              <Checkbox
-                                checked={fasesAtividade.includes(fase)}
-                                onCheckedChange={(checked) => handleFaseChange(fase, !!checked)}
-                              />
+                              <div className="flex items-center space-x-2">
+                                <Checkbox
+                                  checked={fasesAtividade.includes(fase)}
+                                  onCheckedChange={(checked) => handleFaseChange(fase, !!checked)}
+                                />
+                                <Label>{fase}</Label>
+                              </div>
+                              {fasesAtividade.includes(fase) && <Check className="ml-auto h-4 w-4" />}
                             </CommandItem>
                           ))}
                         </CommandGroup>
