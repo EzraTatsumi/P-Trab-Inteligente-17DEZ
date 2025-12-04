@@ -24,7 +24,6 @@ import { TablesInsert } from "@/integrations/supabase/types";
 import { defaultClasseVIIConfig } from "@/data/classeVIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type Categoria = 'Comunicações' | 'Informática';
 
@@ -73,7 +72,6 @@ interface CategoryAllocation {
   nd_39_input: string; // User input string for ND 39
   nd_30_value: number; // Calculated ND 30 value
   nd_39_value: number; // Calculated ND 39 value
-  // NEW: Destination fields (Per Category)
   om_destino_recurso: string;
   ug_destino_recurso: string;
   selectedOmDestinoId?: string;
@@ -84,23 +82,10 @@ const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
     'Informática': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
 };
 
-// Função para comparar números de ponto flutuante com tolerância
 const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
     return Math.abs(a - b) < tolerance;
 };
 
-// Helper para agrupar itens de um registro por categoria
-const groupRecordItemsByCategory = (items: ItemClasseVII[]) => {
-    return items.reduce((acc, item) => {
-        if (!acc[item.categoria]) {
-            acc[item.categoria] = [];
-        }
-        acc[item.categoria].push(item);
-        return acc;
-    }, {} as Record<Categoria, ItemClasseVII[]>);
-};
-
-// Função para formatar fases
 const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   if (!faseCSV) return 'operação';
   
@@ -115,38 +100,11 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-// Gera a memória de cálculo detalhada para uma categoria
-const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseVII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
-
-    let detalhamentoItens = "";
-    itens.forEach(item => {
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
-    });
-
-    return `33.90.30 - Aquisição de Material de Comunicações e Informática (${categoria})
-OM de Destino: ${organizacao} (UG: ${ug})
-Período: ${diasOperacao} dias de ${faseFormatada}
-Total de Itens na Categoria: ${totalQuantidade}
-
-Cálculo:
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
-
-Detalhes dos Itens:
-${detalhamentoItens.trim()}
-
-Valor Total da Categoria: ${formatCurrency(totalValor)}.`;
-};
-
 const generateDetalhamento = (itens: ItemClasseVII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const valorTotal = valorND30 + valorND39;
 
-    // 1. Agrupar itens por categoria e calcular o subtotal de valor por categoria
     const gruposPorCategoria = itens.reduce((acc, item) => {
         const categoria = item.categoria;
         const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
@@ -170,7 +128,6 @@ const generateDetalhamento = (itens: ItemClasseVII[], diasOperacao: number, orga
 
     let detalhamentoItens = "";
     
-    // 2. Formatar a seção de cálculo agrupada
     Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
         detalhamentoItens += `\n--- ${categoria.toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`;
         detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
@@ -194,7 +151,7 @@ Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
 ${detalhamentoItens}
 
 Valor Total: ${formatCurrency(valorTotal)}.`;
-};
+  };
 
 
 export default function ClasseVIIForm() {
@@ -221,12 +178,9 @@ export default function ClasseVIIForm() {
     itens: [],
   });
   
-  // NOVO ESTADO: Rastreia a alocação de ND por categoria
   const [categoryAllocations, setCategoryAllocations] = useState<Record<Categoria, CategoryAllocation>>(initialCategoryAllocations);
-  // NOVO ESTADO: Input temporário para ND 39 da aba atual
   const [currentND39Input, setCurrentND39Input] = useState<string>("");
   
-  // NOVO ESTADO: Lista de itens da categoria atual com quantidades editáveis
   const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemClasseVII[]>([]);
   
   const [fasesAtividade, setFasesAtividade] = useState<string[]>(["Execução"]);
@@ -247,33 +201,27 @@ export default function ClasseVIIForm() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId]);
   
-  // Efeito para sincronizar o input ND 39 ao mudar de aba
   useEffect(() => {
     setCurrentND39Input(categoryAllocations[selectedTab].nd_39_input);
   }, [selectedTab, categoryAllocations]);
 
-  // Efeito para gerenciar a lista de itens da categoria atual
   useEffect(() => {
-    // Só carrega se as diretrizes estiverem prontas e a OM estiver selecionada (para evitar resetar o form.itens)
     if (diretrizes.length > 0 && form.organizacao) {
-        // 1. Obter todos os itens disponíveis para a aba atual
         const availableItems = diretrizes
             .filter(d => d.categoria === selectedTab)
             .map(d => ({
                 item: d.item,
-                quantidade: 0, // Quantidade padrão
+                quantidade: 0,
                 valor_mnt_dia: Number(d.valor_mnt_dia),
                 categoria: d.categoria as Categoria,
                 memoria_customizada: null,
             }));
 
-        // 2. Mapear itens existentes no formulário principal para a categoria atual
         const existingItemsMap = new Map<string, ItemClasseVII>();
         form.itens.filter(i => i.categoria === selectedTab).forEach(item => {
             existingItemsMap.set(item.item, item);
         });
 
-        // 3. Mesclar: usar o item existente (com quantidade e memória) ou o item disponível (com quantidade 0)
         const mergedItems = availableItems.map(availableItem => {
             const existing = existingItemsMap.get(availableItem.item);
             return existing || availableItem;
@@ -281,7 +229,6 @@ export default function ClasseVIIForm() {
 
         setCurrentCategoryItems(mergedItems);
     } else if (diretrizes.length > 0 && !form.organizacao) {
-        // Se a OM não estiver selecionada, apenas mostra os itens disponíveis com quantidade 0
         const availableItems = diretrizes
             .filter(d => d.categoria === selectedTab)
             .map(d => ({
@@ -297,12 +244,6 @@ export default function ClasseVIIForm() {
     }
   }, [selectedTab, diretrizes, form.itens, form.organizacao, form.dias_operacao]);
 
-
-  const itensDisponiveis = useMemo(() => {
-    return diretrizes.filter(d => d.categoria === selectedTab);
-  }, [diretrizes, selectedTab]);
-  
-  // MEMO: Agrupa os itens do formulário por categoria para exibição consolidada
   const itensAgrupadosPorCategoria = useMemo(() => {
     return form.itens.reduce((acc, item) => {
       if (!acc[item.categoria]) {
@@ -321,7 +262,6 @@ export default function ClasseVIIForm() {
 
       let anoReferencia: number | null = null;
 
-      // 1. Tentar buscar o ano padrão do perfil do usuário
       const { data: profileData } = await supabase
         .from("profiles")
         .select("default_diretriz_year")
@@ -332,7 +272,6 @@ export default function ClasseVIIForm() {
           anoReferencia = profileData.default_diretriz_year;
       }
 
-      // 2. Se não houver ano padrão, buscar o ano mais recente na tabela de diretrizes
       if (!anoReferencia) {
           const { data: diretrizCusteio } = await supabase
             .from("diretrizes_custeio")
@@ -353,14 +292,14 @@ export default function ClasseVIIForm() {
         return;
       }
 
-      // 3. Buscar diretrizes de Classe VII usando o ano de referência encontrado
+      // Classe VII usa a mesma tabela de diretrizes da Classe II
       const { data: classeVIIData, error } = await supabase
         .from("diretrizes_classe_ii")
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", anoReferencia)
         .eq("ativo", true)
-        .in("categoria", CATEGORIAS);
+        .in("categoria", CATEGORIAS); // Filtrar apenas categorias da Classe VII
 
       if (error) throw error;
 
@@ -381,11 +320,12 @@ export default function ClasseVIIForm() {
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
+    // Classe VII usa a mesma tabela de registros da Classe II
     const { data, error } = await supabase
       .from("classe_ii_registros")
       .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
       .eq("p_trab_id", ptrabId)
-      .in("categoria", CATEGORIAS) // Filtra apenas registros de Classe VII
+      .in("categoria", CATEGORIAS) // Filtrar apenas registros de Classe VII
       .order("organizacao", { ascending: true })
       .order("categoria", { ascending: true });
 
@@ -556,8 +496,8 @@ export default function ClasseVIIForm() {
   
   const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
 
-  const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => alloc.nd_30_value, 0);
-  const totalND39Final = Object.values(categoryAllocations).reduce((sum, alloc) => alloc.nd_39_value, 0);
+  const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_30_value, 0);
+  const totalND39Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_39_value, 0);
 
   const totalAlocado = totalND30Final + totalND39Final;
   
@@ -623,15 +563,16 @@ export default function ClasseVIIForm() {
         const detalhamento = generateDetalhamento(
             itens, 
             form.dias_operacao, 
-            form.organizacao, 
-            form.ug, 
+            form.organizacao,
+            form.ug,
             faseFinalString,
-            allocation.om_destino_recurso, 
-            allocation.ug_destino_recurso, 
+            allocation.om_destino_recurso,
+            allocation.ug_destino_recurso,
             allocation.nd_30_value,
             allocation.nd_39_value
         );
         
+        // Classe VII usa a tabela classe_ii_registros
         const registro: TablesInsert<'classe_ii_registros'> = {
             p_trab_id: ptrabId,
             organizacao: allocation.om_destino_recurso,
@@ -650,15 +591,15 @@ export default function ClasseVIIForm() {
     }
 
     try {
-      setLoading(true);
-      
+      // Deletar APENAS registros de Classe VII existentes para o PTrab
       const { error: deleteError } = await supabase
         .from("classe_ii_registros")
         .delete()
         .eq("p_trab_id", ptrabId)
-        .in("categoria", CATEGORIAS); // Deleta apenas registros de Classe VII
+        .in("categoria", CATEGORIAS);
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
+      // Inserir os novos registros
       const { error: insertError } = await supabase.from("classe_ii_registros").insert(registrosParaSalvar);
       if (insertError) throw insertError;
       
@@ -678,11 +619,12 @@ export default function ClasseVIIForm() {
     setLoading(true);
     resetFormFields();
     
+    // 1. Buscar TODOS os registros de CLASSE VII para este PTrab
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_ii_registros")
         .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
         .eq("p_trab_id", ptrabId)
-        .in("categoria", CATEGORIAS); // Filtra apenas Classe VII
+        .in("categoria", CATEGORIAS);
         
     if (fetchAllError) {
         toast.error("Erro ao carregar todos os registros para edição.");
@@ -842,13 +784,10 @@ export default function ClasseVIIForm() {
       setLoading(false);
     }
   };
-  
+
   const displayFases = useMemo(() => {
     return [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
   }, [fasesAtividade, customFaseAtividade]);
-
-  const totalGeralClasseVII = registros.reduce((sum, r) => sum + r.valor_total, 0);
-
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1103,6 +1042,7 @@ export default function ClasseVIIForm() {
                                 </div>
                             </div>
                         )}
+                        {/* FIM BLOCO DE ALOCAÇÃO */}
 
                         <div className="flex justify-end">
                             <Button 
@@ -1162,7 +1102,6 @@ export default function ClasseVIIForm() {
                           ))}
                         </div>
                         
-                        {/* Exibe a alocação salva */}
                         <div className="pt-2 border-t mt-2">
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
@@ -1331,27 +1270,10 @@ export default function ClasseVIIForm() {
                   const memoriaExibida = registro.detalhamento_customizado || registro.detalhamento || "";
                   
                   return (
-                    <Card key={`memoria-view-${registro.id}`} className="p-6 bg-muted/30">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-lg font-semibold text-foreground">
-                            OM Destino: {om} ({ug}) - Categoria: {registro.categoria}
-                          </h4>
-                          {hasCustomMemoria && !isEditing && (
-                            <Badge variant="outline" className="text-xs">
-                              Editada manualmente
-                            </Badge>
-                          )}
-                        </div>
-                        <Badge 
-                          variant="default" 
-                          className="bg-primary text-primary-foreground"
-                        >
-                          Classe VII
-                        </Badge>
-                      </div>
-                      
-                      <div className="h-px bg-border my-4" />
+                    <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
+                      <h4 className="text-lg font-semibold text-foreground">
+                        OM Destino: {om} ({ug}) - Categoria: {registro.categoria}
+                      </h4>
                       
                       <div className="flex items-center justify-end gap-2 mb-4">
                           {!isEditing ? (
@@ -1420,7 +1342,7 @@ export default function ClasseVIIForm() {
                           </pre>
                         )}
                       </Card>
-                    </Card>
+                    </div>
                   );
                 })}
               </div>

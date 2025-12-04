@@ -25,7 +25,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { defaultClasseIIConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Adicionado Alert
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -762,6 +761,7 @@ export default function ClasseIIForm() {
         } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
     }
     
+    // 4. Preencher o formulário principal
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
