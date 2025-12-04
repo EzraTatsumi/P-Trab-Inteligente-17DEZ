@@ -571,8 +571,8 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
 
         consolidadosLubrificante.push({
             categoria: cat,
-            omLubrificante: alloc.omLubrificante,
-            ugLubrificante: alloc.ugLubrificante,
+            omLubrificante: alloc.om,
+            ugLubrificante: alloc.ug,
             total_litros: totalLitrosLubrificante,
             valor_total: totalValorLubrificante,
             itens: itensGrupo,
@@ -1067,7 +1067,9 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                             onClick={salvarRegistrosConsolidados} 
                             disabled={loading || !isFormValid || consolidadosLubrificante.some(c => !c.omLubrificante)}
                         >
-                            {loading ? "Aguarde..." : "Salvar Registros"} ({consolidadosCombustivel.length + consolidadosLubrificante.length} registros)
+                            {loading 
+                                ? "Aguarde..." 
+                                : (registros.length > 0 ? "Atualizar Registros" : "Salvar Registros")} ({consolidadosCombustivel.length + consolidadosLubrificante.length} registros)
                         </Button>
                     </div>
                 </div>
