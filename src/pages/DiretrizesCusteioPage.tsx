@@ -89,9 +89,10 @@ const CATEGORIAS_CLASSE_V = [
   "DQBRN",
 ];
 
-// NOVO: Lista de categorias da Classe VI
+// NOVO: Lista de categorias da Classe VI (CORRIGIDO)
 const CATEGORIAS_CLASSE_VI = [
-  "Material de Engenharia",
+  "Embarcação",
+  "Equipamento de Engenharia",
 ];
 
 const CATEGORIAS_CLASSE_III = [
@@ -117,7 +118,7 @@ const DiretrizesCusteioPage = () => {
   const [showClasseIAlimentacaoConfig, setShowClasseIAlimentacaoConfig] = useState(false);
   const [showClasseIIConfig, setShowClasseIIConfig] = useState(false);
   const [showClasseVConfig, setShowClasseVConfig] = useState(false);
-  const [showClasseVIConfig, setShowClasseVIConfig] = useState(false); // NOVO ESTADO CLASSE VI
+  const [showClasseVIConfig, setShowClasseVIConfig] = useState(false); 
   const [showClasseIIIConfig, setShowClasseIIIConfig] = useState(false);
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
@@ -127,14 +128,14 @@ const DiretrizesCusteioPage = () => {
   
   const [classeIIConfig, setClasseIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseIIConfig);
   const [classeVConfig, setClasseVConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVConfig);
-  const [classeVIConfig, setClasseVIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIConfig); // NOVO ESTADO CLASSE VI
+  const [classeVIConfig, setClasseVIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIConfig); 
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedClasseIITab, setSelectedClasseIITab] = useState<string>(CATEGORIAS_CLASSE_II[0]);
   const [selectedClasseVTab, setSelectedClasseVTab] = useState<string>(CATEGORIAS_CLASSE_V[0]);
-  const [selectedClasseVITab, setSelectedClasseVITab] = useState<string>(CATEGORIAS_CLASSE_VI[0]); // NOVO ESTADO CLASSE VI
+  const [selectedClasseVITab, setSelectedClasseVITab] = useState<string>(CATEGORIAS_CLASSE_VI[0]); 
   const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key);
   
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
@@ -952,7 +953,7 @@ const DiretrizesCusteioPage = () => {
                   <Card>
                     <CardContent className="pt-4">
                       <Tabs value={selectedClasseVITab} onValueChange={setSelectedClasseVITab}>
-                        <TabsList className="grid w-full grid-cols-1">
+                        <TabsList className="grid w-full grid-cols-2"> {/* CORRIGIDO PARA 2 COLUNAS */}
                           {CATEGORIAS_CLASSE_VI.map(cat => (
                             <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
                           ))}
