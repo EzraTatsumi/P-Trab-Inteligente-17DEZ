@@ -240,7 +240,6 @@ export default function ClasseIIIForm() {
     setRegistros(loadedRegistros);
     
     // --- REMOVIDA A LÓGICA DE PRÉ-PREENCHIMENTO DO FORMULÁRIO AQUI ---
-    // O formulário só será preenchido se o usuário clicar em 'Editar' ou 'Recarregar'
     
     setEditingItem(null);
     setEditingMemoriaId(null);
@@ -1134,10 +1133,10 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                       variant="ghost"
                                       size="icon"
                                       className="h-8 w-8"
-                                      onClick={() => loadRegistroToForm(registros)} // NOVO: Carrega os dados para edição
+                                      onClick={() => loadRegistroToForm(registros)} // Carrega os dados para edição
                                       disabled={loading}
                                     >
-                                      <RefreshCw className="h-4 w-4" />
+                                      <Pencil className="h-4 w-4" />
                                     </Button>
                                     <Button
                                       variant="ghost"
