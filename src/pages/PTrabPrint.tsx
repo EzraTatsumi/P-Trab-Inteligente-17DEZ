@@ -187,15 +187,42 @@ const PTrabPrint = () => {
         });
       }
       
-      // Busca Classe II (incluindo valor_nd_30 e valor_nd_39)
-      const { data: classeIIData, error: classeIIError } = await supabase
-        .from('classe_ii_registros')
-        .select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39')
-        .eq('p_trab_id', ptrabId);
+      // Busca Classe II, V, VI, VII de suas respectivas tabelas
+      const [
+        { data: classeIIData, error: classeIIError },
+        { data: classeVData, error: classeVError },
+        { data: classeVIData, error: classeVIError },
+        { data: classeVIIData, error: classeVIIError },
+      ] = await Promise.all([
+        supabase
+          .from('classe_ii_registros')
+          .select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39')
+          .eq('p_trab_id', ptrabId),
+        supabase
+          .from('classe_v_registros')
+          .select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39')
+          .eq('p_trab_id', ptrabId),
+        supabase
+          .from('classe_vi_registros')
+          .select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39')
+          .eq('p_trab_id', ptrabId),
+        supabase
+          .from('classe_vii_registros')
+          .select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39')
+          .eq('p_trab_id', ptrabId),
+      ]);
 
-      if (classeIIError) {
-        console.error("Erro ao carregar Classe II:", classeIIError);
-      }
+      if (classeIIError) { console.error("Erro ao carregar Classe II:", classeIIError); }
+      if (classeVError) { console.error("Erro ao carregar Classe V:", classeVError); }
+      if (classeVIError) { console.error("Erro ao carregar Classe VI:", classeVIError); }
+      if (classeVIIError) { console.error("Erro ao carregar Classe VII:", classeVIIError); }
+
+      const allClasseItems = [
+        ...(classeIIData || []),
+        ...(classeVData || []),
+        ...(classeVIData || []),
+        ...(classeVIIData || []),
+      ];
 
       const { data: classeIIIData, error: classeIIIError } = await supabase
         .from('classe_iii_registros')
@@ -208,7 +235,7 @@ const PTrabPrint = () => {
 
       setPtrabData(ptrab);
       setRegistrosClasseI(classeIData || []);
-      setRegistrosClasseII(classeIIData || []);
+      setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
       setRegistrosClasseIII(classeIIIData || []);
       setLoading(false);
     };
@@ -392,7 +419,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       gruposPorOM[registro.organizacao].linhasQR.push({ registro, tipo: 'QR' });
   });
   
-  // 2. Processar Classe II (AGORA POR REGISTRO/CATEGORIA)
+  // 2. Processar Classe II/V/VI/VII (AGORA POR REGISTRO/CATEGORIA)
   registrosClasseII.forEach((registro) => {
       // Classe II/V/VI/VII goes to OM de destino do recurso (organizacao)
       initializeGroup(registro.organizacao);

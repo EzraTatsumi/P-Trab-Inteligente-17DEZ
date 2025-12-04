@@ -68,13 +68,42 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalRefeicoesIntermediarias += record.efetivo * record.nr_ref_int * record.dias_operacao;
   });
   
-  // 2. Fetch Classe II/V/VI/VII records
-  const { data: classeIIData, error: classeIIError } = await supabase
-    .from('classe_ii_registros')
-    .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
-    .eq('p_trab_id', ptrabId);
+  // 2. Fetch Classe II/V/VI/VII records from their respective tables
+  const [
+    { data: classeIIData, error: classeIIError },
+    { data: classeVData, error: classeVError },
+    { data: classeVIData, error: classeVIError },
+    { data: classeVIIData, error: classeVIIError },
+  ] = await Promise.all([
+    supabase
+      .from('classe_ii_registros')
+      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
+      .eq('p_trab_id', ptrabId),
+    supabase
+      .from('classe_v_registros')
+      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
+      .eq('p_trab_id', ptrabId),
+    supabase
+      .from('classe_vi_registros')
+      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
+      .eq('p_trab_id', ptrabId),
+    supabase
+      .from('classe_vii_registros')
+      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
+      .eq('p_trab_id', ptrabId),
+  ]);
 
   if (classeIIError) throw classeIIError;
+  if (classeVError) throw classeVError;
+  if (classeVIError) throw classeVIError;
+  if (classeVIIError) throw classeVIIError;
+  
+  const allClasseItemsData = [
+    ...(classeIIData || []),
+    ...(classeVData || []),
+    ...(classeVIData || []),
+    ...(classeVIIData || []),
+  ];
   
   let totalClasseII = 0;
   let totalClasseII_ND30 = 0;
@@ -88,21 +117,19 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   let totalItensClasseV = 0;
   const groupedClasseVCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
   
-  // NOVO: Totais Classe VI
   let totalClasseVI = 0;
   let totalClasseVI_ND30 = 0;
   let totalClasseVI_ND39 = 0;
   let totalItensClasseVI = 0;
   const groupedClasseVICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
   
-  // NOVO: Totais Classe VII
   let totalClasseVII = 0;
   let totalClasseVII_ND30 = 0;
   let totalClasseVII_ND39 = 0;
   let totalItensClasseVII = 0;
   const groupedClasseVIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
   
-  (classeIIData || []).forEach(record => {
+  (allClasseItemsData || []).forEach(record => {
     const category = record.categoria;
     const items = (record.itens_equipamentos || []) as ItemClasseII[];
     const totalItemsCategory = items.reduce((sum, item) => sum + (item.quantidade || 0), 0);
@@ -304,8 +331,8 @@ export const PTrabCostSummary = ({
       totalClasseVII: 0, // NOVO
       totalClasseVII_ND30: 0, // NOVO
       totalClasseVII_ND39: 0, // NOVO
-      totalItensClasseVII: 0, // NOVO
       groupedClasseVIICategories: {}, // NOVO
+      totalItensClasseVII: 0, // NOVO
       totalComplemento: 0,
       totalEtapaSolicitadaValor: 0,
       totalDiasEtapaSolicitada: 0,
