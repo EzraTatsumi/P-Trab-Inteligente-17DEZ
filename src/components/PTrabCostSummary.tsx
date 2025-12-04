@@ -315,17 +315,6 @@ export const PTrabCostSummary = ({
   const sortedClasseIICategories = Object.entries(totals.groupedClasseIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const sortedClasseVCategories = Object.entries(totals.groupedClasseVCategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
 
-  const handleSummaryClick = () => {
-    const newState = !isDetailsOpen;
-    setIsDetailsOpen(newState);
-    
-    if (newState) {
-      setTimeout(() => {
-          detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100); 
-    }
-  };
-
 
   return (
     <Card className="shadow-lg">
@@ -470,6 +459,15 @@ export const PTrabCostSummary = ({
                                         {formatCurrency(data.totalValor)}
                                     </span>
                                 </div>
+                                <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
+                                    <span className="w-1/2 text-left">ND 30 / ND 39</span>
+                                    <span className="w-1/4 text-right text-green-600 font-medium">
+                                        {formatCurrency(data.totalND30)}
+                                    </span>
+                                    <span className="w-1/4 text-right text-blue-600 font-medium">
+                                        {formatCurrency(data.totalND39)}
+                                    </span>
+                                </div>
                             </div>
                           ))}
                         </div>
@@ -503,6 +501,15 @@ export const PTrabCostSummary = ({
                                     </span>
                                     <span className="w-1/4 text-right font-medium">
                                         {formatCurrency(data.totalValor)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
+                                    <span className="w-1/2 text-left">ND 30 / ND 39</span>
+                                    <span className="w-1/4 text-right text-green-600 font-medium">
+                                        {formatCurrency(data.totalND30)}
+                                    </span>
+                                    <span className="w-1/4 text-right text-blue-600 font-medium">
+                                        {formatCurrency(data.totalND39)}
                                     </span>
                                 </div>
                             </div>
@@ -550,7 +557,10 @@ export const PTrabCostSummary = ({
                           </div>
                           {/* Linha Lubrificante */}
                           <div className="flex justify-between text-muted-foreground">
-                            <span className="w-1/2 text-left">Lubrificante</span>
+                            <span className="w-1/2 text-left flex items-center gap-1">
+                                <Droplet className="h-3 w-3" />
+                                Lubrificante
+                            </span>
                             <span className="w-1/4 text-right font-medium">
                               {formatNumber(totals.totalLubrificanteLitros, 2)} L
                             </span>
