@@ -62,10 +62,22 @@ const defaultClasseIIConfig: DiretrizClasseIIForm[] = [
   { categoria: "Material de Estacionamento", item: "Colchão", valor_mnt_dia: 0.28 },
 ];
 
+const defaultClasseVConfig: DiretrizClasseIIForm[] = [
+  { categoria: "Armamento Leve", item: "Fuzil 5,56mm", valor_mnt_dia: 0.50 },
+  { categoria: "Armamento Leve", item: "Pistola 9mm", valor_mnt_dia: 0.20 },
+  { categoria: "Armamento Pesado", item: "Metralhadora .50", valor_mnt_dia: 5.00 },
+];
+
 const CATEGORIAS_CLASSE_II = [
   "Equipamento Individual",
   "Proteção Balística",
   "Material de Estacionamento",
+];
+
+const CATEGORIAS_CLASSE_V = [
+  "Armamento Leve",
+  "Armamento Pesado",
+  "Equipamento Óptico",
 ];
 
 const CATEGORIAS_CLASSE_III = [
@@ -90,6 +102,7 @@ const DiretrizesCusteioPage = () => {
   const [loading, setLoading] = useState(true);
   const [showClasseIAlimentacaoConfig, setShowClasseIAlimentacaoConfig] = useState(false);
   const [showClasseIIConfig, setShowClasseIIConfig] = useState(false);
+  const [showClasseVConfig, setShowClasseVConfig] = useState(false); // NOVO ESTADO
   const [showClasseIIIConfig, setShowClasseIIIConfig] = useState(false);
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
@@ -98,11 +111,13 @@ const DiretrizesCusteioPage = () => {
   const [equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig] = useState<DiretrizEquipamentoForm[]>(defaultEquipamentosEngenhariaConfig);
   
   const [classeIIConfig, setClasseIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseIIConfig);
+  const [classeVConfig, setClasseVConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVConfig); // NOVO ESTADO
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedClasseIITab, setSelectedClasseIITab] = useState<string>(CATEGORIAS_CLASSE_II[0]);
+  const [selectedClasseVTab, setSelectedClasseVTab] = useState<string>(CATEGORIAS_CLASSE_V[0]); // NOVO ESTADO
   const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key);
   
   // NOVO ESTADO: Diálogo de Gerenciamento de Anos
@@ -225,7 +240,8 @@ const DiretrizesCusteioPage = () => {
         .select("categoria, item, valor_mnt_dia")
         .eq("user_id", user.id)
         .eq("ano_referencia", year)
-        .eq("ativo", true);
+        .eq("ativo", true)
+        .in("categoria", CATEGORIAS_CLASSE_II); // Filtrar apenas categorias da Classe II
 
       if (classeIIData && classeIIData.length > 0) {
         setClasseIIConfig(classeIIData.map(d => ({
@@ -236,6 +252,26 @@ const DiretrizesCusteioPage = () => {
       } else {
         setClasseIIConfig(defaultClasseIIConfig);
       }
+      
+      // --- Carregar Classe V (Armamento) ---
+      const { data: classeVData } = await supabase
+        .from("diretrizes_classe_ii") // Reutilizando a tabela, mas filtrando por categorias da Classe V
+        .select("categoria, item, valor_mnt_dia")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year)
+        .eq("ativo", true)
+        .in("categoria", CATEGORIAS_CLASSE_V); // Filtrar apenas categorias da Classe V
+
+      if (classeVData && classeVData.length > 0) {
+        setClasseVConfig(classeVData.map(d => ({
+          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
+          item: d.item,
+          valor_mnt_dia: Number(d.valor_mnt_dia),
+        })));
+      } else {
+        setClasseVConfig(defaultClasseVConfig);
+      }
+
 
       // --- Carregar Classe III - Equipamentos ---
       const loadEquipamentos = async (categoria: string, setter: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, defaultData: DiretrizEquipamentoForm[]) => {
@@ -353,14 +389,18 @@ const DiretrizesCusteioPage = () => {
         }
       }
       
-      // 3. Salvar Configurações de Classe II
+      // 3. Salvar Configurações de Classe II e Classe V (usando a mesma tabela diretrizes_classe_ii)
+      
+      // Deletar registros antigos de Classe II e Classe V
       await supabase
         .from("diretrizes_classe_ii")
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", diretrizes.ano_referencia!);
         
-      const classeIIParaSalvar = classeIIConfig
+      const allClasseIIAndVItems = [...classeIIConfig, ...classeVConfig];
+        
+      const classeIIAndVPareSalvar = allClasseIIAndVItems
         .filter(item => item.item && item.valor_mnt_dia >= 0)
         .map(item => ({
           user_id: user.id,
@@ -371,10 +411,10 @@ const DiretrizesCusteioPage = () => {
           ativo: true,
         }));
         
-      if (classeIIParaSalvar.length > 0) {
+      if (classeIIAndVPareSalvar.length > 0) {
         const { error: c2Error } = await supabase
           .from("diretrizes_classe_ii")
-          .insert(classeIIParaSalvar);
+          .insert(classeIIAndVPareSalvar);
         if (c2Error) throw c2Error;
       }
 
@@ -463,14 +503,14 @@ const DiretrizesCusteioPage = () => {
         if (insertEqError) console.error("Erro ao inserir equipamentos copiados:", insertEqError);
       }
       
-      // 3. Copiar Diretrizes de Classe II
+      // 3. Copiar Diretrizes de Classe II e Classe V
       const { data: sourceClasseII, error: classeIIError } = await supabase
         .from("diretrizes_classe_ii")
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", sourceYear);
         
-      if (classeIIError) console.error("Erro ao buscar Classe II para cópia:", classeIIError);
+      if (classeIIError) console.error("Erro ao buscar Classe II/V para cópia:", classeIIError);
       
       if (sourceClasseII && sourceClasseII.length > 0) {
         const newClasseII = sourceClasseII.map(c2 => {
@@ -480,7 +520,7 @@ const DiretrizesCusteioPage = () => {
         const { error: insertC2Error } = await supabase
           .from("diretrizes_classe_ii")
           .insert(newClasseII);
-        if (insertC2Error) console.error("Erro ao inserir Classe II copiada:", insertC2Error);
+        if (insertC2Error) console.error("Erro ao inserir Classe II/V copiada:", insertC2Error);
       }
 
       toast.success(`Diretrizes do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
@@ -517,7 +557,7 @@ const DiretrizesCusteioPage = () => {
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
         
-      // 2. Excluir Diretrizes de Classe II
+      // 2. Excluir Diretrizes de Classe II e Classe V
       await supabase
         .from("diretrizes_classe_ii")
         .delete()
@@ -567,43 +607,48 @@ const DiretrizesCusteioPage = () => {
     setConfig(novosItens);
   };
   
-  // --- Funções de Gerenciamento da Classe II ---
-  const handleAddClasseIIItem = (categoria: DiretrizClasseIIForm['categoria']) => {
-    setClasseIIConfig(prev => [
+  // --- Funções de Gerenciamento da Classe II e V ---
+  const handleAddClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, categoria: DiretrizClasseIIForm['categoria']) => {
+    setConfig(prev => [
       ...prev,
       { categoria: categoria, item: "", valor_mnt_dia: 0 } as DiretrizClasseIIForm
     ]);
   };
 
-  const handleRemoveClasseIIItem = (index: number) => {
-    setClasseIIConfig(classeIIConfig.filter((_, i) => i !== index));
+  const handleRemoveClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, index: number) => {
+    setConfig(config.filter((_, i) => i !== index));
   };
 
-  const handleUpdateClasseIIItem = (index: number, field: keyof DiretrizClasseIIForm, value: any) => {
-    const novosItens = [...classeIIConfig];
+  const handleUpdateClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, index: number, field: keyof DiretrizClasseIIForm, value: any) => {
+    const novosItens = [...config];
     novosItens[index] = { ...novosItens[index], [field]: value };
-    setClasseIIConfig(novosItens);
+    setConfig(novosItens);
   };
   
-  // Função para renderizar a lista de itens da Classe II por categoria
-  const renderClasseIIList = (categoria: DiretrizClasseIIForm['categoria']) => {
-    const filteredItems = classeIIConfig.filter(item => item.categoria === categoria);
+  // Função para renderizar a lista de itens da Classe II/V por categoria
+  const renderClasseList = (
+    config: DiretrizClasseIIForm[], 
+    setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>,
+    categorias: string[],
+    selectedTab: string
+  ) => {
+    const filteredItems = config.filter(item => item.categoria === selectedTab);
     
     return (
       <div className="space-y-4 pt-4">
         {filteredItems.map((item, index) => {
           // Encontrar o índice original no array completo para permitir a atualização/remoção
-          const indexInMainArray = classeIIConfig.findIndex(c => c === item);
+          const indexInMainArray = config.findIndex(c => c === item);
           
           const handleUpdateFilteredItem = (field: keyof DiretrizClasseIIForm, value: any) => {
             if (indexInMainArray !== -1) {
-              handleUpdateClasseIIItem(indexInMainArray, field, value);
+              handleUpdateClasseItem(config, setConfig, indexInMainArray, field, value);
             }
           };
 
           const handleRemoveFilteredItem = () => {
             if (indexInMainArray !== -1) {
-              handleRemoveClasseIIItem(indexInMainArray);
+              handleRemoveClasseItem(config, setConfig, indexInMainArray);
             }
           };
           
@@ -646,7 +691,7 @@ const DiretrizesCusteioPage = () => {
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => handleAddClasseIIItem(categoria)} 
+          onClick={() => handleAddClasseItem(config, setConfig, selectedTab as DiretrizClasseIIForm['categoria'])} 
           className="w-full"
           type="button"
         >
@@ -862,7 +907,40 @@ const DiretrizesCusteioPage = () => {
                         
                         {CATEGORIAS_CLASSE_II.map(cat => (
                           <TabsContent key={cat} value={cat}>
-                            {renderClasseIIList(cat as DiretrizClasseIIForm['categoria'])}
+                            {renderClasseList(classeIIConfig, setClasseIIConfig, CATEGORIAS_CLASSE_II, cat)}
+                          </TabsContent>
+                        ))}
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              
+              {/* SEÇÃO CLASSE V - ARMAMENTO (NOVO) */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseVConfig(!showClasseVConfig)}
+                >
+                  <h3 className="text-lg font-semibold">
+                    Classe V - Armamento
+                  </h3>
+                  {showClasseVConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseVConfig && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <Tabs value={selectedClasseVTab} onValueChange={setSelectedClasseVTab}>
+                        <TabsList className="grid w-full grid-cols-3">
+                          {CATEGORIAS_CLASSE_V.map(cat => (
+                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        {CATEGORIAS_CLASSE_V.map(cat => (
+                          <TabsContent key={cat} value={cat}>
+                            {renderClasseList(classeVConfig, setClasseVConfig, CATEGORIAS_CLASSE_V, cat)}
                           </TabsContent>
                         ))}
                       </Tabs>
