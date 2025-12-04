@@ -124,6 +124,9 @@ interface GrupoOM {
 }
 // --- FIM NOVAS INTERFACES ---
 
+// Categorias que representam a Classe V (Armamento)
+const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
+
 const PTrabPrint = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -296,6 +299,14 @@ Total QR: ${formatCurrency(total_qr)}.`;
     
     // O detalhamento automático é gerado no formulário e salvo no campo 'detalhamento'
     return registro.detalhamento;
+  };
+  
+  // Função auxiliar para determinar o rótulo da Classe II/V
+  const getClasseIILabel = (categoria: string): string => {
+      if (CLASSE_V_CATEGORIES.includes(categoria)) {
+          return 'CLASSE V - ARMAMENTO';
+      }
+      return 'CLASSE II - MATERIAL DE INTENDÊNCIA';
   };
 
   const handlePrint = () => {
@@ -747,7 +758,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
           currentRow++;
         });
         
-        // 3. Linhas Classe II (POR CATEGORIA/REGISTRO)
+        // 3. Linhas Classe II/V (POR CATEGORIA/REGISTRO)
         grupo.linhasClasseII.forEach((linha) => {
           const registro = linha.registro;
           const omDestinoRecurso = registro.organizacao;
@@ -755,8 +766,8 @@ Total QR: ${formatCurrency(total_qr)}.`;
           
           const row = worksheet.getRow(currentRow);
           
-          // Coluna A: DESPESAS (Removido o nome da OM)
-          row.getCell('A').value = `CLASSE II - MATERIAL DE INTENDÊNCIA\n${registro.categoria.toUpperCase()}`;
+          // Coluna A: DESPESAS (Usando a função auxiliar)
+          row.getCell('A').value = `${getClasseIILabel(registro.categoria)}\n${registro.categoria.toUpperCase()}`;
           
           // Coluna B: OM (UGE) CODUG
           row.getCell('B').value = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
@@ -1271,7 +1282,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     </tr>
                   )),
                   
-                  // Renderizar linhas Classe II (POR CATEGORIA/REGISTRO)
+                  // Renderizar linhas Classe II/V (POR CATEGORIA/REGISTRO)
                   ...grupo.linhasClasseII.map((linha) => {
                     const registro = linha.registro;
                     const omDestinoRecurso = registro.organizacao;
@@ -1280,7 +1291,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     return (
                       <tr key={`classe-ii-${registro.id}`}>
                         <td className="col-despesas">
-                          <div>CLASSE II - MATERIAL DE INTENDÊNCIA</div>
+                          <div>{getClasseIILabel(registro.categoria)}</div>
                           <div className="uppercase">{registro.categoria}</div>
                         </td>
                         <td className="col-om">
