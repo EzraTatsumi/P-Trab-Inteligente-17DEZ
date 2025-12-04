@@ -24,156 +24,236 @@ import { TablesInsert } from "@/integrations/supabase/types";
 import { defaultClasseVIIConfig } from "@/data/classeVIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type Categoria = 'Comunicações' | 'Informática';
 
 const CATEGORIAS: Categoria[] = [
-  'Comunicações',
-  'Informática',
+  "Comunicações",
+  "Informática",
 ];
 
-// Tipagem simplificada para o registro
-interface ClasseIIRegistro {
+// Opções fixas de fase de atividade
+const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
+
+interface ItemClasseVII {
+  item: string;
+  quantidade: number;
+  valor_mnt_dia: number;
+  categoria: string;
+  memoria_customizada?: string | null;
+}
+
+interface FormDataClasseVII {
+  selectedOmId?: string;
+  organizacao: string; // OM Detentora (Global)
+  ug: string; // UG Detentora (Global)
+  dias_operacao: number; // Global
+  itens: ItemClasseVII[]; // All items across all categories
+  fase_atividade?: string; // Global
+}
+
+interface ClasseVIIRegistro {
   id: string;
-  organizacao: string;
-  ug: string;
+  organizacao: string; // OM de Destino do Recurso (ND 30/39)
+  ug: string; // UG de Destino do Recurso (ND 30/39)
   dias_operacao: number;
-  categoria: Categoria;
-  itens_equipamentos: ItemClasseII[];
+  categoria: string;
+  itens_equipamentos: ItemClasseVII[]; // Tipo corrigido
   valor_total: number;
   detalhamento: string;
   detalhamento_customizado?: string | null;
-  fase_atividade?: string | null;
+  fase_atividade?: string;
   valor_nd_30: number;
   valor_nd_39: number;
 }
 
-interface ItemClasseII {
-  item: string;
-  quantidade: number;
-  valor_mnt_dia: number;
-  categoria: Categoria;
+interface CategoryAllocation {
+  total_valor: number;
+  nd_39_input: string; // User input string for ND 39
+  nd_30_value: number; // Calculated ND 30 value
+  nd_39_value: number; // Calculated ND 39 value
+  om_destino_recurso: string;
+  ug_destino_recurso: string;
+  selectedOmDestinoId?: string;
 }
 
-interface ItemForm {
-  item: string;
-  quantidade: number;
-  valor_mnt_dia: number;
-  categoria: Categoria;
-}
-
-const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
-
-// Função para formatar fases
-const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
-    if (!faseCSV) return 'operação';
-    const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
-    if (fases.length === 0) return 'operação';
-    if (fases.length === 1) return fases[0];
-    if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
-    const ultimaFase = fases[fases.length - 1];
-    const demaisFases = fases.slice(0, -1).join(', ');
-    return `${demaisFases} e ${ultimaFase}`;
+const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
+    'Comunicações': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Informática': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
 };
 
-// Função para gerar a memória de cálculo formatada
-const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro): string => {
-  const { organizacao, ug, dias_operacao, itens_equipamentos, valor_nd_30, valor_nd_39, fase_atividade } = registro;
-  
-  const faseFormatada = formatFasesParaTexto(fase_atividade);
-  
-  const totalItens = itens_equipamentos.reduce((sum, item) => sum + item.quantidade, 0);
-  const totalValor = valor_nd_30 + valor_nd_39;
-  
-  const detalhamentoItens = itens_equipamentos.map(item => 
-    `- ${item.quantidade} un. de ${item.item} x ${dias_operacao} dias x ${formatCurrency(item.valor_mnt_dia)}/dia = ${formatCurrency(item.quantidade * dias_operacao * item.valor_mnt_dia)}`
-  ).join('\n');
-  
-  const memoria = `33.90.30/33.90.39 - Aquisição de Material de Comunicações e Informática (Classe VII) para ${organizacao} (UG: ${ug}), durante ${dias_operacao} dias de ${faseFormatada}.
-Total de itens: ${totalItens} unidades.
-Valor Total: ${formatCurrency(totalValor)}.
+const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
+    return Math.abs(a - b) < tolerance;
+};
 
-Detalhamento dos Itens:
+const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
+  if (!faseCSV) return 'operação';
+  
+  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
+  
+  if (fases.length === 0) return 'operação';
+  if (fases.length === 1) return fases[0];
+  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
+  
+  const ultimaFase = fases[fases.length - 1];
+  const demaisFases = fases.slice(0, -1).join(', ');
+  return `${demaisFases} e ${ultimaFase}`;
+};
+
+const generateDetalhamento = (itens: ItemClasseVII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
+    const faseFormatada = formatFasesParaTexto(faseAtividade);
+    const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
+    const valorTotal = valorND30 + valorND39;
+
+    const gruposPorCategoria = itens.reduce((acc, item) => {
+        const categoria = item.categoria;
+        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
+        
+        if (!acc[categoria]) {
+            acc[categoria] = {
+                totalValor: 0,
+                totalQuantidade: 0,
+                detalhes: [],
+            };
+        }
+        
+        acc[categoria].totalValor += valorItem;
+        acc[categoria].totalQuantidade += item.quantidade;
+        acc[categoria].detalhes.push(
+            `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.`
+        );
+        
+        return acc;
+    }, {} as Record<Categoria, { totalValor: number, totalQuantidade: number, detalhes: string[] }>);
+
+    let detalhamentoItens = "";
+    
+    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
+        detalhamentoItens += `\n--- ${categoria.toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`;
+        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
+        detalhamentoItens += `Detalhes:\n`;
+        detalhamentoItens += grupo.detalhes.join('\n');
+        detalhamentoItens += `\n`;
+    });
+    
+    detalhamentoItens = detalhamentoItens.trim();
+
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Comunicações e Informática (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
+
+Alocação:
+- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
+- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
+
+Cálculo:
+Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
+
 ${detalhamentoItens}
 
-Total ND 30 (Material): ${formatCurrency(valor_nd_30)}.
-Total ND 39 (Serviço): ${formatCurrency(valor_nd_39)}.`;
-
-  return memoria;
-};
+Valor Total: ${formatCurrency(valorTotal)}.`;
+  };
 
 
 export default function ClasseVIIForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const ptrabId = searchParams.get('ptrabId');
+  const ptrabId = searchParams.get("ptrabId");
   
-  const [loading, setLoading] = useState(true);
-  const [ptrabNome, setPtrabNome] = useState<string>("");
-  const [diretrizAno, setDiretrizAno] = useState<number | null>(null);
-  const [diretrizesDisponiveis, setDiretrizesDisponiveis] = useState<DiretrizClasseII[]>([]);
-  const [registros, setRegistros] = useState<ClasseIIRegistro[]>([]);
+  const [registros, setRegistros] = useState<ClasseVIIRegistro[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [diretrizes, setDiretrizes] = useState<DiretrizClasseII[]>([]);
+  const [selectedTab, setSelectedTab] = useState<Categoria>(CATEGORIAS[0]);
   
-  // Form States
-  const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
-  const [organizacao, setOrganizacao] = useState<string>("");
-  const [ug, setUg] = useState<string>("");
-  const [diasOperacao, setDiasOperacao] = useState<number>(0);
-  const [selectedCategoria, setSelectedCategoria] = useState<Categoria>(CATEGORIAS[0]);
-  const [itensSelecionados, setItensSelecionados] = useState<ItemForm[]>([]);
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const [fasesAtividade, setFasesAtividade] = useState<string[]>(["Execução"]);
-  const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   
-  // Edição
-  const [editingRegistroId, setEditingRegistroId] = useState<string | null>(null);
+  // Estados para edição de memória de cálculo
   const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
   const [memoriaEdit, setMemoriaEdit] = useState<string>("");
+  
+  const [form, setForm] = useState<FormDataClasseVII>({
+    selectedOmId: undefined,
+    organizacao: "",
+    ug: "",
+    dias_operacao: 0,
+    itens: [],
+  });
+  
+  const [categoryAllocations, setCategoryAllocations] = useState<Record<Categoria, CategoryAllocation>>(initialCategoryAllocations);
+  const [currentND39Input, setCurrentND39Input] = useState<string>("");
+  
+  const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemClasseVII[]>([]);
+  
+  const [fasesAtividade, setFasesAtividade] = useState<string[]>(["Execução"]);
+  const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
   const { handleEnterToNextField } = useFormNavigation();
   const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    checkAuthAndLoadData();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
-  const checkAuthAndLoadData = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      toast.error("Você precisa estar autenticado");
-      navigate("/login");
-      return;
-    }
-
     if (!ptrabId) {
-      toast.error("Nenhum P Trab selecionado");
+      toast.error("ID do P Trab não encontrado");
       navigate("/ptrab");
       return;
     }
+    loadDiretrizes();
+    fetchRegistros();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [ptrabId]);
+  
+  useEffect(() => {
+    setCurrentND39Input(categoryAllocations[selectedTab].nd_39_input);
+  }, [selectedTab, categoryAllocations]);
 
-    await loadPTrab(ptrabId);
-    await loadDiretrizes();
-    await loadRegistros(ptrabId);
-    setLoading(false);
-  };
+  useEffect(() => {
+    if (diretrizes.length > 0 && form.organizacao) {
+        const availableItems = diretrizes
+            .filter(d => d.categoria === selectedTab)
+            .map(d => ({
+                item: d.item,
+                quantidade: 0,
+                valor_mnt_dia: Number(d.valor_mnt_dia),
+                categoria: d.categoria as Categoria,
+                memoria_customizada: null,
+            }));
 
-  const loadPTrab = async (id: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("p_trab")
-        .select("numero_ptrab, nome_operacao")
-        .eq("id", id)
-        .single();
+        const existingItemsMap = new Map<string, ItemClasseVII>();
+        form.itens.filter(i => i.categoria === selectedTab).forEach(item => {
+            existingItemsMap.set(item.item, item);
+        });
 
-      if (error) throw error;
-      setPtrabNome(`${data.numero_ptrab} - ${data.nome_operacao}`);
-    } catch (error: any) {
-      toast.error("Erro ao carregar P Trab");
-      navigate("/ptrab");
+        const mergedItems = availableItems.map(availableItem => {
+            const existing = existingItemsMap.get(availableItem.item);
+            return existing || availableItem;
+        });
+
+        setCurrentCategoryItems(mergedItems);
+    } else if (diretrizes.length > 0 && !form.organizacao) {
+        const availableItems = diretrizes
+            .filter(d => d.categoria === selectedTab)
+            .map(d => ({
+                item: d.item,
+                quantidade: 0,
+                valor_mnt_dia: Number(d.valor_mnt_dia),
+                categoria: d.categoria as Categoria,
+                memoria_customizada: null,
+            }));
+        setCurrentCategoryItems(availableItems);
+    } else {
+        setCurrentCategoryItems([]);
     }
-  };
+  }, [selectedTab, diretrizes, form.itens, form.organizacao, form.dias_operacao]);
+
+  const itensAgrupadosPorCategoria = useMemo(() => {
+    return form.itens.reduce((acc, item) => {
+      if (!acc[item.categoria]) {
+        acc[item.categoria] = [];
+      }
+      acc[item.categoria].push(item);
+      return acc;
+    }, {} as Record<Categoria, ItemClasseVII[]>);
+  }, [form.itens]);
+  
 
   const loadDiretrizes = async () => {
     try {
@@ -182,7 +262,6 @@ export default function ClasseVIIForm() {
 
       let anoReferencia: number | null = null;
 
-      // 1. Tentar buscar o ano padrão do perfil do usuário
       const { data: profileData } = await supabase
         .from("profiles")
         .select("default_diretriz_year")
@@ -193,7 +272,6 @@ export default function ClasseVIIForm() {
           anoReferencia = profileData.default_diretriz_year;
       }
 
-      // 2. Se não houver ano padrão, buscar o ano mais recente na tabela de diretrizes
       if (!anoReferencia) {
           const { data: diretrizCusteio } = await supabase
             .from("diretrizes_custeio")
@@ -209,91 +287,139 @@ export default function ClasseVIIForm() {
       }
       
       if (!anoReferencia) {
-        setDiretrizAno(null);
-        setDiretrizesDisponiveis(defaultClasseVIIConfig as DiretrizClasseII[]);
+        toast.warning(`Diretriz de Custeio não encontrada. Usando valores padrão.`);
+        setDiretrizes(defaultClasseVIIConfig as DiretrizClasseII[]);
         return;
       }
-      
-      setDiretrizAno(anoReferencia);
 
-      // 3. Buscar diretrizes de Classe VII
-      const { data, error } = await supabase
+      // Classe VII usa a mesma tabela de diretrizes da Classe II
+      const { data: classeVIIData, error } = await supabase
         .from("diretrizes_classe_ii")
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", anoReferencia)
-        .in("categoria", CATEGORIAS)
-        .eq("ativo", true);
+        .eq("ativo", true)
+        .in("categoria", CATEGORIAS); // Filtrar apenas categorias da Classe VII
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
-        setDiretrizesDisponiveis(data as DiretrizClasseII[]);
+      if (classeVIIData && classeVIIData.length > 0) {
+        setDiretrizes((classeVIIData || []) as DiretrizClasseII[]);
       } else {
-        setDiretrizesDisponiveis(defaultClasseVIIConfig as DiretrizClasseII[]);
+        setDiretrizes(defaultClasseVIIConfig as DiretrizClasseII[]);
+        toast.warning(`Itens de Classe VII não configurados para o ano ${anoReferencia}. Usando valores padrão.`);
       }
-    } catch (error: any) {
+      
+    } catch (error) {
       console.error("Erro ao carregar diretrizes:", error);
-      setDiretrizesDisponiveis(defaultClasseVIIConfig as DiretrizClasseII[]);
+      setDiretrizes(defaultClasseVIIConfig as DiretrizClasseII[]);
+      toast.error("Erro ao carregar diretrizes. Usando valores padrão.");
     }
   };
 
-  const loadRegistros = async (ptrabId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("classe_ii_registros")
-        .select("*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39")
-        .eq("p_trab_id", ptrabId)
-        .in("categoria", CATEGORIAS)
-        .order("created_at", { ascending: true });
+  const fetchRegistros = async () => {
+    if (!ptrabId) return;
+    
+    // Classe VII usa a mesma tabela de registros da Classe II
+    const { data, error } = await supabase
+      .from("classe_ii_registros")
+      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
+      .eq("p_trab_id", ptrabId)
+      .in("categoria", CATEGORIAS) // Filtrar apenas registros de Classe VII
+      .order("organizacao", { ascending: true })
+      .order("categoria", { ascending: true });
 
-      if (error) throw error;
-
-      setRegistros((data || []) as ClasseIIRegistro[]);
-    } catch (error: any) {
+    if (error) {
       toast.error("Erro ao carregar registros");
+      console.error(error);
+      return;
     }
+
+    const uniqueRecordsMap = new Map<string, ClasseVIIRegistro>();
+    (data || []).forEach(r => {
+        const key = `${r.organizacao}-${r.ug}-${r.categoria}`;
+        const record = {
+            ...r,
+            itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseVII[],
+            valor_nd_30: Number(r.valor_nd_30),
+            valor_nd_39: Number(r.valor_nd_39),
+        } as ClasseVIIRegistro;
+        uniqueRecordsMap.set(key, record);
+    });
+
+    setRegistros(Array.from(uniqueRecordsMap.values()));
+  };
+
+  const resetFormFields = () => {
+    setEditingId(null);
+    setForm({
+      selectedOmId: undefined,
+      organizacao: "",
+      ug: "",
+      dias_operacao: 0,
+      itens: [],
+    });
+    
+    setCategoryAllocations(initialCategoryAllocations);
+    setCurrentND39Input("");
+    
+    setCurrentCategoryItems([]);
+    
+    setFasesAtividade(["Execução"]);
+    setCustomFaseAtividade("");
   };
 
   const handleOMChange = (omData: OMData | undefined) => {
     if (omData) {
-      setSelectedOmId(omData.id);
-      setOrganizacao(omData.nome_om);
-      setUg(omData.codug_om);
+      setForm({ 
+        ...form, 
+        selectedOmId: omData.id, 
+        organizacao: omData.nome_om, 
+        ug: omData.codug_om,
+      });
+      
+      const newAllocations = CATEGORIAS.reduce((acc, cat) => {
+          acc[cat] = {
+              ...categoryAllocations[cat],
+              om_destino_recurso: omData.nome_om,
+              ug_destino_recurso: omData.codug_om,
+              selectedOmDestinoId: omData.id,
+          };
+          return acc;
+      }, {} as Record<Categoria, CategoryAllocation>);
+      setCategoryAllocations(newAllocations);
+      
     } else {
-      setSelectedOmId(undefined);
-      setOrganizacao("");
-      setUg("");
+      setForm({ 
+        ...form, 
+        selectedOmId: undefined, 
+        organizacao: "", 
+        ug: "",
+      });
+      
+      const newAllocations = CATEGORIAS.reduce((acc, cat) => {
+          acc[cat] = {
+              ...categoryAllocations[cat],
+              om_destino_recurso: "",
+              ug_destino_recurso: "",
+              selectedOmDestinoId: undefined,
+          };
+          return acc;
+      }, {} as Record<Categoria, CategoryAllocation>);
+      setCategoryAllocations(newAllocations);
     }
   };
-
-  const handleItemToggle = (item: DiretrizClasseII, isChecked: boolean) => {
-    const itemForm: ItemForm = {
-      item: item.item,
-      quantidade: 1, // Padrão 1
-      valor_mnt_dia: Number(item.valor_mnt_dia),
-      categoria: item.categoria as Categoria,
-    };
-
-    if (isChecked) {
-      // Adiciona o item se não estiver presente
-      if (!itensSelecionados.some(i => i.item === item.item && i.categoria === item.categoria)) {
-        setItensSelecionados(prev => [...prev, itemForm]);
-      }
-    } else {
-      // Remove o item
-      setItensSelecionados(prev => prev.filter(i => i.item !== item.item || i.categoria !== item.categoria));
-    }
-  };
-
-  const handleQuantidadeChange = (itemNome: string, categoria: Categoria, quantidade: number) => {
-    setItensSelecionados(prev => 
-      prev.map(item => 
-        item.item === itemNome && item.categoria === categoria
-          ? { ...item, quantidade: quantidade > 0 ? quantidade : 1 }
-          : item
-      )
-    );
+  
+  const handleOMDestinoChange = (omData: OMData | undefined) => {
+    setCategoryAllocations(prev => ({
+        ...prev,
+        [selectedTab]: {
+            ...prev[selectedTab],
+            om_destino_recurso: omData?.nome_om || "",
+            ug_destino_recurso: omData?.codug_om || "",
+            selectedOmDestinoId: omData?.id,
+        }
+    }));
   };
 
   const handleFaseChange = (fase: string, checked: boolean) => {
@@ -304,157 +430,305 @@ export default function ClasseVIIForm() {
     }
   };
 
-  const handleCadastrar = async () => {
+  const handleQuantityChange = (itemIndex: number, quantity: number) => {
+    const newItems = [...currentCategoryItems];
+    newItems[itemIndex].quantidade = Math.max(0, quantity);
+    setCurrentCategoryItems(newItems);
+  };
+
+  const currentCategoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+  const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, parseInputToNumber(currentND39Input)));
+  const nd30ValueTemp = currentCategoryTotalValue - nd39ValueTemp;
+
+  const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const rawValue = e.target.value;
+      setCurrentND39Input(formatInputWithThousands(rawValue));
+  };
+
+  const handleND39InputBlur = () => {
+      const numericValue = parseInputToNumber(currentND39Input);
+      const finalND39Value = Math.min(currentCategoryTotalValue, Math.max(0, numericValue));
+      setCurrentND39Input(formatNumberForInput(finalND39Value, 2));
+  };
+
+  const handleUpdateCategoryItems = () => {
+    if (!form.organizacao || form.dias_operacao <= 0) {
+        toast.error("Preencha a OM e os Dias de Operação antes de salvar itens.");
+        return;
+    }
+    
+    const categoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+
+    const numericInput = parseInputToNumber(currentND39Input);
+    const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
+    const finalND30Value = categoryTotalValue - finalND39Value;
+    
+    if (categoryTotalValue > 0 && !areNumbersEqual(finalND30Value + finalND39Value, categoryTotalValue)) {
+        toast.error("Erro de cálculo: A soma de ND 30 e ND 39 deve ser igual ao Total da Categoria.");
+        return;
+    }
+    
+    if (categoryTotalValue > 0 && (!categoryAllocations[selectedTab].om_destino_recurso || !categoryAllocations[selectedTab].ug_destino_recurso)) {
+        toast.error("Selecione a OM de destino do recurso antes de salvar a alocação.");
+        return;
+    }
+
+    const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
+
+    const otherCategoryItems = form.itens.filter(item => item.categoria !== selectedTab);
+
+    const newFormItems = [...otherCategoryItems, ...itemsToKeep];
+
+    setCategoryAllocations(prev => ({
+        ...prev,
+        [selectedTab]: {
+            ...prev[selectedTab],
+            total_valor: categoryTotalValue,
+            nd_39_input: formatNumberForInput(finalND39Value, 2),
+            nd_30_value: finalND30Value,
+            nd_39_value: finalND39Value,
+        }
+    }));
+
+    setForm({ ...form, itens: newFormItems });
+    toast.success(`Itens e alocação de ND para ${selectedTab} atualizados!`);
+  };
+  
+  const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+
+  const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_30_value, 0);
+  const totalND39Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_39_value, 0);
+
+  const totalAlocado = totalND30Final + totalND39Final;
+  
+  const isTotalAlocadoCorrect = areNumbersEqual(valorTotalForm, totalAlocado);
+
+
+  const handleSalvarRegistros = async () => {
     if (!ptrabId) return;
-    if (!organizacao || !ug) { toast.error("Selecione a OM de destino"); return; }
-    if (diasOperacao <= 0) { toast.error("Informe os dias de operação"); return; }
-    if (itensSelecionados.length === 0) { toast.error("Selecione pelo menos um item"); return; }
+    if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
+    if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
+    if (form.itens.length === 0) { toast.error("Adicione pelo menos um item"); return; }
     
     let fasesFinais = [...fasesAtividade];
     if (customFaseAtividade.trim()) { fasesFinais = [...fasesFinais, customFaseAtividade.trim()]; }
     const faseFinalString = fasesFinais.filter(f => f).join('; ');
     if (!faseFinalString) { toast.error("Selecione ou digite pelo menos uma Fase da Atividade."); return; }
-
-    // Agrupar itens por categoria para salvar um registro por categoria
-    const registrosPorCategoria: Record<Categoria, ItemForm[]> = itensSelecionados.reduce((acc, item) => {
-      if (!acc[item.categoria]) { acc[item.categoria] = []; }
-      acc[item.categoria].push(item);
-      return acc;
-    }, {} as Record<Categoria, ItemForm[]>);
     
+    if (!isTotalAlocadoCorrect) {
+        toast.error("O valor total dos itens não corresponde ao total alocado. Clique em 'Salvar Itens da Categoria' em todas as abas ativas.");
+        return;
+    }
+
     setLoading(true);
     
-    try {
-      // 1. Deletar registros existentes para esta OM (se estiver editando)
-      if (editingRegistroId) {
-        const { error: deleteError } = await supabase
-          .from("classe_ii_registros")
-          .delete()
-          .eq("p_trab_id", ptrabId)
-          .eq("organizacao", organizacao)
-          .eq("ug", ug)
-          .in("categoria", CATEGORIAS);
-        if (deleteError) throw deleteError;
-      }
-      
-      // 2. Inserir novos registros (um por categoria)
-      for (const categoria of Object.keys(registrosPorCategoria) as Categoria[]) {
-        const itens = registrosPorCategoria[categoria];
-        
-        // Cálculo: ND 30 (Material) e ND 39 (Serviço)
-        // Regra: ND 30 = 70% do valor total, ND 39 = 30% do valor total
-        const valorTotal = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
-        const valorND30 = valorTotal * 0.7;
-        const valorND39 = valorTotal * 0.3;
-        
-        const registroData: TablesInsert<'classe_ii_registros'> = {
-          p_trab_id: ptrabId,
-          organizacao: organizacao,
-          ug: ug,
-          dias_operacao: diasOperacao,
-          categoria: categoria,
-          itens_equipamentos: itens as any, // Salva a lista de itens
-          valor_total: valorTotal,
-          detalhamento: "", // Será preenchido automaticamente no DB ou no front
-          fase_atividade: faseFinalString,
-          valor_nd_30: valorND30,
-          valor_nd_39: valorND39,
-        };
-        
-        // Gera a memória de cálculo automática para salvar no campo 'detalhamento'
-        const tempRegistro = { ...registroData, itens_equipamentos: itens } as unknown as ClasseIIRegistro;
-        registroData.detalhamento = generateClasseIIMemoriaCalculo(tempRegistro);
-
-        const { error: insertError } = await supabase
-          .from("classe_ii_registros")
-          .insert([registroData]);
-        if (insertError) throw insertError;
-      }
-
-      toast.success(editingRegistroId ? "Registros atualizados com sucesso!" : "Registros cadastrados com sucesso!");
-      await updatePTrabStatusIfAberto(ptrabId);
-      resetFormFields();
-      loadRegistros(ptrabId);
-    } catch (error: any) {
-      toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
+    const itemsByActiveCategory = form.itens.reduce((acc, item) => {
+        if (item.quantidade > 0) {
+            if (!acc[item.categoria]) {
+                acc[item.categoria] = [];
+            }
+            acc[item.categoria].push(item);
+        }
+        return acc;
+    }, {} as Record<Categoria, ItemClasseVII[]>);
+    
+    const categoriesToSave = Object.keys(itemsByActiveCategory) as Categoria[];
+    
+    if (categoriesToSave.length === 0) {
+        toast.error("Nenhum item com quantidade maior que zero foi configurado.");
+        setLoading(false);
+        return;
     }
-  };
-
-  const handleRemover = async (id: string) => {
-    if (!confirm("Tem certeza que deseja remover este registro?")) return;
+    
+    const registrosParaSalvar: TablesInsert<'classe_ii_registros'>[] = [];
+    
+    for (const categoria of categoriesToSave) {
+        const itens = itemsByActiveCategory[categoria];
+        const allocation = categoryAllocations[categoria];
+        
+        if (!allocation.om_destino_recurso || !allocation.ug_destino_recurso) {
+            toast.error(`Selecione a OM de destino do recurso para a categoria: ${categoria}.`);
+            setLoading(false);
+            return;
+        }
+        
+        const valorTotalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+        
+        if (!areNumbersEqual(valorTotalCategoria, (allocation.nd_30_value + allocation.nd_39_value))) {
+            toast.error(`Erro de alocação na categoria ${categoria}: O valor total dos itens (${formatCurrency(valorTotalCategoria)}) não corresponde ao total alocado (${formatCurrency(allocation.nd_30_value + allocation.nd_39_value)}). Salve a categoria novamente.`);
+            setLoading(false);
+            return;
+        }
+        
+        const detalhamento = generateDetalhamento(
+            itens, 
+            form.dias_operacao, 
+            form.organizacao,
+            form.ug,
+            faseFinalString,
+            allocation.om_destino_recurso,
+            allocation.ug_destino_recurso,
+            allocation.nd_30_value,
+            allocation.nd_39_value
+        );
+        
+        // Classe VII usa a tabela classe_ii_registros
+        const registro: TablesInsert<'classe_ii_registros'> = {
+            p_trab_id: ptrabId,
+            organizacao: allocation.om_destino_recurso,
+            ug: allocation.ug_destino_recurso,
+            dias_operacao: form.dias_operacao,
+            categoria: categoria,
+            itens_equipamentos: itens as any,
+            valor_total: valorTotalCategoria,
+            detalhamento: detalhamento,
+            fase_atividade: faseFinalString,
+            detalhamento_customizado: null,
+            valor_nd_30: allocation.nd_30_value,
+            valor_nd_39: allocation.nd_39_value,
+        };
+        registrosParaSalvar.push(registro);
+    }
 
     try {
-      setLoading(true);
-      const { error } = await supabase
+      // Deletar APENAS registros de Classe VII existentes para o PTrab
+      const { error: deleteError } = await supabase
         .from("classe_ii_registros")
         .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-
-      toast.success("Registro removido com sucesso!");
-      loadRegistros(ptrabId!);
-    } catch (error: any) {
-      toast.error(sanitizeError(error));
+        .eq("p_trab_id", ptrabId)
+        .in("categoria", CATEGORIAS);
+      if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
+      
+      // Inserir os novos registros
+      const { error: insertError } = await supabase.from("classe_ii_registros").insert(registrosParaSalvar);
+      if (insertError) throw insertError;
+      
+      toast.success(editingId ? "Registros de Classe VII atualizados com sucesso!" : "Registros de Classe VII salvos com sucesso!");
+      await updatePTrabStatusIfAberto(ptrabId);
+      resetFormFields();
+      fetchRegistros();
+    } catch (error) {
+      console.error("Erro ao salvar registros de Classe VII:", error);
+      toast.error("Erro ao salvar registros de Classe VII");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditarRegistro = async (registro: ClasseIIRegistro) => {
-    setEditingRegistroId(registro.id);
-    setOrganizacao(registro.organizacao);
-    setUg(registro.ug);
-    setDiasOperacao(registro.dias_operacao);
-    setSelectedCategoria(registro.categoria);
-    setItensSelecionados(registro.itens_equipamentos as ItemForm[]);
+  const handleEditarRegistro = async (registro: ClasseVIIRegistro) => {
+    setLoading(true);
+    resetFormFields();
+    
+    // 1. Buscar TODOS os registros de CLASSE VII para este PTrab
+    const { data: allRecords, error: fetchAllError } = await supabase
+        .from("classe_ii_registros")
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
+        .eq("p_trab_id", ptrabId)
+        .in("categoria", CATEGORIAS);
+        
+    if (fetchAllError) {
+        toast.error("Erro ao carregar todos os registros para edição.");
+        setLoading(false);
+        return;
+    }
+    
+    let consolidatedItems: ItemClasseVII[] = [];
+    let newAllocations = { ...initialCategoryAllocations };
+    let firstOmDetentora: { nome: string, ug: string } | null = null;
+    
+    (allRecords || []).forEach(r => {
+        const category = r.categoria as Categoria;
+        const items = (r.itens_equipamentos || []) as ItemClasseVII[];
+        
+        consolidatedItems = consolidatedItems.concat(items);
+        
+        if (newAllocations[category]) {
+            const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * r.dias_operacao), 0);
+            
+            newAllocations[category] = {
+                total_valor: totalValor,
+                nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
+                nd_30_value: Number(r.valor_nd_30),
+                nd_39_value: Number(r.valor_nd_39),
+                om_destino_recurso: r.organizacao,
+                ug_destino_recurso: r.ug,
+                selectedOmDestinoId: undefined,
+            };
+        }
+        
+        if (!firstOmDetentora) {
+            firstOmDetentora = { nome: r.organizacao, ug: r.ug };
+        }
+    });
+    
+    let selectedOmIdForEdit: string | undefined = undefined;
+    
+    if (firstOmDetentora) {
+        try {
+            const { data: omData } = await supabase
+                .from('organizacoes_militares')
+                .select('id')
+                .eq('nome_om', firstOmDetentora.nome)
+                .eq('codug_om', firstOmDetentora.ug)
+                .maybeSingle();
+            selectedOmIdForEdit = omData?.id;
+        } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
+    }
+    
+    setEditingId(registro.id); 
+    setForm({
+      selectedOmId: selectedOmIdForEdit,
+      organizacao: firstOmDetentora?.nome || "",
+      ug: firstOmDetentora?.ug || "",
+      dias_operacao: registro.dias_operacao,
+      itens: consolidatedItems,
+    });
+    
+    const categoriesToLoad = Object.keys(newAllocations) as Categoria[];
+    for (const cat of categoriesToLoad) {
+        const alloc = newAllocations[cat];
+        if (alloc.om_destino_recurso) {
+            try {
+                const { data: omData } = await supabase
+                    .from('organizacoes_militares')
+                    .select('id')
+                    .eq('nome_om', alloc.om_destino_recurso)
+                    .eq('codug_om', alloc.ug_destino_recurso)
+                    .maybeSingle();
+                alloc.selectedOmDestinoId = omData?.id;
+            } catch (e) { console.error(`Erro ao buscar OM Destino ID para ${cat}:`, e); }
+        }
+    }
+    setCategoryAllocations(newAllocations);
     
     const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
-    const fasesPadrao = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
-    const fasesAtividade = fasesSalvas.filter(f => fasesPadrao.includes(f));
-    const customFaseAtividade = fasesSalvas.find(f => !fasesPadrao.includes(f)) || "";
+    setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
+    setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
-    setFasesAtividade(fasesAtividade);
-    setCustomFaseAtividade(customFaseAtividade);
-
-    // Buscar o ID da OM para preencher o OmSelector
-    try {
-      const { data: omData, error: omError } = await supabase
-        .from('organizacoes_militares')
-        .select('id')
-        .eq('nome_om', registro.organizacao)
-        .eq('codug_om', registro.ug)
-        .single();
-      if (omData && !omError) {
-        setSelectedOmId(omData.id);
-      }
-    } catch (error) {
-      console.error("Erro ao buscar ID da OM para edição:", error);
-      setSelectedOmId(undefined);
+    if (consolidatedItems.length > 0) {
+        setSelectedTab(consolidatedItems[0].categoria);
+    } else {
+        setSelectedTab(CATEGORIAS[0]);
     }
-
-    if (formRef.current) {
-      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setLoading(false);
   };
+  
+  const registrosAgrupadosPorOM = useMemo(() => {
+    return registros.reduce((acc, registro) => {
+        const key = `${registro.organizacao} (${registro.ug})`;
+        if (!acc[key]) {
+            acc[key] = [];
+        }
+        acc[key].push(registro);
+        return acc;
+    }, {} as Record<string, ClasseVIIRegistro[]>);
+  }, [registros]);
 
-  const resetFormFields = () => {
-    setEditingRegistroId(null);
-    setSelectedOmId(undefined);
-    setOrganizacao("");
-    setUg("");
-    setDiasOperacao(0);
-    setSelectedCategoria(CATEGORIAS[0]);
-    setItensSelecionados([]);
-    setFasesAtividade(["Execução"]);
-    setCustomFaseAtividade("");
-  };
-
-  const handleIniciarEdicaoMemoria = (registro: ClasseIIRegistro) => {
+  const handleIniciarEdicaoMemoria = (registro: ClasseVIIRegistro) => {
     setEditingMemoriaId(registro.id);
-    setMemoriaEdit(registro.detalhamento_customizado || generateClasseIIMemoriaCalculo(registro));
+    setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento || "");
   };
 
   const handleCancelarEdicaoMemoria = () => {
@@ -469,18 +743,17 @@ export default function ClasseVIIForm() {
         .from("classe_ii_registros")
         .update({
           detalhamento_customizado: memoriaEdit.trim() || null,
-          updated_at: new Date().toISOString(),
-        } as TablesInsert<'classe_ii_registros'>)
+        })
         .eq("id", registroId);
 
       if (error) throw error;
 
       toast.success("Memória de cálculo atualizada com sucesso!");
       handleCancelarEdicaoMemoria();
-      loadRegistros(ptrabId!);
+      await fetchRegistros();
     } catch (error) {
       console.error("Erro ao salvar memória:", error);
-      toast.error("Erro ao salvar memória de cálculo");
+      toast.error(sanitizeError(error));
     } finally {
       setLoading(false);
     }
@@ -497,31 +770,24 @@ export default function ClasseVIIForm() {
         .from("classe_ii_registros")
         .update({
           detalhamento_customizado: null,
-          updated_at: new Date().toISOString(),
-        } as TablesInsert<'classe_ii_registros'>)
+        })
         .eq("id", registroId);
 
       if (error) throw error;
 
       toast.success("Memória de cálculo restaurada!");
-      loadRegistros(ptrabId!);
+      await fetchRegistros();
     } catch (error) {
       console.error("Erro ao restaurar memória:", error);
-      toast.error("Erro ao restaurar memória automática");
+      toast.error(sanitizeError(error));
     } finally {
       setLoading(false);
     }
   };
 
-  const itensFiltrados = useMemo(() => {
-    return diretrizesDisponiveis.filter(d => d.categoria === selectedCategoria);
-  }, [diretrizesDisponiveis, selectedCategoria]);
-
-  const totalGeralND30 = registros.reduce((sum, r) => sum + r.valor_nd_30, 0);
-  const totalGeralND39 = registros.reduce((sum, r) => sum + r.valor_nd_39, 0);
-  const totalGeral = totalGeralND30 + totalGeralND39;
-  
-  const displayFases = [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
+  const displayFases = useMemo(() => {
+    return [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
+  }, [fasesAtividade, customFaseAtividade]);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -535,65 +801,53 @@ export default function ClasseVIIForm() {
           Voltar
         </Button>
 
-        <Card ref={formRef}>
+        <Card>
           <CardHeader>
-            <CardTitle>Classe VII - Comunicações e Informática</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Classe VII - Comunicações e Informática
+            </CardTitle>
             <CardDescription>
-              Configure a necessidade de material de Comunicações e Informática por OM.
+              Solicitação de recursos para manutenção de material de comunicações e informática.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             
-            {diretrizAno === null && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Nenhuma diretriz de custeio encontrada. Os valores padrão estão sendo utilizados.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <form onSubmit={(e) => { e.preventDefault(); handleCadastrar(); }} className="space-y-4">
-              {/* Dados Básicos */}
-              <div className="grid md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-lg">
+            {/* 1. Dados da Organização e Dias */}
+            <div className="space-y-3 border-b pb-4">
+              <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="om">OM de Destino do Recurso *</Label>
+                  <Label>OM Detentora do Equipamento *</Label>
                   <OmSelector
-                    selectedOmId={selectedOmId}
+                    selectedOmId={form.selectedOmId}
                     onChange={handleOMChange}
-                    placeholder="Selecione uma OM de Destino..."
-                    disabled={loading}
+                    placeholder="Selecione a OM..."
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="ug">UG de Destino</Label>
-                  <Input
-                    id="ug"
-                    value={ug}
-                    readOnly
-                    disabled={true}
-                    className="disabled:opacity-60"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="diasOperacao">Dias de Atividade *</Label>
-                  <Input
-                    id="diasOperacao"
-                    type="number"
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
-                    value={diasOperacao === 0 ? "" : diasOperacao.toString()}
-                    onChange={(e) => setDiasOperacao(Number(e.target.value))}
-                    placeholder="Ex: 30"
-                    onKeyDown={handleEnterToNextField}
-                    min="1"
-                    required
-                  />
+                  <Label>UG Detentora</Label>
+                  <Input value={form.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="faseAtividade">Fase da Atividade *</Label>
+                  <Label>Dias de Atividade *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
+                    value={form.dias_operacao || ""}
+                    onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value) || 0 })}
+                    placeholder="Ex: 7"
+                    onKeyDown={handleEnterToNextField}
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Fase da Atividade *</Label>
                   <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                     <PopoverTrigger asChild>
                       <Button
@@ -601,7 +855,6 @@ export default function ClasseVIIForm() {
                         role="combobox"
                         type="button"
                         className="w-full justify-between"
-                        disabled={loading}
                       >
                         <span className="truncate">
                           {displayFases || "Selecione a(s) fase(s)..."}
@@ -644,12 +897,14 @@ export default function ClasseVIIForm() {
                   </Popover>
                 </div>
               </div>
+            </div>
 
-              {/* Seleção de Itens */}
-              <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
-                <h3 className="text-lg font-semibold">Itens de Custeio (Diretriz {diretrizAno || 'Padrão'})</h3>
+            {/* 2. Adicionar Itens por Categoria (Aba) */}
+            {form.organizacao && form.dias_operacao > 0 && (
+              <div className="space-y-4 border-b pb-4" ref={formRef}>
+                <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
-                <Tabs value={selectedCategoria} onValueChange={(value) => setSelectedCategoria(value as Categoria)}>
+                <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as Categoria)}>
                   <TabsList className="grid w-full grid-cols-2">
                     {CATEGORIAS.map(cat => (
                       <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
@@ -658,210 +913,369 @@ export default function ClasseVIIForm() {
                   
                   {CATEGORIAS.map(cat => (
                     <TabsContent key={cat} value={cat} className="mt-4">
-                      <div className="space-y-3">
-                        {itensFiltrados.filter(item => item.categoria === cat).map((item) => {
-                          const isSelected = itensSelecionados.some(i => i.item === item.item && i.categoria === item.categoria);
-                          const selectedItem = itensSelecionados.find(i => i.item === item.item && i.categoria === item.categoria);
-                          
-                          return (
-                            <Card 
-                              key={item.item} 
-                              className={cn(
-                                "p-3 cursor-pointer transition-all",
-                                isSelected ? "border-primary ring-2 ring-primary/20 bg-primary/5" : "hover:bg-muted/50"
-                              )}
-                              onClick={() => handleItemToggle(item, !isSelected)}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                  <Checkbox
-                                    checked={isSelected}
-                                    onCheckedChange={(checked) => handleItemToggle(item, !!checked)}
-                                    id={`item-${item.item}`}
-                                  />
-                                  <Label htmlFor={`item-${item.item}`} className="flex flex-col cursor-pointer">
-                                    <span className="font-medium">{item.item}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {formatCurrency(Number(item.valor_mnt_dia))} / dia
-                                    </span>
-                                  </Label>
+                      <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                        
+                        <div className="max-h-[400px] overflow-y-auto rounded-md border">
+                            <Table className="w-full">
+                                <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                                    <TableRow>
+                                        <TableHead className="w-[50%]">Item</TableHead>
+                                        <TableHead className="w-[20%] text-right">Valor/Dia</TableHead>
+                                        <TableHead className="w-[15%] text-center">Quantidade</TableHead>
+                                        <TableHead className="w-[15%] text-right">Total</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {currentCategoryItems.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                                Nenhum item de diretriz encontrado para esta categoria.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        currentCategoryItems.map((item, index) => {
+                                            const itemTotal = item.quantidade * item.valor_mnt_dia * form.dias_operacao;
+                                            
+                                            return (
+                                                <TableRow key={item.item} className="h-12">
+                                                    <TableCell className="font-medium text-sm py-1">
+                                                        {item.item}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-xs text-muted-foreground py-1">
+                                                        {formatCurrency(item.valor_mnt_dia)}
+                                                    </TableCell>
+                                                    <TableCell className="py-1">
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
+                                                            value={item.quantidade === 0 ? "" : item.quantidade.toString()}
+                                                            onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
+                                                            placeholder="0"
+                                                            onKeyDown={handleEnterToNextField}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-semibold text-sm py-1">
+                                                        {formatCurrency(itemTotal)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                        
+                        <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
+                            <span className="font-bold text-sm">TOTAL DA CATEGORIA</span>
+                            <span className="font-extrabold text-lg text-primary">
+                                {formatCurrency(currentCategoryTotalValue)}
+                            </span>
+                        </div>
+                        
+                        {/* BLOCO DE ALOCAÇÃO ND 30/39 */}
+                        {currentCategoryTotalValue > 0 && (
+                            <div className="space-y-4 p-4 border rounded-lg bg-background">
+                                <h4 className="font-semibold text-sm">Alocação de Recursos para {cat}</h4>
+                                
+                                {/* CAMPO: OM de Destino do Recurso */}
+                                <div className="space-y-2">
+                                    <Label>OM de Destino do Recurso *</Label>
+                                    <OmSelector
+                                        selectedOmId={categoryAllocations[cat].selectedOmDestinoId}
+                                        onChange={handleOMDestinoChange}
+                                        placeholder="Selecione a OM que receberá o recurso..."
+                                        disabled={!form.organizacao} 
+                                    />
+                                    {categoryAllocations[cat].ug_destino_recurso && (
+                                        <p className="text-xs text-muted-foreground">
+                                            UG de Destino: {categoryAllocations[cat].ug_destino_recurso}
+                                        </p>
+                                    )}
                                 </div>
                                 
-                                {isSelected && (
-                                  <div className="flex items-center gap-2">
-                                    <Label className="text-sm">Qtd:</Label>
-                                    <Input
-                                      type="number"
-                                      min="1"
-                                      className="w-20 h-8 text-center"
-                                      value={selectedItem?.quantidade || 1}
-                                      onChange={(e) => handleQuantidadeChange(item.item, item.categoria as Categoria, parseInt(e.target.value) || 1)}
-                                      onClick={(e) => e.stopPropagation()} // Previne o toggle ao clicar no input
-                                      onKeyDown={handleEnterToNextField}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            </Card>
-                          );
-                        })}
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* ND 30 (Material) - ESQUERDA */}
+                                    <div className="space-y-2">
+                                        <Label>ND 33.90.30 (Material)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                value={formatNumberForInput(nd30ValueTemp, 2)}
+                                                readOnly
+                                                disabled
+                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
+                                            />
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Calculado por diferença (Total - ND 39).
+                                        </p>
+                                    </div>
+                                    {/* ND 39 (Serviço) - DIREITA */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nd39-input">ND 33.90.39 (Serviço)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                id="nd39-input"
+                                                type="text"
+                                                inputMode="decimal"
+                                                value={currentND39Input}
+                                                onChange={handleND39InputChange}
+                                                onBlur={handleND39InputBlur}
+                                                placeholder="0,00"
+                                                className="pl-12 text-lg"
+                                                disabled={currentCategoryTotalValue === 0}
+                                                onKeyDown={handleEnterToNextField}
+                                            />
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Valor alocado para contratação de serviço.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between text-sm font-bold border-t pt-2">
+                                    <span>TOTAL ALOCADO:</span>
+                                    <span className={cn(areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) ? "text-primary" : "text-destructive")}>
+                                        {formatCurrency(nd30ValueTemp + nd39ValueTemp)}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                        {/* FIM BLOCO DE ALOCAÇÃO */}
+
+                        <div className="flex justify-end">
+                            <Button 
+                                type="button" 
+                                onClick={handleUpdateCategoryItems} 
+                                className="w-full md:w-auto" 
+                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && !categoryAllocations[cat].om_destino_recurso)}
+                            >
+                                Salvar Itens da Categoria
+                            </Button>
+                        </div>
                       </div>
                     </TabsContent>
                   ))}
                 </Tabs>
               </div>
+            )}
 
-              {/* Botão Cadastrar/Atualizar e Cancelar */}
-              <div className="flex justify-end gap-2 pt-4">
-                {editingRegistroId && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={resetFormFields}
-                    className="gap-2"
-                  >
-                    <XCircle className="h-4 w-4" />
-                    Cancelar Edição
-                  </Button>
+            {/* 3. Itens Adicionados e Consolidação */}
+            {form.itens.length > 0 && (
+              <div className="space-y-4 border-b pb-4">
+                <h3 className="text-lg font-semibold">3. Itens Adicionados ({form.itens.length})</h3>
+                
+                {/* Alerta de Validação Final */}
+                {!isTotalAlocadoCorrect && (
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="font-medium">
+                            Atenção: O Custo Total dos Itens ({formatCurrency(valorTotalForm)}) não corresponde ao Total Alocado ({formatCurrency(totalAlocado)}). 
+                            Clique em "Salvar Itens da Categoria" em todas as abas ativas.
+                        </AlertDescription>
+                    </Alert>
                 )}
-                <Button
-                  type="submit"
-                  className="gap-2"
-                  disabled={loading || !organizacao || diasOperacao <= 0 || itensSelecionados.length === 0 || !displayFases}
-                >
-                  <Plus className="h-4 w-4" />
-                  {loading ? "Aguarde..." : (editingRegistroId ? "Atualizar Registros" : "Cadastrar Registros")}
-                </Button>
-              </div>
-            </form>
 
-            {/* Tabela de Registros */}
-            {registros.length > 0 && (
-              <div className="space-y-4 mt-8">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                    Registros Cadastrados
-                  </h2>
-                  <Badge variant="secondary" className="text-sm">
-                    {registros.length} {registros.length === 1 ? 'registro' : 'registros'}
-                  </Badge>
-                </div>
-
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <Table className="w-full table-fixed">
-                      <TableHeader className="bg-muted">
-                        <TableRow>
-                          <TableHead className="w-[15%]">OM</TableHead>
-                          <TableHead className="w-[10%]">UG</TableHead>
-                          <TableHead className="w-[15%]">Categoria</TableHead>
-                          <TableHead className="w-[10%] text-center">Dias</TableHead>
-                          <TableHead className="w-[15%] text-right">ND 30 (70%)</TableHead>
-                          <TableHead className="w-[15%] text-right">ND 39 (30%)</TableHead>
-                          <TableHead className="w-[15%] text-right">Total</TableHead>
-                          <TableHead className="w-[5%] text-center">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {registros.map((registro) => (
-                          <TableRow key={registro.id} className="hover:bg-muted/50">
-                            <TableCell className="font-medium">{registro.organizacao}</TableCell>
-                            <TableCell>{registro.ug}</TableCell>
-                            <TableCell>{registro.categoria}</TableCell>
-                            <TableCell className="text-center">{registro.dias_operacao}</TableCell>
-                            <TableCell className="text-right text-green-600 font-medium">
-                              {formatCurrency(registro.valor_nd_30)}
-                            </TableCell>
-                            <TableCell className="text-right text-blue-600 font-medium">
-                              {formatCurrency(registro.valor_nd_39)}
-                            </TableCell>
-                            <TableCell className="text-right font-bold">
-                              {formatCurrency(registro.valor_total)}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex gap-1 justify-center">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleEditarRegistro(registro)}
-                                  disabled={loading}
-                                  className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleRemover(registro.id)}
-                                  disabled={loading}
-                                  className="h-8 w-8 text-destructive hover:text-destructive/10"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                      <TableFooter className="bg-muted/50 border-t-2">
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-right font-bold">TOTAL GERAL:</TableCell>
-                          <TableCell className="text-right font-extrabold text-green-600 text-base">
-                            {formatCurrency(totalGeralND30)}
-                          </TableCell>
-                          <TableCell className="text-right font-extrabold text-blue-600 text-base">
-                            {formatCurrency(totalGeralND39)}
-                          </TableCell>
-                          <TableCell className="text-right font-extrabold text-primary text-base">
-                            {formatCurrency(totalGeral)}
-                          </TableCell>
-                          <TableCell></TableCell>
-                        </TableRow>
-                      </TableFooter>
-                    </Table>
-                  </div>
-                </div>
-
-                {/* Detalhamento das Memórias de Cálculo */}
-                <div className="space-y-4 mt-6">
-                  <h3 className="text-xl font-bold flex items-center gap-2">
-                    📋 Memórias de Cálculo Detalhadas
-                  </h3>
-                  
-                  {registros.map((registro) => {
-                    const isEditing = editingMemoriaId === registro.id;
-                    const hasCustomMemoria = !!registro.detalhamento_customizado;
-                    const memoriaAutomatica = generateClasseIIMemoriaCalculo(registro);
-                    const memoriaExibida = registro.detalhamento_customizado || memoriaAutomatica;
+                <div className="space-y-4">
+                  {Object.entries(itensAgrupadosPorCategoria).map(([categoria, itens]) => {
+                    const totalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
+                    
+                    const allocation = categoryAllocations[categoria as Categoria];
                     
                     return (
-                      <Card key={`memoria-${registro.id}`} className="p-6 bg-muted/30">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-lg font-semibold text-foreground">
-                              {registro.organizacao} (UG: {registro.ug})
-                            </h4>
-                            <span className="text-lg font-semibold text-muted-foreground/80">
-                              | {registro.categoria}
-                            </span>
-                            {hasCustomMemoria && !isEditing && (
-                              <Badge variant="outline" className="text-xs">
-                                Editada manualmente
-                              </Badge>
-                            )}
-                          </div>
-                          <Badge 
-                            variant="default" 
-                            className="bg-primary text-primary-foreground"
-                          >
-                            Classe VII
-                          </Badge>
+                      <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
+                        <div className="flex items-center justify-between mb-3 border-b pb-2">
+                          <h4 className="font-bold text-base text-primary">{categoria} ({totalQuantidade} itens)</h4>
+                          <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
                         </div>
                         
-                        <div className="h-px bg-border my-4" />
+                        <div className="space-y-2">
+                          {itens.map((item, index) => (
+                            <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
+                              <span className="font-medium">{item.item}</span>
+                              <span className="text-right">
+                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                         
-                        <div className="flex items-center justify-end gap-2 mb-4">
+                        <div className="pt-2 border-t mt-2">
+                            <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                <span className="font-medium text-foreground">
+                                    {allocation.om_destino_recurso} ({allocation.ug_destino_recurso})
+                                </span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
+                                <span className="font-medium text-green-600">{formatCurrency(allocation.nd_30_value)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
+                                <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
+                            </div>
+                            {!areNumbersEqual(allocation.total_valor, totalCategoria) && (
+                                <p className="text-xs text-destructive flex items-center gap-1 pt-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    Valores desatualizados. Salve a categoria novamente.
+                                </p>
+                            )}
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+                
+                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
+                  <span className="font-bold text-base text-primary">VALOR TOTAL DA OM</span>
+                  <span className="font-extrabold text-xl text-primary">
+                    {formatCurrency(valorTotalForm)}
+                  </span>
+                </div>
+                
+                <div className="flex gap-3 pt-4 justify-end">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={resetFormFields}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Limpar Formulário
+                  </Button>
+                  <Button 
+                    type="button" 
+                    onClick={handleSalvarRegistros} 
+                    disabled={loading || !form.organizacao || form.itens.length === 0 || !isTotalAlocadoCorrect}
+                  >
+                    {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* 4. Registros Salvos (OMs Cadastradas) - SUMMARY SECTION */}
+            {registros.length > 0 && (
+              <div className="space-y-4 mt-6">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-accent" />
+                  OMs Cadastradas
+                </h2>
+                
+                {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+                    const totalOM = omRegistros.reduce((sum, r) => sum + r.valor_total, 0);
+                    const omName = omKey.split(' (')[0];
+                    const ug = omKey.split(' (')[1].replace(')', '');
+                    
+                    return (
+                        <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                            <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                <h3 className="font-bold text-lg text-primary">
+                                    {omName} (UG: {ug})
+                                </h3>
+                                <span className="font-extrabold text-xl text-primary">
+                                    {formatCurrency(totalOM)}
+                                </span>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                {omRegistros.map((registro) => {
+                                    const totalCategoria = registro.valor_total;
+                                    const fases = formatFasesParaTexto(registro.fase_atividade);
+                                    
+                                    return (
+                                        <Card key={registro.id} className="p-3 bg-background border">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex flex-col">
+                                                    <h4 className="font-semibold text-base text-foreground">
+                                                        {registro.categoria}
+                                                    </h4>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Dias: {registro.dias_operacao} | Fases: {fases}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-lg text-primary/80">
+                                                        {formatCurrency(totalCategoria)}
+                                                    </span>
+                                                    <div className="flex gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            onClick={() => handleEditarRegistro(registro)}
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => {
+                                                                if (confirm(`Deseja realmente deletar o registro de Classe VII para ${omName} (${registro.categoria})?`)) {
+                                                                    supabase.from("classe_ii_registros")
+                                                                        .delete()
+                                                                        .eq("id", registro.id)
+                                                                        .then(() => {
+                                                                            toast.success("Registro excluído!");
+                                                                            fetchRegistros();
+                                                                        })
+                                                                        .catch(err => {
+                                                                            toast.error(sanitizeError(err));
+                                                                        });
+                                                                }
+                                                            }}
+                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Detalhes da Alocação */}
+                                            <div className="pt-2 border-t mt-2">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
+                                                    <span className="font-medium text-green-600">{formatCurrency(registro.valor_nd_30)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
+                                                    <span className="font-medium text-blue-600">{formatCurrency(registro.valor_nd_39)}</span>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                        </Card>
+                    );
+                })}
+              </div>
+            )}
+
+            {/* 5. Memórias de Cálculos Detalhadas */}
+            {registros.length > 0 && (
+              <div className="space-y-4 mt-8">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  📋 Memórias de Cálculos Detalhadas
+                </h3>
+                
+                {registros.map(registro => {
+                  const om = registro.organizacao;
+                  const ug = registro.ug;
+                  const isEditing = editingMemoriaId === registro.id;
+                  const hasCustomMemoria = !!registro.detalhamento_customizado;
+                  const memoriaExibida = registro.detalhamento_customizado || registro.detalhamento || "";
+                  
+                  return (
+                    <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
+                      <h4 className="text-lg font-semibold text-foreground">
+                        OM Destino: {om} ({ug}) - Categoria: {registro.categoria}
+                      </h4>
+                      
+                      <div className="flex items-center justify-end gap-2 mb-4">
                           {!isEditing ? (
                             <>
                               <Button
@@ -913,25 +1327,24 @@ export default function ClasseVIIForm() {
                             </>
                           )}
                         </div>
-                        
-                        <Card className="p-4 bg-background rounded-lg border">
-                          {isEditing ? (
-                            <Textarea
-                              value={memoriaEdit}
-                              onChange={(e) => setMemoriaEdit(e.target.value)}
-                              className="min-h-[300px] font-mono text-sm"
-                              placeholder="Digite a memória de cálculo..."
-                            />
-                          ) : (
-                            <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
-                              {memoriaExibida}
-                            </pre>
-                          )}
-                        </Card>
+                      
+                      <Card className="p-4 bg-background rounded-lg border">
+                        {isEditing ? (
+                          <Textarea
+                            value={memoriaEdit}
+                            onChange={(e) => setMemoriaEdit(e.target.value)}
+                            className="min-h-[300px] font-mono text-sm"
+                            placeholder="Digite a memória de cálculo..."
+                          />
+                        ) : (
+                          <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
+                            {memoriaExibida}
+                          </pre>
+                        )}
                       </Card>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>
