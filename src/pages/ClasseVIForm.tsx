@@ -53,6 +53,7 @@ interface FormDataClasseVI {
   fase_atividade?: string; // Global
 }
 
+// MUDANÇA: ClasseVIRegistro agora usa a tabela classe_vi_registros
 interface ClasseVIRegistro {
   id: string;
   organizacao: string; // OM de Destino do Recurso (ND 30/39)
@@ -321,12 +322,11 @@ const ClasseVIForm = () => {
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
-    // Classe VI usa a mesma tabela de registros da Classe II
+    // MUDANÇA: Usar a nova tabela classe_vi_registros
     const { data, error } = await supabase
-      .from("classe_ii_registros")
+      .from("classe_vi_registros")
       .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
       .eq("p_trab_id", ptrabId)
-      .in("categoria", CATEGORIAS) // Filtrar apenas registros de Classe VI
       .order("organizacao", { ascending: true })
       .order("categoria", { ascending: true });
 
@@ -476,7 +476,8 @@ const ClasseVIForm = () => {
 
     const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
 
-    const otherCategoryItems = form.itens.filter(item => item.categoria !== selectedTab);
+    // MUDANÇA: Filtra apenas as categorias que NÃO são Classe VI
+    const otherCategoryItems = form.itens.filter(item => !CATEGORIAS.includes(item.categoria as Categoria));
 
     const newFormItems = [...otherCategoryItems, ...itemsToKeep];
 
@@ -524,7 +525,7 @@ const ClasseVIForm = () => {
     setLoading(true);
     
     const itemsByActiveCategory = form.itens.reduce((acc, item) => {
-        if (item.quantidade > 0) {
+        if (item.quantidade > 0 && CATEGORIAS.includes(item.categoria as Categoria)) {
             if (!acc[item.categoria]) {
                 acc[item.categoria] = [];
             }
@@ -541,7 +542,7 @@ const ClasseVIForm = () => {
         return;
     }
     
-    const registrosParaSalvar: TablesInsert<'classe_ii_registros'>[] = [];
+    const registrosParaSalvar: TablesInsert<'classe_vi_registros'>[] = []; // MUDANÇA: Usar a nova tabela
     
     for (const categoria of categoriesToSave) {
         const itens = itemsByActiveCategory[categoria];
@@ -573,8 +574,7 @@ const ClasseVIForm = () => {
             allocation.nd_39_value
         );
         
-        // Classe VI usa a tabela classe_ii_registros
-        const registro: TablesInsert<'classe_ii_registros'> = {
+        const registro: TablesInsert<'classe_vi_registros'> = { // MUDANÇA: Usar a nova tabela
             p_trab_id: ptrabId,
             organizacao: allocation.om_destino_recurso,
             ug: allocation.ug_destino_recurso,
@@ -592,16 +592,15 @@ const ClasseVIForm = () => {
     }
 
     try {
-      // Deletar APENAS registros de Classe VI existentes para o PTrab
+      // MUDANÇA: Deletar APENAS registros de Classe VI existentes para o PTrab na tabela correta
       const { error: deleteError } = await supabase
-        .from("classe_ii_registros")
+        .from("classe_vi_registros")
         .delete()
-        .eq("p_trab_id", ptrabId)
-        .in("categoria", CATEGORIAS);
+        .eq("p_trab_id", ptrabId);
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
-      // Inserir os novos registros
-      const { error: insertError } = await supabase.from("classe_ii_registros").insert(registrosParaSalvar);
+      // MUDANÇA: Inserir os novos registros na tabela correta
+      const { error: insertError } = await supabase.from("classe_vi_registros").insert(registrosParaSalvar);
       if (insertError) throw insertError;
       
       toast.success(editingId ? "Registros de Classe VI atualizados com sucesso!" : "Registros de Classe VI salvos com sucesso!");
@@ -620,12 +619,11 @@ const ClasseVIForm = () => {
     setLoading(true);
     resetFormFields();
     
-    // 1. Buscar TODOS os registros de CLASSE VI para este PTrab
+    // 1. Buscar TODOS os registros de CLASSE VI para este PTrab (na tabela correta)
     const { data: allRecords, error: fetchAllError } = await supabase
-        .from("classe_ii_registros")
+        .from("classe_vi_registros")
         .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
-        .eq("p_trab_id", ptrabId)
-        .in("categoria", CATEGORIAS);
+        .eq("p_trab_id", ptrabId);
         
     if (fetchAllError) {
         toast.error("Erro ao carregar todos os registros para edição.");
@@ -707,7 +705,7 @@ const ClasseVIForm = () => {
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
     if (consolidatedItems.length > 0) {
-        setSelectedTab(consolidatedItems[0].categoria);
+        setSelectedTab(consolidatedItems[0].categoria as Categoria);
     } else {
         setSelectedTab(CATEGORIAS[0]);
     }
@@ -740,8 +738,9 @@ const ClasseVIForm = () => {
   const handleSalvarMemoriaCustomizada = async (registroId: string) => {
     setLoading(true);
     try {
+      // MUDANÇA: Usar a nova tabela classe_vi_registros
       const { error } = await supabase
-        .from("classe_ii_registros")
+        .from("classe_vi_registros")
         .update({
           detalhamento_customizado: memoriaEdit.trim() || null,
         })
@@ -767,8 +766,9 @@ const ClasseVIForm = () => {
     
     setLoading(true);
     try {
+      // MUDANÇA: Usar a nova tabela classe_vi_registros
       const { error } = await supabase
-        .from("classe_ii_registros")
+        .from("classe_vi_registros")
         .update({
           detalhamento_customizado: null,
         })
@@ -1215,7 +1215,8 @@ const ClasseVIForm = () => {
                                                             size="icon"
                                                             onClick={() => {
                                                                 if (confirm(`Deseja realmente deletar o registro de Classe VI para ${omName} (${registro.categoria})?`)) {
-                                                                    supabase.from("classe_ii_registros")
+                                                                    // MUDANÇA: Deletar da tabela correta
+                                                                    supabase.from("classe_vi_registros")
                                                                         .delete()
                                                                         .eq("id", registro.id)
                                                                         .then(() => {

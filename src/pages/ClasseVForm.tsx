@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Package, Pencil, Trash2, XCircle, Check, ChevronDown, ChevronsUpDown, Sparkles, AlertCircle } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, XCircle, Check, ChevronDown, ChevronsUpDown, Sparkles, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
@@ -21,7 +21,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { defaultClasseVConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -56,6 +55,7 @@ interface FormDataClasseV {
   fase_atividade?: string; // Global
 }
 
+// MUDANÇA: ClasseVRegistro agora usa a tabela classe_v_registros
 interface ClasseVRegistro {
   id: string;
   organizacao: string; // OM de Destino do Recurso (ND 30/39)
@@ -325,12 +325,11 @@ const ClasseVForm = () => {
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
-    // Classe V usa a mesma tabela de registros da Classe II
+    // MUDANÇA: Usar a nova tabela classe_v_registros
     const { data, error } = await supabase
-      .from("classe_ii_registros")
+      .from("classe_v_registros")
       .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
       .eq("p_trab_id", ptrabId)
-      .in("categoria", CATEGORIAS) // Filtrar apenas registros de Classe V
       .order("organizacao", { ascending: true })
       .order("categoria", { ascending: true });
 
@@ -480,7 +479,8 @@ const ClasseVForm = () => {
 
     const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
 
-    const otherCategoryItems = form.itens.filter(item => item.categoria !== selectedTab);
+    // MUDANÇA: Filtra apenas as categorias que NÃO são Classe V
+    const otherCategoryItems = form.itens.filter(item => !CATEGORIAS.includes(item.categoria as Categoria));
 
     const newFormItems = [...otherCategoryItems, ...itemsToKeep];
 
@@ -528,7 +528,7 @@ const ClasseVForm = () => {
     setLoading(true);
     
     const itemsByActiveCategory = form.itens.reduce((acc, item) => {
-        if (item.quantidade > 0) {
+        if (item.quantidade > 0 && CATEGORIAS.includes(item.categoria as Categoria)) {
             if (!acc[item.categoria]) {
                 acc[item.categoria] = [];
             }
@@ -545,7 +545,7 @@ const ClasseVForm = () => {
         return;
     }
     
-    const registrosParaSalvar: TablesInsert<'classe_ii_registros'>[] = [];
+    const registrosParaSalvar: TablesInsert<'classe_v_registros'>[] = []; // MUDANÇA: Usar a nova tabela
     
     for (const categoria of categoriesToSave) {
         const itens = itemsByActiveCategory[categoria];
@@ -577,7 +577,7 @@ const ClasseVForm = () => {
             allocation.nd_39_value
         );
         
-        const registro: TablesInsert<'classe_ii_registros'> = {
+        const registro: TablesInsert<'classe_v_registros'> = { // MUDANÇA: Usar a nova tabela
             p_trab_id: ptrabId,
             organizacao: allocation.om_destino_recurso,
             ug: allocation.ug_destino_recurso,
@@ -595,16 +595,15 @@ const ClasseVForm = () => {
     }
 
     try {
-      // Deletar APENAS registros de Classe V existentes para o PTrab
+      // MUDANÇA: Deletar APENAS registros de Classe V existentes para o PTrab na tabela correta
       const { error: deleteError } = await supabase
-        .from("classe_ii_registros")
+        .from("classe_v_registros")
         .delete()
-        .eq("p_trab_id", ptrabId)
-        .in("categoria", CATEGORIAS);
+        .eq("p_trab_id", ptrabId);
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
-      // Inserir os novos registros
-      const { error: insertError } = await supabase.from("classe_ii_registros").insert(registrosParaSalvar);
+      // MUDANÇA: Inserir os novos registros na tabela correta
+      const { error: insertError } = await supabase.from("classe_v_registros").insert(registrosParaSalvar);
       if (insertError) throw insertError;
       
       toast.success(editingId ? "Registros de Classe V atualizados com sucesso!" : "Registros de Classe V salvos com sucesso!");
@@ -623,12 +622,11 @@ const ClasseVForm = () => {
     setLoading(true);
     resetFormFields();
     
-    // 1. Buscar TODOS os registros de CLASSE V para este PTrab
+    // 1. Buscar TODOS os registros de CLASSE V para este PTrab (na tabela correta)
     const { data: allRecords, error: fetchAllError } = await supabase
-        .from("classe_ii_registros")
+        .from("classe_v_registros")
         .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
-        .eq("p_trab_id", ptrabId)
-        .in("categoria", CATEGORIAS);
+        .eq("p_trab_id", ptrabId);
         
     if (fetchAllError) {
         toast.error("Erro ao carregar todos os registros para edição.");
@@ -710,7 +708,7 @@ const ClasseVForm = () => {
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
     if (consolidatedItems.length > 0) {
-        setSelectedTab(consolidatedItems[0].categoria);
+        setSelectedTab(consolidatedItems[0].categoria as Categoria);
     } else {
         setSelectedTab(CATEGORIAS[0]);
     }
@@ -743,8 +741,9 @@ const ClasseVForm = () => {
   const handleSalvarMemoriaCustomizada = async (registroId: string) => {
     setLoading(true);
     try {
+      // MUDANÇA: Usar a nova tabela classe_v_registros
       const { error } = await supabase
-        .from("classe_ii_registros")
+        .from("classe_v_registros")
         .update({
           detalhamento_customizado: memoriaEdit.trim() || null,
         })
@@ -770,8 +769,9 @@ const ClasseVForm = () => {
     
     setLoading(true);
     try {
+      // MUDANÇA: Usar a nova tabela classe_v_registros
       const { error } = await supabase
-        .from("classe_ii_registros")
+        .from("classe_v_registros")
         .update({
           detalhamento_customizado: null,
         })
@@ -1218,7 +1218,8 @@ const ClasseVForm = () => {
                                                             size="icon"
                                                             onClick={() => {
                                                                 if (confirm(`Deseja realmente deletar o registro de Classe V para ${omName} (${registro.categoria})?`)) {
-                                                                    supabase.from("classe_ii_registros")
+                                                                    // MUDANÇA: Deletar da tabela correta
+                                                                    supabase.from("classe_v_registros")
                                                                         .delete()
                                                                         .eq("id", registro.id)
                                                                         .then(() => {
