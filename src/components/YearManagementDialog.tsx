@@ -195,10 +195,7 @@ export const YearManagementDialog: React.FC<YearManagementDialogProps> = ({
           </div>
         )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancelar
-          </Button>
+        <DialogFooter className="sm:justify-start">
           {selectedAction === 'copy' && (
             <Button 
               onClick={handleCopy} 
@@ -216,6 +213,9 @@ export const YearManagementDialog: React.FC<YearManagementDialogProps> = ({
               {loading ? "Excluindo..." : "Excluir Diretriz"}
             </Button>
           )}
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+            Cancelar
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
