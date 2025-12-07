@@ -83,12 +83,15 @@ export const formatInputWithThousands = (value: string | undefined | null): stri
  * @param value String contendo apenas dígitos.
  * @returns String formatada com vírgula e ponto de milhar.
  */
-export const formatCurrencyInput = (value: string): { formatted: string, numericValue: number } => {
+export const formatCurrencyInput = (value: string | undefined | null): { formatted: string, numericValue: number, digits: string } => {
+  // FIX: Ensure value is treated as a string, defaulting to empty string if null or undefined
+  const stringValue = String(value || '');
+  
   // 1. Remove tudo que não for dígito
-  const digits = value.replace(/\D/g, '');
+  const digits = stringValue.replace(/\D/g, '');
 
   if (digits.length === 0) {
-    return { formatted: "", numericValue: 0 };
+    return { formatted: "", numericValue: 0, digits: "" };
   }
 
   // 2. Trata como centavos (ex: "12345" -> 123.45)
@@ -100,7 +103,7 @@ export const formatCurrencyInput = (value: string): { formatted: string, numeric
     maximumFractionDigits: 2,
   }).format(numericValue);
 
-  return { formatted, numericValue };
+  return { formatted, numericValue, digits };
 };
 
 
