@@ -1278,7 +1278,7 @@ export default function ClasseIIIForm() {
                                 <TableHead className="w-[8%] text-center">Qtd Dias</TableHead>
                                 <TableHead className="w-[18%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
                                 {cat.key === 'MOTOMECANIZACAO' && (
-                                  <TableHead className="w-[8%] text-center">Desloc/Dia</TableHead>
+                                  <TableHead className="w-[10%] text-center">Desloc/Dia</TableHead>
                                 )}
                                 <TableHead className="w-[10%] text-center">Lub/Comb</TableHead>
                                 <TableHead className="w-[10%] text-right">Litros</TableHead> {/* NOVA COLUNA */}
@@ -1297,7 +1297,42 @@ export default function ClasseIIIForm() {
                                   const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
                                   const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
                                   
-                                  const { totalLitros, itemTotal } = calculateItemTotals(item, refLPC, form.dias_operacao);
+                                  // --- Calculation Logic (Uses localCategoryItems) ---
+                                  const diasUtilizados = item.dias_utilizados || 0;
+                                  let litrosSemMargemItem = 0;
+                                  
+                                  if (diasUtilizados > 0) {
+                                    if (isMotomecanizacao) {
+                                      if (item.consumo_fixo > 0) {
+                                        litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
+                                      }
+                                    } else {
+                                      litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
+                                    }
+                                  }
+                                  
+                                  const totalLitros = litrosSemMargemItem * 1.3;
+                                  const precoLitro = item.tipo_combustivel_fixo === 'GASOLINA' 
+                                    ? (refLPC?.preco_gasolina ?? 0) 
+                                    : (refLPC?.preco_diesel ?? 0);
+                                  const valorCombustivel = totalLitros * precoLitro;
+                                  
+                                  let valorLubrificante = 0;
+                                  if (isLubricantType && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0 && diasUtilizados > 0) {
+                                    const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
+                                    let litrosItem = 0;
+                                    
+                                    if (item.categoria === 'GERADOR') {
+                                      litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
+                                    } else if (item.categoria === 'EMBARCACAO') {
+                                      litrosItem = totalHoras * item.consumo_lubrificante_litro;
+                                    }
+                                    
+                                    valorLubrificante = litrosItem * item.preco_lubrificante;
+                                  }
+                                  
+                                  const itemTotal = valorCombustivel + valorLubrificante;
+                                  // --- End Calculation Logic ---
                                   
                                   const formattedPriceInput = formatCurrencyInput(item.preco_lubrificante_input).formatted;
                                   
@@ -1356,7 +1391,7 @@ export default function ClasseIIIForm() {
                                       </TableCell>
                                       {/* COLUMN 5: Desloc/Dia (Only for Motomecanizacao) */}
                                       {isMotomecanizacao && (
-                                        <TableCell className="py-1 w-[8%]">
+                                        <TableCell className="py-1 w-[10%]">
                                           <Input 
                                             type="text"
                                             inputMode="numeric"
@@ -1431,8 +1466,6 @@ export default function ClasseIIIForm() {
                             </TableBody>
                           </Table>
                         </div>
-                        
-                        {/* NOVO DETALHAMENTO DE TOTAIS */}
                         <div className="space-y-2 p-3 bg-background rounded-lg border">
                           <h4 className="font-bold text-sm mb-2">Resumo de Combustível (30% Margem)</h4>
                           <div className="flex justify-between text-sm">
