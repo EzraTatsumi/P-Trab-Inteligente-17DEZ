@@ -64,8 +64,7 @@ export const formatInputWithThousands = (value: string): string => {
     const [integerPart, decimalPart] = cleaned.split(',');
     const cleanInteger = integerPart.replace(/\./g, '');
     
-    // Limita a parte decimal a 2 dígitos (para preço) ou 4 (para consumo, se necessário)
-    // Vamos deixar a limitação de dígitos para o componente que chama, mas aqui limitamos a 4 para segurança.
+    // Limita a parte decimal a 4 dígitos (para consumo)
     const limitedDecimal = decimalPart.substring(0, 4); 
     
     return `${cleanInteger}${limitedDecimal ? `,${limitedDecimal}` : ''}`;
@@ -74,6 +73,33 @@ export const formatInputWithThousands = (value: string): string => {
   // Se não houver vírgula, remove todos os pontos
   return cleaned.replace(/\./g, '');
 };
+
+/**
+ * Formata uma string de dígitos para o formato monetário brasileiro (preenchimento da direita).
+ * Ex: "1" -> "0,01", "12" -> "0,12", "123" -> "1,23"
+ * @param value String contendo apenas dígitos.
+ * @returns String formatada com vírgula e ponto de milhar.
+ */
+export const formatCurrencyInput = (value: string): { formatted: string, numericValue: number } => {
+  // 1. Remove tudo que não for dígito
+  const digits = value.replace(/\D/g, '');
+
+  if (digits.length === 0) {
+    return { formatted: "", numericValue: 0 };
+  }
+
+  // 2. Trata como centavos (ex: "12345" -> 123.45)
+  const numericValue = parseInt(digits) / 100;
+
+  // 3. Formata para exibição (R$ 123.456,78)
+  const formatted = new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(numericValue);
+
+  return { formatted, numericValue };
+};
+
 
 /**
  * Calculates the start (Monday) and end (Friday) dates of the previous week.

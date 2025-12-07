@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getEquipamentosPorTipo, TipoEquipamentoDetalhado } from "@/data/classeIIIData";
 import { RefLPC } from "@/types/refLPC";
 import RefLPCFormSection from "@/components/RefLPCFormSection";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput } from "@/lib/formatUtils";
 import { TablesInsert } from "@/integrations/supabase/types";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
@@ -56,6 +56,9 @@ interface ItemClasseIII {
   // Lubricant fields (only for GERADOR, EMBARCACAO)
   consumo_lubrificante_litro: number; // L/100h or L/h
   preco_lubrificante: number; // R$/L
+  
+  // NEW: Internal state for masked input (string of digits)
+  preco_lubrificante_input: string;
 }
 
 interface FormDataClasseIII {
@@ -287,6 +290,11 @@ export default function ClasseIIIForm() {
                 const directiveItem = allDiretrizItems[baseCategory]?.find(d => d.nome === item.tipo_equipamento_especifico);
                 
                 if (directiveItem) {
+                    const precoLubrificante = item.preco_lubrificante || 0;
+                    const precoLubrificanteInput = precoLubrificante > 0 
+                        ? String(Math.round(precoLubrificante * 100)) // Converte para centavos em string
+                        : "";
+                        
                     const newItem: ItemClasseIII = {
                         item: item.tipo_equipamento_especifico,
                         categoria: baseCategory,
@@ -300,7 +308,8 @@ export default function ClasseIIIForm() {
                         quantidade_deslocamentos: item.quantidade_deslocamentos || 0,
                         
                         consumo_lubrificante_litro: item.consumo_lubrificante_litro || 0,
-                        preco_lubrificante: item.preco_lubrificante || 0,
+                        preco_lubrificante: precoLubrificante,
+                        preco_lubrificante_input: precoLubrificanteInput, // NEW
                     };
                     consolidatedItems.push(newItem);
                 }
@@ -421,6 +430,7 @@ export default function ClasseIIIForm() {
             quantidade_deslocamentos: 0,
             consumo_lubrificante_litro: 0,
             preco_lubrificante: 0,
+            preco_lubrificante_input: "", // NEW
         };
     });
     
@@ -448,18 +458,37 @@ export default function ClasseIIIForm() {
         return;
     }
     
-    // Para campos decimais (horas_dia, distancia_percorrida, consumo_lubrificante_litro, preco_lubrificante)
+    // Se for o campo de preço de lubrificante, usa a lógica de preenchimento da direita
+    if (field === 'preco_lubrificante_input') {
+        const digits = inputString.replace(/\D/g, '');
+        const { formatted, numericValue } = formatCurrencyInput(digits);
+        
+        // Atualiza o input string e o valor numérico real
+        const updatedItems = [...currentCategoryItems];
+        updatedItems[itemIndex] = { 
+            ...updatedItems[itemIndex], 
+            preco_lubrificante_input: digits, // Salva apenas os dígitos
+            preco_lubrificante: numericValue, // Salva o valor numérico
+        };
+        
+        const itemsFromOtherCategories = form.itens.filter(item => item.categoria !== selectedTab);
+        const newFormItems = [...itemsFromOtherCategories, ...updatedItems];
+        setForm(prev => ({ ...prev, itens: newFormItems }));
+        return;
+    }
+    
+    // Para outros campos decimais (horas_dia, distancia_percorrida, consumo_lubrificante_litro)
     const numericValue = parseInputToNumber(cleanedValue);
     handleItemFieldChange(itemIndex, field, numericValue);
   };
   
   const handleItemNumericBlur = (itemIndex: number, field: keyof ItemClasseIII, inputString: string) => {
-    // Apenas formata para 2 casas decimais se for um campo de preço/consumo lubrificante
-    if (field === 'consumo_lubrificante_litro' || field === 'preco_lubrificante') {
+    // Apenas formata para 2 casas decimais se for um campo de consumo lubrificante
+    if (field === 'consumo_lubrificante_litro') {
         const numericValue = parseInputToNumber(inputString);
         handleItemFieldChange(itemIndex, field, numericValue);
     }
-    // Para outros campos, a lógica de formatação é mais simples (apenas parsear)
+    // O campo preco_lubrificante_input não precisa de blur, pois é formatado no change
   };
   
   const handleUpdateCategoryItems = () => {
@@ -1095,7 +1124,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                         <TableHead className="w-[10%] text-center">Qtd</TableHead>
                                         <TableHead className="w-[20%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
                                         <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'Desloc' : 'Consumo'}</TableHead>
-                                        <TableHead className="w-[10%] text-center">{cat.key === 'GERADOR' || cat.key === 'EMBARCACAO' ? 'Lubrificante' : 'Combustível'}</TableHead>
+                                        <TableHead className="w-[15%] text-center">{cat.key === 'GERADOR' || cat.key === 'EMBARCACAO' ? 'Lubrificante' : 'Combustível'}</TableHead>
                                         <TableHead className="w-[10%] text-right">Custo Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -1137,6 +1166,9 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                             }
                                             
                                             const itemTotal = valorCombustivel + valorLubrificante;
+                                            
+                                            // Determine the displayed value for the price input
+                                            const formattedPriceInput = formatCurrencyInput(item.preco_lubrificante_input).formatted;
                                             
                                             return (
                                                 <TableRow key={item.item} className="h-12">
@@ -1213,11 +1245,12 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                                         <Label>Preço (R$/L)</Label>
                                                                         <Input
                                                                             type="text"
-                                                                            inputMode="decimal"
-                                                                            value={item.preco_lubrificante === 0 ? "" : formatNumberForInput(item.preco_lubrificante, 2)}
-                                                                            onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante', e.target.value)}
-                                                                            onBlur={(e) => handleItemNumericBlur(index, 'preco_lubrificante', e.target.value)}
+                                                                            inputMode="numeric"
+                                                                            value={formattedPriceInput}
+                                                                            onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante_input', e.target.value)}
                                                                             placeholder="0,00"
+                                                                            // Adiciona onFocus para mover o cursor para o final
+                                                                            onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
                                                                         />
                                                                     </div>
                                                                 </PopoverContent>
