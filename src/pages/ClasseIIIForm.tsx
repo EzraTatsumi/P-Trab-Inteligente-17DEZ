@@ -1511,15 +1511,7 @@ export default function ClasseIIIForm() {
                                   {/* Detalhe Combustível */}
                                   <div className="flex justify-between">
                                     <span className="w-full">
-                                      Combustível ({item.tipo_combustivel_fixo}): {formulaLitros} = {formatNumber(litrosSemMargemItem)} L + 30% = {formatNumber(totalLitros)} L
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="w-1/2">
-                                      Custo Combustível:
-                                    </span>
-                                    <span className="w-1/2 text-right font-medium text-foreground">
-                                      {formatNumber(totalLitros)} L x {formatCurrency(precoLitro)} = {formatCurrency(valorCombustivel)}
+                                      Combustível ({item.tipo_combustivel_fixo}): {formulaLitros} = {formatNumber(litrosSemMargemItem)} L + 30% = {formatNumber(totalLitros)} L. Custo: {formatNumber(totalLitros)} L x {formatCurrency(precoLitro)} = {formatCurrency(valorCombustivel)}
                                     </span>
                                   </div>
                                   
