@@ -1486,7 +1486,7 @@ export default function ClasseIIIForm() {
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
-                          <h4 className="font-bold text-base text-primary">{categoria} ({totalQuantidade} itens)</h4>
+                          <h4 className="font-bold text-base text-primary}>{categoria} ({totalQuantidade} itens)</h4>
                           <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
                         </div>
                         
@@ -1508,19 +1508,12 @@ export default function ClasseIIIForm() {
                                 </div>
                                 
                                 <div className="text-xs text-muted-foreground mt-1 space-y-1">
-                                  {/* Detalhe Combustível - Volume */}
+                                  {/* Detalhe Combustível - Volume e Custo */}
                                   <div className="flex justify-between">
-                                    <span className="w-full">
+                                    <span className="w-2/3">
                                       Combustível ({item.tipo_combustivel_fixo}): {formulaLitros} = {formatNumber(litrosSemMargemItem)} L + 30% = {formatNumber(totalLitros)} L
                                     </span>
-                                  </div>
-                                  
-                                  {/* Detalhe Combustível - Custo (Alinhado à direita) */}
-                                  <div className="flex justify-between">
-                                    <span className="w-1/2">
-                                      Custo Combustível:
-                                    </span>
-                                    <span className="w-1/2 text-right font-medium text-foreground">
+                                    <span className="w-1/3 text-right font-medium text-foreground">
                                       {formatNumber(totalLitros)} L x {formatCurrency(precoLitro)} = {formatCurrency(valorCombustivel)}
                                     </span>
                                   </div>
