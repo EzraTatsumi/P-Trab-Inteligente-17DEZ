@@ -1496,7 +1496,7 @@ export default function ClasseIIIForm() {
                             const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
                             
                             return (
-                              <div key={index} className="p-2 bg-background rounded-lg border border-border/50">
+                              <div key={index} className="p-2">
                                 <div className="flex justify-between items-center">
                                   <span className="font-medium text-sm text-foreground">
                                     {item.item} ({item.quantidade} un. x {diasUtilizados} dias)
