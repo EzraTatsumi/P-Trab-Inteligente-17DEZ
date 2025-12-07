@@ -1567,12 +1567,12 @@ const getMemoriaRecords = granularRegistros;
                                 <TableHead className="w-[30%]">Equipamento</TableHead>
                                 <TableHead className="w-[8%] text-center">Qtd</TableHead>
                                 <TableHead className="w-[8%] text-center">Qtd Dias</TableHead>
-                                <TableHead className="w-[18%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
+                                <TableHead className="w-[18%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'Km/Desloc' : 'Horas/Dia'}</TableHead>
                                 {cat.key === 'MOTOMECANIZACAO' && (
                                   <TableHead className="w-[10%] text-center">Desloc/Dia</TableHead>
                                 )}
                                 {shouldShowLubricantColumn && (
-                                  <TableHead className="w-[10%] text-center">{lubricantColumnTitle}</TableHead>
+                                  <TableHead className="w-[10%] text-center">Lubrificante</TableHead>
                                 )}
                                 <TableHead className="w-[10%] text-right">Litros</TableHead>
                                 <TableHead className="w-[8%] text-right">Custo Total</TableHead>
@@ -1663,7 +1663,7 @@ const getMemoriaRecords = granularRegistros;
                                           />
                                         </TableCell>
                                       )}
-                                      {/* COLUMN 6: Lub/Comb (Conditional) */}
+                                      {/* COLUMN 6: Lubrificante (Conditional) */}
                                       {shouldShowLubricantColumn && (
                                         <TableCell className="py-1 w-[10%]">
                                           {isLubricantType ? (
