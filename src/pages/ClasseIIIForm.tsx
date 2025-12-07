@@ -664,7 +664,7 @@ export default function ClasseIIIForm() {
             // Se não existir, cria um novo item com valores padrão
             return {
                 item: directiveItem.nome,
-                categoria: directiveItem.categoria as TipoEquipamento,
+                categoria: directiveItem.categoria,
                 consumo_fixo: directiveItem.consumo,
                 tipo_combustivel_fixo: directiveItem.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL',
                 unidade_fixa: directiveItem.unidade,
@@ -1317,21 +1317,22 @@ export default function ClasseIIIForm() {
                           <Table className="w-full">
                             <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                               <TableRow>
-                                <TableHead className="w-[35%]">Equipamento</TableHead>
-                                <TableHead className="w-[10%] text-center">Qtd</TableHead>
-                                <TableHead className="w-[10%] text-center">Qtd Dias</TableHead>
-                                <TableHead className="w-[20%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
+                                <TableHead className="w-[25%]">Equipamento</TableHead>
+                                <TableHead className="w-[8%] text-center">Qtd</TableHead>
+                                <TableHead className="w-[8%] text-center">Qtd Dias</TableHead>
+                                <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
                                 {cat.key === 'MOTOMECANIZACAO' && (
-                                  <TableHead className="w-[10%] text-center">Desloc/Dia</TableHead>
+                                  <TableHead className="w-[8%] text-center">Desloc/Dia</TableHead>
                                 )}
+                                <TableHead className="w-[10%] text-center">Lubrificante</TableHead> {/* NOVO HEADER */}
                                 <TableHead className="w-[10%] text-right">Litros</TableHead>
-                                <TableHead className="w-[15%] text-right">Custo Total</TableHead>
+                                <TableHead className="w-[16%] text-right">Custo Total</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {localCategoryItems.length === 0 ? (
                                 <TableRow>
-                                  <TableCell colSpan={cat.key === 'MOTOMECANIZACAO' ? 7 : 6} className="text-center text-muted-foreground">
+                                  <TableCell colSpan={cat.key === 'MOTOMECANIZACAO' ? 8 : 7} className="text-center text-muted-foreground">
                                     Nenhum item de diretriz encontrado para esta categoria.
                                   </TableCell>
                                 </TableRow>
@@ -1345,7 +1346,7 @@ export default function ClasseIIIForm() {
                                   
                                   return (
                                     <TableRow key={item.item} className="h-12">
-                                      <TableCell className="font-medium text-sm py-1 w-[35%]">
+                                      <TableCell className="font-medium text-sm py-1 w-[25%]">
                                         <div className="flex flex-col gap-1">
                                           <span className="font-medium text-sm">{item.item}</span>
                                           <Badge 
@@ -1354,23 +1355,9 @@ export default function ClasseIIIForm() {
                                           >
                                             {item.tipo_combustivel_fixo} ({formatNumber(item.consumo_fixo, 1)} {item.unidade_fixa})
                                           </Badge>
-                                          
-                                          {/* NOVO: Botão de Configuração de Lubrificante */}
-                                          {isLubricantType && (
-                                            <Button 
-                                              variant="outline" 
-                                              size="sm" 
-                                              className={cn("h-6 w-fit text-xs mt-1", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
-                                              disabled={item.quantidade === 0 || diasUtilizados === 0}
-                                              onClick={() => handleOpenLubricantConfig(item, index)}
-                                            >
-                                              <Droplet className="h-3 w-3 mr-1" />
-                                              {item.consumo_lubrificante_litro > 0 ? 'Lubrificante Configurado' : 'Configurar Lubrificante'}
-                                            </Button>
-                                          )}
                                         </div>
                                       </TableCell>
-                                      <TableCell className="py-1 w-[10%]">
+                                      <TableCell className="py-1 w-[8%]">
                                         <Input 
                                           type="text"
                                           inputMode="numeric"
@@ -1382,7 +1369,7 @@ export default function ClasseIIIForm() {
                                         />
                                       </TableCell>
                                       {/* NEW COLUMN: Qtd Dias */}
-                                      <TableCell className="py-1 w-[10%]">
+                                      <TableCell className="py-1 w-[8%]">
                                         <Input 
                                           type="text"
                                           inputMode="numeric"
@@ -1395,7 +1382,7 @@ export default function ClasseIIIForm() {
                                         />
                                       </TableCell>
                                       {/* COLUMN 4: Horas/Dia or KM/Desloc */}
-                                      <TableCell className="py-1 w-[20%]">
+                                      <TableCell className="py-1 w-[15%]">
                                         <Input 
                                           type="text"
                                           inputMode="decimal"
@@ -1412,7 +1399,7 @@ export default function ClasseIIIForm() {
                                       </TableCell>
                                       {/* COLUMN 5: Desloc/Dia (Only for Motomecanizacao) */}
                                       {isMotomecanizacao && (
-                                        <TableCell className="py-1 w-[10%]">
+                                        <TableCell className="py-1 w-[8%]">
                                           <Input 
                                             type="text"
                                             inputMode="numeric"
@@ -1425,12 +1412,28 @@ export default function ClasseIIIForm() {
                                           />
                                         </TableCell>
                                       )}
-                                      {/* NOVA COLUNA: Litros */}
+                                      
+                                      {/* NOVO: Coluna de Configuração de Lubrificante */}
+                                      <TableCell className="py-1 w-[10%] text-center">
+                                        {isLubricantType && (
+                                            <Button 
+                                              variant="outline" 
+                                              size="sm" 
+                                              className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
+                                              disabled={item.quantidade === 0 || diasUtilizados === 0}
+                                              onClick={() => handleOpenLubricantConfig(item, index)}
+                                            >
+                                              <Droplet className="h-3 w-3" />
+                                            </Button>
+                                        )}
+                                      </TableCell>
+                                      
+                                      {/* COLUNA Litros */}
                                       <TableCell className="text-right text-sm py-1 w-[10%]">
                                         {totalLitros > 0 ? `${formatNumber(totalLitros)} L` : '-'}
                                       </TableCell>
-                                      {/* COLUMN 7: Custo Total */}
-                                      <TableCell className="text-right font-semibold text-sm py-1 w-[15%]">
+                                      {/* COLUMN Custo Total */}
+                                      <TableCell className="text-right font-semibold text-sm py-1 w-[16%]">
                                         {formatCurrency(itemTotal)}
                                       </TableCell>
                                     </TableRow>
