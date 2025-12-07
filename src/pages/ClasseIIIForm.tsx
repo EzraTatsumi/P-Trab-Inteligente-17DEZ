@@ -161,6 +161,7 @@ const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOpe
     itemTotal,
     formulaLitros,
     precoLitro,
+    litrosSemMargemItem, // Adicionado para detalhamento na UI
   };
 };
 
@@ -661,7 +662,7 @@ export default function ClasseIIIForm() {
           formulaDetalhe = `(${item.quantidade} ${item.item} x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${diasUtilizados} dias) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
         } else {
           litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
-          formulaDetalhe = `(${item.quantidade} ${item.item} x ${formatNumber(item.horas_dia, 1)} horas/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} dias`;
+          formulaDetalhe = `(${item.quantidade} ${item.item} x ${formatNumber(item.horas_dia, 1)} h/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} dias`;
         }
         
         totalLitrosSemMargem += litrosSemMargemItem;
@@ -1491,7 +1492,7 @@ export default function ClasseIIIForm() {
                         
                         <div className="space-y-2">
                           {itens.map((item, index) => {
-                            const { itemTotal, totalLitros, valorCombustivel, valorLubrificante, formulaLitros, precoLitro } = calculateItemTotals(item, refLPC, form.dias_operacao);
+                            const { itemTotal, totalLitros, valorCombustivel, valorLubrificante, formulaLitros, precoLitro, litrosSemMargemItem } = calculateItemTotals(item, refLPC, form.dias_operacao);
                             const diasUtilizados = item.dias_utilizados || 0;
                             const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
                             
@@ -1510,7 +1511,7 @@ export default function ClasseIIIForm() {
                                   {/* Detalhe Combustível */}
                                   <div className="flex justify-between">
                                     <span className="w-full">
-                                      Combustível ({item.tipo_combustivel_fixo}): {formulaLitros} = {formatNumber(totalLitros)} L
+                                      Combustível ({item.tipo_combustivel_fixo}): {formulaLitros} = {formatNumber(litrosSemMargemItem)} L + 30% = {formatNumber(totalLitros)} L
                                     </span>
                                   </div>
                                   <div className="flex justify-between">
