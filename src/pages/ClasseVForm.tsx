@@ -1189,7 +1189,7 @@ const ClasseVForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1299,15 +1299,17 @@ const ClasseVForm = () => {
                       
                       {/* Container para H4 e Botões */}
                       <div className="flex items-start justify-between gap-4 mb-4">
-                          <h4 className="text-lg font-semibold text-foreground flex-1 min-w-0">
-                            OM Destino: {om} ({ug})
-                          </h4>
-                          
-                          <div className="flex items-center justify-end gap-2 shrink-0">
-                              {/* Badge da Categoria movido para o lado direito */}
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <h4 className="text-base font-semibold text-foreground">
+                                OM Destino: {om} ({ug})
+                              </h4>
+                              {/* Badge da Categoria movido para o lado esquerdo, junto ao h4 */}
                               <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
                                   {badgeStyle.label}
                               </Badge>
+                          </div>
+                          
+                          <div className="flex items-center justify-end gap-2 shrink-0">
                               
                               {!isEditing ? (
                                 <>
