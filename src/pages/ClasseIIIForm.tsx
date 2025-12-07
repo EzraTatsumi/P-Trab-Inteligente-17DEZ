@@ -369,7 +369,7 @@ export default function ClasseIIIForm() {
       if (!nome || !ug) return undefined;
       const { data } = await supabase
         .from('organizacoes_militares')
-        .select('id, rm_vinculacao, codug_om')
+        .select('id, rm_vinculacao, codug_rm_vinculacao')
         .eq('nome_om', nome)
         .eq('codug_om', ug)
         .maybeSingle();
@@ -1110,6 +1110,61 @@ export default function ClasseIIIForm() {
     ]).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
   }, [registrosAgrupadosPorOM]);
   
+  // NOVO EFEITO: Garante que localCategoryItems seja populado ao trocar de aba ou ao carregar diretrizes/OM
+  useEffect(() => {
+    const currentDirectiveItems = allDiretrizItems[selectedTab] || [];
+    const omName = form.organizacao;
+    const ug = form.ug;
+    const omId = form.selectedOmId;
+
+    // 1. Mapear itens existentes no formulário principal para a categoria atual
+    const existingItemsMap = new Map<string, ItemClasseIII>();
+    form.itens.filter(i => i.categoria === selectedTab).forEach(item => {
+        existingItemsMap.set(item.item, item);
+    });
+
+    // 2. Mesclar: usar o item existente (com quantidades) ou o item de diretriz (com quantidades 0)
+    const mergedItems = currentDirectiveItems.map(directiveItem => {
+        const existing = existingItemsMap.get(directiveItem.nome);
+        
+        if (existing) {
+            // Se o item existe, garante que os campos de OM de destino de lubrificante estejam preenchidos
+            // (se for um tipo de lubrificante)
+            const isLubricantType = directiveItem.categoria === 'GERADOR' || directiveItem.categoria === 'EMBARCACAO';
+            if (isLubricantType && !existing.om_destino_lub) {
+                // Se o item existe mas perdeu o destino (erro de estado), tenta usar a OM Detentora como fallback
+                existing.om_destino_lub = omName;
+                existing.ug_destino_lub = ug;
+                existing.selectedOmDestinoId_lub = omId;
+            }
+            return existing;
+        }
+        
+        // Se o item não existe no form.itens, cria um novo com valores padrão (0)
+        return {
+            item: directiveItem.nome,
+            categoria: directiveItem.categoria,
+            consumo_fixo: directiveItem.consumo,
+            tipo_combustivel_fixo: directiveItem.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL',
+            unidade_fixa: directiveItem.unidade,
+            quantidade: 0,
+            horas_dia: 0,
+            distancia_percorrida: 0,
+            quantidade_deslocamentos: 0,
+            dias_utilizados: 0,
+            consumo_lubrificante_litro: 0,
+            preco_lubrificante: 0,
+            preco_lubrificante_input: "",
+            consumo_lubrificante_input: "",
+            om_destino_lub: omName, // Default to OM Detentora
+            ug_destino_lub: ug,
+            selectedOmDestinoId_lub: omId,
+        };
+    });
+
+    setLocalCategoryItems(mergedItems);
+  }, [selectedTab, allDiretrizItems, form.itens, form.organizacao, form.ug, form.selectedOmId]);
+  
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -1396,6 +1451,7 @@ export default function ClasseIIIForm() {
                                             <PopoverContent className="w-96 p-4 space-y-3">
                                               <h4 className="font-semibold text-sm">Configurar Lubrificante - {item.item}</h4>
                                               
+                                              {/* NOVO: OM Destino Recurso Lubrificante */}
                                               <div className="space-y-2">
                                                 <Label>OM Destino Recurso (ND 30) *</Label>
                                                 <OmSelector 
