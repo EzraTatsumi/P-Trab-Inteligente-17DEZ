@@ -27,6 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getClasseIIICategoryBadgeStyle, getClasseIIICategoryLabel } from "@/lib/classeIIIBadgeUtils";
 
 type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
 type CombustivelTipo = 'GASOLINA' | 'DIESEL';
@@ -242,7 +243,7 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
 
     if (suprimento_tipo === 'LUBRIFICANTE') {
         // MEMÓRIA LUBRIFICANTE (GRANULAR)
-        return `33.90.30 - Aquisição de Lubrificante para ${categoria} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}.
+        return `33.90.30 - Aquisição de Lubrificante para ${getClasseIIICategoryLabel(categoria)} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}.
 OM Destino Recurso: ${om_destino} (UG: ${ug_destino})
 
 Cálculo:
@@ -271,7 +272,7 @@ Valor Total: ${formatCurrency(valor_total)}.`;
             detalhes.push(`- ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
         });
         
-        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${categoria} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}, para ${om_destino}.
+        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${getClasseIIICategoryLabel(categoria)} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}, para ${om_destino}.
 
 Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
 
@@ -1933,11 +1934,12 @@ const getMemoriaRecords = granularRegistros;
                                 {CATEGORIAS.map(cat => {
                                   const totais = suprimentoGroup.categoria_totais[cat.key];
                                   if (totais.valor > 0) {
+                                    const categoryBadgeStyle = getClasseIIICategoryBadgeStyle(cat.key);
                                     return (
                                       <div key={cat.key} className="flex justify-between text-xs">
                                         <span className="text-muted-foreground flex items-center gap-1">
                                           <cat.icon className="h-3 w-3" />
-                                          {cat.label}: {formatNumber(totais.litros, 2)} L
+                                          {categoryBadgeStyle.label}: {formatNumber(totais.litros, 2)} L
                                         </span>
                                         <span className="font-medium text-foreground text-right">
                                           {formatCurrency(totais.valor)}
@@ -1988,8 +1990,8 @@ const getMemoriaRecords = granularRegistros;
                   const suprimento = getSuprimentoLabel(item);
                   const badgeClass = getSuprimentoBadgeClass(item);
                   
-                  // Encontrar o label da categoria do material
-                  const categoriaMaterialLabel = CATEGORIAS.find(c => c.key === item.categoria)?.label || item.categoria;
+                  // Encontrar o label e estilo da categoria do material usando o novo utilitário
+                  const categoryBadgeStyle = getClasseIIICategoryBadgeStyle(item.categoria);
                   
                   return (
                     <div key={`memoria-view-${item.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
@@ -2000,9 +2002,9 @@ const getMemoriaRecords = granularRegistros;
                           <h4 className="text-base font-semibold text-foreground">
                             OM Destino: {om} ({ug})
                           </h4>
-                          {/* NOVO BADGE: Categoria do Material */}
-                          <Badge variant="secondary" className="w-fit shrink-0 text-xs font-medium">
-                            {categoriaMaterialLabel}
+                          {/* NOVO BADGE: Categoria do Material (com cor específica) */}
+                          <Badge variant="default" className={cn("w-fit shrink-0", categoryBadgeStyle.className)}>
+                            {categoryBadgeStyle.label}
                           </Badge>
                           {/* BADGE EXISTENTE: Tipo de Suprimento */}
                           <Badge variant="default" className={cn("w-fit shrink-0", badgeClass)}>
