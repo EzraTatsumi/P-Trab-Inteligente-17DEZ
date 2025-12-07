@@ -1426,7 +1426,8 @@ export default function ClasseIIIForm() {
                                               disabled={!isUsageFilled}
                                               onClick={() => handleOpenLubricantConfig(item, index)}
                                             >
-                                              <Droplet className="h-3 w-3" />
+                                              <Droplet className="h-3 w-3 mr-1" />
+                                              {isLubricantConfigured ? 'Configurado' : 'Configurar'}
                                             </Button>
                                         ) : (
                                             <span className="text-muted-foreground text-xs">-</span>
