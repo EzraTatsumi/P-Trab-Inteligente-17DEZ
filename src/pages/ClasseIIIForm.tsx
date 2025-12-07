@@ -1605,18 +1605,18 @@ export default function ClasseIIIForm() {
                           return (
                             <Card key={registro.id} className="p-3 bg-background border">
                               <div className="flex items-center justify-between">
-                                <div className="flex flex-col">
+                                <div className="flex flex-col md:flex-row md:items-center gap-2">
                                   <h4 className="font-semibold text-base text-foreground">
                                     {getTipoLabel(registro.tipo_equipamento)}
                                   </h4>
+                                  <Badge variant="default" className={cn("w-fit", badgeClass)}>
+                                    {suprimento}
+                                  </Badge>
                                   <p className="text-xs text-muted-foreground">
                                     Dias: {registro.dias_operacao} | Fases: {formatFasesParaTexto(registro.fase_atividade)}
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Badge variant="default" className={badgeClass}>
-                                    {suprimento}
-                                  </Badge>
                                   <span className="font-bold text-lg text-primary/80">
                                     {formatCurrency(registro.valor_total)}
                                   </span>
