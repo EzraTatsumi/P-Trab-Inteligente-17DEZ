@@ -12,7 +12,7 @@ export const getClasseIIICategoryLabel = (categoria: TipoEquipamento): string =>
         case 'EMBARCACAO':
             return 'Embarcação';
         case 'EQUIPAMENTO_ENGENHARIA':
-            return 'Equipamento de Engenharia';
+            return 'Equipamento de engenharia'; // Ajustado para 'Equipamento de engenharia'
         case 'MOTOMECANIZACAO':
             return 'Motomecanização';
         default:
