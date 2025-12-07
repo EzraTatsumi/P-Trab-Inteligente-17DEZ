@@ -1010,7 +1010,7 @@ export default function ClasseIIIForm() {
   };
 
   const isFormValid = form.organizacao && form.ug && rmFornecimento && codugRmFornecimento && form.dias_operacao > 0;
-  const displayFases = [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
+  const displayFases = [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join('; ');
   
   const totalCustoCombustivel = consolidadosCombustivel.reduce((sum, c) => sum + c.valor_total, 0);
   const totalCustoLubrificante = consolidadoLubrificante?.valor_total || 0;
@@ -1508,10 +1508,20 @@ export default function ClasseIIIForm() {
                                 </div>
                                 
                                 <div className="text-xs text-muted-foreground mt-1 space-y-1">
-                                  {/* Detalhe Combustível */}
+                                  {/* Detalhe Combustível - Volume */}
                                   <div className="flex justify-between">
                                     <span className="w-full">
-                                      Combustível ({item.tipo_combustivel_fixo}): {formulaLitros} = {formatNumber(litrosSemMargemItem)} L + 30% = {formatNumber(totalLitros)} L. Custo: {formatNumber(totalLitros)} L x {formatCurrency(precoLitro)} = {formatCurrency(valorCombustivel)}
+                                      Combustível ({item.tipo_combustivel_fixo}): {formulaLitros} = {formatNumber(litrosSemMargemItem)} L + 30% = {formatNumber(totalLitros)} L
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Detalhe Combustível - Custo (Alinhado à direita) */}
+                                  <div className="flex justify-between">
+                                    <span className="w-1/2">
+                                      Custo Combustível:
+                                    </span>
+                                    <span className="w-1/2 text-right font-medium text-foreground">
+                                      {formatNumber(totalLitros)} L x {formatCurrency(precoLitro)} = {formatCurrency(valorCombustivel)}
                                     </span>
                                   </div>
                                   
