@@ -832,9 +832,6 @@ export default function ClasseIIIForm() {
     fasesAtividade, customFaseAtividade, allDiretrizItems
   ]);
   
-  // CORREÇÃO: Remove a declaração duplicada
-  // const itensAgrupadosPorCategoriaParaResumo = itensAgrupadosPorCategoria;
-
   // --- CÁLCULOS DA CATEGORIA ATUAL (para a UI da aba) ---
   const {
     currentCategoryDieselLitros,
