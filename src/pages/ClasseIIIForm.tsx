@@ -34,9 +34,12 @@ type CombustivelTipo = 'GASOLINA' | 'DIESEL';
 const CATEGORIAS: { key: TipoEquipamento, label: string, icon: React.FC<any> }[] = [
   { key: 'GERADOR', label: 'Gerador', icon: Zap },
   { key: 'EMBARCACAO', label: 'Embarcação', icon: Ship },
-  { key: 'EQUIPAMENTO_ENGENHARIA', label: 'Engenharia', icon: Tractor },
+  { key: 'EQUIPAMENTO_ENGENHARIA', label: 'Equipamento de Engenharia', icon: Tractor },
   { key: 'MOTOMECANIZACAO', label: 'Motomecanização', icon: Truck },
 ];
+
+// Opções fixas de fase de atividade
+const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
 
 interface ItemClasseIII {
   item: string; // nome_equipamento
@@ -1740,6 +1743,8 @@ const getMemoriaRecords = granularRegistros;
                 
                 <div className="space-y-4">
                   {Object.entries(itensAgrupadosPorCategoriaParaResumo).map(([categoria, itens]) => {
+                    const categoriaLabel = CATEGORIAS.find(c => c.key === categoria)?.label || categoria;
+                    
                     const totalCombustivelCategoria = itens.reduce((sum, item) => {
                       const { valorCombustivel } = calculateItemTotals(item, refLPC, form.dias_operacao);
                       return sum + valorCombustivel;
@@ -1756,7 +1761,7 @@ const getMemoriaRecords = granularRegistros;
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
-                          <h4 className="font-bold text-base text-primary">{categoria} ({totalQuantidade} itens)</h4>
+                          <h4 className="font-bold text-base text-primary">{categoriaLabel}</h4> {/* ALTERADO AQUI */}
                           <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
                         </div>
                         
@@ -1776,8 +1781,8 @@ const getMemoriaRecords = granularRegistros;
                               >
                                 <div className="flex justify-between items-center">
                                   <span className="font-medium text-sm text-foreground">
-                                    {item.item} ({item.quantidade} un. x {diasUtilizados} dias)
-                                  </span>
+                                    {item.item}
+                                  </span> {/* ALTERADO AQUI */}
                                   <span className="font-bold text-base text-primary">
                                     {formatCurrency(itemTotal)}
                                   </span>
@@ -1970,7 +1975,7 @@ const getMemoriaRecords = granularRegistros;
                   const om = item.om_destino;
                   const ug = item.ug_destino;
                   
-                  // Use the original consolidated record ID for editing memory
+                  // Use the original consolidated record ID for memory editing
                   const originalId = item.original_registro.id;
                   const isEditing = editingMemoriaId === originalId;
                   
