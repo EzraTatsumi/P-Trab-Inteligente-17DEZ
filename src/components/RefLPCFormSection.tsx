@@ -31,8 +31,11 @@ const initialFormState: RefLPCForm = {
 };
 
 export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSectionProps) => {
+  // Inicializa o estado de expansão baseado no prop inicial.
+  // Se refLPC for null, abre (true). Se não for null, fecha (false).
+  const [isLPCFormExpanded, setIsLPCFormExpanded] = useState(refLPC === null);
+  
   const [formLPC, setFormLPC] = useState<RefLPCForm>(initialFormState);
-  const [isLPCFormExpanded, setIsLPCFormExpanded] = useState(false); // Inicia fechado
   const [loading, setLoading] = useState(false);
   const { handleEnterToNextField } = useFormNavigation();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -48,10 +51,10 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         preco_gasolina: Number(refLPC.preco_gasolina),
         source: refLPC.source || 'Manual', // Lê a fonte do registro existente
       });
-      setIsLPCFormExpanded(false); // Fecha se houver dados
+      setIsLPCFormExpanded(false); // Garante que feche após o carregamento assíncrono
     } else {
       setFormLPC(initialFormState);
-      setIsLPCFormExpanded(true); // Abre se NÃO houver dados (força a configuração)
+      setIsLPCFormExpanded(true); // Garante que abra se o carregamento assíncrono confirmar que é nulo
     }
   }, [refLPC]);
 
