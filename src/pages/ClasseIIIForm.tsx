@@ -1045,45 +1045,51 @@ const registrosAgrupadosPorSuprimento = useMemo(() => {
             groupedByOm[omKey] = { om: registro.organizacao, ug: registro.ug, total: 0, suprimentos: [] };
         }
         
+        // Find existing suprimento group or create a new one
+        let suprimentoGroup = groupedByOm[omKey].suprimentos.find(s => s.suprimento_tipo === suprimentoType && s.original_registro.tipo_combustivel === registro.tipo_combustivel);
+
+        if (!suprimentoGroup) {
+            suprimentoGroup = {
+                om_destino: registro.organizacao,
+                ug_destino: registro.ug,
+                suprimento_tipo: suprimentoType,
+                total_valor: 0,
+                total_litros: 0,
+                categoria_totais: {
+                    GERADOR: { litros: 0, valor: 0 },
+                    EMBARCACAO: { litros: 0, valor: 0 },
+                    EQUIPAMENTO_ENGENHARIA: { litros: 0, valor: 0 },
+                    MOTOMECANIZACAO: { litros: 0, valor: 0 },
+                },
+                original_registro: registro, // Keep reference to the original record for actions
+            };
+            groupedByOm[omKey].suprimentos.push(suprimentoGroup);
+        }
+        
         groupedByOm[omKey].total += registro.valor_total;
+        suprimentoGroup.total_valor += registro.valor_total;
 
         // 2. Calcular totais por categoria dentro deste registro consolidado
-        const categoria_totais: Record<TipoEquipamento, { litros: number, valor: number }> = {
-            GERADOR: { litros: 0, valor: 0 },
-            EMBARCACAO: { litros: 0, valor: 0 },
-            EQUIPAMENTO_ENGENHARIA: { litros: 0, valor: 0 },
-            MOTOMECANIZACAO: { litros: 0, valor: 0 },
-        };
-
         const itens = (registro.itens_equipamentos || []) as ItemClasseIII[];
-        let totalLitros = 0;
+        let totalLitrosRegistro = 0;
         
         itens.forEach(item => {
             const totals = calculateItemTotals(item, refLPC, registro.dias_operacao);
             const categoria = item.categoria;
 
             if (isLubricant) {
-                categoria_totais[categoria].litros += totals.litrosLubrificante;
-                categoria_totais[categoria].valor += totals.valorLubrificante;
-                totalLitros += totals.litrosLubrificante;
+                suprimentoGroup!.categoria_totais[categoria].litros += totals.litrosLubrificante;
+                suprimentoGroup!.categoria_totais[categoria].valor += totals.valorLubrificante;
+                totalLitrosRegistro += totals.litrosLubrificante;
             } else {
                 // Combustível
-                categoria_totais[categoria].litros += totals.totalLitros;
-                categoria_totais[categoria].valor += totals.valorCombustivel;
-                totalLitros += totals.totalLitros;
+                suprimentoGroup!.categoria_totais[categoria].litros += totals.totalLitros;
+                suprimentoGroup!.categoria_totais[categoria].valor += totals.valorCombustivel;
+                totalLitrosRegistro += totals.totalLitros;
             }
         });
-
-        // 3. Adicionar o grupo de suprimento consolidado
-        groupedByOm[omKey].suprimentos.push({
-            om_destino: registro.organizacao,
-            ug_destino: registro.ug,
-            suprimento_tipo: suprimentoType,
-            total_valor: registro.valor_total,
-            total_litros: totalLitros,
-            categoria_totais: categoria_totais,
-            original_registro: registro,
-        });
+        
+        suprimentoGroup.total_litros += totalLitrosRegistro;
     });
 
     return groupedByOm;
@@ -1865,9 +1871,18 @@ const getMemoriaRecords = granularRegistros;
                       <div className="space-y-3">
                         {group.suprimentos.map((suprimentoGroup) => {
                           const isCombustivel = suprimentoGroup.suprimento_tipo === 'COMBUSTIVEL';
-                          const badgeClass = isCombustivel 
-                            ? 'bg-green-600 text-white hover:bg-green-700' 
-                            : 'bg-purple-600 text-white hover:bg-purple-700';
+                          
+                          // Determine badge class and text based on consolidated type
+                          let badgeText = '';
+                          let badgeClass = '';
+                          
+                          if (isCombustivel) {
+                            badgeText = suprimentoGroup.original_registro.tipo_combustivel;
+                            badgeClass = 'bg-green-600 text-white hover:bg-green-700'; // Cor padronizada para Combustível
+                          } else {
+                            badgeText = 'LUBRIFICANTE';
+                            badgeClass = 'bg-purple-600 text-white hover:bg-purple-700'; // Cor padronizada para Lubrificante
+                          }
                           
                           const originalRegistro = suprimentoGroup.original_registro;
                           
@@ -1880,7 +1895,7 @@ const getMemoriaRecords = granularRegistros;
                                       {isCombustivel ? 'Combustível' : 'Lubrificante'}
                                     </h4>
                                     <Badge variant="default" className={cn("w-fit", badgeClass)}>
-                                      {isCombustivel ? originalRegistro.tipo_combustivel : 'ND 33.90.30'}
+                                      {badgeText}
                                     </Badge>
                                   </div>
                                   <p className="text-xs text-muted-foreground">
@@ -1934,17 +1949,7 @@ const getMemoriaRecords = granularRegistros;
                                 })}
                               </div>
                               
-                              {/* Detalhes da Alocação (ND 30/39) */}
-                              <div className="pt-2 border-t mt-2">
-                                  <div className="flex justify-between text-xs">
-                                      <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
-                                      <span className="font-medium text-green-600">{formatCurrency(originalRegistro.valor_nd_30)}</span>
-                                  </div>
-                                  <div className="flex justify-between text-xs">
-                                      <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
-                                      <span className="font-medium text-blue-600">{formatCurrency(originalRegistro.valor_nd_39)}</span>
-                                  </div>
-                              </div>
+                              {/* Detalhes da Alocação (ND 30/39) - REMOVIDO */}
                             </Card>
                           );
                         })}
