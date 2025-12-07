@@ -1186,11 +1186,12 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                             <Table className="w-full">
                                 <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                     <TableRow>
+                                        {/* Ajuste de Largura: Equipamento (40%), Qtd (10%), Qtd Dias (10%), Horas/Km (20%), Desloc/Consumo (15%), Lub/Comb (15%) */}
                                         <TableHead className="w-[35%]">Equipamento</TableHead>
                                         <TableHead className="w-[10%] text-center">Qtd</TableHead>
-                                        <TableHead className="w-[10%] text-center">Qtd Dias</TableHead> {/* NEW INPUT */}
+                                        <TableHead className="w-[10%] text-center">Qtd Dias</TableHead>
                                         <TableHead className="w-[20%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
-                                        <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'Desloc/Dia' : 'Consumo Fixo'}</TableHead> {/* Dynamic column for Moto/Non-Moto */}
+                                        <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'Desloc/Dia' : 'Consumo Fixo'}</TableHead>
                                         <TableHead className="w-[10%] text-center">Lub/Comb</TableHead>
                                         <TableHead className="w-[10%] text-right">Custo Total</TableHead>
                                     </TableRow>
@@ -1304,7 +1305,8 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                             />
                                                         ) : (
                                                             <Badge variant="secondary" className="text-xs w-full justify-center h-8">
-                                                                {formatNumber(item.consumo_fixo, 1)} {item.unidade_fixa}
+                                                                {/* REMOVIDO: Consumo Fixo */}
+                                                                {item.unidade_fixa}
                                                             </Badge>
                                                         )}
                                                     </TableCell>
@@ -1385,7 +1387,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                 </span>
                                 <span className="font-extrabold text-lg text-purple-600">
                                     {formatCurrency(currentCategoryTotalLubrificante)}
-                                </span>
+                            </span>
                             </div>
                         )}
                         
