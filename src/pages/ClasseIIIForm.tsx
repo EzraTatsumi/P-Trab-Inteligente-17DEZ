@@ -1438,7 +1438,6 @@ export default function ClasseIIIForm() {
                         {currentCategoryTotalLubrificante > 0 && (
                           <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
                             <span className="font-bold text-sm flex items-center gap-2">
-                              <Droplet className="h-4 w-4 text-purple-600" />
                               TOTAL LUBRIFICANTE
                             </span>
                             <span className="font-extrabold text-lg text-purple-600">
@@ -1522,7 +1521,7 @@ export default function ClasseIIIForm() {
                                   {isLubricantType && valorLubrificante > 0 && (
                                     <div className="flex justify-between text-purple-600">
                                       <span className="w-1/2">
-                                        Lubrificante (ND 30):
+                                        Lubrificante:
                                       </span>
                                       <span className="w-1/2 text-right font-medium">
                                         {formatCurrency(valorLubrificante)}
@@ -1542,7 +1541,7 @@ export default function ClasseIIIForm() {
                             </div>
                             {totalLubrificanteCategoria > 0 && (
                                 <div className="flex justify-between text-xs">
-                                    <span className="text-muted-foreground">Custo Lubrificante (ND 30):</span>
+                                    <span className="text-muted-foreground">Custo Lubrificante:</span>
                                     <span className="font-medium text-purple-600">{formatCurrency(totalLubrificanteCategoria)}</span>
                                 </div>
                             )}
@@ -1574,7 +1573,7 @@ export default function ClasseIIIForm() {
                       (consolidadoLubrificante && (!lubricantAllocation.om_destino_recurso || !lubricantAllocation.ug_destino_recurso))
                     }
                   >
-                    {loading ? "Aguarde..." : "Salvar Registros Consolidados"}
+                    {loading ? "Aguarde..." : "Salvar Registros"}
                   </Button>
                 </div>
               </div>
