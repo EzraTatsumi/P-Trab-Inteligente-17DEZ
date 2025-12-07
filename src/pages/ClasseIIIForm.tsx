@@ -105,7 +105,7 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   
   const ultimaFase = fases[fases.length - 1];
   const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFases}`;
+  return `${demaisFases} e ${ultimaFase}`;
 };
 
 const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
@@ -687,30 +687,19 @@ export default function ClasseIIIForm() {
       
       const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
       
-      // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL
-      let detalhamento = `CLASSE III - COMBUSTÍVEL (${combustivelLabel})
+      // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
+      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
 
-1. DADOS GERAIS
-OM Detentora: ${form.organizacao} (UG: ${form.ug})
-OM Fornecedora: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
-Período: ${form.dias_operacao} dias de ${faseFormatada}
-Total de Equipamentos: ${totalEquipamentos}
+Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
 
-2. REFERÊNCIA DE PREÇOS (LPC)
-Período: ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}
-Preço Unitário: ${combustivelLabel} - ${formatCurrency(precoLitro)}
+Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${combustivelLabel} - ${formatCurrency(precoLitro)}.
 
-3. CÁLCULO DO CONSUMO (SEM MARGEM)
-Fórmula Base: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
+Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
 
-Detalhes dos Itens:
 ${detalhes.join('\n')}
 
-Total Consumo Sem Margem: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel}.
-
-4. CÁLCULO DO VALOR TOTAL (ND 33.90.30)
-Total Litros (Com 30% de Margem): ${formatNumber(totalLitrosSemMargem)} L + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}.
-Valor Total: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
+Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}.
+Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
       
       novosConsolidados.push({
         tipo_combustivel: tipoCombustivel,
@@ -762,16 +751,12 @@ Valor Total: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(p
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
       
-      // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE LUBRIFICANTE
-      const detalhamentoLubrificante = `CLASSE III - LUBRIFICANTE
+      // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE LUBRIFICANTE (NOVO PADRÃO)
+      const detalhamentoLubrificante = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
 
-1. DADOS GERAIS
-OM Detentora: ${form.organizacao} (UG: ${form.ug})
 OM Destino Recurso: ${lubricantAllocation.om_destino_recurso} (UG: ${lubricantAllocation.ug_destino_recurso})
-Período: ${form.dias_operacao} dias de ${faseFormatada}
-Total de Equipamentos: ${totalEquipamentos}
 
-2. CÁLCULO DO CONSUMO E VALOR (ND 33.90.30)
+Cálculo:
 Fórmula Base: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilização) x Consumo Lubrificante/hora (ou /100h).
 
 Detalhes dos Itens:
@@ -785,14 +770,9 @@ ${itensComLubrificante.map(item => {
     }
     const valorItem = litrosItem * item.preco_lubrificante;
     
-    return `- ${item.quantidade} ${item.item} (${item.categoria}):
-  Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}.
-  Preço Unitário: ${formatCurrency(item.preco_lubrificante)}.
-  Litros Calculados: ${formatNumber(litrosItem, 2)} L.
-  Valor Total Item: ${formatCurrency(valorItem)}.`;
-}).join('\n\n')}
+    return `- ${item.quantidade} ${item.item} (${item.categoria}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosItem, 2)} L. Valor: ${formatCurrency(valorItem)}.`;
+}).join('\n')}
 
-3. TOTAIS CONSOLIDADOS
 Total Litros: ${formatNumber(totalLitrosLubrificante, 2)} L.
 Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       
