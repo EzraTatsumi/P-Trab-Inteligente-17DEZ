@@ -111,6 +111,19 @@ interface GranularDisplayItem {
   detailed_items: ItemClasseIII[];
 }
 
+// NEW INTERFACE FOR CONSOLIDATED DISPLAY (Seção 4)
+interface ConsolidatedSuprimentoGroup {
+  om_destino: string;
+  ug_destino: string;
+  suprimento_tipo: 'COMBUSTIVEL' | 'LUBRIFICANTE';
+  total_valor: number;
+  total_litros: number;
+  // Totais detalhados por categoria (para exibição)
+  categoria_totais: Record<TipoEquipamento, { litros: number, valor: number }>;
+  // Referência ao registro consolidado original (para ações de edição/deleção)
+  original_registro: ClasseIIIRegistro;
+}
+
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
 
@@ -156,18 +169,18 @@ const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOpe
   const valorCombustivel = totalLitros * precoLitro;
   
   let valorLubrificante = 0;
+  let litrosLubrificante = 0;
   const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
   if (isLubricantType && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0 && diasUtilizados > 0) {
     const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
-    let litrosItem = 0;
     
     if (item.categoria === 'GERADOR') {
-      litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
+      litrosLubrificante = (totalHoras / 100) * item.consumo_lubrificante_litro;
     } else if (item.categoria === 'EMBARCACAO') {
-      litrosItem = totalHoras * item.consumo_lubrificante_litro;
+      litrosLubrificante = totalHoras * item.consumo_lubrificante_litro;
     }
     
-    valorLubrificante = litrosItem * item.preco_lubrificante;
+    valorLubrificante = litrosLubrificante * item.preco_lubrificante;
   }
   
   const itemTotal = valorCombustivel + valorLubrificante;
@@ -176,6 +189,7 @@ const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOpe
     totalLitros, 
     valorCombustivel, 
     valorLubrificante, 
+    litrosLubrificante, // Adicionado litros de lubrificante
     itemTotal,
     formulaLitros,
     precoLitro,
@@ -199,15 +213,7 @@ const calculateGranularTotals = (
         
         if (suprimento_tipo === 'LUBRIFICANTE') {
             totalValor += totals.valorLubrificante;
-            // Recalculate lubricant liters based on the item's lubricant usage
-            const totalHoras = item.quantidade * item.horas_dia * (item.dias_utilizados || 0);
-            let litrosItem = 0;
-            if (item.categoria === 'GERADOR') {
-                litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
-            } else if (item.categoria === 'EMBARCACAO') {
-                litrosItem = totalHoras * item.consumo_lubrificante_litro;
-            }
-            totalLitros += litrosItem;
+            totalLitros += totals.litrosLubrificante;
         } else {
             totalValor += totals.valorCombustivel;
             totalLitros += totals.totalLitros;
@@ -244,16 +250,9 @@ Fórmula Base: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilizaç
 
 Detalhes dos Itens:
 ${detailed_items.map(item => {
-    const totalHoras = item.quantidade * item.horas_dia * (item.dias_utilizados || 0);
-    let litrosItem = 0;
-    if (item.categoria === 'GERADOR') {
-        litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
-    } else if (item.categoria === 'EMBARCACAO') {
-        litrosItem = totalHoras * item.consumo_lubrificante_litro;
-    }
-    const valorItem = litrosItem * item.preco_lubrificante;
+    const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, dias_operacao);
     
-    return `- ${item.quantidade} ${item.item} (${item.categoria}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosItem, 2)} L. Valor: ${formatCurrency(valorItem)}.`;
+    return `- ${item.quantidade} ${item.item} (${item.categoria}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosLubrificante, 2)} L. Valor: ${formatCurrency(valorLubrificante)}.`;
 }).join('\n')}
 
 Total Litros: ${formatNumber(total_litros, 2)} L.
@@ -883,16 +882,9 @@ Fórmula Base: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilizaç
 
 Detalhes dos Itens:
 ${itensComLubrificante.map(item => {
-    const totalHoras = item.quantidade * item.horas_dia * (item.dias_utilizados || 0);
-    let litrosItem = 0;
-    if (item.categoria === 'GERADOR') {
-        litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
-    } else if (item.categoria === 'EMBARCACAO') {
-        litrosItem = totalHoras * item.consumo_lubrificante_litro;
-    }
-    const valorItem = litrosItem * item.preco_lubrificante;
+    const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
     
-    return `- ${item.quantidade} ${item.item} (${item.categoria}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosItem, 2)} L. Valor: ${formatCurrency(valorItem)}.`;
+    return `- ${item.quantidade} ${item.item} (${item.categoria}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosLubrificante, 2)} L. Valor: ${formatCurrency(valorLubrificante)}.`;
 }).join('\n')}
 
 Total Litros: ${formatNumber(totalLitrosLubrificante, 2)} L.
@@ -959,7 +951,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
     };
   }, [localCategoryItems, refLPC, form.dias_operacao]);
   
-  // --- NOVO MEMO: GERA REGISTROS GRANULARES PARA EXIBIÇÃO ---
+  // --- NOVO MEMO: GERA REGISTROS GRANULARES PARA EXIBIÇÃO (USADO APENAS PARA MEMÓRIA) ---
   const granularRegistros = useMemo(() => {
     if (!refLPC) return [];
     
@@ -1039,18 +1031,63 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
     return granular.sort((a, b) => a.om_destino.localeCompare(b.om_destino) || a.categoria.localeCompare(b.categoria));
 }, [registros, refLPC]);
 
-// --- NOVO MEMO: AGRUPAMENTO POR OM DE DESTINO (PARA SEÇÃO 4) ---
-const registrosAgrupadosPorOM = useMemo(() => {
-    return granularRegistros.reduce((acc, item) => {
-        const key = `${item.om_destino} (${item.ug_destino})`;
-        if (!acc[key]) {
-            acc[key] = { om: item.om_destino, ug: item.ug_destino, items: [], total: 0 };
+// --- NOVO MEMO: AGRUPAMENTO POR OM E TIPO DE SUPRIMENTO (PARA SEÇÃO 4) ---
+const registrosAgrupadosPorSuprimento = useMemo(() => {
+    const groupedByOm: Record<string, { om: string, ug: string, total: number, suprimentos: ConsolidatedSuprimentoGroup[] }> = {};
+
+    // 1. Agrupar os registros consolidados originais por OM
+    registros.forEach(registro => {
+        const omKey = `${registro.organizacao} (${registro.ug})`;
+        const isLubricant = registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
+        const suprimentoType: 'COMBUSTIVEL' | 'LUBRIFICANTE' = isLubricant ? 'LUBRIFICANTE' : 'COMBUSTIVEL';
+        
+        if (!groupedByOm[omKey]) {
+            groupedByOm[omKey] = { om: registro.organizacao, ug: registro.ug, total: 0, suprimentos: [] };
         }
-        acc[key].items.push(item);
-        acc[key].total += item.valor_total;
-        return acc;
-    }, {} as Record<string, { om: string, ug: string, items: GranularDisplayItem[], total: number }>);
-}, [granularRegistros]);
+        
+        groupedByOm[omKey].total += registro.valor_total;
+
+        // 2. Calcular totais por categoria dentro deste registro consolidado
+        const categoria_totais: Record<TipoEquipamento, { litros: number, valor: number }> = {
+            GERADOR: { litros: 0, valor: 0 },
+            EMBARCACAO: { litros: 0, valor: 0 },
+            EQUIPAMENTO_ENGENHARIA: { litros: 0, valor: 0 },
+            MOTOMECANIZACAO: { litros: 0, valor: 0 },
+        };
+
+        const itens = (registro.itens_equipamentos || []) as ItemClasseIII[];
+        let totalLitros = 0;
+        
+        itens.forEach(item => {
+            const totals = calculateItemTotals(item, refLPC, registro.dias_operacao);
+            const categoria = item.categoria;
+
+            if (isLubricant) {
+                categoria_totais[categoria].litros += totals.litrosLubrificante;
+                categoria_totais[categoria].valor += totals.valorLubrificante;
+                totalLitros += totals.litrosLubrificante;
+            } else {
+                // Combustível
+                categoria_totais[categoria].litros += totals.totalLitros;
+                categoria_totais[categoria].valor += totals.valorCombustivel;
+                totalLitros += totals.totalLitros;
+            }
+        });
+
+        // 3. Adicionar o grupo de suprimento consolidado
+        groupedByOm[omKey].suprimentos.push({
+            om_destino: registro.organizacao,
+            ug_destino: registro.ug,
+            suprimento_tipo: suprimentoType,
+            total_valor: registro.valor_total,
+            total_litros: totalLitros,
+            categoria_totais: categoria_totais,
+            original_registro: registro,
+        });
+    });
+
+    return groupedByOm;
+}, [registros, refLPC]);
 
 // --- NOVO MEMO: REGISTROS PARA MEMÓRIA (SEÇÃO 5) ---
 const getMemoriaRecords = granularRegistros;
@@ -1302,7 +1339,7 @@ const getMemoriaRecords = granularRegistros;
   };
   
   // --- MEMÓRIAS E AGRUPAMENTOS ATUALIZADOS ---
-  // OMs Cadastradas (Seção 4) usa registrosAgrupadosPorOM
+  // OMs Cadastradas (Seção 4) usa registrosAgrupadosPorSuprimento
   // Memórias de Cálculo (Seção 5) usa getMemoriaRecords
   
   return (
@@ -1803,14 +1840,14 @@ const getMemoriaRecords = granularRegistros;
             )}
             
             {/* 4. Registros Salvos (OMs Cadastradas) - SUMMARY SECTION (NOVO LAYOUT) */}
-            {Object.keys(registrosAgrupadosPorOM).length > 0 && (
+            {Object.keys(registrosAgrupadosPorSuprimento).length > 0 && (
               <div className="space-y-4 mt-6">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-accent" />
                   OMs Cadastradas
                 </h2>
                 
-                {Object.entries(registrosAgrupadosPorOM).map(([omKey, group]) => {
+                {Object.entries(registrosAgrupadosPorSuprimento).map(([omKey, group]) => {
                   const omName = group.om;
                   const ug = group.ug;
                   
@@ -1826,29 +1863,33 @@ const getMemoriaRecords = granularRegistros;
                       </div>
                       
                       <div className="space-y-3">
-                        {group.items.map((item) => {
-                          const suprimento = getSuprimentoLabel(item);
-                          const badgeClass = getSuprimentoBadgeClass(item);
+                        {group.suprimentos.map((suprimentoGroup) => {
+                          const isCombustivel = suprimentoGroup.suprimento_tipo === 'COMBUSTIVEL';
+                          const badgeClass = isCombustivel 
+                            ? 'bg-green-600 text-white hover:bg-green-700' 
+                            : 'bg-purple-600 text-white hover:bg-purple-700';
+                          
+                          const originalRegistro = suprimentoGroup.original_registro;
                           
                           return (
-                            <Card key={item.id} className="p-3 bg-background border">
+                            <Card key={originalRegistro.id} className="p-3 bg-background border">
                               <div className="flex items-center justify-between">
                                 <div className="flex flex-col gap-1">
                                   <div className="flex items-center gap-2">
                                     <h4 className="font-semibold text-base text-foreground">
-                                      {item.categoria}
+                                      {isCombustivel ? 'Combustível' : 'Lubrificante'}
                                     </h4>
                                     <Badge variant="default" className={cn("w-fit", badgeClass)}>
-                                      {suprimento}
+                                      {isCombustivel ? originalRegistro.tipo_combustivel : 'ND 33.90.30'}
                                     </Badge>
                                   </div>
                                   <p className="text-xs text-muted-foreground">
-                                    Dias: {item.dias_operacao} | Fases: {formatFasesParaTexto(item.fase_atividade)}
+                                    Total Litros: {formatNumber(suprimentoGroup.total_litros, 2)} L | Dias: {originalRegistro.dias_operacao}
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <span className="font-bold text-lg text-primary/80">
-                                    {formatCurrency(item.valor_total)}
+                                    {formatCurrency(suprimentoGroup.total_valor)}
                                   </span>
                                   <div className="flex gap-1">
                                     {/* Ações de Edição e Deleção devem ser feitas no registro CONSOLIDADO original */}
@@ -1856,14 +1897,14 @@ const getMemoriaRecords = granularRegistros;
                                       variant="ghost" 
                                       size="icon" 
                                       className="h-8 w-8"
-                                      onClick={() => handleEditarConsolidado(item.original_registro)}
+                                      onClick={() => handleEditarConsolidado(originalRegistro)}
                                     >
                                       <Pencil className="h-4 w-4" />
                                     </Button>
                                     <Button 
                                       variant="ghost" 
                                       size="icon" 
-                                      onClick={() => handleDeletarConsolidado(item.original_registro.id)}
+                                      onClick={() => handleDeletarConsolidado(originalRegistro.id)}
                                       className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                     >
                                       <Trash2 className="h-4 w-4" />
@@ -1872,15 +1913,36 @@ const getMemoriaRecords = granularRegistros;
                                 </div>
                               </div>
                               
+                              {/* Detalhes por Categoria (Gerador, Embarcação, etc.) */}
+                              <div className="pt-2 border-t mt-2 space-y-1">
+                                {CATEGORIAS.map(cat => {
+                                  const totais = suprimentoGroup.categoria_totais[cat.key];
+                                  if (totais.valor > 0) {
+                                    return (
+                                      <div key={cat.key} className="flex justify-between text-xs">
+                                        <span className="text-muted-foreground flex items-center gap-1">
+                                          <cat.icon className="h-3 w-3" />
+                                          {cat.label}:
+                                        </span>
+                                        <span className="font-medium text-foreground">
+                                          {formatNumber(totais.litros, 2)} L ({formatCurrency(totais.valor)})
+                                        </span>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                              
                               {/* Detalhes da Alocação (ND 30/39) */}
                               <div className="pt-2 border-t mt-2">
                                   <div className="flex justify-between text-xs">
                                       <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
-                                      <span className="font-medium text-green-600">{formatCurrency(item.valor_nd_30)}</span>
+                                      <span className="font-medium text-green-600">{formatCurrency(originalRegistro.valor_nd_30)}</span>
                                   </div>
                                   <div className="flex justify-between text-xs">
                                       <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
-                                      <span className="font-medium text-blue-600">{formatCurrency(item.valor_nd_39)}</span>
+                                      <span className="font-medium text-blue-600">{formatCurrency(originalRegistro.valor_nd_39)}</span>
                                   </div>
                               </div>
                             </Card>
