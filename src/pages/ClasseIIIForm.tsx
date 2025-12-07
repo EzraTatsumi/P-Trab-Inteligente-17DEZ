@@ -721,7 +721,7 @@ const ClasseIIIForm = () => {
         item.distancia_percorrida <= 0 || item.quantidade_deslocamentos <= 0
       )
     )) {
-      toast.error("Preencha KM/Desloc e Desloc/Dia para todas as viaturas ativas.");
+      toast.error("Preencha Km/Desloc e Desloc/Dia para todas as viaturas ativas.");
       return;
     }
     
@@ -1565,17 +1565,17 @@ const getMemoriaRecords = granularRegistros;
                             <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                               <TableRow>
                                 <TableHead className="w-[30%]">Equipamento</TableHead>
-                                <TableHead className="w-[8%] text-center">Qtd</TableHead>
-                                <TableHead className="w-[8%] text-center">Qtd Dias</TableHead>
-                                <TableHead className="w-[18%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'Km/Desloc' : 'Horas/Dia'}</TableHead>
+                                <TableHead className="w-[10%] text-center">Qtd</TableHead>
+                                <TableHead className="w-[10%] text-center">Qtd Dias</TableHead>
+                                <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'Km/Desloc' : 'Horas/Dia'}</TableHead>
                                 {cat.key === 'MOTOMECANIZACAO' && (
                                   <TableHead className="w-[10%] text-center">Desloc/Dia</TableHead>
                                 )}
                                 {shouldShowLubricantColumn && (
                                   <TableHead className="w-[10%] text-center">Lubrificante</TableHead>
                                 )}
-                                <TableHead className="w-[10%] text-right">Litros</TableHead>
-                                <TableHead className="w-[8%] text-right">Custo Total</TableHead>
+                                <TableHead className="w-[8%] text-right">Litros</TableHead>
+                                <TableHead className="w-[7%] text-right">Custo Total</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1608,7 +1608,7 @@ const getMemoriaRecords = granularRegistros;
                                           </Badge>
                                         </div>
                                       </TableCell>
-                                      <TableCell className="py-1 w-[8%]">
+                                      <TableCell className="py-1 w-[10%]">
                                         <Input 
                                           type="text"
                                           inputMode="numeric"
@@ -1620,7 +1620,7 @@ const getMemoriaRecords = granularRegistros;
                                         />
                                       </TableCell>
                                       {/* NEW COLUMN: Qtd Dias */}
-                                      <TableCell className="py-1 w-[8%]">
+                                      <TableCell className="py-1 w-[10%]">
                                         <Input 
                                           type="text"
                                           inputMode="numeric"
@@ -1633,7 +1633,7 @@ const getMemoriaRecords = granularRegistros;
                                         />
                                       </TableCell>
                                       {/* COLUMN 4: Horas/Dia or KM/Desloc */}
-                                      <TableCell className="py-1 w-[18%]">
+                                      <TableCell className="py-1 w-[15%]">
                                         <Input 
                                           type="text"
                                           inputMode="decimal"
@@ -1713,11 +1713,11 @@ const getMemoriaRecords = granularRegistros;
                                         </TableCell>
                                       )}
                                       {/* NOVA COLUNA: Litros */}
-                                      <TableCell className="text-right text-sm py-1 w-[10%]">
+                                      <TableCell className="text-right text-sm py-1 w-[8%]">
                                         {totalLitros > 0 ? `${formatNumber(totalLitros)} L` : '-'}
                                       </TableCell>
                                       {/* COLUMN 7: Custo Total */}
-                                      <TableCell className="text-right font-semibold text-sm py-1 w-[8%]">
+                                      <TableCell className="text-right font-semibold text-sm py-1 w-[7%]">
                                         {formatCurrency(itemTotal)}
                                       </TableCell>
                                     </TableRow>
