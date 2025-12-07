@@ -89,6 +89,8 @@ interface ClasseIIIRegistro {
   fase_atividade?: string;
   consumo_lubrificante_litro?: number;
   preco_lubrificante?: number;
+  valor_nd_30: number;
+  valor_nd_39: number;
 }
 
 // Opções fixas de fase de atividade
@@ -205,7 +207,7 @@ export default function ClasseIIIForm() {
     if (!ptrabId) return;
     const { data, error } = await supabase
       .from("classe_iii_registros")
-      .select("*, detalhamento_customizado, consumo_lubrificante_litro, preco_lubrificante")
+      .select("*, detalhamento_customizado, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39")
       .eq("p_trab_id", ptrabId)
       .order("organizacao", { ascending: true })
       .order("tipo_equipamento", { ascending: true });
@@ -586,7 +588,7 @@ export default function ClasseIIIForm() {
       
       let fasesFinaisCalc = [...fasesAtividade];
       if (customFaseAtividade.trim()) {
-        fasesFinaisCalc = [...fasesFinaisCalc, customFasesAtividade.trim()];
+        fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividade.trim()];
       }
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
@@ -1577,7 +1579,7 @@ export default function ClasseIIIForm() {
               <div className="space-y-4 mt-6">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-accent" />
-                  Registros Consolidados Salvos
+                  OMs Cadastradas
                 </h2>
                 
                 {Object.entries(registrosAgrupadosPorOM).map(([omKey, group]) => {
