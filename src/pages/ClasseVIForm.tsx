@@ -21,17 +21,19 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
-import { defaultClasseVIConfig } from "@/data/classeVIData";
+import { defaultClasseVIConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils"; // NOVO IMPORT
+import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
 
-type Categoria = 'Embarcação' | 'Equipamento de Engenharia';
+type Categoria = 'Engenharia' | 'Saúde' | 'Comunicações' | 'Outros';
 
 const CATEGORIAS: Categoria[] = [
-  "Embarcação",
-  "Equipamento de Engenharia",
+  "Engenharia",
+  "Saúde",
+  "Comunicações",
+  "Outros",
 ];
 
 // Opções fixas de fase de atividade
@@ -54,7 +56,6 @@ interface FormDataClasseVI {
   fase_atividade?: string; // Global
 }
 
-// MUDANÇA: ClasseVIRegistro agora usa a tabela classe_vi_registros
 interface ClasseVIRegistro {
   id: string;
   organizacao: string; // OM de Destino do Recurso (ND 30/39)
@@ -81,8 +82,10 @@ interface CategoryAllocation {
 }
 
 const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
-    'Embarcação': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
-    'Equipamento de Engenharia': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Engenharia': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Saúde': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Comunicações': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Outros': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
 };
 
 const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
@@ -132,7 +135,7 @@ const generateDetalhamento = (itens: ItemClasseVI[], diasOperacao: number, organ
     let detalhamentoItens = "";
     
     Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`; // USANDO getCategoryLabel
+        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`;
         detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
         detalhamentoItens += `Detalhes:\n`;
         detalhamentoItens += grupo.detalhes.join('\n');
@@ -141,7 +144,7 @@ const generateDetalhamento = (itens: ItemClasseVI[], diasOperacao: number, organ
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Engenharia (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe VI (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
 Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
 Alocação:
@@ -295,7 +298,6 @@ const ClasseVIForm = () => {
         return;
       }
 
-      // Classe VI usa a mesma tabela de diretrizes da Classe II
       const { data: classeVIData, error } = await supabase
         .from("diretrizes_classe_ii")
         .select("*")
@@ -323,7 +325,6 @@ const ClasseVIForm = () => {
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
-    // MUDANÇA: Usar a nova tabela classe_vi_registros
     const { data, error } = await supabase
       .from("classe_vi_registros")
       .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
@@ -477,7 +478,6 @@ const ClasseVIForm = () => {
 
     const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
 
-    // CORREÇÃO AQUI: Filtra APENAS os itens da categoria atual (selectedTab) para removê-los, mantendo todos os outros itens (de outras categorias ou classes).
     const itemsFromOtherCategories = form.itens.filter(item => item.categoria !== selectedTab);
 
     const newFormItems = [...itemsFromOtherCategories, ...itemsToKeep];
@@ -543,7 +543,7 @@ const ClasseVIForm = () => {
         return;
     }
     
-    const registrosParaSalvar: TablesInsert<'classe_vi_registros'>[] = []; // MUDANÇA: Usar a nova tabela
+    const registrosParaSalvar: TablesInsert<'classe_vi_registros'>[] = [];
     
     for (const categoria of categoriesToSave) {
         const itens = itemsByActiveCategory[categoria];
@@ -575,7 +575,7 @@ const ClasseVIForm = () => {
             allocation.nd_39_value
         );
         
-        const registro: TablesInsert<'classe_vi_registros'> = { // MUDANÇA: Usar a nova tabela
+        const registro: TablesInsert<'classe_vi_registros'> = {
             p_trab_id: ptrabId,
             organizacao: allocation.om_destino_recurso,
             ug: allocation.ug_destino_recurso,
@@ -593,14 +593,12 @@ const ClasseVIForm = () => {
     }
 
     try {
-      // MUDANÇA: Deletar APENAS registros de Classe VI existentes para o PTrab na tabela correta
       const { error: deleteError } = await supabase
         .from("classe_vi_registros")
         .delete()
         .eq("p_trab_id", ptrabId);
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
-      // MUDANÇA: Inserir os novos registros na tabela correta
       const { error: insertError } = await supabase.from("classe_vi_registros").insert(registrosParaSalvar);
       if (insertError) throw insertError;
       
@@ -620,7 +618,6 @@ const ClasseVIForm = () => {
     setLoading(true);
     resetFormFields();
     
-    // 1. Buscar TODOS os registros de CLASSE VI para este PTrab (na tabela correta)
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_vi_registros")
         .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
@@ -739,7 +736,6 @@ const ClasseVIForm = () => {
   const handleSalvarMemoriaCustomizada = async (registroId: string) => {
     setLoading(true);
     try {
-      // MUDANÇA: Usar a nova tabela classe_vi_registros
       const { error } = await supabase
         .from("classe_vi_registros")
         .update({
@@ -767,7 +763,6 @@ const ClasseVIForm = () => {
     
     setLoading(true);
     try {
-      // MUDANÇA: Usar a nova tabela classe_vi_registros
       const { error } = await supabase
         .from("classe_vi_registros")
         .update({
@@ -806,10 +801,10 @@ const ClasseVIForm = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              Classe VI - Material de Engenharia
+              Classe VI - Engenharia, Saúde, Comunicações e Outros
             </CardTitle>
             <CardDescription>
-              Solicitação de recursos para manutenção de material de engenharia.
+              Solicitação de recursos para manutenção de material de Classe VI.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -907,7 +902,7 @@ const ClasseVIForm = () => {
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
                 <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as Categoria)}>
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-4">
                     {CATEGORIAS.map(cat => (
                       <TabsTrigger key={cat} value={cat}>{getCategoryLabel(cat)}</TabsTrigger>
                     ))}
@@ -1186,7 +1181,7 @@ const ClasseVIForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
+                                    // const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1196,9 +1191,7 @@ const ClasseVIForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
-                                                        <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
-                                                            {badgeStyle.label}
-                                                        </Badge>
+                                                        {/* REMOVIDO: Badge da Categoria */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
@@ -1222,7 +1215,6 @@ const ClasseVIForm = () => {
                                                             size="icon"
                                                             onClick={() => {
                                                                 if (confirm(`Deseja realmente deletar o registro de Classe VI para ${omName} (${registro.categoria})?`)) {
-                                                                    // MUDANÇA: Deletar da tabela correta
                                                                     supabase.from("classe_vi_registros")
                                                                         .delete()
                                                                         .eq("id", registro.id)
@@ -1277,7 +1269,6 @@ const ClasseVIForm = () => {
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
-                  // NOVO: Gera a memória automática com o rótulo padronizado
                   const memoriaAutomatica = generateDetalhamento(
                       registro.itens_equipamentos as ItemClasseVI[], 
                       registro.dias_operacao, 
@@ -1299,10 +1290,15 @@ const ClasseVIForm = () => {
                       {/* Container para H4 e Botões */}
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <h4 className="text-lg font-semibold text-foreground flex-1 min-w-0">
-                            OM Destino: {om} ({ug}) - Categoria: {badgeStyle.label}
+                            OM Destino: {om} ({ug})
                           </h4>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
+                              {/* Badge da Categoria movido para o lado direito */}
+                              <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
+                                  {badgeStyle.label}
+                              </Badge>
+                              
                               {!isEditing ? (
                                 <>
                                   <Button

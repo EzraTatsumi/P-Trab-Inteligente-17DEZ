@@ -1199,9 +1199,7 @@ const ClasseVForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
-                                                        <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
-                                                            {badgeStyle.label}
-                                                        </Badge>
+                                                        {/* REMOVIDO: Badge da Categoria */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
@@ -1302,10 +1300,15 @@ const ClasseVForm = () => {
                       {/* Container para H4 e Botões */}
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <h4 className="text-lg font-semibold text-foreground flex-1 min-w-0">
-                            OM Destino: {om} ({ug}) - Categoria: {badgeStyle.label}
+                            OM Destino: {om} ({ug})
                           </h4>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
+                              {/* Badge da Categoria movido para o lado direito */}
+                              <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
+                                  {badgeStyle.label}
+                              </Badge>
+                              
                               {!isEditing ? (
                                 <>
                                   <Button
