@@ -1324,7 +1324,7 @@ export default function ClasseIIIForm() {
                                 {cat.key === 'MOTOMECANIZACAO' && (
                                   <TableHead className="w-[8%] text-center">Desloc/Dia</TableHead>
                                 )}
-                                <TableHead className="w-[10%] text-center">Lubrificante</TableHead> {/* NOVO HEADER */}
+                                <TableHead className="w-[10%] text-center">Lubrificante</TableHead>
                                 <TableHead className="w-[10%] text-right">Litros</TableHead>
                                 <TableHead className="w-[16%] text-right">Custo Total</TableHead>
                               </TableRow>
@@ -1343,6 +1343,9 @@ export default function ClasseIIIForm() {
                                   
                                   const { totalLitros, itemTotal } = calculateItemTotals(item, refLPC, form.dias_operacao);
                                   const diasUtilizados = item.dias_utilizados || 0;
+                                  
+                                  const isLubricantConfigured = item.consumo_lubrificante_litro > 0 || item.preco_lubrificante > 0;
+                                  const isUsageFilled = item.quantidade > 0 && diasUtilizados > 0 && (isMotomecanizacao ? (item.distancia_percorrida > 0 && item.quantidade_deslocamentos > 0) : item.horas_dia > 0);
                                   
                                   return (
                                     <TableRow key={item.item} className="h-12">
@@ -1415,16 +1418,18 @@ export default function ClasseIIIForm() {
                                       
                                       {/* NOVO: Coluna de Configuração de Lubrificante */}
                                       <TableCell className="py-1 w-[10%] text-center">
-                                        {isLubricantType && (
+                                        {isLubricantType ? (
                                             <Button 
                                               variant="outline" 
                                               size="sm" 
-                                              className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
-                                              disabled={item.quantidade === 0 || diasUtilizados === 0}
+                                              className={cn("h-8 w-full text-xs", isLubricantConfigured && "border-purple-500 text-purple-600")}
+                                              disabled={!isUsageFilled}
                                               onClick={() => handleOpenLubricantConfig(item, index)}
                                             >
                                               <Droplet className="h-3 w-3" />
                                             </Button>
+                                        ) : (
+                                            <span className="text-muted-foreground text-xs">-</span>
                                         )}
                                       </TableCell>
                                       
