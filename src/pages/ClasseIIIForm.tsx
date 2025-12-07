@@ -329,6 +329,12 @@ const ClasseIIIForm = () => {
   const { handleEnterToNextField } = useFormNavigation();
   const lpcRef = useRef<HTMLDivElement>(null);
 
+  // --- ESTADOS TEMPORÁRIOS PARA EDIÇÃO DE LUBRIFICANTE ---
+  const [editingLubricantIndex, setEditingLubricantIndex] = useState<number | null>(null);
+  const [tempConsumoInput, setTempConsumoInput] = useState<string>("");
+  const [tempPrecoInput, setTempPrecoInput] = useState<string>("");
+  // -------------------------------------------------------
+
   useEffect(() => {
     if (!ptrabId) {
       toast.error("ID do P Trab não encontrado");
@@ -653,49 +659,62 @@ const ClasseIIIForm = () => {
   const handleItemNumericChange = (itemIndex: number, field: keyof ItemClasseIII, inputString: string) => {
     const cleanedValue = inputString.replace(/[^\d,.]/g, '');
     
+    // --- Lógica de Edição de Lubrificante (usa estado temporário) ---
+    if (editingLubricantIndex === itemIndex) {
+        if (field === 'preco_lubrificante_input') {
+            const digits = inputString.replace(/\D/g, '');
+            setTempPrecoInput(digits);
+            return;
+        }
+        
+        if (field === 'consumo_lubrificante_input') {
+            setTempConsumoInput(inputString);
+            return;
+        }
+    }
+    // ----------------------------------------------------------------
+    
     if (field === 'quantidade' || field === 'quantidade_deslocamentos' || field === 'dias_utilizados') {
       const numericValue = parseInt(cleanedValue.replace(/[,.]/g, '')) || 0;
       handleItemFieldChange(itemIndex, field, numericValue);
       return;
     }
     
-    if (field === 'preco_lubrificante_input') {
-      const digits = inputString.replace(/\D/g, '');
-      const { numericValue } = formatCurrencyInput(digits);
-      
-      const updatedItems = [...localCategoryItems];
-      updatedItems[itemIndex] = {
-        ...updatedItems[itemIndex],
-        preco_lubrificante_input: digits,
-        preco_lubrificante: numericValue,
-      };
-      setLocalCategoryItems(updatedItems);
-      return;
-    }
-    
-    if (field === 'consumo_lubrificante_input') {
-      // Permite entrada livre, mas tenta converter para número para o cálculo
-      const numericValue = parseInputToNumber(inputString);
-      const updatedItems = [...localCategoryItems];
-      updatedItems[itemIndex] = {
-        ...updatedItems[itemIndex],
-        consumo_lubrificante_litro: numericValue,
-        consumo_lubrificante_input: inputString, // Mantém a string digitada
-      };
-      setLocalCategoryItems(updatedItems);
-      return;
-    }
-    
+    // Campos de Horas/Dia ou Km/Desloc
     const numericValue = parseInputToNumber(cleanedValue);
     handleItemFieldChange(itemIndex, field, numericValue);
   };
 
-  const handleItemNumericBlur = (itemIndex: number, field: keyof ItemClasseIII, inputString: string) => {
-    // Removido o tratamento de onBlur para consumo_lubrificante_input para permitir preenchimento livre
-    if (field === 'consumo_lubrificante_input') {
-      // Não faz nada no blur para manter o texto como o usuário digitou
-      return;
-    }
+  // Removendo handleItemNumericBlur, pois a lógica de formatação foi movida para o Confirmar/Cancelar
+  // e a validação de outros campos é feita no change.
+
+  const handleOpenLubricantPopover = (item: ItemClasseIII, index: number) => {
+    setEditingLubricantIndex(index);
+    setTempConsumoInput(item.consumo_lubrificante_input);
+    setTempPrecoInput(item.preco_lubrificante_input);
+  };
+
+  const handleConfirmLubricant = () => {
+    if (editingLubricantIndex === null) return;
+
+    const consumoNumeric = parseInputToNumber(tempConsumoInput);
+    const { numericValue: precoNumeric, digits: precoDigits } = formatCurrencyInput(tempPrecoInput);
+
+    const updatedItems = [...localCategoryItems];
+    updatedItems[editingLubricantIndex] = {
+        ...updatedItems[editingLubricantIndex],
+        consumo_lubrificante_input: tempConsumoInput,
+        consumo_lubrificante_litro: consumoNumeric,
+        preco_lubrificante_input: precoDigits,
+        preco_lubrificante: precoNumeric,
+    };
+    setLocalCategoryItems(updatedItems);
+    setEditingLubricantIndex(null);
+  };
+
+  const handleCancelLubricant = () => {
+    // Discard temporary changes by simply closing the popover
+    setEditingLubricantIndex(null);
   };
 
   const handleUpdateCategoryItems = () => {
@@ -1666,13 +1685,24 @@ const getMemoriaRecords = granularRegistros;
                                       {shouldShowLubricantColumn && (
                                         <TableCell className="py-1 w-[10%]">
                                           {isLubricantType ? (
-                                            <Popover>
+                                            <Popover 
+                                              open={editingLubricantIndex === index} 
+                                              onOpenChange={(open) => {
+                                                if (open) {
+                                                  handleOpenLubricantPopover(item, index);
+                                                } else if (editingLubricantIndex === index) {
+                                                  // If closing without explicit confirm/cancel (e.g., clicking outside), treat as cancel
+                                                  handleCancelLubricant();
+                                                }
+                                              }}
+                                            >
                                               <PopoverTrigger asChild>
                                                 <Button 
                                                   variant="outline" 
                                                   size="sm" 
                                                   className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
                                                   disabled={item.quantidade === 0 || diasUtilizados === 0}
+                                                  onClick={() => handleOpenLubricantPopover(item, index)} // Ensure it opens and sets state
                                                 >
                                                   <Droplet className="h-3 w-3 mr-1" />
                                                   {item.consumo_lubrificante_litro > 0 ? 'Configurado' : 'Configurar'}
@@ -1685,7 +1715,7 @@ const getMemoriaRecords = granularRegistros;
                                                   <Input 
                                                     type="text"
                                                     inputMode="decimal"
-                                                    value={item.consumo_lubrificante_input}
+                                                    value={tempConsumoInput}
                                                     onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_input', e.target.value)}
                                                     placeholder="0,00"
                                                   />
@@ -1695,11 +1725,28 @@ const getMemoriaRecords = granularRegistros;
                                                   <Input 
                                                     type="text"
                                                     inputMode="numeric"
-                                                    value={formattedPriceInput}
+                                                    value={formatCurrencyInput(tempPrecoInput).formatted}
                                                     onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante_input', e.target.value)}
                                                     placeholder="0,00"
                                                     onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
                                                   />
+                                                </div>
+                                                
+                                                {/* BOTÕES DE CONFIRMAR E CANCELAR */}
+                                                <div className="flex justify-end gap-2 pt-2">
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        onClick={handleCancelLubricant}
+                                                    >
+                                                        Cancelar
+                                                    </Button>
+                                                    <Button 
+                                                        size="sm" 
+                                                        onClick={handleConfirmLubricant}
+                                                    >
+                                                        Confirmar
+                                                    </Button>
                                                 </div>
                                               </PopoverContent>
                                             </Popover>
