@@ -44,9 +44,12 @@ export const formatNumberForInput = (num: number, minFractionDigits: number = 2)
  * Cleans a raw string input, allowing only digits, dots (for thousands), and one comma (for decimal).
  * This version is designed to be permissive during typing.
  */
-export const formatInputWithThousands = (value: string): string => {
+export const formatInputWithThousands = (value: string | undefined | null): string => {
+  // FIX: Ensure value is treated as a string, defaulting to empty string if null or undefined
+  const stringValue = String(value || '');
+  
   // 1. Remove tudo exceto dígitos, ponto e vírgula
-  let cleaned = value.replace(/[^\d,.]/g, '');
+  let cleaned = stringValue.replace(/[^\d,.]/g, '');
 
   // 2. Garante que haja apenas uma vírgula (decimal separator)
   const parts = cleaned.split(',');
