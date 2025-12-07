@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
 
 export interface TipoEquipamentoDetalhado {
   nome: string;
@@ -42,6 +43,21 @@ export const tipoViaturas: TipoEquipamentoDetalhado[] = [
   { nome: "Vtr Bld SR", combustivel: "OD", consumo: 1.5, unidade: "km/L" },
   { nome: "Vtr Bld SL", combustivel: "OD", consumo: 0.5, unidade: "km/L" },
   { nome: "Vtr Bld L SR - LINCE", combustivel: "OD", consumo: 4, unidade: "km/L" },
+];
+
+// NEW: Default configuration for Classe III maintenance (placeholder values)
+export const defaultClasseIIIConfig: DiretrizClasseIIForm[] = [
+  // Combustível (Placeholder for maintenance related to fuel systems, if applicable)
+  { categoria: "Combustível", item: "Manutenção de Tanques", valor_mnt_dia: 5.00 },
+  { categoria: "Combustível", item: "Manutenção de Bombas", valor_mnt_dia: 3.50 },
+  // Lubrificante (Placeholder for maintenance related to lubricant systems)
+  { categoria: "Lubrificante", item: "Manutenção de Filtros", valor_mnt_dia: 2.00 },
+  // Embarcação (Using maintenance values from Classe VI default)
+  { categoria: "Embarcação", item: "Embarcação Guardian", valor_mnt_dia: 354.11 },
+  { categoria: "Embarcação", item: "Motor de Popa", valor_mnt_dia: 9.73 },
+  // Equipamento de Engenharia (Using maintenance values from Classe VI default)
+  { categoria: "Equipamento de Engenharia", item: "Retroescavadeira", valor_mnt_dia: 74.33 },
+  { categoria: "Equipamento de Engenharia", item: "Trator de Esteiras", valor_mnt_dia: 189.51 },
 ];
 
 // Função helper para retornar valores padrão
