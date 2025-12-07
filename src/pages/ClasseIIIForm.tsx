@@ -475,7 +475,7 @@ export default function ClasseIIIForm() {
               categoria: baseCategory,
               consumo_fixo: directiveItem.consumo,
               tipo_combustivel_fixo: directiveItem.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL',
-              unidade_fixa: directive.unidade,
+              unidade_fixa: directiveItem.unidade,
               quantidade: item.quantidade || 0,
               horas_dia: item.horas_dia || 0,
               distancia_percorrida: item.distancia_percorrida || 0,
@@ -1516,188 +1516,172 @@ const getMemoriaRecords = granularRegistros;
                       </TabsTrigger>
                     ))}
                   </TabsList>
-                  {CATEGORIAS.map(cat => {
-                    const showLubCombColumn = cat.key === 'GERADOR' || cat.key === 'EMBARCACAO';
-                    const isMotomecanizacao = cat.key === 'MOTOMECANIZACAO';
-                    
-                    // Ajuste de largura das colunas para Motomecanização e Engenharia
-                    const colHorasKmWidth = isMotomecanizacao ? "w-[18%]" : (showLubCombColumn ? "w-[18%]" : "w-[28%]");
-                    const colDeslocDiaWidth = isMotomecanizacao ? "w-[10%]" : "";
-                    const colLubCombWidth = showLubCombColumn ? "w-[10%]" : "";
-                    const colLitrosWidth = showLubCombColumn ? "w-[10%]" : "w-[15%]";
-                    const colCustoTotalWidth = "w-[8%]";
-
-                    return (
-                      <TabsContent key={cat.key} value={cat.key} className="mt-4">
-                        <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                          <div className="max-h-[400px] overflow-y-auto rounded-md border">
-                            <Table className="w-full">
-                              <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                  {CATEGORIAS.map(cat => (
+                    <TabsContent key={cat.key} value={cat.key} className="mt-4">
+                      <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                        <div className="max-h-[400px] overflow-y-auto rounded-md border">
+                          <Table className="w-full">
+                            <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                              <TableRow>
+                                <TableHead className="w-[30%]">Equipamento</TableHead>
+                                <TableHead className="w-[8%] text-center">Qtd</TableHead>
+                                <TableHead className="w-[8%] text-center">Qtd Dias</TableHead>
+                                <TableHead className="w-[18%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
+                                {cat.key === 'MOTOMECANIZACAO' && (
+                                  <TableHead className="w-[10%] text-center">Desloc/Dia</TableHead>
+                                )}
+                                <TableHead className="w-[10%] text-center">Lub/Comb</TableHead>
+                                <TableHead className="w-[10%] text-right">Litros</TableHead> {/* NOVA COLUNA */}
+                                <TableHead className="w-[8%] text-right">Custo Total</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {localCategoryItems.length === 0 ? (
                                 <TableRow>
-                                  <TableHead className="w-[30%]">Equipamento</TableHead>
-                                  <TableHead className="w-[8%] text-center">Qtd</TableHead>
-                                  <TableHead className="w-[8%] text-center">Qtd Dias</TableHead>
-                                  <TableHead className={cn("text-center", colHorasKmWidth)}>
-                                    {cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}
-                                  </TableHead>
-                                  {cat.key === 'MOTOMECANIZACAO' && (
-                                    <TableHead className={cn("text-center", colDeslocDiaWidth)}>Desloc/Dia</TableHead>
-                                  )}
-                                  {showLubCombColumn && (
-                                    <TableHead className={cn("text-center", colLubCombWidth)}>Lub/Comb</TableHead>
-                                  )}
-                                  <TableHead className={cn("text-right", colLitrosWidth)}>Litros</TableHead>
-                                  <TableHead className={cn("text-right", colCustoTotalWidth)}>Custo Total</TableHead>
+                                  <TableCell colSpan={cat.key === 'MOTOMECANIZACAO' ? 8 : 7} className="text-center text-muted-foreground">
+                                    Nenhum item de diretriz encontrado para esta categoria.
+                                  </TableCell>
                                 </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {localCategoryItems.length === 0 ? (
-                                  <TableRow>
-                                    <TableCell colSpan={isMotomecanizacao ? (showLubCombColumn ? 8 : 7) : (showLubCombColumn ? 7 : 6)} className="text-center text-muted-foreground">
-                                      Nenhum item de diretriz encontrado para esta categoria.
-                                    </TableCell>
-                                  </TableRow>
-                                ) : (
-                                  localCategoryItems.map((item, index) => {
-                                    const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
-                                    
-                                    const { totalLitros, itemTotal } = calculateItemTotals(item, refLPC, form.dias_operacao);
-                                    const diasUtilizados = item.dias_utilizados || 0;
-                                    
-                                    const formattedPriceInput = formatCurrencyInput(item.preco_lubrificante_input).formatted;
-                                    
-                                    return (
-                                      <TableRow key={item.item} className="h-12">
-                                        <TableCell className="font-medium text-sm py-1 w-[30%]">
-                                          <div className="flex flex-col gap-1">
-                                            <span className="font-medium text-sm">{item.item}</span>
-                                            <Badge 
-                                              variant="default" 
-                                              className={cn("w-fit text-xs font-normal", getCombustivelBadgeClass(item.tipo_combustivel_fixo))}
-                                            >
-                                              {item.tipo_combustivel_fixo} ({formatNumber(item.consumo_fixo, 1)} {item.unidade_fixa})
-                                            </Badge>
-                                          </div>
-                                        </TableCell>
-                                        <TableCell className="py-1 w-[8%]">
+                              ) : (
+                                localCategoryItems.map((item, index) => {
+                                  const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
+                                  const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
+                                  
+                                  const { totalLitros, itemTotal } = calculateItemTotals(item, refLPC, form.dias_operacao);
+                                  const diasUtilizados = item.dias_utilizados || 0;
+                                  
+                                  const formattedPriceInput = formatCurrencyInput(item.preco_lubrificante_input).formatted;
+                                  
+                                  return (
+                                    <TableRow key={item.item} className="h-12">
+                                      <TableCell className="font-medium text-sm py-1 w-[30%]">
+                                        <div className="flex flex-col gap-1">
+                                          <span className="font-medium text-sm">{item.item}</span>
+                                          <Badge 
+                                            variant="default" 
+                                            className={cn("w-fit text-xs font-normal", getCombustivelBadgeClass(item.tipo_combustivel_fixo))}
+                                          >
+                                            {item.tipo_combustivel_fixo} ({formatNumber(item.consumo_fixo, 1)} {item.unidade_fixa})
+                                          </Badge>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="py-1 w-[8%]">
+                                        <Input 
+                                          type="text"
+                                          inputMode="numeric"
+                                          className="h-8 text-center"
+                                          value={item.quantidade === 0 ? "" : item.quantidade.toString()}
+                                          onChange={(e) => handleItemNumericChange(index, 'quantidade', e.target.value)}
+                                          placeholder="0"
+                                          onKeyDown={handleEnterToNextField}
+                                        />
+                                      </TableCell>
+                                      {/* NEW COLUMN: Qtd Dias */}
+                                      <TableCell className="py-1 w-[8%]">
+                                        <Input 
+                                          type="text"
+                                          inputMode="numeric"
+                                          className="h-8 text-center"
+                                          value={item.dias_utilizados === 0 ? "" : item.dias_utilizados.toString()}
+                                          onChange={(e) => handleItemNumericChange(index, 'dias_utilizados', e.target.value)}
+                                          placeholder="0"
+                                          disabled={item.quantidade === 0}
+                                          onKeyDown={handleEnterToNextField}
+                                        />
+                                      </TableCell>
+                                      {/* COLUMN 4: Horas/Dia or KM/Desloc */}
+                                      <TableCell className="py-1 w-[18%]">
+                                        <Input 
+                                          type="text"
+                                          inputMode="decimal"
+                                          className="h-8 text-center"
+                                          value={isMotomecanizacao 
+                                            ? (item.distancia_percorrida === 0 ? "" : item.distancia_percorrida.toString())
+                                            : (item.horas_dia === 0 ? "" : item.horas_dia.toString())
+                                          }
+                                          onChange={(e) => handleItemNumericChange(index, isMotomecanizacao ? 'distancia_percorrida' : 'horas_dia', e.target.value)}
+                                          placeholder="0"
+                                          disabled={item.quantidade === 0 || diasUtilizados === 0}
+                                          onKeyDown={handleEnterToNextField}
+                                        />
+                                      </TableCell>
+                                      {/* COLUMN 5: Desloc/Dia (Only for Motomecanizacao) */}
+                                      {isMotomecanizacao && (
+                                        <TableCell className="py-1 w-[10%]">
                                           <Input 
                                             type="text"
                                             inputMode="numeric"
                                             className="h-8 text-center"
-                                            value={item.quantidade === 0 ? "" : item.quantidade.toString()}
-                                            onChange={(e) => handleItemNumericChange(index, 'quantidade', e.target.value)}
-                                            placeholder="0"
-                                            onKeyDown={handleEnterToNextField}
-                                          />
-                                        </TableCell>
-                                        {/* NEW COLUMN: Qtd Dias */}
-                                        <TableCell className="py-1 w-[8%]">
-                                          <Input 
-                                            type="text"
-                                            inputMode="numeric"
-                                            className="h-8 text-center"
-                                            value={item.dias_utilizados === 0 ? "" : item.dias_utilizados.toString()}
-                                            onChange={(e) => handleItemNumericChange(index, 'dias_utilizados', e.target.value)}
-                                            placeholder="0"
-                                            disabled={item.quantidade === 0}
-                                            onKeyDown={handleEnterToNextField}
-                                          />
-                                        </TableCell>
-                                        {/* COLUMN 4: Horas/Dia or KM/Desloc */}
-                                        <TableCell className={cn("py-1", colHorasKmWidth)}>
-                                          <Input 
-                                            type="text"
-                                            inputMode="decimal"
-                                            className="h-8 text-center"
-                                            value={isMotomecanizacao 
-                                              ? (item.distancia_percorrida === 0 ? "" : item.distancia_percorrida.toString())
-                                              : (item.horas_dia === 0 ? "" : item.horas_dia.toString())
-                                            }
-                                            onChange={(e) => handleItemNumericChange(index, isMotomecanizacao ? 'distancia_percorrida' : 'horas_dia', e.target.value)}
+                                            value={item.quantidade_deslocamentos === 0 ? "" : item.quantidade_deslocamentos.toString()}
+                                            onChange={(e) => handleItemNumericChange(index, 'quantidade_deslocamentos', e.target.value)}
                                             placeholder="0"
                                             disabled={item.quantidade === 0 || diasUtilizados === 0}
                                             onKeyDown={handleEnterToNextField}
                                           />
                                         </TableCell>
-                                        {/* COLUMN 5: Desloc/Dia (Only for Motomecanizacao) */}
-                                        {isMotomecanizacao && (
-                                          <TableCell className={cn("py-1", colDeslocDiaWidth)}>
-                                            <Input 
-                                              type="text"
-                                              inputMode="numeric"
-                                              className="h-8 text-center"
-                                              value={item.quantidade_deslocamentos === 0 ? "" : item.quantidade_deslocamentos.toString()}
-                                              onChange={(e) => handleItemNumericChange(index, 'quantidade_deslocamentos', e.target.value)}
-                                              placeholder="0"
-                                              disabled={item.quantidade === 0 || diasUtilizados === 0}
-                                              onKeyDown={handleEnterToNextField}
-                                            />
-                                          </TableCell>
+                                      )}
+                                      {/* COLUMN 6: Lub/Comb */}
+                                      <TableCell className="py-1 w-[10%]">
+                                        {isLubricantType ? (
+                                          <Popover>
+                                            <PopoverTrigger asChild>
+                                              <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
+                                                disabled={item.quantidade === 0 || diasUtilizados === 0}
+                                              >
+                                                <Droplet className="h-3 w-3 mr-1" />
+                                                {item.consumo_lubrificante_litro > 0 ? 'Configurado' : 'Lubrificante'}
+                                              </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-80 p-4 space-y-3">
+                                              <h4 className="font-semibold text-sm">Configurar Lubrificante</h4>
+                                              <div className="space-y-2">
+                                                <Label>Consumo ({item.categoria === 'GERADOR' ? 'L/100h' : 'L/h'})</Label>
+                                                <Input 
+                                                  type="text"
+                                                  inputMode="decimal"
+                                                  value={item.consumo_lubrificante_input}
+                                                  onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_input', e.target.value)}
+                                                  onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_input', e.target.value)}
+                                                  placeholder="0,00"
+                                                />
+                                              </div>
+                                              <div className="space-y-2">
+                                                <Label>Preço (R$/L)</Label>
+                                                <Input 
+                                                  type="text"
+                                                  inputMode="numeric"
+                                                  value={formattedPriceInput}
+                                                  onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante_input', e.target.value)}
+                                                  placeholder="0,00"
+                                                  onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
+                                                />
+                                              </div>
+                                            </PopoverContent>
+                                          </Popover>
+                                        ) : (
+                                          <Badge variant="secondary" className="text-xs w-full justify-center">
+                                            {item.tipo_combustivel_fixo}
+                                          </Badge>
                                         )}
-                                        {/* COLUMN 6: Lub/Comb (Conditional) */}
-                                        {showLubCombColumn && (
-                                          <TableCell className={cn("py-1", colLubCombWidth)}>
-                                            {isLubricantType ? (
-                                              <Popover>
-                                                <PopoverTrigger asChild>
-                                                  <Button 
-                                                    variant="outline" 
-                                                    size="sm" 
-                                                    className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
-                                                    disabled={item.quantidade === 0 || diasUtilizados === 0}
-                                                  >
-                                                    <Droplet className="h-3 w-3 mr-1" />
-                                                    {item.consumo_lubrificante_litro > 0 ? 'Configurado' : 'Lubrificante'}
-                                                  </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-80 p-4 space-y-3">
-                                                  <h4 className="font-semibold text-sm">Configurar Lubrificante</h4>
-                                                  <div className="space-y-2">
-                                                    <Label>Consumo ({item.categoria === 'GERADOR' ? 'L/100h' : 'L/h'})</Label>
-                                                    <Input 
-                                                      type="text"
-                                                      inputMode="decimal"
-                                                      value={item.consumo_lubrificante_input}
-                                                      onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_input', e.target.value)}
-                                                      onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_input', e.target.value)}
-                                                      placeholder="0,00"
-                                                    />
-                                                  </div>
-                                                  <div className="space-y-2">
-                                                    <Label>Preço (R$/L)</Label>
-                                                    <Input 
-                                                      type="text"
-                                                      inputMode="numeric"
-                                                      value={formattedPriceInput}
-                                                      onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante_input', e.target.value)}
-                                                      placeholder="0,00"
-                                                      onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
-                                                    />
-                                                  </div>
-                                                </PopoverContent>
-                                              </Popover>
-                                            ) : (
-                                              <Badge variant="secondary" className="text-xs w-full justify-center">
-                                                {item.tipo_combustivel_fixo}
-                                              </Badge>
-                                            )}
-                                          </TableCell>
-                                        )}
-                                        {/* NOVA COLUNA: Litros */}
-                                        <TableCell className={cn("text-right text-sm py-1", colLitrosWidth)}>
-                                          {totalLitros > 0 ? `${formatNumber(totalLitros)} L` : '-'}
-                                        </TableCell>
-                                        {/* COLUMN 7: Custo Total */}
-                                        <TableCell className={cn("text-right font-semibold text-sm py-1", colCustoTotalWidth)}>
-                                          {formatCurrency(itemTotal)}
-                                        </TableCell>
-                                      </TableRow>
-                                    );
-                                  })
-                                )}
-                              </TableBody>
-                            </Table>
-                          </div>
+                                      </TableCell>
+                                      {/* NOVA COLUNA: Litros */}
+                                      <TableCell className="text-right text-sm py-1 w-[10%]">
+                                        {totalLitros > 0 ? `${formatNumber(totalLitros)} L` : '-'}
+                                      </TableCell>
+                                      {/* COLUMN 7: Custo Total */}
+                                      <TableCell className="text-right font-semibold text-sm py-1 w-[8%]">
+                                        {formatCurrency(itemTotal)}
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
                         
                         {/* NOVO DETALHAMENTO DE TOTAIS */}
                         <div className="space-y-2 p-3 bg-background rounded-lg border">
@@ -1742,9 +1726,9 @@ const getMemoriaRecords = granularRegistros;
                             Salvar Itens da Categoria
                           </Button>
                         </div>
-                      </TabsContent>
-                    );
-                  })}
+                      </div>
+                    </TabsContent>
+                  ))}
                 </Tabs>
               </div>
             )}
@@ -1910,7 +1894,7 @@ const getMemoriaRecords = granularRegistros;
                                     <h4 className="font-semibold text-base text-foreground">
                                       {isCombustivel ? 'Combustível' : 'Lubrificante'}
                                     </h4>
-                                    <Badge variant="default" className={cn("w-fit shrink-0", badgeClass)}>
+                                    <Badge variant="default" className={cn("w-fit", badgeClass)}>
                                       {badgeText}
                                     </Badge>
                                   </div>
