@@ -1362,6 +1362,12 @@ const getMemoriaRecords = granularRegistros;
   // OMs Cadastradas (Seção 4) usa registrosAgrupadosPorSuprimento
   // Memórias de Cálculo (Seção 5) usa getMemoriaRecords
   
+  // Determina se a aba atual deve exibir a coluna de Lubrificante
+  const shouldShowLubricantColumn = selectedTab === 'GERADOR' || selectedTab === 'EMBARCACAO';
+  
+  // Determina o título da coluna
+  const lubricantColumnTitle = shouldShowLubricantColumn ? 'Lubrificante' : 'Lub/Comb'; // Mantendo 'Lub/Comb' como fallback, embora não deva ser exibido
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -1565,8 +1571,10 @@ const getMemoriaRecords = granularRegistros;
                                 {cat.key === 'MOTOMECANIZACAO' && (
                                   <TableHead className="w-[10%] text-center">Desloc/Dia</TableHead>
                                 )}
-                                <TableHead className="w-[10%] text-center">Lub/Comb</TableHead>
-                                <TableHead className="w-[10%] text-right">Litros</TableHead> {/* NOVA COLUNA */}
+                                {shouldShowLubricantColumn && (
+                                  <TableHead className="w-[10%] text-center">{lubricantColumnTitle}</TableHead>
+                                )}
+                                <TableHead className="w-[10%] text-right">Litros</TableHead>
                                 <TableHead className="w-[8%] text-right">Custo Total</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -1655,53 +1663,55 @@ const getMemoriaRecords = granularRegistros;
                                           />
                                         </TableCell>
                                       )}
-                                      {/* COLUMN 6: Lub/Comb */}
-                                      <TableCell className="py-1 w-[10%]">
-                                        {isLubricantType ? (
-                                          <Popover>
-                                            <PopoverTrigger asChild>
-                                              <Button 
-                                                variant="outline" 
-                                                size="sm" 
-                                                className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
-                                                disabled={item.quantidade === 0 || diasUtilizados === 0}
-                                              >
-                                                <Droplet className="h-3 w-3 mr-1" />
-                                                {item.consumo_lubrificante_litro > 0 ? 'Configurado' : 'Lubrificante'}
-                                              </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-80 p-4 space-y-3">
-                                              <h4 className="font-semibold text-sm">Configurar Lubrificante</h4>
-                                              <div className="space-y-2">
-                                                <Label>Consumo ({item.categoria === 'GERADOR' ? 'L/100h' : 'L/h'})</Label>
-                                                <Input 
-                                                  type="text"
-                                                  inputMode="decimal"
-                                                  value={item.consumo_lubrificante_input}
-                                                  onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_input', e.target.value)}
-                                                  onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_input', e.target.value)}
-                                                  placeholder="0,00"
-                                                />
-                                              </div>
-                                              <div className="space-y-2">
-                                                <Label>Preço (R$/L)</Label>
-                                                <Input 
-                                                  type="text"
-                                                  inputMode="numeric"
-                                                  value={formattedPriceInput}
-                                                  onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante_input', e.target.value)}
-                                                  placeholder="0,00"
-                                                  onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
-                                                />
-                                              </div>
-                                            </PopoverContent>
-                                          </Popover>
-                                        ) : (
-                                          <Badge variant="secondary" className="text-xs w-full justify-center">
-                                            {item.tipo_combustivel_fixo}
-                                          </Badge>
-                                        )}
-                                      </TableCell>
+                                      {/* COLUMN 6: Lub/Comb (Conditional) */}
+                                      {shouldShowLubricantColumn && (
+                                        <TableCell className="py-1 w-[10%]">
+                                          {isLubricantType ? (
+                                            <Popover>
+                                              <PopoverTrigger asChild>
+                                                <Button 
+                                                  variant="outline" 
+                                                  size="sm" 
+                                                  className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
+                                                  disabled={item.quantidade === 0 || diasUtilizados === 0}
+                                                >
+                                                  <Droplet className="h-3 w-3 mr-1" />
+                                                  {item.consumo_lubrificante_litro > 0 ? 'Configurado' : 'Configurar'}
+                                                </Button>
+                                              </PopoverTrigger>
+                                              <PopoverContent className="w-80 p-4 space-y-3">
+                                                <h4 className="font-semibold text-sm">Configurar Lubrificante</h4>
+                                                <div className="space-y-2">
+                                                  <Label>Consumo ({item.categoria === 'GERADOR' ? 'L/100h' : 'L/h'})</Label>
+                                                  <Input 
+                                                    type="text"
+                                                    inputMode="decimal"
+                                                    value={item.consumo_lubrificante_input}
+                                                    onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_input', e.target.value)}
+                                                    onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_input', e.target.value)}
+                                                    placeholder="0,00"
+                                                  />
+                                                </div>
+                                                <div className="space-y-2">
+                                                  <Label>Preço (R$/L)</Label>
+                                                  <Input 
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    value={formattedPriceInput}
+                                                    onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante_input', e.target.value)}
+                                                    placeholder="0,00"
+                                                    onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
+                                                  />
+                                                </div>
+                                              </PopoverContent>
+                                            </Popover>
+                                          ) : (
+                                            <Badge variant="secondary" className="text-xs w-full justify-center">
+                                              {item.tipo_combustivel_fixo}
+                                            </Badge>
+                                          )}
+                                        </TableCell>
+                                      )}
                                       {/* NOVA COLUNA: Litros */}
                                       <TableCell className="text-right text-sm py-1 w-[10%]">
                                         {totalLitros > 0 ? `${formatNumber(totalLitros)} L` : '-'}
