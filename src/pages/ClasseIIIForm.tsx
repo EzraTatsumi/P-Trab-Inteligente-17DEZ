@@ -1085,28 +1085,38 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                   
                   {CATEGORIAS.map(cat => {
                     const isGerador = cat.key === 'GERADOR';
+                    const isMotomecanizacao = cat.key === 'MOTOMECANIZACAO';
+                    const isLubricantType = cat.key === 'GERADOR' || cat.key === 'EMBARCACAO';
                     
                     // Define as colunas da tabela
-                    const tableColumns = [
+                    const baseColumns = [
                         { header: 'Equipamento', width: 'w-[30%]', key: 'item' },
                         { header: 'Qtd', width: 'w-[10%]', key: 'quantidade' },
                         { header: isMotomecanizacao ? 'KM/Desloc' : 'Horas/Dia', width: 'w-[15%]', key: isMotomecanizacao ? 'distancia_percorrida' : 'horas_dia' },
                         { header: isMotomecanizacao ? 'Desloc' : 'Consumo Fixo', width: 'w-[15%]', key: isMotomecanizacao ? 'quantidade_deslocamentos' : 'consumo_fixo' },
                         { header: isLubricantType ? 'Lubrificante' : 'Combustível', width: 'w-[15%]', key: 'lubrificante' },
                         { header: 'Custo Total', width: 'w-[15%]', key: 'custo_total' },
-                    ].filter(col => isGerador ? col.key !== 'consumo_fixo' : true); // Remove Consumo Fixo para Gerador
-                    
-                    // Ajusta o cabeçalho para Gerador
-                    const geradorTableColumns = [
-                        { header: 'Equipamento', width: 'w-[30%]', key: 'item' },
-                        { header: 'Qtd', width: 'w-[10%]', key: 'quantidade' },
-                        { header: 'Horas/Dia', width: 'w-[15%]', key: 'horas_dia' },
-                        { header: 'Lubrificante', width: 'w-[20%]', key: 'lubrificante' }, // Aumenta a largura
-                        { header: 'Custo Total', width: 'w-[25%]', key: 'custo_total' }, // Aumenta a largura
                     ];
                     
-                    const columns = isGerador ? geradorTableColumns : tableColumns;
+                    // Filtra a coluna 'Consumo Fixo' para Gerador
+                    const columns = isGerador 
+                        ? baseColumns.filter(col => col.key !== 'consumo_fixo')
+                        : baseColumns;
                     
+                    // Ajusta a largura das colunas para Gerador (que tem 5 colunas)
+                    const geradorColumns = columns.map(col => {
+                        if (isGerador) {
+                            if (col.key === 'item') return { ...col, width: 'w-[30%]' };
+                            if (col.key === 'quantidade') return { ...col, width: 'w-[10%]' };
+                            if (col.key === 'horas_dia') return { ...col, width: 'w-[15%]' };
+                            if (col.key === 'lubrificante') return { ...col, width: 'w-[20%]' };
+                            if (col.key === 'custo_total') return { ...col, width: 'w-[25%]' };
+                        }
+                        return col;
+                    });
+                    
+                    const finalColumns = isGerador ? geradorColumns : columns;
+
                     return (
                       <TabsContent key={cat.key} value={cat.key} className="mt-4">
                         <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
@@ -1115,7 +1125,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                               <Table className="w-full">
                                   <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                       <TableRow>
-                                          {columns.map(col => (
+                                          {finalColumns.map(col => (
                                               <TableHead key={col.key} className={cn(col.width, "text-center first:text-left")}>
                                                   {col.header}
                                               </TableHead>
@@ -1125,7 +1135,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                   <TableBody>
                                       {currentCategoryItems.length === 0 ? (
                                           <TableRow>
-                                              <TableCell colSpan={columns.length} className="text-center text-muted-foreground">
+                                              <TableCell colSpan={finalColumns.length} className="text-center text-muted-foreground">
                                                   Nenhum item de diretriz encontrado para esta categoria.
                                               </TableCell>
                                           </TableRow>
@@ -1210,52 +1220,104 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                           </TableCell>
                                                       )}
                                                       
-                                                      <TableCell className="py-1">
-                                                          {isLubricantType ? (
-                                                              <Popover>
-                                                                  <PopoverTrigger asChild>
-                                                                      <Button 
-                                                                          variant="outline" 
-                                                                          size="sm" 
-                                                                          className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
-                                                                          disabled={item.quantidade === 0}
-                                                                      >
-                                                                          <Droplet className="h-3 w-3 mr-1" />
-                                                                          {item.consumo_lubrificante_litro > 0 ? 'Configurado' : 'Lubrificante'}
-                                                                      </Button>
-                                                                  </PopoverTrigger>
-                                                                  <PopoverContent className="w-80 p-4 space-y-3">
-                                                                      <h4 className="font-semibold text-sm">Configurar Lubrificante</h4>
-                                                                      <div className="space-y-2">
-                                                                          <Label>Consumo ({item.categoria === 'GERADOR' ? 'L/100h' : 'L/h'})</Label>
-                                                                          <Input
-                                                                              type="text"
-                                                                              inputMode="decimal"
-                                                                              value={item.consumo_lubrificante_litro === 0 ? "" : formatNumberForInput(item.consumo_lubrificante_litro, 2)}
-                                                                              onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_litro', e.target.value)}
-                                                                              onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_litro', e.target.value)}
-                                                                              placeholder="0,00"
-                                                                          />
-                                                                      </div>
-                                                                      <div className="space-y-2">
-                                                                          <Label>Preço (R$/L)</Label>
-                                                                          <Input
-                                                                              type="text"
-                                                                              inputMode="decimal"
-                                                                              value={item.preco_lubrificante === 0 ? "" : formatNumberForInput(item.preco_lubrificante, 2)}
-                                                                              onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante', e.target.value)}
-                                                                              onBlur={(e) => handleItemNumericBlur(index, 'preco_lubrificante', e.target.value)}
-                                                                              placeholder="0,00"
-                                                                          />
-                                                                      </div>
-                                                                  </PopoverContent>
-                                                              </Popover>
-                                                          ) : (
-                                                              <Badge variant="secondary" className="text-xs w-full justify-center">
-                                                                  {item.tipo_combustivel_fixo}
-                                                              </Badge>
-                                                          )}
-                                                      </TableCell>
+                                                      {isGerador && (
+                                                          <TableCell className="py-1">
+                                                              {isLubricantType ? (
+                                                                  <Popover>
+                                                                      <PopoverTrigger asChild>
+                                                                          <Button 
+                                                                              variant="outline" 
+                                                                              size="sm" 
+                                                                              className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
+                                                                              disabled={item.quantidade === 0}
+                                                                          >
+                                                                              <Droplet className="h-3 w-3 mr-1" />
+                                                                              {item.consumo_lubrificante_litro > 0 ? 'Configurado' : 'Lubrificante'}
+                                                                          </Button>
+                                                                      </PopoverTrigger>
+                                                                      <PopoverContent className="w-80 p-4 space-y-3">
+                                                                          <h4 className="font-semibold text-sm">Configurar Lubrificante</h4>
+                                                                          <div className="space-y-2">
+                                                                              <Label>Consumo ({item.categoria === 'GERADOR' ? 'L/100h' : 'L/h'})</Label>
+                                                                              <Input
+                                                                                  type="text"
+                                                                                  inputMode="decimal"
+                                                                                  value={item.consumo_lubrificante_litro === 0 ? "" : formatNumberForInput(item.consumo_lubrificante_litro, 2)}
+                                                                                  onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_litro', e.target.value)}
+                                                                                  onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_litro', e.target.value)}
+                                                                                  placeholder="0,00"
+                                                                              />
+                                                                          </div>
+                                                                          <div className="space-y-2">
+                                                                              <Label>Preço (R$/L)</Label>
+                                                                              <Input
+                                                                                  type="text"
+                                                                                  inputMode="decimal"
+                                                                                  value={item.preco_lubrificante === 0 ? "" : formatNumberForInput(item.preco_lubrificante, 2)}
+                                                                                  onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante', e.target.value)}
+                                                                                  onBlur={(e) => handleItemNumericBlur(index, 'preco_lubrificante', e.target.value)}
+                                                                                  placeholder="0,00"
+                                                                              />
+                                                                          </div>
+                                                                      </PopoverContent>
+                                                                  </Popover>
+                                                              ) : (
+                                                                  <Badge variant="secondary" className="text-xs w-full justify-center">
+                                                                      {item.tipo_combustivel_fixo}
+                                                                  </Badge>
+                                                              )}
+                                                          </TableCell>
+                                                      )}
+                                                      
+                                                      {!isGerador && (
+                                                          <TableCell className="py-1">
+                                                              {isLubricantType ? (
+                                                                  <Popover>
+                                                                      <PopoverTrigger asChild>
+                                                                          <Button 
+                                                                              variant="outline" 
+                                                                              size="sm" 
+                                                                              className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
+                                                                              disabled={item.quantidade === 0}
+                                                                          >
+                                                                              <Droplet className="h-3 w-3 mr-1" />
+                                                                              {item.consumo_lubrificante_litro > 0 ? 'Configurado' : 'Lubrificante'}
+                                                                          </Button>
+                                                                      </PopoverTrigger>
+                                                                      <PopoverContent className="w-80 p-4 space-y-3">
+                                                                          <h4 className="font-semibold text-sm">Configurar Lubrificante</h4>
+                                                                          <div className="space-y-2">
+                                                                              <Label>Consumo ({item.categoria === 'GERADOR' ? 'L/100h' : 'L/h'})</Label>
+                                                                              <Input
+                                                                                  type="text"
+                                                                                  inputMode="decimal"
+                                                                                  value={item.consumo_lubrificante_litro === 0 ? "" : formatNumberForInput(item.consumo_lubrificante_litro, 2)}
+                                                                                  onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_litro', e.target.value)}
+                                                                                  onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_litro', e.target.value)}
+                                                                                  placeholder="0,00"
+                                                                              />
+                                                                          </div>
+                                                                          <div className="space-y-2">
+                                                                              <Label>Preço (R$/L)</Label>
+                                                                              <Input
+                                                                                  type="text"
+                                                                                  inputMode="decimal"
+                                                                                  value={item.preco_lubrificante === 0 ? "" : formatNumberForInput(item.preco_lubrificante, 2)}
+                                                                                  onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante', e.target.value)}
+                                                                                  onBlur={(e) => handleItemNumericBlur(index, 'preco_lubrificante', e.target.value)}
+                                                                                  placeholder="0,00"
+                                                                              />
+                                                                          </div>
+                                                                      </PopoverContent>
+                                                                  </Popover>
+                                                              ) : (
+                                                                  <Badge variant="secondary" className="text-xs w-full justify-center">
+                                                                      {item.tipo_combustivel_fixo}
+                                                                  </Badge>
+                                                              )}
+                                                          </TableCell>
+                                                      )}
+                                                      
                                                       <TableCell className="text-right font-semibold text-sm py-1">
                                                           {formatCurrency(itemTotal)}
                                                       </TableCell>
