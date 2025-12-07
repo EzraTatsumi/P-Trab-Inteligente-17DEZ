@@ -906,6 +906,14 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
   
   const itensAgrupadosPorCategoriaParaResumo = itensAgrupadosPorCategoria;
 
+  // NEW MEMO: Map category keys to their correct title-cased labels
+  const categoryLabelMap = useMemo(() => {
+    return CATEGORIAS.reduce((acc, cat) => {
+        acc[cat.key] = cat.label;
+        return acc;
+    }, {} as Record<TipoEquipamento, string>);
+  }, []);
+
   // --- Calculation Logic for Current Tab (Uses localCategoryItems) ---
   const { 
     currentCategoryTotalCombustivel, 
@@ -1992,6 +2000,7 @@ const getMemoriaRecords = granularRegistros;
                   
                   // Encontrar o label e estilo da categoria do material usando o novo utilitário
                   const categoryBadgeStyle = getClasseIIICategoryBadgeStyle(item.categoria);
+                  const displayCategoryLabel = categoryLabelMap[item.categoria] || categoryBadgeStyle.label; // Use map for correct capitalization
                   
                   return (
                     <div key={`memoria-view-${item.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
@@ -2004,7 +2013,7 @@ const getMemoriaRecords = granularRegistros;
                           </h4>
                           {/* NOVO BADGE: Categoria do Material (com cor específica) */}
                           <Badge variant="default" className={cn("w-fit shrink-0", categoryBadgeStyle.className)}>
-                            {categoryBadgeStyle.label}
+                            {displayCategoryLabel}
                           </Badge>
                           {/* BADGE EXISTENTE: Tipo de Suprimento */}
                           <Badge variant="default" className={cn("w-fit shrink-0", badgeClass)}>
