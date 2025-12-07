@@ -1099,10 +1099,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                     ];
                     
                     // Filtra a coluna 'Consumo Fixo' para Gerador
-                    let columns = baseColumns;
-                    if (isGerador) {
-                        columns = baseColumns.filter(col => col.key !== 'consumo_fixo');
-                    }
+                    const columns = baseColumns.filter(col => !isGerador || col.key !== 'consumo_fixo');
                     
                     // Ajusta a largura das colunas para Gerador (que tem 5 colunas)
                     const finalColumns = columns.map(col => {
