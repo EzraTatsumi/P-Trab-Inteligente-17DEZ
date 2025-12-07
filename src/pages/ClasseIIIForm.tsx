@@ -475,7 +475,7 @@ export default function ClasseIIIForm() {
               categoria: baseCategory,
               consumo_fixo: directiveItem.consumo,
               tipo_combustivel_fixo: directiveItem.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL',
-              unidade_fixa: directive.unidade,
+              unidade_fixa: directiveItem.unidade,
               quantidade: item.quantidade || 0,
               horas_dia: item.horas_dia || 0,
               distancia_percorrida: item.distancia_percorrida || 0,
@@ -1520,6 +1520,13 @@ const getMemoriaRecords = granularRegistros;
                     const showLubCombColumn = cat.key === 'GERADOR' || cat.key === 'EMBARCACAO';
                     const isMotomecanizacao = cat.key === 'MOTOMECANIZACAO';
                     
+                    // Ajuste de largura das colunas para Motomecanização e Engenharia
+                    const colHorasKmWidth = isMotomecanizacao ? "w-[18%]" : (showLubCombColumn ? "w-[18%]" : "w-[28%]");
+                    const colDeslocDiaWidth = isMotomecanizacao ? "w-[10%]" : "";
+                    const colLubCombWidth = showLubCombColumn ? "w-[10%]" : "";
+                    const colLitrosWidth = showLubCombColumn ? "w-[10%]" : "w-[15%]";
+                    const colCustoTotalWidth = "w-[8%]";
+
                     return (
                       <TabsContent key={cat.key} value={cat.key} className="mt-4">
                         <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
@@ -1530,17 +1537,17 @@ const getMemoriaRecords = granularRegistros;
                                   <TableHead className="w-[30%]">Equipamento</TableHead>
                                   <TableHead className="w-[8%] text-center">Qtd</TableHead>
                                   <TableHead className="w-[8%] text-center">Qtd Dias</TableHead>
-                                  <TableHead className={cn("text-center", showLubCombColumn ? "w-[18%]" : "w-[28%]")}>
+                                  <TableHead className={cn("text-center", colHorasKmWidth)}>
                                     {cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}
                                   </TableHead>
                                   {cat.key === 'MOTOMECANIZACAO' && (
-                                    <TableHead className="w-[10%] text-center">Desloc/Dia</TableHead>
+                                    <TableHead className={cn("text-center", colDeslocDiaWidth)}>Desloc/Dia</TableHead>
                                   )}
                                   {showLubCombColumn && (
-                                    <TableHead className="w-[10%] text-center">Lub/Comb</TableHead>
+                                    <TableHead className={cn("text-center", colLubCombWidth)}>Lub/Comb</TableHead>
                                   )}
-                                  <TableHead className={cn("text-right", showLubCombColumn ? "w-[10%]" : "w-[15%]")}>Litros</TableHead>
-                                  <TableHead className="w-[8%] text-right">Custo Total</TableHead>
+                                  <TableHead className={cn("text-right", colLitrosWidth)}>Litros</TableHead>
+                                  <TableHead className={cn("text-right", colCustoTotalWidth)}>Custo Total</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -1597,7 +1604,7 @@ const getMemoriaRecords = granularRegistros;
                                           />
                                         </TableCell>
                                         {/* COLUMN 4: Horas/Dia or KM/Desloc */}
-                                        <TableCell className={cn("py-1", showLubCombColumn ? "w-[18%]" : "w-[28%]")}>
+                                        <TableCell className={cn("py-1", colHorasKmWidth)}>
                                           <Input 
                                             type="text"
                                             inputMode="decimal"
@@ -1614,7 +1621,7 @@ const getMemoriaRecords = granularRegistros;
                                         </TableCell>
                                         {/* COLUMN 5: Desloc/Dia (Only for Motomecanizacao) */}
                                         {isMotomecanizacao && (
-                                          <TableCell className="py-1 w-[10%]">
+                                          <TableCell className={cn("py-1", colDeslocDiaWidth)}>
                                             <Input 
                                               type="text"
                                               inputMode="numeric"
@@ -1629,7 +1636,7 @@ const getMemoriaRecords = granularRegistros;
                                         )}
                                         {/* COLUMN 6: Lub/Comb (Conditional) */}
                                         {showLubCombColumn && (
-                                          <TableCell className="py-1 w-[10%]">
+                                          <TableCell className={cn("py-1", colLubCombWidth)}>
                                             {isLubricantType ? (
                                               <Popover>
                                                 <PopoverTrigger asChild>
@@ -1677,11 +1684,11 @@ const getMemoriaRecords = granularRegistros;
                                           </TableCell>
                                         )}
                                         {/* NOVA COLUNA: Litros */}
-                                        <TableCell className={cn("text-right text-sm py-1", showLubCombColumn ? "w-[10%]" : "w-[15%]")}>
+                                        <TableCell className={cn("text-right text-sm py-1", colLitrosWidth)}>
                                           {totalLitros > 0 ? `${formatNumber(totalLitros)} L` : '-'}
                                         </TableCell>
                                         {/* COLUMN 7: Custo Total */}
-                                        <TableCell className="text-right font-semibold text-sm py-1 w-[8%]">
+                                        <TableCell className={cn("text-right font-semibold text-sm py-1", colCustoTotalWidth)}>
                                           {formatCurrency(itemTotal)}
                                         </TableCell>
                                       </TableRow>
@@ -1735,9 +1742,9 @@ const getMemoriaRecords = granularRegistros;
                             Salvar Itens da Categoria
                           </Button>
                         </div>
-                      </div>
-                    </TabsContent>
-                  ))}
+                      </TabsContent>
+                    );
+                  })}
                 </Tabs>
               </div>
             )}
