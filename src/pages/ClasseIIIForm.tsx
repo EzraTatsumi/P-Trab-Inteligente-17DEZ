@@ -271,8 +271,8 @@ Valor Total: ${formatCurrency(valor_total)}.`;
             detalhes.push(`- ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
         });
         
-        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${categoria} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}.
-OM Detentora: ${om_destino} (UG: ${ug_destino})
+        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${categoria} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}, para ${om_destino}.
+
 Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
 
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(preco_litro)}.
@@ -537,7 +537,7 @@ const ClasseIIIForm = () => {
     setLubricantAllocation({
       om_destino_recurso: "",
       ug_destino_recurso: "",
-      selectedOmDestinoId: undefined
+      selectedOmDestinoId: undefined,
     });
     setFasesAtividade(["Execução"]);
     setCustomFaseAtividade("");
@@ -572,7 +572,7 @@ const ClasseIIIForm = () => {
       setLubricantAllocation({
         om_destino_recurso: "",
         ug_destino_recurso: "",
-        selectedOmDestinoId: undefined
+        selectedOmDestinoId: undefined,
       });
     }
   };
@@ -2089,3 +2089,5 @@ const getMemoriaRecords = granularRegistros;
     </div>
   );
 }
+
+export default ClasseIIIForm;
