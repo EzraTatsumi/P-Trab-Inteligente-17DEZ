@@ -21,7 +21,6 @@ import VisualizacaoConfigPage from "./pages/VisualizacaoConfigPage";
 import OmConfigPage from "./pages/OmConfigPage";
 import OmBulkUploadPage from "./pages/OmBulkUploadPage";
 import PTrabExportImportPage from "./pages/PTrabExportImportPage";
-import ShareAcceptPage from "./pages/ShareAcceptPage"; // NOVO: Importar ShareAcceptPage
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,9 +43,8 @@ const App = () => (
               <Route path="/ptrab/classe-ii" element={<ClasseIIForm />} />
               <Route path="/ptrab/classe-v" element={<ClasseVForm />} />
               <Route path="/ptrab/classe-vi" element={<ClasseVIForm />} />
-              <Route path="/ptrab/classe-vii" element={<ClasseVIIForm />} />
+              <Route path="/ptrab/classe-vii" element={<ClasseVIIForm />} /> {/* NOVO: Rota para Classe VII */}
               <Route path="/ptrab/classe-iii" element={<ClasseIIIForm />} />
-              <Route path="/ptrab/share" element={<ShareAcceptPage />} /> {/* NOVO: Rota de Aceitação */}
               <Route path="/config/diretrizes" element={<DiretrizesCusteioPage />} />
               <Route path="/config/visualizacao" element={<VisualizacaoConfigPage />} />
               <Route path="/config/om" element={<OmConfigPage />} />
