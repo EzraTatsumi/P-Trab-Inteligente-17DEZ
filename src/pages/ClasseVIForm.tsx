@@ -21,19 +21,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
-import { defaultClasseVIConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
+import { defaultClasseVIConfig } from "@/data/classeVIData"; // CORRIGIDO
 
-type Categoria = 'Engenharia' | 'Saúde' | 'Comunicações' | 'Outros';
+type Categoria = 'Embarcação' | 'Equipamento de Engenharia'; // Categorias corretas para Classe VI
 
 const CATEGORIAS: Categoria[] = [
-  "Engenharia",
-  "Saúde",
-  "Comunicações",
-  "Outros",
+  "Embarcação",
+  "Equipamento de Engenharia",
 ];
 
 // Opções fixas de fase de atividade
@@ -82,10 +80,8 @@ interface CategoryAllocation {
 }
 
 const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
-    'Engenharia': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
-    'Saúde': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
-    'Comunicações': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
-    'Outros': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Embarcação': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Equipamento de Engenharia': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
 };
 
 const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
@@ -594,21 +590,21 @@ const ClasseVIForm = () => {
 
     try {
       const { error: deleteError } = await supabase
-        .from("classe_vi_registros")
+        .from("classe_vii_registros")
         .delete()
         .eq("p_trab_id", ptrabId);
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
-      const { error: insertError } = await supabase.from("classe_vi_registros").insert(registrosParaSalvar);
+      const { error: insertError } = await supabase.from("classe_vii_registros").insert(registrosParaSalvar);
       if (insertError) throw insertError;
       
-      toast.success(editingId ? "Registros de Classe VI atualizados com sucesso!" : "Registros de Classe VI salvos com sucesso!");
+      toast.success(editingId ? "Registros de Classe VII atualizados com sucesso!" : "Registros de Classe VII salvos com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
       resetFormFields();
       fetchRegistros();
     } catch (error) {
-      console.error("Erro ao salvar registros de Classe VI:", error);
-      toast.error("Erro ao salvar registros de Classe VI");
+      console.error("Erro ao salvar registros de Classe VII:", error);
+      toast.error("Erro ao salvar registros de Classe VII");
     } finally {
       setLoading(false);
     }
@@ -619,7 +615,7 @@ const ClasseVIForm = () => {
     resetFormFields();
     
     const { data: allRecords, error: fetchAllError } = await supabase
-        .from("classe_vi_registros")
+        .from("classe_vii_registros")
         .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
         .eq("p_trab_id", ptrabId);
         
@@ -629,13 +625,13 @@ const ClasseVIForm = () => {
         return;
     }
     
-    let consolidatedItems: ItemClasseVI[] = [];
+    let consolidatedItems: ItemClasseVII[] = [];
     let newAllocations = { ...initialCategoryAllocations };
     let firstOmDetentora: { nome: string, ug: string } | null = null;
     
     (allRecords || []).forEach(r => {
         const category = r.categoria as Categoria;
-        const items = (r.itens_equipamentos || []) as ItemClasseVI[];
+        const items = (r.itens_equipamentos || []) as ItemClasseVII[];
         
         consolidatedItems = consolidatedItems.concat(items);
         
@@ -737,7 +733,7 @@ const ClasseVIForm = () => {
     setLoading(true);
     try {
       const { error } = await supabase
-        .from("classe_vi_registros")
+        .from("classe_vii_registros")
         .update({
           detalhamento_customizado: memoriaEdit.trim() || null,
         })
@@ -764,7 +760,7 @@ const ClasseVIForm = () => {
     setLoading(true);
     try {
       const { error } = await supabase
-        .from("classe_vi_registros")
+        .from("classe_vii_registros")
         .update({
           detalhamento_customizado: null,
         })
@@ -801,10 +797,10 @@ const ClasseVIForm = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              Classe VI - Engenharia, Saúde, Comunicações e Outros
+              Classe VII - Comunicações e Informática
             </CardTitle>
             <CardDescription>
-              Solicitação de recursos para manutenção de material de Classe VI.
+              Solicitação de recursos para manutenção de material de Classe VII.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -1181,7 +1177,7 @@ const ClasseVIForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    // const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1214,8 +1210,8 @@ const ClasseVIForm = () => {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => {
-                                                                if (confirm(`Deseja realmente deletar o registro de Classe VI para ${omName} (${registro.categoria})?`)) {
-                                                                    supabase.from("classe_vi_registros")
+                                                                if (confirm(`Deseja realmente deletar o registro de Classe VII para ${omName} (${registro.categoria})?`)) {
+                                                                    supabase.from("classe_vii_registros")
                                                                         .delete()
                                                                         .eq("id", registro.id)
                                                                         .then(() => {
@@ -1270,7 +1266,7 @@ const ClasseVIForm = () => {
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
                   const memoriaAutomatica = generateDetalhamento(
-                      registro.itens_equipamentos as ItemClasseVI[], 
+                      registro.itens_equipamentos as ItemClasseVII[], 
                       registro.dias_operacao, 
                       registro.organizacao, 
                       registro.ug, 
@@ -1378,4 +1374,4 @@ const ClasseVIForm = () => {
   );
 }
 
-export default ClasseVIForm;
+export default ClasseVIIForm;
