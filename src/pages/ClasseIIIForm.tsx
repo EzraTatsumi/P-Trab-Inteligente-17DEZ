@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, Sparkles, Tractor, Droplet, Check, ChevronsUpDown, XCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, Sparkles, Tractor, Droplet, Check, ChevronsUpDown, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getEquipamentosPorTipo, TipoEquipamentoDetalhado } from "@/data/classeIIIData";
@@ -123,8 +123,7 @@ export default function ClasseIIIForm() {
   const ptrabId = searchParams.get("ptrabId");
   
   const [registros, setRegistros] = useState<ClasseIIIRegistro[]>([]);
-  const [loading, setLoading] = useState(true); // Loading inicial da página (LPC e dados globais)
-  const [loadingFormReconstruction, setLoadingFormReconstruction] = useState(false); // Loading da carga pesada (diretrizes e reconstrução)
+  const [loading, setLoading] = useState(true);
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
   
   const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
@@ -171,28 +170,11 @@ export default function ClasseIIIForm() {
 
   const loadInitialData = async () => {
     setLoading(true);
-    
-    // 1. Carregar LPC (essencial para a Seção 2)
-    await loadRefLPC();
-    
-    // 2. Carregar registros existentes (para saber se precisa reconstruir)
-    const { data: initialRecords } = await supabase
-      .from("classe_iii_registros")
-      .select("*, detalhamento_customizado, consumo_lubrificante_litro, preco_lubrificante")
-      .eq("p_trab_id", ptrabId)
-      .order("organizacao", { ascending: true })
-      .order("tipo_equipamento", { ascending: true });
-      
-    setRegistros((initialRecords || []) as ClasseIIIRegistro[]);
-    
-    // 3. Se houver registros, iniciar a carga pesada em segundo plano
-    if (initialRecords && initialRecords.length > 0) {
-        setLoadingFormReconstruction(true);
-        await loadAllDiretrizItems();
-        reconstructFormState(initialRecords as ClasseIIIRegistro[]);
-        setLoadingFormReconstruction(false);
-    }
-    
+    await loadAllDiretrizItems(); // Load directives first
+    await Promise.all([
+      loadRefLPC(),
+      fetchRegistros(true), // Pass true to trigger reconstruction after directives are loaded
+    ]);
     setLoading(false);
   };
   
@@ -252,15 +234,13 @@ export default function ClasseIIIForm() {
     setRegistros((data || []) as ClasseIIIRegistro[]);
     
     if (initialLoad && data && data.length > 0) {
-        // Se for a carga inicial e houver dados, garante que as diretrizes estejam prontas e reconstrói
+        // Ensure directives are loaded before reconstruction
         if (Object.values(allDiretrizItems).flat().length === 0) {
-            setLoadingFormReconstruction(true);
             await loadAllDiretrizItems();
         }
         reconstructFormState(data as ClasseIIIRegistro[]);
-        setLoadingFormReconstruction(false);
     } else if (!initialLoad) {
-        // Se não for carga inicial (e.g., após salvar/deletar), apenas reseta o formulário
+        // If not initial load (e.g., after save/delete), just reset form fields
         resetFormFields();
     }
   };
@@ -683,7 +663,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       totalLitrosLubrificante += litrosItem;
       totalValorLubrificante += valorItem;
       
-      detalhesLubrificante.push(`- ${item.quantidade} ${item.item}: Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Valor: ${formatCurrency(valorItem)}.`);
+      detalhesLubrificante.push(`- ${item.quantidade} ${item.item}: ${formulaDetalhe} = ${formatNumber(litrosItem, 2)} L. Valor: ${formatCurrency(valorItem)}.`);
     });
     
     let consolidadoLubrificante: any | null = null;
@@ -1061,7 +1041,6 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
           </CardHeader>
           <CardContent className="space-y-6">
             
-            {/* Alerta de LPC */}
             {!refLPC && (
               <Alert className="mb-4">
                 <Fuel className="h-4 w-4" />
@@ -1069,14 +1048,6 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                   Configure a referência LPC antes de adicionar equipamentos.
                 </AlertDescription>
               </Alert>
-            )}
-            
-            {/* Loading Overlay para a reconstrução do formulário */}
-            {loadingFormReconstruction && (
-                <div className="absolute inset-0 z-20 bg-background/80 flex items-center justify-center rounded-lg">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    <span className="ml-2 text-muted-foreground">Carregando diretrizes e registros...</span>
-                </div>
             )}
             
             {/* 1. Dados da Operação */}
@@ -1090,7 +1061,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                     selectedOmId={form.selectedOmId}
                     onChange={handleOMChange}
                     placeholder="Selecione a OM detentora..."
-                    disabled={loading || loadingFormReconstruction}
+                    disabled={loading}
                   />
                 </div>
 
@@ -1109,7 +1080,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                     onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value.replace(/\D/g, '')) || 0 })}
                     placeholder="Ex: 7"
                     onKeyDown={handleEnterToNextField}
-                    disabled={loading || loadingFormReconstruction}
+                    disabled={loading}
                   />
                   <p className="text-xs text-muted-foreground">Usado apenas no cabeçalho da memória de cálculo.</p>
                 </div>
@@ -1122,7 +1093,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                     value={rmFornecimento}
                     onChange={handleRMFornecimentoChange}
                     placeholder="Selecione a RM de fornecimento..."
-                    disabled={!form.organizacao || loading || loadingFormReconstruction}
+                    disabled={!form.organizacao || loading}
                   />
                 </div>
 
@@ -1142,7 +1113,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                         role="combobox"
                         type="button"
                         className="w-full justify-between"
-                        disabled={loading || loadingFormReconstruction}
+                        disabled={loading}
                       >
                         <span className="truncate">
                           {displayFases || "Selecione a(s) fase(s)..."}
@@ -1191,7 +1162,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                     selectedOmId={lubricantAllocation.selectedOmDestinoId}
                     onChange={handleOMLubrificanteChange}
                     placeholder="Selecione a OM de destino..."
-                    disabled={!form.organizacao || loading || loadingFormReconstruction}
+                    disabled={!form.organizacao || loading}
                   />
                   <p className="text-xs text-muted-foreground">OM que receberá o recurso de lubrificante.</p>
                 </div>
@@ -1199,7 +1170,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
             </div>
 
             {/* 2. Configurar Itens por Categoria (Tabs) */}
-            {isFormValid && refLPC && form.dias_operacao > 0 && !loadingFormReconstruction && (
+            {isFormValid && refLPC && form.dias_operacao > 0 && (
               <div className="space-y-4 border-b pb-4">
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
@@ -1283,7 +1254,6 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                     <TableCell className="font-medium text-sm py-1 w-[40%]">
                                                         <div className="flex flex-col gap-1">
                                                             <span className="font-medium text-sm">{item.item}</span>
-                                                            {/* CONSOLIDATED BADGE */}
                                                             <Badge 
                                                                 variant="default" 
                                                                 className={cn("w-fit text-xs font-normal", getCombustivelBadgeClass(item.tipo_combustivel_fixo))}
@@ -1513,9 +1483,9 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                   <Button 
                     type="button" 
                     onClick={handleSalvarRegistros} 
-                    disabled={loading || loadingFormReconstruction || !isFormValid || form.itens.filter(i => i.quantidade > 0 && i.dias_utilizados > 0).length === 0 || (consolidadoLubrificante && (!lubricantAllocation.om_destino_recurso || !lubricantAllocation.ug_destino_recurso))}
+                    disabled={loading || !isFormValid || form.itens.filter(i => i.quantidade > 0 && i.dias_utilizados > 0).length === 0 || (consolidadoLubrificante && (!lubricantAllocation.om_destino_recurso || !lubricantAllocation.ug_destino_recurso))}
                   >
-                    {loading || loadingFormReconstruction ? "Aguarde..." : "Salvar Registros Consolidados"}
+                    {loading ? "Aguarde..." : "Salvar Registros Consolidados"}
                   </Button>
                 </div>
               </div>
