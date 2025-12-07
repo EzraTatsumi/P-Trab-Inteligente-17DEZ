@@ -27,7 +27,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
-import { LubricantConfigDialog } from "@/components/LubricantConfigDialog";
 
 type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
 type CombustivelTipo = 'GASOLINA' | 'DIESEL';
@@ -50,13 +49,13 @@ interface ItemClasseIII {
   distancia_percorrida: number; // Used by MOTOMECANIZACAO
   quantidade_deslocamentos: number; // Used by MOTOMECANIZACAO
   dias_utilizados: number; // Days used for this specific equipment
-  // Lubricant fields (only for GERADOR, EMBARCACAO)
+  // Lubricant fields
   consumo_lubrificante_litro: number; // L/100h or L/h
   preco_lubrificante: number; // R$/L
-  preco_lubrificante_input: string;
-  consumo_lubrificante_input: string;
+  preco_lubrificante_input: string; // String representation of price (digits only)
+  consumo_lubrificante_input: string; // String representation of consumption (formatted)
   
-  // NEW: Lubricant Destination (if applicable)
+  // Lubricant Destination (if applicable)
   om_destino_lub: string;
   ug_destino_lub: string;
   selectedOmDestinoId_lub?: string;
@@ -142,8 +141,10 @@ const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOpe
     const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
     
     if (item.categoria === 'GERADOR') {
+      // Consumo L/100h
       litrosLubrificante = (totalHoras / 100) * item.consumo_lubrificante_litro;
     } else if (item.categoria === 'EMBARCACAO') {
+      // Consumo L/h
       litrosLubrificante = totalHoras * item.consumo_lubrificante_litro;
     }
     
@@ -197,10 +198,6 @@ export default function ClasseIIIForm() {
     EQUIPAMENTO_ENGENHARIA: [],
     MOTOMECANIZACAO: []
   });
-  
-  // ESTADOS PARA O NOVO DIÁLOGO DE LUBRIFICANTE
-  const [itemToConfigure, setItemToConfigure] = useState<ItemClasseIII | null>(null);
-  const [itemToConfigureIndex, setItemToConfigureIndex] = useState<number | null>(null);
   
   const { handleEnterToNextField } = useFormNavigation();
   const lpcRef = useRef<HTMLDivElement>(null);
@@ -527,74 +524,65 @@ export default function ClasseIIIForm() {
   };
 
   const handleItemNumericChange = (itemIndex: number, field: keyof ItemClasseIII, inputString: string) => {
-    const cleanedValue = inputString.replace(/[^\d,.]/g, '');
+    const updatedItems = [...localCategoryItems];
+    const item = updatedItems[itemIndex];
     
     if (field === 'quantidade' || field === 'quantidade_deslocamentos' || field === 'dias_utilizados') {
-      const numericValue = parseInt(cleanedValue.replace(/[,.]/g, '')) || 0;
-      handleItemFieldChange(itemIndex, field, numericValue);
-      return;
-    }
-    
-    if (field === 'preco_lubrificante_input') {
-      // Logic for currency input (handled by dialog now, but kept for consistency if needed)
+      const numericValue = parseInt(inputString.replace(/\D/g, '')) || 0;
+      item[field] = numericValue as any;
+    } else if (field === 'preco_lubrificante_input') {
+      // Input de preço (R$/L) - usa formatCurrencyInput para gerenciar centavos
       const digits = inputString.replace(/\D/g, '');
       const { numericValue } = formatCurrencyInput(digits);
       
-      const updatedItems = [...localCategoryItems];
-      updatedItems[itemIndex] = {
-        ...updatedItems[itemIndex],
-        preco_lubrificante_input: digits,
-        preco_lubrificante: numericValue,
-      };
-      setLocalCategoryItems(updatedItems);
-      return;
-    }
-    
-    if (field === 'consumo_lubrificante_input') {
-      // Logic for decimal input (handled by dialog now, but kept for consistency if needed)
+      item.preco_lubrificante_input = digits;
+      item.preco_lubrificante = numericValue;
+    } else if (field === 'consumo_lubrificante_input') {
+      // Input de consumo (decimal) - usa parseInputToNumber para gerenciar vírgula
       const numericValue = parseInputToNumber(inputString);
-      const updatedItems = [...localCategoryItems];
-      updatedItems[itemIndex] = {
-        ...updatedItems[itemIndex],
-        consumo_lubrificante_input: inputString,
-        consumo_lubrificante_litro: numericValue,
-      };
-      setLocalCategoryItems(updatedItems);
-      return;
+      
+      item.consumo_lubrificante_input = inputString;
+      item.consumo_lubrificante_litro = numericValue;
+    } else {
+      // Horas/Dia ou KM/Desloc (decimal)
+      const numericValue = parseInputToNumber(inputString);
+      item[field] = numericValue as any;
     }
     
-    const numericValue = parseInputToNumber(cleanedValue);
-    handleItemFieldChange(itemIndex, field, numericValue);
+    setLocalCategoryItems(updatedItems);
   };
 
   const handleItemNumericBlur = (itemIndex: number, field: keyof ItemClasseIII, inputString: string) => {
+    const updatedItems = [...localCategoryItems];
+    const item = updatedItems[itemIndex];
+    
     if (field === 'consumo_lubrificante_input') {
       const numericValue = parseInputToNumber(inputString);
       const formattedString = numericValue === 0 
         ? "" 
         : formatNumberForInput(numericValue, 2);
-      handleItemFieldChange(itemIndex, 'consumo_lubrificante_input', formattedString);
-      return;
+      item.consumo_lubrificante_input = formattedString;
+    } else if (field === 'horas_dia' || field === 'distancia_percorrida') {
+      const numericValue = parseInputToNumber(inputString);
+      const formattedString = numericValue === 0 
+        ? "" 
+        : formatNumberForInput(numericValue, 2);
+      item[field] = numericValue as any; // Salva o valor numérico
+      // O input value será atualizado pelo estado
     }
+    
+    setLocalCategoryItems(updatedItems);
   };
   
-  // NOVO: Handler para abrir o diálogo de configuração de lubrificante
-  const handleOpenLubricantConfig = (item: ItemClasseIII, index: number) => {
-      setItemToConfigure(item);
-      setItemToConfigureIndex(index);
-  };
-  
-  // NOVO: Handler para confirmar a configuração do lubrificante (recebe o item atualizado do Dialog)
-  const handleLubricantConfigConfirmed = (updatedItem: ItemClasseIII) => {
-      if (itemToConfigureIndex === null) return;
-      
-      const updatedItems = [...localCategoryItems];
-      updatedItems[itemToConfigureIndex] = updatedItem;
-      setLocalCategoryItems(updatedItems);
-      
-      toast.success("Configuração de lubrificante salva!");
-      setItemToConfigure(null);
-      setItemToConfigureIndex(null);
+  const handleOMDestinoLubChange = (itemIndex: number, omData: OMData | undefined) => {
+    const updatedItems = [...localCategoryItems];
+    updatedItems[itemIndex] = {
+        ...updatedItems[itemIndex],
+        om_destino_lub: omData?.nome_om || "",
+        ug_destino_lub: omData?.codug_om || "",
+        selectedOmDestinoId_lub: omData?.id,
+    };
+    setLocalCategoryItems(updatedItems);
   };
 
 
@@ -624,13 +612,13 @@ export default function ClasseIIIForm() {
       return;
     }
     
-    // NEW CHECK: Ensure lubricant items have destination if active
+    // CHECK: Ensure lubricant items have destination if active
     if (itemsToKeep.some(item => 
       (item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO') && 
       (item.consumo_lubrificante_litro > 0 || item.preco_lubrificante > 0) &&
       (!item.om_destino_lub || !item.ug_destino_lub)
     )) {
-      toast.error("Configure a OM de destino para todos os lubrificantes ativos.");
+      toast.error("Selecione a OM de destino para todos os lubrificantes ativos.");
       return;
     }
     
@@ -643,52 +631,6 @@ export default function ClasseIIIForm() {
     toast.success(`Itens da categoria ${selectedTab} atualizados!`);
   };
   
-  // --- EFEITO PARA POPULAR localCategoryItems AO MUDAR DE ABA OU CARREGAR DIRETRIZES ---
-  useEffect(() => {
-    const currentDirectiveItems = allDiretrizItems[selectedTab] || [];
-    
-    // 1. Obter itens existentes no formulário principal para a aba atual
-    const existingItemsMap = new Map<string, ItemClasseIII>();
-    form.itens.filter(i => i.categoria === selectedTab).forEach(item => {
-        existingItemsMap.set(item.item, item);
-    });
-
-    // 2. Mesclar: usar o item existente (com quantidades) ou o item da diretriz (com quantidades 0)
-    const mergedItems = currentDirectiveItems.map(directiveItem => {
-        const existing = existingItemsMap.get(directiveItem.nome);
-        
-        if (existing) {
-            // Se existir, usa o item existente (já tem os campos de lubrificante preenchidos)
-            return existing;
-        } else {
-            // Se não existir, cria um novo item com valores padrão
-            return {
-                item: directiveItem.nome,
-                categoria: directiveItem.categoria,
-                consumo_fixo: directiveItem.consumo,
-                tipo_combustivel_fixo: directiveItem.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL',
-                unidade_fixa: directiveItem.unidade,
-                quantidade: 0,
-                horas_dia: 0,
-                distancia_percorrida: 0,
-                quantidade_deslocamentos: 0,
-                dias_utilizados: 0,
-                consumo_lubrificante_litro: 0,
-                preco_lubrificante: 0,
-                preco_lubrificante_input: "",
-                consumo_lubrificante_input: "",
-                om_destino_lub: form.organizacao, // Default to OM Detentora
-                ug_destino_lub: form.ug,
-                selectedOmDestinoId_lub: form.selectedOmId,
-            } as ItemClasseIII;
-        }
-    });
-
-    setLocalCategoryItems(mergedItems);
-  }, [selectedTab, allDiretrizItems, form.itens, form.organizacao, form.ug, form.selectedOmId]);
-  // --- FIM EFEITO PARA POPULAR localCategoryItems ---
-
-
   // --- Consolidation Logic (Memoized) ---
   const { consolidadosCombustivel, consolidadosLubrificante, itensAgrupadosPorCategoriaParaResumo } = useMemo(() => {
     const itens = form.itens.filter(item => item.quantidade > 0 && item.dias_utilizados > 0);
@@ -829,7 +771,7 @@ export default function ClasseIIIForm() {
     return { consolidadosCombustivel: novosConsolidados, consolidadosLubrificante: consolidadosLubrificanteArray, itensAgrupadosPorCategoriaParaResumo: groupedFormItems };
   }, [
     form.itens, refLPC, form.dias_operacao, form.organizacao, rmFornecimento, codugRmFornecimento,
-    fasesAtividade, customFaseAtividade, allDiretrizItems
+    fasesAtividade, customFaseAtividade
   ]);
   
   // --- CÁLCULOS DA CATEGORIA ATUAL (para a UI da aba) ---
@@ -901,7 +843,7 @@ export default function ClasseIIIForm() {
         (item.consumo_lubrificante_litro > 0 || item.preco_lubrificante > 0)
     );
     if (activeLubricantItems.some(item => !item.om_destino_lub || !item.ug_destino_lub)) {
-        toast.error("Configure a OM de destino para todos os lubrificantes ativos.");
+        toast.error("Selecione a OM de destino para todos os lubrificantes ativos.");
         return;
     }
     
@@ -1313,26 +1255,27 @@ export default function ClasseIIIForm() {
                   {CATEGORIAS.map(cat => (
                     <TabsContent key={cat.key} value={cat.key} className="mt-4">
                       <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                        <div className="max-h-[400px] overflow-y-auto rounded-md border">
+                        <div className="max-h-[600px] overflow-y-auto rounded-md border">
                           <Table className="w-full">
                             <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                               <TableRow>
-                                <TableHead className="w-[25%]">Equipamento</TableHead>
-                                <TableHead className="w-[8%] text-center">Qtd</TableHead>
-                                <TableHead className="w-[8%] text-center">Qtd Dias</TableHead>
-                                <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
+                                <TableHead className="w-[20%]">Equipamento</TableHead>
+                                <TableHead className="w-[5%] text-center">Qtd</TableHead>
+                                <TableHead className="w-[5%] text-center">Dias</TableHead>
+                                <TableHead className="w-[10%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
                                 {cat.key === 'MOTOMECANIZACAO' && (
-                                  <TableHead className="w-[8%] text-center">Desloc/Dia</TableHead>
+                                  <TableHead className="w-[5%] text-center">Desloc/Dia</TableHead>
                                 )}
-                                <TableHead className="w-[10%] text-center">Lubrificante</TableHead>
-                                <TableHead className="w-[10%] text-right">Litros</TableHead>
-                                <TableHead className="w-[16%] text-right">Custo Total</TableHead>
+                                <TableHead className="w-[15%] text-center">Consumo Lub (L/h)</TableHead>
+                                <TableHead className="w-[15%] text-center">Preço Lub (R$/L)</TableHead>
+                                <TableHead className="w-[10%] text-right">Litros Comb</TableHead>
+                                <TableHead className="w-[15%] text-right">Custo Total</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {localCategoryItems.length === 0 ? (
                                 <TableRow>
-                                  <TableCell colSpan={cat.key === 'MOTOMECANIZACAO' ? 8 : 7} className="text-center text-muted-foreground">
+                                  <TableCell colSpan={cat.key === 'MOTOMECANIZACAO' ? 9 : 8} className="text-center text-muted-foreground">
                                     Nenhum item de diretriz encontrado para esta categoria.
                                   </TableCell>
                                 </TableRow>
@@ -1341,15 +1284,16 @@ export default function ClasseIIIForm() {
                                   const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
                                   const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
                                   
-                                  const { totalLitros, itemTotal } = calculateItemTotals(item, refLPC, form.dias_operacao);
+                                  const { totalLitros, itemTotal, valorLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
                                   const diasUtilizados = item.dias_utilizados || 0;
                                   
-                                  const isLubricantConfigured = item.consumo_lubrificante_litro > 0 || item.preco_lubrificante > 0;
                                   const isUsageFilled = item.quantidade > 0 && diasUtilizados > 0 && (isMotomecanizacao ? (item.distancia_percorrida > 0 && item.quantidade_deslocamentos > 0) : item.horas_dia > 0);
+                                  
+                                  const formattedPriceInput = formatCurrencyInput(item.preco_lubrificante_input).formatted;
                                   
                                   return (
                                     <TableRow key={item.item} className="h-12">
-                                      <TableCell className="font-medium text-sm py-1 w-[25%]">
+                                      <TableCell className="font-medium text-sm py-1 w-[20%]">
                                         <div className="flex flex-col gap-1">
                                           <span className="font-medium text-sm">{item.item}</span>
                                           <Badge 
@@ -1360,7 +1304,7 @@ export default function ClasseIIIForm() {
                                           </Badge>
                                         </div>
                                       </TableCell>
-                                      <TableCell className="py-1 w-[8%]">
+                                      <TableCell className="py-1 w-[5%]">
                                         <Input 
                                           type="text"
                                           inputMode="numeric"
@@ -1371,8 +1315,8 @@ export default function ClasseIIIForm() {
                                           onKeyDown={handleEnterToNextField}
                                         />
                                       </TableCell>
-                                      {/* NEW COLUMN: Qtd Dias */}
-                                      <TableCell className="py-1 w-[8%]">
+                                      {/* Qtd Dias */}
+                                      <TableCell className="py-1 w-[5%]">
                                         <Input 
                                           type="text"
                                           inputMode="numeric"
@@ -1384,25 +1328,26 @@ export default function ClasseIIIForm() {
                                           onKeyDown={handleEnterToNextField}
                                         />
                                       </TableCell>
-                                      {/* COLUMN 4: Horas/Dia or KM/Desloc */}
-                                      <TableCell className="py-1 w-[15%]">
+                                      {/* Horas/Dia or KM/Desloc */}
+                                      <TableCell className="py-1 w-[10%]">
                                         <Input 
                                           type="text"
                                           inputMode="decimal"
                                           className="h-8 text-center"
                                           value={isMotomecanizacao 
-                                            ? (item.distancia_percorrida === 0 ? "" : item.distancia_percorrida.toString())
-                                            : (item.horas_dia === 0 ? "" : item.horas_dia.toString())
+                                            ? (item.distancia_percorrida === 0 ? "" : formatNumberForInput(item.distancia_percorrida, 2))
+                                            : (item.horas_dia === 0 ? "" : formatNumberForInput(item.horas_dia, 2))
                                           }
                                           onChange={(e) => handleItemNumericChange(index, isMotomecanizacao ? 'distancia_percorrida' : 'horas_dia', e.target.value)}
-                                          placeholder="0"
+                                          onBlur={(e) => handleItemNumericBlur(index, isMotomecanizacao ? 'distancia_percorrida' : 'horas_dia', e.target.value)}
+                                          placeholder="0,00"
                                           disabled={item.quantidade === 0 || diasUtilizados === 0}
                                           onKeyDown={handleEnterToNextField}
                                         />
                                       </TableCell>
-                                      {/* COLUMN 5: Desloc/Dia (Only for Motomecanizacao) */}
+                                      {/* Desloc/Dia (Only for Motomecanizacao) */}
                                       {isMotomecanizacao && (
-                                        <TableCell className="py-1 w-[8%]">
+                                        <TableCell className="py-1 w-[5%]">
                                           <Input 
                                             type="text"
                                             inputMode="numeric"
@@ -1416,30 +1361,56 @@ export default function ClasseIIIForm() {
                                         </TableCell>
                                       )}
                                       
-                                      {/* NOVO: Coluna de Configuração de Lubrificante */}
-                                      <TableCell className="py-1 w-[10%] text-center">
-                                        {isLubricantType ? (
-                                            <Button 
-                                              variant="outline" 
-                                              size="sm" 
-                                              className={cn("h-8 w-full text-xs", isLubricantConfigured && "border-purple-500 text-purple-600")}
+                                      {/* Coluna de Configuração de Lubrificante */}
+                                      {isLubricantType ? (
+                                        <>
+                                          {/* Consumo Lubrificante */}
+                                          <TableCell className="py-1 w-[15%]">
+                                            <Input 
+                                              type="text"
+                                              inputMode="decimal"
+                                              className="h-8 text-center"
+                                              value={item.consumo_lubrificante_input}
+                                              onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_input', e.target.value)}
+                                              onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_input', e.target.value)}
+                                              placeholder="0,00"
                                               disabled={!isUsageFilled}
-                                              onClick={() => handleOpenLubricantConfig(item, index)}
-                                            >
-                                              <Droplet className="h-3 w-3 mr-1" />
-                                              {isLubricantConfigured ? 'Configurado' : 'Configurar'}
-                                            </Button>
-                                        ) : (
-                                            <span className="text-muted-foreground text-xs">-</span>
-                                        )}
-                                      </TableCell>
+                                              onKeyDown={handleEnterToNextField}
+                                            />
+                                            <p className="text-[9px] text-muted-foreground text-center mt-1">
+                                                {item.categoria === 'GERADOR' ? 'L/100h' : 'L/h'}
+                                            </p>
+                                          </TableCell>
+                                          {/* Preço Lubrificante */}
+                                          <TableCell className="py-1 w-[15%]">
+                                            <Input 
+                                              type="text"
+                                              inputMode="numeric"
+                                              className="h-8 text-center"
+                                              value={formattedPriceInput}
+                                              onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante_input', e.target.value)}
+                                              placeholder="0,00"
+                                              disabled={!isUsageFilled}
+                                              onKeyDown={handleEnterToNextField}
+                                            />
+                                            <p className="text-[9px] text-muted-foreground text-center mt-1">
+                                                R$/L
+                                            </p>
+                                          </TableCell>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <TableCell className="py-1 w-[15%] text-center text-muted-foreground">-</TableCell>
+                                          <TableCell className="py-1 w-[15%] text-center text-muted-foreground">-</TableCell>
+                                        </>
+                                      )}
                                       
                                       {/* COLUNA Litros */}
                                       <TableCell className="text-right text-sm py-1 w-[10%]">
                                         {totalLitros > 0 ? `${formatNumber(totalLitros)} L` : '-'}
                                       </TableCell>
                                       {/* COLUMN Custo Total */}
-                                      <TableCell className="text-right font-semibold text-sm py-1 w-[16%]">
+                                      <TableCell className="text-right font-semibold text-sm py-1 w-[15%]">
                                         {formatCurrency(itemTotal)}
                                       </TableCell>
                                     </TableRow>
@@ -1474,15 +1445,25 @@ export default function ClasseIIIForm() {
                         </div>
                         
                         {currentCategoryTotalLubrificante > 0 && (
-                          <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
-                            <span className="font-bold text-sm flex items-center gap-2">
-                              TOTAL LUBRIFICANTE
-                            </span>
-                            <span className="font-extrabold text-lg text-purple-600">
-                              {formatCurrency(currentCategoryTotalLubrificante)}
-                            </span>
+                          <div className="space-y-2 p-3 bg-background rounded-lg border border-purple-500/50">
+                            <div className="flex justify-between items-center">
+                              <span className="font-bold text-sm flex items-center gap-2 text-purple-600">
+                                <Droplet className="h-4 w-4" />
+                                TOTAL LUBRIFICANTE
+                              </span>
+                              <span className="font-extrabold text-lg text-purple-600">
+                                {formatCurrency(currentCategoryTotalLubrificante)}
+                              </span>
+                            </div>
+                            <Alert className="p-2 text-xs">
+                                <AlertCircle className="h-3 w-3" />
+                                <AlertDescription>
+                                    O recurso de lubrificante (ND 30) será alocado para a OM de destino configurada em cada item.
+                                </AlertDescription>
+                            </Alert>
                           </div>
                         )}
+                        
                         <div className="flex justify-end">
                           <Button 
                             type="button" 
@@ -1504,6 +1485,13 @@ export default function ClasseIIIForm() {
             {form.itens.filter(i => i.quantidade > 0).length > 0 && (
               <div className="space-y-4 border-b pb-4">
                 <h3 className="text-lg font-semibold">3. Itens Adicionados ({form.itens.filter(i => i.quantidade > 0).length})</h3>
+                
+                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
+                  <span className="font-bold text-base text-primary">VALOR TOTAL DA OM</span>
+                  <span className="font-extrabold text-xl text-primary">
+                    {formatCurrency(custoTotalClasseIII)}
+                  </span>
+                </div>
                 
                 <div className="space-y-4">
                   {Object.entries(itensAgrupadosPorCategoriaParaResumo).map(([categoria, itens]) => {
@@ -1580,13 +1568,6 @@ export default function ClasseIIIForm() {
                       </Card>
                     );
                   })}
-                </div>
-                
-                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
-                  <span className="font-bold text-base text-primary">VALOR TOTAL DA OM</span>
-                  <span className="font-extrabold text-xl text-primary">
-                    {formatCurrency(custoTotalClasseIII)}
-                  </span>
                 </div>
                 
                 <div className="flex gap-3 pt-4 justify-end">
@@ -1802,17 +1783,6 @@ export default function ClasseIIIForm() {
           </CardContent>
         </Card>
       </div>
-      
-      {/* NOVO: Lubricant Configuration Dialog */}
-      {itemToConfigure && (
-          <LubricantConfigDialog
-              open={!!itemToConfigure}
-              onOpenChange={() => setItemToConfigure(null)}
-              item={itemToConfigure}
-              onConfirm={handleLubricantConfigConfirmed}
-              loading={loading}
-          />
-      )}
     </div>
   );
 }
