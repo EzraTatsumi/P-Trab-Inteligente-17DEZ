@@ -242,7 +242,7 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
 
     if (suprimento_tipo === 'LUBRIFICANTE') {
         // MEMÓRIA LUBRIFICANTE (GRANULAR)
-        return `33.90.30 - Aquisição de Lubrificante para ${categoria} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}.
+        return `33.90.30 - Aquisição de Lubrificante para ${categoryLabelMap[categoria]} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}.
 OM Destino Recurso: ${om_destino} (UG: ${ug_destino})
 
 Cálculo:
@@ -252,7 +252,7 @@ Detalhes dos Itens:
 ${detailed_items.map(item => {
     const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, dias_operacao);
     
-    return `- ${item.quantidade} ${item.item} (${item.categoria}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosLubrificante, 2)} L. Valor: ${formatCurrency(valorLubrificante)}.`;
+    return `- ${item.quantidade} ${item.item} (${categoryLabelMap[item.categoria]}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosLubrificante, 2)} L. Valor: ${formatCurrency(valorLubrificante)}.`;
 }).join('\n')}
 
 Total Litros: ${formatNumber(total_litros, 2)} L.
@@ -271,7 +271,7 @@ Valor Total: ${formatCurrency(valor_total)}.`;
             detalhes.push(`- ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
         });
         
-        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${categoria} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}.
+        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${categoryLabelMap[categoria]} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}.
 OM Detentora: ${om_destino} (UG: ${ug_destino})
 Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
 
@@ -287,7 +287,7 @@ Valor: ${formatNumber(total_litros)} L ${unidadeLabel} x ${formatCurrency(preco_
 };
 
 
-export default function ClasseIIIForm() {
+const ClasseIIIForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get("ptrabId");
@@ -884,7 +884,7 @@ Detalhes dos Itens:
 ${itensComLubrificante.map(item => {
     const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
     
-    return `- ${item.quantidade} ${item.item} (${item.categoria}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosLubrificante, 2)} L. Valor: ${formatCurrency(valorLubrificante)}.`;
+    return `- ${item.quantidade} ${item.item} (${categoryLabelMap[item.categoria]}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosLubrificante, 2)} L. Valor: ${formatCurrency(valorLubrificante)}.`;
 }).join('\n')}
 
 Total Litros: ${formatNumber(totalLitrosLubrificante, 2)} L.
@@ -1810,7 +1810,7 @@ const getMemoriaRecords = granularRegistros;
                                   {/* Detalhe Combustível - Volume e Custo */}
                                   <div className="flex justify-between">
                                     <span className="w-2/3">
-                                      Combustível ({item.tipo_combustivel_fixo}): {formulaLitros} = {formatNumber(litrosSemMargemItem)} L + 30% = {formatNumber(totalLitros)} L
+                                      Combustível ({item.tipo_combustivel_fixo}): {formatNumber(litrosSemMargemItem)} L + 30% = {formatNumber(totalLitros)} L
                                     </span>
                                     <span className="w-1/3 text-right font-medium text-foreground">
                                       {formatNumber(totalLitros)} L x {formatCurrency(precoLitro)} = {formatCurrency(valorCombustivel)}
@@ -2018,7 +2018,7 @@ const getMemoriaRecords = granularRegistros;
                       <div className="flex items-start justify-between gap-4 mb-4">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <h4 className="text-base font-semibold text-foreground">
-                            OM Destino: {om} ({ug}) - Categoria: {item.categoria}
+                            OM Destino: {om} ({ug}) - Categoria: {categoryLabelMap[item.categoria]}
                           </h4>
                           <Badge variant="default" className={cn("w-fit shrink-0", badgeClass)}>
                             {suprimento}
