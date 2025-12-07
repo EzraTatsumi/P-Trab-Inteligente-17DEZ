@@ -112,6 +112,59 @@ const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
   return Math.abs(a - b) < tolerance;
 };
 
+// Função auxiliar para calcular litros e valor de um item (AGORA RETORNA DETALHES DA FÓRMULA)
+const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOperacao: number) => {
+  const diasUtilizados = item.dias_utilizados || 0;
+  let litrosSemMargemItem = 0;
+  const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
+  let formulaLitros = '';
+  
+  if (diasUtilizados > 0) {
+    if (isMotomecanizacao) {
+      if (item.consumo_fixo > 0) {
+        litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
+        formulaLitros = `(${item.quantidade} un. x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${diasUtilizados} dias) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
+      }
+    } else {
+      litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
+      formulaLitros = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} dias`;
+    }
+  }
+  
+  const totalLitros = litrosSemMargemItem * 1.3;
+  const precoLitro = item.tipo_combustivel_fixo === 'GASOLINA' 
+    ? (refLPC?.preco_gasolina ?? 0) 
+    : (refLPC?.preco_diesel ?? 0);
+  const valorCombustivel = totalLitros * precoLitro;
+  
+  let valorLubrificante = 0;
+  const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
+  if (isLubricantType && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0 && diasUtilizados > 0) {
+    const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
+    let litrosItem = 0;
+    
+    if (item.categoria === 'GERADOR') {
+      litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
+    } else if (item.categoria === 'EMBARCACAO') {
+      litrosItem = totalHoras * item.consumo_lubrificante_litro;
+    }
+    
+    valorLubrificante = litrosItem * item.preco_lubrificante;
+  }
+  
+  const itemTotal = valorCombustivel + valorLubrificante;
+  
+  return { 
+    totalLitros, 
+    valorCombustivel, 
+    valorLubrificante, 
+    itemTotal,
+    formulaLitros,
+    precoLitro,
+  };
+};
+
+
 export default function ClasseIIIForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -723,28 +776,10 @@ export default function ClasseIIIForm() {
     localCategoryItems.forEach(item => {
       if (form.dias_operacao === 0) return;
       
-      const diasUtilizados = item.dias_utilizados || 0;
-      if (diasUtilizados === 0) return;
-      
-      // 1. Cálculo de Combustível
-      let litrosSemMargemItem = 0;
-      const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
-      
-      if (isMotomecanizacao) {
-        if (item.consumo_fixo > 0) {
-          litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
-        }
-      } else {
-        litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
-      }
-      
-      const totalLitros = litrosSemMargemItem * 1.3;
-      const precoLitro = item.tipo_combustivel_fixo === 'GASOLINA' 
-        ? (refLPC?.preco_gasolina ?? 0) 
-        : (refLPC?.preco_diesel ?? 0);
-      const valorCombustivel = totalLitros * precoLitro;
+      const { totalLitros, valorCombustivel, valorLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
       
       totalCombustivel += valorCombustivel;
+      totalLubrificante += valorLubrificante;
       
       if (item.tipo_combustivel_fixo === 'DIESEL') {
         dieselLitros += totalLitros;
@@ -752,21 +787,6 @@ export default function ClasseIIIForm() {
       } else {
         gasolinaLitros += totalLitros;
         gasolinaValor += valorCombustivel;
-      }
-      
-      // 2. Cálculo de Lubrificante
-      const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
-      if (isLubricantType && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0) {
-        const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
-        let litrosItem = 0;
-        
-        if (item.categoria === 'GERADOR') {
-          litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
-        } else if (item.categoria === 'EMBARCACAO') {
-          litrosItem = totalHoras * item.consumo_lubrificante_litro;
-        }
-        
-        totalLubrificante += litrosItem * item.preco_lubrificante;
       }
     });
 
@@ -1056,48 +1076,6 @@ export default function ClasseIIIForm() {
     ]).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
   }, [registrosAgrupadosPorOM]);
   
-  // Função auxiliar para calcular litros e valor de um item
-  const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOperacao: number) => {
-    const diasUtilizados = item.dias_utilizados || 0;
-    let litrosSemMargemItem = 0;
-    const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
-    
-    if (diasUtilizados > 0) {
-      if (isMotomecanizacao) {
-        if (item.consumo_fixo > 0) {
-          litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
-        }
-      } else {
-        litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
-      }
-    }
-    
-    const totalLitros = litrosSemMargemItem * 1.3;
-    const precoLitro = item.tipo_combustivel_fixo === 'GASOLINA' 
-      ? (refLPC?.preco_gasolina ?? 0) 
-      : (refLPC?.preco_diesel ?? 0);
-    const valorCombustivel = totalLitros * precoLitro;
-    
-    let valorLubrificante = 0;
-    const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
-    if (isLubricantType && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0 && diasUtilizados > 0) {
-      const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
-      let litrosItem = 0;
-      
-      if (item.categoria === 'GERADOR') {
-        litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
-      } else if (item.categoria === 'EMBARCACAO') {
-        litrosItem = totalHoras * item.consumo_lubrificante_litro;
-      }
-      
-      valorLubrificante = litrosItem * item.preco_lubrificante;
-    }
-    
-    const itemTotal = valorCombustivel + valorLubrificante;
-    
-    return { totalLitros, valorCombustivel, valorLubrificante, itemTotal };
-  };
-  
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -1278,7 +1256,7 @@ export default function ClasseIIIForm() {
                                 <TableHead className="w-[8%] text-center">Qtd Dias</TableHead>
                                 <TableHead className="w-[18%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
                                 {cat.key === 'MOTOMECANIZACAO' && (
-                                  <TableHead className="w-[10%] text-center">Desloc/Dia</TableHead>
+                                  <TableHead className="w-[8%] text-center">Desloc/Dia</TableHead>
                                 )}
                                 <TableHead className="w-[10%] text-center">Lub/Comb</TableHead>
                                 <TableHead className="w-[10%] text-right">Litros</TableHead> {/* NOVA COLUNA */}
@@ -1297,42 +1275,8 @@ export default function ClasseIIIForm() {
                                   const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
                                   const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
                                   
-                                  // --- Calculation Logic (Uses localCategoryItems) ---
+                                  const { totalLitros, itemTotal } = calculateItemTotals(item, refLPC, form.dias_operacao);
                                   const diasUtilizados = item.dias_utilizados || 0;
-                                  let litrosSemMargemItem = 0;
-                                  
-                                  if (diasUtilizados > 0) {
-                                    if (isMotomecanizacao) {
-                                      if (item.consumo_fixo > 0) {
-                                        litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
-                                      }
-                                    } else {
-                                      litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
-                                    }
-                                  }
-                                  
-                                  const totalLitros = litrosSemMargemItem * 1.3;
-                                  const precoLitro = item.tipo_combustivel_fixo === 'GASOLINA' 
-                                    ? (refLPC?.preco_gasolina ?? 0) 
-                                    : (refLPC?.preco_diesel ?? 0);
-                                  const valorCombustivel = totalLitros * precoLitro;
-                                  
-                                  let valorLubrificante = 0;
-                                  if (isLubricantType && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0 && diasUtilizados > 0) {
-                                    const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
-                                    let litrosItem = 0;
-                                    
-                                    if (item.categoria === 'GERADOR') {
-                                      litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
-                                    } else if (item.categoria === 'EMBARCACAO') {
-                                      litrosItem = totalHoras * item.consumo_lubrificante_litro;
-                                    }
-                                    
-                                    valorLubrificante = litrosItem * item.preco_lubrificante;
-                                  }
-                                  
-                                  const itemTotal = valorCombustivel + valorLubrificante;
-                                  // --- End Calculation Logic ---
                                   
                                   const formattedPriceInput = formatCurrencyInput(item.preco_lubrificante_input).formatted;
                                   
@@ -1391,7 +1335,7 @@ export default function ClasseIIIForm() {
                                       </TableCell>
                                       {/* COLUMN 5: Desloc/Dia (Only for Motomecanizacao) */}
                                       {isMotomecanizacao && (
-                                        <TableCell className="py-1 w-[10%]">
+                                        <TableCell className="py-1 w-[8%]">
                                           <Input 
                                             type="text"
                                             inputMode="numeric"
@@ -1466,6 +1410,8 @@ export default function ClasseIIIForm() {
                             </TableBody>
                           </Table>
                         </div>
+                        
+                        {/* NOVO DETALHAMENTO DE TOTAIS */}
                         <div className="space-y-2 p-3 bg-background rounded-lg border">
                           <h4 className="font-bold text-sm mb-2">Resumo de Combustível (30% Margem)</h4>
                           <div className="flex justify-between text-sm">
@@ -1517,7 +1463,6 @@ export default function ClasseIIIForm() {
             )}
             
             {/* 3. Itens Adicionados (numero de itens) */}
-            {/* AQUI: A condição agora depende apenas de form.itens (itens salvos) */}
             {form.itens.filter(i => i.quantidade > 0).length > 0 && (
               <div className="space-y-4 border-b pb-4">
                 <h3 className="text-lg font-semibold">3. Itens Adicionados ({form.itens.filter(i => i.quantidade > 0).length})</h3>
@@ -1546,15 +1491,52 @@ export default function ClasseIIIForm() {
                         
                         <div className="space-y-2">
                           {itens.map((item, index) => {
-                            const { itemTotal, totalLitros } = calculateItemTotals(item, refLPC, form.dias_operacao);
+                            const { itemTotal, totalLitros, valorCombustivel, valorLubrificante, formulaLitros, precoLitro } = calculateItemTotals(item, refLPC, form.dias_operacao);
                             const diasUtilizados = item.dias_utilizados || 0;
+                            const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
                             
                             return (
-                              <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
-                                <span className="font-medium">{item.item} ({item.quantidade} un. x {diasUtilizados} dias)</span>
-                                <span className="text-right">
-                                  {formatCurrency(itemTotal)}
-                                </span>
+                              <div key={index} className="p-2 bg-background rounded-lg border border-border/50">
+                                <div className="flex justify-between items-center">
+                                  <span className="font-medium text-sm text-foreground">
+                                    {item.item} ({item.quantidade} un. x {diasUtilizados} dias)
+                                  </span>
+                                  <span className="font-bold text-base text-primary">
+                                    {formatCurrency(itemTotal)}
+                                  </span>
+                                </div>
+                                
+                                <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                                  {/* Detalhe Combustível */}
+                                  <div className="flex justify-between">
+                                    <span className="w-1/2">
+                                      Combustível ({item.tipo_combustivel_fixo}):
+                                    </span>
+                                    <span className="w-1/2 text-right">
+                                      {formulaLitros} = {formatNumber(totalLitros)} L
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="w-1/2">
+                                      Custo Combustível:
+                                    </span>
+                                    <span className="w-1/2 text-right font-medium text-foreground">
+                                      {formatNumber(totalLitros)} L x {formatCurrency(precoLitro)} = {formatCurrency(valorCombustivel)}
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Detalhe Lubrificante */}
+                                  {isLubricantType && valorLubrificante > 0 && (
+                                    <div className="flex justify-between text-purple-600">
+                                      <span className="w-1/2">
+                                        Lubrificante (ND 30):
+                                      </span>
+                                      <span className="w-1/2 text-right font-medium">
+                                        {formatCurrency(valorLubrificante)}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             );
                           })}
