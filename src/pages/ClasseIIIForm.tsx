@@ -395,7 +395,7 @@ export default function ClasseIIIForm() {
   
   // --- Item Management Logic ---
   
-  const currentCategoryItems = useMemo(() => {
+  const currentCategory Items = useMemo(() => {
     const availableItems = allDiretrizItems[selectedTab] || [];
     const existingItemsMap = new Map<string, ItemClasseIII>();
     form.itens.filter(i => i.categoria === selectedTab).forEach(item => {
@@ -1091,14 +1091,14 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                             <Table className="w-full">
                                 <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                     <TableRow>
-                                        <TableHead className="w-[30%]">Equipamento</TableHead>
+                                        <TableHead className="w-[35%]">Equipamento</TableHead>
                                         <TableHead className="w-[10%] text-center">Qtd</TableHead>
                                         <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
                                         <TableHead className="w-[15%] text-center">
-                                            {cat.key === 'MOTOMECANIZACAO' ? 'Desloc' : (cat.key === 'GERADOR' ? 'Consumo Fixo' : 'Consumo Fixo')}
+                                            {cat.key === 'MOTOMECANIZACAO' ? 'Desloc' : 'Consumo'}
                                         </TableHead>
                                         <TableHead className="w-[15%] text-center">{cat.key === 'GERADOR' || cat.key === 'EMBARCACAO' ? 'Lubrificante' : 'Combustível'}</TableHead>
-                                        <TableHead className="w-[15%] text-right">Custo Total</TableHead>
+                                        <TableHead className="w-[10%] text-right">Custo Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
