@@ -1186,19 +1186,21 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                             <Table className="w-full">
                                 <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                     <TableRow>
-                                        <TableHead className="w-[35%]">Equipamento</TableHead>
+                                        <TableHead className="w-[40%]">Equipamento</TableHead>
                                         <TableHead className="w-[10%] text-center">Qtd</TableHead>
                                         <TableHead className="w-[10%] text-center">Qtd Dias</TableHead>
-                                        <TableHead className="w-[20%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
-                                        <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'Desloc/Dia' : 'Consumo Fixo'}</TableHead>
+                                        <TableHead className="w-[25%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
+                                        {cat.key === 'MOTOMECANIZACAO' && (
+                                            <TableHead className="w-[10%] text-center">Desloc/Dia</TableHead>
+                                        )}
                                         <TableHead className="w-[10%] text-center">Lub/Comb</TableHead>
-                                        <TableHead className="w-[10%] text-right">Custo Total</TableHead>
+                                        <TableHead className="w-[5%] text-right">Custo Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {currentCategoryItems.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="text-center text-muted-foreground">
+                                            <TableCell colSpan={cat.key === 'MOTOMECANIZACAO' ? 7 : 6} className="text-center text-muted-foreground">
                                                 Nenhum item de diretriz encontrado para esta categoria.
                                             </TableCell>
                                         </TableRow>
@@ -1243,7 +1245,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                             
                                             return (
                                                 <TableRow key={item.item} className="h-12">
-                                                    <TableCell className="font-medium text-sm py-1 w-[35%]">
+                                                    <TableCell className="font-medium text-sm py-1 w-[40%]">
                                                         {item.item}
                                                         <div className="text-xs text-muted-foreground">
                                                             {item.tipo_combustivel_fixo} ({formatNumber(item.consumo_fixo, 1)} {item.unidade_fixa})
@@ -1276,7 +1278,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                     </TableCell>
                                                     
                                                     {/* COLUMN 4: Horas/Dia or KM/Desloc */}
-                                                    <TableCell className="py-1 w-[20%]">
+                                                    <TableCell className="py-1 w-[25%]">
                                                         <Input
                                                             type="text"
                                                             inputMode="decimal"
@@ -1289,9 +1291,9 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                         />
                                                     </TableCell>
                                                     
-                                                    {/* COLUMN 5: Desloc/Dia or Consumo Fixo (Now dynamic input/display) */}
-                                                    <TableCell className="py-1 w-[15%]">
-                                                        {isMotomecanizacao ? (
+                                                    {/* COLUMN 5: Desloc/Dia (Only for Motomecanizacao) */}
+                                                    {isMotomecanizacao && (
+                                                        <TableCell className="py-1 w-[10%]">
                                                             <Input
                                                                 type="text"
                                                                 inputMode="numeric"
@@ -1302,13 +1304,8 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                                 disabled={item.quantidade === 0 || diasUtilizados === 0}
                                                                 onKeyDown={handleEnterToNextField}
                                                             />
-                                                        ) : (
-                                                            <Badge variant="secondary" className="text-xs w-full justify-center h-8">
-                                                                {/* REMOVIDO: Consumo Fixo */}
-                                                                {item.unidade_fixa}
-                                                            </Badge>
-                                                        )}
-                                                    </TableCell>
+                                                        </TableCell>
+                                                    )}
                                                     
                                                     {/* COLUMN 6: Lub/Comb */}
                                                     <TableCell className="py-1 w-[10%]">
@@ -1360,7 +1357,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                     </TableCell>
                                                     
                                                     {/* COLUMN 7: Custo Total */}
-                                                    <TableCell className="text-right font-semibold text-sm py-1 w-[10%]">
+                                                    <TableCell className="text-right font-semibold text-sm py-1 w-[5%]">
                                                         {formatCurrency(itemTotal)}
                                                     </TableCell>
                                                 </TableRow>
