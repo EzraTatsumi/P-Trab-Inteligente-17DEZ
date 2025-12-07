@@ -127,9 +127,6 @@ interface ConsolidatedSuprimentoGroup {
   original_registro: ClasseIIIRegistro;
 }
 
-// Opções fixas de fase de atividade
-const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
-
 const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   if (!faseCSV) return 'operação';
   const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
@@ -1756,19 +1753,17 @@ const getMemoriaRecords = granularRegistros;
                     }, 0);
                     
                     const totalCategoria = totalCombustivelCategoria + totalLubrificanteCategoria;
-                    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
                     
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
-                          <h4 className="font-bold text-base text-primary">{categoriaLabel}</h4> {/* ALTERADO AQUI */}
+                          <h4 className="font-bold text-base text-primary">{categoriaLabel}</h4>
                           <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
                         </div>
                         
                         <div className="space-y-2">
                           {itens.map((item, index) => {
                             const { itemTotal, totalLitros, valorCombustivel, valorLubrificante, formulaLitros, precoLitro, litrosSemMargemItem } = calculateItemTotals(item, refLPC, form.dias_operacao);
-                            const diasUtilizados = item.dias_utilizados || 0;
                             const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
                             
                             return (
@@ -1782,7 +1777,7 @@ const getMemoriaRecords = granularRegistros;
                                 <div className="flex justify-between items-center">
                                   <span className="font-medium text-sm text-foreground">
                                     {item.item}
-                                  </span> {/* ALTERADO AQUI */}
+                                  </span>
                                   <span className="font-bold text-base text-primary">
                                     {formatCurrency(itemTotal)}
                                   </span>
