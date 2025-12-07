@@ -10,9 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { RefLPC, RefLPCForm } from "@/types/refLPC";
+import { RefLPC, RefLPCForm, RefLPCSource } from "@/types/refLPC";
 import { getPreviousWeekRange, formatNumberForInput } from "@/lib/formatUtils";
-import { fetchFuelPrice } from "@/integrations/supabase/api"; // Importar a nova função
+import { fetchFuelPrice } from "@/integrations/supabase/api";
 
 interface RefLPCFormSectionProps {
   ptrabId: string;
@@ -27,13 +27,14 @@ const initialFormState: RefLPCForm = {
   nome_local: "",
   preco_diesel: 0,
   preco_gasolina: 0,
+  source: "Manual", // Adicionado source padrão
 };
 
 export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSectionProps) => {
   const [formLPC, setFormLPC] = useState<RefLPCForm>(initialFormState);
   const [isLPCFormExpanded, setIsLPCFormExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [lastApiSource, setLastApiSource] = useState<string | null>(null); // Novo estado para a fonte da API
+  // lastApiSource removido, pois a fonte agora é rastreada em formLPC.source
   const { handleEnterToNextField } = useFormNavigation();
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -46,15 +47,32 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         nome_local: refLPC.nome_local || "",
         preco_diesel: Number(refLPC.preco_diesel),
         preco_gasolina: Number(refLPC.preco_gasolina),
+        source: refLPC.source || 'Manual', // Lê a fonte do registro existente
       });
       setIsLPCFormExpanded(false);
-      // Se o registro existir, limpa a fonte da API (assumindo que foi salvo manualmente)
-      setLastApiSource(null); 
     } else {
       setFormLPC(initialFormState);
       setIsLPCFormExpanded(true);
     }
   }, [refLPC]);
+
+  // Handler genérico para campos que não são de preço, garantindo que a fonte seja 'Manual'
+  const handleNonPriceChange = (field: keyof RefLPCForm, value: string) => {
+    setFormLPC(prev => ({
+        ...prev,
+        [field]: value,
+        source: 'Manual' // Qualquer alteração manual define a fonte como Manual
+    }));
+  };
+
+  const handleAmbitoChange = (val: 'Nacional' | 'Estadual' | 'Municipal') => {
+    setFormLPC(prev => ({
+        ...prev,
+        ambito: val,
+        nome_local: '',
+        source: 'Manual' // Qualquer alteração manual define a fonte como Manual
+    }));
+  };
 
   const handleSalvarRefLPC = async () => {
     if (!formLPC.data_inicio_consulta || !formLPC.data_fim_consulta) {
@@ -66,8 +84,12 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
       toast.error(`Preencha o nome do ${formLPC.ambito === 'Estadual' ? 'Estado' : 'Município'}`);
       return;
     }
+    
+    // Converte os valores de preço para numérico antes de salvar
+    const dieselPrice = parseFloat(String(formLPC.preco_diesel).replace(/\./g, '').replace(',', '.')) || 0;
+    const gasolinePrice = parseFloat(String(formLPC.preco_gasolina).replace(/\./g, '').replace(',', '.')) || 0;
 
-    if (formLPC.preco_diesel <= 0 || formLPC.preco_gasolina <= 0) {
+    if (dieselPrice <= 0 || gasolinePrice <= 0) {
       toast.error("Os preços devem ser maiores que zero");
       return;
     }
@@ -76,7 +98,13 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
     try {
       const dataToSave = {
         p_trab_id: ptrabId,
-        ...formLPC,
+        data_inicio_consulta: formLPC.data_inicio_consulta,
+        data_fim_consulta: formLPC.data_fim_consulta,
+        ambito: formLPC.ambito,
+        nome_local: formLPC.nome_local,
+        preco_diesel: dieselPrice,
+        preco_gasolina: gasolinePrice,
+        source: formLPC.source, // Salva a fonte atual
       };
 
       let result;
@@ -105,7 +133,6 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
 
       onUpdate(result as RefLPC);
       setIsLPCFormExpanded(false);
-      setLastApiSource(null); // Limpa a fonte da API após salvar
     } catch (error: any) {
       toast.error(sanitizeError(error));
     } finally {
@@ -131,14 +158,13 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         nome_local: '',
         preco_diesel: dieselResult.price,
         preco_gasolina: gasolinaResult.price,
+        source: 'API', // Define a fonte como API
       }));
       
-      setLastApiSource(dieselResult.source);
-      toast.success("Preços de combustível atualizados via API!");
+      toast.success(`Preços de combustível atualizados via API! Fonte: ${dieselResult.source}`);
       
     } catch (error) {
       // O erro já é tratado e exibido dentro de fetchFuelPrice
-      setLastApiSource(null);
     } finally {
       setLoading(false);
     }
@@ -149,12 +175,20 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
     const rawValue = e.target.value;
     // Permite digitação livre, incluindo vírgula ou ponto, mas sem caracteres extras
     const cleanedValue = rawValue.replace(/[^0-9,.]/g, '');
-    setFormLPC(prev => ({ ...prev, [field]: cleanedValue }));
+    setFormLPC(prev => ({ 
+        ...prev, 
+        [field]: cleanedValue,
+        source: 'Manual' // Qualquer interação manual com o preço define a fonte como Manual
+    }));
   };
 
   const handlePriceBlur = (e: React.FocusEvent<HTMLInputElement>, field: 'preco_diesel' | 'preco_gasolina') => {
     const numericValue = parseFloat(e.target.value.replace(/\./g, '').replace(',', '.')) || 0;
-    setFormLPC(prev => ({ ...prev, [field]: numericValue }));
+    setFormLPC(prev => ({ 
+        ...prev, 
+        [field]: numericValue,
+        source: 'Manual' // Ao sair do campo, confirma a fonte como Manual
+    }));
   };
   
   // Função para formatar o valor numérico para exibição no input
@@ -166,6 +200,13 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
     return formatNumberForInput(price, 2);
   };
 
+  // Lógica para exibir a fonte no título
+  const displaySource = refLPC?.source || 'Manual';
+  const sourceText = displaySource === 'API' ? 'API Externa' : 'Manual';
+  const sourceColor = displaySource === 'API' ? 'text-green-700' : 'text-blue-700';
+  const sourceBg = displaySource === 'API' ? 'bg-green-100' : 'bg-blue-100';
+
+
   return (
     <Card className="mb-6 border-2 border-primary/20" ref={contentRef}>
       <CardHeader className="pb-3">
@@ -173,6 +214,11 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
           <CardTitle className="text-lg flex items-center gap-2">
             <Fuel className="h-5 w-5" />
             Referência de Preços - Consulta LPC
+            {refLPC && (
+                <span className={`text-xs font-normal px-2 py-0.5 rounded-full ${sourceBg} ${sourceColor}`}>
+                    {sourceText}
+                </span>
+            )}
           </CardTitle>
           <Button 
             variant="ghost" 
@@ -197,14 +243,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
           
           <form onSubmit={(e) => { e.preventDefault(); handleSalvarRefLPC(); }}>
             
-            {lastApiSource && (
-                <Alert className="mb-4 bg-green-500/10 border-green-500/30">
-                    <AlertCircle className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-700">
-                        Consulta realizada com sucesso! Fonte: {lastApiSource}
-                    </AlertDescription>
-                </Alert>
-            )}
+            {/* Removido o alerta temporário, pois o toast de sucesso já informa a fonte */}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
@@ -212,7 +251,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
                 <Input
                   type="date"
                   value={formLPC.data_inicio_consulta}
-                  onChange={(e) => setFormLPC({...formLPC, data_inicio_consulta: e.target.value})}
+                  onChange={(e) => handleNonPriceChange('data_inicio_consulta', e.target.value)}
                   onKeyDown={handleEnterToNextField}
                   disabled={loading}
                 />
@@ -223,7 +262,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
                 <Input
                   type="date"
                   value={formLPC.data_fim_consulta}
-                  onChange={(e) => setFormLPC({...formLPC, data_fim_consulta: e.target.value})}
+                  onChange={(e) => handleNonPriceChange('data_fim_consulta', e.target.value)}
                   onKeyDown={handleEnterToNextField}
                   disabled={loading}
                 />
@@ -233,7 +272,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
                 <Label>Âmbito da Pesquisa</Label>
                 <Select
                   value={formLPC.ambito}
-                  onValueChange={(val) => setFormLPC({...formLPC, ambito: val as 'Nacional' | 'Estadual' | 'Municipal', nome_local: ''})}
+                  onValueChange={handleAmbitoChange}
                   disabled={loading}
                 >
                   <SelectTrigger>
@@ -252,7 +291,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
                   <Label>{formLPC.ambito === 'Estadual' ? 'Estado' : 'Município'}</Label>
                   <Input
                     value={formLPC.nome_local || ''}
-                    onChange={(e) => setFormLPC({...formLPC, nome_local: e.target.value})}
+                    onChange={(e) => handleNonPriceChange('nome_local', e.target.value)}
                     placeholder={formLPC.ambito === 'Estadual' ? 'Ex: Rio de Janeiro' : 'Ex: Niterói'}
                     onKeyDown={handleEnterToNextField}
                     disabled={loading}
