@@ -325,6 +325,7 @@ const ClasseIIIForm = () => {
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
+    // REMOVIDO O FILTRO DE CATEGORIA AQUI
     const { data, error } = await supabase
       .from("classe_iii_registros")
       .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
@@ -333,6 +334,7 @@ const ClasseIIIForm = () => {
       .order("categoria", { ascending: true });
 
     if (error) {
+      // Se houver erro, exibe o toast e loga o erro completo
       toast.error("Erro ao carregar registros");
       console.error(error);
       return;
