@@ -32,9 +32,8 @@ const initialFormState: RefLPCForm = {
 
 export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSectionProps) => {
   const [formLPC, setFormLPC] = useState<RefLPCForm>(initialFormState);
-  const [isLPCFormExpanded, setIsLPCFormExpanded] = useState(false);
+  const [isLPCFormExpanded, setIsLPCFormExpanded] = useState(false); // Inicia fechado
   const [loading, setLoading] = useState(false);
-  // lastApiSource removido, pois a fonte agora é rastreada em formLPC.source
   const { handleEnterToNextField } = useFormNavigation();
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -49,10 +48,10 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         preco_gasolina: Number(refLPC.preco_gasolina),
         source: refLPC.source || 'Manual', // Lê a fonte do registro existente
       });
-      setIsLPCFormExpanded(false);
+      setIsLPCFormExpanded(false); // Fecha se houver dados
     } else {
       setFormLPC(initialFormState);
-      setIsLPCFormExpanded(true);
+      setIsLPCFormExpanded(true); // Abre se NÃO houver dados (força a configuração)
     }
   }, [refLPC]);
 
