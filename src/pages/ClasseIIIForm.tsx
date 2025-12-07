@@ -1252,17 +1252,14 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                             return (
                                                 <TableRow key={item.item} className="h-12">
                                                     <TableCell className="font-medium text-sm py-1 w-[40%]">
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="font-medium text-sm">{item.item}</span>
                                                             <Badge 
                                                                 variant="default" 
-                                                                className={cn("h-4 w-4 p-0 justify-center", getCombustivelBadgeClass(item.tipo_combustivel_fixo))}
+                                                                className={cn("w-fit text-xs font-normal", getCombustivelBadgeClass(item.tipo_combustivel_fixo))}
                                                             >
-                                                                {item.tipo_combustivel_fixo === 'DIESEL' ? 'D' : 'G'}
+                                                                {item.tipo_combustivel_fixo} ({formatNumber(item.consumo_fixo, 1)} {item.unidade_fixa})
                                                             </Badge>
-                                                            {item.item}
-                                                        </div>
-                                                        <div className="text-xs text-muted-foreground ml-6">
-                                                            {item.tipo_combustivel_fixo} ({formatNumber(item.consumo_fixo, 1)} {item.unidade_fixa})
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="py-1 w-[10%]">
