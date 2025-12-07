@@ -763,8 +763,8 @@ export default function ClasseIIIForm() {
     currentCategoryTotalValue,
     currentCategoryDieselLitros,
     currentCategoryGasolinaLitros,
-    currentCategoryDieselValor,
     currentCategoryGasolinaValor,
+    currentCategoryDieselValor,
   } = useMemo(() => {
     let totalCombustivel = 0;
     let totalLubrificante = 0;
@@ -1256,7 +1256,7 @@ export default function ClasseIIIForm() {
                                 <TableHead className="w-[8%] text-center">Qtd Dias</TableHead>
                                 <TableHead className="w-[18%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
                                 {cat.key === 'MOTOMECANIZACAO' && (
-                                  <TableHead className="w-[8%] text-center">Desloc/Dia</TableHead>
+                                  <TableHead className="w-[10%] text-center">Desloc/Dia</TableHead>
                                 )}
                                 <TableHead className="w-[10%] text-center">Lub/Comb</TableHead>
                                 <TableHead className="w-[10%] text-right">Litros</TableHead> {/* NOVA COLUNA */}
@@ -1335,7 +1335,7 @@ export default function ClasseIIIForm() {
                                       </TableCell>
                                       {/* COLUMN 5: Desloc/Dia (Only for Motomecanizacao) */}
                                       {isMotomecanizacao && (
-                                        <TableCell className="py-1 w-[8%]">
+                                        <TableCell className="py-1 w-[10%]">
                                           <Input 
                                             type="text"
                                             inputMode="numeric"
@@ -1509,11 +1509,8 @@ export default function ClasseIIIForm() {
                                 <div className="text-xs text-muted-foreground mt-1 space-y-1">
                                   {/* Detalhe Combustível */}
                                   <div className="flex justify-between">
-                                    <span className="w-1/2">
-                                      Combustível ({item.tipo_combustivel_fixo}):
-                                    </span>
-                                    <span className="w-1/2 text-right">
-                                      {formulaLitros} = {formatNumber(totalLitros)} L
+                                    <span className="w-full">
+                                      Combustível ({item.tipo_combustivel_fixo}): {formulaLitros} = {formatNumber(totalLitros)} L
                                     </span>
                                   </div>
                                   <div className="flex justify-between">
