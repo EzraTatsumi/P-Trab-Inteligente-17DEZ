@@ -475,7 +475,7 @@ export default function ClasseIIIForm() {
               categoria: baseCategory,
               consumo_fixo: directiveItem.consumo,
               tipo_combustivel_fixo: directiveItem.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL',
-              unidade_fixa: directiveItem.unidade,
+              unidade_fixa: directive.unidade,
               quantidade: item.quantidade || 0,
               horas_dia: item.horas_dia || 0,
               distancia_percorrida: item.distancia_percorrida || 0,
@@ -1910,7 +1910,7 @@ const getMemoriaRecords = granularRegistros;
                                     <h4 className="font-semibold text-base text-foreground">
                                       {isCombustivel ? 'Combustível' : 'Lubrificante'}
                                     </h4>
-                                    <Badge variant="default" className={cn("w-fit", badgeClass)}>
+                                    <Badge variant="default" className={cn("w-fit shrink-0", badgeClass)}>
                                       {badgeText}
                                     </Badge>
                                   </div>
