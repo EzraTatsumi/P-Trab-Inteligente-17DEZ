@@ -662,7 +662,7 @@ export default function ClasseIIIForm() {
           formulaDetalhe = `(${item.quantidade} ${item.item} x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${diasUtilizados} dias) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
         } else {
           litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
-          formulaDetalhe = `(${item.quantidade} ${item.item} x ${formatNumber(item.horas_dia, 1)} h/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} dias`;
+          formulaDetalhe = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} dias`;
         }
         
         totalLitrosSemMargem += litrosSemMargemItem;
@@ -687,7 +687,25 @@ export default function ClasseIIIForm() {
       
       const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
       
-      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}. Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento}) Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${combustivelLabel} - ${formatCurrency(precoLitro)}. Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização. ${detalhes.join('\n')} Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}. Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
+      // NOVO FORMATO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL
+      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel})
+OM Detentora: ${form.organizacao} (UG: ${form.ug})
+OM Fornecedora: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
+Período: ${form.dias_operacao} dias de ${faseFormatada}
+Total de Equipamentos: ${totalEquipamentos}
+
+Referência LPC:
+- Período: ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}
+- Preço Unitário: ${combustivelLabel} - ${formatCurrency(precoLitro)}
+
+Cálculo do Consumo (Sem Margem):
+Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
+${detalhes.join('\n')}
+Total Consumo Sem Margem: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel}.
+
+Cálculo do Valor Total:
+- Total Litros (Com 30% de Margem): ${formatNumber(totalLitrosSemMargem)} L + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}.
+- Valor Total: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
       
       novosConsolidados.push({
         tipo_combustivel: tipoCombustivel,
@@ -739,7 +757,32 @@ export default function ClasseIIIForm() {
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
       
-      const detalhamentoLubrificante = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}. Recurso destinado à OM proprietária: ${lubricantAllocation.om_destino_recurso} (UG: ${lubricantAllocation.ug_destino_recurso}) Cálculo: Fórmula: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilização) x Consumo Lubrificante/hora (ou /100h). ${itensComLubrificante.map(item => `- ${item.item}: Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}.`).join('\n')} ${detalhesLubrificante.join('\n')} Total Litros: ${formatNumber(totalLitrosLubrificante, 2)} L. Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
+      // NOVO FORMATO DA MEMÓRIA DE CÁLCULO DE LUBRIFICANTE
+      const detalhamentoLubrificante = `33.90.30 - Aquisição de Lubrificante
+OM Detentora: ${form.organizacao} (UG: ${form.ug})
+OM Destino Recurso: ${lubricantAllocation.om_destino_recurso} (UG: ${lubricantAllocation.ug_destino_recurso})
+Período: ${form.dias_operacao} dias de ${faseFormatada}
+Total de Equipamentos: ${totalEquipamentos}
+
+Cálculo:
+Fórmula: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilização) x Consumo Lubrificante/hora (ou /100h).
+
+Detalhes dos Itens:
+${itensComLubrificante.map(item => {
+    const totalHoras = item.quantidade * item.horas_dia * (item.dias_utilizados || 0);
+    let litrosItem = 0;
+    if (item.categoria === 'GERADOR') {
+        litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
+    } else if (item.categoria === 'EMBARCACAO') {
+        litrosItem = totalHoras * item.consumo_lubrificante_litro;
+    }
+    const valorItem = litrosItem * item.preco_lubrificante;
+    
+    return `- ${item.quantidade} ${item.item} (${item.categoria}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosItem, 2)} L. Valor: ${formatCurrency(valorItem)}.`;
+}).join('\n')}
+
+Total Litros: ${formatNumber(totalLitrosLubrificante, 2)} L.
+Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       
       consolidadoLubrificante = {
         total_litros: totalLitrosLubrificante,
@@ -1755,7 +1798,7 @@ export default function ClasseIIIForm() {
                             placeholder="Digite a memória de cálculo..."
                           />
                         ) : (
-                          <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
+                          <pre className="text-sm font-mono whitespace-pre-wrap text-foreground" style={{ whiteSpace: 'pre-wrap' }}>
                             {memoriaExibida}
                           </pre>
                         )}
