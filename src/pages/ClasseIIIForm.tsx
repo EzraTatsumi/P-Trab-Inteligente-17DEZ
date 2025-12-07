@@ -350,7 +350,7 @@ export default function ClasseIIIForm() {
               : "";
             
             const newItem: ItemClasseIII = {
-              item: item.tipo_equipamento_especifico,
+              item: directiveItem.nome,
               categoria: baseCategory,
               consumo_fixo: directiveItem.consumo,
               tipo_combustivel_fixo: directiveItem.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL',
@@ -725,7 +725,7 @@ export default function ClasseIIIForm() {
       totalLitrosLubrificante += litrosItem;
       totalValorLubrificante += valorItem;
       
-      detalhesLubrificante.push(`- ${item.quantidade} ${item.item}: ${formulaDetalhe} = ${formatNumber(litrosItem, 2)} L. Valor: ${formatCurrency(valorItem)}.`);
+      detalhesLubrificante.push(`- ${item.quantidade} ${item.item}: Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Valor: ${formatCurrency(valorItem)}.`);
     });
     
     let consolidadoLubrificante: any | null = null;
@@ -1605,13 +1605,15 @@ export default function ClasseIIIForm() {
                           return (
                             <Card key={registro.id} className="p-3 bg-background border">
                               <div className="flex items-center justify-between">
-                                <div className="flex flex-col md:flex-row md:items-center gap-2">
-                                  <h4 className="font-semibold text-base text-foreground">
-                                    {getTipoLabel(registro.tipo_equipamento)}
-                                  </h4>
-                                  <Badge variant="default" className={cn("w-fit", badgeClass)}>
-                                    {suprimento}
-                                  </Badge>
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-semibold text-base text-foreground">
+                                      {getTipoLabel(registro.tipo_equipamento)}
+                                    </h4>
+                                    <Badge variant="default" className={cn("w-fit", badgeClass)}>
+                                      {suprimento}
+                                    </Badge>
+                                  </div>
                                   <p className="text-xs text-muted-foreground">
                                     Dias: {registro.dias_operacao} | Fases: {formatFasesParaTexto(registro.fase_atividade)}
                                   </p>
@@ -1675,12 +1677,18 @@ export default function ClasseIIIForm() {
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   const memoriaExibida = registro.detalhamento_customizado || registro.detalhamento || "";
                   const suprimento = getSuprimentoLabel(registro);
+                  const badgeClass = getSuprimentoBadgeClass(registro);
                   
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
-                      <h4 className="text-lg font-semibold text-foreground">
-                        OM Destino: {om} ({ug}) - Tipo: {getTipoLabel(registro.tipo_equipamento)} ({suprimento})
-                      </h4>
+                      <div className="flex items-center gap-3">
+                        <h4 className="text-base font-semibold text-foreground">
+                          OM Destino: {om} ({ug})
+                        </h4>
+                        <Badge variant="default" className={cn("w-fit", badgeClass)}>
+                          {suprimento}
+                        </Badge>
+                      </div>
                       <div className="flex items-center justify-end gap-2 mb-4">
                         {!isEditing ? (
                           <>
