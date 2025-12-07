@@ -287,7 +287,7 @@ Valor: ${formatNumber(total_litros)} L ${unidadeLabel} x ${formatCurrency(preco_
 };
 
 
-export default function ClasseIIIForm() {
+const ClasseIIIForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get("ptrabId");
@@ -671,7 +671,6 @@ export default function ClasseIIIForm() {
       const updatedItems = [...localCategoryItems];
       updatedItems[itemIndex] = {
         ...updatedItems[itemIndex],
-        consumo_lubrificante_input: inputString,
         consumo_lubrificante_litro: numericValue,
       };
       setLocalCategoryItems(updatedItems);
@@ -813,7 +812,7 @@ export default function ClasseIIIForm() {
 
 Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
 
-Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${combustivelLabel} - ${formatCurrency(precoLitro)}.
+Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
 
 Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
 
@@ -832,7 +831,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       });
     });
     
-    // --- CÁLCULO DE LUBRIFICANTE (ND 33.90.30) ---
+    // 2. Preparar registro de LUBRIFICANTE (ND 33.90.30)
     let totalLitrosLubrificante = 0;
     let totalValorLubrificante = 0;
     const itensComLubrificante = itens.filter(item => 
@@ -1989,6 +1988,9 @@ const getMemoriaRecords = granularRegistros;
                   const suprimento = getSuprimentoLabel(item);
                   const badgeClass = getSuprimentoBadgeClass(item);
                   
+                  // Encontrar o label da categoria do material
+                  const categoriaMaterialLabel = CATEGORIAS.find(c => c.key === item.categoria)?.label || item.categoria;
+                  
                   return (
                     <div key={`memoria-view-${item.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                       
@@ -1996,8 +1998,13 @@ const getMemoriaRecords = granularRegistros;
                       <div className="flex items-start justify-between gap-4 mb-4">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <h4 className="text-base font-semibold text-foreground">
-                            OM Destino: {om} ({ug}) - Categoria: {item.categoria}
+                            OM Destino: {om} ({ug})
                           </h4>
+                          {/* NOVO BADGE: Categoria do Material */}
+                          <Badge variant="secondary" className="w-fit shrink-0 text-xs font-medium">
+                            {categoriaMaterialLabel}
+                          </Badge>
+                          {/* BADGE EXISTENTE: Tipo de Suprimento */}
                           <Badge variant="default" className={cn("w-fit shrink-0", badgeClass)}>
                             {suprimento}
                           </Badge>
