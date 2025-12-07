@@ -775,6 +775,45 @@ export default function ClasseIIIForm() {
     fasesAtividade, customFaseAtividade, allDiretrizItems
   ]);
   
+  // --- CÁLCULOS DA CATEGORIA ATUAL (para a UI da aba) ---
+  const {
+    currentCategoryDieselLitros,
+    currentCategoryDieselValor,
+    currentCategoryGasolinaLitros,
+    currentCategoryGasolinaValor,
+    currentCategoryTotalCombustivel,
+    currentCategoryTotalLubrificante,
+  } = useMemo(() => {
+    let dieselLitros = 0;
+    let dieselValor = 0;
+    let gasolinaLitros = 0;
+    let gasolinaValor = 0;
+    let lubrificanteValor = 0;
+
+    localCategoryItems.forEach(item => {
+      const { totalLitros, valorCombustivel, valorLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
+      
+      if (item.tipo_combustivel_fixo === 'DIESEL') {
+        dieselLitros += totalLitros;
+        dieselValor += valorCombustivel;
+      } else if (item.tipo_combustivel_fixo === 'GASOLINA') {
+        gasolinaLitros += totalLitros;
+        gasolinaValor += valorCombustivel;
+      }
+      lubrificanteValor += valorLubrificante;
+    });
+
+    return {
+      currentCategoryDieselLitros: dieselLitros,
+      currentCategoryDieselValor: dieselValor,
+      currentCategoryGasolinaLitros: gasolinaLitros,
+      currentCategoryGasolinaValor: gasolinaValor,
+      currentCategoryTotalCombustivel: dieselValor + gasolinaValor,
+      currentCategoryTotalLubrificante: lubrificanteValor,
+    };
+  }, [localCategoryItems, refLPC, form.dias_operacao]);
+  // --- FIM CÁLCULOS DA CATEGORIA ATUAL ---
+
   const totalCustoCombustivel = consolidadosCombustivel.reduce((sum, c) => sum + c.valor_total, 0);
   const totalCustoLubrificante = consolidadosLubrificante.reduce((sum, c) => sum + c.valor_total, 0);
   const custoTotalClasseIII = totalCustoCombustivel + totalCustoLubrificante;
@@ -1198,7 +1237,6 @@ export default function ClasseIIIForm() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                {/* REMOVIDO: OM Destino Recurso Lubrificante (ND 30) */}
               </div>
             </div>
             
