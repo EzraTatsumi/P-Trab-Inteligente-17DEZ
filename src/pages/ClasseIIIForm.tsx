@@ -438,13 +438,28 @@ export default function ClasseIIIForm() {
   };
   
   const handleItemNumericChange = (itemIndex: number, field: keyof ItemClasseIII, inputString: string) => {
-    const numericValue = parseInputToNumber(inputString);
+    // Permite vírgula e ponto, mas remove tudo que não for dígito, ponto ou vírgula
+    const cleanedValue = inputString.replace(/[^\d,.]/g, '');
+    
+    // Se for um campo de quantidade, dias, deslocamentos (inteiro), remove vírgulas/pontos
+    if (field === 'quantidade' || field === 'quantidade_deslocamentos' || field === 'dias_operacao') {
+        const numericValue = parseInt(cleanedValue.replace(/[,.]/g, '')) || 0;
+        handleItemFieldChange(itemIndex, field, numericValue);
+        return;
+    }
+    
+    // Para campos decimais (horas_dia, distancia_percorrida, consumo_lubrificante_litro, preco_lubrificante)
+    const numericValue = parseInputToNumber(cleanedValue);
     handleItemFieldChange(itemIndex, field, numericValue);
   };
   
   const handleItemNumericBlur = (itemIndex: number, field: keyof ItemClasseIII, inputString: string) => {
-    const numericValue = parseInputToNumber(inputString);
-    handleItemFieldChange(itemIndex, field, numericValue);
+    // Apenas formata para 2 casas decimais se for um campo de preço/consumo lubrificante
+    if (field === 'consumo_lubrificante_litro' || field === 'preco_lubrificante') {
+        const numericValue = parseInputToNumber(inputString);
+        handleItemFieldChange(itemIndex, field, numericValue);
+    }
+    // Para outros campos, a lógica de formatação é mais simples (apenas parsear)
   };
   
   const handleUpdateCategoryItems = () => {
@@ -631,7 +646,11 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         total_litros_sem_margem: consolidado.total_litros_sem_margem,
         valor_total: consolidado.valor_total,
         detalhamento: consolidado.detalhamento,
-        itens_equipamentos: consolidado.itens as any,
+        itens_equipamentos: consolidado.itens.map((item: ItemClasseIII) => ({
+            ...item,
+            // Salva o nome específico do equipamento para reconstrução
+            tipo_equipamento_especifico: item.item, 
+        })) as any,
         fase_atividade: faseFinalString,
         consumo_lubrificante_litro: 0,
         preco_lubrificante: 0,
@@ -654,7 +673,11 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         total_litros_sem_margem: consolidadoLubrificante.total_litros,
         valor_total: consolidadoLubrificante.valor_total,
         detalhamento: consolidadoLubrificante.detalhamento,
-        itens_equipamentos: consolidadoLubrificante.itens as any,
+        itens_equipamentos: consolidadoLubrificante.itens.map((item: ItemClasseIII) => ({
+            ...item,
+            // Salva o nome específico do equipamento para reconstrução
+            tipo_equipamento_especifico: item.item, 
+        })) as any,
         fase_atividade: faseFinalString,
         consumo_lubrificante_litro: consolidadoLubrificante.itens[0]?.consumo_lubrificante_litro || 0,
         preco_lubrificante: consolidadoLubrificante.itens[0]?.preco_lubrificante || 0,
@@ -837,7 +860,6 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
   }, [registros]);
   
   const getMemoriaRecords = useMemo(() => {
-    // CORREÇÃO: Usar Object.values para iterar sobre o objeto e depois flatMap
     return Object.values(registrosAgrupadosPorOM).flatMap(group => [
         ...group.combustivel,
         ...group.lubrificante
@@ -951,11 +973,11 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                 <div className="space-y-2">
                   <Label>Dias de Atividade *</Label>
                   <Input
-                    type="number"
-                    min="1"
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
-                    value={form.dias_operacao || ""}
-                    onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value) || 0 })}
+                    type="text" // Alterado para text
+                    inputMode="numeric"
+                    className="max-w-xs"
+                    value={form.dias_operacao === 0 ? "" : form.dias_operacao.toString()}
+                    onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value.replace(/\D/g, '')) || 0 })}
                     placeholder="Ex: 7"
                     onKeyDown={handleEnterToNextField}
                     disabled={loading}
@@ -1072,7 +1094,9 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                         <TableHead className="w-[30%]">Equipamento</TableHead>
                                         <TableHead className="w-[10%] text-center">Qtd</TableHead>
                                         <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
-                                        <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'Desloc' : 'Consumo Fixo'}</TableHead>
+                                        <TableHead className="w-[15%] text-center">
+                                            {cat.key === 'MOTOMECANIZACAO' ? 'Desloc' : (cat.key === 'GERADOR' ? 'Consumo Fixo' : 'Consumo Fixo')}
+                                        </TableHead>
                                         <TableHead className="w-[15%] text-center">{cat.key === 'GERADOR' || cat.key === 'EMBARCACAO' ? 'Lubrificante' : 'Combustível'}</TableHead>
                                         <TableHead className="w-[15%] text-right">Custo Total</TableHead>
                                     </TableRow>
@@ -1126,25 +1150,22 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                     </TableCell>
                                                     <TableCell className="py-1">
                                                         <Input
-                                                            type="number"
-                                                            min="0"
+                                                            type="text"
+                                                            inputMode="numeric"
                                                             className="h-8 text-center"
                                                             value={item.quantidade === 0 ? "" : item.quantidade.toString()}
                                                             onChange={(e) => handleItemNumericChange(index, 'quantidade', e.target.value)}
-                                                            onBlur={(e) => handleItemNumericBlur(index, 'quantidade', e.target.value)}
                                                             placeholder="0"
                                                             onKeyDown={handleEnterToNextField}
                                                         />
                                                     </TableCell>
                                                     <TableCell className="py-1">
                                                         <Input
-                                                            type="number"
-                                                            min="0"
-                                                            step={isMotomecanizacao ? "1" : "0.1"}
+                                                            type="text"
+                                                            inputMode="decimal"
                                                             className="h-8 text-center"
                                                             value={isMotomecanizacao ? (item.distancia_percorrida === 0 ? "" : item.distancia_percorrida.toString()) : (item.horas_dia === 0 ? "" : item.horas_dia.toString())}
                                                             onChange={(e) => handleItemNumericChange(index, isMotomecanizacao ? 'distancia_percorrida' : 'horas_dia', e.target.value)}
-                                                            onBlur={(e) => handleItemNumericBlur(index, isMotomecanizacao ? 'distancia_percorrida' : 'horas_dia', e.target.value)}
                                                             placeholder="0"
                                                             disabled={item.quantidade === 0}
                                                             onKeyDown={handleEnterToNextField}
@@ -1152,15 +1173,14 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                     </TableCell>
                                                     <TableCell className="py-1">
                                                         <Input
-                                                            type="number"
-                                                            min="0"
+                                                            type="text"
+                                                            inputMode="numeric"
                                                             className="h-8 text-center"
-                                                            value={isMotomecanizacao ? (item.quantidade_deslocamentos === 0 ? "" : item.quantidade_deslocamentos.toString()) : (formatNumber(item.consumo_fixo, 1))}
+                                                            value={isMotomecanizacao ? (item.quantidade_deslocamentos === 0 ? "" : item.quantidade_deslocamentos.toString()) : (item.consumo_fixo === 0 ? "" : formatNumber(item.consumo_fixo, 1))}
                                                             onChange={(e) => isMotomecanizacao && handleItemNumericChange(index, 'quantidade_deslocamentos', e.target.value)}
-                                                            onBlur={(e) => isMotomecanizacao && handleItemNumericBlur(index, 'quantidade_deslocamentos', e.target.value)}
                                                             placeholder="0"
                                                             disabled={!isMotomecanizacao || item.quantidade === 0}
-                                                            readOnly={!isMotomecanizacao}
+                                                            readOnly={!isMotomecanizacao || item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO' || item.categoria === 'EQUIPAMENTO_ENGENHARIA'}
                                                             onKeyDown={handleEnterToNextField}
                                                         />
                                                     </TableCell>
@@ -1185,7 +1205,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                                         <Input
                                                                             type="text"
                                                                             inputMode="decimal"
-                                                                            value={formatNumberForInput(item.consumo_lubrificante_litro, 2)}
+                                                                            value={item.consumo_lubrificante_litro === 0 ? "" : formatNumberForInput(item.consumo_lubrificante_litro, 2)}
                                                                             onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_litro', e.target.value)}
                                                                             onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_litro', e.target.value)}
                                                                             placeholder="0,00"
@@ -1196,7 +1216,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                                         <Input
                                                                             type="text"
                                                                             inputMode="decimal"
-                                                                            value={formatNumberForInput(item.preco_lubrificante, 2)}
+                                                                            value={item.preco_lubrificante === 0 ? "" : formatNumberForInput(item.preco_lubrificante, 2)}
                                                                             onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante', e.target.value)}
                                                                             onBlur={(e) => handleItemNumericBlur(index, 'preco_lubrificante', e.target.value)}
                                                                             placeholder="0,00"
