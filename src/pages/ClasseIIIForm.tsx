@@ -395,7 +395,7 @@ export default function ClasseIIIForm() {
   
   // --- Item Management Logic ---
   
-  const currentCategory Items = useMemo(() => {
+  const currentCategoryItems = useMemo(() => {
     const availableItems = allDiretrizItems[selectedTab] || [];
     const existingItemsMap = new Map<string, ItemClasseIII>();
     form.itens.filter(i => i.categoria === selectedTab).forEach(item => {
@@ -1093,11 +1093,9 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                     <TableRow>
                                         <TableHead className="w-[35%]">Equipamento</TableHead>
                                         <TableHead className="w-[10%] text-center">Qtd</TableHead>
-                                        <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
-                                        <TableHead className="w-[15%] text-center">
-                                            {cat.key === 'MOTOMECANIZACAO' ? 'Desloc' : 'Consumo'}
-                                        </TableHead>
-                                        <TableHead className="w-[15%] text-center">{cat.key === 'GERADOR' || cat.key === 'EMBARCACAO' ? 'Lubrificante' : 'Combustível'}</TableHead>
+                                        <TableHead className="w-[20%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
+                                        <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'Desloc' : 'Consumo'}</TableHead>
+                                        <TableHead className="w-[10%] text-center">{cat.key === 'GERADOR' || cat.key === 'EMBARCACAO' ? 'Lubrificante' : 'Combustível'}</TableHead>
                                         <TableHead className="w-[10%] text-right">Custo Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -1180,7 +1178,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                             onChange={(e) => isMotomecanizacao && handleItemNumericChange(index, 'quantidade_deslocamentos', e.target.value)}
                                                             placeholder="0"
                                                             disabled={!isMotomecanizacao || item.quantidade === 0}
-                                                            readOnly={!isMotomecanizacao || item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO' || item.categoria === 'EQUIPAMENTO_ENGENHARIA'}
+                                                            readOnly={!isMotomecanizacao}
                                                             onKeyDown={handleEnterToNextField}
                                                         />
                                                     </TableCell>
@@ -1359,7 +1357,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-accent" />
                   Registros Consolidados Salvos
-                </h2>
+                </h2 >
                 
                 {Object.values(registrosAgrupadosPorOM).map((group) => {
                     const totalOM = [...group.combustivel, ...group.lubrificante].reduce((sum, r) => sum + r.valor_total, 0);
