@@ -409,6 +409,34 @@ export default function ClasseIIIForm() {
         });
         setRmFornecimento(omData?.rm || rmFornecimento);
         setCodugRmFornecimento(omData?.codugRm || codugRmFornecimento);
+        
+        // Set localCategoryItems for the initial selected tab
+        const initialCategoryItems = updatedItemsWithIds.filter(item => item.categoria === selectedTab);
+        if (initialCategoryItems.length === 0) {
+            // If no existing items for this category, load directives as default
+            const defaultItems = allDiretrizItems[selectedTab]?.map(d => ({
+                item: d.nome,
+                categoria: d.categoria,
+                consumo_fixo: d.consumo,
+                tipo_combustivel_fixo: d.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL',
+                unidade_fixa: d.unidade,
+                quantidade: 0,
+                horas_dia: 0,
+                distancia_percorrida: 0,
+                quantidade_deslocamentos: 0,
+                dias_utilizados: 0,
+                consumo_lubrificante_litro: 0,
+                preco_lubrificante: 0,
+                preco_lubrificante_input: "",
+                consumo_lubrificante_input: "",
+                om_destino_lub: omName, // Default to OM Detentora
+                ug_destino_lub: ug,
+                selectedOmDestinoId_lub: omData?.id,
+            })) || [];
+            setLocalCategoryItems(defaultItems);
+        } else {
+            setLocalCategoryItems(initialCategoryItems);
+        }
       });
     });
   };
@@ -631,6 +659,52 @@ export default function ClasseIIIForm() {
     setForm({ ...form, itens: newFormItems });
     toast.success(`Itens da categoria ${selectedTab} atualizados!`);
   };
+  
+  // --- EFEITO PARA POPULAR localCategoryItems AO MUDAR DE ABA OU CARREGAR DIRETRIZES ---
+  useEffect(() => {
+    const currentDirectiveItems = allDiretrizItems[selectedTab] || [];
+    
+    // 1. Obter itens existentes no formulário principal para a aba atual
+    const existingItemsMap = new Map<string, ItemClasseIII>();
+    form.itens.filter(i => i.categoria === selectedTab).forEach(item => {
+        existingItemsMap.set(item.item, item);
+    });
+
+    // 2. Mesclar: usar o item existente (com quantidades) ou o item da diretriz (com quantidades 0)
+    const mergedItems = currentDirectiveItems.map(directiveItem => {
+        const existing = existingItemsMap.get(directiveItem.nome);
+        
+        if (existing) {
+            // Se existir, usa o item existente (já tem os campos de lubrificante preenchidos)
+            return existing;
+        } else {
+            // Se não existir, cria um novo item com valores padrão
+            return {
+                item: directiveItem.nome,
+                categoria: directiveItem.categoria as TipoEquipamento,
+                consumo_fixo: directiveItem.consumo,
+                tipo_combustivel_fixo: directiveItem.combustivel === 'GAS' ? 'GASOLINA' : 'DIESEL',
+                unidade_fixa: directiveItem.unidade,
+                quantidade: 0,
+                horas_dia: 0,
+                distancia_percorrida: 0,
+                quantidade_deslocamentos: 0,
+                dias_utilizados: 0,
+                consumo_lubrificante_litro: 0,
+                preco_lubrificante: 0,
+                preco_lubrificante_input: "",
+                consumo_lubrificante_input: "",
+                om_destino_lub: form.organizacao, // Default to OM Detentora
+                ug_destino_lub: form.ug,
+                selectedOmDestinoId_lub: form.selectedOmId,
+            } as ItemClasseIII;
+        }
+    });
+
+    setLocalCategoryItems(mergedItems);
+  }, [selectedTab, allDiretrizItems, form.itens, form.organizacao, form.ug, form.selectedOmId]);
+  // --- FIM EFEITO PARA POPULAR localCategoryItems ---
+
 
   // --- Consolidation Logic (Memoized) ---
   const { consolidadosCombustivel, consolidadosLubrificante, itensAgrupadosPorCategoriaParaResumo } = useMemo(() => {
