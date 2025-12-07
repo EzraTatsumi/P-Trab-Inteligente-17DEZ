@@ -674,11 +674,13 @@ const ClasseIIIForm = () => {
     }
     
     if (field === 'consumo_lubrificante_input') {
+      // Permite entrada livre, mas tenta converter para número para o cálculo
       const numericValue = parseInputToNumber(inputString);
       const updatedItems = [...localCategoryItems];
       updatedItems[itemIndex] = {
         ...updatedItems[itemIndex],
         consumo_lubrificante_litro: numericValue,
+        consumo_lubrificante_input: inputString, // Mantém a string digitada
       };
       setLocalCategoryItems(updatedItems);
       return;
@@ -689,12 +691,9 @@ const ClasseIIIForm = () => {
   };
 
   const handleItemNumericBlur = (itemIndex: number, field: keyof ItemClasseIII, inputString: string) => {
+    // Removido o tratamento de onBlur para consumo_lubrificante_input para permitir preenchimento livre
     if (field === 'consumo_lubrificante_input') {
-      const numericValue = parseInputToNumber(inputString);
-      const formattedString = numericValue === 0 
-        ? "" 
-        : formatNumberForInput(numericValue, 2);
-      handleItemFieldChange(itemIndex, 'consumo_lubrificante_input', formattedString);
+      // Não faz nada no blur para manter o texto como o usuário digitou
       return;
     }
   };
@@ -1688,7 +1687,6 @@ const getMemoriaRecords = granularRegistros;
                                                     inputMode="decimal"
                                                     value={item.consumo_lubrificante_input}
                                                     onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_input', e.target.value)}
-                                                    onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_input', e.target.value)}
                                                     placeholder="0,00"
                                                   />
                                                 </div>
