@@ -59,6 +59,8 @@ interface ItemClasseIII {
   
   // NEW: Internal state for masked input (string of digits)
   preco_lubrificante_input: string;
+  // NEW: Internal state for raw decimal input (string)
+  consumo_lubrificante_input: string;
 }
 
 interface FormDataClasseIII {
@@ -295,6 +297,11 @@ export default function ClasseIIIForm() {
                         ? String(Math.round(precoLubrificante * 100)) // Converte para centavos em string
                         : "";
                         
+                    const consumoLubrificante = item.consumo_lubrificante_litro || 0;
+                    const consumoLubrificanteInput = consumoLubrificante > 0 
+                        ? formatNumberForInput(consumoLubrificante, 2) // Formata para exibição inicial
+                        : "";
+                        
                     const newItem: ItemClasseIII = {
                         item: item.tipo_equipamento_especifico,
                         categoria: baseCategory,
@@ -307,9 +314,10 @@ export default function ClasseIIIForm() {
                         distancia_percorrida: item.distancia_percorrida || 0,
                         quantidade_deslocamentos: item.quantidade_deslocamentos || 0,
                         
-                        consumo_lubrificante_litro: item.consumo_lubrificante_litro || 0,
+                        consumo_lubrificante_litro: consumoLubrificante,
                         preco_lubrificante: precoLubrificante,
-                        preco_lubrificante_input: precoLubrificanteInput, // NEW
+                        preco_lubrificante_input: precoLubrificanteInput,
+                        consumo_lubrificante_input: consumoLubrificanteInput,
                     };
                     consolidatedItems.push(newItem);
                 }
@@ -430,7 +438,8 @@ export default function ClasseIIIForm() {
             quantidade_deslocamentos: 0,
             consumo_lubrificante_litro: 0,
             preco_lubrificante: 0,
-            preco_lubrificante_input: "", // NEW
+            preco_lubrificante_input: "",
+            consumo_lubrificante_input: "",
         };
     });
     
@@ -458,10 +467,10 @@ export default function ClasseIIIForm() {
         return;
     }
     
-    // Se for o campo de preço de lubrificante, usa a lógica de preenchimento da direita
+    // Se for o campo de preço de lubrificante, usa a lógica de preenchimento da direita (máscara de moeda)
     if (field === 'preco_lubrificante_input') {
         const digits = inputString.replace(/\D/g, '');
-        const { formatted, numericValue } = formatCurrencyInput(digits);
+        const { numericValue } = formatCurrencyInput(digits);
         
         // Atualiza o input string e o valor numérico real
         const updatedItems = [...currentCategoryItems];
@@ -477,18 +486,42 @@ export default function ClasseIIIForm() {
         return;
     }
     
-    // Para outros campos decimais (horas_dia, distancia_percorrida, consumo_lubrificante_litro)
+    // Se for o campo de consumo de lubrificante (preenchimento livre)
+    if (field === 'consumo_lubrificante_input') {
+        const numericValue = parseInputToNumber(inputString);
+        
+        const updatedItems = [...currentCategoryItems];
+        updatedItems[itemIndex] = { 
+            ...updatedItems[itemIndex], 
+            consumo_lubrificante_input: inputString, // Salva a string bruta
+            consumo_lubrificante_litro: numericValue, // Salva o valor numérico
+        };
+        
+        const itemsFromOtherCategories = form.itens.filter(item => item.categoria !== selectedTab);
+        const newFormItems = [...itemsFromOtherCategories, ...updatedItems];
+        setForm(prev => ({ ...prev, itens: newFormItems }));
+        return;
+    }
+    
+    // Para outros campos decimais (horas_dia, distancia_percorrida)
     const numericValue = parseInputToNumber(cleanedValue);
     handleItemFieldChange(itemIndex, field, numericValue);
   };
   
   const handleItemNumericBlur = (itemIndex: number, field: keyof ItemClasseIII, inputString: string) => {
-    // Apenas formata para 2 casas decimais se for um campo de consumo lubrificante
-    if (field === 'consumo_lubrificante_litro') {
+    
+    // Se for o campo de consumo de lubrificante (string input), formata para exibição no blur
+    if (field === 'consumo_lubrificante_input') {
         const numericValue = parseInputToNumber(inputString);
-        handleItemFieldChange(itemIndex, field, numericValue);
+        const formattedString = numericValue === 0 ? "" : formatNumberForInput(numericValue, 2);
+        
+        // Atualiza o campo de input string com o valor formatado
+        handleItemFieldChange(itemIndex, 'consumo_lubrificante_input', formattedString);
+        return;
     }
-    // O campo preco_lubrificante_input não precisa de blur, pois é formatado no change
+    
+    // O campo preco_lubrificante_input não precisa de blur.
+    // Outros campos numéricos (horas_dia, distancia) não precisam de formatação no blur.
   };
   
   const handleUpdateCategoryItems = () => {
@@ -1124,7 +1157,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                         <TableHead className="w-[10%] text-center">Qtd</TableHead>
                                         <TableHead className="w-[20%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
                                         <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'Desloc' : 'Consumo'}</TableHead>
-                                        <TableHead className="w-[15%] text-center">{cat.key === 'GERADOR' || cat.key === 'EMBARCACAO' ? 'Lubrificante' : 'Combustível'}</TableHead>
+                                        <TableHead className="w-[10%] text-center">{cat.key === 'GERADOR' || cat.key === 'EMBARCACAO' ? 'Lubrificante' : 'Combustível'}</TableHead>
                                         <TableHead className="w-[10%] text-right">Custo Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -1235,9 +1268,9 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                                         <Input
                                                                             type="text"
                                                                             inputMode="decimal"
-                                                                            value={item.consumo_lubrificante_litro === 0 ? "" : formatNumberForInput(item.consumo_lubrificante_litro, 2)}
-                                                                            onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_litro', e.target.value)}
-                                                                            onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_litro', e.target.value)}
+                                                                            value={item.consumo_lubrificante_input} // Usando o novo campo de string bruta
+                                                                            onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_input', e.target.value)}
+                                                                            onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_input', e.target.value)}
                                                                             placeholder="0,00"
                                                                         />
                                                                     </div>
