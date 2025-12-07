@@ -1420,10 +1420,10 @@ export default function ClasseIIIForm() {
               </div>
             )}
             
-            {/* 3. Itens Adicionados e Consolidação (NOVO LAYOUT) */}
+            {/* 3. Itens Adicionados (numero de itens) */}
             {form.itens.filter(i => i.quantidade > 0).length > 0 && (
               <div className="space-y-4 border-b pb-4">
-                <h3 className="text-lg font-semibold">3. Itens Adicionados e Consolidação</h3>
+                <h3 className="text-lg font-semibold">3. Itens Adicionados ({form.itens.filter(i => i.quantidade > 0).length})</h3>
                 
                 <div className="space-y-4">
                   {Object.entries(itensAgrupadosPorCategoriaParaResumo).map(([categoria, itens]) => {
