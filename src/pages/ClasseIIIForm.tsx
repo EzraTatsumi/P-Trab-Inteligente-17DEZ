@@ -475,7 +475,7 @@ const ClasseIIIForm = () => {
             const precoLubrificante = item.preco_lubrificante || 0;
             // Converte o preço para a string de dígitos (centavos) para o input mascarado
             const precoLubrificanteInput = precoLubrificante > 0 
-              ? String(Math.round(precoLubrificante * 100))
+              ? formatCurrencyInput(String(Math.round(precoLubrificante * 100))).digits
               : "";
             
             const consumoLubrificante = item.consumo_lubrificante_litro || 0;
@@ -684,9 +684,6 @@ const ClasseIIIForm = () => {
     const numericValue = parseInputToNumber(cleanedValue);
     handleItemFieldChange(itemIndex, field, numericValue);
   };
-
-  // Removendo handleItemNumericBlur, pois a lógica de formatação foi movida para o Confirmar/Cancelar
-  // e a validação de outros campos é feita no change.
 
   const handleOpenLubricantPopover = (item: ItemClasseIII, index: number) => {
     setEditingLubricantIndex(index);
@@ -1376,15 +1373,36 @@ const getMemoriaRecords = granularRegistros;
       : 'bg-amber-500 text-white hover:bg-amber-600';
   };
   
-  // --- MEMÓRIAS E AGRUPAMENTOS ATUALIZADOS ---
-  // OMs Cadastradas (Seção 4) usa registrosAgrupadosPorSuprimento
-  // Memórias de Cálculo (Seção 5) usa getMemoriaRecords
-  
   // Determina se a aba atual deve exibir a coluna de Lubrificante
   const shouldShowLubricantColumn = selectedTab === 'GERADOR' || selectedTab === 'EMBARCACAO';
   
   // Determina o título da coluna
   const lubricantColumnTitle = shouldShowLubricantColumn ? 'Lubrificante' : 'Lub/Comb'; // Mantendo 'Lub/Comb' como fallback, embora não deva ser exibido
+
+  // --- NOVO MEMO: CÁLCULO DO VALOR TOTAL DO LUBRIFICANTE NO POPOVER ---
+  const calculatedLubricantTotal = useMemo(() => {
+    if (editingLubricantIndex === null || form.dias_operacao === 0) return 0;
+    
+    const item = localCategoryItems[editingLubricantIndex];
+    if (!item || item.quantidade === 0 || item.dias_utilizados === 0) return 0;
+    
+    const consumoNumeric = parseInputToNumber(tempConsumoInput);
+    const { numericValue: precoNumeric } = formatCurrencyInput(tempPrecoInput);
+    
+    if (consumoNumeric <= 0 || precoNumeric <= 0) return 0;
+    
+    const totalHoras = item.quantidade * item.horas_dia * item.dias_utilizados;
+    let litrosLubrificante = 0;
+    
+    if (item.categoria === 'GERADOR') {
+      litrosLubrificante = (totalHoras / 100) * consumoNumeric;
+    } else if (item.categoria === 'EMBARCACAO') {
+      litrosLubrificante = totalHoras * consumoNumeric;
+    }
+    
+    return litrosLubrificante * precoNumeric;
+  }, [editingLubricantIndex, localCategoryItems, tempConsumoInput, tempPrecoInput, form.dias_operacao]);
+  // --------------------------------------------------------------------
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1732,6 +1750,14 @@ const getMemoriaRecords = granularRegistros;
                                                   />
                                                 </div>
                                                 
+                                                {/* NOVO CAMPO: VALOR TOTAL */}
+                                                <div className="flex justify-between text-sm font-bold border-t pt-2">
+                                                    <span>VALOR TOTAL:</span>
+                                                    <span className="text-purple-600">
+                                                        {formatCurrency(calculatedLubricantTotal)}
+                                                    </span>
+                                                </div>
+                                                
                                                 {/* BOTÕES DE CONFIRMAR E CANCELAR */}
                                                 <div className="flex justify-end gap-2 pt-2">
                                                     <Button 
@@ -1744,6 +1770,7 @@ const getMemoriaRecords = granularRegistros;
                                                     <Button 
                                                         size="sm" 
                                                         onClick={handleConfirmLubricant}
+                                                        disabled={calculatedLubricantTotal === 0}
                                                     >
                                                         Confirmar
                                                     </Button>
