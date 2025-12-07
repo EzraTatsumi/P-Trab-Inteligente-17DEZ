@@ -1085,34 +1085,28 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                   
                   {CATEGORIAS.map(cat => {
                     const isGerador = cat.key === 'GERADOR';
-                    const isMotomecanizacao = cat.key === 'MOTOMECANIZACAO';
-                    const isLubricantType = cat.key === 'GERADOR' || cat.key === 'EMBARCACAO';
                     
                     // Define as colunas da tabela
-                    const baseColumns = [
+                    const tableColumns = [
                         { header: 'Equipamento', width: 'w-[30%]', key: 'item' },
                         { header: 'Qtd', width: 'w-[10%]', key: 'quantidade' },
                         { header: isMotomecanizacao ? 'KM/Desloc' : 'Horas/Dia', width: 'w-[15%]', key: isMotomecanizacao ? 'distancia_percorrida' : 'horas_dia' },
                         { header: isMotomecanizacao ? 'Desloc' : 'Consumo Fixo', width: 'w-[15%]', key: isMotomecanizacao ? 'quantidade_deslocamentos' : 'consumo_fixo' },
                         { header: isLubricantType ? 'Lubrificante' : 'Combustível', width: 'w-[15%]', key: 'lubrificante' },
                         { header: 'Custo Total', width: 'w-[15%]', key: 'custo_total' },
+                    ].filter(col => isGerador ? col.key !== 'consumo_fixo' : true); // Remove Consumo Fixo para Gerador
+                    
+                    // Ajusta o cabeçalho para Gerador
+                    const geradorTableColumns = [
+                        { header: 'Equipamento', width: 'w-[30%]', key: 'item' },
+                        { header: 'Qtd', width: 'w-[10%]', key: 'quantidade' },
+                        { header: 'Horas/Dia', width: 'w-[15%]', key: 'horas_dia' },
+                        { header: 'Lubrificante', width: 'w-[20%]', key: 'lubrificante' }, // Aumenta a largura
+                        { header: 'Custo Total', width: 'w-[25%]', key: 'custo_total' }, // Aumenta a largura
                     ];
                     
-                    // Filtra a coluna 'Consumo Fixo' para Gerador
-                    const columns = baseColumns.filter(col => !isGerador || col.key !== 'consumo_fixo');
+                    const columns = isGerador ? geradorTableColumns : tableColumns;
                     
-                    // Ajusta a largura das colunas para Gerador (que tem 5 colunas)
-                    const finalColumns = columns.map(col => {
-                        if (isGerador) {
-                            if (col.key === 'item') return { ...col, width: 'w-[30%]' };
-                            if (col.key === 'quantidade') return { ...col, width: 'w-[10%]' };
-                            if (col.key === 'horas_dia') return { ...col, width: 'w-[15%]' };
-                            if (col.key === 'lubrificante') return { ...col, width: 'w-[20%]' };
-                            if (col.key === 'custo_total') return { ...col, width: 'w-[25%]' };
-                        }
-                        return col;
-                    });
-
                     return (
                       <TabsContent key={cat.key} value={cat.key} className="mt-4">
                         <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
@@ -1121,7 +1115,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                               <Table className="w-full">
                                   <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                       <TableRow>
-                                          {finalColumns.map(col => (
+                                          {columns.map(col => (
                                               <TableHead key={col.key} className={cn(col.width, "text-center first:text-left")}>
                                                   {col.header}
                                               </TableHead>
@@ -1131,7 +1125,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                   <TableBody>
                                       {currentCategoryItems.length === 0 ? (
                                           <TableRow>
-                                              <TableCell colSpan={finalColumns.length} className="text-center text-muted-foreground">
+                                              <TableCell colSpan={columns.length} className="text-center text-muted-foreground">
                                                   Nenhum item de diretriz encontrado para esta categoria.
                                               </TableCell>
                                           </TableRow>
@@ -1199,7 +1193,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                           />
                                                       </TableCell>
                                                       
-                                                      {/* Coluna de Consumo Fixo / Deslocamentos (Apenas para não-Gerador) */}
+                                                      {/* Coluna de Consumo Fixo / Deslocamentos */}
                                                       {!isGerador && (
                                                           <TableCell className="py-1">
                                                               <Input
@@ -1216,7 +1210,6 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                           </TableCell>
                                                       )}
                                                       
-                                                      {/* Coluna de Lubrificante / Combustível (Unificada) */}
                                                       <TableCell className="py-1">
                                                           {isLubricantType ? (
                                                               <Popover>
@@ -1263,7 +1256,6 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                               </Badge>
                                                           )}
                                                       </TableCell>
-                                                      
                                                       <TableCell className="text-right font-semibold text-sm py-1">
                                                           {formatCurrency(itemTotal)}
                                                       </TableCell>
