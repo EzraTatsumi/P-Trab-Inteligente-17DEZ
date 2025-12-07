@@ -1221,9 +1221,9 @@ const ClasseVIIForm = () => {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => {
-                                                                if (confirm(`Deseja realmente deletar o registro de Classe VI para ${omName} (${registro.categoria})?`)) {
+                                                                if (confirm(`Deseja realmente deletar o registro de Classe VII para ${omName} (${registro.categoria})?`)) {
                                                                     // MUDANÇA: Deletar da tabela correta
-                                                                    supabase.from("classe_vi_registros")
+                                                                    supabase.from("classe_vii_registros")
                                                                         .delete()
                                                                         .eq("id", registro.id)
                                                                         .then(() => {
@@ -1279,7 +1279,7 @@ const ClasseVIIForm = () => {
                   
                   // NOVO: Gera a memória automática com o rótulo padronizado
                   const memoriaAutomatica = generateDetalhamento(
-                      registro.itens_equipamentos as ItemClasseVI[], 
+                      registro.itens_equipamentos as ItemClasseVII[], 
                       registro.dias_operacao, 
                       registro.organizacao, 
                       registro.ug, 
@@ -1382,4 +1382,4 @@ const ClasseVIIForm = () => {
   );
 }
 
-export default ClasseVIForm;
+export default ClasseVIIForm;
