@@ -25,6 +25,7 @@ import { defaultClasseVIIConfig } from "@/data/classeVIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils"; // NOVO IMPORT
 
 type Categoria = 'Comunicações' | 'Informática';
 
@@ -131,7 +132,7 @@ const generateDetalhamento = (itens: ItemClasseVII[], diasOperacao: number, orga
     let detalhamentoItens = "";
     
     Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        detalhamentoItens += `\n--- ${categoria.toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`;
+        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`; // USANDO getCategoryLabel
         detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
         detalhamentoItens += `Detalhes:\n`;
         detalhamentoItens += grupo.detalhes.join('\n');
@@ -493,7 +494,7 @@ const ClasseVIIForm = () => {
     }));
 
     setForm({ ...form, itens: newFormItems });
-    toast.success(`Itens e alocação de ND para ${selectedTab} atualizados!`);
+    toast.success(`Itens e alocação de ND para ${getCategoryLabel(selectedTab)} atualizados!`);
   };
   
   const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
@@ -549,7 +550,7 @@ const ClasseVIIForm = () => {
         const allocation = categoryAllocations[categoria];
         
         if (!allocation.om_destino_recurso || !allocation.ug_destino_recurso) {
-            toast.error(`Selecione a OM de destino do recurso para a categoria: ${categoria}.`);
+            toast.error(`Selecione a OM de destino do recurso para a categoria: ${getCategoryLabel(categoria)}.`);
             setLoading(false);
             return;
         }
@@ -557,7 +558,7 @@ const ClasseVIIForm = () => {
         const valorTotalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
         
         if (!areNumbersEqual(valorTotalCategoria, (allocation.nd_30_value + allocation.nd_39_value))) {
-            toast.error(`Erro de alocação na categoria ${categoria}: O valor total dos itens (${formatCurrency(valorTotalCategoria)}) não corresponde ao total alocado (${formatCurrency(allocation.nd_30_value + allocation.nd_39_value)}). Salve a categoria novamente.`);
+            toast.error(`Erro de alocação na categoria ${getCategoryLabel(categoria)}: O valor total dos itens (${formatCurrency(valorTotalCategoria)}) não corresponde ao total alocado (${formatCurrency(allocation.nd_30_value + allocation.nd_39_value)}). Salve a categoria novamente.`);
             setLoading(false);
             return;
         }
@@ -908,7 +909,7 @@ const ClasseVIIForm = () => {
                 <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as Categoria)}>
                   <TabsList className="grid w-full grid-cols-2">
                     {CATEGORIAS.map(cat => (
-                      <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                      <TabsTrigger key={cat} value={cat}>{getCategoryLabel(cat)}</TabsTrigger>
                     ))}
                   </TabsList>
                   
@@ -977,7 +978,7 @@ const ClasseVIIForm = () => {
                         {/* BLOCO DE ALOCAÇÃO ND 30/39 */}
                         {currentCategoryTotalValue > 0 && (
                             <div className="space-y-4 p-4 border rounded-lg bg-background">
-                                <h4 className="font-semibold text-sm">Alocação de Recursos para {cat}</h4>
+                                <h4 className="font-semibold text-sm">Alocação de Recursos para {getCategoryLabel(cat)}</h4>
                                 
                                 {/* CAMPO: OM de Destino do Recurso */}
                                 <div className="space-y-2">
@@ -1088,7 +1089,7 @@ const ClasseVIIForm = () => {
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
-                          <h4 className="font-bold text-base text-primary">{categoria} ({totalQuantidade} itens)</h4>
+                          <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} itens)</h4>
                           <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
                         </div>
                         
@@ -1185,14 +1186,20 @@ const ClasseVIIForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex flex-col">
-                                                    <h4 className="font-semibold text-base text-foreground">
-                                                        {registro.categoria}
-                                                    </h4>
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="font-semibold text-base text-foreground">
+                                                            {getCategoryLabel(registro.categoria)}
+                                                        </h4>
+                                                        <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
+                                                            {badgeStyle.label}
+                                                        </Badge>
+                                                    </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
                                                     </p>
@@ -1214,9 +1221,9 @@ const ClasseVIIForm = () => {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => {
-                                                                if (confirm(`Deseja realmente deletar o registro de Classe VII para ${omName} (${registro.categoria})?`)) {
+                                                                if (confirm(`Deseja realmente deletar o registro de Classe VI para ${omName} (${registro.categoria})?`)) {
                                                                     // MUDANÇA: Deletar da tabela correta
-                                                                    supabase.from("classe_vii_registros")
+                                                                    supabase.from("classe_vi_registros")
                                                                         .delete()
                                                                         .eq("id", registro.id)
                                                                         .then(() => {
@@ -1269,7 +1276,22 @@ const ClasseVIIForm = () => {
                   const ug = registro.ug;
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
-                  const memoriaExibida = registro.detalhamento_customizado || registro.detalhamento || "";
+                  
+                  // NOVO: Gera a memória automática com o rótulo padronizado
+                  const memoriaAutomatica = generateDetalhamento(
+                      registro.itens_equipamentos as ItemClasseVI[], 
+                      registro.dias_operacao, 
+                      registro.organizacao, 
+                      registro.ug, 
+                      registro.fase_atividade || '', 
+                      registro.organizacao, 
+                      registro.ug, 
+                      registro.valor_nd_30, 
+                      registro.valor_nd_39
+                  );
+                  
+                  const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
+                  const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                   
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
@@ -1277,7 +1299,7 @@ const ClasseVIIForm = () => {
                       {/* Container para H4 e Botões */}
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <h4 className="text-lg font-semibold text-foreground flex-1 min-w-0">
-                            OM Destino: {om} ({ug}) - Categoria: {registro.categoria}
+                            OM Destino: {om} ({ug}) - Categoria: {badgeStyle.label}
                           </h4>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
@@ -1360,4 +1382,4 @@ const ClasseVIIForm = () => {
   );
 }
 
-export default ClasseVIIForm;
+export default ClasseVIForm;

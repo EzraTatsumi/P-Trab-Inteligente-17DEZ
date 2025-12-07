@@ -25,6 +25,7 @@ import { defaultClasseIIConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils"; // NOVO IMPORT
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -132,7 +133,7 @@ const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseI
         detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
     });
 
-    return `33.90.30 - Aquisição de Material de Intendência (${categoria})
+    return `33.90.30 - Aquisição de Material de Intendência (${getCategoryLabel(categoria)})
 OM de Destino: ${organizacao} (UG: ${ug})
 Período: ${diasOperacao} dias de ${faseFormatada}
 Total de Itens na Categoria: ${totalQuantidade}
@@ -177,7 +178,7 @@ const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organ
     
     // 2. Formatar a seção de cálculo agrupada
     Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        detalhamentoItens += `\n--- ${categoria.toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`;
+        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`; // USANDO getCategoryLabel
         detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
         detalhamentoItens += `Detalhes:\n`;
         detalhamentoItens += grupo.detalhes.join('\n');
@@ -570,7 +571,7 @@ const ClasseIIForm = () => {
     }));
 
     setForm({ ...form, itens: newFormItems });
-    toast.success(`Itens e alocação de ND para ${selectedTab} atualizados!`);
+    toast.success(`Itens e alocação de ND para ${getCategoryLabel(selectedTab)} atualizados!`);
   };
   
   // Lógica de cálculo de alocação (Global Totals)
@@ -629,7 +630,7 @@ const ClasseIIForm = () => {
         const allocation = categoryAllocations[categoria];
         
         if (!allocation.om_destino_recurso || !allocation.ug_destino_recurso) {
-            toast.error(`Selecione a OM de destino do recurso para a categoria: ${categoria}.`);
+            toast.error(`Selecione a OM de destino do recurso para a categoria: ${getCategoryLabel(categoria)}.`);
             setLoading(false);
             return;
         }
@@ -638,7 +639,7 @@ const ClasseIIForm = () => {
         
         // Final check: Ensure total allocated matches total calculated value for this category
         if (!areNumbersEqual(valorTotalCategoria, (allocation.nd_30_value + allocation.nd_39_value))) {
-            toast.error(`Erro de alocação na categoria ${categoria}: O valor total dos itens (${formatCurrency(valorTotalCategoria)}) não corresponde ao total alocado (${formatCurrency(allocation.nd_30_value + allocation.nd_39_value)}). Salve a categoria novamente.`);
+            toast.error(`Erro de alocação na categoria ${getCategoryLabel(categoria)}: O valor total dos itens (${formatCurrency(valorTotalCategoria)}) não corresponde ao total alocado (${formatCurrency(allocation.nd_30_value + allocation.nd_39_value)}). Salve a categoria novamente.`);
             setLoading(false);
             return;
         }
@@ -1001,7 +1002,7 @@ const ClasseIIForm = () => {
                 <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as Categoria)}>
                   <TabsList className="grid w-full grid-cols-3">
                     {CATEGORIAS.map(cat => (
-                      <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                      <TabsTrigger key={cat} value={cat}>{getCategoryLabel(cat)}</TabsTrigger>
                     ))}
                   </TabsList>
                   
@@ -1070,7 +1071,7 @@ const ClasseIIForm = () => {
                         {/* NOVO BLOCO DE ALOCAÇÃO ND 30/39 */}
                         {currentCategoryTotalValue > 0 && (
                             <div className="space-y-4 p-4 border rounded-lg bg-background">
-                                <h4 className="font-semibold text-sm">Alocação de Recursos para {cat}</h4>
+                                <h4 className="font-semibold text-sm">Alocação de Recursos para {getCategoryLabel(cat)}</h4>
                                 
                                 {/* CAMPO: OM de Destino do Recurso */}
                                 <div className="space-y-2">
@@ -1181,7 +1182,7 @@ const ClasseIIForm = () => {
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
-                          <h4 className="font-bold text-base text-primary">{categoria} ({totalQuantidade} itens)</h4>
+                          <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} itens)</h4>
                           <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
                         </div>
                         
@@ -1278,14 +1279,20 @@ const ClasseIIForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex flex-col">
-                                                    <h4 className="font-semibold text-base text-foreground">
-                                                        {registro.categoria}
-                                                    </h4>
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="font-semibold text-base text-foreground">
+                                                            {getCategoryLabel(registro.categoria)}
+                                                        </h4>
+                                                        <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
+                                                            {badgeStyle.label}
+                                                        </Badge>
+                                                    </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
                                                     </p>
@@ -1361,7 +1368,19 @@ const ClasseIIForm = () => {
                   const ug = registro.ug;
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
-                  const memoriaExibida = registro.detalhamento_customizado || registro.detalhamento || "";
+                  
+                  // NOVO: Gera a memória automática com o rótulo padronizado
+                  const memoriaAutomatica = generateCategoryMemoriaCalculo(
+                      registro.categoria as Categoria, 
+                      registro.itens_equipamentos as ItemClasseII[], 
+                      registro.dias_operacao, 
+                      registro.organizacao, 
+                      registro.ug, 
+                      registro.fase_atividade
+                  );
+                  
+                  const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
+                  const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                   
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
@@ -1369,7 +1388,7 @@ const ClasseIIForm = () => {
                       {/* Container para H4 e Botões */}
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <h4 className="text-lg font-semibold text-foreground flex-1 min-w-0">
-                            OM Destino: {om} ({ug}) - Categoria: {registro.categoria}
+                            OM Destino: {om} ({ug}) - Categoria: {badgeStyle.label}
                           </h4>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
