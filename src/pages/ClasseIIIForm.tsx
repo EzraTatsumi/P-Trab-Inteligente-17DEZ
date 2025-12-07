@@ -1083,189 +1083,163 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                     ))}
                   </TabsList>
                   
-                  {CATEGORIAS.map(cat => {
-                    const isGerador = cat.key === 'GERADOR';
-                    
-                    // Define as colunas da tabela
-                    const tableColumns = [
-                        { header: 'Equipamento', width: 'w-[30%]', key: 'item' },
-                        { header: 'Qtd', width: 'w-[10%]', key: 'quantidade' },
-                        { header: isMotomecanizacao ? 'KM/Desloc' : 'Horas/Dia', width: 'w-[15%]', key: isMotomecanizacao ? 'distancia_percorrida' : 'horas_dia' },
-                        { header: isMotomecanizacao ? 'Desloc' : 'Consumo Fixo', width: 'w-[15%]', key: isMotomecanizacao ? 'quantidade_deslocamentos' : 'consumo_fixo' },
-                        { header: isLubricantType ? 'Lubrificante' : 'Combustível', width: 'w-[15%]', key: 'lubrificante' },
-                        { header: 'Custo Total', width: 'w-[15%]', key: 'custo_total' },
-                    ].filter(col => isGerador ? col.key !== 'consumo_fixo' : true); // Remove Consumo Fixo para Gerador
-                    
-                    // Ajusta o cabeçalho para Gerador
-                    const geradorTableColumns = [
-                        { header: 'Equipamento', width: 'w-[30%]', key: 'item' },
-                        { header: 'Qtd', width: 'w-[10%]', key: 'quantidade' },
-                        { header: 'Horas/Dia', width: 'w-[15%]', key: 'horas_dia' },
-                        { header: 'Lubrificante', width: 'w-[20%]', key: 'lubrificante' }, // Aumenta a largura
-                        { header: 'Custo Total', width: 'w-[25%]', key: 'custo_total' }, // Aumenta a largura
-                    ];
-                    
-                    const columns = isGerador ? geradorTableColumns : tableColumns;
-                    
-                    return (
-                      <TabsContent key={cat.key} value={cat.key} className="mt-4">
-                        <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                          
-                          <div className="max-h-[400px] overflow-y-auto rounded-md border">
-                              <Table className="w-full">
-                                  <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
-                                      <TableRow>
-                                          {columns.map(col => (
-                                              <TableHead key={col.key} className={cn(col.width, "text-center first:text-left")}>
-                                                  {col.header}
-                                              </TableHead>
-                                          ))}
-                                      </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                      {currentCategoryItems.length === 0 ? (
-                                          <TableRow>
-                                              <TableCell colSpan={columns.length} className="text-center text-muted-foreground">
-                                                  Nenhum item de diretriz encontrado para esta categoria.
-                                              </TableCell>
-                                          </TableRow>
-                                      ) : (
-                                          currentCategoryItems.map((item, index) => {
-                                              const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
-                                              const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
-                                              
-                                              // Calculate item cost dynamically
-                                              let litrosSemMargemItem = 0;
-                                              if (isMotomecanizacao) {
-                                                  if (item.consumo_fixo > 0) {
-                                                      litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos) / item.consumo_fixo;
-                                                  }
-                                              } else {
-                                                  litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * form.dias_operacao;
-                                              }
-                                              const totalLitros = litrosSemMargemItem * 1.3;
-                                              const precoLitro = item.tipo_combustivel_fixo === 'GASOLINA' ? (refLPC?.preco_gasolina ?? 0) : (refLPC?.preco_diesel ?? 0);
-                                              const valorCombustivel = totalLitros * precoLitro;
-                                              
-                                              let valorLubrificante = 0;
-                                              if (isLubricantType && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0) {
-                                                  const totalHoras = item.quantidade * item.horas_dia * form.dias_operacao;
-                                                  let litrosItem = 0;
-                                                  if (item.categoria === 'GERADOR') {
-                                                      litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
-                                                  } else if (item.categoria === 'EMBARCACAO') {
-                                                      litrosItem = totalHoras * item.consumo_lubrificante_litro;
-                                                  }
-                                                  valorLubrificante = litrosItem * item.preco_lubrificante;
-                                              }
-                                              
-                                              const itemTotal = valorCombustivel + valorLubrificante;
-                                              
-                                              return (
-                                                  <TableRow key={item.item} className="h-12">
-                                                      <TableCell className="font-medium text-sm py-1">
-                                                          {item.item}
-                                                          <div className="text-xs text-muted-foreground">
-                                                              {item.tipo_combustivel_fixo} ({formatNumber(item.consumo_fixo, 1)} {item.unidade_fixa})
-                                                          </div>
-                                                      </TableCell>
-                                                      <TableCell className="py-1">
-                                                          <Input
-                                                              type="text"
-                                                              inputMode="numeric"
-                                                              className="h-8 text-center"
-                                                              value={item.quantidade === 0 ? "" : item.quantidade.toString()}
-                                                              onChange={(e) => handleItemNumericChange(index, 'quantidade', e.target.value)}
-                                                              placeholder="0"
-                                                              onKeyDown={handleEnterToNextField}
-                                                          />
-                                                      </TableCell>
-                                                      <TableCell className="py-1">
-                                                          <Input
-                                                              type="text"
-                                                              inputMode="decimal"
-                                                              className="h-8 text-center"
-                                                              value={isMotomecanizacao ? (item.distancia_percorrida === 0 ? "" : item.distancia_percorrida.toString()) : (item.horas_dia === 0 ? "" : item.horas_dia.toString())}
-                                                              onChange={(e) => handleItemNumericChange(index, isMotomecanizacao ? 'distancia_percorrida' : 'horas_dia', e.target.value)}
-                                                              placeholder="0"
-                                                              disabled={item.quantidade === 0}
-                                                              onKeyDown={handleEnterToNextField}
-                                                          />
-                                                      </TableCell>
-                                                      
-                                                      {/* Coluna de Consumo Fixo / Deslocamentos */}
-                                                      {!isGerador && (
-                                                          <TableCell className="py-1">
-                                                              <Input
-                                                                  type="text"
-                                                                  inputMode="numeric"
-                                                                  className="h-8 text-center"
-                                                                  value={isMotomecanizacao ? (item.quantidade_deslocamentos === 0 ? "" : item.quantidade_deslocamentos.toString()) : (item.consumo_fixo === 0 ? "" : formatNumber(item.consumo_fixo, 1))}
-                                                                  onChange={(e) => isMotomecanizacao && handleItemNumericChange(index, 'quantidade_deslocamentos', e.target.value)}
-                                                                  placeholder="0"
-                                                                  disabled={!isMotomecanizacao || item.quantidade === 0}
-                                                                  readOnly={!isMotomecanizacao}
-                                                                  onKeyDown={handleEnterToNextField}
-                                                              />
-                                                          </TableCell>
-                                                      )}
-                                                      
-                                                      <TableCell className="py-1">
-                                                          {isLubricantType ? (
-                                                              <Popover>
-                                                                  <PopoverTrigger asChild>
-                                                                      <Button 
-                                                                          variant="outline" 
-                                                                          size="sm" 
-                                                                          className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
-                                                                          disabled={item.quantidade === 0}
-                                                                      >
-                                                                          <Droplet className="h-3 w-3 mr-1" />
-                                                                          {item.consumo_lubrificante_litro > 0 ? 'Configurado' : 'Lubrificante'}
-                                                                      </Button>
-                                                                  </PopoverTrigger>
-                                                                  <PopoverContent className="w-80 p-4 space-y-3">
-                                                                      <h4 className="font-semibold text-sm">Configurar Lubrificante</h4>
-                                                                      <div className="space-y-2">
-                                                                          <Label>Consumo ({item.categoria === 'GERADOR' ? 'L/100h' : 'L/h'})</Label>
-                                                                          <Input
-                                                                              type="text"
-                                                                              inputMode="decimal"
-                                                                              value={item.consumo_lubrificante_litro === 0 ? "" : formatNumberForInput(item.consumo_lubrificante_litro, 2)}
-                                                                              onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_litro', e.target.value)}
-                                                                              onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_litro', e.target.value)}
-                                                                              placeholder="0,00"
-                                                                          />
-                                                                      </div>
-                                                                      <div className="space-y-2">
-                                                                          <Label>Preço (R$/L)</Label>
-                                                                          <Input
-                                                                              type="text"
-                                                                              inputMode="decimal"
-                                                                              value={item.preco_lubrificante === 0 ? "" : formatNumberForInput(item.preco_lubrificante, 2)}
-                                                                              onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante', e.target.value)}
-                                                                              onBlur={(e) => handleItemNumericBlur(index, 'preco_lubrificante', e.target.value)}
-                                                                              placeholder="0,00"
-                                                                          />
-                                                                      </div>
-                                                                  </PopoverContent>
-                                                              </Popover>
-                                                          ) : (
-                                                              <Badge variant="secondary" className="text-xs w-full justify-center">
-                                                                  {item.tipo_combustivel_fixo}
-                                                              </Badge>
-                                                          )}
-                                                      </TableCell>
-                                                      <TableCell className="text-right font-semibold text-sm py-1">
-                                                          {formatCurrency(itemTotal)}
-                                                      </TableCell>
-                                                  </TableRow>
-                                              );
-                                          })
-                                      )}
-                                  </TableBody>
-                              </Table>
-                          </div>
+                  {CATEGORIAS.map(cat => (
+                    <TabsContent key={cat.key} value={cat.key} className="mt-4">
+                      <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                        
+                        <div className="max-h-[400px] overflow-y-auto rounded-md border">
+                            <Table className="w-full">
+                                <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                                    <TableRow>
+                                        <TableHead className="w-[30%]">Equipamento</TableHead>
+                                        <TableHead className="w-[10%] text-center">Qtd</TableHead>
+                                        <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
+                                        <TableHead className="w-[15%] text-center">
+                                            {cat.key === 'MOTOMECANIZACAO' ? 'Desloc' : (cat.key === 'GERADOR' ? 'Consumo Fixo' : 'Consumo Fixo')}
+                                        </TableHead>
+                                        <TableHead className="w-[15%] text-center">{cat.key === 'GERADOR' || cat.key === 'EMBARCACAO' ? 'Lubrificante' : 'Combustível'}</TableHead>
+                                        <TableHead className="w-[15%] text-right">Custo Total</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {currentCategoryItems.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center text-muted-foreground">
+                                                Nenhum item de diretriz encontrado para esta categoria.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        currentCategoryItems.map((item, index) => {
+                                            const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
+                                            const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
+                                            
+                                            // Calculate item cost dynamically
+                                            let litrosSemMargemItem = 0;
+                                            if (isMotomecanizacao) {
+                                                if (item.consumo_fixo > 0) {
+                                                    litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos) / item.consumo_fixo;
+                                                }
+                                            } else {
+                                                litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * form.dias_operacao;
+                                            }
+                                            const totalLitros = litrosSemMargemItem * 1.3;
+                                            const precoLitro = item.tipo_combustivel_fixo === 'GASOLINA' ? (refLPC?.preco_gasolina ?? 0) : (refLPC?.preco_diesel ?? 0);
+                                            const valorCombustivel = totalLitros * precoLitro;
+                                            
+                                            let valorLubrificante = 0;
+                                            if (isLubricantType && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0) {
+                                                const totalHoras = item.quantidade * item.horas_dia * form.dias_operacao;
+                                                let litrosItem = 0;
+                                                if (item.categoria === 'GERADOR') {
+                                                    litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
+                                                } else if (item.categoria === 'EMBARCACAO') {
+                                                    litrosItem = totalHoras * item.consumo_lubrificante_litro;
+                                                }
+                                                valorLubrificante = litrosItem * item.preco_lubrificante;
+                                            }
+                                            
+                                            const itemTotal = valorCombustivel + valorLubrificante;
+                                            
+                                            return (
+                                                <TableRow key={item.item} className="h-12">
+                                                    <TableCell className="font-medium text-sm py-1">
+                                                        {item.item}
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {item.tipo_combustivel_fixo} ({formatNumber(item.consumo_fixo, 1)} {item.unidade_fixa})
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="py-1">
+                                                        <Input
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            className="h-8 text-center"
+                                                            value={item.quantidade === 0 ? "" : item.quantidade.toString()}
+                                                            onChange={(e) => handleItemNumericChange(index, 'quantidade', e.target.value)}
+                                                            placeholder="0"
+                                                            onKeyDown={handleEnterToNextField}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell className="py-1">
+                                                        <Input
+                                                            type="text"
+                                                            inputMode="decimal"
+                                                            className="h-8 text-center"
+                                                            value={isMotomecanizacao ? (item.distancia_percorrida === 0 ? "" : item.distancia_percorrida.toString()) : (item.horas_dia === 0 ? "" : item.horas_dia.toString())}
+                                                            onChange={(e) => handleItemNumericChange(index, isMotomecanizacao ? 'distancia_percorrida' : 'horas_dia', e.target.value)}
+                                                            placeholder="0"
+                                                            disabled={item.quantidade === 0}
+                                                            onKeyDown={handleEnterToNextField}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell className="py-1">
+                                                        <Input
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            className="h-8 text-center"
+                                                            value={isMotomecanizacao ? (item.quantidade_deslocamentos === 0 ? "" : item.quantidade_deslocamentos.toString()) : (item.consumo_fixo === 0 ? "" : formatNumber(item.consumo_fixo, 1))}
+                                                            onChange={(e) => isMotomecanizacao && handleItemNumericChange(index, 'quantidade_deslocamentos', e.target.value)}
+                                                            placeholder="0"
+                                                            disabled={!isMotomecanizacao || item.quantidade === 0}
+                                                            readOnly={!isMotomecanizacao || item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO' || item.categoria === 'EQUIPAMENTO_ENGENHARIA'}
+                                                            onKeyDown={handleEnterToNextField}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell className="py-1">
+                                                        {isLubricantType ? (
+                                                            <Popover>
+                                                                <PopoverTrigger asChild>
+                                                                    <Button 
+                                                                        variant="outline" 
+                                                                        size="sm" 
+                                                                        className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
+                                                                        disabled={item.quantidade === 0}
+                                                                    >
+                                                                        <Droplet className="h-3 w-3 mr-1" />
+                                                                        {item.consumo_lubrificante_litro > 0 ? 'Configurado' : 'Lubrificante'}
+                                                                    </Button>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="w-80 p-4 space-y-3">
+                                                                    <h4 className="font-semibold text-sm">Configurar Lubrificante</h4>
+                                                                    <div className="space-y-2">
+                                                                        <Label>Consumo ({item.categoria === 'GERADOR' ? 'L/100h' : 'L/h'})</Label>
+                                                                        <Input
+                                                                            type="text"
+                                                                            inputMode="decimal"
+                                                                            value={item.consumo_lubrificante_litro === 0 ? "" : formatNumberForInput(item.consumo_lubrificante_litro, 2)}
+                                                                            onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_litro', e.target.value)}
+                                                                            onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_litro', e.target.value)}
+                                                                            placeholder="0,00"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label>Preço (R$/L)</Label>
+                                                                        <Input
+                                                                            type="text"
+                                                                            inputMode="decimal"
+                                                                            value={item.preco_lubrificante === 0 ? "" : formatNumberForInput(item.preco_lubrificante, 2)}
+                                                                            onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante', e.target.value)}
+                                                                            onBlur={(e) => handleItemNumericBlur(index, 'preco_lubrificante', e.target.value)}
+                                                                            placeholder="0,00"
+                                                                        />
+                                                                    </div>
+                                                                </PopoverContent>
+                                                            </Popover>
+                                                        ) : (
+                                                            <Badge variant="secondary" className="text-xs w-full justify-center">
+                                                                {item.tipo_combustivel_fixo}
+                                                            </Badge>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-semibold text-sm py-1">
+                                                        {formatCurrency(itemTotal)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                         
                         <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
                             <span className="font-bold text-sm">TOTAL COMBUSTÍVEL (30% MARGEM)</span>
