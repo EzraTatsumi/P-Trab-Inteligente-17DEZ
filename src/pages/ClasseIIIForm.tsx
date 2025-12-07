@@ -63,7 +63,7 @@ interface FormDataClasseIII {
   organizacao: string;
   ug: string;
   dias_operacao: number; // Global days of activity (used only for detailing header)
-  itens: ItemClasseIII[]; // All items across all categories
+  itens: ItemClasseIII[]; // All items across all categories (SAVED/COMMITTED)
 }
 
 interface LubricantAllocation {
@@ -797,8 +797,8 @@ export default function ClasseIIIForm() {
       currentCategoryTotalValue: totalCombustivel + totalLubrificante,
       currentCategoryDieselLitros: dieselLitros,
       currentCategoryGasolinaLitros: gasolinaLitros,
-      currentCategoryDieselValor: dieselValor,
       currentCategoryGasolinaValor: gasolinaValor,
+      currentCategoryDieselValor: dieselValor,
     };
   }, [localCategoryItems, refLPC, form.dias_operacao]);
   
@@ -1486,7 +1486,7 @@ export default function ClasseIIIForm() {
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
-                          <h4 className="font-bold text-base text-primary}>{categoria} ({totalQuantidade} itens)</h4>
+                          <h4 className="font-bold text-base text-primary">{categoria} ({totalQuantidade} itens)</h4>
                           <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
                         </div>
                         
