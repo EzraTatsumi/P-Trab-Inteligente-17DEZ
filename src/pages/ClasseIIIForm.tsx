@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, Sparkles, Tractor, Droplet, Check, ChevronsUpDown, XCircle } from "lucide-react";
+import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, Sparkles, Tractor, Droplet, Check, ChevronsUpDown, XCircle, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getEquipamentosPorTipo, TipoEquipamentoDetalhado } from "@/data/classeIIIData";
@@ -48,7 +48,6 @@ interface ItemClasseIII {
   horas_dia: number; // Used by GERADOR, EMBARCACAO, EQUIPAMENTO_ENGENHARIA
   distancia_percorrida: number; // Used by MOTOMECANIZACAO
   quantidade_deslocamentos: number; // Used by MOTOMECANIZACAO
-  // NEW FIELD
   dias_utilizados: number; // Days used for this specific equipment
   // Lubricant fields (only for GERADOR, EMBARCACAO)
   consumo_lubrificante_litro: number; // L/100h or L/h
@@ -300,7 +299,6 @@ export default function ClasseIIIForm() {
               horas_dia: item.horas_dia || 0,
               distancia_percorrida: item.distancia_percorrida || 0,
               quantidade_deslocamentos: item.quantidade_deslocamentos || 0,
-              // NEW: Load dias_utilizados from saved item data
               dias_utilizados: item.dias_utilizados || 0,
               consumo_lubrificante_litro: consumoLubrificante,
               preco_lubrificante: precoLubrificante,
@@ -441,7 +439,6 @@ export default function ClasseIIIForm() {
         horas_dia: 0,
         distancia_percorrida: 0,
         quantidade_deslocamentos: 0,
-        // NEW: Default dias_utilizados to 0
         dias_utilizados: 0,
         consumo_lubrificante_litro: 0,
         preco_lubrificante: 0,
@@ -463,27 +460,23 @@ export default function ClasseIIIForm() {
   };
 
   const handleItemNumericChange = (itemIndex: number, field: keyof ItemClasseIII, inputString: string) => {
-    // Permite vírgula e ponto, mas remove tudo que não for dígito, ponto ou vírgula
     const cleanedValue = inputString.replace(/[^\d,.]/g, '');
     
-    // Se for um campo de quantidade, dias, deslocamentos (inteiro), remove vírgulas/pontos
     if (field === 'quantidade' || field === 'quantidade_deslocamentos' || field === 'dias_utilizados') {
       const numericValue = parseInt(cleanedValue.replace(/[,.]/g, '')) || 0;
       handleItemFieldChange(itemIndex, field, numericValue);
       return;
     }
     
-    // Se for o campo de preço de lubrificante, usa a lógica de preenchimento da direita (máscara de moeda)
     if (field === 'preco_lubrificante_input') {
       const digits = inputString.replace(/\D/g, '');
       const { numericValue } = formatCurrencyInput(digits);
       
-      // Atualiza o input string e o valor numérico real
       const updatedItems = [...currentCategoryItems];
       updatedItems[itemIndex] = {
         ...updatedItems[itemIndex],
-        preco_lubrificante_input: digits, // Salva apenas os dígitos
-        preco_lubrificante: numericValue, // Salva o valor numérico
+        preco_lubrificante_input: digits,
+        preco_lubrificante: numericValue,
       };
       
       const itemsFromOtherCategories = form.itens.filter(item => item.categoria !== selectedTab);
@@ -492,14 +485,13 @@ export default function ClasseIIIForm() {
       return;
     }
     
-    // Se for o campo de consumo de lubrificante (preenchimento livre)
     if (field === 'consumo_lubrificante_input') {
       const numericValue = parseInputToNumber(inputString);
       const updatedItems = [...currentCategoryItems];
       updatedItems[itemIndex] = {
         ...updatedItems[itemIndex],
-        consumo_lubrificante_input: inputString, // Salva a string bruta
-        consumo_lubrificante_litro: numericValue, // Salva o valor numérico
+        consumo_lubrificante_input: inputString,
+        consumo_lubrificante_litro: numericValue,
       };
       
       const itemsFromOtherCategories = form.itens.filter(item => item.categoria !== selectedTab);
@@ -508,24 +500,19 @@ export default function ClasseIIIForm() {
       return;
     }
     
-    // Para outros campos decimais (horas_dia, distancia_percorrida)
     const numericValue = parseInputToNumber(cleanedValue);
     handleItemFieldChange(itemIndex, field, numericValue);
   };
 
   const handleItemNumericBlur = (itemIndex: number, field: keyof ItemClasseIII, inputString: string) => {
-    // Se for o campo de consumo de lubrificante (string input), formata para exibição no blur
     if (field === 'consumo_lubrificante_input') {
       const numericValue = parseInputToNumber(inputString);
       const formattedString = numericValue === 0 
         ? "" 
-        : formatNumberForInput(numericValue, 2); // Atualiza o campo de input string com o valor formatado
+        : formatNumberForInput(numericValue, 2);
       handleItemFieldChange(itemIndex, 'consumo_lubrificante_input', formattedString);
       return;
     }
-    
-    // O campo preco_lubrificante_input não precisa de blur.
-    // Outros campos numéricos (horas_dia, distancia) não precisam de formatação no blur.
   };
 
   const handleUpdateCategoryItems = () => {
@@ -560,12 +547,21 @@ export default function ClasseIIIForm() {
     toast.success(`Itens da categoria ${selectedTab} atualizados!`);
   };
 
-  // --- Calculation Logic ---
-  const { consolidadosCombustivel, consolidadoLubrificante } = useMemo(() => {
+  // --- Calculation Logic (Memoized) ---
+  const { consolidadosCombustivel, consolidadoLubrificante, itensAgrupadosPorCategoria } = useMemo(() => {
     const itens = form.itens.filter(item => item.quantidade > 0 && item.dias_utilizados > 0);
     
+    // Agrupamento de itens do formulário por categoria (para Seção 3)
+    const groupedFormItems = itens.reduce((acc, item) => {
+      if (!acc[item.categoria]) {
+        acc[item.categoria] = [];
+      }
+      acc[item.categoria].push(item);
+      return acc;
+    }, {} as Record<TipoEquipamento, ItemClasseIII[]>);
+    
     if (itens.length === 0 || !refLPC || form.dias_operacao === 0) {
-      return { consolidadosCombustivel: [], consolidadoLubrificante: null };
+      return { consolidadosCombustivel: [], consolidadoLubrificante: null, itensAgrupadosPorCategoria: groupedFormItems };
     }
     
     // --- CÁLCULO DE COMBUSTÍVEL (ND 33.90.30) ---
@@ -590,7 +586,7 @@ export default function ClasseIIIForm() {
       
       let fasesFinaisCalc = [...fasesAtividade];
       if (customFaseAtividade.trim()) {
-        fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividade.trim()];
+        fasesFinaisCalc = [...fasesFinaisCalc, customFasesAtividade.trim()];
       }
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
@@ -598,14 +594,12 @@ export default function ClasseIIIForm() {
       itensGrupo.forEach(item => {
         let litrosSemMargemItem = 0;
         let formulaDetalhe = '';
-        const diasUtilizados = item.dias_utilizados || 0; // Use item-specific days
+        const diasUtilizados = item.dias_utilizados || 0;
         
         if (item.categoria === 'MOTOMECANIZACAO') {
-          // New Moto Calculation: (KM/Desloc * Qtd * Desloc/Day * Days Used) / Consumo_fixo
           litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
           formulaDetalhe = `(${item.quantidade} ${item.item} x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${diasUtilizados} dias) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
         } else {
-          // New Non-Moto Calculation: Qtd * Horas/Day * Consumo_fixo * Days Used
           litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
           formulaDetalhe = `(${item.quantidade} ${item.item} x ${formatNumber(item.horas_dia, 1)} horas/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} dias`;
         }
@@ -632,7 +626,6 @@ export default function ClasseIIIForm() {
       
       const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
       
-      // Use form.dias_operacao apenas no cabeçalho
       let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}. Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento}) Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${combustivelLabel} - ${formatCurrency(precoLitro)}. Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização. ${detalhes.join('\n')} Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}. Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
       
       novosConsolidados.push({
@@ -654,8 +647,8 @@ export default function ClasseIIIForm() {
     const detalhesLubrificante: string[] = [];
     
     itensComLubrificante.forEach(item => {
-      const diasUtilizados = item.dias_utilizados || 0; // Use item-specific days
-      const totalHoras = item.quantidade * item.horas_dia * diasUtilizados; // Use item-specific days
+      const diasUtilizados = item.dias_utilizados || 0;
+      const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
       let litrosItem = 0;
       let formulaDetalhe = '';
       
@@ -685,7 +678,6 @@ export default function ClasseIIIForm() {
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
       
-      // Use form.dias_operacao apenas no cabeçalho
       const detalhamentoLubrificante = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}. Recurso destinado à OM proprietária: ${lubricantAllocation.om_destino_recurso} (UG: ${lubricantAllocation.ug_destino_recurso}) Cálculo: Fórmula: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilização) x Consumo Lubrificante/hora (ou /100h). ${itensComLubrificante.map(item => `- ${item.item}: Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}.`).join('\n')} ${detalhesLubrificante.join('\n')} Total Litros: ${formatNumber(totalLitrosLubrificante, 2)} L. Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       
       consolidadoLubrificante = {
@@ -696,11 +688,13 @@ export default function ClasseIIIForm() {
       };
     }
     
-    return { consolidadosCombustivel: novosConsolidados, consolidadoLubrificante };
+    return { consolidadosCombustivel: novosConsolidados, consolidadoLubrificante, itensAgrupadosPorCategoria: groupedFormItems };
   }, [
     form.itens, refLPC, form.dias_operacao, form.organizacao, rmFornecimento, codugRmFornecimento,
-    lubricantAllocation, fasesAtividade, customFaseAtividade
+    lubricantAllocation, fasesAtividade, customFaseAtividade, allDiretrizItems
   ]);
+  
+  const itensAgrupadosPorCategoriaParaResumo = itensAgrupadosPorCategoria;
 
   // --- Save Logic ---
   const handleSalvarRegistros = async () => {
@@ -759,12 +753,13 @@ export default function ClasseIIIForm() {
         detalhamento: consolidado.detalhamento,
         itens_equipamentos: consolidado.itens.map((item: ItemClasseIII) => ({
           ...item,
-          // Salva o nome específico do equipamento para reconstrução
           tipo_equipamento_especifico: item.item,
         })) as any,
         fase_atividade: faseFinalString,
         consumo_lubrificante_litro: 0,
         preco_lubrificante: 0,
+        valor_nd_30: consolidado.valor_total, // Classe III Combustível é ND 30
+        valor_nd_39: 0,
       };
       registrosParaSalvar.push(registro);
     }
@@ -786,12 +781,13 @@ export default function ClasseIIIForm() {
         detalhamento: consolidadoLubrificante.detalhamento,
         itens_equipamentos: consolidadoLubrificante.itens.map((item: ItemClasseIII) => ({
           ...item,
-          // Salva o nome específico do equipamento para reconstrução
           tipo_equipamento_especifico: item.item,
         })) as any,
         fase_atividade: faseFinalString,
         consumo_lubrificante_litro: consolidadoLubrificante.itens[0]?.consumo_lubrificante_litro || 0,
         preco_lubrificante: consolidadoLubrificante.itens[0]?.preco_lubrificante || 0,
+        valor_nd_30: consolidadoLubrificante.valor_total, // Classe III Lubrificante é ND 30
+        valor_nd_39: 0,
       };
       registrosParaSalvar.push(registroLubrificante);
     }
@@ -839,8 +835,6 @@ export default function ClasseIIIForm() {
   };
 
   const handleEditarConsolidado = (registro: ClasseIIIRegistro) => {
-    // Triggers full state reconstruction and sets the tab to the category of the first item found.
-    // We rely on fetchRegistros(true) to handle the reconstruction.
     fetchRegistros(true).then(() => {
       if (registro.itens_equipamentos && registro.itens_equipamentos.length > 0) {
         const firstItemCategory = (registro.itens_equipamentos as any[])[0].categoria as TipoEquipamento;
@@ -947,22 +941,23 @@ export default function ClasseIIIForm() {
     const combustivelRecords = registros.filter(r => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO');
     const lubricantRecords = registros.filter(r => r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO');
     
-    const groups: Record<string, { om: string, ug: string, combustivel: ClasseIIIRegistro[], lubrificante: ClasseIIIRegistro[] }> = {};
+    const groups: Record<string, { om: string, ug: string, combustivel: ClasseIIIRegistro[], lubrificante: ClasseIIIRegistro[], total: number }> = {};
     
-    combustivelRecords.forEach(r => {
+    // Agrupar por OM de destino (organizacao/ug)
+    const allRecords = [...combustivelRecords, ...lubricantRecords];
+    
+    allRecords.forEach(r => {
       const key = `${r.organizacao} (${r.ug})`;
       if (!groups[key]) {
-        groups[key] = { om: r.organizacao, ug: r.ug, combustivel: [], lubrificante: [] };
+        groups[key] = { om: r.organizacao, ug: r.ug, combustivel: [], lubrificante: [], total: 0 };
       }
-      groups[key].combustivel.push(r);
-    });
-    
-    lubricantRecords.forEach(r => {
-      const key = `${r.organizacao} (${r.ug})`;
-      if (!groups[key]) {
-        groups[key] = { om: r.organizacao, ug: r.ug, combustivel: [], lubrificante: [] };
+      
+      if (r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO') {
+        groups[key].combustivel.push(r);
+      } else if (r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO') {
+        groups[key].lubrificante.push(r);
       }
-      groups[key].lubrificante.push(r);
+      groups[key].total += r.valor_total;
     });
     
     return groups;
@@ -1084,7 +1079,7 @@ export default function ClasseIIIForm() {
                 <div className="space-y-2">
                   <Label>Dias de Atividade (Global) *</Label>
                   <Input 
-                    type="text" // Alterado para text
+                    type="text"
                     inputMode="numeric"
                     className="max-w-xs"
                     value={form.dias_operacao === 0 ? "" : form.dias_operacao.toString()}
@@ -1353,7 +1348,7 @@ export default function ClasseIIIForm() {
                                                 <Input 
                                                   type="text"
                                                   inputMode="decimal"
-                                                  value={item.consumo_lubrificante_input} // Usando o novo campo de string bruta
+                                                  value={item.consumo_lubrificante_input}
                                                   onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_input', e.target.value)}
                                                   onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_input', e.target.value)}
                                                   placeholder="0,00"
@@ -1367,7 +1362,6 @@ export default function ClasseIIIForm() {
                                                   value={formattedPriceInput}
                                                   onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante_input', e.target.value)}
                                                   placeholder="0,00"
-                                                  // Adiciona onFocus para mover o cursor para o final
                                                   onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
                                                 />
                                               </div>
@@ -1424,59 +1418,139 @@ export default function ClasseIIIForm() {
               </div>
             )}
             
-            {/* 3. Itens Adicionados */}
+            {/* 3. Itens Adicionados e Consolidação (NOVO LAYOUT) */}
             {form.itens.filter(i => i.quantidade > 0).length > 0 && (
               <div className="space-y-4 border-b pb-4">
-                <h3 className="text-lg font-semibold">3. Consolidação de Custos</h3>
+                <h3 className="text-lg font-semibold">3. Itens Adicionados e Consolidação</h3>
+                
                 <div className="space-y-4">
-                  {/* Resumo de Custos Consolidados */}
-                  <Card className="p-4 bg-primary/5 border-primary/20">
-                    <div className="flex items-center justify-between mb-3 border-b pb-2">
-                      <h4 className="font-bold text-base text-primary">VALOR TOTAL CLASSE III</h4>
-                      <span className="font-extrabold text-xl text-primary">{formatCurrency(custoTotalClasseIII)}</span>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span className="font-medium">Combustível (Diesel/Gasolina)</span>
-                        <span className="text-right font-semibold">{formatCurrency(totalCustoCombustivel)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span className="font-medium">Lubrificante (ND 30)</span>
-                        <span className="text-right font-semibold">{formatCurrency(totalCustoLubrificante)}</span>
-                      </div>
-                    </div>
-                  </Card>
-                  
-                  {/* Memórias de Cálculo (Combustível) */}
-                  {consolidadosCombustivel.map((consolidado, index) => (
-                    <Card key={`comb-${index}`} className="p-4 bg-muted/30">
-                      <h4 className="font-semibold text-base mb-2">
-                        Combustível - {consolidado.tipo_combustivel}
-                      </h4>
-                      <Textarea 
-                        value={consolidado.detalhamento} 
-                        readOnly 
-                        rows={6} 
-                        className="font-mono text-xs"
-                      />
-                    </Card>
-                  ))}
-                  
-                  {/* Memórias de Cálculo (Lubrificante) */}
-                  {consolidadoLubrificante && (
-                    <Card className="p-4 bg-muted/30">
-                      <h4 className="font-semibold text-base mb-2">
-                        Lubrificante - OM Destino: {lubricantAllocation.om_destino_recurso}
-                      </h4>
-                      <Textarea 
-                        value={consolidadoLubrificante.detalhamento} 
-                        readOnly 
-                        rows={8} 
-                        className="font-mono text-xs"
-                      />
-                    </Card>
-                  )}
+                  {Object.entries(itensAgrupadosPorCategoriaParaResumo).map(([categoria, itens]) => {
+                    const totalCombustivelCategoria = itens.reduce((sum, item) => {
+                      const diasUtilizados = item.dias_utilizados || 0;
+                      let litrosSemMargemItem = 0;
+                      const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
+                      
+                      if (diasUtilizados === 0) return sum;
+                      
+                      if (isMotomecanizacao) {
+                        if (item.consumo_fixo > 0) {
+                          litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
+                        }
+                      } else {
+                        litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
+                      }
+                      
+                      const totalLitros = litrosSemMargemItem * 1.3;
+                      const precoLitro = item.tipo_combustivel_fixo === 'GASOLINA' 
+                        ? (refLPC?.preco_gasolina ?? 0) 
+                        : (refLPC?.preco_diesel ?? 0);
+                      
+                      return sum + (totalLitros * precoLitro);
+                    }, 0);
+                    
+                    const totalLubrificanteCategoria = itens.reduce((sum, item) => {
+                      const diasUtilizados = item.dias_utilizados || 0;
+                      const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
+                      
+                      if (diasUtilizados === 0 || !isLubricantType) return sum;
+                      
+                      const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
+                      let litrosItem = 0;
+                      
+                      if (item.categoria === 'GERADOR') {
+                        litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
+                      } else if (item.categoria === 'EMBARCACAO') {
+                        litrosItem = totalHoras * item.consumo_lubrificante_litro;
+                      }
+                      
+                      return sum + (litrosItem * item.preco_lubrificante);
+                    }, 0);
+                    
+                    const totalCategoria = totalCombustivelCategoria + totalLubrificanteCategoria;
+                    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
+                    
+                    return (
+                      <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
+                        <div className="flex items-center justify-between mb-3 border-b pb-2">
+                          <h4 className="font-bold text-base text-primary">{categoria} ({totalQuantidade} itens)</h4>
+                          <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {itens.map((item, index) => {
+                            const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
+                            const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
+                            
+                            const diasUtilizados = item.dias_utilizados || 0;
+                            let litrosSemMargemItem = 0;
+                            
+                            if (diasUtilizados > 0) {
+                              if (isMotomecanizacao) {
+                                if (item.consumo_fixo > 0) {
+                                  litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
+                                }
+                              } else {
+                                litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
+                              }
+                            }
+                            
+                            const totalLitros = litrosSemMargemItem * 1.3;
+                            const precoLitro = item.tipo_combustivel_fixo === 'GASOLINA' 
+                              ? (refLPC?.preco_gasolina ?? 0) 
+                              : (refLPC?.preco_diesel ?? 0);
+                            const valorCombustivel = totalLitros * precoLitro;
+                            
+                            let valorLubrificante = 0;
+                            if (isLubricantType && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0 && diasUtilizados > 0) {
+                              const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
+                              let litrosItem = 0;
+                              
+                              if (item.categoria === 'GERADOR') {
+                                litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
+                              } else if (item.categoria === 'EMBARCACAO') {
+                                litrosItem = totalHoras * item.consumo_lubrificante_litro;
+                              }
+                              
+                              valorLubrificante = litrosItem * item.preco_lubrificante;
+                            }
+                            
+                            const itemTotal = valorCombustivel + valorLubrificante;
+                            
+                            return (
+                              <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
+                                <span className="font-medium">{item.item} ({item.quantidade} un. x {diasUtilizados} dias)</span>
+                                <span className="text-right">
+                                  {formatCurrency(itemTotal)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        
+                        <div className="pt-2 border-t mt-2">
+                            <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">Custo Combustível:</span>
+                                <span className="font-medium text-foreground">{formatCurrency(totalCombustivelCategoria)}</span>
+                            </div>
+                            {totalLubrificanteCategoria > 0 && (
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">Custo Lubrificante (ND 30):</span>
+                                    <span className="font-medium text-purple-600">{formatCurrency(totalLubrificanteCategoria)}</span>
+                                </div>
+                            )}
+                        </div>
+                      </Card>
+                    );
+                  })}
                 </div>
+                
+                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
+                  <span className="font-bold text-base text-primary">VALOR TOTAL DA OM</span>
+                  <span className="font-extrabold text-xl text-primary">
+                    {formatCurrency(custoTotalClasseIII)}
+                  </span>
+                </div>
+                
                 <div className="flex gap-3 pt-4 justify-end">
                   <Button variant="outline" type="button" onClick={resetFormFields}>
                     <XCircle className="h-4 w-4 mr-2" />
@@ -1498,28 +1572,29 @@ export default function ClasseIIIForm() {
               </div>
             )}
             
-            {/* 4. Registros Salvos (OMs Cadastradas) - SUMMARY SECTION */}
+            {/* 4. Registros Salvos (OMs Cadastradas) - SUMMARY SECTION (NOVO LAYOUT) */}
             {registros.length > 0 && (
               <div className="space-y-4 mt-6">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-accent" />
                   Registros Consolidados Salvos
                 </h2>
-                {Object.values(registrosAgrupadosPorOM).map((group) => {
-                  const totalOM = [...group.combustivel, ...group.lubrificante].reduce((sum, r) => sum + r.valor_total, 0);
+                
+                {Object.entries(registrosAgrupadosPorOM).map(([omKey, group]) => {
                   const omName = group.om;
                   const ug = group.ug;
                   
                   return (
-                    <Card key={omName} className="p-4 bg-primary/5 border-primary/20">
+                    <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                       <div className="flex items-center justify-between mb-3 border-b pb-2">
                         <h3 className="font-bold text-lg text-primary">
                           {omName} (UG: {ug})
                         </h3>
                         <span className="font-extrabold text-xl text-primary">
-                          {formatCurrency(totalOM)}
+                          {formatCurrency(group.total)}
                         </span>
                       </div>
+                      
                       <div className="space-y-3">
                         {[...group.combustivel, ...group.lubrificante].map((registro) => {
                           const suprimento = getSuprimentoLabel(registro);
@@ -1562,6 +1637,18 @@ export default function ClasseIIIForm() {
                                     </Button>
                                   </div>
                                 </div>
+                              </div>
+                              
+                              {/* Detalhes da Alocação (ND 30/39) */}
+                              <div className="pt-2 border-t mt-2">
+                                  <div className="flex justify-between text-xs">
+                                      <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
+                                      <span className="font-medium text-green-600">{formatCurrency(registro.valor_nd_30)}</span>
+                                  </div>
+                                  <div className="flex justify-between text-xs">
+                                      <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
+                                      <span className="font-medium text-blue-600">{formatCurrency(registro.valor_nd_39)}</span>
+                                  </div>
                               </div>
                             </Card>
                           );
