@@ -922,6 +922,12 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
     return 'bg-primary text-primary-foreground';
   };
   
+  const getCombustivelBadgeClass = (tipo: CombustivelTipo) => {
+    return tipo === 'DIESEL' 
+        ? 'bg-cyan-600 text-white hover:bg-cyan-700' 
+        : 'bg-amber-500 text-white hover:bg-amber-600';
+  };
+  
   const registrosAgrupadosPorOM = useMemo(() => {
     const combustivelRecords = registros.filter(r => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO');
     const lubricantRecords = registros.filter(r => r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO');
@@ -1246,8 +1252,16 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                             return (
                                                 <TableRow key={item.item} className="h-12">
                                                     <TableCell className="font-medium text-sm py-1 w-[40%]">
-                                                        {item.item}
-                                                        <div className="text-xs text-muted-foreground">
+                                                        <div className="flex items-center gap-2">
+                                                            <Badge 
+                                                                variant="default" 
+                                                                className={cn("h-4 w-4 p-0 justify-center", getCombustivelBadgeClass(item.tipo_combustivel_fixo))}
+                                                            >
+                                                                {item.tipo_combustivel_fixo === 'DIESEL' ? 'D' : 'G'}
+                                                            </Badge>
+                                                            {item.item}
+                                                        </div>
+                                                        <div className="text-xs text-muted-foreground ml-6">
                                                             {item.tipo_combustivel_fixo} ({formatNumber(item.consumo_fixo, 1)} {item.unidade_fixa})
                                                         </div>
                                                     </TableCell>
