@@ -1276,62 +1276,66 @@ const ClasseVForm = () => {
                   
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
-                      <h4 className="text-lg font-semibold text-foreground">
-                        OM Destino: {om} ({ug}) - Categoria: {registro.categoria}
-                      </h4>
                       
-                      <div className="flex items-center justify-end gap-2 mb-4">
-                          {!isEditing ? (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleIniciarEdicaoMemoria(registro)}
-                                disabled={loading}
-                                className="gap-2"
-                              >
-                                <Pencil className="h-4 w-4" />
-                                Editar Memória
-                              </Button>
-                              
-                              {hasCustomMemoria && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
-                                  disabled={loading}
-                                  className="gap-2 text-muted-foreground"
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                  Restaurar Automática
-                                </Button>
+                      {/* Container para H4 e Botões */}
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                          <h4 className="text-lg font-semibold text-foreground flex-1 min-w-0">
+                            OM Destino: {om} ({ug}) - Categoria: {registro.categoria}
+                          </h4>
+                          
+                          <div className="flex items-center justify-end gap-2 shrink-0">
+                              {!isEditing ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleIniciarEdicaoMemoria(registro)}
+                                    disabled={loading}
+                                    className="gap-2"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                    Editar Memória
+                                  </Button>
+                                  
+                                  {hasCustomMemoria && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                                      disabled={loading}
+                                      className="gap-2 text-muted-foreground"
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                      Restaurar Automática
+                                    </Button>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                    disabled={loading}
+                                    className="gap-2"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                    Salvar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleCancelarEdicaoMemoria}
+                                    disabled={loading}
+                                    className="gap-2"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                    Cancelar
+                                  </Button>
+                                </>
                               )}
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
-                                disabled={loading}
-                                className="gap-2"
-                              >
-                                <Check className="h-4 w-4" />
-                                Salvar
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleCancelarEdicaoMemoria}
-                                disabled={loading}
-                                className="gap-2"
-                              >
-                                <XCircle className="h-4 w-4" />
-                                Cancelar
-                              </Button>
-                            </>
-                          )}
-                        </div>
+                            </div>
+                      </div>
                       
                       <Card className="p-4 bg-background rounded-lg border">
                         {isEditing ? (
