@@ -27,6 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
+import { LubricantConfigDialog } from "@/components/LubricantConfigDialog";
 
 type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
 type CombustivelTipo = 'GASOLINA' | 'DIESEL';
@@ -187,7 +188,6 @@ export default function ClasseIIIForm() {
   });
   const [rmFornecimento, setRmFornecimento] = useState("");
   const [codugRmFornecimento, setCodugRmFornecimento] = useState("");
-  // REMOVIDO: const [lubricantAllocation, setLubricantAllocation] = useState<LubricantAllocation>({ ... });
   const [fasesAtividade, setFasesAtividade] = useState<string[]>(["Execução"]);
   const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -197,6 +197,11 @@ export default function ClasseIIIForm() {
     EQUIPAMENTO_ENGENHARIA: [],
     MOTOMECANIZACAO: []
   });
+  
+  // ESTADOS PARA O NOVO DIÁLOGO DE LUBRIFICANTE
+  const [itemToConfigure, setItemToConfigure] = useState<ItemClasseIII | null>(null);
+  const [itemToConfigureIndex, setItemToConfigureIndex] = useState<number | null>(null);
+  
   const { handleEnterToNextField } = useFormNavigation();
   const lpcRef = useRef<HTMLDivElement>(null);
 
@@ -330,6 +335,7 @@ export default function ClasseIIIForm() {
           
           if (directiveItem) {
             const precoLubrificante = item.preco_lubrificante || 0;
+            // Reverte a formatação de input para a string de dígitos
             const precoLubrificanteInput = precoLubrificante > 0 
               ? String(Math.round(precoLubrificante * 100))
               : "";
@@ -505,17 +511,7 @@ export default function ClasseIIIForm() {
     }
   };
 
-  const handleItemLubricantDestinationChange = (itemIndex: number, omData: OMData | undefined) => {
-    const updatedItems = [...localCategoryItems];
-    const item = updatedItems[itemIndex];
-    
-    if (item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO') {
-        item.om_destino_lub = omData?.nome_om || "";
-        item.ug_destino_lub = omData?.codug_om || "";
-        item.selectedOmDestinoId_lub = omData?.id;
-        setLocalCategoryItems(updatedItems);
-    }
-  };
+  // REMOVIDO: handleItemLubricantDestinationChange (movido para o Dialog)
 
   const handleRMFornecimentoChange = (rmName: string, rmCodug: string) => {
     setRmFornecimento(rmName);
@@ -548,6 +544,7 @@ export default function ClasseIIIForm() {
     }
     
     if (field === 'preco_lubrificante_input') {
+      // Logic for currency input (handled by dialog now, but kept for consistency if needed)
       const digits = inputString.replace(/\D/g, '');
       const { numericValue } = formatCurrencyInput(digits);
       
@@ -562,6 +559,7 @@ export default function ClasseIIIForm() {
     }
     
     if (field === 'consumo_lubrificante_input') {
+      // Logic for decimal input (handled by dialog now, but kept for consistency if needed)
       const numericValue = parseInputToNumber(inputString);
       const updatedItems = [...localCategoryItems];
       updatedItems[itemIndex] = {
@@ -588,30 +586,23 @@ export default function ClasseIIIForm() {
     }
   };
   
-  const handleConfirmLubricantConfig = (itemIndex: number, closePopover: () => void) => {
-      const item = localCategoryItems[itemIndex];
+  // NOVO: Handler para abrir o diálogo de configuração de lubrificante
+  const handleOpenLubricantConfig = (item: ItemClasseIII, index: number) => {
+      setItemToConfigure(item);
+      setItemToConfigureIndex(index);
+  };
+  
+  // NOVO: Handler para confirmar a configuração do lubrificante (recebe o item atualizado do Dialog)
+  const handleLubricantConfigConfirmed = (updatedItem: ItemClasseIII) => {
+      if (itemToConfigureIndex === null) return;
       
-      if (item.consumo_lubrificante_litro > 0 || item.preco_lubrificante > 0) {
-          if (!item.om_destino_lub || !item.ug_destino_lub) {
-              toast.error("Selecione a OM de destino do recurso de lubrificante.");
-              return;
-          }
-      }
-      
-      // If consumption/price is zero, clear destination fields to avoid saving invalid data
-      if (item.consumo_lubrificante_litro === 0 && item.preco_lubrificante === 0) {
-          const updatedItems = [...localCategoryItems];
-          updatedItems[itemIndex] = {
-              ...item,
-              om_destino_lub: "",
-              ug_destino_lub: "",
-              selectedOmDestinoId_lub: undefined,
-          };
-          setLocalCategoryItems(updatedItems);
-      }
+      const updatedItems = [...localCategoryItems];
+      updatedItems[itemToConfigureIndex] = updatedItem;
+      setLocalCategoryItems(updatedItems);
       
       toast.success("Configuração de lubrificante salva!");
-      closePopover();
+      setItemToConfigure(null);
+      setItemToConfigureIndex(null);
   };
 
 
@@ -1361,8 +1352,6 @@ export default function ClasseIIIForm() {
                                   const { totalLitros, itemTotal } = calculateItemTotals(item, refLPC, form.dias_operacao);
                                   const diasUtilizados = item.dias_utilizados || 0;
                                   
-                                  const formattedPriceInput = formatCurrencyInput(item.preco_lubrificante_input).formatted;
-                                  
                                   return (
                                     <TableRow key={item.item} className="h-12">
                                       <TableCell className="font-medium text-sm py-1 w-[30%]">
@@ -1431,88 +1420,19 @@ export default function ClasseIIIForm() {
                                           />
                                         </TableCell>
                                       )}
-                                      {/* COLUMN 6: Lub/Comb */}
+                                      {/* COLUMN 6: Lub/Comb - REPLACED POPOVER WITH BUTTON TRIGGER */}
                                       <TableCell className="py-1 w-[10%]">
                                         {isLubricantType ? (
-                                          <Popover>
-                                            <PopoverTrigger asChild>
-                                              <Button 
-                                                variant="outline" 
-                                                size="sm" 
-                                                className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
-                                                disabled={item.quantidade === 0 || diasUtilizados === 0}
-                                              >
-                                                <Droplet className="h-3 w-3 mr-1" />
-                                                {item.consumo_lubrificante_litro > 0 ? 'Configurado' : 'Lubrificante'}
-                                              </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-96 p-4 space-y-4">
-                                              {({ close }) => (
-                                                <>
-                                                  <h4 className="font-semibold text-sm border-b pb-2">Configurar Lubrificante para {item.item}</h4>
-                                                  
-                                                  {/* OM DESTINO RECURSO LUBRIFICANTE (ND 30) */}
-                                                  <div className="space-y-2">
-                                                    <Label>OM Destino Recurso (ND 30) *</Label>
-                                                    <OmSelector 
-                                                      selectedOmId={item.selectedOmDestinoId_lub} 
-                                                      onChange={(omData) => handleItemLubricantDestinationChange(index, omData)} 
-                                                      placeholder="Selecione a OM de destino..."
-                                                      disabled={loading}
-                                                    />
-                                                    {item.ug_destino_lub && (
-                                                      <p className="text-xs text-muted-foreground">UG: {item.ug_destino_lub}</p>
-                                                    )}
-                                                  </div>
-                                                  
-                                                  <div className="grid grid-cols-2 gap-3">
-                                                    <div className="space-y-2">
-                                                      <Label>Consumo ({item.categoria === 'GERADOR' ? 'L/100h' : 'L/h'})</Label>
-                                                      <Input 
-                                                        type="text"
-                                                        inputMode="decimal"
-                                                        value={item.consumo_lubrificante_input}
-                                                        onChange={(e) => handleItemNumericChange(index, 'consumo_lubrificante_input', e.target.value)}
-                                                        onBlur={(e) => handleItemNumericBlur(index, 'consumo_lubrificante_input', e.target.value)}
-                                                        placeholder="0,00"
-                                                      />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                      <Label>Preço (R$/L)</Label>
-                                                      <Input 
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        value={formattedPriceInput}
-                                                        onChange={(e) => handleItemNumericChange(index, 'preco_lubrificante_input', e.target.value)}
-                                                        placeholder="0,00"
-                                                        onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
-                                                      />
-                                                    </div>
-                                                  </div>
-                                                  
-                                                  <div className="flex justify-end gap-2 pt-2">
-                                                    <Button 
-                                                      type="button" 
-                                                      variant="outline" 
-                                                      size="sm"
-                                                      onClick={() => close()}
-                                                    >
-                                                      Cancelar
-                                                    </Button>
-                                                    <Button 
-                                                      type="button" 
-                                                      size="sm"
-                                                      onClick={() => handleConfirmLubricantConfig(index, close)}
-                                                      disabled={loading || (item.consumo_lubrificante_litro > 0 && !item.om_destino_lub)}
-                                                    >
-                                                      <Check className="h-4 w-4 mr-2" />
-                                                      Confirmar
-                                                    </Button>
-                                                  </div>
-                                                </>
-                                              )}
-                                            </PopoverContent>
-                                          </Popover>
+                                          <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
+                                            disabled={item.quantidade === 0 || diasUtilizados === 0}
+                                            onClick={() => handleOpenLubricantConfig(item, index)}
+                                          >
+                                            <Droplet className="h-3 w-3 mr-1" />
+                                            {item.consumo_lubrificante_litro > 0 ? 'Configurado' : 'Lubrificante'}
+                                          </Button>
                                         ) : (
                                           <Badge variant="secondary" className="text-xs w-full justify-center">
                                             {item.tipo_combustivel_fixo}
@@ -1887,6 +1807,17 @@ export default function ClasseIIIForm() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* NOVO: Lubricant Configuration Dialog */}
+      {itemToConfigure && (
+          <LubricantConfigDialog
+              open={!!itemToConfigure}
+              onOpenChange={() => setItemToConfigure(null)}
+              item={itemToConfigure}
+              onConfirm={handleLubricantConfigConfirmed}
+              loading={loading}
+          />
+      )}
     </div>
   );
 }
