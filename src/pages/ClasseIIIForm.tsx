@@ -52,6 +52,9 @@ interface ItemClasseIII {
   horas_dia: number; // Used by GERADOR, EMBARCACAO, EQUIPAMENTO_ENGENHARIA
   distancia_percorrida: number; // Used by MOTOMECANIZACAO
   quantidade_deslocamentos: number; // Used by MOTOMECANIZACAO
+  
+  // NEW FIELD
+  dias_utilizados: number; // Days used for this specific equipment
 
   // Lubricant fields (only for GERADOR, EMBARCACAO)
   consumo_lubrificante_litro: number; // L/100h or L/h
@@ -67,7 +70,7 @@ interface FormDataClasseIII {
   selectedOmId?: string;
   organizacao: string;
   ug: string;
-  dias_operacao: number;
+  dias_operacao: number; // Global days of activity (used only for detailing header)
   itens: ItemClasseIII[]; // All items across all categories
 }
 
@@ -83,7 +86,7 @@ interface ClasseIIIRegistro {
   organizacao: string;
   ug: string;
   quantidade: number;
-  dias_operacao: number;
+  dias_operacao: number; // Global days of activity (saved for context)
   tipo_combustivel: string;
   preco_litro: number;
   total_litros: number;
@@ -314,6 +317,9 @@ export default function ClasseIIIForm() {
                         distancia_percorrida: item.distancia_percorrida || 0,
                         quantidade_deslocamentos: item.quantidade_deslocamentos || 0,
                         
+                        // NEW: Load dias_utilizados from saved item data
+                        dias_utilizados: item.dias_utilizados || 0, 
+                        
                         consumo_lubrificante_litro: consumoLubrificante,
                         preco_lubrificante: precoLubrificante,
                         preco_lubrificante_input: precoLubrificanteInput,
@@ -436,6 +442,10 @@ export default function ClasseIIIForm() {
             horas_dia: 0,
             distancia_percorrida: 0,
             quantidade_deslocamentos: 0,
+            
+            // NEW: Default dias_utilizados to 0
+            dias_utilizados: 0, 
+            
             consumo_lubrificante_litro: 0,
             preco_lubrificante: 0,
             preco_lubrificante_input: "",
@@ -461,7 +471,7 @@ export default function ClasseIIIForm() {
     const cleanedValue = inputString.replace(/[^\d,.]/g, '');
     
     // Se for um campo de quantidade, dias, deslocamentos (inteiro), remove vírgulas/pontos
-    if (field === 'quantidade' || field === 'quantidade_deslocamentos' || field === 'dias_operacao') {
+    if (field === 'quantidade' || field === 'quantidade_deslocamentos' || field === 'dias_utilizados') {
         const numericValue = parseInt(cleanedValue.replace(/[,.]/g, '')) || 0;
         handleItemFieldChange(itemIndex, field, numericValue);
         return;
@@ -526,11 +536,20 @@ export default function ClasseIIIForm() {
   
   const handleUpdateCategoryItems = () => {
     if (!form.organizacao || form.dias_operacao <= 0) {
-        toast.error("Preencha a OM e os Dias de Operação antes de salvar itens.");
+        toast.error("Preencha a OM e os Dias de Atividade (Global) antes de salvar itens.");
         return;
     }
     
-    const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
+    const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0 && item.dias_utilizados > 0);
+    
+    if (itemsToKeep.length > 0 && itemsToKeep.some(item => item.categoria !== 'MOTOMECANIZACAO' && item.horas_dia <= 0)) {
+        toast.error("Preencha as Horas/Dia para todos os equipamentos ativos.");
+        return;
+    }
+    if (itemsToKeep.length > 0 && itemsToKeep.some(item => item.categoria === 'MOTOMECANIZACAO' && (item.distancia_percorrida <= 0 || item.quantidade_deslocamentos <= 0))) {
+        toast.error("Preencha KM/Desloc e Desloc/Dia para todas as viaturas ativas.");
+        return;
+    }
     
     const itemsFromOtherCategories = form.itens.filter(item => item.categoria !== selectedTab);
     const newFormItems = [...itemsFromOtherCategories, ...itemsToKeep];
@@ -542,7 +561,7 @@ export default function ClasseIIIForm() {
   // --- Calculation Logic ---
   
   const { consolidadosCombustivel, consolidadoLubrificante } = useMemo(() => {
-    const itens = form.itens.filter(item => item.quantidade > 0);
+    const itens = form.itens.filter(item => item.quantidade > 0 && item.dias_utilizados > 0);
     if (itens.length === 0 || !refLPC || form.dias_operacao === 0) { 
       return { consolidadosCombustivel: [], consolidadoLubrificante: null }; 
     }
@@ -570,12 +589,16 @@ export default function ClasseIIIForm() {
         let litrosSemMargemItem = 0;
         let formulaDetalhe = '';
         
+        const diasUtilizados = item.dias_utilizados || 0; // Use item-specific days
+        
         if (item.categoria === 'MOTOMECANIZACAO') {
-            litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos) / item.consumo_fixo;
-            formulaDetalhe = `(${item.quantidade} ${item.item} x ${formatNumber(item.distancia_percorrida)} km x ${item.quantidade_deslocamentos} desloc) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
+            // New Moto Calculation: (KM/Desloc * Qtd * Desloc/Day * Days Used) / Consumo_fixo
+            litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
+            formulaDetalhe = `(${item.quantidade} ${item.item} x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${diasUtilizados} dias) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
         } else {
-            litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * form.dias_operacao;
-            formulaDetalhe = `(${item.quantidade} ${item.item} x ${formatNumber(item.horas_dia, 1)} horas/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${form.dias_operacao} dias`;
+            // New Non-Moto Calculation: Qtd * Horas/Day * Consumo_fixo * Days Used
+            litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
+            formulaDetalhe = `(${item.quantidade} ${item.item} x ${formatNumber(item.horas_dia, 1)} horas/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} dias`;
         }
         
         totalLitrosSemMargem += litrosSemMargemItem;
@@ -593,12 +616,13 @@ export default function ClasseIIIForm() {
       const localConsulta = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? `(${refLPC.nome_local})` : '';
       const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
       
+      // Use form.dias_operacao apenas no cabeçalho
       let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
 Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
 
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${combustivelLabel} - ${formatCurrency(precoLitro)}.
 
-Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de operação.
+Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
 ${detalhes.join('\n')}
 
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}.
@@ -621,7 +645,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     const detalhesLubrificante: string[] = [];
     
     itensComLubrificante.forEach(item => {
-      const totalHoras = item.quantidade * item.horas_dia * form.dias_operacao;
+      const diasUtilizados = item.dias_utilizados || 0; // Use item-specific days
+      const totalHoras = item.quantidade * item.horas_dia * diasUtilizados; // Use item-specific days
       let litrosItem = 0;
       let formulaDetalhe = '';
       
@@ -650,11 +675,12 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
       
+      // Use form.dias_operacao apenas no cabeçalho
       const detalhamentoLubrificante = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
 Recurso destinado à OM proprietária: ${lubricantAllocation.om_destino_recurso} (UG: ${lubricantAllocation.ug_destino_recurso})
 
 Cálculo:
-Fórmula: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de operação) x Consumo Lubrificante/hora (ou /100h).
+Fórmula: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilização) x Consumo Lubrificante/hora (ou /100h).
 
 ${itensComLubrificante.map(item => `- ${item.item}: Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}.`).join('\n')}
 
@@ -681,7 +707,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
     if (!refLPC) { toast.error("Configure a referência LPC antes de salvar"); return; }
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM"); return; }
     if (!rmFornecimento || !codugRmFornecimento) { toast.error("Selecione a RM de Fornecimento de Combustível"); return; }
-    if (form.itens.filter(i => i.quantidade > 0).length === 0) { toast.error("Adicione pelo menos um equipamento com quantidade maior que zero."); return; }
+    if (form.itens.filter(i => i.quantidade > 0 && i.dias_utilizados > 0).length === 0) { toast.error("Adicione pelo menos um equipamento com quantidade e dias de utilização maior que zero."); return; }
     if (consolidadoLubrificante && (!lubricantAllocation.om_destino_recurso || !lubricantAllocation.ug_destino_recurso)) { toast.error("Selecione a OM de destino do Lubrificante (ND 30)"); return; }
     
     let fasesFinais = [...fasesAtividade];
@@ -701,7 +727,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         organizacao: form.organizacao,
         ug: form.ug,
         quantidade: consolidado.itens.reduce((sum: number, item: ItemClasseIII) => sum + item.quantidade, 0),
-        dias_operacao: form.dias_operacao,
+        dias_operacao: form.dias_operacao, // Salva o dia global para contexto
         tipo_combustivel: consolidado.tipo_combustivel,
         preco_litro: precoLitro,
         total_litros: consolidado.total_litros,
@@ -728,7 +754,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         organizacao: lubricantAllocation.om_destino_recurso,
         ug: lubricantAllocation.ug_destino_recurso,
         quantidade: consolidadoLubrificante.itens.reduce((sum: number, item: ItemClasseIII) => sum + item.quantidade, 0),
-        dias_operacao: form.dias_operacao,
+        dias_operacao: form.dias_operacao, // Salva o dia global para contexto
         tipo_combustivel: 'LUBRIFICANTE',
         preco_litro: 0,
         total_litros: consolidadoLubrificante.total_litros,
@@ -933,13 +959,16 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
     
     let litrosSemMargemItem = 0;
     const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
+    const diasUtilizados = item.dias_utilizados || 0;
+    
+    if (diasUtilizados === 0) return sum;
     
     if (isMotomecanizacao) {
         if (item.consumo_fixo > 0) {
-            litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos) / item.consumo_fixo;
+            litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
         }
     } else {
-        litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * form.dias_operacao;
+        litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
     }
     
     const totalLitros = litrosSemMargemItem * 1.3;
@@ -954,9 +983,12 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
     
     let valorLubrificante = 0;
     const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
+    const diasUtilizados = item.dias_utilizados || 0;
+    
+    if (diasUtilizados === 0) return sum;
     
     if (isLubricantType && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0) {
-        const totalHoras = item.quantidade * item.horas_dia * form.dias_operacao;
+        const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
         let litrosItem = 0;
         
         if (item.categoria === 'GERADOR') {
@@ -1033,7 +1065,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>Dias de Atividade *</Label>
+                  <Label>Dias de Atividade (Global) *</Label>
                   <Input
                     type="text" // Alterado para text
                     inputMode="numeric"
@@ -1044,6 +1076,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                     onKeyDown={handleEnterToNextField}
                     disabled={loading}
                   />
+                  <p className="text-xs text-muted-foreground">Usado apenas no cabeçalho da memória de cálculo.</p>
                 </div>
               </div>
               
@@ -1153,18 +1186,19 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                             <Table className="w-full">
                                 <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                     <TableRow>
-                                        <TableHead className="w-[35%]">Equipamento</TableHead>
+                                        <TableHead className="w-[30%]">Equipamento</TableHead>
                                         <TableHead className="w-[10%] text-center">Qtd</TableHead>
-                                        <TableHead className="w-[20%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
-                                        <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'Desloc' : 'Consumo'}</TableHead>
-                                        <TableHead className="w-[10%] text-center">{cat.key === 'GERADOR' || cat.key === 'EMBARCACAO' ? 'Lubrificante' : 'Combustível'}</TableHead>
+                                        <TableHead className="w-[10%] text-center">Qtd Dias</TableHead> {/* NEW INPUT */}
+                                        <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
+                                        <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'Desloc/Dia' : 'Consumo Fixo'}</TableHead> {/* Dynamic column for Moto/Non-Moto */}
+                                        <TableHead className="w-[10%] text-center">Lub/Comb</TableHead>
                                         <TableHead className="w-[10%] text-right">Custo Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {currentCategoryItems.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center text-muted-foreground">
+                                            <TableCell colSpan={7} className="text-center text-muted-foreground">
                                                 Nenhum item de diretriz encontrado para esta categoria.
                                             </TableCell>
                                         </TableRow>
@@ -1173,22 +1207,27 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                             const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
                                             const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
                                             
-                                            // Calculate item cost dynamically
+                                            // --- Calculation Logic (Must be kept in sync with useMemo) ---
+                                            const diasUtilizados = item.dias_utilizados || 0;
+                                            
                                             let litrosSemMargemItem = 0;
-                                            if (isMotomecanizacao) {
-                                                if (item.consumo_fixo > 0) {
-                                                    litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos) / item.consumo_fixo;
+                                            if (diasUtilizados > 0) {
+                                                if (isMotomecanizacao) {
+                                                    if (item.consumo_fixo > 0) {
+                                                        litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
+                                                    }
+                                                } else {
+                                                    litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
                                                 }
-                                            } else {
-                                                litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * form.dias_operacao;
                                             }
+                                            
                                             const totalLitros = litrosSemMargemItem * 1.3;
                                             const precoLitro = item.tipo_combustivel_fixo === 'GASOLINA' ? (refLPC?.preco_gasolina ?? 0) : (refLPC?.preco_diesel ?? 0);
                                             const valorCombustivel = totalLitros * precoLitro;
                                             
                                             let valorLubrificante = 0;
-                                            if (isLubricantType && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0) {
-                                                const totalHoras = item.quantidade * item.horas_dia * form.dias_operacao;
+                                            if (isLubricantType && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0 && diasUtilizados > 0) {
+                                                const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
                                                 let litrosItem = 0;
                                                 if (item.categoria === 'GERADOR') {
                                                     litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
@@ -1197,21 +1236,20 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                 }
                                                 valorLubrificante = litrosItem * item.preco_lubrificante;
                                             }
-                                            
                                             const itemTotal = valorCombustivel + valorLubrificante;
+                                            // --- End Calculation Logic ---
                                             
-                                            // Determine the displayed value for the price input
                                             const formattedPriceInput = formatCurrencyInput(item.preco_lubrificante_input).formatted;
                                             
                                             return (
                                                 <TableRow key={item.item} className="h-12">
-                                                    <TableCell className="font-medium text-sm py-1">
+                                                    <TableCell className="font-medium text-sm py-1 w-[30%]">
                                                         {item.item}
                                                         <div className="text-xs text-muted-foreground">
                                                             {item.tipo_combustivel_fixo} ({formatNumber(item.consumo_fixo, 1)} {item.unidade_fixa})
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="py-1">
+                                                    <TableCell className="py-1 w-[10%]">
                                                         <Input
                                                             type="text"
                                                             inputMode="numeric"
@@ -1222,7 +1260,23 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                             onKeyDown={handleEnterToNextField}
                                                         />
                                                     </TableCell>
-                                                    <TableCell className="py-1">
+                                                    
+                                                    {/* NEW COLUMN: Qtd Dias */}
+                                                    <TableCell className="py-1 w-[10%]">
+                                                        <Input
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            className="h-8 text-center"
+                                                            value={item.dias_utilizados === 0 ? "" : item.dias_utilizados.toString()}
+                                                            onChange={(e) => handleItemNumericChange(index, 'dias_utilizados', e.target.value)}
+                                                            placeholder="0"
+                                                            disabled={item.quantidade === 0}
+                                                            onKeyDown={handleEnterToNextField}
+                                                        />
+                                                    </TableCell>
+                                                    
+                                                    {/* COLUMN 4: Horas/Dia or KM/Desloc */}
+                                                    <TableCell className="py-1 w-[15%]">
                                                         <Input
                                                             type="text"
                                                             inputMode="decimal"
@@ -1230,24 +1284,33 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                             value={isMotomecanizacao ? (item.distancia_percorrida === 0 ? "" : item.distancia_percorrida.toString()) : (item.horas_dia === 0 ? "" : item.horas_dia.toString())}
                                                             onChange={(e) => handleItemNumericChange(index, isMotomecanizacao ? 'distancia_percorrida' : 'horas_dia', e.target.value)}
                                                             placeholder="0"
-                                                            disabled={item.quantidade === 0}
+                                                            disabled={item.quantidade === 0 || diasUtilizados === 0}
                                                             onKeyDown={handleEnterToNextField}
                                                         />
                                                     </TableCell>
-                                                    <TableCell className="py-1">
-                                                        <Input
-                                                            type="text"
-                                                            inputMode="numeric"
-                                                            className="h-8 text-center"
-                                                            value={isMotomecanizacao ? (item.quantidade_deslocamentos === 0 ? "" : item.quantidade_deslocamentos.toString()) : (item.consumo_fixo === 0 ? "" : formatNumber(item.consumo_fixo, 1))}
-                                                            onChange={(e) => isMotomecanizacao && handleItemNumericChange(index, 'quantidade_deslocamentos', e.target.value)}
-                                                            placeholder="0"
-                                                            disabled={!isMotomecanizacao || item.quantidade === 0}
-                                                            readOnly={!isMotomecanizacao}
-                                                            onKeyDown={handleEnterToNextField}
-                                                        />
+                                                    
+                                                    {/* COLUMN 5: Desloc/Dia or Consumo Fixo (Now dynamic input/display) */}
+                                                    <TableCell className="py-1 w-[15%]">
+                                                        {isMotomecanizacao ? (
+                                                            <Input
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                className="h-8 text-center"
+                                                                value={item.quantidade_deslocamentos === 0 ? "" : item.quantidade_deslocamentos.toString()}
+                                                                onChange={(e) => handleItemNumericChange(index, 'quantidade_deslocamentos', e.target.value)}
+                                                                placeholder="0"
+                                                                disabled={item.quantidade === 0 || diasUtilizados === 0}
+                                                                onKeyDown={handleEnterToNextField}
+                                                            />
+                                                        ) : (
+                                                            <Badge variant="secondary" className="text-xs w-full justify-center h-8">
+                                                                {formatNumber(item.consumo_fixo, 1)} {item.unidade_fixa}
+                                                            </Badge>
+                                                        )}
                                                     </TableCell>
-                                                    <TableCell className="py-1">
+                                                    
+                                                    {/* COLUMN 6: Lub/Comb */}
+                                                    <TableCell className="py-1 w-[10%]">
                                                         {isLubricantType ? (
                                                             <Popover>
                                                                 <PopoverTrigger asChild>
@@ -1255,7 +1318,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                                         variant="outline" 
                                                                         size="sm" 
                                                                         className={cn("h-8 w-full text-xs", item.consumo_lubrificante_litro > 0 && "border-purple-500 text-purple-600")}
-                                                                        disabled={item.quantidade === 0}
+                                                                        disabled={item.quantidade === 0 || diasUtilizados === 0}
                                                                     >
                                                                         <Droplet className="h-3 w-3 mr-1" />
                                                                         {item.consumo_lubrificante_litro > 0 ? 'Configurado' : 'Lubrificante'}
@@ -1294,7 +1357,9 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                             </Badge>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="text-right font-semibold text-sm py-1">
+                                                    
+                                                    {/* COLUMN 7: Custo Total */}
+                                                    <TableCell className="text-right font-semibold text-sm py-1 w-[10%]">
                                                         {formatCurrency(itemTotal)}
                                                     </TableCell>
                                                 </TableRow>
@@ -1409,7 +1474,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                   <Button 
                     type="button" 
                     onClick={handleSalvarRegistros} 
-                    disabled={loading || !isFormValid || form.itens.filter(i => i.quantidade > 0).length === 0 || (consolidadoLubrificante && (!lubricantAllocation.om_destino_recurso || !lubricantAllocation.ug_destino_recurso))}
+                    disabled={loading || !isFormValid || form.itens.filter(i => i.quantidade > 0 && i.dias_utilizados > 0).length === 0 || (consolidadoLubrificante && (!lubricantAllocation.om_destino_recurso || !lubricantAllocation.ug_destino_recurso))}
                   >
                     {loading ? "Aguarde..." : "Salvar Registros Consolidados"}
                   </Button>
