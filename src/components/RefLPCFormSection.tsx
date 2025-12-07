@@ -219,15 +219,22 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
     <Card className="mb-6 border-2 border-primary/20" ref={contentRef}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Fuel className="h-5 w-5" />
-            Referência de Preços - Consulta LPC
-            {refLPC && (
-                <span className={`text-xs font-normal px-2 py-0.5 rounded-full ${sourceBg} ${sourceColor}`}>
-                    {sourceText}
-                </span>
-            )}
-          </CardTitle>
+          {/* Novo container clicável para o título */}
+          <div 
+            className="flex items-center flex-1 cursor-pointer"
+            onClick={() => setIsLPCFormExpanded(!isLPCFormExpanded)}
+          >
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Fuel className="h-5 w-5" />
+              Referência de Preços - Consulta LPC
+              {refLPC && (
+                  <span className={`text-xs font-normal px-2 py-0.5 rounded-full ${sourceBg} ${sourceColor}`}>
+                      {sourceText}
+                  </span>
+              )}
+            </CardTitle>
+          </div>
+          {/* O botão de seta continua ativo */}
           <Button 
             variant="ghost" 
             size="icon" 
