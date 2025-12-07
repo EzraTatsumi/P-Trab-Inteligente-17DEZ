@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { RefLPC, RefLPCForm, RefLPCSource } from "@/types/refLPC";
-import { getPreviousWeekRange, formatNumberForInput } from "@/lib/formatUtils";
+import { getPreviousWeekRange, formatNumberForInput, parseInputToNumber, formatInputWithThousands } from "@/lib/formatUtils";
 import { fetchFuelPrice } from "@/integrations/supabase/api";
 
 interface RefLPCFormSectionProps {
@@ -25,17 +25,15 @@ const initialFormState: RefLPCForm = {
   data_fim_consulta: "",
   ambito: "Nacional",
   nome_local: "",
-  preco_diesel: 0,
-  preco_gasolina: 0,
-  source: "Manual", // Adicionado source padrão
+  preco_diesel: "", // Alterado para string para manipulação de input
+  preco_gasolina: "", // Alterado para string para manipulação de input
+  source: "Manual",
 };
 
 export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSectionProps) => {
-  // Inicializa o estado de expansão baseado no prop inicial.
-  // Se refLPC for null, abre (true). Se não for null, fecha (false).
+  const [formLPC, setFormLPC] = useState<RefLPCForm>(initialFormState);
   const [isLPCFormExpanded, setIsLPCFormExpanded] = useState(refLPC === null);
   
-  const [formLPC, setFormLPC] = useState<RefLPCForm>(initialFormState);
   const [loading, setLoading] = useState(false);
   const { handleEnterToNextField } = useFormNavigation();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -47,14 +45,15 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         data_fim_consulta: refLPC.data_fim_consulta,
         ambito: refLPC.ambito as 'Nacional' | 'Estadual' | 'Municipal',
         nome_local: refLPC.nome_local || "",
-        preco_diesel: Number(refLPC.preco_diesel),
-        preco_gasolina: Number(refLPC.preco_gasolina),
-        source: refLPC.source || 'Manual', // Lê a fonte do registro existente
+        // Inicializa como string formatada
+        preco_diesel: formatNumberForInput(Number(refLPC.preco_diesel), 2),
+        preco_gasolina: formatNumberForInput(Number(refLPC.preco_gasolina), 2),
+        source: refLPC.source || 'Manual',
       });
-      setIsLPCFormExpanded(false); // Garante que feche após o carregamento assíncrono
+      setIsLPCFormExpanded(false);
     } else {
       setFormLPC(initialFormState);
-      setIsLPCFormExpanded(true); // Garante que abra se o carregamento assíncrono confirmar que é nulo
+      setIsLPCFormExpanded(true);
     }
   }, [refLPC]);
 
@@ -63,7 +62,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
     setFormLPC(prev => ({
         ...prev,
         [field]: value,
-        source: 'Manual' // Qualquer alteração manual define a fonte como Manual
+        source: 'Manual'
     }));
   };
 
@@ -72,7 +71,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         ...prev,
         ambito: val,
         nome_local: '',
-        source: 'Manual' // Qualquer alteração manual define a fonte como Manual
+        source: 'Manual'
     }));
   };
 
@@ -87,9 +86,9 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
       return;
     }
     
-    // Converte os valores de preço para numérico antes de salvar
-    const dieselPrice = parseFloat(String(formLPC.preco_diesel).replace(/\./g, '').replace(',', '.')) || 0;
-    const gasolinePrice = parseFloat(String(formLPC.preco_gasolina).replace(/\./g, '').replace(',', '.')) || 0;
+    // Converte os valores de preço (que estão em string formatada) para numérico antes de salvar
+    const dieselPrice = parseInputToNumber(String(formLPC.preco_diesel));
+    const gasolinePrice = parseInputToNumber(String(formLPC.preco_gasolina));
 
     if (dieselPrice <= 0 || gasolinePrice <= 0) {
       toast.error("Os preços devem ser maiores que zero");
@@ -106,7 +105,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         nome_local: formLPC.nome_local,
         preco_diesel: dieselPrice,
         preco_gasolina: gasolinePrice,
-        source: formLPC.source, // Salva a fonte atual
+        source: formLPC.source,
       };
 
       let result;
@@ -158,9 +157,10 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         data_fim_consulta: end,
         ambito: 'Nacional',
         nome_local: '',
-        preco_diesel: dieselResult.price,
-        preco_gasolina: gasolinaResult.price,
-        source: 'API', // Define a fonte como API
+        // Salva como string formatada
+        preco_diesel: formatNumberForInput(dieselResult.price, 2),
+        preco_gasolina: formatNumberForInput(gasolinaResult.price, 2),
+        source: 'API',
       }));
       
       toast.success(`Preços de combustível atualizados via API! Fonte: ${dieselResult.source}`);
@@ -175,30 +175,36 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
   // Handlers para inputs de preço (para permitir vírgula e formatação)
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'preco_diesel' | 'preco_gasolina') => {
     const rawValue = e.target.value;
-    // Permite digitação livre, incluindo vírgula ou ponto, mas sem caracteres extras
-    const cleanedValue = rawValue.replace(/[^0-9,.]/g, '');
+    // Aplica a formatação de milhar e decimal enquanto digita
+    const formattedValue = formatInputWithThousands(rawValue);
+    
     setFormLPC(prev => ({ 
         ...prev, 
-        [field]: cleanedValue,
-        source: 'Manual' // Qualquer interação manual com o preço define a fonte como Manual
+        [field]: formattedValue,
+        source: 'Manual'
     }));
   };
 
   const handlePriceBlur = (e: React.FocusEvent<HTMLInputElement>, field: 'preco_diesel' | 'preco_gasolina') => {
-    const numericValue = parseFloat(e.target.value.replace(/\./g, '').replace(',', '.')) || 0;
+    const numericValue = parseInputToNumber(e.target.value);
+    
+    // Formata o valor numérico de volta para a string de exibição com 2 casas decimais
+    const formattedString = formatNumberForInput(numericValue, 2);
+    
     setFormLPC(prev => ({ 
         ...prev, 
-        [field]: numericValue,
-        source: 'Manual' // Ao sair do campo, confirma a fonte como Manual
+        [field]: formattedString,
+        source: 'Manual'
     }));
   };
   
   // Função para formatar o valor numérico para exibição no input
   const formatPriceForInput = (price: number | string): string => {
+    // Se o preço já for uma string (formatada ou em digitação), retorna a string
     if (typeof price === 'string') {
-        // Se for string (durante a digitação), retorna a string
         return price;
     }
+    // Se for um número (o que não deve acontecer após o useEffect, mas por segurança), formata
     return formatNumberForInput(price, 2);
   };
 
