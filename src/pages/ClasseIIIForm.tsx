@@ -1878,7 +1878,8 @@ const getMemoriaRecords = granularRegistros;
                           
                           if (isCombustivel) {
                             badgeText = suprimentoGroup.original_registro.tipo_combustivel;
-                            badgeClass = 'bg-green-600 text-white hover:bg-green-700'; // Cor padronizada para Combustível
+                            // Use getCombustivelBadgeClass based on the specific fuel type
+                            badgeClass = getCombustivelBadgeClass(suprimentoGroup.original_registro.tipo_combustivel as CombustivelTipo);
                           } else {
                             badgeText = 'LUBRIFICANTE';
                             badgeClass = 'bg-purple-600 text-white hover:bg-purple-700'; // Cor padronizada para Lubrificante
