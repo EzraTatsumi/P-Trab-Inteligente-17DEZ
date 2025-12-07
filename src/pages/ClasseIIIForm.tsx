@@ -1937,10 +1937,10 @@ const getMemoriaRecords = granularRegistros;
                                       <div key={cat.key} className="flex justify-between text-xs">
                                         <span className="text-muted-foreground flex items-center gap-1">
                                           <cat.icon className="h-3 w-3" />
-                                          {cat.label}:
+                                          {cat.label}: {formatNumber(totais.litros, 2)} L
                                         </span>
-                                        <span className="font-medium text-foreground">
-                                          {formatNumber(totais.litros, 2)} L ({formatCurrency(totais.valor)})
+                                        <span className="font-medium text-foreground text-right">
+                                          {formatCurrency(totais.valor)}
                                         </span>
                                       </div>
                                     );
