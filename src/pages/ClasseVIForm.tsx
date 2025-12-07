@@ -322,7 +322,7 @@ const ClasseVIForm = () => {
     if (!ptrabId) return;
     
     const { data, error } = await supabase
-      .from("classe_vi_registros")
+      .from("classe_vi_registros") // FIX: Usando a tabela correta
       .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
       .eq("p_trab_id", ptrabId)
       .order("organizacao", { ascending: true })
@@ -539,7 +539,7 @@ const ClasseVIForm = () => {
         return;
     }
     
-    const registrosParaSalvar: TablesInsert<'classe_vi_registros'>[] = [];
+    const registrosParaSalvar: TablesInsert<'classe_vi_registros'>[] = []; // FIX: Usando a tabela correta
     
     for (const categoria of categoriesToSave) {
         const itens = itemsByActiveCategory[categoria];
@@ -571,7 +571,7 @@ const ClasseVIForm = () => {
             allocation.nd_39_value
         );
         
-        const registro: TablesInsert<'classe_vi_registros'> = {
+        const registro: TablesInsert<'classe_vi_registros'> = { // FIX: Usando a tabela correta
             p_trab_id: ptrabId,
             organizacao: allocation.om_destino_recurso,
             ug: allocation.ug_destino_recurso,
@@ -590,21 +590,21 @@ const ClasseVIForm = () => {
 
     try {
       const { error: deleteError } = await supabase
-        .from("classe_vii_registros")
+        .from("classe_vi_registros") // FIX: Usando a tabela correta
         .delete()
         .eq("p_trab_id", ptrabId);
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
-      const { error: insertError } = await supabase.from("classe_vii_registros").insert(registrosParaSalvar);
+      const { error: insertError } = await supabase.from("classe_vi_registros").insert(registrosParaSalvar); // FIX: Usando a tabela correta
       if (insertError) throw insertError;
       
-      toast.success(editingId ? "Registros de Classe VII atualizados com sucesso!" : "Registros de Classe VII salvos com sucesso!");
+      toast.success(editingId ? "Registros de Classe VI atualizados com sucesso!" : "Registros de Classe VI salvos com sucesso!"); // FIX: Mensagem correta
       await updatePTrabStatusIfAberto(ptrabId);
       resetFormFields();
       fetchRegistros();
     } catch (error) {
-      console.error("Erro ao salvar registros de Classe VII:", error);
-      toast.error("Erro ao salvar registros de Classe VII");
+      console.error("Erro ao salvar registros de Classe VI:", error); // FIX: Mensagem correta
+      toast.error("Erro ao salvar registros de Classe VI"); // FIX: Mensagem correta
     } finally {
       setLoading(false);
     }
@@ -615,7 +615,7 @@ const ClasseVIForm = () => {
     resetFormFields();
     
     const { data: allRecords, error: fetchAllError } = await supabase
-        .from("classe_vii_registros")
+        .from("classe_vi_registros") // FIX: Usando a tabela correta
         .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
         .eq("p_trab_id", ptrabId);
         
@@ -625,13 +625,13 @@ const ClasseVIForm = () => {
         return;
     }
     
-    let consolidatedItems: ItemClasseVII[] = [];
+    let consolidatedItems: ItemClasseVI[] = [];
     let newAllocations = { ...initialCategoryAllocations };
     let firstOmDetentora: { nome: string, ug: string } | null = null;
     
     (allRecords || []).forEach(r => {
         const category = r.categoria as Categoria;
-        const items = (r.itens_equipamentos || []) as ItemClasseVII[];
+        const items = (r.itens_equipamentos || []) as ItemClasseVI[];
         
         consolidatedItems = consolidatedItems.concat(items);
         
@@ -733,7 +733,7 @@ const ClasseVIForm = () => {
     setLoading(true);
     try {
       const { error } = await supabase
-        .from("classe_vii_registros")
+        .from("classe_vi_registros") // FIX: Usando a tabela correta
         .update({
           detalhamento_customizado: memoriaEdit.trim() || null,
         })
@@ -760,7 +760,7 @@ const ClasseVIForm = () => {
     setLoading(true);
     try {
       const { error } = await supabase
-        .from("classe_vii_registros")
+        .from("classe_vi_registros") // FIX: Usando a tabela correta
         .update({
           detalhamento_customizado: null,
         })
@@ -797,10 +797,10 @@ const ClasseVIForm = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              Classe VII - Comunicações e Informática
+              Classe VI - Material de Engenharia {/* FIX: Título correto */}
             </CardTitle>
             <CardDescription>
-              Solicitação de recursos para manutenção de material de Classe VII.
+              Solicitação de recursos para manutenção de material de Classe VI. {/* FIX: Descrição correta */}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -898,7 +898,7 @@ const ClasseVIForm = () => {
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
                 <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as Categoria)}>
-                  <TabsList className="grid w-full grid-cols-4">
+                  <TabsList className="grid w-full grid-cols-2"> {/* FIX: 2 colunas para Classe VI */}
                     {CATEGORIAS.map(cat => (
                       <TabsTrigger key={cat} value={cat}>{getCategoryLabel(cat)}</TabsTrigger>
                     ))}
@@ -1210,8 +1210,8 @@ const ClasseVIForm = () => {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => {
-                                                                if (confirm(`Deseja realmente deletar o registro de Classe VII para ${omName} (${registro.categoria})?`)) {
-                                                                    supabase.from("classe_vii_registros")
+                                                                if (confirm(`Deseja realmente deletar o registro de Classe VI para ${omName} (${registro.categoria})?`)) {
+                                                                    supabase.from("classe_vi_registros") // FIX: Usando a tabela correta
                                                                         .delete()
                                                                         .eq("id", registro.id)
                                                                         .then(() => {
@@ -1266,7 +1266,7 @@ const ClasseVIForm = () => {
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
                   const memoriaAutomatica = generateDetalhamento(
-                      registro.itens_equipamentos as ItemClasseVII[], 
+                      registro.itens_equipamentos as ItemClasseVI[], 
                       registro.dias_operacao, 
                       registro.organizacao, 
                       registro.ug, 
@@ -1374,4 +1374,4 @@ const ClasseVIForm = () => {
   );
 }
 
-export default ClasseVIIForm;
+export default ClasseVIForm;
