@@ -1758,21 +1758,21 @@ const getMemoriaRecords = granularRegistros;
                                                     </span>
                                                 </div>
                                                 
-                                                {/* BOTÕES DE CONFIRMAR E CANCELAR */}
+                                                {/* BOTÕES DE CONFIRMAR E CANCELAR (ORDEM INVERTIDA) */}
                                                 <div className="flex justify-end gap-2 pt-2">
-                                                    <Button 
-                                                        variant="outline" 
-                                                        size="sm" 
-                                                        onClick={handleCancelLubricant}
-                                                    >
-                                                        Cancelar
-                                                    </Button>
                                                     <Button 
                                                         size="sm" 
                                                         onClick={handleConfirmLubricant}
                                                         disabled={calculatedLubricantTotal === 0}
                                                     >
                                                         Confirmar
+                                                    </Button>
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        onClick={handleCancelLubricant}
+                                                    >
+                                                        Cancelar
                                                     </Button>
                                                 </div>
                                               </PopoverContent>
