@@ -295,6 +295,7 @@ const ClasseIIIForm = () => {
   const [registros, setRegistros] = useState<ClasseIIIRegistro[]>([]);
   const [loading, setLoading] = useState(true);
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
+  const [isLpcLoaded, setIsLpcLoaded] = useState(false); // NOVO ESTADO
   const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
   const [memoriaEdit, setMemoriaEdit] = useState<string>("");
   const [selectedTab, setSelectedTab] = useState<TipoEquipamento>(CATEGORIAS[0].key);
@@ -341,10 +342,14 @@ const ClasseIIIForm = () => {
   const loadInitialData = async () => {
     setLoading(true);
     await loadAllDiretrizItems(); // Load directives first
-    await Promise.all([
-      loadRefLPC(),
-      fetchRegistros(true), // Pass true to trigger reconstruction after directives are loaded
-    ]);
+    
+    // Carrega LPC primeiro
+    await loadRefLPC();
+    setIsLpcLoaded(true); // Marca que o LPC foi carregado (mesmo que seja null)
+    
+    // Depois carrega os registros
+    await fetchRegistros(true); 
+    
     setLoading(false);
   };
 
@@ -462,13 +467,14 @@ const ClasseIIIForm = () => {
           
           if (directiveItem) {
             const precoLubrificante = item.preco_lubrificante || 0;
+            // Converte o preço para a string de dígitos (centavos) para o input mascarado
             const precoLubrificanteInput = precoLubrificante > 0 
-              ? String(Math.round(precoLubrificante * 100)) // Converte para centavos em string
+              ? String(Math.round(precoLubrificante * 100))
               : "";
             
             const consumoLubrificante = item.consumo_lubrificante_litro || 0;
             const consumoLubrificanteInput = consumoLubrificante > 0 
-              ? formatNumberForInput(consumoLubrificante, 2) // Formata para exibição inicial
+              ? formatNumberForInput(consumoLubrificante, 2)
               : "";
             
             const newItem: ItemClasseIII = {
@@ -1363,14 +1369,33 @@ const getMemoriaRecords = granularRegistros;
           <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
         </Button>
         
-        {/* LPC Section */}
-        <div ref={lpcRef}>
-          <RefLPCFormSection 
-            ptrabId={ptrabId!} 
-            refLPC={refLPC} 
-            onUpdate={handleRefLPCUpdate} 
-          />
-        </div>
+        {/* LPC Section - Renderiza somente após o carregamento inicial */}
+        {isLpcLoaded ? (
+          <div ref={lpcRef}>
+            <RefLPCFormSection 
+              ptrabId={ptrabId!} 
+              refLPC={refLPC} 
+              onUpdate={handleRefLPCUpdate} 
+            />
+          </div>
+        ) : (
+          <Card className="mb-6 border-2 border-primary/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Fuel className="h-5 w-5" />
+                Referência de Preços - Consulta LPC
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-center py-4">
+              <Alert className="w-full">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <AlertDescription>
+                  Carregando referência de preços...
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+        )}
         
         <Card>
           <CardHeader>
@@ -1380,11 +1405,13 @@ const getMemoriaRecords = granularRegistros;
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {!refLPC && (
-              <Alert className="mb-4">
-                <Fuel className="h-4 w-4" />
-                <AlertDescription>
-                  Configure a referência LPC antes de adicionar equipamentos.
+            
+            {/* Alerta se LPC não estiver configurado */}
+            {isLpcLoaded && !refLPC && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="font-medium">
+                  Atenção: A Referência LPC não está configurada. Por favor, preencha a seção acima para habilitar o cálculo de custos.
                 </AlertDescription>
               </Alert>
             )}
