@@ -1534,18 +1534,7 @@ export default function ClasseIIIForm() {
                           })}
                         </div>
                         
-                        <div className="pt-2 border-t mt-2">
-                            <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground">Custo Combustível:</span>
-                                <span className="font-medium text-foreground">{formatCurrency(totalCombustivelCategoria)}</span>
-                            </div>
-                            {totalLubrificanteCategoria > 0 && (
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-muted-foreground">Custo Lubrificante:</span>
-                                    <span className="font-medium text-purple-600">{formatCurrency(totalLubrificanteCategoria)}</span>
-                                </div>
-                            )}
-                        </div>
+                        {/* REMOVIDO: Detalhes de Custo Combustível e Lubrificante */}
                       </Card>
                     );
                   })}
