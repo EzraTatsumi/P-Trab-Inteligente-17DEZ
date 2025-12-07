@@ -1186,10 +1186,10 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                             <Table className="w-full">
                                 <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                     <TableRow>
-                                        <TableHead className="w-[30%]">Equipamento</TableHead>
+                                        <TableHead className="w-[35%]">Equipamento</TableHead>
                                         <TableHead className="w-[10%] text-center">Qtd</TableHead>
                                         <TableHead className="w-[10%] text-center">Qtd Dias</TableHead> {/* NEW INPUT */}
-                                        <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
+                                        <TableHead className="w-[20%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'KM/Desloc' : 'Horas/Dia'}</TableHead>
                                         <TableHead className="w-[15%] text-center">{cat.key === 'MOTOMECANIZACAO' ? 'Desloc/Dia' : 'Consumo Fixo'}</TableHead> {/* Dynamic column for Moto/Non-Moto */}
                                         <TableHead className="w-[10%] text-center">Lub/Comb</TableHead>
                                         <TableHead className="w-[10%] text-right">Custo Total</TableHead>
@@ -1243,7 +1243,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                             
                                             return (
                                                 <TableRow key={item.item} className="h-12">
-                                                    <TableCell className="font-medium text-sm py-1 w-[30%]">
+                                                    <TableCell className="font-medium text-sm py-1 w-[35%]">
                                                         {item.item}
                                                         <div className="text-xs text-muted-foreground">
                                                             {item.tipo_combustivel_fixo} ({formatNumber(item.consumo_fixo, 1)} {item.unidade_fixa})
@@ -1276,7 +1276,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                                     </TableCell>
                                                     
                                                     {/* COLUMN 4: Horas/Dia or KM/Desloc */}
-                                                    <TableCell className="py-1 w-[15%]">
+                                                    <TableCell className="py-1 w-[20%]">
                                                         <Input
                                                             type="text"
                                                             inputMode="decimal"
