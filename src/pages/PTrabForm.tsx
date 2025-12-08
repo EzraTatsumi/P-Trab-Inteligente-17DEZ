@@ -84,6 +84,7 @@ const PTrabForm = () => {
       totalClasseI: 0,
       totalClasseII: 0,
       totalClasseV: 0,
+      totalClasseVIII: 0, // NOVO
       totalCombustivel: 0,
       totalLubrificanteValor: 0,
     } as any,

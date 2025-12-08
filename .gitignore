@@ -71,6 +71,3 @@ src/components/ImportConflictDialog.tsx
 src/lib/cryptoUtils.ts
 
 # Excluir arquivos de Gerenciamento, Clonagem e Crédito
-src/pages/PTrabManager.tsx
-src/components/CloneVariationDialog.tsx
-src/components/CreditPromptDialog.tsx

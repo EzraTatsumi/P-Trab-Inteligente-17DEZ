@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Droplet, ClipboardList, Swords, Radio, Activity, HeartPulse, PawPrint } from "lucide-react";
+import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Droplet, ClipboardList, Swords, Radio, Activity, HeartPulse } from "lucide-react";
 import {
   Accordion,
   AccordionItem,
@@ -18,8 +18,7 @@ const CATEGORIAS_CLASSE_II = ["Equipamento Individual", "Proteção Balística",
 const CATEGORIAS_CLASSE_V = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 const CATEGORIAS_CLASSE_VI = ["Embarcação", "Equipamento de Engenharia"];
 const CATEGORIAS_CLASSE_VII = ["Comunicações", "Informática"];
-// NOVO: Categorias da Classe VIII
-const CATEGORIAS_CLASSE_VIII = ["Saúde - KPSI/KPT", "Remonta - Mnt/Dia"];
+const CATEGORIAS_CLASSE_VIII = ["Saúde", "Remonta/Veterinária"]; // NOVO
 
 interface ItemClasseII {
   item: string;
@@ -74,8 +73,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     { data: classeVData, error: classeVError },
     { data: classeVIData, error: classeVIError },
     { data: classeVIIData, error: classeVIIError },
-    { data: classeVIIISaudeData, error: classeVIIISaudeError }, // NOVO
-    { data: classeVIIIRemontaData, error: classeVIIIRemontaError }, // NOVO
+    { data: classeVIIIData, error: classeVIIIError }, // NOVO
   ] = await Promise.all([
     supabase
       .from('classe_ii_registros')
@@ -93,28 +91,24 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .from('classe_vii_registros')
       .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
       .eq('p_trab_id', ptrabId),
-    supabase // NOVO
-      .from('classe_viii_saude_registros')
-      .select('valor_total, itens_saude, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
-      .eq('p_trab_id', ptrabId),
-    supabase // NOVO
-      .from('classe_viii_remonta_registros')
-      .select('valor_total, quantidade_animais, animal_tipo, dias_operacao, organizacao, valor_nd_30, valor_nd_39')
+    supabase
+      .from('classe_viii_registros') // NOVO
+      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
       .eq('p_trab_id', ptrabId),
   ]);
 
-  if (classeIIError) throw classeIIError;
-  if (classeVError) throw classeVError;
-  if (classeVIError) throw classeVIError;
-  if (classeVIIError) throw classeVIIError;
-  if (classeVIIISaudeError) throw classeVIIISaudeError; // NOVO
-  if (classeVIIIRemontaError) throw classeVIIIRemontaError; // NOVO
+  if (classeIIError) console.error("Erro ao carregar Classe II:", classeIIError);
+  if (classeVError) console.error("Erro ao carregar Classe V:", classeVError);
+  if (classeVIError) console.error("Erro ao carregar Classe VI:", classeVIError);
+  if (classeVIIError) console.error("Erro ao carregar Classe VII:", classeVIIError);
+  if (classeVIIIError) console.error("Erro ao carregar Classe VIII:", classeVIIIError); // NOVO
   
   const allClasseItemsData = [
     ...(classeIIData || []),
     ...(classeVData || []),
     ...(classeVIData || []),
     ...(classeVIIData || []),
+    ...(classeVIIIData || []), // NOVO
   ];
   
   let totalClasseII = 0;
@@ -141,24 +135,16 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   let totalItensClasseVII = 0;
   const groupedClasseVIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
   
-  // NOVO: Classe VIII - Saúde
-  let totalClasseVIIISaude = 0;
-  let totalClasseVIIISaude_ND30 = 0;
-  let totalClasseVIIISaude_ND39 = 0;
-  let totalItensClasseVIIISaude = 0;
-  const groupedClasseVIIISaudeCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
+  let totalClasseVIII = 0; // NOVO
+  let totalClasseVIII_ND30 = 0; // NOVO
+  let totalClasseVIII_ND39 = 0; // NOVO
+  let totalItensClasseVIII = 0; // NOVO
+  const groupedClasseVIIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {}; // NOVO
   
-  // NOVO: Classe VIII - Remonta
-  let totalClasseVIIIRemonta = 0;
-  let totalClasseVIIIRemonta_ND30 = 0;
-  let totalClasseVIIIRemonta_ND39 = 0;
-  let totalItensClasseVIIIRemonta = 0;
-  const groupedClasseVIIIRemontaCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
-  
-  // Processar Classe II, V, VI, VII
   (allClasseItemsData || []).forEach(record => {
     const category = record.categoria;
-    const items = (record.itens_equipamentos || []) as ItemClasseII[];
+    // Para Classe VIII, itens_equipamentos contém ItemClasseVIII, que tem 'quantidade' e 'valor_unitario'
+    const items = (record.itens_equipamentos || []) as any[]; 
     const totalItemsCategory = items.reduce((sum, item) => sum + (item.quantidade || 0), 0);
     
     const valorTotal = record.valor_total;
@@ -166,6 +152,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     const valorND39 = Number(record.valor_nd_39);
 
     if (CATEGORIAS_CLASSE_II.includes(category)) {
+        // CLASSE II
         totalClasseII += valorTotal;
         totalClasseII_ND30 += valorND30;
         totalClasseII_ND39 += valorND39;
@@ -180,6 +167,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         groupedClasseIICategories[category].totalItens += totalItemsCategory;
 
     } else if (CATEGORIAS_CLASSE_V.includes(category)) {
+        // CLASSE V
         totalClasseV += valorTotal;
         totalClasseV_ND30 += valorND30;
         totalClasseV_ND39 += valorND39;
@@ -193,6 +181,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         groupedClasseVCategories[category].totalND39 += valorND39;
         groupedClasseVCategories[category].totalItens += totalItemsCategory;
     } else if (CATEGORIAS_CLASSE_VI.includes(category)) {
+        // CLASSE VI
         totalClasseVI += valorTotal;
         totalClasseVI_ND30 += valorND30;
         totalClasseVI_ND39 += valorND39;
@@ -206,6 +195,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         groupedClasseVICategories[category].totalND39 += valorND39;
         groupedClasseVICategories[category].totalItens += totalItemsCategory;
     } else if (CATEGORIAS_CLASSE_VII.includes(category)) {
+        // CLASSE VII
         totalClasseVII += valorTotal;
         totalClasseVII_ND30 += valorND30;
         totalClasseVII_ND39 += valorND39;
@@ -218,54 +208,21 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         groupedClasseVIICategories[category].totalND30 += valorND30;
         groupedClasseVIICategories[category].totalND39 += valorND39;
         groupedClasseVIICategories[category].totalItens += totalItemsCategory;
+    } else if (CATEGORIAS_CLASSE_VIII.includes(category)) {
+        // CLASSE VIII (NOVO)
+        totalClasseVIII += valorTotal;
+        totalClasseVIII_ND30 += valorND30;
+        totalClasseVIII_ND39 += valorND39;
+        totalItensClasseVIII += totalItemsCategory;
+
+        if (!groupedClasseVIIICategories[category]) {
+            groupedClasseVIIICategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
+        }
+        groupedClasseVIIICategories[category].totalValor += valorTotal;
+        groupedClasseVIIICategories[category].totalND30 += valorND30;
+        groupedClasseVIIICategories[category].totalND39 += valorND39;
+        groupedClasseVIIICategories[category].totalItens += totalItemsCategory;
     }
-  });
-  
-  // Processar Classe VIII - Saúde
-  (classeVIIISaudeData || []).forEach(record => {
-    const category = record.categoria;
-    const items = (record.itens_saude || []) as { item: string, quantidade: number }[];
-    const totalItemsCategory = items.reduce((sum, item) => sum + (item.quantidade || 0), 0);
-    
-    const valorTotal = record.valor_total;
-    const valorND30 = Number(record.valor_nd_30);
-    const valorND39 = Number(record.valor_nd_39);
-
-    totalClasseVIIISaude += valorTotal;
-    totalClasseVIIISaude_ND30 += valorND30;
-    totalClasseVIIISaude_ND39 += valorND39;
-    totalItensClasseVIIISaude += totalItemsCategory;
-
-    if (!groupedClasseVIIISaudeCategories[category]) {
-        groupedClasseVIIISaudeCategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
-    }
-    groupedClasseVIIISaudeCategories[category].totalValor += valorTotal;
-    groupedClasseVIIISaudeCategories[category].totalND30 += valorND30;
-    groupedClasseVIIISaudeCategories[category].totalND39 += valorND39;
-    groupedClasseVIIISaudeCategories[category].totalItens += totalItemsCategory;
-  });
-  
-  // Processar Classe VIII - Remonta
-  (classeVIIIRemontaData || []).forEach(record => {
-    const category = `Remonta - ${record.animal_tipo}`;
-    const totalItemsCategory = record.quantidade_animais;
-    
-    const valorTotal = record.valor_total;
-    const valorND30 = Number(record.valor_nd_30);
-    const valorND39 = Number(record.valor_nd_39);
-
-    totalClasseVIIIRemonta += valorTotal;
-    totalClasseVIIIRemonta_ND30 += valorND30;
-    totalClasseVIIIRemonta_ND39 += valorND39;
-    totalItensClasseVIIIRemonta += totalItemsCategory;
-
-    if (!groupedClasseVIIIRemontaCategories[category]) {
-        groupedClasseVIIIRemontaCategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
-    }
-    groupedClasseVIIIRemontaCategories[category].totalValor += valorTotal;
-    groupedClasseVIIIRemontaCategories[category].totalND30 += valorND30;
-    groupedClasseVIIIRemontaCategories[category].totalND39 += valorND39;
-    groupedClasseVIIIRemontaCategories[category].totalItens += totalItemsCategory;
   });
   
   // 3. Fetch Classe III totals (Combustível e Lubrificante)
@@ -276,14 +233,17 @@ const fetchPTrabTotals = async (ptrabId: string) => {
 
   if (classeIIIError) throw classeIIIError;
 
+  // Combustível (ND 33.90.30)
   const combustivelRecords = (classeIIIData || []).filter(r => 
     r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR' && r.tipo_equipamento !== 'LUBRIFICANTE_EMBARCACAO'
   );
   
+  // Lubrificante (ND 33.90.30)
   const lubrificanteRecords = (classeIIIData || []).filter(r => 
     r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO'
   );
 
+  // Totais de Combustível (ND 33.90.30)
   const totalDieselValor = combustivelRecords
     .filter(r => r.tipo_combustivel === 'DIESEL' || r.tipo_combustivel === 'OD')
     .reduce((sum, record) => sum + record.valor_total, 0);
@@ -302,17 +262,21 @@ const fetchPTrabTotals = async (ptrabId: string) => {
 
   const totalCombustivel = totalDieselValor + totalGasolinaValor;
   
+  // Totais de Lubrificante (ND 33.90.30)
   const totalLubrificanteValor = lubrificanteRecords
     .reduce((sum, record) => sum + record.valor_total, 0);
     
   const totalLubrificanteLitros = lubrificanteRecords
     .reduce((sum, record) => sum + record.total_litros, 0);
 
-  // O total logístico para o PTrab é a soma de todas as classes
-  const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIIISaude + totalClasseVIIIRemonta + totalCombustivel + totalLubrificanteValor;
+  // O total logístico para o PTrab é a soma de todas as Classes (ND 30 + ND 39) + Classe III
+  const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalCombustivel + totalLubrificanteValor;
   
+  // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
   const totalAviacaoExercito = 0;
+  
+  // Total Operacional (Placeholder)
   const totalOperacional = 0;
 
   return {
@@ -343,17 +307,11 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalItensClasseVII,
     groupedClasseVIICategories,
     
-    totalClasseVIIISaude, // NOVO
-    totalClasseVIIISaude_ND30, // NOVO
-    totalClasseVIIISaude_ND39, // NOVO
-    totalItensClasseVIIISaude, // NOVO
-    groupedClasseVIIISaudeCategories, // NOVO
-    
-    totalClasseVIIIRemonta, // NOVO
-    totalClasseVIIIRemonta_ND30, // NOVO
-    totalClasseVIIIRemonta_ND39, // NOVO
-    totalItensClasseVIIIRemonta, // NOVO
-    groupedClasseVIIIRemontaCategories, // NOVO
+    totalClasseVIII, // NOVO
+    totalClasseVIII_ND30, // NOVO
+    totalClasseVIII_ND39, // NOVO
+    totalItensClasseVIII, // NOVO
+    groupedClasseVIIICategories, // NOVO
     
     totalComplemento,
     totalEtapaSolicitadaValor,
@@ -406,18 +364,13 @@ export const PTrabCostSummary = ({
       totalClasseVII: 0,
       totalClasseVII_ND30: 0,
       totalClasseVII_ND39: 0,
-      totalItensClasseVII: 0,
       groupedClasseVIICategories: {},
-      totalClasseVIIISaude: 0, // NOVO
-      totalClasseVIIISaude_ND30: 0, // NOVO
-      totalClasseVIIISaude_ND39: 0, // NOVO
-      totalItensClasseVIIISaude: 0, // NOVO
-      groupedClasseVIIISaudeCategories: {}, // NOVO
-      totalClasseVIIIRemonta: 0, // NOVO
-      totalClasseVIIIRemonta_ND30: 0, // NOVO
-      totalClasseVIIIRemonta_ND39: 0, // NOVO
-      totalItensClasseVIIIRemonta: 0, // NOVO
-      groupedClasseVIIIRemontaCategories: {}, // NOVO
+      totalItensClasseVII: 0,
+      totalClasseVIII: 0, // NOVO
+      totalClasseVIII_ND30: 0, // NOVO
+      totalClasseVIII_ND39: 0, // NOVO
+      groupedClasseVIIICategories: {}, // NOVO
+      totalItensClasseVIII: 0, // NOVO
       totalComplemento: 0,
       totalEtapaSolicitadaValor: 0,
       totalDiasEtapaSolicitada: 0,
@@ -485,13 +438,12 @@ export const PTrabCostSummary = ({
 
   const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
   
+  // FIX: Add nullish coalescing operator (?? {}) to ensure Object.entries receives an object
   const sortedClasseIICategories = Object.entries(totals.groupedClasseIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const sortedClasseVCategories = Object.entries(totals.groupedClasseVCategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const sortedClasseVICategories = Object.entries(totals.groupedClasseVICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const sortedClasseVIICategories = Object.entries(totals.groupedClasseVIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
-  // NOVO: Classe VIII
-  const sortedClasseVIIISaudeCategories = Object.entries(totals.groupedClasseVIIISaudeCategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
-  const sortedClasseVIIIRemontaCategories = Object.entries(totals.groupedClasseVIIIRemontaCategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
+  const sortedClasseVIIICategories = Object.entries(totals.groupedClasseVIIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b)); // NOVO
 
   return (
     <Card className="shadow-lg">
@@ -837,50 +789,27 @@ export const PTrabCostSummary = ({
                     </AccordionItem>
                   </Accordion>
                   
-                  {/* Classe VIII - Saúde e Remonta/Veterinária */}
+                  {/* NOVO: Classe VIII - Saúde e Remonta/Veterinária */}
                   <Accordion type="single" collapsible className="w-full pt-1">
                     <AccordionItem value="item-classe-viii" className="border-b-0">
                       <AccordionTrigger className="p-0 hover:no-underline">
                         <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
                           <div className="flex items-center gap-1 text-foreground">
-                            <HeartPulse className="h-3 w-3 text-orange-500" />
+                            <HeartPulse className="h-3 w-3 text-red-500" />
                             Classe VIII
                           </div>
                           <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                            {formatCurrency(totals.totalClasseVIIISaude + totals.totalClasseVIIIRemonta)}
+                            {formatCurrency(totals.totalClasseVIII)}
                           </span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-0">
                         <div className="space-y-1 pl-4 text-[10px]">
-                          {/* Detalhes Saúde */}
-                          {sortedClasseVIIISaudeCategories.map(([category, data]) => (
+                          {/* Detalhes por Categoria */}
+                          {sortedClasseVIIICategories.map(([category, data]) => (
                             <div key={category} className="space-y-1">
                                 <div className="flex justify-between text-muted-foreground font-semibold pt-1">
-                                    <span className="w-1/2 text-left">Saúde (KPSI/KPT)</span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatNumber(data.totalItens)} kits
-                                    </span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatCurrency(data.totalValor)}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
-                                    <span className="w-1/2 text-left">ND 30 / ND 39</span>
-                                    <span className="w-1/4 text-right text-green-600 font-medium">
-                                        {formatCurrency(data.totalND30)}
-                                    </span>
-                                    <span className="w-1/4 text-right text-blue-600 font-medium">
-                                        {formatCurrency(data.totalND39)}
-                                    </span>
-                                </div>
-                            </div>
-                          ))}
-                          {/* Detalhes Remonta */}
-                          {sortedClasseVIIIRemontaCategories.map(([category, data]) => (
-                            <div key={category} className="space-y-1">
-                                <div className="flex justify-between text-muted-foreground font-semibold pt-1">
-                                    <span className="w-1/2 text-left">{category.replace('Remonta - ', '')}</span>
+                                    <span className="w-1/2 text-left">{category}</span>
                                     <span className="w-1/4 text-right font-medium">
                                         {formatNumber(data.totalItens)} un.
                                     </span>
