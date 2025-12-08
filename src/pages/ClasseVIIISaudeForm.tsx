@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { defaultClasseVIIISaudeConfig, ItemSaude, defaultClasseVIIIRemontaConfig, ItemRemonta } from "@/data/classeVIIIData";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Importando Tabs
 
 type Categoria = 'Saúde' | 'Remonta/Veterinária';
 
@@ -103,7 +104,7 @@ const generateMemoriaCalculo = (categoria: Categoria, itens: ItemRegistro[], dia
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const titulo = categoria === 'Saúde' ? "KPSI/KPSC e KPT" : "Material de Remonta e Veterinária";
-    const tabela = categoria === 'Saúde' ? "classe_viii_saude_registros" : "classe_viii_remonta_registros";
+    // const tabela = categoria === 'Saúde' ? "classe_viii_saude_registros" : "classe_viii_remonta_registros"; // Não usado no detalhamento
 
     let detalhamentoItens = "";
     let calculoDetalhado = "";
@@ -410,7 +411,7 @@ const ClasseVIIISaudeForm = () => {
     if (!ptrabId) return;
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
     if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
-    if (form.itens.length === 0) { toast.error("Adicione pelo menos um item. Clique em 'Salvar Itens de Saúde'."); return; }
+    if (form.itens.length === 0) { toast.error(`Adicione pelo menos um item. Clique em 'Salvar Itens de ${activeCategory}'.`); return; }
     
     if (!isTotalAlocadoCorrect) { toast.error("A soma da alocação ND 30 e ND 39 deve ser igual ao Valor Total. Clique em 'Salvar Itens de Saúde'."); return; }
     if (valorTotalForm > 0 && (!saudeAllocation.om_destino_recurso || !saudeAllocation.ug_destino_recurso)) {
@@ -443,6 +444,7 @@ const ClasseVIIISaudeForm = () => {
         totalND39Final
     );
     
+    // Nota: O tipo TablesInsert<'classe_viii_saude_registros'> é usado como base, mas o objeto final é dinâmico
     const baseRegistro: TablesInsert<'classe_viii_saude_registros'> = {
         p_trab_id: ptrabId,
         organizacao: saudeAllocation.om_destino_recurso, // OM de destino do recurso
@@ -463,7 +465,7 @@ const ClasseVIIISaudeForm = () => {
     };
 
     try {
-      // Deletar registros existentes (apenas um registro por OM/Categoria é esperado para esta classe)
+      // 1. Deletar registros existentes (apenas o registro da categoria ativa para esta OM/UG)
       const { error: deleteError } = await supabase
         .from(tableName)
         .delete()
@@ -472,7 +474,7 @@ const ClasseVIIISaudeForm = () => {
         .eq("ug", form.ug);
       if (deleteError) { console.error(`Erro ao deletar registros existentes em ${tableName}:`, deleteError); throw deleteError; }
       
-      // Inserir o novo registro
+      // 2. Inserir o novo registro
       const { error: insertError } = await supabase.from(tableName).insert([registro]);
       if (insertError) throw insertError;
       
@@ -490,8 +492,8 @@ const ClasseVIIISaudeForm = () => {
 
   const handleEditarRegistro = async (registro: ClasseVIIIRegistro) => {
     setLoading(true);
+    setActiveCategory(registro.categoria); // Define a categoria ativa primeiro
     resetFormFields(registro.categoria);
-    setActiveCategory(registro.categoria);
     
     // 1. Preencher o formulário principal (OM Detentora)
     let selectedOmIdForEdit: string | undefined = undefined;
@@ -667,22 +669,16 @@ const ClasseVIIISaudeForm = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             
-            {/* Seletor de Categoria */}
-            <div className="space-y-2">
-                <Label>Selecione a Categoria</Label>
-                <div className="flex gap-2">
+            {/* Seletor de Categoria (Tabs) */}
+            <Tabs value={activeCategory} onValueChange={(value) => handleCategoryChange(value as Categoria)}>
+                <TabsList className="grid w-full grid-cols-2">
                     {CATEGORIAS.map(cat => (
-                        <Button
-                            key={cat}
-                            variant={activeCategory === cat ? "default" : "outline"}
-                            onClick={() => handleCategoryChange(cat)}
-                            disabled={loading}
-                        >
+                        <TabsTrigger key={cat} value={cat} disabled={loading}>
                             {cat}
-                        </Button>
+                        </TabsTrigger>
                     ))}
-                </div>
-            </div>
+                </TabsList>
+            </Tabs>
             
             {/* 1. Dados da Organização e Dias */}
             <div className="space-y-3 border-b pb-4">
@@ -901,7 +897,7 @@ const ClasseVIIISaudeForm = () => {
                         </div>
                     </div>
                 )}
-                {/* FIM BLOCO DE ALOCAÇÃO */}
+                {/* FIM NOVO BLOCO DE ALOCAÇÃO */}
                 
                 <div className="flex justify-end">
                     <Button 
