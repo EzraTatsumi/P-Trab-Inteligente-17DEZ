@@ -106,7 +106,7 @@ const CATEGORIAS_CLASSE_VII = [
 
 // NOVO: Lista de categorias da Classe VIII
 const CATEGORIAS_CLASSE_VIII_SAUDE = [
-  "Saúde - KPSI/KPT",
+  "Saúde",
 ];
 
 const CATEGORIAS_CLASSE_VIII_REMONTA = [
@@ -114,7 +114,7 @@ const CATEGORIAS_CLASSE_VIII_REMONTA = [
 ];
 
 // Definindo a constante da categoria para uso na inicialização
-const CLASSE_VIII_SAUDE_CATEGORIA = "Saúde - KPSI/KPT";
+const CLASSE_VIII_SAUDE_CATEGORIA = "Saúde";
 
 const CATEGORIAS_CLASSE_III = [
   { key: "GERADOR", label: "Geradores" },
@@ -712,9 +712,8 @@ const DiretrizesCusteioPage = () => {
                 />
               </div>
               <div className="col-span-3">
-                <Label className="text-xs">Valor Mnt/Dia (R$)</Label>
+                <Label className="text-xs">Valor (R$)</Label>
                 <Input
-                  // Removido type="number" e step="0.01"
                   value={formatCurrencyInput(item.valor_mnt_dia)}
                   onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseCurrencyInput(e.target.value))}
                   onKeyDown={handleEnterToNextField}
