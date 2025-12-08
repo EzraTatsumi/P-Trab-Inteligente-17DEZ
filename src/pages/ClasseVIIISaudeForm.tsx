@@ -492,8 +492,8 @@ const ClasseVIIISaudeForm = () => {
 
   const handleEditarRegistro = async (registro: ClasseVIIIRegistro) => {
     setLoading(true);
-    setActiveCategory(registro.categoria); // Define a categoria ativa primeiro
     resetFormFields(registro.categoria);
+    setActiveCategory(registro.categoria);
     
     // 1. Preencher o formulário principal (OM Detentora)
     let selectedOmIdForEdit: string | undefined = undefined;
@@ -669,17 +669,6 @@ const ClasseVIIISaudeForm = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             
-            {/* Seletor de Categoria (Tabs) */}
-            <Tabs value={activeCategory} onValueChange={(value) => handleCategoryChange(value as Categoria)}>
-                <TabsList className="grid w-full grid-cols-2">
-                    {CATEGORIAS.map(cat => (
-                        <TabsTrigger key={cat} value={cat} disabled={loading}>
-                            {cat}
-                        </TabsTrigger>
-                    ))}
-                </TabsList>
-            </Tabs>
-            
             {/* 1. Dados da Organização e Dias */}
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
@@ -769,7 +758,18 @@ const ClasseVIIISaudeForm = () => {
             {/* 2. Configurar Itens por Categoria */}
             {form.organizacao && form.dias_operacao > 0 && (
               <div className="space-y-4 border-b pb-4">
-                <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria ({activeCategory})</h3>
+                <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
+                
+                {/* Seletor de Categoria (Tabs) - MOVIDO PARA AQUI */}
+                <Tabs value={activeCategory} onValueChange={(value) => handleCategoryChange(value as Categoria)}>
+                    <TabsList className="grid w-full grid-cols-2">
+                        {CATEGORIAS.map(cat => (
+                            <TabsTrigger key={cat} value={cat} disabled={loading}>
+                                {cat}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+                </Tabs>
                 
                 <div className="max-h-[400px] overflow-y-auto rounded-md border">
                     <Table className="w-full">
@@ -1160,7 +1160,7 @@ const ClasseVIIISaudeForm = () => {
                                   <Button
                                     size="sm"
                                     variant="default"
-                                    onClick={() => handleSalvarMemoriaCustomizada(registro)}
+                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
                                     disabled={loading}
                                     className="gap-2"
                                   >
