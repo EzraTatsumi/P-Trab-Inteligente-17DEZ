@@ -21,6 +21,7 @@ import { YearManagementDialog } from "@/components/YearManagementDialog"; // Imp
 import { defaultClasseVIConfig } from "@/data/classeVIData";
 import { defaultClasseVIIConfig } from "@/data/classeVIIData"; // NOVO IMPORT
 import { defaultClasseVIIISaudeConfig } from "@/data/classeVIIIData"; // NOVO IMPORT
+import { formatCurrencyInput, parseCurrencyInput } from "@/lib/inputFormatUtils"; // NOVO IMPORT
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -106,6 +107,10 @@ const CATEGORIAS_CLASSE_VII = [
 // NOVO: Lista de categorias da Classe VIII
 const CATEGORIAS_CLASSE_VIII_SAUDE = [
   "Saúde - KPSI/KPT",
+];
+
+const CATEGORIAS_CLASSE_VIII_REMONTA = [
+  "Remonta/Veterinária",
 ];
 
 // Definindo a constante da categoria para uso na inicialização
@@ -709,11 +714,9 @@ const DiretrizesCusteioPage = () => {
               <div className="col-span-3">
                 <Label className="text-xs">Valor Mnt/Dia (R$)</Label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={item.valor_mnt_dia === 0 ? "" : item.valor_mnt_dia}
-                  onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseFloat(e.target.value) || 0)}
+                  // Removido type="number" e step="0.01"
+                  value={formatCurrencyInput(item.valor_mnt_dia)}
+                  onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseCurrencyInput(e.target.value))}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
@@ -1097,15 +1100,14 @@ const DiretrizesCusteioPage = () => {
                 )}
               </div>
               
-              {/* NOVO: SEÇÃO CLASSE VIII - SAÚDE */}
+              {/* NOVO: SEÇÃO CLASSE VIII - SAÚDE E REMONTA */}
               <div className="border-t pt-4 mt-6">
                 <div 
                   className="flex items-center justify-between cursor-pointer py-2" 
                   onClick={() => setShowClasseVIIIConfig(!showClasseVIIIConfig)}
                 >
                   <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <HeartPulse className="h-5 w-5 text-red-600" />
-                    Classe VIII - Saúde (KPSI/KPT)
+                    Classe VIII - Saúde e Remonta/Veterinária
                   </h3>
                   {showClasseVIIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                 </div>
@@ -1114,8 +1116,11 @@ const DiretrizesCusteioPage = () => {
                   <Card>
                     <CardContent className="pt-4">
                       <Tabs value={selectedClasseVIIITab} onValueChange={setSelectedClasseVIIITab}>
-                        <TabsList className="grid w-full grid-cols-1">
+                        <TabsList className="grid w-full grid-cols-2">
                           {CATEGORIAS_CLASSE_VIII_SAUDE.map(cat => (
+                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                          ))}
+                          {CATEGORIAS_CLASSE_VIII_REMONTA.map(cat => (
                             <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
                           ))}
                         </TabsList>
@@ -1123,6 +1128,11 @@ const DiretrizesCusteioPage = () => {
                         {CATEGORIAS_CLASSE_VIII_SAUDE.map(cat => (
                           <TabsContent key={cat} value={cat}>
                             {renderClasseList(classeVIIISaudeConfig, setClasseVIIISaudeConfig, CATEGORIAS_CLASSE_VIII_SAUDE, cat)}
+                          </TabsContent>
+                        ))}
+                        {CATEGORIAS_CLASSE_VIII_REMONTA.map(cat => (
+                          <TabsContent key={cat} value={cat}>
+                            <p className="text-muted-foreground pt-4">Configuração da Classe VIII - Remonta/Veterinária será implementada em breve.</p>
                           </TabsContent>
                         ))}
                       </Tabs>
