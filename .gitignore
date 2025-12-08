@@ -43,6 +43,9 @@ src/integrations/supabase/types.ts
 # Excluir arquivos de dados estáticos e assets
 src/data/classeIIData.ts
 src/assets/
+src/data/classeVIData.ts
+src/data/classeVIIData.ts
+src/data/classeIIIData.ts
 
 # Excluir componentes da Landing Page
 src/pages/Index.tsx
@@ -74,3 +77,7 @@ src/lib/cryptoUtils.ts
 src/pages/PTrabManager.tsx
 src/components/CloneVariationDialog.tsx
 src/components/CreditPromptDialog.tsx
+
+# Excluir páginas de classes logísticas que não estão em foco
+src/pages/ClasseVForm.tsx
+src/pages/ClasseVIForm.tsx
