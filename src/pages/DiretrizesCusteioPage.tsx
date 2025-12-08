@@ -7,19 +7,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings, HardHat } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings, HardHat, HeartPulse, PawPrint } from "lucide-react";
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
-import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
+import { DiretrizClasseIIForm, RemontaItem } from "@/types/diretrizesClasseII";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { tipoViaturas, tipoEquipamentosEngenharia } from "@/data/classeIIIData";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { YearManagementDialog } from "@/components/YearManagementDialog"; // Importar o novo diálogo
+import { YearManagementDialog } from "@/components/YearManagementDialog";
 import { defaultClasseVIConfig } from "@/data/classeVIData";
-import { defaultClasseVIIConfig } from "@/data/classeVIIData"; // NOVO IMPORT
+import { defaultClasseVIIConfig } from "@/data/classeVIIData";
+import { 
+  defaultClasseVIIISaudeConfig, 
+  defaultClasseVIIIRemontaMntDiaConfig, 
+  defaultRemontaComplexItems,
+  RemontaItem as RemontaItemType // Usar alias para evitar conflito
+} from "@/data/classeVIIIData"; // NOVO IMPORT
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -64,7 +70,6 @@ const defaultClasseIIConfig: DiretrizClasseIIForm[] = [
   { categoria: "Material de Estacionamento", item: "Colchão", valor_mnt_dia: 0.28 },
 ];
 
-// NOVO: Lista de itens padrão da Classe V (Armamento)
 const defaultClasseVConfig: DiretrizClasseIIForm[] = [
   { categoria: "Armt L", item: "Fuzil 5,56mm IA2 IMBEL", valor_mnt_dia: 1.40 },
   { categoria: "Armt L", item: "Fuzil 7,62mm", valor_mnt_dia: 1.50 },
@@ -82,7 +87,6 @@ const CATEGORIAS_CLASSE_II = [
   "Material de Estacionamento",
 ];
 
-// NOVO: Lista de categorias da Classe V
 const CATEGORIAS_CLASSE_V = [
   "Armt L",
   "Armt P",
@@ -90,16 +94,20 @@ const CATEGORIAS_CLASSE_V = [
   "DQBRN",
 ];
 
-// NOVO: Lista de categorias da Classe VI
 const CATEGORIAS_CLASSE_VI = [
   "Embarcação",
   "Equipamento de Engenharia",
 ];
 
-// NOVO: Lista de categorias da Classe VII
 const CATEGORIAS_CLASSE_VII = [
   "Comunicações",
   "Informática",
+];
+
+// NOVAS CATEGORIAS CLASSE VIII
+const CATEGORIAS_CLASSE_VIII = [
+  "Saúde - KPSI/KPT",
+  "Remonta - Mnt/Dia",
 ];
 
 const CATEGORIAS_CLASSE_III = [
@@ -126,7 +134,8 @@ const DiretrizesCusteioPage = () => {
   const [showClasseIIConfig, setShowClasseIIConfig] = useState(false);
   const [showClasseVConfig, setShowClasseVConfig] = useState(false);
   const [showClasseVIConfig, setShowClasseVIConfig] = useState(false); 
-  const [showClasseVIIConfig, setShowClasseVIIConfig] = useState(false); // NOVO ESTADO
+  const [showClasseVIIConfig, setShowClasseVIIConfig] = useState(false);
+  const [showClasseVIIIConfig, setShowClasseVIIIConfig] = useState(false); // NOVO ESTADO
   const [showClasseIIIConfig, setShowClasseIIIConfig] = useState(false);
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
@@ -137,7 +146,11 @@ const DiretrizesCusteioPage = () => {
   const [classeIIConfig, setClasseIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseIIConfig);
   const [classeVConfig, setClasseVConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVConfig);
   const [classeVIConfig, setClasseVIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIConfig); 
-  const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig); // NOVO ESTADO
+  const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig);
+  
+  // NOVOS ESTADOS CLASSE VIII
+  const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig);
+  const [classeVIIIRemontaMntDiaConfig, setClasseVIIIRemontaMntDiaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaMntDiaConfig);
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -146,10 +159,14 @@ const DiretrizesCusteioPage = () => {
   const [selectedClasseVTab, setSelectedClasseVTab] = useState<string>(CATEGORIAS_CLASSE_V[0]);
   const [selectedClasseVITab, setSelectedClasseVITab] = useState<string>(CATEGORIAS_CLASSE_VI[0]); 
   const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key);
-  const [selectedClasseVIITab, setSelectedClasseVIITab] = useState<string>(CATEGORIAS_CLASSE_VII[0]); // NOVO ESTADO
+  const [selectedClasseVIITab, setSelectedClasseVIITab] = useState<string>(CATEGORIAS_CLASSE_VII[0]);
+  const [selectedClasseVIIITab, setSelectedClasseVIIITab] = useState<string>(CATEGORIAS_CLASSE_VIII[0]); // NOVO ESTADO
   
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   const [defaultYear, setDefaultYear] = useState<number | null>(null);
+  
+  // Estado para itens complexos de Remonta (Itens B, C, D, E)
+  const [remontaComplexItems, setRemontaComplexItems] = useState<RemontaItemType[]>(defaultRemontaComplexItems);
   
   const { handleEnterToNextField } = useFormNavigation();
   const currentYear = new Date().getFullYear();
@@ -257,8 +274,14 @@ const DiretrizesCusteioPage = () => {
         setDiretrizes(defaultDiretrizes(year));
       }
       
-      // --- Carregar Classe II, V, VI e VII (usando a mesma tabela) ---
-      const allClasseItemsCategories = [...CATEGORIAS_CLASSE_II, ...CATEGORIAS_CLASSE_V, ...CATEGORIAS_CLASSE_VI, ...CATEGORIAS_CLASSE_VII];
+      // --- Carregar Classe II, V, VI, VII e VIII (usando a mesma tabela) ---
+      const allClasseItemsCategories = [
+        ...CATEGORIAS_CLASSE_II, 
+        ...CATEGORIAS_CLASSE_V, 
+        ...CATEGORIAS_CLASSE_VI, 
+        ...CATEGORIAS_CLASSE_VII,
+        ...CATEGORIAS_CLASSE_VIII, // NOVO
+      ];
       
       const { data: classeItemsData } = await supabase
         .from("diretrizes_classe_ii")
@@ -306,7 +329,7 @@ const DiretrizesCusteioPage = () => {
         setClasseVIConfig(defaultClasseVIConfig);
       }
       
-      // Filtrar e setar Classe VII (NOVO)
+      // Filtrar e setar Classe VII
       const loadedClasseVII = loadedItems.filter(d => CATEGORIAS_CLASSE_VII.includes(d.categoria));
       if (loadedClasseVII.length > 0) {
         setClasseVIIConfig(loadedClasseVII.map(d => ({
@@ -316,6 +339,59 @@ const DiretrizesCusteioPage = () => {
         })));
       } else {
         setClasseVIIConfig(defaultClasseVIIConfig);
+      }
+      
+      // Filtrar e setar Classe VIII - Saúde (KPSI/KPT)
+      const loadedClasseVIIISaude = loadedItems.filter(d => d.categoria === 'Saúde - KPSI/KPT');
+      if (loadedClasseVIIISaude.length > 0) {
+        setClasseVIIISaudeConfig(loadedClasseVIIISaude.map(d => ({
+          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
+          item: d.item,
+          valor_mnt_dia: Number(d.valor_mnt_dia),
+        })));
+      } else {
+        setClasseVIIISaudeConfig(defaultClasseVIIISaudeConfig);
+      }
+      
+      // Filtrar e setar Classe VIII - Remonta (Mnt/Dia)
+      const loadedClasseVIIIRemontaMntDia = loadedItems.filter(d => d.categoria === 'Remonta - Mnt/Dia');
+      if (loadedClasseVIIIRemontaMntDia.length > 0) {
+        setClasseVIIIRemontaMntDiaConfig(loadedClasseVIIIRemontaMntDia.map(d => ({
+          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
+          item: d.item,
+          valor_mnt_dia: Number(d.valor_mnt_dia),
+        })));
+      } else {
+        setClasseVIIIRemontaMntDiaConfig(defaultClasseVIIIRemontaMntDiaConfig);
+      }
+      
+      // --- Carregar Itens Complexos de Remonta (Itens B, C, D, E) ---
+      const { data: remontaComplexData } = await supabase
+        .from("diretrizes_classe_ii")
+        .select("item, valor_mnt_dia, categoria")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year)
+        .in("categoria", ['Remonta - Item B', 'Remonta - Item C', 'Remonta - Item D', 'Remonta - Item E']);
+        
+      if (remontaComplexData && remontaComplexData.length > 0) {
+        // Reconstruir o array de RemontaItemType
+        const newRemontaComplexItems: RemontaItemType[] = [];
+        remontaComplexData.forEach(d => {
+          // Tentativa de inferir animal_tipo e unidade a partir do item/categoria
+          const baseItem = defaultRemontaComplexItems.find(def => def.item === d.item);
+          if (baseItem) {
+            newRemontaComplexItems.push({
+              item: d.item,
+              animal_tipo: baseItem.animal_tipo,
+              categoria: baseItem.categoria,
+              valor: Number(d.valor_mnt_dia), // Usamos valor_mnt_dia para armazenar o valor
+              unidade: baseItem.unidade,
+            });
+          }
+        });
+        setRemontaComplexItems(newRemontaComplexItems.length > 0 ? newRemontaComplexItems : defaultRemontaComplexItems);
+      } else {
+        setRemontaComplexItems(defaultRemontaComplexItems);
       }
 
 
@@ -435,18 +511,37 @@ const DiretrizesCusteioPage = () => {
         }
       }
       
-      // 3. Salvar Configurações de Classe II, V, VI e VII (usando a mesma tabela diretrizes_classe_ii)
+      // 3. Salvar Configurações de Classe II, V, VI, VII e VIII (usando a mesma tabela diretrizes_classe_ii)
       
-      // Deletar registros antigos de Classe II, V, VI e VII
+      // Deletar registros antigos de Classe II, V, VI, VII e VIII
       await supabase
         .from("diretrizes_classe_ii")
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", diretrizes.ano_referencia!);
         
-      const allClasseItems = [...classeIIConfig, ...classeVConfig, ...classeVIConfig, ...classeVIIConfig];
+      const allClasseItems = [
+        ...classeIIConfig, 
+        ...classeVConfig, 
+        ...classeVIConfig, 
+        ...classeVIIConfig,
+        ...classeVIIISaudeConfig, // NOVO
+        ...classeVIIIRemontaMntDiaConfig, // NOVO
+      ];
+      
+      // Adicionar Itens Complexos de Remonta (B, C, D, E)
+      const remontaComplexItemsToSave = remontaComplexItems.map(item => ({
+        user_id: user.id,
+        ano_referencia: diretrizes.ano_referencia,
+        categoria: `Remonta - Item ${item.categoria}`, // Usar categoria para diferenciar
+        item: item.item,
+        valor_mnt_dia: item.valor, // Usar o campo valor_mnt_dia para armazenar o valor
+        ativo: true,
+      }));
+      
+      const allItemsToSave = [...allClasseItems, ...remontaComplexItemsToSave];
         
-      const classeItemsParaSalvar = allClasseItems
+      const classeItemsParaSalvar = allItemsToSave
         .filter(item => item.item && item.valor_mnt_dia >= 0)
         .map(item => ({
           user_id: user.id,
@@ -547,14 +642,14 @@ const DiretrizesCusteioPage = () => {
         if (insertEqError) console.error("Erro ao inserir equipamentos copiados:", insertEqError);
       }
       
-      // 3. Copiar Diretrizes de Classe II, V, VI e VII
+      // 3. Copiar Diretrizes de Classe II, V, VI, VII e VIII
       const { data: sourceClasseItems, error: classeItemsError } = await supabase
         .from("diretrizes_classe_ii")
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", sourceYear);
         
-      if (classeItemsError) console.error("Erro ao buscar Classe II/V/VI/VII para cópia:", classeItemsError);
+      if (classeItemsError) console.error("Erro ao buscar Classe II/V/VI/VII/VIII para cópia:", classeItemsError);
       
       if (sourceClasseItems && sourceClasseItems.length > 0) {
         const newClasseItems = sourceClasseItems.map(c2 => {
@@ -564,7 +659,7 @@ const DiretrizesCusteioPage = () => {
         const { error: insertC2Error } = await supabase
           .from("diretrizes_classe_ii")
           .insert(newClasseItems);
-        if (insertC2Error) console.error("Erro ao inserir Classe II/V/VI/VII copiada:", insertC2Error);
+        if (insertC2Error) console.error("Erro ao inserir Classe II/V/VI/VII/VIII copiada:", insertC2Error);
       }
 
       toast.success(`Diretrizes do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
@@ -601,7 +696,7 @@ const DiretrizesCusteioPage = () => {
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
         
-      // 2. Excluir Diretrizes de Classe II, V, VI e VII
+      // 2. Excluir Diretrizes de Classe II, V, VI, VII e VIII
       await supabase
         .from("diretrizes_classe_ii")
         .delete()
@@ -650,7 +745,7 @@ const DiretrizesCusteioPage = () => {
     setConfig(novosItens);
   };
   
-  // --- Funções de Gerenciamento da Classe II, V, VI e VII ---
+  // --- Funções de Gerenciamento da Classe II, V, VI, VII e VIII ---
   const handleAddClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, categoria: DiretrizClasseIIForm['categoria']) => {
     setConfig(prev => [
       ...prev,
@@ -668,7 +763,7 @@ const DiretrizesCusteioPage = () => {
     setConfig(novosItens);
   };
   
-  // Função para renderizar a lista de itens da Classe II/V/VI/VII por categoria
+  // Função para renderizar a lista de itens da Classe II/V/VI/VII/VIII por categoria
   const renderClasseList = (
     config: DiretrizClasseIIForm[], 
     setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>,
@@ -818,6 +913,60 @@ const DiretrizesCusteioPage = () => {
       </div>
     );
   };
+  
+  // Função para renderizar a lista de itens complexos de Remonta (B, C, D, E)
+  const renderRemontaComplexList = (
+    config: RemontaItemType[], 
+    setConfig: React.Dispatch<React.SetStateAction<RemontaItemType[]>>,
+    animalType: 'Equino' | 'Canino',
+    categoria: 'B' | 'C' | 'D' | 'E'
+  ) => {
+    const filteredItems = config.filter(item => item.animal_tipo === animalType && item.categoria === categoria);
+    
+    const handleUpdateComplexItem = (index: number, field: keyof RemontaItemType, value: any) => {
+      const novosItens = [...config];
+      novosItens[index] = { ...novosItens[index], [field]: value };
+      setConfig(novosItens);
+    };
+
+    return (
+      <div className="space-y-4 pt-4">
+        {filteredItems.map((item, index) => {
+          // Encontrar o índice original no array completo para permitir a atualização/remoção
+          const indexInMainArray = config.findIndex(c => c === item);
+          
+          return (
+            <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
+              <div className="col-span-6">
+                <Label className="text-xs">Item</Label>
+                <Input
+                  value={item.item}
+                  onChange={(e) => handleUpdateComplexItem(indexInMainArray, 'item', e.target.value)}
+                  placeholder="Ex: Encilhagem e Proteção"
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="col-span-3">
+                <Label className="text-xs">Valor (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  value={item.valor === 0 ? "" : item.valor}
+                  onChange={(e) => handleUpdateComplexItem(indexInMainArray, 'valor', parseFloat(e.target.value) || 0)}
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="col-span-3">
+                <Label className="text-xs">Unidade</Label>
+                <Input value={item.unidade} disabled className="bg-muted text-muted-foreground" onKeyDown={handleEnterToNextField} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
 
   if (loading) {
@@ -879,223 +1028,318 @@ const DiretrizesCusteioPage = () => {
                 </p>
               </div>
 
-              {/* SEÇÃO CLASSE I - ALIMENTAÇÃO */}
-              <div className="border-t pt-4 mt-6">
-                <div 
-                  className="flex items-center justify-between cursor-pointer py-2" 
-                  onClick={() => setShowClasseIAlimentacaoConfig(!showClasseIAlimentacaoConfig)}
-                >
-                  <h3 className="text-lg font-semibold">Classe I - Alimentação</h3>
-                  {showClasseIAlimentacaoConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </div>
+              {/* TABS PRINCIPAIS */}
+              <Tabs defaultValue="classe-i" className="w-full">
+                <TabsList className="grid w-full grid-cols-5">
+                  <TabsTrigger value="classe-i">Classe I</TabsTrigger>
+                  <TabsTrigger value="classe-ii">Classe II</TabsTrigger>
+                  <TabsTrigger value="classe-iii">Classe III</TabsTrigger>
+                  <TabsTrigger value="classe-v">Classe V/VI/VII</TabsTrigger>
+                  <TabsTrigger value="classe-viii" className="flex items-center gap-1">
+                    <HeartPulse className="h-4 w-4" />
+                    Classe VIII
+                  </TabsTrigger>
+                </TabsList>
                 
-                {showClasseIAlimentacaoConfig && (
-                  <div className="space-y-4 mt-2">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Valor QS</Label>
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                            value={diretrizes.classe_i_valor_qs?.toFixed(2)}
-                            onChange={(e) => setDiretrizes({ ...diretrizes, classe_i_valor_qs: parseFloat(e.target.value) || 0 })}
-                            onKeyDown={handleEnterToNextField}
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Valor QR</Label>
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                            value={diretrizes.classe_i_valor_qr?.toFixed(2)}
-                            onChange={(e) => setDiretrizes({ ...diretrizes, classe_i_valor_qr: parseFloat(e.target.value) || 0 })}
-                            onKeyDown={handleEnterToNextField}
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
-                        </div>
-                      </div>
+                {/* TAB CLASSE I */}
+                <TabsContent value="classe-i">
+                  <div className="border-t pt-4 mt-6">
+                    <div 
+                      className="flex items-center justify-between cursor-pointer py-2" 
+                      onClick={() => setShowClasseIAlimentacaoConfig(!showClasseIAlimentacaoConfig)}
+                    >
+                      <h3 className="text-lg font-semibold">Classe I - Alimentação</h3>
+                      {showClasseIAlimentacaoConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                     </div>
+                    
+                    {showClasseIAlimentacaoConfig && (
+                      <div className="space-y-4 mt-2">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Valor QS</Label>
+                            <div className="relative">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
+                                value={diretrizes.classe_i_valor_qs?.toFixed(2)}
+                                onChange={(e) => setDiretrizes({ ...diretrizes, classe_i_valor_qs: parseFloat(e.target.value) || 0 })}
+                                onKeyDown={handleEnterToNextField}
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Valor QR</Label>
+                            <div className="relative">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
+                                value={diretrizes.classe_i_valor_qr?.toFixed(2)}
+                                onChange={(e) => setDiretrizes({ ...diretrizes, classe_i_valor_qr: parseFloat(e.target.value) || 0 })}
+                                onKeyDown={handleEnterToNextField}
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              
-              {/* SEÇÃO CLASSE II - MATERIAL DE INTENDÊNCIA */}
-              <div className="border-t pt-4 mt-6">
-                <div 
-                  className="flex items-center justify-between cursor-pointer py-2" 
-                  onClick={() => setShowClasseIIConfig(!showClasseIIConfig)}
-                >
-                  <h3 className="text-lg font-semibold">
-                    Classe II - Material de Intendência
-                  </h3>
-                  {showClasseIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </div>
+                </TabsContent>
                 
-                {showClasseIIConfig && (
-                  <Card>
-                    <CardContent className="pt-4">
-                      <Tabs value={selectedClasseIITab} onValueChange={setSelectedClasseIITab}>
-                        <TabsList className="grid w-full grid-cols-3">
-                          {CATEGORIAS_CLASSE_II.map(cat => (
-                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                          ))}
-                        </TabsList>
-                        
-                        {CATEGORIAS_CLASSE_II.map(cat => (
-                          <TabsContent key={cat} value={cat}>
-                            {renderClasseList(classeIIConfig, setClasseIIConfig, CATEGORIAS_CLASSE_II, cat)}
-                          </TabsContent>
-                        ))}
-                      </Tabs>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-              
-              {/* SEÇÃO CLASSE III - COMBUSTÍVEIS E LUBRIFICANTES */}
-              <div className="border-t pt-4 mt-6">
-                <div 
-                  className="flex items-center justify-between cursor-pointer py-2" 
-                  onClick={() => setShowClasseIIIConfig(!showClasseIIIConfig)}
-                >
-                  <h3 className="text-lg font-semibold">
-                    Classe III - Combustíveis e Lubrificantes
-                  </h3>
-                  {showClasseIIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </div>
+                {/* TAB CLASSE II */}
+                <TabsContent value="classe-ii">
+                  <div className="border-t pt-4 mt-6">
+                    <div 
+                      className="flex items-center justify-between cursor-pointer py-2" 
+                      onClick={() => setShowClasseIIConfig(!showClasseIIConfig)}
+                    >
+                      <h3 className="text-lg font-semibold">
+                        Classe II - Material de Intendência
+                      </h3>
+                      {showClasseIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    </div>
+                    
+                    {showClasseIIConfig && (
+                      <Card>
+                        <CardContent className="pt-4">
+                          <Tabs value={selectedClasseIITab} onValueChange={setSelectedClasseIITab}>
+                            <TabsList className="grid w-full grid-cols-3">
+                              {CATEGORIAS_CLASSE_II.map(cat => (
+                                <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                              ))}
+                            </TabsList>
+                            
+                            {CATEGORIAS_CLASSE_II.map(cat => (
+                              <TabsContent key={cat} value={cat}>
+                                {renderClasseList(classeIIConfig, setClasseIIConfig, CATEGORIAS_CLASSE_II, cat)}
+                              </TabsContent>
+                            ))}
+                          </Tabs>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* TAB CLASSE III */}
+                <TabsContent value="classe-iii">
+                  <div className="border-t pt-4 mt-6">
+                    <div 
+                      className="flex items-center justify-between cursor-pointer py-2" 
+                      onClick={() => setShowClasseIIIConfig(!showClasseIIIConfig)}
+                    >
+                      <h3 className="text-lg font-semibold">
+                        Classe III - Combustíveis e Lubrificantes
+                      </h3>
+                      {showClasseIIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    </div>
+                    
+                    {showClasseIIIConfig && (
+                      <Card>
+                        <CardContent className="pt-4">
+                          <Tabs value={selectedClasseIIITab} onValueChange={setSelectedClasseIIITab}>
+                            <TabsList className="grid w-full grid-cols-4">
+                              {CATEGORIAS_CLASSE_III.map(cat => (
+                                <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
+                              ))}
+                            </TabsList>
+                            
+                            <TabsContent value="GERADOR">
+                              {renderClasseIIIList("GERADOR", geradorConfig, setGeradorConfig)}
+                            </TabsContent>
+                            <TabsContent value="EMBARCACAO">
+                              {renderClasseIIIList("EMBARCACAO", embarcacaoConfig, setEmbarcacaoConfig)}
+                            </TabsContent>
+                            <TabsContent value="MOTOMECANIZACAO">
+                              {renderClasseIIIList("MOTOMECANIZACAO", motomecanizacaoConfig, setMotomecanizacaoConfig)}
+                            </TabsContent>
+                            <TabsContent value="EQUIPAMENTO_ENGENHARIA">
+                              {renderClasseIIIList("EQUIPAMENTO_ENGENHARIA", equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig)}
+                            </TabsContent>
+                          </Tabs>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </TabsContent>
                 
-                {showClasseIIIConfig && (
-                  <Card>
-                    <CardContent className="pt-4">
-                      <Tabs value={selectedClasseIIITab} onValueChange={setSelectedClasseIIITab}>
-                        <TabsList className="grid w-full grid-cols-4">
-                          {CATEGORIAS_CLASSE_III.map(cat => (
-                            <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
-                          ))}
-                        </TabsList>
-                        
-                        <TabsContent value="GERADOR">
-                          {renderClasseIIIList("GERADOR", geradorConfig, setGeradorConfig)}
-                        </TabsContent>
-                        <TabsContent value="EMBARCACAO">
-                          {renderClasseIIIList("EMBARCACAO", embarcacaoConfig, setEmbarcacaoConfig)}
-                        </TabsContent>
-                        <TabsContent value="MOTOMECANIZACAO">
-                          {renderClasseIIIList("MOTOMECANIZACAO", motomecanizacaoConfig, setMotomecanizacaoConfig)}
-                        </TabsContent>
-                        <TabsContent value="EQUIPAMENTO_ENGENHARIA">
-                          {renderClasseIIIList("EQUIPAMENTO_ENGENHARIA", equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig)}
-                        </TabsContent>
-                      </Tabs>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-              
-              {/* SEÇÃO CLASSE V - ARMAMENTO */}
-              <div className="border-t pt-4 mt-6">
-                <div 
-                  className="flex items-center justify-between cursor-pointer py-2" 
-                  onClick={() => setShowClasseVConfig(!showClasseVConfig)}
-                >
-                  <h3 className="text-lg font-semibold">
-                    Classe V - Armamento
-                  </h3>
-                  {showClasseVConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </div>
+                {/* TAB CLASSE V/VI/VII */}
+                <TabsContent value="classe-v">
+                  {/* CLASSE V - ARMAMENTO */}
+                  <div className="border-t pt-4 mt-6">
+                    <div 
+                      className="flex items-center justify-between cursor-pointer py-2" 
+                      onClick={() => setShowClasseVConfig(!showClasseVConfig)}
+                    >
+                      <h3 className="text-lg font-semibold">
+                        Classe V - Armamento
+                      </h3>
+                      {showClasseVConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    </div>
+                    
+                    {showClasseVConfig && (
+                      <Card>
+                        <CardContent className="pt-4">
+                          <Tabs value={selectedClasseVTab} onValueChange={setSelectedClasseVTab}>
+                            <TabsList className="grid w-full grid-cols-4">
+                              {CATEGORIAS_CLASSE_V.map(cat => (
+                                <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                              ))}
+                            </TabsList>
+                            
+                            {CATEGORIAS_CLASSE_V.map(cat => (
+                              <TabsContent key={cat} value={cat}>
+                                {renderClasseList(classeVConfig, setClasseVConfig, CATEGORIAS_CLASSE_V, cat)}
+                              </TabsContent>
+                            ))}
+                          </Tabs>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                  
+                  {/* CLASSE VI - MATERIAL DE ENGENHARIA */}
+                  <div className="border-t pt-4 mt-6">
+                    <div 
+                      className="flex items-center justify-between cursor-pointer py-2" 
+                      onClick={() => setShowClasseVIConfig(!showClasseVIConfig)}
+                    >
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        Classe VI - Material de Engenharia
+                      </h3>
+                      {showClasseVIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    </div>
+                    
+                    {showClasseVIConfig && (
+                      <Card>
+                        <CardContent className="pt-4">
+                          <Tabs value={selectedClasseVITab} onValueChange={setSelectedClasseVITab}>
+                            <TabsList className="grid w-full grid-cols-2">
+                              {CATEGORIAS_CLASSE_VI.map(cat => (
+                                <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                              ))}
+                            </TabsList>
+                            
+                            {CATEGORIAS_CLASSE_VI.map(cat => (
+                              <TabsContent key={cat} value={cat}>
+                                {renderClasseList(classeVIConfig, setClasseVIConfig, CATEGORIAS_CLASSE_VI, cat)}
+                              </TabsContent>
+                            ))}
+                          </Tabs>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                  
+                  {/* CLASSE VII - COMUNICAÇÕES E INFORMÁTICA */}
+                  <div className="border-t pt-4 mt-6">
+                    <div 
+                      className="flex items-center justify-between cursor-pointer py-2" 
+                      onClick={() => setShowClasseVIIConfig(!showClasseVIIConfig)}
+                    >
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        Classe VII - Comunicações e Informática
+                      </h3>
+                      {showClasseVIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    </div>
+                    
+                    {showClasseVIIConfig && (
+                      <Card>
+                        <CardContent className="pt-4">
+                          <Tabs value={selectedClasseVIITab} onValueChange={setSelectedClasseVIITab}>
+                            <TabsList className="grid w-full grid-cols-2">
+                              {CATEGORIAS_CLASSE_VII.map(cat => (
+                                <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                              ))}
+                            </TabsList>
+                            
+                            {CATEGORIAS_CLASSE_VII.map(cat => (
+                              <TabsContent key={cat} value={cat}>
+                                {renderClasseList(classeVIIConfig, setClasseVIIConfig, CATEGORIAS_CLASSE_VII, cat)}
+                              </TabsContent>
+                            ))}
+                          </Tabs>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </TabsContent>
                 
-                {showClasseVConfig && (
-                  <Card>
-                    <CardContent className="pt-4">
-                      <Tabs value={selectedClasseVTab} onValueChange={setSelectedClasseVTab}>
-                        <TabsList className="grid w-full grid-cols-4">
-                          {CATEGORIAS_CLASSE_V.map(cat => (
-                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                          ))}
-                        </TabsList>
-                        
-                        {CATEGORIAS_CLASSE_V.map(cat => (
-                          <TabsContent key={cat} value={cat}>
-                            {renderClasseList(classeVConfig, setClasseVConfig, CATEGORIAS_CLASSE_V, cat)}
-                          </TabsContent>
-                        ))}
-                      </Tabs>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-              
-              {/* SEÇÃO CLASSE VI - MATERIAL DE ENGENHARIA */}
-              <div className="border-t pt-4 mt-6">
-                <div 
-                  className="flex items-center justify-between cursor-pointer py-2" 
-                  onClick={() => setShowClasseVIConfig(!showClasseVIConfig)}
-                >
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    Classe VI - Material de Engenharia
-                  </h3>
-                  {showClasseVIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </div>
-                
-                {showClasseVIConfig && (
-                  <Card>
-                    <CardContent className="pt-4">
-                      <Tabs value={selectedClasseVITab} onValueChange={setSelectedClasseVITab}>
-                        <TabsList className="grid w-full grid-cols-2">
-                          {CATEGORIAS_CLASSE_VI.map(cat => (
-                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                          ))}
-                        </TabsList>
-                        
-                        {CATEGORIAS_CLASSE_VI.map(cat => (
-                          <TabsContent key={cat} value={cat}>
-                            {renderClasseList(classeVIConfig, setClasseVIConfig, CATEGORIAS_CLASSE_VI, cat)}
-                          </TabsContent>
-                        ))}
-                      </Tabs>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-              
-              {/* SEÇÃO CLASSE VII - COMUNICAÇÕES E INFORMÁTICA (NOVO) */}
-              <div className="border-t pt-4 mt-6">
-                <div 
-                  className="flex items-center justify-between cursor-pointer py-2" 
-                  onClick={() => setShowClasseVIIConfig(!showClasseVIIConfig)}
-                >
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    Classe VII - Comunicações e Informática
-                  </h3>
-                  {showClasseVIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </div>
-                
-                {showClasseVIIConfig && (
-                  <Card>
-                    <CardContent className="pt-4">
-                      <Tabs value={selectedClasseVIITab} onValueChange={setSelectedClasseVIITab}>
-                        <TabsList className="grid w-full grid-cols-2">
-                          {CATEGORIAS_CLASSE_VII.map(cat => (
-                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                          ))}
-                        </TabsList>
-                        
-                        {CATEGORIAS_CLASSE_VII.map(cat => (
-                          <TabsContent key={cat} value={cat}>
-                            {renderClasseList(classeVIIConfig, setClasseVIIConfig, CATEGORIAS_CLASSE_VII, cat)}
-                          </TabsContent>
-                        ))}
-                      </Tabs>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+                {/* TAB CLASSE VIII (NOVO) */}
+                <TabsContent value="classe-viii">
+                  <div className="border-t pt-4 mt-6">
+                    <div 
+                      className="flex items-center justify-between cursor-pointer py-2" 
+                      onClick={() => setShowClasseVIIIConfig(!showClasseVIIIConfig)}
+                    >
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        Classe VIII - Saúde e Remonta/Veterinária
+                      </h3>
+                      {showClasseVIIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    </div>
+                    
+                    {showClasseVIIIConfig && (
+                      <Card>
+                        <CardContent className="pt-4 space-y-6">
+                          
+                          {/* Subseção Saúde - KPSI/KPT */}
+                          <div className="space-y-4 border-b pb-4">
+                            <h4 className="text-base font-semibold flex items-center gap-2 text-primary">
+                              <HeartPulse className="h-4 w-4" />
+                              Saúde - KPSI/KPT (Valores Unitários)
+                            </h4>
+                            {renderClasseList(classeVIIISaudeConfig, setClasseVIIISaudeConfig, CATEGORIAS_CLASSE_VIII, 'Saúde - KPSI/KPT')}
+                          </div>
+                          
+                          {/* Subseção Remonta - Mnt/Dia (Item G) */}
+                          <div className="space-y-4 border-b pb-4">
+                            <h4 className="text-base font-semibold flex items-center gap-2 text-primary">
+                              <PawPrint className="h-4 w-4" />
+                              Remonta/Veterinária - Mnt/Dia (Item G)
+                            </h4>
+                            {renderClasseList(classeVIIIRemontaMntDiaConfig, setClasseVIIIRemontaMntDiaConfig, CATEGORIAS_CLASSE_VIII, 'Remonta - Mnt/Dia')}
+                          </div>
+                          
+                          {/* Subseção Remonta - Itens Complexos (B, C, D, E) */}
+                          <div className="space-y-4">
+                            <h4 className="text-base font-semibold flex items-center gap-2 text-primary">
+                              <PawPrint className="h-4 w-4" />
+                              Remonta/Veterinária - Itens Complexos (B, C, D, E)
+                            </h4>
+                            <p className="text-sm text-muted-foreground">
+                              Estes valores são usados no cálculo complexo de Remonta.
+                            </p>
+                            
+                            <div className="space-y-4">
+                              {/* Equinos */}
+                              <div className="border p-3 rounded-lg bg-muted/50">
+                                <h5 className="font-semibold mb-2">Equinos</h5>
+                                {renderRemontaComplexList(remontaComplexItems, setRemontaComplexItems, 'Equino', 'B')}
+                                {renderRemontaComplexList(remontaComplexItems, setRemontaComplexItems, 'Equino', 'C')}
+                                {renderRemontaComplexList(remontaComplexItems, setRemontaComplexItems, 'Equino', 'D')}
+                                {renderRemontaComplexList(remontaComplexItems, setRemontaComplexItems, 'Equino', 'E')}
+                              </div>
+                              
+                              {/* Caninos */}
+                              <div className="border p-3 rounded-lg bg-muted/50">
+                                <h5 className="font-semibold mb-2">Caninos</h5>
+                                {renderRemontaComplexList(remontaComplexItems, setRemontaComplexItems, 'Canino', 'B')}
+                                {renderRemontaComplexList(remontaComplexItems, setRemontaComplexItems, 'Canino', 'C')}
+                                {renderRemontaComplexList(remontaComplexItems, setRemontaComplexItems, 'Canino', 'D')}
+                                {renderRemontaComplexList(remontaComplexItems, setRemontaComplexItems, 'Canino', 'E')}
+                              </div>
+                            </div>
+                          </div>
+                          
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
 
 
               <div className="space-y-2 border-t pt-4 mt-6">
