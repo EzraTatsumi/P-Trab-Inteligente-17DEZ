@@ -414,7 +414,7 @@ const ClasseVIIISaudeForm = () => {
 
   const handleFaseChange = (fase: string, checked: boolean) => {
     if (checked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase]));
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
@@ -768,17 +768,6 @@ const ClasseVIIISaudeForm = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             
-            {/* Seletor de Categoria (Tabs) */}
-            <Tabs value={activeCategory} onValueChange={(value) => handleCategoryChange(value as Categoria)}>
-                <TabsList className="grid w-full grid-cols-2">
-                    {CATEGORIAS.map(cat => (
-                        <TabsTrigger key={cat} value={cat} disabled={loading}>
-                            {cat}
-                        </TabsTrigger>
-                    ))}
-                </TabsList>
-            </Tabs>
-            
             {/* 1. Dados da Organização e Dias */}
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
@@ -869,6 +858,17 @@ const ClasseVIIISaudeForm = () => {
                 </div>
               </div>
             </div>
+
+            {/* Seletor de Categoria (Tabs) - REPOSICIONADO */}
+            <Tabs value={activeCategory} onValueChange={(value) => handleCategoryChange(value as Categoria)}>
+                <TabsList className="grid w-full grid-cols-2">
+                    {CATEGORIAS.map(cat => (
+                        <TabsTrigger key={cat} value={cat} disabled={loading}>
+                            {cat}
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
+            </Tabs>
 
             {/* 2. Configurar Itens por Categoria */}
             {form.organizacao && (isRemonta ? form.dias_operacao > 0 : true) && (
