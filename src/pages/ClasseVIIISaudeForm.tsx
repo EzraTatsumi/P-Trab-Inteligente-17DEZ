@@ -24,6 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { defaultClasseVIIISaudeConfig, ItemSaude, defaultClasseVIIIRemontaConfig, ItemRemonta } from "@/data/classeVIIIData";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Importando Tabs
+import { DiretrizClasseII } from "@/types/diretrizesClasseII"; // Importando tipo de diretriz
 
 type Categoria = 'Saúde' | 'Remonta/Veterinária';
 
@@ -167,11 +168,37 @@ const ClasseVIIISaudeForm = () => {
   
   const { handleEnterToNextField } = useFormNavigation();
   
-  // Mapeamento de diretrizes
-  const diretrizesMap = useMemo(() => ({
-      'Saúde': defaultClasseVIIISaudeConfig as ItemRegistro[],
-      'Remonta/Veterinária': defaultClasseVIIIRemontaConfig as ItemRegistro[],
-  }), []);
+  // NOVO ESTADO: Diretrizes carregadas do DB
+  const [diretrizesDB, setDiretrizesDB] = useState<DiretrizClasseII[]>([]);
+
+  // Mapeamento de diretrizes (agora usa diretrizesDB)
+  const diretrizesMap = useMemo(() => {
+      const map: Record<Categoria, ItemRegistro[]> = {
+          'Saúde': defaultClasseVIIISaudeConfig as ItemRegistro[],
+          'Remonta/Veterinária': defaultClasseVIIIRemontaConfig as ItemRegistro[],
+      };
+      
+      // Sobrescreve com dados do DB se existirem
+      diretrizesDB.forEach(d => {
+          if (d.categoria === 'Saúde') {
+              map['Saúde'] = map['Saúde'].filter(item => item.item !== d.item); // Remove default se o item for sobrescrito
+              map['Saúde'].push({
+                  item: d.item,
+                  valor_unitario: Number(d.valor_mnt_dia),
+                  quantidade: 0,
+              });
+          } else if (d.categoria === 'Remonta/Veterinária') {
+              map['Remonta/Veterinária'] = map['Remonta/Veterinária'].filter(item => item.item !== d.item);
+              map['Remonta/Veterinária'].push({
+                  item: d.item,
+                  valor_unitario: Number(d.valor_mnt_dia),
+                  quantidade: 0,
+              });
+          }
+      });
+      
+      return map;
+  }, [diretrizesDB]);
   
   // Estado para a lista de itens da categoria atual com quantidades editáveis
   const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemRegistro[]>([]);
@@ -182,6 +209,7 @@ const ClasseVIIISaudeForm = () => {
       navigate("/ptrab");
       return;
     }
+    loadDiretrizes();
     fetchRegistros();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId]);
@@ -205,6 +233,68 @@ const ClasseVIIISaudeForm = () => {
 
     setCurrentCategoryItems(mergedItems);
   }, [activeCategory, diretrizesMap, editingId, form.itens]);
+  
+  const loadDiretrizes = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      let anoReferencia: number | null = null;
+
+      // 1. Tentar buscar o ano padrão do perfil do usuário
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("default_diretriz_year")
+        .eq("id", user.id)
+        .maybeSingle();
+        
+      if (profileData?.default_diretriz_year) {
+          anoReferencia = profileData.default_diretriz_year;
+      }
+
+      // 2. Se não houver ano padrão, buscar o ano mais recente na tabela de diretrizes
+      if (!anoReferencia) {
+          const { data: diretrizCusteio } = await supabase
+            .from("diretrizes_custeio")
+            .select("ano_referencia")
+            .eq("user_id", user.id)
+            .order("ano_referencia", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+            
+          if (diretrizCusteio) {
+            anoReferencia = diretrizCusteio.ano_referencia;
+          }
+      }
+      
+      if (!anoReferencia) {
+        toast.warning(`Diretriz de Custeio não encontrada. Usando valores padrão.`);
+        return;
+      }
+
+      // 3. Buscar diretrizes de Classe VIII (Saúde e Remonta)
+      const { data: classeItemsData, error } = await supabase
+        .from("diretrizes_classe_ii")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", anoReferencia)
+        .eq("ativo", true)
+        .in("categoria", CATEGORIAS);
+
+      if (error) throw error;
+
+      if (classeItemsData && classeItemsData.length > 0) {
+        setDiretrizesDB((classeItemsData || []) as DiretrizClasseII[]);
+      } else {
+        toast.warning(`Itens de Classe VIII não configurados para o ano ${anoReferencia}. Usando valores padrão.`);
+      }
+      
+    } catch (error) {
+      console.error("Erro ao carregar diretrizes:", error);
+      toast.error("Erro ao carregar diretrizes. Usando valores padrão.");
+    }
+  };
+
 
   const fetchRegistros = async () => {
     if (!ptrabId) return;
@@ -492,8 +582,8 @@ const ClasseVIIISaudeForm = () => {
 
   const handleEditarRegistro = async (registro: ClasseVIIIRegistro) => {
     setLoading(true);
+    setActiveCategory(registro.categoria); // Define a categoria ativa primeiro
     resetFormFields(registro.categoria);
-    setActiveCategory(registro.categoria);
     
     // 1. Preencher o formulário principal (OM Detentora)
     let selectedOmIdForEdit: string | undefined = undefined;
@@ -760,7 +850,7 @@ const ClasseVIIISaudeForm = () => {
               <div className="space-y-4 border-b pb-4">
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
-                {/* Seletor de Categoria (Tabs) - MOVIDO PARA AQUI */}
+                {/* Seletor de Categoria (Tabs) */}
                 <Tabs value={activeCategory} onValueChange={(value) => handleCategoryChange(value as Categoria)}>
                     <TabsList className="grid w-full grid-cols-2">
                         {CATEGORIAS.map(cat => (
@@ -1160,7 +1250,7 @@ const ClasseVIIISaudeForm = () => {
                                   <Button
                                     size="sm"
                                     variant="default"
-                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                    onClick={() => handleSalvarMemoriaCustomizada(registro)}
                                     disabled={loading}
                                     className="gap-2"
                                   >
