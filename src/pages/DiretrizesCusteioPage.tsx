@@ -108,6 +108,9 @@ const CATEGORIAS_CLASSE_VIII_SAUDE = [
   "Saúde - KPSI/KPT",
 ];
 
+// Definindo a constante da categoria para uso na inicialização
+const CLASSE_VIII_SAUDE_CATEGORIA = "Saúde - KPSI/KPT";
+
 const CATEGORIAS_CLASSE_III = [
   { key: "GERADOR", label: "Geradores" },
   { key: "EMBARCACAO", label: "Embarcações" },
@@ -133,7 +136,7 @@ const DiretrizesCusteioPage = () => {
   const [showClasseVConfig, setShowClasseVConfig] = useState(false);
   const [showClasseVIConfig, setShowClasseVIConfig] = useState(false); 
   const [showClasseVIIConfig, setShowClasseVIIConfig] = useState(false);
-  const [showClasseVIIIConfig, setShowClasseVIIIConfig] = useState(false); // NOVO ESTADO
+  const [showClasseVIIIConfig, setShowClasseVIIIConfig] = useState(false); 
   const [showClasseIIIConfig, setShowClasseIIIConfig] = useState(false);
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
@@ -146,10 +149,10 @@ const DiretrizesCusteioPage = () => {
   const [classeVIConfig, setClasseVIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIConfig); 
   const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig);
   const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig.map(item => ({
-    categoria: CATEGORIA_PADRAO,
+    categoria: CLASSE_VIII_SAUDE_CATEGORIA, // Usando a constante corrigida
     item: item.item,
     valor_mnt_dia: item.valor_unitario,
-  }))); // NOVO ESTADO
+  }))); 
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -159,7 +162,7 @@ const DiretrizesCusteioPage = () => {
   const [selectedClasseVITab, setSelectedClasseVITab] = useState<string>(CATEGORIAS_CLASSE_VI[0]); 
   const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key);
   const [selectedClasseVIITab, setSelectedClasseVIITab] = useState<string>(CATEGORIAS_CLASSE_VII[0]);
-  const [selectedClasseVIIITab, setSelectedClasseVIIITab] = useState<string>(CATEGORIAS_CLASSE_VIII_SAUDE[0]); // NOVO ESTADO
+  const [selectedClasseVIIITab, setSelectedClasseVIIITab] = useState<string>(CATEGORIAS_CLASSE_VIII_SAUDE[0]); 
   
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   const [defaultYear, setDefaultYear] = useState<number | null>(null);
@@ -304,7 +307,7 @@ const DiretrizesCusteioPage = () => {
       
       // Carregar e setar Classe VIII Saúde
       loadAndSetClasseItems(CATEGORIAS_CLASSE_VIII_SAUDE, defaultClasseVIIISaudeConfig.map(item => ({
-        categoria: CATEGORIA_PADRAO,
+        categoria: CLASSE_VIII_SAUDE_CATEGORIA,
         item: item.item,
         valor_mnt_dia: item.valor_unitario,
       })), setClasseVIIISaudeConfig);
