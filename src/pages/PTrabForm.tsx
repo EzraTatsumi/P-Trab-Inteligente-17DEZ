@@ -173,8 +173,6 @@ const PTrabForm = () => {
       navigate(`/ptrab/classe-vii?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-viii-saude') { // NOVO
       navigate(`/ptrab/classe-viii-saude?ptrabId=${ptrabId}`);
-    } else if (itemId === 'classe-viii-remonta') { // NOVO
-      navigate(`/ptrab/classe-viii-saude?ptrabId=${ptrabId}`); // Classe VIII Saúde/Remonta usa o mesmo formulário
     } else if (itemId === 'classe-iii') {
       navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
     } else {
