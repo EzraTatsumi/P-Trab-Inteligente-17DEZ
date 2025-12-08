@@ -15,7 +15,8 @@ import ClasseIIForm from "./pages/ClasseIIForm"; // Importar ClasseIIForm
 import ClasseVForm from "./pages/ClasseVForm"; // Importar ClasseVForm
 import ClasseIIIForm from "./pages/ClasseIIIForm";
 import ClasseVIForm from "./pages/ClasseVIForm"; // Importar ClasseVIForm
-import ClasseVIIForm from "./pages/ClasseVIIForm"; // NOVO: Importar ClasseVIIForm
+import ClasseVIIForm from "./pages/ClasseVIIForm"; // Importar ClasseVIIForm
+import ClasseVIIIForm from "./pages/ClasseVIIIForm"; // NOVO: Importar ClasseVIIIForm
 import DiretrizesCusteioPage from "./pages/DiretrizesCusteioPage";
 import VisualizacaoConfigPage from "./pages/VisualizacaoConfigPage";
 import OmConfigPage from "./pages/OmConfigPage";
@@ -43,7 +44,8 @@ const App = () => (
               <Route path="/ptrab/classe-ii" element={<ClasseIIForm />} />
               <Route path="/ptrab/classe-v" element={<ClasseVForm />} />
               <Route path="/ptrab/classe-vi" element={<ClasseVIForm />} />
-              <Route path="/ptrab/classe-vii" element={<ClasseVIIForm />} /> {/* NOVO: Rota para Classe VII */}
+              <Route path="/ptrab/classe-vii" element={<ClasseVIIForm />} />
+              <Route path="/ptrab/classe-viii" element={<ClasseVIIIForm />} /> {/* NOVO: Rota para Classe VIII */}
               <Route path="/ptrab/classe-iii" element={<ClasseIIIForm />} />
               <Route path="/config/diretrizes" element={<DiretrizesCusteioPage />} />
               <Route path="/config/visualizacao" element={<VisualizacaoConfigPage />} />
