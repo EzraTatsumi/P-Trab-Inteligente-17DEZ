@@ -59,6 +59,26 @@ interface ClasseVIIIRegistro {
   valor_nd_39: number;
 }
 
+interface SaudeAllocation {
+  total_valor: number;
+  nd_39_input: string; // User input string for ND 39
+  nd_30_value: number; // Calculated ND 30 value
+  nd_39_value: number; // Calculated ND 39 value
+  om_destino_recurso: string;
+  ug_destino_recurso: string;
+  selectedOmDestinoId?: string;
+}
+
+const initialSaudeAllocation: SaudeAllocation = {
+    total_valor: 0, 
+    nd_39_input: "", 
+    nd_30_value: 0, 
+    nd_39_value: 0, 
+    om_destino_recurso: "", 
+    ug_destino_recurso: "", 
+    selectedOmDestinoId: undefined 
+};
+
 const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
     return Math.abs(a - b) < tolerance;
 };
@@ -78,7 +98,7 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
 };
 
 // NOVO: Gera a memória de cálculo detalhada para a Classe VIII Saúde
-const generateSaudeMemoriaCalculo = (itens: ItemRegistroSaude[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, valorTotal: number): string => {
+const generateSaudeMemoriaCalculo = (itens: ItemRegistroSaude[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, valorTotal: number, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
 
@@ -91,8 +111,12 @@ const generateSaudeMemoriaCalculo = (itens: ItemRegistroSaude[], diasOperacao: n
         calculoDetalhado += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_unitario)} = ${formatCurrency(valorItem)}\n`;
     });
 
-    return `33.90.30 - Aquisição de KPSI/KPSC e KPT para utilização por ${totalItens} itens do ${organizacao}, durante ${diasOperacao} dias de ${faseFormatada}.
-OM de Destino: ${organizacao} (UG: ${ug})
+    return `33.90.30 / 33.90.39 - Aquisição de KPSI/KPSC e KPT para utilização por ${totalItens} itens do ${organizacao}, durante ${diasOperacao} dias de ${faseFormatada}.
+Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
+
+Alocação:
+- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
+- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
 Cálculo:
 Fórmula Base: Nr KPSC/KPT x valor do item
@@ -121,9 +145,8 @@ const ClasseVIIISaudeForm = () => {
   const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
   const [memoriaEdit, setMemoriaEdit] = useState<string>("");
   
-  // Estados para alocação manual de recursos
-  const [alocacaoND30, setAlocacaoND30] = useState<number>(0);
-  const [alocacaoND39, setAlocacaoND39] = useState<number>(0);
+  // NOVO ESTADO: Alocação de recursos (substitui alocacaoND30/39)
+  const [saudeAllocation, setSaudeAllocation] = useState<SaudeAllocation>(initialSaudeAllocation);
   
   const [form, setForm] = useState<FormDataClasseVIII>({
     selectedOmId: undefined,
@@ -220,8 +243,7 @@ const ClasseVIIISaudeForm = () => {
     setFasesAtividade(["Execução"]);
     setCustomFaseAtividade("");
     
-    setAlocacaoND30(0);
-    setAlocacaoND39(0);
+    setSaudeAllocation(initialSaudeAllocation);
   };
 
   const handleOMChange = (omData: OMData | undefined) => {
@@ -232,6 +254,15 @@ const ClasseVIIISaudeForm = () => {
         organizacao: omData.nome_om, 
         ug: omData.codug_om,
       });
+      
+      // Inicializa a OM de destino do recurso com a OM detentora
+      setSaudeAllocation(prev => ({
+          ...prev,
+          om_destino_recurso: omData.nome_om,
+          ug_destino_recurso: omData.codug_om,
+          selectedOmDestinoId: omData.id,
+      }));
+      
     } else {
       setForm({ 
         ...form, 
@@ -239,7 +270,24 @@ const ClasseVIIISaudeForm = () => {
         organizacao: "", 
         ug: "",
       });
+      
+      // Limpa a OM de destino do recurso
+      setSaudeAllocation(prev => ({
+          ...prev,
+          om_destino_recurso: "",
+          ug_destino_recurso: "",
+          selectedOmDestinoId: undefined,
+      }));
     }
+  };
+  
+  const handleOMDestinoChange = (omData: OMData | undefined) => {
+    setSaudeAllocation(prev => ({
+        ...prev,
+        om_destino_recurso: omData?.nome_om || "",
+        ug_destino_recurso: omData?.codug_om || "",
+        selectedOmDestinoId: omData?.id,
+    }));
   };
 
   const handleFaseChange = (fase: string, checked: boolean) => {
@@ -257,6 +305,34 @@ const ClasseVIIISaudeForm = () => {
     newItems[itemIndex].quantidade = Math.max(0, Math.floor(quantity)); 
     setCurrentCategoryItems(newItems);
   };
+  
+  // ND Calculation and Input Handlers
+  const valorTotalCategoriaEmEdicao = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+  
+  const nd39ValueTemp = Math.min(valorTotalCategoriaEmEdicao, Math.max(0, parseInputToNumber(saudeAllocation.nd_39_input)));
+  const nd30ValueTemp = valorTotalCategoriaEmEdicao - nd39ValueTemp;
+
+  const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const rawValue = e.target.value;
+      setSaudeAllocation(prev => ({
+          ...prev,
+          nd_39_input: formatInputWithThousands(rawValue)
+      }));
+  };
+
+  const handleND39InputBlur = () => {
+      const numericValue = parseInputToNumber(saudeAllocation.nd_39_input);
+      const finalND39Value = Math.min(valorTotalCategoriaEmEdicao, Math.max(0, numericValue));
+      
+      setSaudeAllocation(prev => ({
+          ...prev,
+          nd_39_input: formatNumberForInput(finalND39Value, 2),
+          nd_39_value: finalND39Value,
+          nd_30_value: valorTotalCategoriaEmEdicao - finalND39Value,
+          total_valor: valorTotalCategoriaEmEdicao,
+      }));
+  };
+
 
   // NOVO HANDLER: Salva os itens da lista expandida para o form.itens principal
   const handleUpdateCategoryItems = () => {
@@ -265,29 +341,42 @@ const ClasseVIIISaudeForm = () => {
         return;
     }
     
-    // Itens válidos da categoria atual (quantidade > 0)
+    // 1. Itens válidos da categoria atual (quantidade > 0)
     const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
+    
+    // 2. Recalcular o valor total
+    const total = itemsToKeep.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+    
+    // 3. Aplicar a alocação ND 30/39 final (baseado no input atual)
+    const numericInput = parseInputToNumber(saudeAllocation.nd_39_input);
+    const finalND39Value = Math.min(total, Math.max(0, numericInput));
+    const finalND30Value = total - finalND39Value;
+    
+    if (total > 0 && (!saudeAllocation.om_destino_recurso || !saudeAllocation.ug_destino_recurso)) {
+        toast.error("Selecione a OM de destino do recurso antes de salvar a alocação.");
+        return;
+    }
 
-    // Como só temos uma categoria (Saúde), o form.itens é substituído
+    // 4. Atualizar o estado de alocação com os valores finais
+    setSaudeAllocation(prev => ({
+        ...prev,
+        total_valor: total,
+        nd_39_input: formatNumberForInput(finalND39Value, 2), // Armazena o valor final formatado
+        nd_30_value: finalND30Value,
+        nd_39_value: finalND39Value,
+    }));
+
+    // 5. Atualizar o formulário principal
     setForm({ ...form, itens: itemsToKeep });
     
-    // Recalcular o valor total e preencher a alocação ND 30/39
-    const total = itemsToKeep.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
-    setAlocacaoND30(total);
-    setAlocacaoND39(0);
-    
-    toast.success(`Itens de Saúde atualizados!`);
+    toast.success(`Itens de Saúde e alocação de ND atualizados!`);
   };
-  
-  // Lógica de cálculo de alocação (Global Totals)
-  // CORREÇÃO: Calcular o valor total da categoria a partir dos itens em edição (currentCategoryItems)
-  const valorTotalCategoriaEmEdicao = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
   
   // O valor total do formulário (que será salvo) é baseado nos itens confirmados (form.itens)
   const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
   
-  const totalND30Final = alocacaoND30;
-  const totalND39Final = alocacaoND39;
+  const totalND30Final = saudeAllocation.nd_30_value;
+  const totalND39Final = saudeAllocation.nd_39_value;
   
   const isTotalAlocadoCorrect = areNumbersEqual(valorTotalForm, totalND30Final + totalND39Final);
 
@@ -296,7 +385,12 @@ const ClasseVIIISaudeForm = () => {
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
     if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
     if (form.itens.length === 0) { toast.error("Adicione pelo menos um item. Clique em 'Salvar Itens de Saúde'."); return; }
-    if (!isTotalAlocadoCorrect) { toast.error("A soma da alocação ND 30 e ND 39 deve ser igual ao Valor Total."); return; }
+    
+    if (!isTotalAlocadoCorrect) { toast.error("A soma da alocação ND 30 e ND 39 deve ser igual ao Valor Total. Clique em 'Salvar Itens de Saúde'."); return; }
+    if (valorTotalForm > 0 && (!saudeAllocation.om_destino_recurso || !saudeAllocation.ug_destino_recurso)) {
+        toast.error("Selecione a OM de destino do recurso.");
+        return;
+    }
     
     let fasesFinais = [...fasesAtividade];
     if (customFaseAtividade.trim()) { fasesFinais = [...fasesFinais, customFaseAtividade.trim()]; }
@@ -310,16 +404,20 @@ const ClasseVIIISaudeForm = () => {
     const detalhamento = generateSaudeMemoriaCalculo(
         itens, 
         form.dias_operacao, 
-        form.organizacao, 
-        form.ug, 
+        form.organizacao, // OM Detentora
+        form.ug, // UG Detentora
         faseFinalString,
-        valorTotalForm
+        valorTotalForm,
+        saudeAllocation.om_destino_recurso, // OM Destino Recurso
+        saudeAllocation.ug_destino_recurso, // UG Destino Recurso
+        totalND30Final,
+        totalND39Final
     );
     
     const registro: TablesInsert<'classe_viii_saude_registros'> = {
         p_trab_id: ptrabId,
-        organizacao: form.organizacao,
-        ug: form.ug,
+        organizacao: saudeAllocation.om_destino_recurso, // OM de destino do recurso
+        ug: saudeAllocation.ug_destino_recurso, // UG de destino do recurso
         dias_operacao: form.dias_operacao,
         categoria: CATEGORIA_PADRAO,
         itens_saude: itens as any,
@@ -337,7 +435,7 @@ const ClasseVIIISaudeForm = () => {
         .from("classe_viii_saude_registros")
         .delete()
         .eq("p_trab_id", ptrabId)
-        .eq("organizacao", form.organizacao)
+        .eq("organizacao", form.organizacao) // Usamos a OM Detentora para deletar
         .eq("ug", form.ug);
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
@@ -361,37 +459,47 @@ const ClasseVIIISaudeForm = () => {
     setLoading(true);
     resetFormFields();
     
-    // 1. Preencher o formulário principal
+    // 1. Preencher o formulário principal (OM Detentora)
+    let selectedOmIdForEdit: string | undefined = undefined;
+    try {
+        const { data: omData } = await supabase
+            .from('organizacoes_militares')
+            .select('id')
+            // Assumimos que a OM Detentora é a mesma que a OM de Destino do Recurso (organizacao/ug)
+            .eq('nome_om', registro.organizacao) 
+            .eq('codug_om', registro.ug)
+            .maybeSingle();
+        selectedOmIdForEdit = omData?.id;
+    } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
+    
     setEditingId(registro.id); 
     setForm({
-      selectedOmId: undefined, // Será preenchido abaixo
+      selectedOmId: selectedOmIdForEdit,
       organizacao: registro.organizacao,
       ug: registro.ug,
       dias_operacao: registro.dias_operacao,
       itens: registro.itens_saude,
     });
     
-    // 2. Preencher alocação ND
-    setAlocacaoND30(registro.valor_nd_30);
-    setAlocacaoND39(registro.valor_nd_39);
+    // 2. Preencher alocação ND e OM Destino
+    const totalValor = registro.itens_saude.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
     
-    // 3. Buscar ID da OM Detentora
-    try {
-        const { data: omData } = await supabase
-            .from('organizacoes_militares')
-            .select('id')
-            .eq('nome_om', registro.organizacao)
-            .eq('codug_om', registro.ug)
-            .maybeSingle();
-        setForm(prev => ({ ...prev, selectedOmId: omData?.id }));
-    } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
+    setSaudeAllocation({
+        total_valor: totalValor,
+        nd_39_input: formatNumberForInput(registro.valor_nd_39, 2),
+        nd_30_value: registro.valor_nd_30,
+        nd_39_value: registro.valor_nd_39,
+        om_destino_recurso: registro.organizacao,
+        ug_destino_recurso: registro.ug,
+        selectedOmDestinoId: selectedOmIdForEdit, // Usamos o mesmo ID, pois é o mesmo OM/UG
+    });
     
-    // 4. Preencher fases
+    // 3. Preencher fases
     const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
-    // 5. Recarregar a lista de itens editáveis com as quantidades salvas
+    // 4. Recarregar a lista de itens editáveis com as quantidades salvas
     const existingItemsMap = new Map<string, ItemRegistroSaude>();
     registro.itens_saude.forEach(item => {
         existingItemsMap.set(item.item, item);
@@ -529,7 +637,6 @@ const ClasseVIIISaudeForm = () => {
                   <Input
                     type="text"
                     className="max-w-xs"
-                    // Usando formatNumberForInput para garantir que não haja decimais
                     value={formatNumberForInput(form.dias_operacao, 0)} 
                     onChange={(e) => setForm({ ...form, dias_operacao: parseInputToNumber(e.target.value, 0) })}
                     placeholder="Ex: 7"
@@ -630,7 +737,6 @@ const ClasseVIIISaudeForm = () => {
                                                 <Input
                                                     type="text"
                                                     className="h-8 text-center"
-                                                    // Usando formatNumberForInput para garantir que não haja decimais
                                                     value={formatNumberForInput(item.quantidade, 0)}
                                                     onChange={(e) => handleQuantityChange(index, parseInputToNumber(e.target.value, 0))}
                                                     placeholder="0"
@@ -651,17 +757,87 @@ const ClasseVIIISaudeForm = () => {
                 <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
                     <span className="font-bold text-sm">VALOR TOTAL DA CATEGORIA</span>
                     <span className="font-extrabold text-lg text-red-600">
-                        {/* CORREÇÃO: Usar valorTotalCategoriaEmEdicao para atualização dinâmica */}
                         {formatCurrency(valorTotalCategoriaEmEdicao)}
                     </span>
                 </div>
+                
+                {/* NOVO BLOCO DE ALOCAÇÃO ND 30/39 (Padrão Classe II) */}
+                {valorTotalCategoriaEmEdicao > 0 && (
+                    <div className="space-y-4 p-4 border rounded-lg bg-background">
+                        <h4 className="font-semibold text-sm">Alocação de Recursos</h4>
+                        
+                        {/* CAMPO: OM de Destino do Recurso */}
+                        <div className="space-y-2">
+                            <Label>OM de Destino do Recurso *</Label>
+                            <OmSelector
+                                selectedOmId={saudeAllocation.selectedOmDestinoId}
+                                onChange={handleOMDestinoChange}
+                                placeholder="Selecione a OM que receberá o recurso..."
+                                disabled={!form.organizacao} 
+                            />
+                            {saudeAllocation.ug_destino_recurso && (
+                                <p className="text-xs text-muted-foreground">
+                                    UG de Destino: {saudeAllocation.ug_destino_recurso}
+                                </p>
+                            )}
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* ND 30 (Material) - ESQUERDA */}
+                            <div className="space-y-2">
+                                <Label>ND 33.90.30 (Material)</Label>
+                                <div className="relative">
+                                    <Input
+                                        value={formatNumberForInput(nd30ValueTemp, 2)}
+                                        readOnly
+                                        disabled
+                                        className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
+                                    />
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Calculado por diferença (Total - ND 39).
+                                </p>
+                            </div>
+                            {/* ND 39 (Serviço) - DIREITA */}
+                            <div className="space-y-2">
+                                <Label htmlFor="nd39-input">ND 33.90.39 (Serviço)</Label>
+                                <div className="relative">
+                                    <Input
+                                        id="nd39-input"
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={saudeAllocation.nd_39_input}
+                                        onChange={handleND39InputChange}
+                                        onBlur={handleND39InputBlur}
+                                        placeholder="0,00"
+                                        className="pl-12 text-lg"
+                                        disabled={valorTotalCategoriaEmEdicao === 0}
+                                        onKeyDown={handleEnterToNextField}
+                                    />
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Valor alocado para contratação de serviço.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex justify-between text-sm font-bold border-t pt-2">
+                            <span>TOTAL ALOCADO:</span>
+                            <span className={cn(areNumbersEqual(valorTotalCategoriaEmEdicao, (nd30ValueTemp + nd39ValueTemp)) ? "text-primary" : "text-destructive")}>
+                                {formatCurrency(nd30ValueTemp + nd39ValueTemp)}
+                            </span>
+                        </div>
+                    </div>
+                )}
+                {/* FIM NOVO BLOCO DE ALOCAÇÃO */}
                 
                 <div className="flex justify-end">
                     <Button 
                         type="button" 
                         onClick={handleUpdateCategoryItems} 
                         className="w-full md:w-auto" 
-                        disabled={!form.organizacao || form.dias_operacao <= 0}
+                        disabled={!form.organizacao || form.dias_operacao <= 0 || (valorTotalCategoriaEmEdicao > 0 && !areNumbersEqual(valorTotalCategoriaEmEdicao, (nd30ValueTemp + nd39ValueTemp)))}
                     >
                         Salvar Itens de Saúde
                     </Button>
@@ -673,6 +849,17 @@ const ClasseVIIISaudeForm = () => {
             {form.itens.length > 0 && (
               <div className="space-y-4 border-b pb-4">
                 <h3 className="text-lg font-semibold">3. Itens Adicionados ({form.itens.length})</h3>
+                
+                {/* Alerta de Validação Final */}
+                {!isTotalAlocadoCorrect && (
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="font-medium">
+                            Atenção: O Custo Total dos Itens ({formatCurrency(valorTotalForm)}) não corresponde ao Total Alocado ({formatCurrency(totalND30Final + totalND39Final)}). 
+                            Clique em "Salvar Itens de Saúde" para atualizar a alocação.
+                        </AlertDescription>
+                    </Alert>
+                )}
                 
                 <div className="space-y-4">
                   <Card className="p-4 bg-secondary/10 border-secondary">
@@ -691,52 +878,30 @@ const ClasseVIIISaudeForm = () => {
                         </div>
                       ))}
                     </div>
-                  </Card>
-                </div>
-                
-                {/* 3.1. Alocação de Recursos ND 30/39 */}
-                <div className="space-y-4 pt-4">
-                    <h4 className="text-base font-semibold">Alocação de Recursos (ND)</h4>
                     
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="nd30">ND 33.90.30 (Material)</Label>
-                            <Input
-                                id="nd30"
-                                type="text"
-                                value={formatInputWithThousands(alocacaoND30)}
-                                onChange={(e) => setAlocacaoND30(parseInputToNumber(e.target.value))}
-                                placeholder="0,00"
-                                className={cn({
-                                    "border-destructive": !isTotalAlocadoCorrect && alocacaoND30 > 0,
-                                })}
-                                onKeyDown={handleEnterToNextField}
-                            />
+                    <div className="pt-2 border-t mt-2">
+                        <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">OM Destino Recurso:</span>
+                            <span className="font-medium text-foreground">
+                                {saudeAllocation.om_destino_recurso} ({saudeAllocation.ug_destino_recurso})
+                            </span>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="nd39">ND 33.90.39 (Serviço)</Label>
-                            <Input
-                                id="nd39"
-                                type="text"
-                                value={formatInputWithThousands(alocacaoND39)}
-                                onChange={(e) => setAlocacaoND39(parseInputToNumber(e.target.value))}
-                                placeholder="0,00"
-                                className={cn({
-                                    "border-destructive": !isTotalAlocadoCorrect && alocacaoND39 > 0,
-                                })}
-                                onKeyDown={handleEnterToNextField}
-                            />
+                        <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
+                            <span className="font-medium text-green-600">{formatCurrency(saudeAllocation.nd_30_value)}</span>
                         </div>
+                        <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
+                            <span className="font-medium text-blue-600">{formatCurrency(saudeAllocation.nd_39_value)}</span>
+                        </div>
+                        {!areNumbersEqual(saudeAllocation.total_valor, valorTotalForm) && (
+                            <p className="text-xs text-destructive flex items-center gap-1 pt-1">
+                                <AlertCircle className="h-3 w-3" />
+                                Valores desatualizados. Salve os itens novamente.
+                            </p>
+                        )}
                     </div>
-                    
-                    {!isTotalAlocadoCorrect && (
-                        <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription>
-                                A soma da alocação (ND 30 + ND 39 = {formatCurrency(totalND30Final + totalND39Final)}) deve ser igual ao Valor Total ({formatCurrency(valorTotalForm)}). Diferença: {formatCurrency(valorTotalForm - (totalND30Final + totalND39Final))}.
-                            </AlertDescription>
-                        </Alert>
-                    )}
+                  </Card>
                 </div>
                 
                 <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
@@ -886,7 +1051,11 @@ const ClasseVIIISaudeForm = () => {
                       registro.organizacao, 
                       registro.ug, 
                       registro.fase_atividade || '', 
-                      registro.valor_total
+                      registro.valor_total,
+                      registro.organizacao, // OM Destino
+                      registro.ug, // UG Destino
+                      registro.valor_nd_30,
+                      registro.valor_nd_39
                   );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
