@@ -21,8 +21,8 @@ const CATEGORIAS_CLASSE_VI = ["Embarcação", "Equipamento de Engenharia"];
 // NOVO: Categorias da Classe VII
 const CATEGORIAS_CLASSE_VII = ["Comunicações", "Informática"];
 // NOVO: Categorias da Classe VIII
-const CATEGORIAS_CLASSE_VIII_SAUDE = ["Saúde - KPSI/KPT"];
-const CATEGORIAS_CLASSE_VIII_REMONTA = ["Remonta/Veterinária"];
+const CATEGORIAS_CLASSE_VIII_SAUDE = ["Saúde"]; // Alterado para 'Saúde'
+const CATEGORIAS_CLASSE_VIII_REMONTA = ["Remonta/Veterinária"]; // Adicionado Remonta/Veterinária
 
 
 interface ItemClasseII {
@@ -78,8 +78,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     { data: classeVData, error: classeVError },
     { data: classeVIData, error: classeVIError },
     { data: classeVIIData, error: classeVIIError },
-    { data: classeVIIISaudeData, error: classeVIIISaudeError }, // NOVO: Classe VIII Saúde
-    { data: classeVIIIRemontaData, error: classeVIIIRemontaError }, // NOVO: Classe VIII Remonta
+    { data: classeVIIISaudeData, error: classeVIIISaudeError }, // Classe VIII Saúde
+    { data: classeVIIIRemontaData, error: classeVIIIRemontaError }, // Classe VIII Remonta
   ] = await Promise.all([
     supabase
       .from('classe_ii_registros')
@@ -162,7 +162,11 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     } else if (record.itens_saude) {
         totalItemsCategory = (record.itens_saude as any[]).reduce((sum, item) => sum + (item.quantidade || 0), 0);
     } else if (record.itens_remonta) {
-        totalItemsCategory = (record.itens_remonta as any[]).reduce((sum, item) => sum + (item.quantidade_animais || 0), 0);
+        // Para Remonta, a quantidade de animais é o item principal
+        totalItemsCategory = (record.itens_remonta as any[]).reduce((sum, item) => sum + (item.quantidade || 0), 0);
+    } else if (record.quantidade_animais) {
+        // Caso o registro seja da tabela classe_viii_remonta_registros (que tem quantidade_animais)
+        totalItemsCategory = Number(record.quantidade_animais);
     }
 
 
@@ -429,7 +433,7 @@ export const PTrabCostSummary = ({
           <CardTitle className="text-xl font-bold text-destructive">Erro no Cálculo</CardTitle>
         </CardHeader>
         <CardContent className="py-4">
-          <p className="text-sm text-muted-foreground">Ocorreu um erro ao buscar os dados de custeio.</p>
+          <p className="text-sm text-muted-foreground">Ocorreu um erro ao buscar os dados de custeio. Verifique o console para detalhes.</p>
         </CardContent>
       </Card>
     );

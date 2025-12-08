@@ -180,16 +180,11 @@ const ClasseVIIISaudeForm = () => {
       
       // Sobrescreve com dados do DB se existirem
       diretrizesDB.forEach(d => {
-          if (d.categoria === 'Saúde') {
-              map['Saúde'] = map['Saúde'].filter(item => item.item !== d.item); // Remove default se o item for sobrescrito
-              map['Saúde'].push({
-                  item: d.item,
-                  valor_unitario: Number(d.valor_mnt_dia),
-                  quantidade: 0,
-              });
-          } else if (d.categoria === 'Remonta/Veterinária') {
-              map['Remonta/Veterinária'] = map['Remonta/Veterinária'].filter(item => item.item !== d.item);
-              map['Remonta/Veterinária'].push({
+          const categoria = d.categoria as Categoria;
+          if (CATEGORIAS.includes(categoria)) {
+              // Filtra o item padrão se ele for sobrescrito
+              map[categoria] = map[categoria].filter(item => item.item !== d.item); 
+              map[categoria].push({
                   item: d.item,
                   valor_unitario: Number(d.valor_mnt_dia),
                   quantidade: 0,
@@ -582,8 +577,8 @@ const ClasseVIIISaudeForm = () => {
 
   const handleEditarRegistro = async (registro: ClasseVIIIRegistro) => {
     setLoading(true);
-    setActiveCategory(registro.categoria); // Define a categoria ativa primeiro
     resetFormFields(registro.categoria);
+    setActiveCategory(registro.categoria);
     
     // 1. Preencher o formulário principal (OM Detentora)
     let selectedOmIdForEdit: string | undefined = undefined;

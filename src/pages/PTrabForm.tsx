@@ -50,7 +50,7 @@ const PTrabForm = () => {
     { id: "classe-vi", name: "Classe VI - Material de Engenharia" }, // Adicionado Classe VI
     { id: "classe-vii", name: "Classe VII - Comunicações e Informática" },
     { id: "classe-viii-saude", name: "Classe VIII - Saúde" }, // NOVO
-    { id: "classe-viii-remonta", name: "Classe VIII - Remonta/Veterinária" }, // Placeholder para Remonta
+    // { id: "classe-viii-remonta", name: "Classe VIII - Remonta/Veterinária" }, // REMOVIDO
     { id: "classe-ix", name: "Classe IX - Material de Manutenção" },
   ];
 
