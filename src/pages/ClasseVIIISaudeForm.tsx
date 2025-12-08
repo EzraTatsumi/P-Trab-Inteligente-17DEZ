@@ -121,6 +121,10 @@ const ClasseVIIISaudeForm = () => {
   const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
   const [memoriaEdit, setMemoriaEdit] = useState<string>("");
   
+  // Estados para alocação manual de recursos
+  const [alocacaoND30, setAlocacaoND30] = useState<number>(0);
+  const [alocacaoND39, setAlocacaoND39] = useState<number>(0);
+  
   const [form, setForm] = useState<FormDataClasseVIII>({
     selectedOmId: undefined,
     organizacao: "",
@@ -215,6 +219,9 @@ const ClasseVIIISaudeForm = () => {
     
     setFasesAtividade(["Execução"]);
     setCustomFaseAtividade("");
+    
+    setAlocacaoND30(0);
+    setAlocacaoND39(0);
   };
 
   const handleOMChange = (omData: OMData | undefined) => {
@@ -262,22 +269,29 @@ const ClasseVIIISaudeForm = () => {
 
     // Como só temos uma categoria (Saúde), o form.itens é substituído
     setForm({ ...form, itens: itemsToKeep });
+    
+    // Recalcular o valor total e preencher a alocação ND 30/39
+    const total = itemsToKeep.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+    setAlocacaoND30(total);
+    setAlocacaoND39(0);
+    
     toast.success(`Itens de Saúde atualizados!`);
   };
   
   // Lógica de cálculo de alocação (Global Totals)
   const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
   
-  // Para Classe VIII, assumimos que todo o valor é ND 30 (Material)
-  const totalND30Final = valorTotalForm;
-  const totalND39Final = 0;
-  const isTotalAlocadoCorrect = true; // Sempre true, pois não há divisão ND 30/39 pelo usuário
+  const totalND30Final = alocacaoND30;
+  const totalND39Final = alocacaoND39;
+  
+  const isTotalAlocadoCorrect = areNumbersEqual(valorTotalForm, totalND30Final + totalND39Final);
 
   const handleSalvarRegistros = async () => {
     if (!ptrabId) return;
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
     if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
     if (form.itens.length === 0) { toast.error("Adicione pelo menos um item"); return; }
+    if (!isTotalAlocadoCorrect) { toast.error("A soma da alocação ND 30 e ND 39 deve ser igual ao Valor Total."); return; }
     
     let fasesFinais = [...fasesAtividade];
     if (customFaseAtividade.trim()) { fasesFinais = [...fasesFinais, customFaseAtividade.trim()]; }
@@ -352,7 +366,11 @@ const ClasseVIIISaudeForm = () => {
       itens: registro.itens_saude,
     });
     
-    // 2. Buscar ID da OM Detentora
+    // 2. Preencher alocação ND
+    setAlocacaoND30(registro.valor_nd_30);
+    setAlocacaoND39(registro.valor_nd_39);
+    
+    // 3. Buscar ID da OM Detentora
     try {
         const { data: omData } = await supabase
             .from('organizacoes_militares')
@@ -363,12 +381,12 @@ const ClasseVIIISaudeForm = () => {
         setForm(prev => ({ ...prev, selectedOmId: omData?.id }));
     } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
     
-    // 3. Preencher fases
+    // 4. Preencher fases
     const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
-    // 4. Recarregar a lista de itens editáveis com as quantidades salvas
+    // 5. Recarregar a lista de itens editáveis com as quantidades salvas
     const existingItemsMap = new Map<string, ItemRegistroSaude>();
     registro.itens_saude.forEach(item => {
         existingItemsMap.set(item.item, item);
@@ -474,7 +492,7 @@ const ClasseVIIISaudeForm = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <HeartPulse className="h-6 w-6 text-red-600" />
+              {/* HeartPulse removido */}
               Classe VIII - Saúde (KPSI/KPT)
             </CardTitle>
             <CardDescription>
@@ -505,11 +523,10 @@ const ClasseVIIISaudeForm = () => {
                 <div className="space-y-2">
                   <Label>Dias de Atividade *</Label>
                   <Input
-                    type="number"
-                    min="1"
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
-                    value={form.dias_operacao || ""}
-                    onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value) || 0 })}
+                    type="text" // Alterado para text para usar formatNumberForInput
+                    className="max-w-xs"
+                    value={formatNumberForInput(form.dias_operacao)}
+                    onChange={(e) => setForm({ ...form, dias_operacao: parseInputToNumber(e.target.value) })}
                     placeholder="Ex: 7"
                     onKeyDown={handleEnterToNextField}
                   />
@@ -606,11 +623,10 @@ const ClasseVIIISaudeForm = () => {
                                             </TableCell>
                                             <TableCell className="py-1">
                                                 <Input
-                                                    type="number"
-                                                    min="0"
-                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
-                                                    value={item.quantidade === 0 ? "" : item.quantidade.toString()}
-                                                    onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
+                                                    type="text"
+                                                    className="h-8 text-center"
+                                                    value={formatNumberForInput(item.quantidade)}
+                                                    onChange={(e) => handleQuantityChange(index, parseInputToNumber(e.target.value))}
                                                     placeholder="0"
                                                     onKeyDown={handleEnterToNextField}
                                                 />
@@ -668,18 +684,52 @@ const ClasseVIIISaudeForm = () => {
                         </div>
                       ))}
                     </div>
+                  </Card>
+                </div>
+                
+                {/* 3.1. Alocação de Recursos ND 30/39 */}
+                <div className="space-y-4 pt-4">
+                    <h4 className="text-base font-semibold">Alocação de Recursos (ND)</h4>
                     
-                    <div className="pt-2 border-t mt-2">
-                        <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
-                            <span className="font-medium text-green-600">{formatCurrency(totalND30Final)}</span>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="nd30">ND 33.90.30 (Material)</Label>
+                            <Input
+                                id="nd30"
+                                type="text"
+                                value={formatInputWithThousands(alocacaoND30)}
+                                onChange={(e) => setAlocacaoND30(parseInputToNumber(e.target.value))}
+                                placeholder="0,00"
+                                className={cn({
+                                    "border-destructive": !isTotalAlocadoCorrect && alocacaoND30 > 0,
+                                })}
+                                onKeyDown={handleEnterToNextField}
+                            />
                         </div>
-                        <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
-                            <span className="font-medium text-blue-600">{formatCurrency(totalND39Final)}</span>
+                        <div className="space-y-2">
+                            <Label htmlFor="nd39">ND 33.90.39 (Serviço)</Label>
+                            <Input
+                                id="nd39"
+                                type="text"
+                                value={formatInputWithThousands(alocacaoND39)}
+                                onChange={(e) => setAlocacaoND39(parseInputToNumber(e.target.value))}
+                                placeholder="0,00"
+                                className={cn({
+                                    "border-destructive": !isTotalAlocadoCorrect && alocacaoND39 > 0,
+                                })}
+                                onKeyDown={handleEnterToNextField}
+                            />
                         </div>
                     </div>
-                  </Card>
+                    
+                    {!isTotalAlocadoCorrect && (
+                        <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>
+                                A soma da alocação (ND 30 + ND 39 = {formatCurrency(totalND30Final + totalND39Final)}) deve ser igual ao Valor Total ({formatCurrency(valorTotalForm)}). Diferença: {formatCurrency(valorTotalForm - (totalND30Final + totalND39Final))}.
+                            </AlertDescription>
+                        </Alert>
+                    )}
                 </div>
                 
                 <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
@@ -701,7 +751,7 @@ const ClasseVIIISaudeForm = () => {
                   <Button 
                     type="button" 
                     onClick={handleSalvarRegistros} 
-                    disabled={loading || !form.organizacao || form.itens.length === 0}
+                    disabled={loading || !form.organizacao || form.itens.length === 0 || !isTotalAlocadoCorrect}
                   >
                     {loading ? "Aguarde..." : (editingId ? "Atualizar Registro" : "Salvar Registro")}
                   </Button>
