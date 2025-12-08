@@ -148,6 +148,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const groupedClasseVIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
   
   let totalClasseVIII = 0; // NOVO TOTAL GERAL CLASSE VIII
+  let totalClasseVIII_ND30 = 0; // NOVO TOTAL ND30 CLASSE VIII
+  let totalClasseVIII_ND39 = 0; // NOVO TOTAL ND39 CLASSE VIII
   const groupedClasseVIIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
 
   (allClasseItemsData || []).forEach(record => {
@@ -226,6 +228,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     } else if (CATEGORIAS_CLASSE_VIII_SAUDE.includes(category) || CATEGORIAS_CLASSE_VIII_REMONTA.includes(category)) {
         // CLASSE VIII
         totalClasseVIII += valorTotal;
+        totalClasseVIII_ND30 += valorND30; // Adicionando ND30 ao total geral da Classe VIII
+        totalClasseVIII_ND39 += valorND39; // Adicionando ND39 ao total geral da Classe VIII
         
         if (!groupedClasseVIIICategories[category]) {
             groupedClasseVIIICategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
@@ -320,6 +324,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     groupedClasseVIICategories,
     
     totalClasseVIII, // NOVO
+    totalClasseVIII_ND30, // NOVO
+    totalClasseVIII_ND39, // NOVO
     groupedClasseVIIICategories, // NOVO
     
     totalComplemento,
@@ -337,6 +343,13 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalAviacaoExercito,
   };
 };
+
+interface PTrabCostSummaryProps {
+    ptrabId: string;
+    onOpenCreditDialog: () => void;
+    creditGND3: number;
+    creditGND4: number;
+}
 
 export const PTrabCostSummary = ({ 
   ptrabId, 
@@ -376,6 +389,8 @@ export const PTrabCostSummary = ({
       groupedClasseVIICategories: {},
       totalItensClasseVII: 0,
       totalClasseVIII: 0, // NOVO
+      totalClasseVIII_ND30: 0, // NOVO
+      totalClasseVIII_ND39: 0, // NOVO
       groupedClasseVIIICategories: {}, // NOVO
       totalComplemento: 0,
       totalEtapaSolicitadaValor: 0,
@@ -429,7 +444,7 @@ export const PTrabCostSummary = ({
           <CardTitle className="text-xl font-bold text-destructive">Erro no Cálculo</CardTitle>
         </CardHeader>
         <CardContent className="py-4">
-          <p className="text-sm text-muted-foreground">Ocorreu um erro ao buscar os dados de custeio.</p>
+          <p className="text-sm text-muted-foreground">Ocorreu um erro ao buscar os dados de custeio. Verifique se as tabelas de registro da Classe VIII estão acessíveis.</p>
         </CardContent>
       </Card>
     );
