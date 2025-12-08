@@ -22,16 +22,16 @@ import { TablesInsert } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { defaultClasseVIIISaudeConfig, ItemSaude } from "@/data/classeVIIIData";
+import { defaultClasseVIIISaudeConfig, ItemSaude, defaultClasseVIIIRemontaConfig, ItemRemonta } from "@/data/classeVIIIData";
 
-type Categoria = 'Saúde - KPSI/KPT';
+type Categoria = 'Saúde' | 'Remonta/Veterinária';
 
-const CATEGORIA_PADRAO: Categoria = 'Saúde - KPSI/KPT';
+const CATEGORIAS: Categoria[] = ['Saúde', 'Remonta/Veterinária'];
 
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
 
-interface ItemRegistroSaude extends ItemSaude {
+interface ItemRegistro extends ItemSaude, ItemRemonta {
   quantidade: number;
 }
 
@@ -40,7 +40,7 @@ interface FormDataClasseVIII {
   organizacao: string; // OM Detentora (Global)
   ug: string; // UG Detentora (Global)
   dias_operacao: number; // Global
-  itens: ItemRegistroSaude[]; // All items across all categories
+  itens: ItemRegistro[]; // All items across all categories
   fase_atividade?: string; // Global
 }
 
@@ -50,7 +50,8 @@ interface ClasseVIIIRegistro {
   ug: string; // UG de Destino do Recurso (ND 30/39)
   dias_operacao: number;
   categoria: Categoria;
-  itens_saude: ItemRegistroSaude[];
+  itens_saude?: ItemRegistro[]; // Usado para Saúde
+  itens_remonta?: ItemRegistro[]; // Usado para Remonta
   valor_total: number;
   detalhamento: string;
   detalhamento_customizado?: string | null;
@@ -97,10 +98,12 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-// NOVO: Gera a memória de cálculo detalhada para a Classe VIII Saúde
-const generateSaudeMemoriaCalculo = (itens: ItemRegistroSaude[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, valorTotal: number, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
+// NOVO: Gera a memória de cálculo detalhada para a Classe VIII
+const generateMemoriaCalculo = (categoria: Categoria, itens: ItemRegistro[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, valorTotal: number, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
+    const titulo = categoria === 'Saúde' ? "KPSI/KPSC e KPT" : "Material de Remonta e Veterinária";
+    const tabela = categoria === 'Saúde' ? "classe_viii_saude_registros" : "classe_viii_remonta_registros";
 
     let detalhamentoItens = "";
     let calculoDetalhado = "";
@@ -111,7 +114,7 @@ const generateSaudeMemoriaCalculo = (itens: ItemRegistroSaude[], diasOperacao: n
         calculoDetalhado += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_unitario)} = ${formatCurrency(valorItem)}\n`;
     });
 
-    return `33.90.30 / 33.90.39 - Aquisição de KPSI/KPSC e KPT para utilização por ${totalItens} itens do ${organizacao}, durante ${diasOperacao} dias de ${faseFormatada}.
+    return `33.90.30 / 33.90.39 - Aquisição de ${titulo} para utilização por ${totalItens} itens do ${organizacao}, durante ${diasOperacao} dias de ${faseFormatada}.
 Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
 Alocação:
@@ -119,7 +122,7 @@ Alocação:
 - ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
 Cálculo:
-Fórmula Base: Nr KPSC/KPT x valor do item
+Fórmula Base: Nr Itens x valor do item
 
 Valores Unitários:
 ${detalhamentoItens.trim()}
@@ -140,6 +143,7 @@ const ClasseVIIISaudeForm = () => {
   const [loading, setLoading] = useState(false);
   
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<Categoria>('Saúde');
   
   // Estados para edição de memória de cálculo
   const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
@@ -162,11 +166,14 @@ const ClasseVIIISaudeForm = () => {
   
   const { handleEnterToNextField } = useFormNavigation();
   
-  // Itens de saúde disponíveis (diretrizes)
-  const diretrizesSaude: ItemSaude[] = defaultClasseVIIISaudeConfig;
+  // Mapeamento de diretrizes
+  const diretrizesMap = useMemo(() => ({
+      'Saúde': defaultClasseVIIISaudeConfig as ItemRegistro[],
+      'Remonta/Veterinária': defaultClasseVIIIRemontaConfig as ItemRegistro[],
+  }), []);
   
   // Estado para a lista de itens da categoria atual com quantidades editáveis
-  const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemRegistroSaude[]>([]);
+  const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemRegistro[]>([]);
 
   useEffect(() => {
     if (!ptrabId) {
@@ -178,57 +185,68 @@ const ClasseVIIISaudeForm = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId]);
   
-  // Efeito para gerenciar a lista de itens da categoria atual
+  // Efeito para carregar/resetar itens quando a categoria muda ou o formulário é resetado
   useEffect(() => {
-    if (diretrizesSaude.length > 0) {
-        const availableItems = diretrizesSaude.map(d => ({
-            ...d,
-            quantidade: 0, // Quantidade padrão
-        }));
-
-        // Mapear itens existentes no formulário principal
-        const existingItemsMap = new Map<string, ItemRegistroSaude>();
+    const availableItems = diretrizesMap[activeCategory] || [];
+    
+    const existingItemsMap = new Map<string, ItemRegistro>();
+    // Se estiver editando, usamos os itens do form.itens (que foram carregados)
+    if (editingId) {
         form.itens.forEach(item => {
             existingItemsMap.set(item.item, item);
         });
-
-        // Mesclar: usar o item existente (com quantidade) ou o item disponível (com quantidade 0)
-        const mergedItems = availableItems.map(availableItem => {
-            const existing = existingItemsMap.get(availableItem.item);
-            return existing || availableItem;
-        });
-
-        setCurrentCategoryItems(mergedItems);
-    } else {
-        setCurrentCategoryItems([]);
     }
-  }, [diretrizesSaude, form.itens]);
+
+    const mergedItems = availableItems.map(availableItem => {
+        const existing = existingItemsMap.get(availableItem.item);
+        return existing || { ...availableItem, quantidade: 0 };
+    });
+
+    setCurrentCategoryItems(mergedItems);
+  }, [activeCategory, diretrizesMap, editingId, form.itens]);
 
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
-    // Busca registros da tabela classe_viii_saude_registros
-    const { data, error } = await supabase
-      .from("classe_viii_saude_registros")
-      .select("*, itens_saude, detalhamento_customizado, valor_nd_30, valor_nd_39")
-      .eq("p_trab_id", ptrabId)
-      .order("organizacao", { ascending: true });
+    setLoading(true);
+    
+    const [saudeRes, remontaRes] = await Promise.all([
+        supabase
+            .from("classe_viii_saude_registros")
+            .select("*, itens_saude, detalhamento_customizado, valor_nd_30, valor_nd_39")
+            .eq("p_trab_id", ptrabId),
+        supabase
+            .from("classe_viii_remonta_registros")
+            .select("*, itens_remonta, detalhamento_customizado, valor_nd_30, valor_nd_39")
+            .eq("p_trab_id", ptrabId),
+    ]);
 
-    if (error) {
-      toast.error("Erro ao carregar registros de Saúde");
-      console.error(error);
-      return;
-    }
+    if (saudeRes.error) { console.error("Erro ao carregar registros de Saúde:", saudeRes.error); }
+    if (remontaRes.error) { console.error("Erro ao carregar registros de Remonta:", remontaRes.error); }
 
-    setRegistros((data || []).map(r => ({
+    const saudeRegistros = (saudeRes.data || []).map(r => ({
         ...r,
-        itens_saude: (r.itens_saude || []) as ItemRegistroSaude[],
+        categoria: 'Saúde' as Categoria,
+        itens_saude: (r.itens_saude || []) as ItemRegistro[],
         valor_nd_30: Number(r.valor_nd_30),
         valor_nd_39: Number(r.valor_nd_39),
-    }) as ClasseVIIIRegistro[]));
+    }) as ClasseVIIIRegistro[]);
+    
+    const remontaRegistros = (remontaRes.data || []).map(r => ({
+        ...r,
+        categoria: 'Remonta/Veterinária' as Categoria,
+        itens_remonta: (r.itens_remonta || []) as ItemRegistro[],
+        valor_nd_30: Number(r.valor_nd_30),
+        valor_nd_39: Number(r.valor_nd_39),
+    }) as ClasseVIIIRegistro[]);
+
+    setRegistros([...saudeRegistros, ...remontaRegistros].sort((a, b) => a.organizacao.localeCompare(b.organizacao)));
+    setLoading(false);
   };
 
-  const resetFormFields = () => {
+  const resetFormFields = (newCategory?: Categoria) => {
+    const categoryToReset = newCategory || activeCategory;
+    
     setEditingId(null);
     setForm({
       selectedOmId: undefined,
@@ -238,12 +256,20 @@ const ClasseVIIISaudeForm = () => {
       itens: [],
     });
     
-    setCurrentCategoryItems(diretrizesSaude.map(d => ({ ...d, quantidade: 0 })));
+    // Reseta os itens da categoria ativa
+    setCurrentCategoryItems(diretrizesMap[categoryToReset].map(d => ({ ...d, quantidade: 0 })));
     
     setFasesAtividade(["Execução"]);
     setCustomFaseAtividade("");
     
     setSaudeAllocation(initialSaudeAllocation);
+  };
+  
+  const handleCategoryChange = (category: Categoria) => {
+      if (activeCategory !== category) {
+          setActiveCategory(category);
+          resetFormFields(category);
+      }
   };
 
   const handleOMChange = (omData: OMData | undefined) => {
@@ -369,7 +395,7 @@ const ClasseVIIISaudeForm = () => {
     // 5. Atualizar o formulário principal
     setForm({ ...form, itens: itemsToKeep });
     
-    toast.success(`Itens de Saúde e alocação de ND atualizados!`);
+    toast.success(`Itens de ${activeCategory} e alocação de ND atualizados!`);
   };
   
   // O valor total do formulário (que será salvo) é baseado nos itens confirmados (form.itens)
@@ -400,8 +426,11 @@ const ClasseVIIISaudeForm = () => {
     setLoading(true);
     
     const itens = form.itens;
+    const tableName = activeCategory === 'Saúde' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
+    const itensKey = activeCategory === 'Saúde' ? 'itens_saude' : 'itens_remonta';
     
-    const detalhamento = generateSaudeMemoriaCalculo(
+    const detalhamento = generateMemoriaCalculo(
+        activeCategory,
         itens, 
         form.dias_operacao, 
         form.organizacao, // OM Detentora
@@ -414,13 +443,12 @@ const ClasseVIIISaudeForm = () => {
         totalND39Final
     );
     
-    const registro: TablesInsert<'classe_viii_saude_registros'> = {
+    const baseRegistro: TablesInsert<'classe_viii_saude_registros'> = {
         p_trab_id: ptrabId,
         organizacao: saudeAllocation.om_destino_recurso, // OM de destino do recurso
         ug: saudeAllocation.ug_destino_recurso, // UG de destino do recurso
         dias_operacao: form.dias_operacao,
-        categoria: CATEGORIA_PADRAO,
-        itens_saude: itens as any,
+        categoria: activeCategory,
         valor_total: valorTotalForm,
         detalhamento: detalhamento,
         fase_atividade: faseFinalString,
@@ -428,28 +456,33 @@ const ClasseVIIISaudeForm = () => {
         valor_nd_30: totalND30Final,
         valor_nd_39: totalND39Final,
     };
+    
+    const registro = {
+        ...baseRegistro,
+        [itensKey]: itens as any,
+    };
 
     try {
-      // Deletar registros existentes (apenas um registro por OM é esperado para esta classe)
+      // Deletar registros existentes (apenas um registro por OM/Categoria é esperado para esta classe)
       const { error: deleteError } = await supabase
-        .from("classe_viii_saude_registros")
+        .from(tableName)
         .delete()
         .eq("p_trab_id", ptrabId)
         .eq("organizacao", form.organizacao) // Usamos a OM Detentora para deletar
         .eq("ug", form.ug);
-      if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
+      if (deleteError) { console.error(`Erro ao deletar registros existentes em ${tableName}:`, deleteError); throw deleteError; }
       
       // Inserir o novo registro
-      const { error: insertError } = await supabase.from("classe_viii_saude_registros").insert([registro]);
+      const { error: insertError } = await supabase.from(tableName).insert([registro]);
       if (insertError) throw insertError;
       
-      toast.success(editingId ? "Registro de Saúde atualizado com sucesso!" : "Registro de Saúde salvo com sucesso!");
+      toast.success(editingId ? `Registro de ${activeCategory} atualizado com sucesso!` : `Registro de ${activeCategory} salvo com sucesso!`);
       await updatePTrabStatusIfAberto(ptrabId);
       resetFormFields();
       fetchRegistros();
     } catch (error) {
-      console.error("Erro ao salvar registros de Saúde:", error);
-      toast.error("Erro ao salvar registros de Saúde");
+      console.error(`Erro ao salvar registros de ${activeCategory}:`, error);
+      toast.error(`Erro ao salvar registros de ${activeCategory}`);
     } finally {
       setLoading(false);
     }
@@ -457,7 +490,8 @@ const ClasseVIIISaudeForm = () => {
 
   const handleEditarRegistro = async (registro: ClasseVIIIRegistro) => {
     setLoading(true);
-    resetFormFields();
+    resetFormFields(registro.categoria);
+    setActiveCategory(registro.categoria);
     
     // 1. Preencher o formulário principal (OM Detentora)
     let selectedOmIdForEdit: string | undefined = undefined;
@@ -472,17 +506,19 @@ const ClasseVIIISaudeForm = () => {
         selectedOmIdForEdit = omData?.id;
     } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
     
+    const itensRegistro = registro.categoria === 'Saúde' ? registro.itens_saude : registro.itens_remonta;
+    
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
       organizacao: registro.organizacao,
       ug: registro.ug,
       dias_operacao: registro.dias_operacao,
-      itens: registro.itens_saude,
+      itens: itensRegistro || [],
     });
     
     // 2. Preencher alocação ND e OM Destino
-    const totalValor = registro.itens_saude.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+    const totalValor = (itensRegistro || []).reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
     
     setSaudeAllocation({
         total_valor: totalValor,
@@ -499,20 +535,34 @@ const ClasseVIIISaudeForm = () => {
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
-    // 4. Recarregar a lista de itens editáveis com as quantidades salvas
-    const existingItemsMap = new Map<string, ItemRegistroSaude>();
-    registro.itens_saude.forEach(item => {
-        existingItemsMap.set(item.item, item);
-    });
-    
-    const mergedItems = diretrizesSaude.map(availableItem => {
-        const existing = existingItemsMap.get(availableItem.item);
-        return existing || { ...availableItem, quantidade: 0 };
-    });
-    setCurrentCategoryItems(mergedItems);
+    // 4. Recarregar a lista de itens editáveis com as quantidades salvas (feito no useEffect)
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setLoading(false);
+  };
+  
+  const handleDeletarRegistro = async (registro: ClasseVIIIRegistro) => {
+    if (!confirm(`Deseja realmente deletar o registro de ${registro.categoria} para ${registro.organizacao}?`)) {
+        return;
+    }
+    
+    setLoading(true);
+    const tableName = registro.categoria === 'Saúde' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
+    
+    try {
+        const { error } = await supabase.from(tableName)
+            .delete()
+            .eq("id", registro.id);
+            
+        if (error) throw error;
+        
+        toast.success("Registro excluído!");
+        fetchRegistros();
+    } catch (err) {
+        toast.error(sanitizeError(err));
+    } finally {
+        setLoading(false);
+    }
   };
   
   const registrosAgrupadosPorOM = useMemo(() => {
@@ -536,15 +586,17 @@ const ClasseVIIISaudeForm = () => {
     setMemoriaEdit("");
   };
 
-  const handleSalvarMemoriaCustomizada = async (registroId: string) => {
+  const handleSalvarMemoriaCustomizada = async (registro: ClasseVIIIRegistro) => {
     setLoading(true);
+    const tableName = registro.categoria === 'Saúde' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
+    
     try {
       const { error } = await supabase
-        .from("classe_viii_saude_registros")
+        .from(tableName)
         .update({
           detalhamento_customizado: memoriaEdit.trim() || null,
         })
-        .eq("id", registroId);
+        .eq("id", registro.id);
 
       if (error) throw error;
 
@@ -559,19 +611,21 @@ const ClasseVIIISaudeForm = () => {
     }
   };
 
-  const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
+  const handleRestaurarMemoriaAutomatica = async (registro: ClasseVIIIRegistro) => {
     if (!confirm("Deseja restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
       return;
     }
     
     setLoading(true);
+    const tableName = registro.categoria === 'Saúde' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
+    
     try {
       const { error } = await supabase
-        .from("classe_viii_saude_registros")
+        .from(tableName)
         .update({
           detalhamento_customizado: null,
         })
-        .eq("id", registroId);
+        .eq("id", registro.id);
 
       if (error) throw error;
 
@@ -605,13 +659,30 @@ const ClasseVIIISaudeForm = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              Classe VIII - Saúde (KPSI/KPT)
+              Classe VIII - Saúde e Remonta/Veterinária
             </CardTitle>
             <CardDescription>
-              Solicitação de recursos para Kits de Primeiros Socorros (KPSI/KPT).
+              Solicitação de recursos para Kits de Primeiros Socorros (Saúde) ou Material de Remonta/Veterinária.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            
+            {/* Seletor de Categoria */}
+            <div className="space-y-2">
+                <Label>Selecione a Categoria</Label>
+                <div className="flex gap-2">
+                    {CATEGORIAS.map(cat => (
+                        <Button
+                            key={cat}
+                            variant={activeCategory === cat ? "default" : "outline"}
+                            onClick={() => handleCategoryChange(cat)}
+                            disabled={loading}
+                        >
+                            {cat}
+                        </Button>
+                    ))}
+                </div>
+            </div>
             
             {/* 1. Dados da Organização e Dias */}
             <div className="space-y-3 border-b pb-4">
@@ -699,10 +770,10 @@ const ClasseVIIISaudeForm = () => {
               </div>
             </div>
 
-            {/* 2. Adicionar Itens de Saúde */}
+            {/* 2. Configurar Itens por Categoria */}
             {form.organizacao && form.dias_operacao > 0 && (
               <div className="space-y-4 border-b pb-4">
-                <h3 className="text-lg font-semibold">2. Configurar Kits de Saúde</h3>
+                <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria ({activeCategory})</h3>
                 
                 <div className="max-h-[400px] overflow-y-auto rounded-md border">
                     <Table className="w-full">
@@ -718,7 +789,7 @@ const ClasseVIIISaudeForm = () => {
                             {currentCategoryItems.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={4} className="text-center text-muted-foreground">
-                                        Nenhum item de diretriz encontrado.
+                                        Nenhum item de diretriz encontrado para {activeCategory}.
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -761,10 +832,10 @@ const ClasseVIIISaudeForm = () => {
                     </span>
                 </div>
                 
-                {/* NOVO BLOCO DE ALOCAÇÃO ND 30/39 (Padrão Classe II) */}
+                {/* BLOCO DE ALOCAÇÃO ND 30/39 (Padrão Classe II) */}
                 {valorTotalCategoriaEmEdicao > 0 && (
                     <div className="space-y-4 p-4 border rounded-lg bg-background">
-                        <h4 className="font-semibold text-sm">Alocação de Recursos</h4>
+                        <h4 className="font-semibold text-sm">Alocação de Recursos para {activeCategory}</h4>
                         
                         {/* CAMPO: OM de Destino do Recurso */}
                         <div className="space-y-2">
@@ -830,7 +901,7 @@ const ClasseVIIISaudeForm = () => {
                         </div>
                     </div>
                 )}
-                {/* FIM NOVO BLOCO DE ALOCAÇÃO */}
+                {/* FIM BLOCO DE ALOCAÇÃO */}
                 
                 <div className="flex justify-end">
                     <Button 
@@ -839,7 +910,7 @@ const ClasseVIIISaudeForm = () => {
                         className="w-full md:w-auto" 
                         disabled={!form.organizacao || form.dias_operacao <= 0 || (valorTotalCategoriaEmEdicao > 0 && !areNumbersEqual(valorTotalCategoriaEmEdicao, (nd30ValueTemp + nd39ValueTemp)))}
                     >
-                        Salvar Itens de Saúde
+                        Salvar Itens de {activeCategory}
                     </Button>
                 </div>
               </div>
@@ -856,7 +927,7 @@ const ClasseVIIISaudeForm = () => {
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription className="font-medium">
                             Atenção: O Custo Total dos Itens ({formatCurrency(valorTotalForm)}) não corresponde ao Total Alocado ({formatCurrency(totalND30Final + totalND39Final)}). 
-                            Clique em "Salvar Itens de Saúde" para atualizar a alocação.
+                            Clique em "Salvar Itens de {activeCategory}" para atualizar a alocação.
                         </AlertDescription>
                     </Alert>
                 )}
@@ -864,7 +935,7 @@ const ClasseVIIISaudeForm = () => {
                 <div className="space-y-4">
                   <Card className="p-4 bg-secondary/10 border-secondary">
                     <div className="flex items-center justify-between mb-3 border-b pb-2">
-                      <h4 className="font-bold text-base text-primary">Kits de Saúde ({form.itens.reduce((sum, i) => sum + i.quantidade, 0)} itens)</h4>
+                      <h4 className="font-bold text-base text-primary">{activeCategory} ({form.itens.reduce((sum, i) => sum + i.quantidade, 0)} itens)</h4>
                       <span className="font-extrabold text-lg text-red-600">{formatCurrency(valorTotalForm)}</span>
                     </div>
                     
@@ -915,7 +986,7 @@ const ClasseVIIISaudeForm = () => {
                   <Button
                     variant="outline"
                     type="button"
-                    onClick={resetFormFields}
+                    onClick={() => resetFormFields()}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     Limpar Formulário
@@ -989,20 +1060,7 @@ const ClasseVIIISaudeForm = () => {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            onClick={() => {
-                                                                if (confirm(`Deseja realmente deletar o registro de Saúde para ${omName}?`)) {
-                                                                    supabase.from("classe_viii_saude_registros")
-                                                                        .delete()
-                                                                        .eq("id", registro.id)
-                                                                        .then(() => {
-                                                                            toast.success("Registro excluído!");
-                                                                            fetchRegistros();
-                                                                        })
-                                                                        .catch(err => {
-                                                                            toast.error(sanitizeError(err));
-                                                                        });
-                                                                }
-                                                            }}
+                                                            onClick={() => handleDeletarRegistro(registro)}
                                                             className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
@@ -1045,8 +1103,11 @@ const ClasseVIIISaudeForm = () => {
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
-                  const memoriaAutomatica = generateSaudeMemoriaCalculo(
-                      registro.itens_saude, 
+                  const itensMemoria = registro.categoria === 'Saúde' ? registro.itens_saude : registro.itens_remonta;
+                  
+                  const memoriaAutomatica = generateMemoriaCalculo(
+                      registro.categoria,
+                      itensMemoria || [], 
                       registro.dias_operacao, 
                       registro.organizacao, 
                       registro.ug, 
@@ -1089,7 +1150,7 @@ const ClasseVIIISaudeForm = () => {
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                                      onClick={() => handleRestaurarMemoriaAutomatica(registro)}
                                       disabled={loading}
                                       className="gap-2 text-muted-foreground"
                                     >
@@ -1103,7 +1164,7 @@ const ClasseVIIISaudeForm = () => {
                                   <Button
                                     size="sm"
                                     variant="default"
-                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                    onClick={() => handleSalvarMemoriaCustomizada(registro)}
                                     disabled={loading}
                                     className="gap-2"
                                   >
