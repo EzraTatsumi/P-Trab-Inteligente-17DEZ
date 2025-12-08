@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { defaultClasseVIIISaudeConfig, ItemSaude, defaultClasseVIIIRemontaConfig, ItemRemonta } from "@/data/classeVIIIData";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Importando Tabs
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"; // Importando Tabs
 import { DiretrizClasseII } from "@/types/diretrizesClasseII"; // Importando tipo de diretriz
 
 type Categoria = 'Saúde' | 'Remonta/Veterinária';
@@ -105,15 +105,25 @@ const generateMemoriaCalculo = (categoria: Categoria, itens: ItemRegistro[], dia
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const titulo = categoria === 'Saúde' ? "KPSI/KPSC e KPT" : "Material de Remonta e Veterinária";
-    // const tabela = categoria === 'Saúde' ? "classe_viii_saude_registros" : "classe_viii_remonta_registros"; // Não usado no detalhamento
+    
+    // A fórmula base depende da categoria
+    const isSaude = categoria === 'Saúde';
+    const formulaBase = isSaude ? "Nr Itens x valor do item" : "Nr Itens x valor do item/dia x Nr Dias de Operação";
 
     let detalhamentoItens = "";
     let calculoDetalhado = "";
     
     itens.forEach(item => {
-        const valorItem = item.quantidade * item.valor_unitario;
-        detalhamentoItens += `- ${item.item}: ${formatCurrency(item.valor_unitario)}\n`;
-        calculoDetalhado += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_unitario)} = ${formatCurrency(valorItem)}\n`;
+        const valorUnitario = item.valor_unitario;
+        const valorItem = isSaude ? (item.quantidade * valorUnitario) : (item.quantidade * valorUnitario * diasOperacao);
+        
+        detalhamentoItens += `- ${item.item}: ${formatCurrency(valorUnitario)} ${isSaude ? '' : '/dia'}\n`;
+        
+        if (isSaude) {
+            calculoDetalhado += `- ${item.quantidade} ${item.item} x ${formatCurrency(valorUnitario)} = ${formatCurrency(valorItem)}\n`;
+        } else {
+            calculoDetalhado += `- ${item.quantidade} ${item.item} x ${formatCurrency(valorUnitario)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}\n`;
+        }
     });
 
     return `33.90.30 / 33.90.39 - Aquisição de ${titulo} para utilização por ${totalItens} itens do ${organizacao}, durante ${diasOperacao} dias de ${faseFormatada}.
@@ -124,7 +134,7 @@ Alocação:
 - ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
 Cálculo:
-Fórmula Base: Nr Itens x valor do item
+Fórmula Base: ${formulaBase}
 
 Valores Unitários:
 ${detalhamentoItens.trim()}
@@ -419,7 +429,13 @@ const ClasseVIIISaudeForm = () => {
   };
   
   // ND Calculation and Input Handlers
-  const valorTotalCategoriaEmEdicao = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+  const isRemonta = activeCategory === 'Remonta/Veterinária';
+  
+  // Calcula o valor total da categoria em edição (Saúde: valor_unitario * quantidade | Remonta: valor_unitario * quantidade * dias_operacao)
+  const valorTotalCategoriaEmEdicao = useMemo(() => {
+    const dias = isRemonta ? form.dias_operacao : 1;
+    return currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario * dias), 0);
+  }, [currentCategoryItems, isRemonta, form.dias_operacao]);
   
   const nd39ValueTemp = Math.min(valorTotalCategoriaEmEdicao, Math.max(0, parseInputToNumber(saudeAllocation.nd_39_input)));
   const nd30ValueTemp = valorTotalCategoriaEmEdicao - nd39ValueTemp;
@@ -448,16 +464,14 @@ const ClasseVIIISaudeForm = () => {
 
   // NOVO HANDLER: Salva os itens da lista expandida para o form.itens principal
   const handleUpdateCategoryItems = () => {
-    if (!form.organizacao || form.dias_operacao <= 0) {
-        toast.error("Preencha a OM e os Dias de Operação antes de salvar itens.");
-        return;
-    }
+    if (!form.organizacao || form.ug) { toast.error("Selecione uma OM detentora."); return; }
+    if (isRemonta && form.dias_operacao <= 0) { toast.error("Dias de Operação deve ser maior que zero para Remonta."); return; }
     
     // 1. Itens válidos da categoria atual (quantidade > 0)
     const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
     
     // 2. Recalcular o valor total
-    const total = itemsToKeep.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+    const total = itemsToKeep.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario * (isRemonta ? form.dias_operacao : 1)), 0);
     
     // 3. Aplicar a alocação ND 30/39 final (baseado no input atual)
     const numericInput = parseInputToNumber(saudeAllocation.nd_39_input);
@@ -485,7 +499,7 @@ const ClasseVIIISaudeForm = () => {
   };
   
   // O valor total do formulário (que será salvo) é baseado nos itens confirmados (form.itens)
-  const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+  const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario * (isRemonta ? form.dias_operacao : 1)), 0);
   
   const totalND30Final = saudeAllocation.nd_30_value;
   const totalND39Final = saudeAllocation.nd_39_value;
@@ -495,10 +509,10 @@ const ClasseVIIISaudeForm = () => {
   const handleSalvarRegistros = async () => {
     if (!ptrabId) return;
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
-    if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
+    if (isRemonta && form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero para Remonta."); return; }
     if (form.itens.length === 0) { toast.error(`Adicione pelo menos um item. Clique em 'Salvar Itens de ${activeCategory}'.`); return; }
     
-    if (!isTotalAlocadoCorrect) { toast.error("A soma da alocação ND 30 e ND 39 deve ser igual ao Valor Total. Clique em 'Salvar Itens de Saúde'."); return; }
+    if (!isTotalAlocadoCorrect) { toast.error("A soma da alocação ND 30 e ND 39 deve ser igual ao Valor Total. Clique em 'Salvar Itens'."); return; }
     if (valorTotalForm > 0 && (!saudeAllocation.om_destino_recurso || !saudeAllocation.ug_destino_recurso)) {
         toast.error("Selecione a OM de destino do recurso.");
         return;
@@ -605,7 +619,7 @@ const ClasseVIIISaudeForm = () => {
     });
     
     // 2. Preencher alocação ND e OM Destino
-    const totalValor = (itensRegistro || []).reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+    const totalValor = (itensRegistro || []).reduce((sum, item) => sum + (item.quantidade * item.valor_unitario * (registro.categoria === 'Remonta/Veterinária' ? registro.dias_operacao : 1)), 0);
     
     setSaudeAllocation({
         total_valor: totalValor,
@@ -754,6 +768,17 @@ const ClasseVIIISaudeForm = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             
+            {/* Seletor de Categoria (Tabs) */}
+            <Tabs value={activeCategory} onValueChange={(value) => handleCategoryChange(value as Categoria)}>
+                <TabsList className="grid w-full grid-cols-2">
+                    {CATEGORIAS.map(cat => (
+                        <TabsTrigger key={cat} value={cat} disabled={loading}>
+                            {cat}
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
+            </Tabs>
+            
             {/* 1. Dados da Organização e Dias */}
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
@@ -764,7 +789,6 @@ const ClasseVIIISaudeForm = () => {
                   <OmSelector
                     selectedOmId={form.selectedOmId}
                     onChange={handleOMChange}
-                    placeholder="Selecione a OM..."
                   />
                 </div>
 
@@ -779,10 +803,16 @@ const ClasseVIIISaudeForm = () => {
                     type="text"
                     className="max-w-xs"
                     value={formatNumberForInput(form.dias_operacao, 0)} 
-                    onChange={(e) => setForm({ ...form, dias_operacao: parseInputToNumber(e.target.value, 0) })}
+                    onChange={(e) => setForm({ ...form, dias_operacao: parseInputToNumber(e.target.value) })}
                     placeholder="Ex: 7"
                     onKeyDown={handleEnterToNextField}
+                    disabled={activeCategory === 'Saúde'}
                   />
+                  {activeCategory === 'Saúde' && (
+                    <p className="text-xs text-muted-foreground">
+                      Dias de operação não se aplicam diretamente à Saúde (custo unitário).
+                    </p>
+                  )}
                 </div>
               </div>
               
@@ -841,27 +871,16 @@ const ClasseVIIISaudeForm = () => {
             </div>
 
             {/* 2. Configurar Itens por Categoria */}
-            {form.organizacao && form.dias_operacao > 0 && (
+            {form.organizacao && (isRemonta ? form.dias_operacao > 0 : true) && (
               <div className="space-y-4 border-b pb-4">
-                <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
-                
-                {/* Seletor de Categoria (Tabs) */}
-                <Tabs value={activeCategory} onValueChange={(value) => handleCategoryChange(value as Categoria)}>
-                    <TabsList className="grid w-full grid-cols-2">
-                        {CATEGORIAS.map(cat => (
-                            <TabsTrigger key={cat} value={cat} disabled={loading}>
-                                {cat}
-                            </TabsTrigger>
-                        ))}
-                    </TabsList>
-                </Tabs>
+                <h3 className="text-lg font-semibold">2. Configurar Itens de {activeCategory}</h3>
                 
                 <div className="max-h-[400px] overflow-y-auto rounded-md border">
                     <Table className="w-full">
                         <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                             <TableRow>
                                 <TableHead className="w-[50%]">Item (MEM)</TableHead>
-                                <TableHead className="w-[20%] text-right">Valor Unitário</TableHead>
+                                <TableHead className="w-[20%] text-right">Valor Unitário {isRemonta ? '/ Dia' : ''}</TableHead>
                                 <TableHead className="w-[15%] text-center">Quantidade</TableHead>
                                 <TableHead className="w-[15%] text-right">Total</TableHead>
                             </TableRow>
@@ -875,7 +894,8 @@ const ClasseVIIISaudeForm = () => {
                                 </TableRow>
                             ) : (
                                 currentCategoryItems.map((item, index) => {
-                                    const itemTotal = item.quantidade * item.valor_unitario;
+                                    const dias = isRemonta ? form.dias_operacao : 1;
+                                    const itemTotal = item.quantidade * item.valor_unitario * dias;
                                     
                                     return (
                                         <TableRow key={item.item} className="h-12">
@@ -890,7 +910,7 @@ const ClasseVIIISaudeForm = () => {
                                                     type="text"
                                                     className="h-8 text-center"
                                                     value={formatNumberForInput(item.quantidade, 0)}
-                                                    onChange={(e) => handleQuantityChange(index, parseInputToNumber(e.target.value, 0))}
+                                                    onChange={(e) => handleQuantityChange(index, parseInputToNumber(e.target.value))}
                                                     placeholder="0"
                                                     onKeyDown={handleEnterToNextField}
                                                 />
@@ -989,7 +1009,7 @@ const ClasseVIIISaudeForm = () => {
                         type="button" 
                         onClick={handleUpdateCategoryItems} 
                         className="w-full md:w-auto" 
-                        disabled={!form.organizacao || form.dias_operacao <= 0 || (valorTotalCategoriaEmEdicao > 0 && !areNumbersEqual(valorTotalCategoriaEmEdicao, (nd30ValueTemp + nd39ValueTemp)))}
+                        disabled={!form.organizacao || (isRemonta && form.dias_operacao <= 0) || (valorTotalCategoriaEmEdicao > 0 && !areNumbersEqual(valorTotalCategoriaEmEdicao, (nd30ValueTemp + nd39ValueTemp)))}
                     >
                         Salvar Itens de {activeCategory}
                     </Button>
@@ -1021,14 +1041,19 @@ const ClasseVIIISaudeForm = () => {
                     </div>
                     
                     <div className="space-y-2">
-                      {form.itens.map((item, index) => (
-                        <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
-                          <span className="font-medium">{item.item}</span>
-                          <span className="text-right">
-                            {item.quantidade} un. x {formatCurrency(item.valor_unitario)} = {formatCurrency(item.quantidade * item.valor_unitario)}
-                          </span>
-                        </div>
-                      ))}
+                      {form.itens.map((item, index) => {
+                        const dias = isRemonta ? form.dias_operacao : 1;
+                        const itemTotal = item.quantidade * item.valor_unitario * dias;
+                        
+                        return (
+                          <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
+                            <span className="font-medium">{item.item}</span>
+                            <span className="text-right">
+                              {item.quantidade} un. x {formatCurrency(item.valor_unitario)}{isRemonta ? '/dia' : ''} {isRemonta ? `x ${dias} dias` : ''} = {formatCurrency(itemTotal)}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                     
                     <div className="pt-2 border-t mt-2">

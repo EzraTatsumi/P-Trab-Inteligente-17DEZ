@@ -20,7 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { YearManagementDialog } from "@/components/YearManagementDialog"; // Importar o novo diálogo
 import { defaultClasseVIConfig } from "@/data/classeVIData";
 import { defaultClasseVIIConfig } from "@/data/classeVIIData"; // NOVO IMPORT
-import { defaultClasseVIIISaudeConfig } from "@/data/classeVIIIData"; // NOVO IMPORT
+import { defaultClasseVIIISaudeConfig, defaultClasseVIIIRemontaConfig } from "@/data/classeVIIIData"; // NOVO IMPORT
 import { formatCurrencyInput, parseCurrencyInput } from "@/lib/inputFormatUtils"; // NOVO IMPORT
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
@@ -105,16 +105,13 @@ const CATEGORIAS_CLASSE_VII = [
 ];
 
 // NOVO: Lista de categorias da Classe VIII
-const CATEGORIAS_CLASSE_VIII_SAUDE = [
-  "Saúde",
-];
-
-const CATEGORIAS_CLASSE_VIII_REMONTA = [
-  "Remonta/Veterinária",
-];
-
-// Definindo a constante da categoria para uso na inicialização
 const CLASSE_VIII_SAUDE_CATEGORIA = "Saúde";
+const CLASSE_VIII_REMONTA_CATEGORIA = "Remonta/Veterinária";
+
+const CATEGORIAS_CLASSE_VIII = [
+  CLASSE_VIII_SAUDE_CATEGORIA,
+  CLASSE_VIII_REMONTA_CATEGORIA,
+];
 
 const CATEGORIAS_CLASSE_III = [
   { key: "GERADOR", label: "Geradores" },
@@ -158,6 +155,11 @@ const DiretrizesCusteioPage = () => {
     item: item.item,
     valor_mnt_dia: item.valor_unitario,
   }))); 
+  const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig.map(item => ({
+    categoria: CLASSE_VIII_REMONTA_CATEGORIA, // Usando a constante corrigida
+    item: item.item,
+    valor_mnt_dia: item.valor_unitario,
+  }))); 
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -167,7 +169,7 @@ const DiretrizesCusteioPage = () => {
   const [selectedClasseVITab, setSelectedClasseVITab] = useState<string>(CATEGORIAS_CLASSE_VI[0]); 
   const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key);
   const [selectedClasseVIITab, setSelectedClasseVIITab] = useState<string>(CATEGORIAS_CLASSE_VII[0]);
-  const [selectedClasseVIIITab, setSelectedClasseVIIITab] = useState<string>(CATEGORIAS_CLASSE_VIII_SAUDE[0]); 
+  const [selectedClasseVIIITab, setSelectedClasseVIIITab] = useState<string>(CLASSE_VIII_SAUDE_CATEGORIA); 
   
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   const [defaultYear, setDefaultYear] = useState<number | null>(null);
@@ -279,7 +281,7 @@ const DiretrizesCusteioPage = () => {
       }
       
       // --- Carregar Classe II, V, VI, VII e VIII (usando a mesma tabela) ---
-      const allClasseItemsCategories = [...CATEGORIAS_CLASSE_II, ...CATEGORIAS_CLASSE_V, ...CATEGORIAS_CLASSE_VI, ...CATEGORIAS_CLASSE_VII, ...CATEGORIAS_CLASSE_VIII_SAUDE];
+      const allClasseItemsCategories = [...CATEGORIAS_CLASSE_II, ...CATEGORIAS_CLASSE_V, ...CATEGORIAS_CLASSE_VI, ...CATEGORIAS_CLASSE_VII, ...CATEGORIAS_CLASSE_VIII];
       
       const { data: classeItemsData } = await supabase
         .from("diretrizes_classe_ii")
@@ -294,12 +296,16 @@ const DiretrizesCusteioPage = () => {
       // Função auxiliar para carregar e setar
       const loadAndSetClasseItems = (categories: string[], defaultItems: DiretrizClasseIIForm[], setter: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>) => {
         const loaded = loadedItems.filter(d => categories.includes(d.categoria));
-        if (loaded.length > 0) {
-          setter(loaded.map(d => ({
+        
+        // Mapeia os itens carregados para o formato DiretrizClasseIIForm
+        const mappedLoadedItems = loaded.map(d => ({
             categoria: d.categoria as DiretrizClasseIIForm['categoria'],
             item: d.item,
             valor_mnt_dia: Number(d.valor_mnt_dia),
-          })));
+        }));
+        
+        if (mappedLoadedItems.length > 0) {
+          setter(mappedLoadedItems);
         } else {
           setter(defaultItems);
         }
@@ -311,11 +317,18 @@ const DiretrizesCusteioPage = () => {
       loadAndSetClasseItems(CATEGORIAS_CLASSE_VII, defaultClasseVIIConfig, setClasseVIIConfig);
       
       // Carregar e setar Classe VIII Saúde
-      loadAndSetClasseItems(CATEGORIAS_CLASSE_VIII_SAUDE, defaultClasseVIIISaudeConfig.map(item => ({
+      loadAndSetClasseItems([CLASSE_VIII_SAUDE_CATEGORIA], defaultClasseVIIISaudeConfig.map(item => ({
         categoria: CLASSE_VIII_SAUDE_CATEGORIA,
         item: item.item,
         valor_mnt_dia: item.valor_unitario,
       })), setClasseVIIISaudeConfig);
+      
+      // Carregar e setar Classe VIII Remonta/Veterinária
+      loadAndSetClasseItems([CLASSE_VIII_REMONTA_CATEGORIA], defaultClasseVIIIRemontaConfig.map(item => ({
+        categoria: CLASSE_VIII_REMONTA_CATEGORIA,
+        item: item.item,
+        valor_mnt_dia: item.valor_unitario,
+      })), setClasseVIIIRemontaConfig);
 
 
       // --- Carregar Classe III - Equipamentos ---
@@ -448,7 +461,8 @@ const DiretrizesCusteioPage = () => {
         ...classeVConfig, 
         ...classeVIConfig, 
         ...classeVIIConfig, 
-        ...classeVIIISaudeConfig // NOVO: Incluindo Classe VIII Saúde
+        ...classeVIIISaudeConfig, 
+        ...classeVIIIRemontaConfig // NOVO: Incluindo Classe VIII Remonta
       ];
         
       const classeItemsParaSalvar = allClasseItems
@@ -682,6 +696,9 @@ const DiretrizesCusteioPage = () => {
   ) => {
     const filteredItems = config.filter(item => item.categoria === selectedTab);
     
+    // Determina se deve mostrar '/ Dia' no cabeçalho
+    const isDailyCost = selectedTab === CLASSE_VIII_REMONTA_CATEGORIA;
+    
     return (
       <div className="space-y-4 pt-4">
         {filteredItems.map((item, index) => {
@@ -712,7 +729,7 @@ const DiretrizesCusteioPage = () => {
                 />
               </div>
               <div className="col-span-3">
-                <Label className="text-xs">Valor (R$)</Label>
+                <Label className="text-xs">Valor (R$) {isDailyCost ? '/ Dia' : ''}</Label>
                 <Input
                   value={formatCurrencyInput(item.valor_mnt_dia)}
                   onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseCurrencyInput(e.target.value))}
@@ -1116,24 +1133,17 @@ const DiretrizesCusteioPage = () => {
                     <CardContent className="pt-4">
                       <Tabs value={selectedClasseVIIITab} onValueChange={setSelectedClasseVIIITab}>
                         <TabsList className="grid w-full grid-cols-2">
-                          {CATEGORIAS_CLASSE_VIII_SAUDE.map(cat => (
-                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                          ))}
-                          {CATEGORIAS_CLASSE_VIII_REMONTA.map(cat => (
+                          {CATEGORIAS_CLASSE_VIII.map(cat => (
                             <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
                           ))}
                         </TabsList>
                         
-                        {CATEGORIAS_CLASSE_VIII_SAUDE.map(cat => (
-                          <TabsContent key={cat} value={cat}>
-                            {renderClasseList(classeVIIISaudeConfig, setClasseVIIISaudeConfig, CATEGORIAS_CLASSE_VIII_SAUDE, cat)}
-                          </TabsContent>
-                        ))}
-                        {CATEGORIAS_CLASSE_VIII_REMONTA.map(cat => (
-                          <TabsContent key={cat} value={cat}>
-                            <p className="text-muted-foreground pt-4">Configuração da Classe VIII - Remonta/Veterinária será implementada em breve.</p>
-                          </TabsContent>
-                        ))}
+                        <TabsContent value={CLASSE_VIII_SAUDE_CATEGORIA}>
+                          {renderClasseList(classeVIIISaudeConfig, setClasseVIIISaudeConfig, [CLASSE_VIII_SAUDE_CATEGORIA], CLASSE_VIII_SAUDE_CATEGORIA)}
+                        </TabsContent>
+                        <TabsContent value={CLASSE_VIII_REMONTA_CATEGORIA}>
+                          {renderClasseList(classeVIIIRemontaConfig, setClasseVIIIRemontaConfig, [CLASSE_VIII_REMONTA_CATEGORIA], CLASSE_VIII_REMONTA_CATEGORIA)}
+                        </TabsContent>
                       </Tabs>
                     </CardContent>
                   </Card>
