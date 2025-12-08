@@ -21,8 +21,8 @@ const CATEGORIAS_CLASSE_VI = ["Embarcação", "Equipamento de Engenharia"];
 // NOVO: Categorias da Classe VII
 const CATEGORIAS_CLASSE_VII = ["Comunicações", "Informática"];
 // NOVO: Categorias da Classe VIII
-const CATEGORIAS_CLASSE_VIII_SAUDE = ["Saúde"]; // Alterado para 'Saúde'
-const CATEGORIAS_CLASSE_VIII_REMONTA = ["Remonta/Veterinária"]; // Adicionado Remonta/Veterinária
+const CATEGORIAS_CLASSE_VIII_SAUDE = ["Saúde"]; 
+const CATEGORIAS_CLASSE_VIII_REMONTA = ["Remonta/Veterinária"]; 
 
 
 interface ItemClasseII {
@@ -119,8 +119,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     ...(classeVData || []),
     ...(classeVIData || []),
     ...(classeVIIData || []),
-    ...(classeVIIISaudeData || []), // Incluindo Saúde
-    ...(classeVIIIRemontaData || []), // Incluindo Remonta
+    ...(classeVIIISaudeData || []), 
+    ...(classeVIIIRemontaData || []), 
   ];
   
   let totalClasseII = 0;
@@ -147,7 +147,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   let totalItensClasseVII = 0;
   const groupedClasseVIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
   
-  let totalClasseVIII = 0; // NOVO TOTAL GERAL CLASSE VIII
+  let totalClasseVIII = 0; 
   const groupedClasseVIIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
 
   (allClasseItemsData || []).forEach(record => {
@@ -157,15 +157,16 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     const valorND39 = Number(record.valor_nd_39);
     
     let totalItemsCategory = 0;
+    
+    // Determine total items based on the record type
     if (record.itens_equipamentos) {
         totalItemsCategory = (record.itens_equipamentos as ItemClasseII[]).reduce((sum, item) => sum + (item.quantidade || 0), 0);
     } else if (record.itens_saude) {
         totalItemsCategory = (record.itens_saude as any[]).reduce((sum, item) => sum + (item.quantidade || 0), 0);
     } else if (record.itens_remonta) {
-        // Para Remonta, a quantidade de animais é o item principal
         totalItemsCategory = (record.itens_remonta as any[]).reduce((sum, item) => sum + (item.quantidade || 0), 0);
     } else if (record.quantidade_animais) {
-        // Caso o registro seja da tabela classe_viii_remonta_registros (que tem quantidade_animais)
+        // Fallback for older Remonta structure if needed, though current structure uses itens_remonta
         totalItemsCategory = Number(record.quantidade_animais);
     }
 
@@ -231,13 +232,16 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         // CLASSE VIII
         totalClasseVIII += valorTotal;
         
-        if (!groupedClasseVIIICategories[category]) {
-            groupedClasseVIIICategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
+        // Garante que a categoria seja 'Saúde' ou 'Remonta/Veterinária' para o agrupamento
+        const groupKey = category === 'Saúde' ? 'Saúde' : 'Remonta/Veterinária';
+        
+        if (!groupedClasseVIIICategories[groupKey]) {
+            groupedClasseVIIICategories[groupKey] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
         }
-        groupedClasseVIIICategories[category].totalValor += valorTotal;
-        groupedClasseVIIICategories[category].totalND30 += valorND30;
-        groupedClasseVIIICategories[category].totalND39 += valorND39;
-        groupedClasseVIIICategories[category].totalItens += totalItemsCategory;
+        groupedClasseVIIICategories[groupKey].totalValor += valorTotal;
+        groupedClasseVIIICategories[groupKey].totalND30 += valorND30;
+        groupedClasseVIIICategories[groupKey].totalND39 += valorND39;
+        groupedClasseVIIICategories[groupKey].totalItens += totalItemsCategory;
     }
   });
   
@@ -341,6 +345,13 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalAviacaoExercito,
   };
 };
+
+interface PTrabCostSummaryProps {
+    ptrabId: string;
+    onOpenCreditDialog: () => void;
+    creditGND3: number;
+    creditGND4: number;
+}
 
 export const PTrabCostSummary = ({ 
   ptrabId, 
@@ -453,7 +464,7 @@ export const PTrabCostSummary = ({
   const sortedClasseVCategories = Object.entries(totals.groupedClasseVCategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const sortedClasseVICategories = Object.entries(totals.groupedClasseVICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const sortedClasseVIICategories = Object.entries(totals.groupedClasseVIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
-  const sortedClasseVIIICategories = Object.entries(totals.groupedClasseVIIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b)); // NOVO
+  const sortedClasseVIIICategories = Object.entries(totals.groupedClasseVIIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b)); 
 
   return (
     <Card className="shadow-lg">
