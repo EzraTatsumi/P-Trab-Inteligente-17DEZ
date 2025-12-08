@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, Trash2, XCircle, Check, ChevronsUpDown, Sparkles, AlertCircle, HeartPulse } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, XCircle, Check, ChevronsUpDown, Sparkles, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
@@ -253,7 +253,8 @@ const ClasseVIIISaudeForm = () => {
   // Handler: Atualiza a quantidade de um item na lista expandida
   const handleQuantityChange = (itemIndex: number, quantity: number) => {
     const newItems = [...currentCategoryItems];
-    newItems[itemIndex].quantidade = Math.max(0, quantity);
+    // Garante que a quantidade seja um número inteiro não negativo
+    newItems[itemIndex].quantidade = Math.max(0, Math.floor(quantity)); 
     setCurrentCategoryItems(newItems);
   };
 
@@ -279,6 +280,10 @@ const ClasseVIIISaudeForm = () => {
   };
   
   // Lógica de cálculo de alocação (Global Totals)
+  // CORREÇÃO: Calcular o valor total da categoria a partir dos itens em edição (currentCategoryItems)
+  const valorTotalCategoriaEmEdicao = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+  
+  // O valor total do formulário (que será salvo) é baseado nos itens confirmados (form.itens)
   const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
   
   const totalND30Final = alocacaoND30;
@@ -290,7 +295,7 @@ const ClasseVIIISaudeForm = () => {
     if (!ptrabId) return;
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
     if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
-    if (form.itens.length === 0) { toast.error("Adicione pelo menos um item"); return; }
+    if (form.itens.length === 0) { toast.error("Adicione pelo menos um item. Clique em 'Salvar Itens de Saúde'."); return; }
     if (!isTotalAlocadoCorrect) { toast.error("A soma da alocação ND 30 e ND 39 deve ser igual ao Valor Total."); return; }
     
     let fasesFinais = [...fasesAtividade];
@@ -492,7 +497,6 @@ const ClasseVIIISaudeForm = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              {/* HeartPulse removido */}
               Classe VIII - Saúde (KPSI/KPT)
             </CardTitle>
             <CardDescription>
@@ -523,10 +527,11 @@ const ClasseVIIISaudeForm = () => {
                 <div className="space-y-2">
                   <Label>Dias de Atividade *</Label>
                   <Input
-                    type="text" // Alterado para text para usar formatNumberForInput
+                    type="text"
                     className="max-w-xs"
-                    value={formatNumberForInput(form.dias_operacao)}
-                    onChange={(e) => setForm({ ...form, dias_operacao: parseInputToNumber(e.target.value) })}
+                    // Usando formatNumberForInput para garantir que não haja decimais
+                    value={formatNumberForInput(form.dias_operacao, 0)} 
+                    onChange={(e) => setForm({ ...form, dias_operacao: parseInputToNumber(e.target.value, 0) })}
                     placeholder="Ex: 7"
                     onKeyDown={handleEnterToNextField}
                   />
@@ -625,8 +630,9 @@ const ClasseVIIISaudeForm = () => {
                                                 <Input
                                                     type="text"
                                                     className="h-8 text-center"
-                                                    value={formatNumberForInput(item.quantidade)}
-                                                    onChange={(e) => handleQuantityChange(index, parseInputToNumber(e.target.value))}
+                                                    // Usando formatNumberForInput para garantir que não haja decimais
+                                                    value={formatNumberForInput(item.quantidade, 0)}
+                                                    onChange={(e) => handleQuantityChange(index, parseInputToNumber(e.target.value, 0))}
                                                     placeholder="0"
                                                     onKeyDown={handleEnterToNextField}
                                                 />
@@ -645,7 +651,8 @@ const ClasseVIIISaudeForm = () => {
                 <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
                     <span className="font-bold text-sm">VALOR TOTAL DA CATEGORIA</span>
                     <span className="font-extrabold text-lg text-red-600">
-                        {formatCurrency(valorTotalForm)}
+                        {/* CORREÇÃO: Usar valorTotalCategoriaEmEdicao para atualização dinâmica */}
+                        {formatCurrency(valorTotalCategoriaEmEdicao)}
                     </span>
                 </div>
                 
