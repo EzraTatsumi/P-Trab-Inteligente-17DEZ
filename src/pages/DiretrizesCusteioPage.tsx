@@ -758,7 +758,7 @@ const DiretrizesCusteioPage = () => {
                   type="number"
                   step="0.01"
                   className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={item.valor_mnt_dia === 0 ? "" : item.valor_mnt_dia}
+                  value={item.valor_mnt_dia === 0 ? "" : item.valor_mnt_dia.toFixed(2)} // Ajuste para 2 casas decimais
                   onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseFloat(e.target.value) || 0)}
                   onKeyDown={handleEnterToNextField}
                 />
@@ -1150,7 +1150,6 @@ const DiretrizesCusteioPage = () => {
                   onClick={() => setShowClasseVIIIConfig(!showClasseVIIIConfig)}
                 >
                   <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <HeartPulse className="h-5 w-5 text-red-500" />
                     Classe VIII - Saúde e Remonta/Veterinária
                   </h3>
                   {showClasseVIIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
