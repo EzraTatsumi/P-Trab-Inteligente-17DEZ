@@ -154,8 +154,8 @@ const DiretrizesCusteioPage = () => {
   const [classeVConfig, setClasseVConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVConfig);
   const [classeVIConfig, setClasseVIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIConfig.map(c => ({...c, valor_acionamento_mensal: 0}))); // Adiciona valor_acionamento_mensal
   const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig.map(c => ({...c, valor_acionamento_mensal: 0}))); // Adiciona valor_acionamento_mensal
-  const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig.map(c => ({...c, valor_acionamento_mensal: 0})))); // Adiciona valor_acionamento_mensal
-  const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig.map(c => ({...c, valor_acionamento_mensal: 0})))); // Adiciona valor_acionamento_mensal
+  const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig.map(c => ({...c, valor_acionamento_mensal: 0}))); // Corrigido: removido parêntese extra
+  const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig.map(c => ({...c, valor_acionamento_mensal: 0}))); // Corrigido: removido parêntese extra
   const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseIXConfig); // NOVO ESTADO
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
