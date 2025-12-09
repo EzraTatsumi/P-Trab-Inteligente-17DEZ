@@ -330,8 +330,9 @@ const ClasseVIIIForm = () => {
       navigate("/ptrab");
       return;
     }
+    setLoading(true);
     loadDiretrizes();
-    fetchRegistros(true); // Initial load
+    fetchRegistros().then(() => setLoading(false)); // Initial load, but don't populate form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId]);
   
@@ -448,7 +449,6 @@ const ClasseVIIIForm = () => {
       if (!anoReferencia) {
         setDiretrizesSaude(defaultClasseVIIISaudeConfig as DiretrizClasseII[]);
         setDiretrizesRemonta(defaultClasseVIIIRemontaConfig as DiretrizClasseII[]);
-        setLoading(false);
         return;
       }
 
@@ -472,13 +472,11 @@ const ClasseVIIIForm = () => {
       console.error("Erro ao carregar diretrizes:", error);
       setDiretrizesSaude(defaultClasseVIIISaudeConfig as DiretrizClasseII[]);
       setDiretrizesRemonta(defaultClasseVIIIRemontaConfig as DiretrizClasseII[]);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const fetchRegistros = async (initialLoad = false) => {
-    if (!ptrabId) return;
+  const fetchRegistros = async (): Promise<{ saude: ClasseVIIIRegistro[], remonta: ClasseVIIIRegistro[] }> => {
+    if (!ptrabId) return { saude: [], remonta: [] };
     
     const [
         { data: saudeData, error: saudeError },
@@ -503,10 +501,7 @@ const ClasseVIIIForm = () => {
     setRegistrosSaude(newSaudeRecords);
     setRegistrosRemonta(newRemontaRecords);
     
-    // Reconstruir o estado do formulário APENAS no carregamento inicial
-    if (initialLoad && (newSaudeRecords.length > 0 || newRemontaRecords.length > 0)) {
-        reconstructFormState(newSaudeRecords, newRemontaRecords);
-    }
+    return { saude: newSaudeRecords, remonta: newRemontaRecords };
   };
   
   const reconstructFormState = async (saudeRecords: ClasseVIIIRegistro[], remontaRecords: ClasseVIIIRegistro[]) => {
@@ -1054,14 +1049,14 @@ const ClasseVIIIForm = () => {
     resetFormFields();
     
     // Garante que os dados mais recentes estão no estado
-    await fetchRegistros(false); 
+    const { saude: saudeRecords, remonta: remontaRecords } = await fetchRegistros(); 
     
     // Reconstruir o estado do formulário com os dados carregados
-    // Para edição, precisamos consolidar todos os registros de Remonta/Veterinária em um único formulário
-    const saudeRecords = registrosSaude.filter(r => r.organizacao === registro.organizacao && r.ug === registro.ug);
-    const remontaRecords = registrosRemonta.filter(r => r.organizacao === registro.organizacao && r.ug === registro.ug);
+    // Filtramos os registros que pertencem à mesma OM/UG do registro clicado
+    const saudeToEdit = saudeRecords.filter(r => r.organizacao === registro.organizacao && r.ug === registro.ug);
+    const remontaToEdit = remontaRecords.filter(r => r.organizacao === registro.organizacao && r.ug === registro.ug);
     
-    reconstructFormState(saudeRecords, remontaRecords);
+    reconstructFormState(saudeToEdit, remontaToEdit);
     
     // Define a aba correta para visualização
     setSelectedTab(registro.categoria === 'Saúde - KPSI/KPT' ? 'Saúde' : 'Remonta/Veterinária');
