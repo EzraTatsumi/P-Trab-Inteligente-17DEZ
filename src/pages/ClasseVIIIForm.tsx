@@ -133,14 +133,12 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
 
 const calculateSaudeItemTotal = (item: ItemSaude, diasOperacao: number): number => {
     // Saúde: Valor Mnt/Dia * Quantidade de Kits
+    // diasOperacao é mantido no argumento para consistência, mas não usado no cálculo de kits.
     return item.valor_mnt_dia * item.quantidade;
 };
 
-const calculateRemontaItemTotal = (item: ItemRemonta): number => {
-    // Remonta: Valor Mnt/Dia * Quantidade de Animais (ou 1 se for item anual/mensal)
-    // A lógica de cálculo é complexa e depende da unidade (Diário, Mensal, Anual).
-    // Por enquanto, vamos assumir que o valor_mnt_dia já reflete o custo total do item para o período.
-    // Se o item for diário, multiplicamos pelos dias de operação.
+const calculateRemontaItemTotal = (item: ItemRemonta, diasOperacao: number): number => {
+    // Remonta: Valor Mnt/Dia * Quantidade de Animais * Qtd Itens * Fator Tempo
     
     const isDiario = item.item.includes('(Diário)');
     const isMensal = item.item.includes('(Mensal)');
@@ -149,17 +147,16 @@ const calculateRemontaItemTotal = (item: ItemRemonta): number => {
     let total = 0;
     
     if (isDiario) {
-        // Custo Mnt/Dia Op (Diário) * Qtd Animais * Dias de Operação
-        total = item.valor_mnt_dia * item.quantidade_animais * item.quantidade;
+        // Custo Mnt/Dia Op (Diário) * Qtd Animais * Dias de Operação * Qtd Itens
+        total = item.valor_mnt_dia * item.quantidade_animais * diasOperacao * item.quantidade;
     } else if (isMensal) {
-        // Custo Mensal * Qtd Animais * (Dias de Operação / 30)
-        // Simplificação: Custo Mensal * Qtd Animais
+        // Custo Mensal * Qtd Animais * Qtd Itens
         total = item.valor_mnt_dia * item.quantidade_animais * item.quantidade;
     } else if (isAnual) {
-        // Custo Anual * Qtd Animais
+        // Custo Anual * Qtd Animais * Qtd Itens
         total = item.valor_mnt_dia * item.quantidade_animais * item.quantidade;
     } else {
-        // Default: Valor Mnt/Dia * Qtd Animais * Qtd Itens
+        // Default: Valor Mnt/Dia * Qtd Animais * Qtd Itens (Assumindo que valor_mnt_dia é o custo total do item)
         total = item.valor_mnt_dia * item.quantidade_animais * item.quantidade;
     }
     
@@ -202,7 +199,7 @@ const generateRemontaMemoriaCalculo = (animalTipo: 'Equino' | 'Canino', itens: I
 
     let detalhamentoItens = "";
     itens.forEach(item => {
-        const valorItem = calculateRemontaItemTotal(item);
+        const valorItem = calculateRemontaItemTotal(item, diasOperacao);
         detalhamentoItens += `- ${item.quantidade} ${item.item} x ${nrAnimais} animais = ${formatCurrency(valorItem)}.\n`;
     });
 
@@ -653,11 +650,11 @@ const ClasseVIIIForm = () => {
   };
 
   const valorTotalSaude = form.itensSaude.reduce((sum, item) => sum + calculateSaudeItemTotal(item, form.dias_operacao), 0);
-  const valorTotalRemonta = form.itensRemonta.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+  const valorTotalRemonta = form.itensRemonta.reduce((sum, item) => sum + calculateRemontaItemTotal(item, form.dias_operacao), 0);
   
   const currentCategoryTotalValue = selectedTab === 'Saúde' 
     ? (currentCategoryItems as ItemSaude[]).reduce((sum, item) => sum + calculateSaudeItemTotal(item, form.dias_operacao), 0)
-    : (currentCategoryItems as ItemRemonta[]).reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+    : (currentCategoryItems as ItemRemonta[]).reduce((sum, item) => sum + calculateRemontaItemTotal(item, form.dias_operacao), 0);
 
   const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, parseInputToNumber(currentND39Input)));
   const nd30ValueTemp = currentCategoryTotalValue - nd39ValueTemp;
@@ -682,7 +679,7 @@ const ClasseVIIIForm = () => {
     const categoryTotalValue = currentCategoryItems.reduce((sum, item) => 
         item.categoria === 'Saúde' 
             ? sum + calculateSaudeItemTotal(item as ItemSaude, form.dias_operacao)
-            : sum + calculateRemontaItemTotal(item as ItemRemonta)
+            : sum + calculateRemontaItemTotal(item as ItemRemonta, form.dias_operacao)
     , 0);
 
     const numericInput = parseInputToNumber(currentND39Input);
@@ -812,8 +809,8 @@ const ClasseVIIIForm = () => {
         const registrosParaInserir: TablesInsert<'classe_viii_remonta_registros'>[] = [];
         
         // Calcular totais individuais para Equino e Canino
-        const valorEquino = (remontaItemsGrouped['Equino'] || []).reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
-        const valorCanino = (remontaItemsGrouped['Canino'] || []).reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+        const valorEquino = (remontaItemsGrouped['Equino'] || []).reduce((sum, item) => sum + calculateRemontaItemTotal(item, form.dias_operacao), 0);
+        const valorCanino = (remontaItemsGrouped['Canino'] || []).reduce((sum, item) => sum + calculateRemontaItemTotal(item, form.dias_operacao), 0);
         
         const totalGeralRemonta = valorEquino + valorCanino;
         
@@ -1261,7 +1258,6 @@ const ClasseVIIIForm = () => {
                   <TabsList className="grid w-full grid-cols-2">
                     {CATEGORIAS.map(cat => (
                       <TabsTrigger key={cat} value={cat}>
-                        {cat === 'Saúde' ? <HeartPulse className="h-4 w-4 mr-2" /> : <PawPrint className="h-4 w-4 mr-2" />}
                         {getCategoryLabel(cat)}
                       </TabsTrigger>
                     ))}
@@ -1296,7 +1292,7 @@ const ClasseVIIIForm = () => {
                                           currentCategoryItems.map((item, index) => {
                                               const itemTotal = isSaude 
                                                 ? calculateSaudeItemTotal(item as ItemSaude, form.dias_operacao)
-                                                : calculateRemontaItemTotal(item as ItemRemonta);
+                                                : calculateRemontaItemTotal(item as ItemRemonta, form.dias_operacao);
                                               
                                               const isDisabled = isRemonta && currentAnimalQuantity === 0;
                                               
@@ -1448,7 +1444,7 @@ const ClasseVIIIForm = () => {
                     const totalCategoria = itens.reduce((sum, item) => 
                         item.categoria === 'Saúde' 
                             ? sum + calculateSaudeItemTotal(item as ItemSaude, form.dias_operacao)
-                            : sum + calculateRemontaItemTotal(item as ItemRemonta)
+                            : sum + calculateRemontaItemTotal(item as ItemRemonta, form.dias_operacao)
                     , 0);
                     
                     const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
@@ -1466,7 +1462,7 @@ const ClasseVIIIForm = () => {
                           {itens.map((item, index) => {
                             const itemTotal = item.categoria === 'Saúde' 
                                 ? calculateSaudeItemTotal(item as ItemSaude, form.dias_operacao)
-                                : calculateRemontaItemTotal(item as ItemRemonta);
+                                : calculateRemontaItemTotal(item as ItemRemonta, form.dias_operacao);
                             
                             return (
                               <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
