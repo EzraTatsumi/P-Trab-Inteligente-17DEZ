@@ -330,7 +330,7 @@ const ClasseVIIIForm = () => {
       return;
     }
     loadDiretrizes();
-    fetchRegistros();
+    fetchRegistros(true); // Initial load
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId]);
   
@@ -373,31 +373,22 @@ const ClasseVIIIForm = () => {
         const baseItems: ItemRemonta[] = [];
         
         animalTypes.forEach(animalType => {
-            // Agrupar todas as diretrizes relacionadas a este tipo de animal para calcular o valor base total
             const relatedDirectives = directives.filter(d => d.item.includes(animalType));
             
             if (relatedDirectives.length > 0) {
-                // Encontrar o item existente no formulário para manter o estado (quantidade e dias)
-                // Nota: O item salvo no form.itensRemonta é um array de diretrizes, não de animais.
-                // Precisamos consolidar a quantidade e dias a partir dos itens salvos que pertencem a este animalType.
-                
                 const existingRelatedItems = (formItems as ItemRemonta[]).filter(item => item.item.includes(animalType));
                 
-                // Se houver itens salvos, pegamos a quantidade e dias do primeiro item relacionado (deve ser consistente)
                 const nrAnimaisSalvos = existingRelatedItems[0]?.quantidade_animais || 0;
                 const diasOperacaoSalvos = existingRelatedItems[0]?.dias_operacao_item || 0;
                 
-                // Criar um item base que representa o tipo de animal
                 const baseItem: ItemRemonta = {
                     item: animalType,
                     quantidade_animais: nrAnimaisSalvos,
                     dias_operacao_item: diasOperacaoSalvos,
-                    valor_mnt_dia: 0, // Não usado para exibição, mas mantido na interface
+                    valor_mnt_dia: 0,
                     categoria: 'Remonta/Veterinária',
                 };
                 
-                // Calcular o valor total (soma de todas as diretrizes) para este tipo de animal
-                // Para isso, criamos itens temporários de cálculo
                 const directivesAsItems: ItemRemonta[] = relatedDirectives.map(d => ({
                     item: d.item,
                     quantidade_animais: nrAnimaisSalvos,
@@ -408,7 +399,6 @@ const ClasseVIIIForm = () => {
                 
                 const totalValueForAnimal = directivesAsItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
                 
-                // Atualizar o valor_mnt_dia do item base para armazenar o valor total calculado (para exibição na coluna Total)
                 baseItem.valor_mnt_dia = totalValueForAnimal; 
                 
                 baseItems.push(baseItem);
@@ -485,7 +475,7 @@ const ClasseVIIIForm = () => {
     }
   };
 
-  const fetchRegistros = async () => {
+  const fetchRegistros = async (initialLoad = false) => {
     if (!ptrabId) return;
     
     const [
@@ -508,15 +498,19 @@ const ClasseVIIIForm = () => {
     setRegistrosSaude((saudeData || []) as ClasseVIIIRegistro[]);
     setRegistrosRemonta((remontaData || []) as ClasseVIIIRegistro[]);
     
-    // Reconstruir o estado do formulário se houver registros
-    if ((saudeData && saudeData.length > 0) || (remontaData && remontaData.length > 0)) {
+    // Reconstruir o estado do formulário APENAS no carregamento inicial
+    if (initialLoad && ((saudeData && saudeData.length > 0) || (remontaData && remontaData.length > 0))) {
         reconstructFormState(saudeData as ClasseVIIIRegistro[], remontaData as ClasseVIIIRegistro[]);
     }
   };
   
   const reconstructFormState = async (saudeRecords: ClasseVIIIRegistro[], remontaRecords: ClasseVIIIRegistro[]) => {
+    setLoading(true);
     const allRecords = [...saudeRecords, ...remontaRecords];
-    if (allRecords.length === 0) return;
+    if (allRecords.length === 0) {
+        setLoading(false);
+        return;
+    }
 
     const firstRecord = allRecords[0];
     
@@ -548,10 +542,9 @@ const ClasseVIIIForm = () => {
     
     // Process Saúde
     saudeRecords.forEach(r => {
-        // Sanitize items before consolidation
         const sanitizedItems = (r.itens_saude || []).map(item => ({
             ...item,
-            quantidade: Number((item as ItemSaude).quantidade || 0), // Ensure quantity is a number
+            quantidade: Number((item as ItemSaude).quantidade || 0),
         })) as ItemSaude[];
         
         consolidatedSaude = consolidatedSaude.concat(sanitizedItems);
@@ -570,16 +563,14 @@ const ClasseVIIIForm = () => {
     
     // Process Remonta
     remontaRecords.forEach(r => {
-        // Sanitize items before consolidation
         const sanitizedItems = (r.itens_remonta || []).map(item => ({
             ...item,
-            quantidade_animais: Number((item as ItemRemonta).quantidade_animais || 0), // Ensure quantity is a number
-            dias_operacao_item: Number((item as ItemRemonta).dias_operacao_item || 0), // Ensure days is a number
+            quantidade_animais: Number((item as ItemRemonta).quantidade_animais || 0),
+            dias_operacao_item: Number((item as ItemRemonta).dias_operacao_item || 0),
         })) as ItemRemonta[];
         
         consolidatedRemonta = consolidatedRemonta.concat(sanitizedItems);
         
-        // Recalcular o valor total usando os dias de operação específicos do item
         const totalValor = sanitizedItems.reduce((sum, item) => calculateRemontaItemTotal(item) + sum, 0);
         
         newAllocations['Remonta/Veterinária'] = {
@@ -613,12 +604,12 @@ const ClasseVIIIForm = () => {
     });
     setCategoryAllocations(newAllocations);
     
-    // Set initial tab based on which records exist
     if (saudeRecords.length > 0) {
         setSelectedTab('Saúde');
     } else if (remontaRecords.length > 0) {
         setSelectedTab('Remonta/Veterinária');
     }
+    setLoading(false);
   };
 
   const resetFormFields = () => {
@@ -630,6 +621,7 @@ const ClasseVIIIForm = () => {
       itensSaude: [],
       itensRemonta: [],
     });
+    // Reset allocations to initial state (clearing OM destination)
     setCategoryAllocations(initialCategoryAllocations);
     setCurrentND39Input("");
     setCurrentCategoryItems([]);
@@ -728,26 +720,19 @@ const ClasseVIIIForm = () => {
     if (selectedTab === 'Saúde') {
         return (currentCategoryItems as ItemSaude[]).reduce((sum, item) => sum + calculateSaudeItemTotal(item), 0);
     } else {
-        // Para Remonta, o valor_mnt_dia do item já armazena o total calculado no useEffect
-        // Se a quantidade de animais ou dias for alterada, precisamos recalcular o total
-        
         const remontaItems = currentCategoryItems as ItemRemonta[];
-        
-        // 1. Obter as diretrizes de Remonta
         const directives = diretrizesRemonta;
         
         let totalRemonta = 0;
         
         remontaItems.forEach(animalItem => {
-            const animalType = animalItem.item; // 'Equino' ou 'Canino'
+            const animalType = animalItem.item;
             const nrAnimais = animalItem.quantidade_animais;
             const diasOperacao = animalItem.dias_operacao_item;
             
             if (nrAnimais > 0 && diasOperacao > 0) {
-                // 2. Filtrar as diretrizes relacionadas a este tipo de animal
                 const relatedDirectives = directives.filter(d => d.item.includes(animalType));
                 
-                // 3. Criar itens temporários para cálculo
                 const directivesAsItems: ItemRemonta[] = relatedDirectives.map(d => ({
                     item: d.item,
                     quantidade_animais: nrAnimais,
@@ -756,7 +741,6 @@ const ClasseVIIIForm = () => {
                     categoria: 'Remonta/Veterinária',
                 }));
                 
-                // 4. Somar os totais calculados
                 const totalForAnimal = directivesAsItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
                 totalRemonta += totalForAnimal;
             }
@@ -806,29 +790,25 @@ const ClasseVIIIForm = () => {
     let itemsToKeep: (ItemSaude | ItemRemonta)[] = [];
     
     if (selectedTab === 'Saúde') {
-        // 1. Itens válidos da categoria atual (quantidade > 0)
         itemsToKeep = (currentCategoryItems as ItemSaude[]).filter(item => item.quantidade > 0);
         setForm({ ...form, itensSaude: itemsToKeep as ItemSaude[] });
     } else {
-        // Lógica de Remonta: Consolidar as diretrizes para cada animal ativo
         const remontaItems = currentCategoryItems as ItemRemonta[];
         const directives = diretrizesRemonta;
         
         const activeRemontaItems: ItemRemonta[] = [];
         
         remontaItems.forEach(animalItem => {
-            const animalType = animalItem.item; // 'Equino' ou 'Canino'
+            const animalType = animalItem.item;
             const nrAnimais = animalItem.quantidade_animais;
             const diasOperacao = animalItem.dias_operacao_item;
             
             if (nrAnimais > 0 && diasOperacao > 0) {
-                // 1. Filtrar as diretrizes relacionadas a este tipo de animal
                 const relatedDirectives = directives.filter(d => d.item.includes(animalType));
                 
-                // 2. Criar um ItemRemonta para CADA diretriz, mas usando a Qtd Animais e Dias do item principal
                 relatedDirectives.forEach(d => {
                     activeRemontaItems.push({
-                        item: d.item, // Ex: Item B (Encilhagem...)
+                        item: d.item,
                         quantidade_animais: nrAnimais,
                         dias_operacao_item: diasOperacao,
                         valor_mnt_dia: Number(d.valor_mnt_dia),
@@ -842,7 +822,6 @@ const ClasseVIIIForm = () => {
         setForm({ ...form, itensRemonta: itemsToKeep as ItemRemonta[] });
     }
 
-    // 2. Update allocation state for the current category
     setCategoryAllocations(prev => ({
         ...prev,
         [selectedTab]: {
@@ -880,7 +859,7 @@ const ClasseVIIIForm = () => {
   const handleSalvarRegistros = async () => {
     if (!ptrabId) return;
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
-    if (form.dias_operacao <= 0) { toast.error("Dias de operação (Global) deve ser maior que zero"); return; }
+    if (form.dias_operacao <= 0) { toast.error("Dias de Atividade (Global) deve ser maior que zero"); return; }
     if (form.itensSaude.length === 0 && form.itensRemonta.length === 0) { toast.error("Adicione pelo menos um item"); return; }
     
     let fasesFinais = [...fasesAtividade];
@@ -931,10 +910,8 @@ const ClasseVIIIForm = () => {
         const allocation = categoryAllocations['Remonta/Veterinária'];
         const valorTotal = valorTotalRemonta;
         
-        // Determinar o tipo de animal predominante para o cabeçalho da memória
         const animalTipo = form.itensRemonta.some(i => i.item.includes('Equino')) ? 'Equino' : 'Canino';
         
-        // Para a memória, precisamos agrupar os itens por animal para calcular o total de animais e dias
         const remontaItemsGrouped = form.itensRemonta.reduce((acc, item) => {
             const type = item.item.includes('Equino') ? 'Equino' : 'Canino';
             if (!acc[type]) acc[type] = [];
@@ -944,18 +921,14 @@ const ClasseVIIIForm = () => {
         
         let detalhamento = "";
         
-        // Gerar memória para Equino, se houver
         if (remontaItemsGrouped['Equino'] && remontaItemsGrouped['Equino'].length > 0) {
             detalhamento += generateRemontaMemoriaCalculo(
                 'Equino', remontaItemsGrouped['Equino'], form.dias_operacao, form.organizacao, form.ug, faseFinalString,
                 allocation.om_destino_recurso, allocation.ug_destino_recurso, 
-                // NDs são alocados globalmente para a categoria, mas a memória precisa do total
-                // Aqui, para simplificar, usaremos o total alocado para a categoria.
                 allocation.nd_30_value, allocation.nd_39_value
             );
         }
         
-        // Gerar memória para Canino, se houver
         if (remontaItemsGrouped['Canino'] && remontaItemsGrouped['Canino'].length > 0) {
             if (detalhamento) detalhamento += "\n\n---\n\n";
             detalhamento += generateRemontaMemoriaCalculo(
@@ -965,13 +938,12 @@ const ClasseVIIIForm = () => {
             );
         }
         
-        // O registro de Remonta armazena todos os itens consolidados
         const registroRemonta: TablesInsert<'classe_viii_remonta_registros'> = {
             p_trab_id: ptrabId,
             organizacao: allocation.om_destino_recurso,
             ug: allocation.ug_destino_recurso,
-            dias_operacao: form.dias_operacao, // Dias globais (para compatibilidade com a tabela)
-            animal_tipo: animalTipo, // Tipo predominante
+            dias_operacao: form.dias_operacao,
+            animal_tipo: animalTipo,
             quantidade_animais: form.itensRemonta.reduce((sum, item) => sum + item.quantidade_animais, 0),
             itens_remonta: form.itensRemonta as any,
             valor_total: valorTotal,
@@ -985,8 +957,8 @@ const ClasseVIIIForm = () => {
       
       toast.success("Registros de Classe VIII salvos com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
-      resetFormFields();
-      fetchRegistros();
+      resetFormFields(); // Resetar o formulário para permitir novo registro
+      fetchRegistros(); // Recarregar a lista de registros salvos
     } catch (error) {
       console.error("Erro ao salvar registros de Classe VIII:", error);
       toast.error("Erro ao salvar registros de Classe VIII");
@@ -996,11 +968,11 @@ const ClasseVIIIForm = () => {
   };
 
   const handleEditarRegistro = async (registro: ClasseVIIIRegistro) => {
-    // A edição é feita reconstruindo o formulário com TODOS os registros da Classe VIII
     setLoading(true);
     resetFormFields();
     
-    await fetchRegistros(); // Garante que os dados mais recentes estão no estado
+    // Garante que os dados mais recentes estão no estado
+    await fetchRegistros(false); 
     
     // Reconstruir o estado do formulário com os dados carregados
     reconstructFormState(registrosSaude, registrosRemonta);
@@ -1271,15 +1243,12 @@ const ClasseVIIIForm = () => {
                                             const quantity = isSaude ? itemSaude.quantidade : itemRemonta.quantidade_animais;
                                             const valorMntDia = isSaude ? itemSaude.valor_mnt_dia : itemRemonta.valor_mnt_dia;
                                             
-                                            // Para Remonta, o itemTotal é o valor_mnt_dia do item (calculado no useEffect)
-                                            // Se for Saúde, calcula o total do item
                                             const itemTotal = isSaude 
                                                 ? calculateSaudeItemTotal(itemSaude)
                                                 : calculateRemontaItemTotal(itemRemonta);
                                             
                                             const itemLabel = isSaude ? itemSaude.item : itemRemonta.item;
                                             
-                                            // Determine unit label for Remonta (Not used in table, but kept for context)
                                             const unitLabel = !isSaude && itemLabel.includes('(Anual)') ? 'ano' : !isSaude && itemLabel.includes('(Mensal)') ? 'mês' : 'dia';
                                             
                                             return (
@@ -1480,17 +1449,13 @@ const ClasseVIIIForm = () => {
                             
                             const unitLabel = isSaude ? 'kit' : (itemRemonta.item.includes('(Anual)') ? 'ano' : itemRemonta.item.includes('(Mensal)') ? 'mês' : 'dia');
                             
-                            // Detalhamento do cálculo para Remonta
                             let calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} / ${unitLabel}`;
                             if (!isSaude) {
                                 if (itemRemonta.item.includes('(Mensal)')) {
-                                    // [Nr Animais x (Item C / 30 dias) x Nr dias]
                                     calculationDetail = `${quantity} un. x (${formatCurrency(unitValue)} / 30 dias) x ${itemRemonta.dias_operacao_item} dias`;
                                 } else if (itemRemonta.item.includes('(Diário)')) {
-                                    // (Nr Animais x Item G x Nr dias)
                                     calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} x ${itemRemonta.dias_operacao_item} dias`;
                                 } else {
-                                    // Item B, D, E (Annual): (Nr Animais x Item X)
                                     const multiplier = Math.ceil(itemRemonta.dias_operacao_item / 365);
                                     if (multiplier > 1) {
                                         calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} x ${multiplier} anos`;
@@ -1499,7 +1464,6 @@ const ClasseVIIIForm = () => {
                                     }
                                 }
                             } else {
-                                // Saúde: Nr Kits x Valor Kit
                                 calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)}`;
                             }
                             
@@ -1669,7 +1633,6 @@ const ClasseVIIIForm = () => {
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   const isSaude = registro.categoria === 'Saúde - KPSI/KPT';
                   
-                  // Para Remonta, precisamos dos itens originais para gerar a memória
                   const itensParaMemoria = isSaude ? registro.itens_saude as ItemSaude[] : registro.itens_remonta as ItemRemonta[];
                   
                   const memoriaAutomatica = isSaude 
