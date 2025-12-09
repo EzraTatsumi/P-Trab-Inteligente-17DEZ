@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings, HardHat, HeartPulse, Horse } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings, HardHat, HeartPulse, Activity } from "lucide-react";
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
@@ -1154,7 +1154,7 @@ const DiretrizesCusteioPage = () => {
                         <TabsList className="grid w-full grid-cols-2">
                           {CATEGORIAS_CLASSE_VIII.map(cat => (
                             <TabsTrigger key={cat} value={cat}>
-                              {cat === 'Saúde' ? <HeartPulse className="h-4 w-4 mr-2" /> : <Horse className="h-4 w-4 mr-2" />}
+                              {cat === 'Saúde' ? <HeartPulse className="h-4 w-4 mr-2" /> : <Activity className="h-4 w-4 mr-2" />}
                               {cat}
                             </TabsTrigger>
                           ))}
