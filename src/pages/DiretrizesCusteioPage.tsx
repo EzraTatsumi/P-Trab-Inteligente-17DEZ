@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings, HardHat, HeartPulse, Activity, Wrench, Loader2 } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings, HardHat, HeartPulse, Activity, Loader2 } from "lucide-react";
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
@@ -702,7 +702,9 @@ const DiretrizesCusteioPage = () => {
     const isClasseIX = CATEGORIAS_CLASSE_IX.includes(selectedTab);
     
     // Define o layout da grade baseado na classe
-    const gridLayout = isClasseIX ? "grid-cols-12" : "grid-cols-12";
+    // Classe IX: 12 colunas (5 para Item, 3 para Mnt/Dia, 3 para Acionamento, 1 para Botão)
+    // Outras Classes: 12 colunas (8 para Item, 3 para Mnt/Dia, 1 para Botão)
+    const gridLayout = "grid-cols-12";
     const itemColSpan = isClasseIX ? "col-span-5" : "col-span-8";
     const mntDiaColSpan = isClasseIX ? "col-span-3" : "col-span-3";
     const acionamentoColSpan = isClasseIX ? "col-span-3" : "hidden"; // Coluna de acionamento
@@ -721,15 +723,15 @@ const DiretrizesCusteioPage = () => {
 
     return (
       <div className="space-y-4 pt-4">
-        {/* Cabeçalho da Tabela (Apenas para Classe IX) */}
-        {isClasseIX && (
-          <div className={cn(gridLayout, "gap-2 items-end text-xs font-bold text-muted-foreground border-b pb-1")}>
-            <div className={itemColSpan}>Tipo Vtr</div>
-            <div className={mntDiaColSpan}>Mnt/Dia Op Mil (R$)</div>
-            <div className={acionamentoColSpan}>Acionamento Mensal (R$)</div>
-            <div className="col-span-1"></div>
+        {/* Cabeçalho da Tabela */}
+        <div className={cn(gridLayout, "gap-2 items-end text-xs font-bold text-muted-foreground border-b pb-1")}>
+          <div className={itemColSpan}>{isClasseIX ? "Tipo Vtr" : "Item"}</div>
+          <div className={mntDiaColSpan}>Mnt/Dia Op Mil (R$)</div>
+          <div className={cn({ [acionamentoColSpan]: isClasseIX })}>
+            {isClasseIX ? "Acionamento Mensal (R$)" : ""}
           </div>
-        )}
+          <div className="col-span-1"></div>
+        </div>
         
         {filteredItems.map((item, index) => {
           // Encontrar o índice original no array completo para permitir a atualização/remoção
@@ -754,7 +756,7 @@ const DiretrizesCusteioPage = () => {
                 <Input
                   value={item.item}
                   onChange={(e) => handleUpdateFilteredItem('item', e.target.value)}
-                  placeholder="Ex: Colete balístico"
+                  placeholder={isClasseIX ? "Ex: VTP Sedan Médio" : "Ex: Colete balístico"}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
@@ -769,7 +771,7 @@ const DiretrizesCusteioPage = () => {
                 />
               </div>
               
-              {/* NOVO CAMPO: Acionamento Mensal (Apenas para Classe IX) */}
+              {/* CAMPO: Acionamento Mensal (Apenas para Classe IX) */}
               {isClasseIX && (
                 <div className="col-span-3">
                   <Label className="text-xs">Acionamento (R$)</Label>
@@ -1207,7 +1209,6 @@ const DiretrizesCusteioPage = () => {
                   onClick={() => setShowClasseIXConfig(!showClasseIXConfig)}
                 >
                   <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Wrench className="h-5 w-5 text-primary" />
                     Classe IX - Material de Manutenção
                   </h3>
                   {showClasseIXConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
