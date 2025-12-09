@@ -16,6 +16,7 @@ import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { tipoViaturas, tipoEquipamentosEngenharia } from "@/data/classeIIIData";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from '@/lib/utils'; // Importação corrigida
 import { Checkbox } from "@/components/ui/checkbox";
 import { YearManagementDialog } from "@/components/YearManagementDialog";
 import { defaultClasseVIConfig } from "@/data/classeVIData";
