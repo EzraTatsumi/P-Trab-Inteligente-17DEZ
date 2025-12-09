@@ -40,11 +40,8 @@ src/components/ui/
 # Excluir tipos gerados pelo Supabase (grande economia de tokens)
 src/integrations/supabase/types.ts
 
-# Excluir arquivos de dados estáveis e assets
+# Excluir arquivos de dados estáticos e assets
 src/data/classeIIData.ts
-src/data/classeVIData.ts
-src/data/classeVIIData.ts
-src/data/classeVIIIData.ts
 src/assets/
 
 # Excluir componentes da Landing Page
@@ -77,21 +74,3 @@ src/lib/cryptoUtils.ts
 src/pages/PTrabManager.tsx
 src/components/CloneVariationDialog.tsx
 src/components/CreditPromptDialog.tsx
-
-# Excluir páginas de Classe já implementadas (grande economia)
-src/pages/ClasseIForm.tsx
-src/pages/ClasseIIForm.tsx
-src/pages/ClasseIIIForm.tsx
-src/pages/ClasseVForm.tsx
-src/pages/ClasseVIForm.tsx
-src/pages/ClasseVIIForm.tsx
-src/pages/ClasseVIIIForm.tsx
-src/pages/PTrabPrint.tsx
-
-# Excluir utilitários e componentes grandes e estáveis
-src/lib/formatUtils.ts
-src/lib/omUtils.ts
-src/components/OmSelector.tsx
-src/components/RmSelector.tsx
-src/components/RefLPCFormSection.tsx
-src/components/CreditInputDialog.tsx
