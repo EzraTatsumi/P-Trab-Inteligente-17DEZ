@@ -1748,7 +1748,7 @@ const ClasseVIIIForm = () => {
                         itensParaMemoria as ItemSaude[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
                       )
                     : generateRemontaMemoriaCalculo(
-                        registro.animal_tipo || 'Equino', itensParaMemonta as ItemRemonta[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
+                        registro.animal_tipo || 'Equino', itensParaMemoria as ItemRemonta[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
                       );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
