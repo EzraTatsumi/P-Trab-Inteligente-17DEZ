@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings, HardHat, HeartPulse, Activity } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings, HardHat, HeartPulse, Activity, Wrench } from "lucide-react";
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
@@ -20,7 +20,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { YearManagementDialog } from "@/components/YearManagementDialog";
 import { defaultClasseVIConfig } from "@/data/classeVIData";
 import { defaultClasseVIIConfig } from "@/data/classeVIIData";
-import { defaultClasseVIIISaudeConfig, defaultClasseVIIIRemontaConfig } from "@/data/classeVIIIData"; // NOVO IMPORT
+import { defaultClasseVIIISaudeConfig, defaultClasseVIIIRemontaConfig } from "@/data/classeVIIIData";
+import { defaultClasseIXConfig } from "@/data/classeIXData";
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -52,28 +53,28 @@ const defaultEquipamentosEngenhariaConfig: DiretrizEquipamentoForm[] = tipoEquip
 }));
 
 const defaultClasseIIConfig: DiretrizClasseIIForm[] = [
-  { categoria: "Equipamento Individual", item: "Equipamento Individual", valor_mnt_dia: 2.42 },
-  { categoria: "Proteção Balística", item: "Colete balístico", valor_mnt_dia: 3.23 },
-  { categoria: "Proteção Balística", item: "Capacete balístico", valor_mnt_dia: 2.56 },
-  { categoria: "Material de Estacionamento", item: "Barraca de campanha", valor_mnt_dia: 7.55 },
-  { categoria: "Material de Estacionamento", item: "Toldo modular", valor_mnt_dia: 1.88 },
-  { categoria: "Material de Estacionamento", item: "Barraca individual", valor_mnt_dia: 0.26 },
-  { categoria: "Material de Estacionamento", item: "Cama de campanha", valor_mnt_dia: 0.32 },
-  { categoria: "Material de Estacionamento", item: "Marmita Térmica", valor_mnt_dia: 0.67 },
-  { categoria: "Material de Estacionamento", item: "Armário", valor_mnt_dia: 0.82 },
-  { categoria: "Material de Estacionamento", item: "Beliche", valor_mnt_dia: 0.66 },
-  { categoria: "Material de Estacionamento", item: "Colchão", valor_mnt_dia: 0.28 },
+  { categoria: "Equipamento Individual", item: "Equipamento Individual", valor_mnt_dia: 2.42, valor_acionamento_mensal: 0 },
+  { categoria: "Proteção Balística", item: "Colete balístico", valor_mnt_dia: 3.23, valor_acionamento_mensal: 0 },
+  { categoria: "Proteção Balística", item: "Capacete balístico", valor_mnt_dia: 2.56, valor_acionamento_mensal: 0 },
+  { categoria: "Material de Estacionamento", item: "Barraca de campanha", valor_mnt_dia: 7.55, valor_acionamento_mensal: 0 },
+  { categoria: "Material de Estacionamento", item: "Toldo modular", valor_mnt_dia: 1.88, valor_acionamento_mensal: 0 },
+  { categoria: "Material de Estacionamento", item: "Barraca individual", valor_mnt_dia: 0.26, valor_acionamento_mensal: 0 },
+  { categoria: "Material de Estacionamento", item: "Cama de campanha", valor_mnt_dia: 0.32, valor_acionamento_mensal: 0 },
+  { categoria: "Material de Estacionamento", item: "Marmita Térmica", valor_mnt_dia: 0.67, valor_acionamento_mensal: 0 },
+  { categoria: "Material de Estacionamento", item: "Armário", valor_mnt_dia: 0.82, valor_acionamento_mensal: 0 },
+  { categoria: "Material de Estacionamento", item: "Beliche", valor_mnt_dia: 0.66, valor_acionamento_mensal: 0 },
+  { categoria: "Material de Estacionamento", item: "Colchão", valor_mnt_dia: 0.28, valor_acionamento_mensal: 0 },
 ];
 
 const defaultClasseVConfig: DiretrizClasseIIForm[] = [
-  { categoria: "Armt L", item: "Fuzil 5,56mm IA2 IMBEL", valor_mnt_dia: 1.40 },
-  { categoria: "Armt L", item: "Fuzil 7,62mm", valor_mnt_dia: 1.50 },
-  { categoria: "Armt L", item: "Pistola 9 mm", valor_mnt_dia: 0.40 },
-  { categoria: "Armt L", item: "Metralhadora FN MINIMI 5,56 x 45mm", valor_mnt_dia: 10.60 },
-  { categoria: "Armt L", item: "Metralhadora FN MINIMI 7,62 x 51mm", valor_mnt_dia: 11.00 },
-  { categoria: "Armt P", item: "Obuseiro", valor_mnt_dia: 175.00 },
-  { categoria: "IODCT", item: "OVN", valor_mnt_dia: 9.50 },
-  { categoria: "DQBRN", item: "Falcon 4GS", valor_mnt_dia: 723.30 },
+  { categoria: "Armt L", item: "Fuzil 5,56mm IA2 IMBEL", valor_mnt_dia: 1.40, valor_acionamento_mensal: 0 },
+  { categoria: "Armt L", item: "Fuzil 7,62mm", valor_mnt_dia: 1.50, valor_acionamento_mensal: 0 },
+  { categoria: "Armt L", item: "Pistola 9 mm", valor_mnt_dia: 0.40, valor_acionamento_mensal: 0 },
+  { categoria: "Armt L", item: "Metralhadora FN MINIMI 5,56 x 45mm", valor_mnt_dia: 10.60, valor_acionamento_mensal: 0 },
+  { categoria: "Armt L", item: "Metralhadora FN MINIMI 7,62 x 51mm", valor_mnt_dia: 11.00, valor_acionamento_mensal: 0 },
+  { categoria: "Armt P", item: "Obuseiro", valor_mnt_dia: 175.00, valor_acionamento_mensal: 0 },
+  { categoria: "IODCT", item: "OVN", valor_mnt_dia: 9.50, valor_acionamento_mensal: 0 },
+  { categoria: "DQBRN", item: "Falcon 4GS", valor_mnt_dia: 723.30, valor_acionamento_mensal: 0 },
 ];
 
 const CATEGORIAS_CLASSE_II = [
@@ -99,10 +100,17 @@ const CATEGORIAS_CLASSE_VII = [
   "Informática",
 ];
 
-// NOVO: Categorias da Classe VIII
 const CATEGORIAS_CLASSE_VIII = [
   "Saúde",
   "Remonta/Veterinária",
+];
+
+// NOVO: Categorias da Classe IX
+const CATEGORIAS_CLASSE_IX = [
+  "Vtr Administrativa",
+  "Vtr Operacional",
+  "Motocicleta",
+  "Vtr Blindada",
 ];
 
 const CATEGORIAS_CLASSE_III = [
@@ -130,7 +138,8 @@ const DiretrizesCusteioPage = () => {
   const [showClasseVConfig, setShowClasseVConfig] = useState(false);
   const [showClasseVIConfig, setShowClasseVIConfig] = useState(false); 
   const [showClasseVIIConfig, setShowClasseVIIConfig] = useState(false);
-  const [showClasseVIIIConfig, setShowClasseVIIIConfig] = useState(false); // NOVO ESTADO
+  const [showClasseVIIIConfig, setShowClasseVIIIConfig] = useState(false);
+  const [showClasseIXConfig, setShowClasseIXConfig] = useState(false); // NOVO ESTADO
   const [showClasseIIIConfig, setShowClasseIIIConfig] = useState(false);
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
@@ -140,10 +149,11 @@ const DiretrizesCusteioPage = () => {
   
   const [classeIIConfig, setClasseIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseIIConfig);
   const [classeVConfig, setClasseVConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVConfig);
-  const [classeVIConfig, setClasseVIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIConfig); 
-  const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig);
-  const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig); // NOVO ESTADO
-  const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig); // NOVO ESTADO
+  const [classeVIConfig, setClasseVIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIConfig.map(c => ({...c, valor_acionamento_mensal: 0}))); // Adiciona valor_acionamento_mensal
+  const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig.map(c => ({...c, valor_acionamento_mensal: 0}))); // Adiciona valor_acionamento_mensal
+  const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig.map(c => ({...c, valor_acionamento_mensal: 0}))); // Adiciona valor_acionamento_mensal
+  const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig.map(c => ({...c, valor_acionamento_mensal: 0}))); // Adiciona valor_acionamento_mensal
+  const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseIXConfig); // NOVO ESTADO
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -153,7 +163,8 @@ const DiretrizesCusteioPage = () => {
   const [selectedClasseVITab, setSelectedClasseVITab] = useState<string>(CATEGORIAS_CLASSE_VI[0]); 
   const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key);
   const [selectedClasseVIITab, setSelectedClasseVIITab] = useState<string>(CATEGORIAS_CLASSE_VII[0]);
-  const [selectedClasseVIIITab, setSelectedClasseVIIITab] = useState<string>(CATEGORIAS_CLASSE_VIII[0]); // NOVO ESTADO
+  const [selectedClasseVIIITab, setSelectedClasseVIIITab] = useState<string>(CATEGORIAS_CLASSE_VIII[0]);
+  const [selectedClasseIXTab, setSelectedClasseIXTab] = useState<string>(CATEGORIAS_CLASSE_IX[0]); // NOVO ESTADO
   
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   const [defaultYear, setDefaultYear] = useState<number | null>(null);
@@ -264,12 +275,12 @@ const DiretrizesCusteioPage = () => {
         setDiretrizes(defaultDiretrizes(year));
       }
       
-      // --- Carregar Classe II, V, VI, VII e VIII (usando a mesma tabela) ---
-      const allClasseItemsCategories = [...CATEGORIAS_CLASSE_II, ...CATEGORIAS_CLASSE_V, ...CATEGORIAS_CLASSE_VI, ...CATEGORIAS_CLASSE_VII, ...CATEGORIAS_CLASSE_VIII];
+      // --- Carregar Classe II, V, VI, VII, VIII e IX (usando a mesma tabela) ---
+      const allClasseItemsCategories = [...CATEGORIAS_CLASSE_II, ...CATEGORIAS_CLASSE_V, ...CATEGORIAS_CLASSE_VI, ...CATEGORIAS_CLASSE_VII, ...CATEGORIAS_CLASSE_VIII, ...CATEGORIAS_CLASSE_IX];
       
       const { data: classeItemsData } = await supabase
         .from("diretrizes_classe_ii")
-        .select("categoria, item, valor_mnt_dia")
+        .select("categoria, item, valor_mnt_dia, valor_acionamento_mensal")
         .eq("user_id", user.id)
         .eq("ano_referencia", year)
         .eq("ativo", true)
@@ -277,77 +288,39 @@ const DiretrizesCusteioPage = () => {
 
       const loadedItems = classeItemsData || [];
       
+      // Função auxiliar para mapear dados e garantir valor_acionamento_mensal
+      const mapLoadedItems = (items: typeof loadedItems, defaultItems: DiretrizClasseIIForm[]) => {
+        if (items.length > 0) {
+          return items.map(d => ({
+            categoria: d.categoria as DiretrizClasseIIForm['categoria'],
+            item: d.item,
+            valor_mnt_dia: Number(d.valor_mnt_dia),
+            valor_acionamento_mensal: Number(d.valor_acionamento_mensal || 0),
+          }));
+        }
+        return defaultItems;
+      };
+      
       // Filtrar e setar Classe II
-      const loadedClasseII = loadedItems.filter(d => CATEGORIAS_CLASSE_II.includes(d.categoria));
-      if (loadedClasseII.length > 0) {
-        setClasseIIConfig(loadedClasseII.map(d => ({
-          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
-          item: d.item,
-          valor_mnt_dia: Number(d.valor_mnt_dia),
-        })));
-      } else {
-        setClasseIIConfig(defaultClasseIIConfig);
-      }
+      setClasseIIConfig(mapLoadedItems(loadedItems.filter(d => CATEGORIAS_CLASSE_II.includes(d.categoria)), defaultClasseIIConfig));
       
       // Filtrar e setar Classe V
-      const loadedClasseV = loadedItems.filter(d => CATEGORIAS_CLASSE_V.includes(d.categoria));
-      if (loadedClasseV.length > 0) {
-        setClasseVConfig(loadedClasseV.map(d => ({
-          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
-          item: d.item,
-          valor_mnt_dia: Number(d.valor_mnt_dia),
-        })));
-      } else {
-        setClasseVConfig(defaultClasseVConfig);
-      }
+      setClasseVConfig(mapLoadedItems(loadedItems.filter(d => CATEGORIAS_CLASSE_V.includes(d.categoria)), defaultClasseVConfig));
       
       // Filtrar e setar Classe VI
-      const loadedClasseVI = loadedItems.filter(d => CATEGORIAS_CLASSE_VI.includes(d.categoria));
-      if (loadedClasseVI.length > 0) {
-        setClasseVIConfig(loadedClasseVI.map(d => ({
-          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
-          item: d.item,
-          valor_mnt_dia: Number(d.valor_mnt_dia),
-        })));
-      } else {
-        setClasseVIConfig(defaultClasseVIConfig);
-      }
+      setClasseVIConfig(mapLoadedItems(loadedItems.filter(d => CATEGORIAS_CLASSE_VI.includes(d.categoria)), defaultClasseVIConfig.map(c => ({...c, valor_acionamento_mensal: 0}))));
       
       // Filtrar e setar Classe VII
-      const loadedClasseVII = loadedItems.filter(d => CATEGORIAS_CLASSE_VII.includes(d.categoria));
-      if (loadedClasseVII.length > 0) {
-        setClasseVIIConfig(loadedClasseVII.map(d => ({
-          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
-          item: d.item,
-          valor_mnt_dia: Number(d.valor_mnt_dia),
-        })));
-      } else {
-        setClasseVIIConfig(defaultClasseVIIConfig);
-      }
+      setClasseVIIConfig(mapLoadedItems(loadedItems.filter(d => CATEGORIAS_CLASSE_VII.includes(d.categoria)), defaultClasseVIIConfig.map(c => ({...c, valor_acionamento_mensal: 0}))));
       
       // Filtrar e setar Classe VIII - Saúde
-      const loadedClasseVIIISaude = loadedItems.filter(d => d.categoria === 'Saúde');
-      if (loadedClasseVIIISaude.length > 0) {
-        setClasseVIIISaudeConfig(loadedClasseVIIISaude.map(d => ({
-          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
-          item: d.item,
-          valor_mnt_dia: Number(d.valor_mnt_dia),
-        })));
-      } else {
-        setClasseVIIISaudeConfig(defaultClasseVIIISaudeConfig);
-      }
+      setClasseVIIISaudeConfig(mapLoadedItems(loadedItems.filter(d => d.categoria === 'Saúde'), defaultClasseVIIISaudeConfig.map(c => ({...c, valor_acionamento_mensal: 0}))));
       
       // Filtrar e setar Classe VIII - Remonta/Veterinária
-      const loadedClasseVIIIRemonta = loadedItems.filter(d => d.categoria === 'Remonta/Veterinária');
-      if (loadedClasseVIIIRemonta.length > 0) {
-        setClasseVIIIRemontaConfig(loadedClasseVIIIRemonta.map(d => ({
-          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
-          item: d.item,
-          valor_mnt_dia: Number(d.valor_mnt_dia),
-        })));
-      } else {
-        setClasseVIIIRemontaConfig(defaultClasseVIIIRemontaConfig);
-      }
+      setClasseVIIIRemontaConfig(mapLoadedItems(loadedItems.filter(d => d.categoria === 'Remonta/Veterinária'), defaultClasseVIIIRemontaConfig.map(c => ({...c, valor_acionamento_mensal: 0}))));
+      
+      // NOVO: Filtrar e setar Classe IX
+      setClasseIXConfig(mapLoadedItems(loadedItems.filter(d => CATEGORIAS_CLASSE_IX.includes(d.categoria)), defaultClasseIXConfig));
 
 
       // --- Carregar Classe III - Equipamentos ---
@@ -466,9 +439,9 @@ const DiretrizesCusteioPage = () => {
         }
       }
       
-      // 3. Salvar Configurações de Classe II, V, VI, VII e VIII (usando a mesma tabela diretrizes_classe_ii)
+      // 3. Salvar Configurações de Classe II, V, VI, VII, VIII e IX (usando a mesma tabela diretrizes_classe_ii)
       
-      // Deletar registros antigos de Classe II, V, VI, VII e VIII
+      // Deletar registros antigos de todas as classes que usam diretrizes_classe_ii
       await supabase
         .from("diretrizes_classe_ii")
         .delete()
@@ -480,8 +453,9 @@ const DiretrizesCusteioPage = () => {
         ...classeVConfig, 
         ...classeVIConfig, 
         ...classeVIIConfig,
-        ...classeVIIISaudeConfig, // NOVO
-        ...classeVIIIRemontaConfig, // NOVO
+        ...classeVIIISaudeConfig,
+        ...classeVIIIRemontaConfig,
+        ...classeIXConfig, // NOVO: Incluir Classe IX
       ];
         
       const classeItemsParaSalvar = allClasseItems
@@ -492,6 +466,7 @@ const DiretrizesCusteioPage = () => {
           categoria: item.categoria,
           item: item.item,
           valor_mnt_dia: item.valor_mnt_dia,
+          valor_acionamento_mensal: item.valor_acionamento_mensal || 0, // NOVO: Salvar valor de acionamento
           ativo: true,
         }));
         
@@ -585,14 +560,14 @@ const DiretrizesCusteioPage = () => {
         if (insertEqError) console.error("Erro ao inserir equipamentos copiados:", insertEqError);
       }
       
-      // 3. Copiar Diretrizes de Classe II, V, VI, VII e VIII
+      // 3. Copiar Diretrizes de Classe II, V, VI, VII, VIII e IX
       const { data: sourceClasseItems, error: classeItemsError } = await supabase
         .from("diretrizes_classe_ii")
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", sourceYear);
         
-      if (classeItemsError) console.error("Erro ao buscar Classe II/V/VI/VII/VIII para cópia:", classeItemsError);
+      if (classeItemsError) console.error("Erro ao buscar Classe II/V/VI/VII/VIII/IX para cópia:", classeItemsError);
       
       if (sourceClasseItems && sourceClasseItems.length > 0) {
         const newClasseItems = sourceClasseItems.map(c2 => {
@@ -602,7 +577,7 @@ const DiretrizesCusteioPage = () => {
         const { error: insertC2Error } = await supabase
           .from("diretrizes_classe_ii")
           .insert(newClasseItems);
-        if (insertC2Error) console.error("Erro ao inserir Classe II/V/VI/VII/VIII copiada:", insertC2Error);
+        if (insertC2Error) console.error("Erro ao inserir Classe II/V/VI/VII/VIII/IX copiada:", insertC2Error);
       }
 
       toast.success(`Diretrizes do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
@@ -639,7 +614,7 @@ const DiretrizesCusteioPage = () => {
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
         
-      // 2. Excluir Diretrizes de Classe II, V, VI, VII e VIII
+      // 2. Excluir Diretrizes de Classe II, V, VI, VII, VIII e IX
       await supabase
         .from("diretrizes_classe_ii")
         .delete()
@@ -688,11 +663,11 @@ const DiretrizesCusteioPage = () => {
     setConfig(novosItens);
   };
   
-  // --- Funções de Gerenciamento da Classe II, V, VI, VII e VIII ---
+  // --- Funções de Gerenciamento da Classe II, V, VI, VII, VIII e IX ---
   const handleAddClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, categoria: DiretrizClasseIIForm['categoria']) => {
     setConfig(prev => [
       ...prev,
-      { categoria: categoria, item: "", valor_mnt_dia: 0 } as DiretrizClasseIIForm
+      { categoria: categoria, item: "", valor_mnt_dia: 0, valor_acionamento_mensal: 0 } as DiretrizClasseIIForm
     ]);
   };
 
@@ -706,7 +681,7 @@ const DiretrizesCusteioPage = () => {
     setConfig(novosItens);
   };
   
-  // Função para renderizar a lista de itens da Classe II/V/VI/VII/VIII por categoria
+  // Função para renderizar a lista de itens da Classe II/V/VI/VII/VIII/IX por categoria
   const renderClasseList = (
     config: DiretrizClasseIIForm[], 
     setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>,
@@ -715,8 +690,39 @@ const DiretrizesCusteioPage = () => {
   ) => {
     const filteredItems = config.filter(item => item.categoria === selectedTab);
     
+    // Verifica se a categoria atual é da Classe IX (Manutenção)
+    const isClasseIX = CATEGORIAS_CLASSE_IX.includes(selectedTab);
+    
+    // Define o layout da grade baseado na classe
+    const gridLayout = isClasseIX ? "grid-cols-12" : "grid-cols-12";
+    const itemColSpan = isClasseIX ? "col-span-5" : "col-span-8";
+    const mntDiaColSpan = isClasseIX ? "col-span-3" : "col-span-3";
+    const acionamentoColSpan = isClasseIX ? "col-span-3" : "hidden"; // Coluna de acionamento
+
+    // Função auxiliar para formatar o valor como moeda (R$ X.XXX,XX)
+    const formatCurrency = (value: number) => {
+      return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    // Função auxiliar para converter string de moeda para número
+    const parseCurrency = (value: string): number => {
+      // Remove pontos de milhar e substitui vírgula decimal por ponto
+      const cleanedValue = value.replace(/\./g, '').replace(/,/g, '.');
+      return parseFloat(cleanedValue) || 0;
+    };
+
     return (
       <div className="space-y-4 pt-4">
+        {/* Cabeçalho da Tabela (Apenas para Classe IX) */}
+        {isClasseIX && (
+          <div className={cn(gridLayout, "gap-2 items-end text-xs font-bold text-muted-foreground border-b pb-1")}>
+            <div className={itemColSpan}>Tipo Vtr</div>
+            <div className={mntDiaColSpan}>Mnt/Dia Op Mil (R$)</div>
+            <div className={acionamentoColSpan}>Acionamento Mensal (R$)</div>
+            <div className="col-span-1"></div>
+          </div>
+        )}
+        
         {filteredItems.map((item, index) => {
           // Encontrar o índice original no array completo para permitir a atualização/remoção
           const indexInMainArray = config.findIndex(c => c === item);
@@ -733,22 +739,10 @@ const DiretrizesCusteioPage = () => {
             }
           };
           
-          // Função auxiliar para formatar o valor como moeda (R$ X.XXX,XX)
-          const formatCurrency = (value: number) => {
-            return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          };
-
-          // Função auxiliar para converter string de moeda para número
-          const parseCurrency = (value: string): number => {
-            // Remove pontos de milhar e substitui vírgula decimal por ponto
-            const cleanedValue = value.replace(/\./g, '').replace(/,/g, '.');
-            return parseFloat(cleanedValue) || 0;
-          };
-
           return (
-            <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
-              <div className="col-span-8">
-                <Label className="text-xs">Item</Label>
+            <div key={index} className={cn(gridLayout, "gap-2 items-end border-b pb-3 last:border-0")}>
+              <div className={itemColSpan}>
+                <Label className={cn("text-xs", { 'hidden': isClasseIX })}>Item</Label>
                 <Input
                   value={item.item}
                   onChange={(e) => handleUpdateFilteredItem('item', e.target.value)}
@@ -756,15 +750,27 @@ const DiretrizesCusteioPage = () => {
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
-              <div className="col-span-3">
-                <Label className="text-xs">Valor (R$)</Label>
+              <div className={mntDiaColSpan}>
+                <Label className="text-xs">Mnt/Dia (R$)</Label>
                 <Input
-                  // Removendo type="number" e estilos para permitir digitação livre e formatação
                   value={item.valor_mnt_dia === 0 ? "" : formatCurrency(item.valor_mnt_dia)}
                   onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseCurrency(e.target.value))}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
+              
+              {/* NOVO CAMPO: Acionamento Mensal (Apenas para Classe IX) */}
+              {isClasseIX && (
+                <div className="col-span-3">
+                  <Label className="text-xs">Acionamento (R$)</Label>
+                  <Input
+                    value={item.valor_acionamento_mensal === 0 ? "" : formatCurrency(item.valor_acionamento_mensal)}
+                    onChange={(e) => handleUpdateFilteredItem('valor_acionamento_mensal', parseCurrency(e.target.value))}
+                    onKeyDown={handleEnterToNextField}
+                  />
+                </div>
+              )}
+              
               <div className="col-span-1 flex justify-end">
                 <Button
                   variant="ghost"
@@ -871,7 +877,8 @@ const DiretrizesCusteioPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando configurações...</p>
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Carregando configurações...</span>
       </div>
     );
   }
@@ -1145,7 +1152,7 @@ const DiretrizesCusteioPage = () => {
                 )}
               </div>
               
-              {/* NOVO: SEÇÃO CLASSE VIII - SAÚDE E REMONTA/VETERINÁRIA */}
+              {/* SEÇÃO CLASSE VIII - SAÚDE E REMONTA/VETERINÁRIA */}
               <div className="border-t pt-4 mt-6">
                 <div 
                   className="flex items-center justify-between cursor-pointer py-2" 
@@ -1164,7 +1171,6 @@ const DiretrizesCusteioPage = () => {
                         <TabsList className="grid w-full grid-cols-2">
                           {CATEGORIAS_CLASSE_VIII.map(cat => (
                             <TabsTrigger key={cat} value={cat}>
-                              {/* Ícones removidos conforme solicitado */}
                               {cat}
                             </TabsTrigger>
                           ))}
@@ -1176,6 +1182,40 @@ const DiretrizesCusteioPage = () => {
                         <TabsContent value="Remonta/Veterinária">
                           {renderClasseList(classeVIIIRemontaConfig, setClasseVIIIRemontaConfig, CATEGORIAS_CLASSE_VIII, 'Remonta/Veterinária')}
                         </TabsContent>
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              
+              {/* NOVO: SEÇÃO CLASSE IX - MATERIAL DE MANUTENÇÃO */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseIXConfig(!showClasseIXConfig)}
+                >
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-primary" />
+                    Classe IX - Material de Manutenção
+                  </h3>
+                  {showClasseIXConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseIXConfig && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <Tabs value={selectedClasseIXTab} onValueChange={setSelectedClasseIXTab}>
+                        <TabsList className="grid w-full grid-cols-4">
+                          {CATEGORIAS_CLASSE_IX.map(cat => (
+                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        {CATEGORIAS_CLASSE_IX.map(cat => (
+                          <TabsContent key={cat} value={cat}>
+                            {renderClasseList(classeIXConfig, setClasseIXConfig, CATEGORIAS_CLASSE_IX, cat)}
+                          </TabsContent>
+                        ))}
                       </Tabs>
                     </CardContent>
                   </Card>
