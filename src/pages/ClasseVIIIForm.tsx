@@ -146,6 +146,30 @@ const calculateSaudeItemTotal = (item: ItemSaude): number => {
     return item.valor_mnt_dia * item.quantidade;
 };
 
+// New helper function to calculate the total cost for a specific animal type (Equino/Canino)
+const calculateTotalForAnimalType = (
+    animalItem: ItemRemonta, 
+    allDirectives: DiretrizClasseII[]
+): number => {
+    const animalType = animalItem.item;
+    const nrAnimais = animalItem.quantidade_animais;
+    const diasOperacao = animalItem.dias_operacao_item;
+    
+    if (nrAnimais <= 0 || diasOperacao <= 0) return 0;
+    
+    const relatedDirectives = allDirectives.filter(d => d.item.includes(animalType));
+    
+    const directivesAsItems: ItemRemonta[] = relatedDirectives.map(d => ({
+        item: d.item,
+        quantidade_animais: nrAnimais,
+        dias_operacao_item: diasOperacao,
+        valor_mnt_dia: Number(d.valor_mnt_dia),
+        categoria: 'Remonta/Veterinária',
+    }));
+    
+    return directivesAsItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+};
+
 // --- Geração de Memória de Cálculo ---
 
 const generateRemontaMemoriaCalculo = (
@@ -388,21 +412,9 @@ const ClasseVIIIForm = () => {
                     item: animalType,
                     quantidade_animais: nrAnimaisSalvos,
                     dias_operacao_item: diasOperacaoSalvos,
-                    valor_mnt_dia: 0,
+                    valor_mnt_dia: 0, // Não usamos este campo para o cálculo total do animal, apenas para diretrizes individuais
                     categoria: 'Remonta/Veterinária',
                 };
-                
-                const directivesAsItems: ItemRemonta[] = relatedDirectives.map(d => ({
-                    item: d.item,
-                    quantidade_animais: nrAnimaisSalvos,
-                    dias_operacao_item: diasOperacaoSalvos,
-                    valor_mnt_dia: Number(d.valor_mnt_dia),
-                    categoria: 'Remonta/Veterinária',
-                }));
-                
-                const totalValueForAnimal = directivesAsItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
-                
-                baseItem.valor_mnt_dia = totalValueForAnimal; 
                 
                 baseItems.push(baseItem);
             }
@@ -565,24 +577,33 @@ const ClasseVIIIForm = () => {
     
     // Process Remonta
     if (remontaRecords.length > 0) {
-        const r = remontaRecords[0]; // Apenas um registro por categoria é esperado
-        const sanitizedItems = (r.itens_remonta || []).map(item => ({
-            ...item,
-            quantidade_animais: Number((item as ItemRemonta).quantidade_animais || 0),
-            dias_operacao_item: Number((item as ItemRemonta).dias_operacao_item || 0),
-        })) as ItemRemonta[];
+        const r = remontaRecords[0]; // Apenas um registro por OM/UG é esperado, mas pode ter Equino e Canino separados
         
-        consolidatedRemonta = sanitizedItems;
+        // Consolidar todos os itens de remonta em uma única lista
+        const allRemontaItems: ItemRemonta[] = remontaRecords.flatMap(record => 
+            (record.itens_remonta || []).map(item => ({
+                ...item,
+                quantidade_animais: Number(item.quantidade_animais || 0),
+                dias_operacao_item: Number(item.dias_operacao_item || 0),
+            }))
+        );
         
-        const totalValor = sanitizedItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+        consolidatedRemonta = allRemontaItems;
+        
+        const totalValor = allRemontaItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+        
+        // Usamos os dados de alocação do primeiro registro de remonta para preencher a alocação total da categoria
+        const firstRemontaRecord = remontaRecords[0];
+        const totalND30 = remontaRecords.reduce((sum, r) => sum + Number(r.valor_nd_30), 0);
+        const totalND39 = remontaRecords.reduce((sum, r) => sum + Number(r.valor_nd_39), 0);
         
         newAllocations['Remonta/Veterinária'] = {
             total_valor: totalValor,
-            nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
-            nd_30_value: Number(r.valor_nd_30),
-            nd_39_value: Number(r.valor_nd_39),
-            om_destino_recurso: r.organizacao,
-            ug_destino_recurso: r.ug,
+            nd_39_input: formatNumberForInput(totalND39, 2),
+            nd_30_value: totalND30,
+            nd_39_value: totalND39,
+            om_destino_recurso: firstRemontaRecord.organizacao,
+            ug_destino_recurso: firstRemontaRecord.ug,
             selectedOmDestinoId: undefined,
         };
     }
@@ -735,29 +756,12 @@ const ClasseVIIIForm = () => {
         return (currentCategoryItems as ItemSaude[]).reduce((sum, item) => sum + calculateSaudeItemTotal(item), 0);
     } else {
         const remontaItems = currentCategoryItems as ItemRemonta[];
-        const directives = diretrizesRemonta;
         
         let totalRemonta = 0;
         
         remontaItems.forEach(animalItem => {
-            const animalType = animalItem.item;
-            const nrAnimais = animalItem.quantidade_animais;
-            const diasOperacao = animalItem.dias_operacao_item;
-            
-            if (nrAnimais > 0 && diasOperacao > 0) {
-                const relatedDirectives = directives.filter(d => d.item.includes(animalType));
-                
-                const directivesAsItems: ItemRemonta[] = relatedDirectives.map(d => ({
-                    item: d.item,
-                    quantidade_animais: nrAnimais,
-                    dias_operacao_item: diasOperacao,
-                    valor_mnt_dia: Number(d.valor_mnt_dia),
-                    categoria: 'Remonta/Veterinária',
-                }));
-                
-                const totalForAnimal = directivesAsItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
-                totalRemonta += totalForAnimal;
-            }
+            // Usa a função auxiliar para calcular o total do tipo de animal
+            totalRemonta += calculateTotalForAnimalType(animalItem, diretrizesRemonta);
         });
         
         return totalRemonta;
@@ -1336,7 +1340,7 @@ const ClasseVIIIForm = () => {
                                             
                                             const itemTotal = isSaude 
                                                 ? calculateSaudeItemTotal(itemSaude)
-                                                : calculateRemontaItemTotal(itemRemonta);
+                                                : calculateTotalForAnimalType(itemRemonta, diretrizesRemonta); // FIX: Usa a função correta para calcular o total do tipo de animal
                                             
                                             const itemLabel = isSaude ? itemSaude.item : itemRemonta.item;
                                             
