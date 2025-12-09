@@ -73,8 +73,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     { data: classeVData, error: classeVError },
     { data: classeVIData, error: classeVIError },
     { data: classeVIIData, error: classeVIIError },
-    { data: classeVIIISaudeData, error: classeVIIISaudeError }, // NOVO
-    { data: classeVIIIRemontaData, error: classeVIIIRemontaError }, // NOVO
+    { data: classeVIIISaudeData, error: classeVIIISaudeError },
+    { data: classeVIIIRemontaData, error: classeVIIIRemontaError },
   ] = await Promise.all([
     supabase
       .from('classe_ii_registros')
@@ -92,13 +92,13 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .from('classe_vii_registros')
       .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
       .eq('p_trab_id', ptrabId),
-    supabase // NOVO
+    supabase
       .from('classe_viii_saude_registros')
       .select('valor_total, itens_saude, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
       .eq('p_trab_id', ptrabId),
-    supabase // NOVO
+    supabase
       .from('classe_viii_remonta_registros')
-      .select('valor_total, itens_remonta, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
+      .select('valor_total, itens_remonta, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais') // ADDED animal_tipo, quantidade_animais
       .eq('p_trab_id', ptrabId),
   ]);
 
@@ -114,8 +114,14 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     ...(classeVData || []),
     ...(classeVIData || []),
     ...(classeVIIData || []),
-    ...(classeVIIISaudeData || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde' })), // Mapear Saúde
-    ...(classeVIIIRemontaData || []).map(r => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária' })), // Mapear Remonta
+    ...(classeVIIISaudeData || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde' })),
+    ...(classeVIIIRemontaData || []).map(r => ({ 
+        ...r, 
+        itens_equipamentos: r.itens_remonta, 
+        categoria: 'Remonta/Veterinária',
+        animal_tipo: r.animal_tipo, // Pass animal_tipo through
+        quantidade_animais: r.quantidade_animais, // Pass quantity through
+    })),
   ];
   
   let totalClasseII = 0;
@@ -142,16 +148,16 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   let totalItensClasseVII = 0;
   const groupedClasseVIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
   
-  let totalClasseVIII = 0; // NOVO
-  let totalClasseVIII_ND30 = 0; // NOVO
-  let totalClasseVIII_ND39 = 0; // NOVO
-  let totalItensClasseVIII = 0; // NOVO
-  const groupedClasseVIIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {}; // NOVO
+  let totalClasseVIII = 0;
+  let totalClasseVIII_ND30 = 0;
+  let totalClasseVIII_ND39 = 0;
+  let totalItensClasseVIII = 0;
+  const groupedClasseVIIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
   
   (allClasseItemsData || []).forEach(record => {
     const category = record.categoria;
     const items = (record.itens_equipamentos || []) as ItemClasseII[];
-    const totalItemsCategory = items.reduce((sum, item) => sum + (item.quantidade || item.quantidade_animais || 0), 0); // Ajuste para Remonta
+    const totalItemsCategory = items.reduce((sum, item) => sum + (item.quantidade || 0), 0); 
     
     const valorTotal = record.valor_total;
     const valorND30 = Number(record.valor_nd_30);
@@ -219,15 +225,30 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         totalClasseVIII += valorTotal;
         totalClasseVIII_ND30 += valorND30;
         totalClasseVIII_ND39 += valorND39;
-        totalItensClasseVIII += totalItemsCategory;
-
-        if (!groupedClasseVIIICategories[category]) {
-            groupedClasseVIIICategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
+        
+        // Determine the key for granular grouping
+        let groupKey = category;
+        let currentTotalItems = totalItemsCategory;
+        
+        if (category === 'Remonta/Veterinária') {
+            const animalType = (record as any).animal_tipo;
+            const quantidadeAnimais = (record as any).quantidade_animais || 0;
+            
+            if (animalType) {
+                groupKey = `Remonta - ${animalType}`;
+                currentTotalItems = quantidadeAnimais;
+            }
         }
-        groupedClasseVIIICategories[category].totalValor += valorTotal;
-        groupedClasseVIIICategories[category].totalND30 += valorND30;
-        groupedClasseVIIICategories[category].totalND39 += valorND39;
-        groupedClasseVIIICategories[category].totalItens += totalItemsCategory;
+        
+        totalItensClasseVIII += currentTotalItems;
+
+        if (!groupedClasseVIIICategories[groupKey]) {
+            groupedClasseVIIICategories[groupKey] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
+        }
+        groupedClasseVIIICategories[groupKey].totalValor += valorTotal;
+        groupedClasseVIIICategories[groupKey].totalND30 += valorND30;
+        groupedClasseVIIICategories[groupKey].totalND39 += valorND39;
+        groupedClasseVIIICategories[groupKey].totalItens += currentTotalItems;
     }
   });
   
@@ -239,14 +260,14 @@ const fetchPTrabTotals = async (ptrabId: string) => {
 
   if (classeIIIError) throw classeIIIError;
 
-  // Combustível (ND 33.90.30)
+  // Combustível (ND 33.90.30) - FIX: Filter out LUBRIFICANTE_CONSOLIDADO
   const combustivelRecords = (classeIIIData || []).filter(r => 
-    r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR' && r.tipo_equipamento !== 'LUBRIFICANTE_EMBARCACAO'
+    r.tipo_equipamento !== 'LUBRIFICANTE_CONSOLIDADO'
   );
   
-  // Lubrificante (ND 33.90.30)
+  // Lubrificante (ND 33.90.30) - FIX: Filter only LUBRIFICANTE_CONSOLIDADO
   const lubrificanteRecords = (classeIIIData || []).filter(r => 
-    r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO'
+    r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO'
   );
 
   // Totais de Combustível (ND 33.90.30)
@@ -313,11 +334,11 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalItensClasseVII,
     groupedClasseVIICategories,
     
-    totalClasseVIII, // NOVO
-    totalClasseVIII_ND30, // NOVO
-    totalClasseVIII_ND39, // NOVO
-    totalItensClasseVIII, // NOVO
-    groupedClasseVIIICategories, // NOVO
+    totalClasseVIII,
+    totalClasseVIII_ND30,
+    totalClasseVIII_ND39,
+    totalItensClasseVIII,
+    groupedClasseVIIICategories,
     
     totalComplemento,
     totalEtapaSolicitadaValor,
@@ -372,11 +393,11 @@ export const PTrabCostSummary = ({
       totalClasseVII_ND39: 0,
       groupedClasseVIICategories: {},
       totalItensClasseVII: 0,
-      totalClasseVIII: 0, // NOVO
-      totalClasseVIII_ND30: 0, // NOVO
-      totalClasseVIII_ND39: 0, // NOVO
-      groupedClasseVIIICategories: {}, // NOVO
-      totalItensClasseVIII: 0, // NOVO
+      totalClasseVIII: 0,
+      totalClasseVIII_ND30: 0,
+      totalClasseVIII_ND39: 0,
+      groupedClasseVIIICategories: {},
+      totalItensClasseVIII: 0,
       totalComplemento: 0,
       totalEtapaSolicitadaValor: 0,
       totalDiasEtapaSolicitada: 0,
@@ -449,7 +470,7 @@ export const PTrabCostSummary = ({
   const sortedClasseVCategories = Object.entries(totals.groupedClasseVCategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const sortedClasseVICategories = Object.entries(totals.groupedClasseVICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const sortedClasseVIICategories = Object.entries(totals.groupedClasseVIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
-  const sortedClasseVIIICategories = Object.entries(totals.groupedClasseVIIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b)); // NOVO
+  const sortedClasseVIIICategories = Object.entries(totals.groupedClasseVIIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
 
   return (
     <Card className="shadow-lg">
