@@ -98,7 +98,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .eq('p_trab_id', ptrabId),
     supabase
       .from('classe_viii_remonta_registros')
-      .select('valor_total, itens_remonta, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais') // ADDED animal_tipo, quantidade_animais
+      .select('valor_total, itens_remonta, dias_operacao, organizacao, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais') // REMOVED 'categoria'
       .eq('p_trab_id', ptrabId),
   ]);
 
