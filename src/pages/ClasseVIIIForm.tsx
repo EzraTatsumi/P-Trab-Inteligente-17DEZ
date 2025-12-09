@@ -460,8 +460,15 @@ const ClasseVIIIForm = () => {
     
     // Process Saúde
     saudeRecords.forEach(r => {
-        consolidatedSaude = consolidatedSaude.concat((r.itens_saude || []) as ItemSaude[]);
-        const totalValor = (r.itens_saude || []).reduce((sum, item) => calculateSaudeItemTotal(item as ItemSaude) + sum, 0);
+        // Sanitize items before consolidation
+        const sanitizedItems = (r.itens_saude || []).map(item => ({
+            ...item,
+            quantidade: Number((item as ItemSaude).quantidade || 0), // Ensure quantity is a number
+        })) as ItemSaude[];
+        
+        consolidatedSaude = consolidatedSaude.concat(sanitizedItems);
+        
+        const totalValor = sanitizedItems.reduce((sum, item) => calculateSaudeItemTotal(item) + sum, 0);
         newAllocations['Saúde'] = {
             total_valor: totalValor,
             nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
@@ -475,8 +482,15 @@ const ClasseVIIIForm = () => {
     
     // Process Remonta
     remontaRecords.forEach(r => {
-        consolidatedRemonta = consolidatedRemonta.concat((r.itens_remonta || []) as ItemRemonta[]);
-        const totalValor = (r.itens_remonta || []).reduce((sum, item) => calculateRemontaItemTotal(item as ItemRemonta, diasOperacao) + sum, 0);
+        // Sanitize items before consolidation
+        const sanitizedItems = (r.itens_remonta || []).map(item => ({
+            ...item,
+            quantidade_animais: Number((item as ItemRemonta).quantidade_animais || 0), // Ensure quantity is a number
+        })) as ItemRemonta[];
+        
+        consolidatedRemonta = consolidatedRemonta.concat(sanitizedItems);
+        
+        const totalValor = sanitizedItems.reduce((sum, item) => calculateRemontaItemTotal(item, diasOperacao) + sum, 0);
         newAllocations['Remonta/Veterinária'] = {
             total_valor: totalValor,
             nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
@@ -803,7 +817,7 @@ const ClasseVIIIForm = () => {
     
     setLoading(true);
     try {
-        const tableName = registro.categoria === 'Saúde' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
+        const tableName = registro.categoria === 'Saúde - KPSI/KPT' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
         const { error } = await supabase.from(tableName).delete().eq("id", registro.id);
         
         if (error) throw error;
@@ -831,7 +845,7 @@ const ClasseVIIIForm = () => {
   const handleSalvarMemoriaCustomizada = async (registro: ClasseVIIIRegistro) => {
     setLoading(true);
     try {
-      const tableName = registro.categoria === 'Saúde' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
+      const tableName = registro.categoria === 'Saúde - KPSI/KPT' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
       
       const { error } = await supabase
         .from(tableName)
@@ -860,7 +874,7 @@ const ClasseVIIIForm = () => {
     
     setLoading(true);
     try {
-      const tableName = registro.categoria === 'Saúde' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
+      const tableName = registro.categoria === 'Saúde - KPSI/KPT' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
       
       const { error } = await supabase
         .from(tableName)
