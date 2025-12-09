@@ -851,10 +851,16 @@ Total QR: ${formatCurrency(total_qr)}.`;
           const omDestinoRecurso = registro.organizacao;
           const ugDestinoRecurso = registro.ug;
           
+          // Determine the specific label for the second line
+          const specificLabel = 
+            registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo
+              ? registro.animal_tipo.toUpperCase()
+              : registro.categoria.toUpperCase();
+              
           const row = worksheet.getRow(currentRow);
           
           // Coluna A: DESPESAS (Usando a função auxiliar)
-          row.getCell('A').value = `${getClasseIILabel(registro.categoria)}\n${registro.categoria.toUpperCase()}`;
+          row.getCell('A').value = `${getClasseIILabel(registro.categoria)}\n${specificLabel}`;
           
           // Coluna B: OM (UGE) CODUG
           row.getCell('B').value = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
@@ -1375,11 +1381,16 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     const omDestinoRecurso = registro.organizacao;
                     const ugDestinoRecurso = registro.ug;
                     
+                    const secondDivContent = 
+                      registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo
+                        ? registro.animal_tipo.toUpperCase()
+                        : registro.categoria.toUpperCase();
+
                     return (
                       <tr key={`classe-ii-${registro.id}`}>
                         <td className="col-despesas">
                           <div>{getClasseIILabel(registro.categoria)}</div>
-                          <div className="uppercase">{registro.categoria}</div>
+                          <div className="uppercase">{secondDivContent}</div>
                         </td>
                         <td className="col-om">
                           <div>{omDestinoRecurso}</div>
