@@ -19,6 +19,10 @@ export const defaultClasseVIIIRemontaConfig: DiretrizClasseIIForm[] = [
   { categoria: "Remonta/Veterinária", item: "Equino - D: Reposição/Desgaste (Anual)", valor_mnt_dia: 7200.00 },
   { categoria: "Remonta/Veterinária", item: "Equino - E: Assistência Veterinária (Anual)", valor_mnt_dia: 4000.00 },
   { categoria: "Remonta/Veterinária", item: "Equino - G: Custo Mnt/Dia Op (Diário)", valor_mnt_dia: 29.50 },
-  // Caninos
-  { categoria: "Remonta/Veterinária", item: "Canino - C: Medicamento (Mensal)", valor_mnt_dia: 60.00 },
+  // Caninos (Itens detalhados)
+  { categoria: "Remonta/Veterinária", item: "Canino - B: Material de Condução (Anual)", valor_mnt_dia: 500.00 },
+  { categoria: "Remonta/Veterinária", item: "Canino - C: Alimentação (Mensal)", valor_mnt_dia: 99.00 },
+  { categoria: "Remonta/Veterinária", item: "Canino - D: Valor de Mercado (Anual)", valor_mnt_dia: 1600.00 },
+  { categoria: "Remonta/Veterinária", item: "Canino - E: Assistência Veterinária (Anual)", valor_mnt_dia: 400.00 },
+  { categoria: "Remonta/Veterinária", item: "Canino - G: Custo Mnt/Dia Op (Diário)", valor_mnt_dia: 5.30 },
 ];
