@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
-import { defaultClasseVIConfig } from "@/data/classeVIData"; // CORRIGIDO
+import { defaultClasseVIConfig } from "@/data/classeVIData";
 
 type Categoria = 'Embarcação' | 'Equipamento de Engenharia'; // Categorias corretas para Classe VI
 
@@ -36,6 +36,9 @@ const CATEGORIAS: Categoria[] = [
 
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
+
+// CONSTANTE DA MARGEM DE RESERVA
+const MARGEM_RESERVA = 0.10; // 10%
 
 interface ItemClasseVI {
   item: string;
@@ -70,18 +73,19 @@ interface ClasseVIRegistro {
 }
 
 interface CategoryAllocation {
-  total_valor: number;
-  nd_39_input: string; // User input string for ND 39
-  nd_30_value: number; // Calculated ND 30 value
-  nd_39_value: number; // Calculated ND 39 value
+  total_valor: number; // Valor calculado SEM margem
+  total_valor_com_margem: number; // NOVO: Valor calculado COM margem
+  nd_39_input: string; // User input string for ND 39 (baseado no valor COM margem)
+  nd_30_value: number; // Calculated ND 30 value (COM margem)
+  nd_39_value: number; // Calculated ND 39 value (COM margem)
   om_destino_recurso: string;
   ug_destino_recurso: string;
   selectedOmDestinoId?: string;
 }
 
 const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
-    'Embarcação': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
-    'Equipamento de Engenharia': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Embarcação': { total_valor: 0, total_valor_com_margem: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Equipamento de Engenharia': { total_valor: 0, total_valor_com_margem: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
 };
 
 const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
@@ -102,10 +106,43 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
+// NOVO: Gera a memória de cálculo detalhada para uma categoria
+const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseVI[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
+    const faseFormatada = formatFasesParaTexto(faseAtividade);
+    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
+    const totalValorSemMargem = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
+    const totalValorComMargem = totalValorSemMargem * (1 + MARGEM_RESERVA);
+
+    let detalhamentoItens = "";
+    itens.forEach(item => {
+        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
+        detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
+    });
+
+    return `33.90.30 - Aquisição de Material de Classe VI (${getCategoryLabel(categoria)})
+OM de Destino: ${organizacao} (UG: ${ug})
+Período: ${diasOperacao} dias de ${faseFormatada}
+Total de Itens na Categoria: ${totalQuantidade}
+
+Cálculo:
+Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
+
+Detalhes dos Itens (Valor Base):
+${detalhamentoItens.trim()}
+
+Valor Total Base: ${formatCurrency(totalValorSemMargem)}.
+Margem de Reserva (${MARGEM_RESERVA * 100}%): ${formatCurrency(totalValorComMargem - totalValorSemMargem)}.
+
+Valor Total Solicitado (Com Margem): ${formatCurrency(totalValorComMargem)}.`;
+};
+
+
 const generateDetalhamento = (itens: ItemClasseVI[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const valorTotal = valorND30 + valorND39;
+    const valorTotalComMargem = valorND30 + valorND39;
+    const valorTotalSemMargem = valorTotalComMargem / (1 + MARGEM_RESERVA);
+    const valorMargem = valorTotalComMargem - valorTotalSemMargem;
 
     const gruposPorCategoria = itens.reduce((acc, item) => {
         const categoria = item.categoria;
@@ -132,7 +169,7 @@ const generateDetalhamento = (itens: ItemClasseVI[], diasOperacao: number, organ
     
     Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
         detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`;
-        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
+        detalhamentoItens += `Valor Total Base Categoria: ${formatCurrency(grupo.totalValor)}\n`;
         detalhamentoItens += `Detalhes:\n`;
         detalhamentoItens += grupo.detalhes.join('\n');
         detalhamentoItens += `\n`;
@@ -143,16 +180,18 @@ const generateDetalhamento = (itens: ItemClasseVI[], diasOperacao: number, organ
     return `33.90.30 / 33.90.39 - Aquisição de Material de Classe VI (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
 Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
-Alocação:
+Cálculo Base (Sem Margem): ${formatCurrency(valorTotalSemMargem)}.
+Margem de Reserva (${MARGEM_RESERVA * 100}%): ${formatCurrency(valorMargem)}.
+
+Alocação (Com Margem):
 - ND 33.90.30 (Material): ${formatCurrency(valorND30)}
 - ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
-Cálculo:
 Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
 
 ${detalhamentoItens}
 
-Valor Total: ${formatCurrency(valorTotal)}.`;
+Valor Total Solicitado (Com Margem): ${formatCurrency(valorTotalComMargem)}.`;
   };
 
 
@@ -204,6 +243,7 @@ const ClasseVIForm = () => {
   }, [ptrabId]);
   
   useEffect(() => {
+    // Sincroniza o input ND 39 com o valor alocado (que já inclui a margem)
     setCurrentND39Input(categoryAllocations[selectedTab].nd_39_input);
   }, [selectedTab, categoryAllocations]);
 
@@ -322,7 +362,7 @@ const ClasseVIForm = () => {
     if (!ptrabId) return;
     
     const { data, error } = await supabase
-      .from("classe_vi_registros") // FIX: Usando a tabela correta
+      .from("classe_vi_registros")
       .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
       .eq("p_trab_id", ptrabId)
       .order("organizacao", { ascending: true })
@@ -435,7 +475,11 @@ const ClasseVIForm = () => {
     setCurrentCategoryItems(newItems);
   };
 
-  const currentCategoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+  // CÁLCULO BASE SEM MARGEM
+  const currentCategoryBaseValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+  // CÁLCULO COM MARGEM DE 10%
+  const currentCategoryTotalValue = currentCategoryBaseValue * (1 + MARGEM_RESERVA);
+  
   const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, parseInputToNumber(currentND39Input)));
   const nd30ValueTemp = currentCategoryTotalValue - nd39ValueTemp;
 
@@ -456,18 +500,18 @@ const ClasseVIForm = () => {
         return;
     }
     
-    const categoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+    const categoryTotalValueComMargem = currentCategoryTotalValue;
 
     const numericInput = parseInputToNumber(currentND39Input);
-    const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
-    const finalND30Value = categoryTotalValue - finalND39Value;
+    const finalND39Value = Math.min(categoryTotalValueComMargem, Math.max(0, numericInput));
+    const finalND30Value = categoryTotalValueComMargem - finalND39Value;
     
-    if (categoryTotalValue > 0 && !areNumbersEqual(finalND30Value + finalND39Value, categoryTotalValue)) {
-        toast.error("Erro de cálculo: A soma de ND 30 e ND 39 deve ser igual ao Total da Categoria.");
+    if (categoryTotalValueComMargem > 0 && !areNumbersEqual(finalND30Value + finalND39Value, categoryTotalValueComMargem)) {
+        toast.error("Erro de cálculo: A soma de ND 30 e ND 39 deve ser igual ao Total da Categoria (com margem).");
         return;
     }
     
-    if (categoryTotalValue > 0 && (!categoryAllocations[selectedTab].om_destino_recurso || !categoryAllocations[selectedTab].ug_destino_recurso)) {
+    if (categoryTotalValueComMargem > 0 && (!categoryAllocations[selectedTab].om_destino_recurso || !categoryAllocations[selectedTab].ug_destino_recurso)) {
         toast.error("Selecione a OM de destino do recurso antes de salvar a alocação.");
         return;
     }
@@ -482,7 +526,8 @@ const ClasseVIForm = () => {
         ...prev,
         [selectedTab]: {
             ...prev[selectedTab],
-            total_valor: categoryTotalValue,
+            total_valor: currentCategoryBaseValue, // Salva o valor base
+            total_valor_com_margem: categoryTotalValueComMargem, // Salva o valor com margem
             nd_39_input: formatNumberForInput(finalND39Value, 2),
             nd_30_value: finalND30Value,
             nd_39_value: finalND39Value,
@@ -493,7 +538,8 @@ const ClasseVIForm = () => {
     toast.success(`Itens e alocação de ND para ${getCategoryLabel(selectedTab)} atualizados!`);
   };
   
-  const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+  // CÁLCULO GLOBAL (USANDO VALORES COM MARGEM)
+  const valorTotalForm = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.total_valor_com_margem, 0);
 
   const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_30_value, 0);
   const totalND39Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_39_value, 0);
@@ -539,7 +585,7 @@ const ClasseVIForm = () => {
         return;
     }
     
-    const registrosParaSalvar: TablesInsert<'classe_vi_registros'>[] = []; // FIX: Usando a tabela correta
+    const registrosParaSalvar: TablesInsert<'classe_vi_registros'>[] = [];
     
     for (const categoria of categoriesToSave) {
         const itens = itemsByActiveCategory[categoria];
@@ -551,10 +597,10 @@ const ClasseVIForm = () => {
             return;
         }
         
-        const valorTotalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+        const valorTotalCategoriaComMargem = allocation.total_valor_com_margem;
         
-        if (!areNumbersEqual(valorTotalCategoria, (allocation.nd_30_value + allocation.nd_39_value))) {
-            toast.error(`Erro de alocação na categoria ${getCategoryLabel(categoria)}: O valor total dos itens (${formatCurrency(valorTotalCategoria)}) não corresponde ao total alocado (${formatCurrency(allocation.nd_30_value + allocation.nd_39_value)}). Salve a categoria novamente.`);
+        if (!areNumbersEqual(valorTotalCategoriaComMargem, (allocation.nd_30_value + allocation.nd_39_value))) {
+            toast.error(`Erro de alocação na categoria ${getCategoryLabel(categoria)}: O valor total dos itens (${formatCurrency(valorTotalCategoriaComMargem)}) não corresponde ao total alocado (${formatCurrency(allocation.nd_30_value + allocation.nd_39_value)}). Salve a categoria novamente.`);
             setLoading(false);
             return;
         }
@@ -571,14 +617,14 @@ const ClasseVIForm = () => {
             allocation.nd_39_value
         );
         
-        const registro: TablesInsert<'classe_vi_registros'> = { // FIX: Usando a tabela correta
+        const registro: TablesInsert<'classe_vi_registros'> = {
             p_trab_id: ptrabId,
             organizacao: allocation.om_destino_recurso,
             ug: allocation.ug_destino_recurso,
             dias_operacao: form.dias_operacao,
             categoria: categoria,
             itens_equipamentos: itens as any,
-            valor_total: valorTotalCategoria,
+            valor_total: valorTotalCategoriaComMargem, // Salva o valor COM margem
             detalhamento: detalhamento,
             fase_atividade: faseFinalString,
             detalhamento_customizado: null,
@@ -590,21 +636,21 @@ const ClasseVIForm = () => {
 
     try {
       const { error: deleteError } = await supabase
-        .from("classe_vi_registros") // FIX: Usando a tabela correta
+        .from("classe_vi_registros")
         .delete()
         .eq("p_trab_id", ptrabId);
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
-      const { error: insertError } = await supabase.from("classe_vi_registros").insert(registrosParaSalvar); // FIX: Usando a tabela correta
+      const { error: insertError } = await supabase.from("classe_vi_registros").insert(registrosParaSalvar);
       if (insertError) throw insertError;
       
-      toast.success(editingId ? "Registros de Classe VI atualizados com sucesso!" : "Registros de Classe VI salvos com sucesso!"); // FIX: Mensagem correta
+      toast.success(editingId ? "Registros de Classe VI atualizados com sucesso!" : "Registros de Classe VI salvos com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
       resetFormFields();
       fetchRegistros();
     } catch (error) {
-      console.error("Erro ao salvar registros de Classe VI:", error); // FIX: Mensagem correta
-      toast.error("Erro ao salvar registros de Classe VI"); // FIX: Mensagem correta
+      console.error("Erro ao salvar registros de Classe VI:", error);
+      toast.error("Erro ao salvar registros de Classe VI");
     } finally {
       setLoading(false);
     }
@@ -615,7 +661,7 @@ const ClasseVIForm = () => {
     resetFormFields();
     
     const { data: allRecords, error: fetchAllError } = await supabase
-        .from("classe_vi_registros") // FIX: Usando a tabela correta
+        .from("classe_vi_registros")
         .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
         .eq("p_trab_id", ptrabId);
         
@@ -636,10 +682,12 @@ const ClasseVIForm = () => {
         consolidatedItems = consolidatedItems.concat(items);
         
         if (newAllocations[category]) {
-            const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * r.dias_operacao), 0);
+            const totalValorBase = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * r.dias_operacao), 0);
+            const totalValorComMargem = totalValorBase * (1 + MARGEM_RESERVA);
             
             newAllocations[category] = {
-                total_valor: totalValor,
+                total_valor: totalValorBase,
+                total_valor_com_margem: totalValorComMargem,
                 nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
                 nd_30_value: Number(r.valor_nd_30),
                 nd_39_value: Number(r.valor_nd_39),
@@ -733,7 +781,7 @@ const ClasseVIForm = () => {
     setLoading(true);
     try {
       const { error } = await supabase
-        .from("classe_vi_registros") // FIX: Usando a tabela correta
+        .from("classe_vi_registros")
         .update({
           detalhamento_customizado: memoriaEdit.trim() || null,
         })
@@ -760,7 +808,7 @@ const ClasseVIForm = () => {
     setLoading(true);
     try {
       const { error } = await supabase
-        .from("classe_vi_registros") // FIX: Usando a tabela correta
+        .from("classe_vi_registros")
         .update({
           detalhamento_customizado: null,
         })
@@ -797,10 +845,10 @@ const ClasseVIForm = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              Classe VI - Material de Engenharia {/* FIX: Título correto */}
+              Classe VI - Material de Engenharia
             </CardTitle>
             <CardDescription>
-              Solicitação de recursos para manutenção de material de Classe VI. {/* FIX: Descrição correta */}
+              Solicitação de recursos para manutenção de material de Classe VI.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -898,7 +946,7 @@ const ClasseVIForm = () => {
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
                 <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as Categoria)}>
-                  <TabsList className="grid w-full grid-cols-2"> {/* FIX: 2 colunas para Classe VI */}
+                  <TabsList className="grid w-full grid-cols-2">
                     {CATEGORIAS.map(cat => (
                       <TabsTrigger key={cat} value={cat}>{getCategoryLabel(cat)}</TabsTrigger>
                     ))}
@@ -915,7 +963,7 @@ const ClasseVIForm = () => {
                                         <TableHead className="w-[50%]">Item</TableHead>
                                         <TableHead className="w-[20%] text-right">Valor/Dia</TableHead>
                                         <TableHead className="w-[15%] text-center">Quantidade</TableHead>
-                                        <TableHead className="w-[15%] text-right">Total</TableHead>
+                                        <TableHead className="w-[15%] text-right">Total Base</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -927,7 +975,7 @@ const ClasseVIForm = () => {
                                         </TableRow>
                                     ) : (
                                         currentCategoryItems.map((item, index) => {
-                                            const itemTotal = item.quantidade * item.valor_mnt_dia * form.dias_operacao;
+                                            const itemBaseTotal = item.quantidade * item.valor_mnt_dia * form.dias_operacao;
                                             
                                             return (
                                                 <TableRow key={item.item} className="h-12">
@@ -949,7 +997,7 @@ const ClasseVIForm = () => {
                                                         />
                                                     </TableCell>
                                                     <TableCell className="text-right font-semibold text-sm py-1">
-                                                        {formatCurrency(itemTotal)}
+                                                        {formatCurrency(itemBaseTotal)}
                                                     </TableCell>
                                                 </TableRow>
                                             );
@@ -960,8 +1008,23 @@ const ClasseVIForm = () => {
                         </div>
                         
                         <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
-                            <span className="font-bold text-sm">TOTAL DA CATEGORIA</span>
+                            <span className="font-bold text-sm">TOTAL BASE DA CATEGORIA</span>
                             <span className="font-extrabold text-lg text-primary">
+                                {formatCurrency(currentCategoryBaseValue)}
+                            </span>
+                        </div>
+                        
+                        {/* NOVO: Margem de Reserva */}
+                        <div className="flex justify-between items-center p-3 bg-yellow-50/50 rounded-lg border border-yellow-200">
+                            <span className="font-bold text-sm text-yellow-700">MARGEM DE RESERVA (10%)</span>
+                            <span className="font-extrabold text-lg text-yellow-700">
+                                {formatCurrency(currentCategoryTotalValue - currentCategoryBaseValue)}
+                            </span>
+                        </div>
+                        
+                        <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20">
+                            <span className="font-bold text-base text-primary">TOTAL SOLICITADO (C/ MARGEM)</span>
+                            <span className="font-extrabold text-xl text-primary">
                                 {formatCurrency(currentCategoryTotalValue)}
                             </span>
                         </div>
@@ -969,7 +1032,7 @@ const ClasseVIForm = () => {
                         {/* BLOCO DE ALOCAÇÃO ND 30/39 */}
                         {currentCategoryTotalValue > 0 && (
                             <div className="space-y-4 p-4 border rounded-lg bg-background">
-                                <h4 className="font-semibold text-sm">Alocação de Recursos para {getCategoryLabel(cat)}</h4>
+                                <h4 className="font-semibold text-sm">Alocação de Recursos para {getCategoryLabel(cat)} (Valor Total: {formatCurrency(currentCategoryTotalValue)})</h4>
                                 
                                 {/* CAMPO: OM de Destino do Recurso */}
                                 <div className="space-y-2">
@@ -1064,7 +1127,7 @@ const ClasseVIForm = () => {
                     <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription className="font-medium">
-                            Atenção: O Custo Total dos Itens ({formatCurrency(valorTotalForm)}) não corresponde ao Total Alocado ({formatCurrency(totalAlocado)}). 
+                            Atenção: O Custo Total Solicitado ({formatCurrency(valorTotalForm)}) não corresponde ao Total Alocado ({formatCurrency(totalAlocado)}). 
                             Clique em "Salvar Itens da Categoria" em todas as abas ativas.
                         </AlertDescription>
                     </Alert>
@@ -1072,7 +1135,8 @@ const ClasseVIForm = () => {
 
                 <div className="space-y-4">
                   {Object.entries(itensAgrupadosPorCategoria).map(([categoria, itens]) => {
-                    const totalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    const totalCategoriaBase = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    const totalCategoriaComMargem = totalCategoriaBase * (1 + MARGEM_RESERVA);
                     const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
                     
                     const allocation = categoryAllocations[categoria as Categoria];
@@ -1081,7 +1145,7 @@ const ClasseVIForm = () => {
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
                           <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} itens)</h4>
-                          <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
+                          <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoriaComMargem)}</span>
                         </div>
                         
                         <div className="space-y-2">
@@ -1089,7 +1153,7 @@ const ClasseVIForm = () => {
                             <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
                               <span className="font-medium">{item.item}</span>
                               <span className="text-right">
-                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
+                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)} (Base)
                               </span>
                             </div>
                           ))}
@@ -1110,7 +1174,7 @@ const ClasseVIForm = () => {
                                 <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
                                 <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
                             </div>
-                            {!areNumbersEqual(allocation.total_valor, totalCategoria) && (
+                            {!areNumbersEqual(allocation.total_valor_com_margem, totalCategoriaComMargem) && (
                                 <p className="text-xs text-destructive flex items-center gap-1 pt-1">
                                     <AlertCircle className="h-3 w-3" />
                                     Valores desatualizados. Salve a categoria novamente.
@@ -1123,7 +1187,7 @@ const ClasseVIForm = () => {
                 </div>
                 
                 <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
-                  <span className="font-bold text-base text-primary">VALOR TOTAL DA OM</span>
+                  <span className="font-bold text-base text-primary">VALOR TOTAL SOLICITADO (C/ MARGEM)</span>
                   <span className="font-extrabold text-xl text-primary">
                     {formatCurrency(valorTotalForm)}
                   </span>
@@ -1187,7 +1251,6 @@ const ClasseVIForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
-                                                        {/* REMOVIDO: Badge da Categoria */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
@@ -1211,7 +1274,7 @@ const ClasseVIForm = () => {
                                                             size="icon"
                                                             onClick={() => {
                                                                 if (confirm(`Deseja realmente deletar o registro de Classe VI para ${omName} (${registro.categoria})?`)) {
-                                                                    supabase.from("classe_vi_registros") // FIX: Usando a tabela correta
+                                                                    supabase.from("classe_vi_registros")
                                                                         .delete()
                                                                         .eq("id", registro.id)
                                                                         .then(() => {
