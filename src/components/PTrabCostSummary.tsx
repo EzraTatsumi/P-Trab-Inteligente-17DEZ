@@ -151,7 +151,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   (allClasseItemsData || []).forEach(record => {
     const category = record.categoria;
     const items = (record.itens_equipamentos || []) as ItemClasseII[];
-    const totalItemsCategory = items.reduce((sum, item) => sum + (item.quantidade || item.quantidade_animais || 0), 0); // Ajuste para Remonta
+    const totalItemsCategory = items.reduce((sum, item) => sum + (item.quantidade || (item as any).quantidade_animais || 0), 0); // Ajuste para Remonta
     
     const valorTotal = record.valor_total;
     const valorND30 = Number(record.valor_nd_30);
@@ -241,12 +241,12 @@ const fetchPTrabTotals = async (ptrabId: string) => {
 
   // Combustível (ND 33.90.30)
   const combustivelRecords = (classeIIIData || []).filter(r => 
-    r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR' && r.tipo_equipamento !== 'LUBRIFICANTE_EMBARCACAO'
+    r.tipo_equipamento !== 'LUBRIFICANTE_CONSOLIDADO'
   );
   
   // Lubrificante (ND 33.90.30)
   const lubrificanteRecords = (classeIIIData || []).filter(r => 
-    r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO'
+    r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO'
   );
 
   // Totais de Combustível (ND 33.90.30)
@@ -815,7 +815,7 @@ export const PTrabCostSummary = ({
                           {sortedClasseVIIICategories.map(([category, data]) => (
                             <div key={category} className="space-y-1">
                                 <div className="flex justify-between text-muted-foreground font-semibold pt-1">
-                                    <span className="w-1/2 text-left">{category}</span>
+                                    <span className="w-1/2 text-left text-foreground font-bold">{category}</span>
                                     <span className="w-1/4 text-right font-medium">
                                         {formatNumber(data.totalItens)} un.
                                     </span>
