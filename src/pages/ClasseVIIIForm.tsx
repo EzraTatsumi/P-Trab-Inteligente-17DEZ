@@ -7,14 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, Trash2, XCircle, Check, ChevronsUpDown, Sparkles, AlertCircle, HeartPulse, PawPrint } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, XCircle, Check, ChevronsUpDown, Sparkles, AlertCircle, HeartPulse, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
+import { formatCurrency, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -39,16 +39,16 @@ const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversã
 
 interface ItemSaude {
   item: string;
-  quantidade: number;
-  valor_mnt_dia: number;
+  quantidade: number; // Nr Kits
+  valor_mnt_dia: number; // Valor do Kit
   categoria: 'Saúde';
 }
 
 interface ItemRemonta {
-  item: string;
-  quantidade: number; // Quantidade de itens (ex: selas, ração)
-  quantidade_animais: number; // Quantidade de animais (Equino ou Canino)
-  valor_mnt_dia: number;
+  item: string; // Ex: Equino, Canino
+  quantidade_animais: number;
+  dias_operacao_item: number; // Dias específicos de uso do animal
+  valor_mnt_dia: number; // Valor base (Anual/Mensal/Diário) - Usado apenas para cálculo interno
   categoria: 'Remonta/Veterinária';
 }
 
@@ -56,45 +56,29 @@ interface FormDataClasseVIII {
   selectedOmId?: string;
   organizacao: string; // OM Detentora (Global)
   ug: string; // UG Detentora (Global)
-  dias_operacao: number; // Global
+  dias_operacao: number; // Global days of activity (Used for header only)
   itensSaude: ItemSaude[];
   itensRemonta: ItemRemonta[];
   fase_atividade?: string; // Global
 }
 
-interface ClasseVIIIRegistroSaude {
+interface ClasseVIIIRegistro {
   id: string;
   organizacao: string;
   ug: string;
   dias_operacao: number;
-  categoria: string; // 'Saúde - KPSI/KPT'
-  itens_saude: ItemSaude[];
+  categoria: string;
   valor_total: number;
   detalhamento: string;
   detalhamento_customizado?: string | null;
   fase_atividade?: string;
   valor_nd_30: number;
   valor_nd_39: number;
+  itens_saude?: ItemSaude[];
+  animal_tipo?: 'Equino' | 'Canino';
+  quantidade_animais?: number;
+  itens_remonta?: ItemRemonta[];
 }
-
-interface ClasseVIIIRegistroRemonta {
-  id: string;
-  organizacao: string;
-  ug: string;
-  dias_operacao: number;
-  categoria: string; // 'Remonta/Veterinária'
-  animal_tipo: 'Equino' | 'Canino';
-  quantidade_animais: number;
-  itens_remonta: ItemRemonta[];
-  valor_total: number;
-  detalhamento: string;
-  detalhamento_customizado?: string | null;
-  fase_atividade?: string;
-  valor_nd_30: number;
-  valor_nd_39: number;
-}
-
-type ClasseVIIIRegistro = ClasseVIIIRegistroSaude | ClasseVIIIRegistroRemonta;
 
 interface CategoryAllocation {
   total_valor: number;
@@ -129,81 +113,188 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-// --- Cálculo de Itens ---
+// --- Lógica de Cálculo Remonta/Veterinária ---
 
-const calculateSaudeItemTotal = (item: ItemSaude, diasOperacao: number): number => {
-    // Saúde: Valor Mnt/Dia * Quantidade de Kits
-    // diasOperacao é mantido no argumento para consistência, mas não usado no cálculo de kits.
-    return item.valor_mnt_dia * item.quantidade;
-};
+const calculateRemontaItemTotal = (item: ItemRemonta): number => {
+    const baseValue = item.valor_mnt_dia;
+    const nrAnimais = item.quantidade_animais;
+    const diasOperacao = item.dias_operacao_item;
+    
+    if (diasOperacao <= 0 || nrAnimais <= 0) return 0;
 
-const calculateRemontaItemTotal = (item: ItemRemonta, diasOperacao: number): number => {
-    // Remonta: Valor Mnt/Dia * Quantidade de Animais * Qtd Itens * Fator Tempo
-    
-    const isDiario = item.item.includes('(Diário)');
-    const isMensal = item.item.includes('(Mensal)');
-    const isAnual = item.item.includes('(Anual)');
-    
     let total = 0;
     
-    if (isDiario) {
-        // Custo Mnt/Dia Op (Diário) * Qtd Animais * Dias de Operação * Qtd Itens
-        total = item.valor_mnt_dia * item.quantidade_animais * diasOperacao * item.quantidade;
-    } else if (isMensal) {
-        // Custo Mensal * Qtd Animais * Qtd Itens
-        total = item.valor_mnt_dia * item.quantidade_animais * item.quantidade;
-    } else if (isAnual) {
-        // Custo Anual * Qtd Animais * Qtd Itens
-        total = item.valor_mnt_dia * item.quantidade_animais * item.quantidade;
+    if (item.item.includes('(Anual)')) {
+        // Item B, D, E (Annual): Nr Animais x Item Valor x ceil(diasOperacao / 365)
+        const multiplier = Math.ceil(diasOperacao / 365);
+        total = baseValue * multiplier * nrAnimais;
+        
+    } else if (item.item.includes('(Mensal)')) {
+        // Item C (Monthly): [Nr Animais x (Item C / 30 dias) x Nr dias]
+        // Formula: Nr Animais x Item C x (diasOperacao / 30)
+        total = nrAnimais * (baseValue / 30) * diasOperacao;
+        
     } else {
-        // Default: Valor Mnt/Dia * Qtd Animais * Qtd Itens (Assumindo que valor_mnt_dia é o custo total do item)
-        total = item.valor_mnt_dia * item.quantidade_animais * item.quantidade;
+        // Item G (Daily): Nr Animais x Item Valor x diasOperacao
+        total = baseValue * diasOperacao * nrAnimais;
     }
     
     return total;
 };
 
-// --- Geração de Memória ---
-
-const generateSaudeMemoriaCalculo = (itens: ItemSaude[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const valorTotal = valorND30 + valorND39;
-
-    let detalhamentoItens = "";
-    itens.forEach(item => {
-        const valorItem = calculateSaudeItemTotal(item, diasOperacao);
-        detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/un = ${formatCurrency(valorItem)}.\n`;
-    });
-
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Saúde (Classe VIII) para ${totalItens} kits, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
-Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
-
-Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
-
-Cálculo:
-Fórmula Base: Nr Kits x Valor Mnt/Dia.
-
-Detalhes dos Itens:
-${detalhamentoItens.trim()}
-
-Valor Total da Categoria: ${formatCurrency(valorTotal)}.`;
+const calculateSaudeItemTotal = (item: ItemSaude): number => {
+    return item.valor_mnt_dia * item.quantidade;
 };
 
-const generateRemontaMemoriaCalculo = (animalTipo: 'Equino' | 'Canino', itens: ItemRemonta[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
+// New helper function to calculate the total cost for a specific animal type (Equino/Canino)
+const calculateTotalForAnimalType = (
+    animalItem: ItemRemonta, 
+    allDirectives: DiretrizClasseII[]
+): number => {
+    const animalType = animalItem.item;
+    const nrAnimais = animalItem.quantidade_animais;
+    const diasOperacao = animalItem.dias_operacao_item;
+    
+    if (nrAnimais <= 0 || diasOperacao <= 0) return 0;
+    
+    const relatedDirectives = allDirectives.filter(d => d.item.includes(animalType));
+    
+    const directivesAsItems: ItemRemonta[] = relatedDirectives.map(d => ({
+        item: d.item,
+        quantidade_animais: nrAnimais,
+        dias_operacao_item: diasOperacao,
+        valor_mnt_dia: Number(d.valor_mnt_dia),
+        categoria: 'Remonta/Veterinária',
+    }));
+    
+    return directivesAsItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+};
+
+// --- Geração de Memória de Cálculo ---
+
+const generateRemontaMemoriaCalculo = (
+    animalTipo: 'Equino' | 'Canino',
+    itens: ItemRemonta[],
+    diasOperacaoGlobal: number, // Dias globais do PTrab (para o cabeçalho)
+    organizacao: string,
+    ug: string,
+    faseAtividade: string,
+    omDestino: string,
+    ugDestino: string,
+    valorND30: number,
+    valorND39: number
+): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const nrAnimais = itens[0]?.quantidade_animais || 0;
     const valorTotal = valorND30 + valorND39;
-
-    let detalhamentoItens = "";
-    itens.forEach(item => {
-        const valorItem = calculateRemontaItemTotal(item, diasOperacao);
-        detalhamentoItens += `- ${item.quantidade} ${item.item} x ${nrAnimais} animais = ${formatCurrency(valorItem)}.\n`;
+    
+    // Agrupar itens por tipo de animal (Equino ou Canino)
+    const itensPorAnimal = itens.filter(i => i.item.includes(animalTipo));
+    
+    if (itensPorAnimal.length === 0) return "";
+    
+    // Usamos o primeiro item para pegar a quantidade de animais e dias de operação específicos
+    const nrAnimais = itensPorAnimal[0].quantidade_animais;
+    const diasOperacaoItem = itensPorAnimal[0].dias_operacao_item;
+    
+    // Group items by Item Type (B, C, D, E, G)
+    const groupedItems: Record<string, ItemRemonta[]> = itensPorAnimal.reduce((acc, item) => {
+        const itemTypeMatch = item.item.match(/-\s([A-G]):/);
+        if (itemTypeMatch) {
+            const type = itemTypeMatch[1];
+            if (!acc[type]) acc[type] = [];
+            acc[type].push(item);
+        }
+        return acc;
+    }, {} as Record<string, ItemRemonta[]>);
+    
+    // Calculate totals and build formula components
+    let formulaComponents: string[] = [];
+    let calculationComponents: string[] = [];
+    let totalBrutoCalculado = 0;
+    
+    // Detailed Item Breakdown for the memory (Cálculo:)
+    let detailedItems = "Cálculo:\n";
+    
+    // Iterate over item types B, C, D, E, G in order
+    ['B', 'C', 'D', 'E', 'G'].forEach(type => {
+        const itemsOfType = groupedItems[type] || [];
+        
+        itemsOfType.forEach(item => {
+            const baseValue = item.valor_mnt_dia;
+            const itemTotal = calculateRemontaItemTotal(item);
+            totalBrutoCalculado += itemTotal;
+            
+            const itemDescription = item.item.split(/-\s[A-G]:\s/)[1].trim();
+            const itemUnit = item.item.includes('(Anual)') ? 'ano' : item.item.includes('(Mensal)') ? 'mês' : 'dia';
+            
+            detailedItems += `- Item ${type} (${itemDescription}): ${formatCurrency(baseValue)} / ${animalTipo.toLowerCase()} / ${itemUnit}.\n`;
+            
+            if (item.item.includes('(Mensal)')) {
+                // Item C: [Nr Animais x (Item C / 30 dias) x Nr dias]
+                formulaComponents.push(`[Nr ${animalTipo}s x (Item C / 30 dias) x Nr dias]`);
+                calculationComponents.push(`(${nrAnimais} x (${formatCurrency(baseValue)} / 30 dias) x ${diasOperacaoItem} dias)`);
+            } else if (item.item.includes('(Diário)')) {
+                // Item G: (Nr Animais x Item G x Nr dias)
+                formulaComponents.push(`(Nr ${animalTipo}s x Item G x Nr dias)`);
+                calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${diasOperacaoItem} dias)`);
+            } else {
+                // Item B, D, E (Annual): (Nr Animais x Item X)
+                // Nota: O cálculo anual usa Math.ceil(diasOperacaoItem / 365) como multiplicador, mas a fórmula simplificada na memória é (Nr Animais x Item X)
+                formulaComponents.push(`(Nr ${animalTipo}s x Item ${type})`);
+                
+                const multiplier = Math.ceil(diasOperacaoItem / 365);
+                if (multiplier > 1) {
+                    calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${multiplier} anos)`);
+                } else {
+                    calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)})`);
+                }
+            }
+        });
     });
+    
+    const formulaString = formulaComponents.join(' + ');
+    const calculationString = calculationComponents.join(' + ');
+    
+    let memoria = `33.90.30 / 33.90.39 - Aquisição meios ou contratação de serviços para a manutenção de ${nrAnimais} ${animalTipo.toLowerCase()}(s) do ${organizacao}, durante ${diasOperacaoItem} dias de ${faseFormatada}.
+Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Remonta/Veterinária (Classe VIII) para ${nrAnimais} ${animalTipo}(s), durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+Alocação:
+- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
+- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
+
+${detailedItems.trim()}
+
+Fórmula: ${formulaString} = ${formatCurrency(valorTotal)}.
+Cálculo Detalhado: ${calculationString} = ${formatCurrency(totalBrutoCalculado)}.
+
+Total: ${formatCurrency(valorTotal)}.`;
+
+    return memoria;
+};
+
+const generateSaudeMemoriaCalculo = (
+    itens: ItemSaude[],
+    diasOperacao: number,
+    organizacao: string,
+    ug: string,
+    faseAtividade: string,
+    omDestino: string,
+    ugDestino: string,
+    valorND30: number,
+    valorND39: number
+): string => {
+    const faseFormatada = formatFasesParaTexto(faseAtividade);
+    const totalKits = itens.reduce((sum, item) => sum + item.quantidade, 0);
+    const valorTotal = valorND30 + valorND39;
+    
+    let detalhamentoCalculo = "";
+    
+    itens.forEach(item => {
+        const itemTotal = calculateSaudeItemTotal(item);
+        detalhamentoCalculo += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)} = ${formatCurrency(itemTotal)}.\n`;
+    });
+    
+    return `33.90.30 / 33.90.39 - Aquisição de KPSI/KPSC e KPT para utilização por ${totalKits} kits do ${organizacao}, durante ${diasOperacao} dias de ${faseFormatada}.
 Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
 Alocação:
@@ -211,12 +302,12 @@ Alocação:
 - ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
 Cálculo:
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Animais.
+Fórmula: Nr KPSC/KPT x valor do item
 
-Detalhes dos Itens:
-${detalhamentoItens.trim()}
+Detalhes:
+${detalhamentoCalculo.trim()}
 
-Valor Total da Categoria: ${formatCurrency(valorTotal)}.`;
+Total: ${formatCurrency(valorTotal)}.`;
 };
 
 
@@ -225,12 +316,14 @@ const ClasseVIIIForm = () => {
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get("ptrabId");
   
-  const [registros, setRegistros] = useState<ClasseVIIIRegistro[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [diretrizes, setDiretrizes] = useState<DiretrizClasseII[]>([]);
-  const [selectedTab, setSelectedTab] = useState<Categoria>(CATEGORIAS[0]);
+  const [registrosSaude, setRegistrosSaude] = useState<ClasseVIIIRegistro[]>([]);
+  const [registrosRemonta, setRegistrosRemonta] = useState<ClasseVIIIRegistro[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [diretrizesSaude, setDiretrizesSaude] = useState<DiretrizClasseII[]>([]);
+  const [diretrizesRemonta, setDiretrizesRemonta] = useState<DiretrizClasseII[]>([]);
+  
+  const [selectedTab, setSelectedTab] = useState<Categoria>(CATEGORIAS[0]);
   const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
   const [memoriaEdit, setMemoriaEdit] = useState<string>("");
   
@@ -247,13 +340,13 @@ const ClasseVIIIForm = () => {
   const [currentND39Input, setCurrentND39Input] = useState<string>("");
   
   const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemSaude[] | ItemRemonta[]>([]);
+  const [remontaValidationWarning, setRemontaValidationWarning] = useState<string | null>(null); // Novo estado para aviso de validação
   
   const [fasesAtividade, setFasesAtividade] = useState<string[]>(["Execução"]);
   const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
   const { handleEnterToNextField } = useFormNavigation();
-  const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!ptrabId) {
@@ -261,8 +354,9 @@ const ClasseVIIIForm = () => {
       navigate("/ptrab");
       return;
     }
+    setLoading(true);
     loadDiretrizes();
-    fetchRegistros();
+    fetchRegistros().then(() => setLoading(false)); // Initial load, but don't populate form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId]);
   
@@ -270,67 +364,66 @@ const ClasseVIIIForm = () => {
     setCurrentND39Input(categoryAllocations[selectedTab].nd_39_input);
   }, [selectedTab, categoryAllocations]);
 
-  // Efeito para carregar itens da aba atual
+  // Efeito para gerenciar a lista de itens da categoria atual
   useEffect(() => {
-    if (diretrizes.length > 0 && form.organizacao) {
-        const categoryKey = selectedTab;
-        const isSaude = categoryKey === 'Saúde';
-        const currentItems = isSaude ? form.itensSaude : form.itensRemonta;
-        
-        const availableItems = diretrizes
-            .filter(d => d.categoria === categoryKey)
-            .map(d => ({
-                item: d.item,
-                quantidade: 0,
-                quantidade_animais: 0, // Apenas para Remonta
-                valor_mnt_dia: Number(d.valor_mnt_dia),
-                categoria: categoryKey,
-            }));
+    const isSaude = selectedTab === 'Saúde';
+    const directives = isSaude ? diretrizesSaude : diretrizesRemonta;
+    const formItems = isSaude ? form.itensSaude : form.itensRemonta;
+    
+    if (directives.length === 0) {
+        setCurrentCategoryItems([]);
+        return;
+    }
 
-        const existingItemsMap = new Map<string, ItemSaude | ItemRemonta>();
-        currentItems.forEach(item => {
+    if (isSaude) {
+        const existingItemsMap = new Map<string, ItemSaude>();
+        (formItems as ItemSaude[]).forEach(item => {
             existingItemsMap.set(item.item, item);
         });
 
-        const mergedItems = availableItems.map(availableItem => {
-            const existing = existingItemsMap.get(availableItem.item);
-            if (existing) {
-                return existing;
-            }
-            // Garante que o tipo correto seja retornado
-            return availableItem as ItemSaude | ItemRemonta;
-        });
-
-        setCurrentCategoryItems(mergedItems);
-    } else if (diretrizes.length > 0 && !form.organizacao) {
-        const categoryKey = selectedTab;
-        const availableItems = diretrizes
-            .filter(d => d.categoria === categoryKey)
-            .map(d => ({
-                item: d.item,
+        const mergedItems = directives.map(directive => {
+            const existing = existingItemsMap.get(directive.item);
+            const defaultItem: ItemSaude = {
+                item: directive.item,
                 quantidade: 0,
-                quantidade_animais: 0,
-                valor_mnt_dia: Number(d.valor_mnt_dia),
-                categoria: categoryKey,
-            }));
-        setCurrentCategoryItems(availableItems as ItemSaude[] | ItemRemonta[]);
+                valor_mnt_dia: Number(directive.valor_mnt_dia),
+                categoria: 'Saúde',
+            };
+            return existing || defaultItem;
+        });
+        setCurrentCategoryItems(mergedItems);
+        
     } else {
-        setCurrentCategoryItems([]);
+        // Lógica específica para Remonta/Veterinária: Apenas 2 itens (Equino e Canino)
+        const animalTypes = ['Equino', 'Canino'];
+        const baseItems: ItemRemonta[] = [];
+        
+        animalTypes.forEach(animalType => {
+            const relatedDirectives = directives.filter(d => d.item.includes(animalType));
+            
+            if (relatedDirectives.length > 0) {
+                const existingRelatedItems = (formItems as ItemRemonta[]).filter(item => item.item.includes(animalType));
+                
+                // Se houver registros salvos, usamos a quantidade e dias do primeiro item relacionado
+                const nrAnimaisSalvos = existingRelatedItems[0]?.quantidade_animais || 0;
+                const diasOperacaoSalvos = existingRelatedItems[0]?.dias_operacao_item || 0;
+                
+                const baseItem: ItemRemonta = {
+                    item: animalType,
+                    quantidade_animais: nrAnimaisSalvos,
+                    dias_operacao_item: diasOperacaoSalvos,
+                    valor_mnt_dia: 0, // Não usamos este campo para o cálculo total do animal, apenas para diretrizes individuais
+                    categoria: 'Remonta/Veterinária',
+                };
+                
+                baseItems.push(baseItem);
+            }
+        });
+        
+        setCurrentCategoryItems(baseItems);
     }
-  }, [selectedTab, diretrizes, form.itensSaude, form.itensRemonta, form.organizacao, form.dias_operacao]);
+  }, [selectedTab, diretrizesSaude, diretrizesRemonta, form.itensSaude, form.itensRemonta]);
 
-  const itensAgrupadosPorCategoria = useMemo(() => {
-    const allItems = [...form.itensSaude, ...form.itensRemonta];
-    return allItems.reduce((acc, item) => {
-      const category = item.categoria;
-      if (!acc[category]) {
-        acc[category] = [];
-      }
-      acc[category].push(item);
-      return acc;
-    }, {} as Record<Categoria, (ItemSaude | ItemRemonta)[]>);
-  }, [form.itensSaude, form.itensRemonta]);
-  
 
   const loadDiretrizes = async () => {
     try {
@@ -363,91 +456,78 @@ const ClasseVIIIForm = () => {
           }
       }
       
+      const allCategories = [...CATEGORIAS];
+      
       if (!anoReferencia) {
-        toast.warning(`Diretriz de Custeio não encontrada. Usando valores padrão.`);
-        setDiretrizes([...defaultClasseVIIISaudeConfig, ...defaultClasseVIIIRemontaConfig] as DiretrizClasseII[]);
+        setDiretrizesSaude(defaultClasseVIIISaudeConfig as DiretrizClasseII[]);
+        setDiretrizesRemonta(defaultClasseVIIIRemontaConfig as DiretrizClasseII[]);
         return;
       }
 
-      const { data: classeVIIIData, error } = await supabase
+      const { data: classeItemsData } = await supabase
         .from("diretrizes_classe_ii")
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", anoReferencia)
         .eq("ativo", true)
-        .in("categoria", CATEGORIAS);
+        .in("categoria", allCategories);
 
-      if (error) throw error;
-
-      if (classeVIIIData && classeVIIIData.length > 0) {
-        setDiretrizes((classeVIIIData || []) as DiretrizClasseII[]);
-      } else {
-        setDiretrizes([...defaultClasseVIIISaudeConfig, ...defaultClasseVIIIRemontaConfig] as DiretrizClasseII[]);
-        toast.warning(`Itens de Classe VIII não configurados para o ano ${anoReferencia}. Usando valores padrão.`);
-      }
+      const loadedItems = classeItemsData || [];
+      
+      const loadedSaude = loadedItems.filter(d => d.categoria === 'Saúde');
+      setDiretrizesSaude(loadedSaude.length > 0 ? loadedSaude as DiretrizClasseII[] : defaultClasseVIIISaudeConfig as DiretrizClasseII[]);
+      
+      const loadedRemonta = loadedItems.filter(d => d.categoria === 'Remonta/Veterinária');
+      setDiretrizesRemonta(loadedRemonta.length > 0 ? loadedRemonta as DiretrizClasseII[] : defaultClasseVIIIRemontaConfig as DiretrizClasseII[]);
       
     } catch (error) {
       console.error("Erro ao carregar diretrizes:", error);
-      setDiretrizes([...defaultClasseVIIISaudeConfig, ...defaultClasseVIIIRemontaConfig] as DiretrizClasseII[]);
-      toast.error("Erro ao carregar diretrizes. Usando valores padrão.");
+      setDiretrizesSaude(defaultClasseVIIISaudeConfig as DiretrizClasseII[]);
+      setDiretrizesRemonta(defaultClasseVIIIRemontaConfig as DiretrizClasseII[]);
     }
   };
 
-  const fetchRegistros = async () => {
-    if (!ptrabId) return;
+  const fetchRegistros = async (): Promise<{ saude: ClasseVIIIRegistro[], remonta: ClasseVIIIRegistro[] }> => {
+    if (!ptrabId) return { saude: [], remonta: [] };
     
     const [
         { data: saudeData, error: saudeError },
-        { data: remontaData, error: remontaError }
+        { data: remontaData, error: remontaError },
     ] = await Promise.all([
         supabase
             .from("classe_viii_saude_registros")
-            .select("*, detalhamento_customizado, valor_nd_30, valor_nd_39"),
+            .select("*, itens_saude, detalhamento_customizado, valor_nd_30, valor_nd_39")
+            .eq("p_trab_id", ptrabId),
         supabase
             .from("classe_viii_remonta_registros")
-            .select("*, detalhamento_customizado, valor_nd_30, valor_nd_39"),
+            .select("*, itens_remonta, detalhamento_customizado, valor_nd_30, valor_nd_39")
+            .eq("p_trab_id", ptrabId),
     ]);
 
-    if (saudeError) { console.error("Erro ao carregar registros de Saúde:", saudeError); }
-    if (remontaError) { console.error("Erro ao carregar registros de Remonta:", remontaError); }
+    if (saudeError) { console.error("Erro ao carregar Saúde:", saudeError); toast.error("Erro ao carregar registros de Saúde"); }
+    if (remontaError) { console.error("Erro ao carregar Remonta:", remontaError); toast.error("Erro ao carregar registros de Remonta"); }
 
-    const allRecords: ClasseVIIIRegistro[] = [
-        ...(saudeData || []).map(r => ({ ...r, itens_saude: (r.itens_saude || []) as ItemSaude[] }) as ClasseVIIIRegistroSaude),
-        ...(remontaData || []).map(r => ({ ...r, itens_remonta: (r.itens_remonta || []) as ItemRemonta[] }) as ClasseVIIIRegistroRemonta),
-    ];
+    const newSaudeRecords = (saudeData || []) as ClasseVIIIRegistro[];
+    const newRemontaRecords = (remontaData || []) as ClasseVIIIRegistro[];
 
-    setRegistros(allRecords.sort((a, b) => a.organizacao.localeCompare(b.organizacao)));
+    setRegistrosSaude(newSaudeRecords);
+    setRegistrosRemonta(newRemontaRecords);
+    
+    return { saude: newSaudeRecords, remonta: newRemontaRecords };
   };
+  
+  const reconstructFormState = async (saudeRecords: ClasseVIIIRegistro[], remontaRecords: ClasseVIIIRegistro[]) => {
+    setLoading(true);
+    const allRecords = [...saudeRecords, ...remontaRecords];
+    if (allRecords.length === 0) {
+        setLoading(false);
+        return;
+    }
 
-  const reconstructFormState = (records: ClasseVIIIRegistro[]) => {
-    if (records.length === 0) {
-        resetFormFields();
-        return;
-    }
+    // Ao editar, usamos o primeiro registro para preencher os dados globais (OM, UG, Dias)
+    const firstRecord = allRecords[0];
     
-    // Agrupar por OM/UG
-    const groupedByOm = records.reduce((acc, r) => {
-        const key = `${r.organizacao}-${r.ug}`;
-        if (!acc[key]) acc[key] = { saude: [], remonta: [] };
-        if (r.categoria === 'Saúde - KPSI/KPT') {
-            acc[key].saude.push(r as ClasseVIIIRegistroSaude);
-        } else {
-            acc[key].remonta.push(r as ClasseVIIIRegistroRemonta);
-        }
-        return acc;
-    }, {} as Record<string, { saude: ClasseVIIIRegistroSaude[], remonta: ClasseVIIIRegistroRemonta[] }>);
-    
-    // Assumimos que estamos editando a primeira OM encontrada
-    const firstOmKey = Object.keys(groupedByOm)[0];
-    const firstOmGroup = groupedByOm[firstOmKey];
-    
-    const firstRecord = firstOmGroup.saude[0] || firstOmGroup.remonta[0];
-    if (!firstRecord) {
-        resetFormFields();
-        return;
-    }
-    
-    // 1. Extrair dados globais
+    // 1. Extract global data
     const omName = firstRecord.organizacao;
     const ug = firstRecord.ug;
     const diasOperacao = firstRecord.dias_operacao;
@@ -456,16 +536,34 @@ const ClasseVIIIForm = () => {
     setFasesAtividade(fasesSalvas.filter(f => fasesPadrao.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !fasesPadrao.includes(f)) || "");
     
-    // 2. Consolidar Itens e Alocações
+    // 2. Consolidate items and allocations
     let consolidatedSaude: ItemSaude[] = [];
     let consolidatedRemonta: ItemRemonta[] = [];
     let newAllocations = { ...initialCategoryAllocations };
+    let selectedOmIdForEdit: string | undefined = undefined;
     
-    // Saúde
-    if (firstOmGroup.saude.length > 0) {
-        const r = firstOmGroup.saude[0];
-        consolidatedSaude = r.itens_saude;
-        const totalValor = consolidatedSaude.reduce((sum, item) => sum + calculateSaudeItemTotal(item, diasOperacao), 0);
+    const fetchOmId = async (nome: string, ug: string) => {
+        if (!nome || !ug) return undefined;
+        const { data } = await supabase
+            .from('organizacoes_militares')
+            .select('id')
+            .eq('nome_om', nome)
+            .eq('codug_om', ug)
+            .maybeSingle();
+        return data?.id;
+    };
+    
+    // Process Saúde
+    if (saudeRecords.length > 0) {
+        const r = saudeRecords[0]; // Apenas um registro por categoria é esperado
+        const sanitizedItems = (r.itens_saude || []).map(item => ({
+            ...item,
+            quantidade: Number((item as ItemSaude).quantidade || 0),
+        })) as ItemSaude[];
+        
+        consolidatedSaude = sanitizedItems;
+        
+        const totalValor = sanitizedItems.reduce((sum, item) => calculateSaudeItemTotal(item) + sum, 0);
         newAllocations['Saúde'] = {
             total_valor: totalValor,
             nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
@@ -477,68 +575,68 @@ const ClasseVIIIForm = () => {
         };
     }
     
-    // Remonta
-    if (firstOmGroup.remonta.length > 0) {
-        const totalRemonta = firstOmGroup.remonta.reduce((sum, r) => sum + r.valor_total, 0);
-        const totalND30 = firstOmGroup.remonta.reduce((sum, r) => sum + r.valor_nd_30, 0);
-        const totalND39 = firstOmGroup.remonta.reduce((sum, r) => sum + r.valor_nd_39, 0);
+    // Process Remonta
+    if (remontaRecords.length > 0) {
+        const r = remontaRecords[0]; // Apenas um registro por OM/UG é esperado, mas pode ter Equino e Canino separados
         
-        // Consolidar itens de Remonta (Equino e Canino)
-        firstOmGroup.remonta.forEach(r => {
-            consolidatedRemonta = consolidatedRemonta.concat(r.itens_remonta);
-        });
+        // Consolidar todos os itens de remonta em uma única lista
+        const allRemontaItems: ItemRemonta[] = remontaRecords.flatMap(record => 
+            (record.itens_remonta || []).map(item => ({
+                ...item,
+                quantidade_animais: Number(item.quantidade_animais || 0),
+                dias_operacao_item: Number(item.dias_operacao_item || 0),
+            }))
+        );
         
-        const r = firstOmGroup.remonta[0];
+        consolidatedRemonta = allRemontaItems;
+        
+        const totalValor = allRemontaItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+        
+        // Usamos os dados de alocação do primeiro registro de remonta para preencher a alocação total da categoria
+        const firstRemontaRecord = remontaRecords[0];
+        const totalND30 = remontaRecords.reduce((sum, r) => sum + Number(r.valor_nd_30), 0);
+        const totalND39 = remontaRecords.reduce((sum, r) => sum + Number(r.valor_nd_39), 0);
+        
         newAllocations['Remonta/Veterinária'] = {
-            total_valor: totalRemonta,
+            total_valor: totalValor,
             nd_39_input: formatNumberForInput(totalND39, 2),
             nd_30_value: totalND30,
             nd_39_value: totalND39,
-            om_destino_recurso: r.organizacao,
-            ug_destino_recurso: r.ug,
+            om_destino_recurso: firstRemontaRecord.organizacao,
+            ug_destino_recurso: firstRemontaRecord.ug,
             selectedOmDestinoId: undefined,
         };
     }
     
-    // 3. Fetch OM IDs
-    const fetchOmId = async (nome: string, ug: string) => {
-      if (!nome || !ug) return undefined;
-      const { data } = await supabase
-        .from('organizacoes_militares')
-        .select('id')
-        .eq('nome_om', nome)
-        .eq('codug_om', ug)
-        .maybeSingle();
-      return data?.id;
-    };
+    // Fetch OM IDs
+    selectedOmIdForEdit = await fetchOmId(omName, ug);
     
-    Promise.all([
-      fetchOmId(omName, ug),
-      fetchOmId(newAllocations['Saúde'].om_destino_recurso, newAllocations['Saúde'].ug_destino_recurso),
-      fetchOmId(newAllocations['Remonta/Veterinária'].om_destino_recurso, newAllocations['Remonta/Veterinária'].ug_destino_recurso),
-    ]).then(([omDataId, saudeOmId, remontaOmId]) => {
-      setForm({
-        selectedOmId: omDataId,
-        organizacao: omName,
-        ug: ug,
-        dias_operacao: diasOperacao,
-        itensSaude: consolidatedSaude,
-        itensRemonta: consolidatedRemonta,
-      });
-      
-      setCategoryAllocations(prev => ({
-        ...prev,
-        'Saúde': { ...newAllocations['Saúde'], selectedOmDestinoId: saudeOmId },
-        'Remonta/Veterinária': { ...newAllocations['Remonta/Veterinária'], selectedOmDestinoId: remontaOmId },
-      }));
-      
-      setEditingId(firstRecord.id);
-      setSelectedTab(firstOmGroup.saude.length > 0 ? 'Saúde' : 'Remonta/Veterinária');
+    for (const cat of CATEGORIAS) {
+        const alloc = newAllocations[cat];
+        if (alloc.om_destino_recurso) {
+            alloc.selectedOmDestinoId = await fetchOmId(alloc.om_destino_recurso, alloc.ug_destino_recurso);
+        }
+    }
+    
+    setForm({
+      selectedOmId: selectedOmIdForEdit,
+      organizacao: omName,
+      ug: ug,
+      dias_operacao: diasOperacao,
+      itensSaude: consolidatedSaude,
+      itensRemonta: consolidatedRemonta,
     });
+    setCategoryAllocations(newAllocations);
+    
+    if (saudeRecords.length > 0) {
+        setSelectedTab('Saúde');
+    } else if (remontaRecords.length > 0) {
+        setSelectedTab('Remonta/Veterinária');
+    }
+    setLoading(false);
   };
 
   const resetFormFields = () => {
-    setEditingId(null);
     setForm({
       selectedOmId: undefined,
       organizacao: "",
@@ -547,55 +645,37 @@ const ClasseVIIIForm = () => {
       itensSaude: [],
       itensRemonta: [],
     });
-    
     setCategoryAllocations(initialCategoryAllocations);
     setCurrentND39Input("");
-    
     setCurrentCategoryItems([]);
-    
     setFasesAtividade(["Execução"]);
     setCustomFaseAtividade("");
+    setRemontaValidationWarning(null); // Resetar aviso
   };
 
   const handleOMChange = (omData: OMData | undefined) => {
-    if (omData) {
-      setForm(prev => ({ 
-        ...prev, 
-        selectedOmId: omData.id, 
-        organizacao: omData.nome_om, 
-        ug: omData.codug_om,
-      }));
-      
-      const newAllocations = CATEGORIAS.reduce((acc, cat) => {
-          acc[cat] = {
-              ...categoryAllocations[cat],
-              om_destino_recurso: omData.nome_om,
-              ug_destino_recurso: omData.codug_om,
-              selectedOmDestinoId: omData.id,
-          };
-          return acc;
-      }, {} as Record<Categoria, CategoryAllocation>);
-      setCategoryAllocations(newAllocations);
-      
-    } else {
-      setForm(prev => ({ 
-        ...prev, 
-        selectedOmId: undefined, 
-        organizacao: "", 
-        ug: "",
-      }));
-      
-      const newAllocations = CATEGORIAS.reduce((acc, cat) => {
-          acc[cat] = {
-              ...categoryAllocations[cat],
-              om_destino_recurso: "",
-              ug_destino_recurso: "",
-              selectedOmDestinoId: undefined,
-          };
-          return acc;
-      }, {} as Record<Categoria, CategoryAllocation>);
-      setCategoryAllocations(newAllocations);
-    }
+    const omName = omData?.nome_om || "";
+    const ug = omData?.codug_om || "";
+    const omId = omData?.id;
+    
+    setForm(prev => ({
+      ...prev,
+      selectedOmId: omId,
+      organizacao: omName,
+      ug: ug,
+    }));
+    
+    // Ao mudar a OM detentora, resetamos a OM de destino para a nova OM detentora
+    const newAllocations = CATEGORIAS.reduce((acc, cat) => {
+        acc[cat] = {
+            ...categoryAllocations[cat],
+            om_destino_recurso: omName,
+            ug_destino_recurso: ug,
+            selectedOmDestinoId: omId,
+        };
+        return acc;
+    }, {} as Record<Categoria, CategoryAllocation>);
+    setCategoryAllocations(newAllocations);
   };
   
   const handleOMDestinoChange = (omData: OMData | undefined) => {
@@ -618,44 +698,76 @@ const ClasseVIIIForm = () => {
     }
   };
 
-  const handleQuantityChange = (itemIndex: number, quantity: number) => {
+  // --- Item Quantity Handlers ---
+  const handleQuantityChange = (itemIndex: number, rawQuantity: string) => {
     const newItems = [...currentCategoryItems];
-    const item = newItems[itemIndex];
+    const quantity = parseInt(rawQuantity) || 0;
     
-    if (item.categoria === 'Saúde') {
-        (item as ItemSaude).quantidade = Math.max(0, quantity);
+    if (selectedTab === 'Saúde') {
+        (newItems as ItemSaude[])[itemIndex].quantidade = Math.max(0, quantity);
     } else {
-        (item as ItemRemonta).quantidade = Math.max(0, quantity);
+        // Lógica de Remonta/Veterinária
+        const item = (newItems as ItemRemonta[])[itemIndex];
+        item.quantidade_animais = Math.max(0, quantity);
+        
+        // Validação imediata para Canino
+        if (item.item === 'Canino' && quantity > 0 && quantity % 5 !== 0) {
+            setRemontaValidationWarning("A quantidade de Caninos deve ser um múltiplo de 5.");
+        } else {
+            setRemontaValidationWarning(null);
+        }
     }
     setCurrentCategoryItems(newItems);
   };
   
-  const handleQuantityAnimalsChange = (itemIndex: number, quantity: number) => {
-    const newItems = [...currentCategoryItems];
-    const item = newItems[itemIndex];
+  const handleQuantityBlur = (itemIndex: number) => {
+    if (selectedTab !== 'Remonta/Veterinária') return;
     
-    if (item.categoria === 'Remonta/Veterinária') {
-        // Atualiza a quantidade de animais em TODOS os itens de Remonta
-        const updatedItems = (newItems as ItemRemonta[]).map(i => ({
-            ...i,
-            quantidade_animais: Math.max(0, quantity),
-        }));
-        setCurrentCategoryItems(updatedItems);
+    const newItems = [...currentCategoryItems];
+    const item = (newItems as ItemRemonta[])[itemIndex];
+    let finalQuantity = item.quantidade_animais;
+    
+    // Regra Caninos: múltiplos de 5 (aplicada no blur)
+    if (item.item === 'Canino') {
+        // Se o valor não for múltiplo de 5, arredondamos para o múltiplo de 5 mais próximo
+        if (finalQuantity > 0 && finalQuantity % 5 !== 0) {
+            finalQuantity = Math.round(finalQuantity / 5) * 5;
+            setRemontaValidationWarning(null); // Limpa o aviso após o arredondamento
+        }
     }
+    
+    item.quantidade_animais = finalQuantity;
+    setCurrentCategoryItems(newItems);
   };
   
-  const handleDiasOperacaoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value.replace(/\D/g, '')) || 0;
-    setForm({ ...form, dias_operacao: value });
+  const handleDiasOperacaoChange = (itemIndex: number, days: number) => {
+    if (selectedTab !== 'Remonta/Veterinária') return;
+    
+    const newItems = [...currentCategoryItems];
+    const item = (newItems as ItemRemonta[])[itemIndex];
+    item.dias_operacao_item = Math.max(0, days);
+    
+    setCurrentCategoryItems(newItems);
   };
 
-  const valorTotalSaude = form.itensSaude.reduce((sum, item) => sum + calculateSaudeItemTotal(item, form.dias_operacao), 0);
-  const valorTotalRemonta = form.itensRemonta.reduce((sum, item) => sum + calculateRemontaItemTotal(item, form.dias_operacao), 0);
+  // --- ND Allocation Handlers ---
+  const currentCategoryTotalValue = useMemo(() => {
+    if (selectedTab === 'Saúde') {
+        return (currentCategoryItems as ItemSaude[]).reduce((sum, item) => sum + calculateSaudeItemTotal(item), 0);
+    } else {
+        const remontaItems = currentCategoryItems as ItemRemonta[];
+        
+        let totalRemonta = 0;
+        
+        remontaItems.forEach(animalItem => {
+            // Usa a função auxiliar para calcular o total do tipo de animal
+            totalRemonta += calculateTotalForAnimalType(animalItem, diretrizesRemonta);
+        });
+        
+        return totalRemonta;
+    }
+  }, [currentCategoryItems, selectedTab, diretrizesRemonta]);
   
-  const currentCategoryTotalValue = selectedTab === 'Saúde' 
-    ? (currentCategoryItems as ItemSaude[]).reduce((sum, item) => sum + calculateSaudeItemTotal(item, form.dias_operacao), 0)
-    : (currentCategoryItems as ItemRemonta[]).reduce((sum, item) => sum + calculateRemontaItemTotal(item, form.dias_operacao), 0);
-
   const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, parseInputToNumber(currentND39Input)));
   const nd30ValueTemp = currentCategoryTotalValue - nd39ValueTemp;
 
@@ -670,17 +782,14 @@ const ClasseVIIIForm = () => {
       setCurrentND39Input(formatNumberForInput(finalND39Value, 2));
   };
 
+  // --- Save Category Items to Form State ---
   const handleUpdateCategoryItems = () => {
     if (!form.organizacao || form.dias_operacao <= 0) {
         toast.error("Preencha a OM e os Dias de Atividade (Global) antes de salvar itens.");
         return;
     }
     
-    const categoryTotalValue = currentCategoryItems.reduce((sum, item) => 
-        item.categoria === 'Saúde' 
-            ? sum + calculateSaudeItemTotal(item as ItemSaude, form.dias_operacao)
-            : sum + calculateRemontaItemTotal(item as ItemRemonta, form.dias_operacao)
-    , 0);
+    const categoryTotalValue = currentCategoryTotalValue;
 
     const numericInput = parseInputToNumber(currentND39Input);
     const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
@@ -695,12 +804,46 @@ const ClasseVIIIForm = () => {
         toast.error("Selecione a OM de destino do recurso antes de salvar a alocação.");
         return;
     }
+    
+    if (selectedTab === 'Remonta/Veterinária' && remontaValidationWarning) {
+        toast.error(remontaValidationWarning);
+        return;
+    }
 
-    const itemsToKeep = currentCategoryItems.filter(item => 
-        item.categoria === 'Saúde' 
-            ? (item as ItemSaude).quantidade > 0
-            : (item as ItemRemonta).quantidade > 0 && (item as ItemRemonta).quantidade_animais > 0
-    );
+    let itemsToKeep: (ItemSaude | ItemRemonta)[] = [];
+    
+    if (selectedTab === 'Saúde') {
+        itemsToKeep = (currentCategoryItems as ItemSaude[]).filter(item => item.quantidade > 0);
+        setForm({ ...form, itensSaude: itemsToKeep as ItemSaude[] });
+    } else {
+        const remontaItems = currentCategoryItems as ItemRemonta[];
+        const directives = diretrizesRemonta;
+        
+        const activeRemontaItems: ItemRemonta[] = [];
+        
+        remontaItems.forEach(animalItem => {
+            const animalType = animalItem.item;
+            const nrAnimais = animalItem.quantidade_animais;
+            const diasOperacao = animalItem.dias_operacao_item;
+            
+            if (nrAnimais > 0 && diasOperacao > 0) {
+                const relatedDirectives = directives.filter(d => d.item.includes(animalType));
+                
+                relatedDirectives.forEach(d => {
+                    activeRemontaItems.push({
+                        item: d.item,
+                        quantidade_animais: nrAnimais,
+                        dias_operacao_item: diasOperacao,
+                        valor_mnt_dia: Number(d.valor_mnt_dia),
+                        categoria: 'Remonta/Veterinária',
+                    });
+                });
+            }
+        });
+        
+        itemsToKeep = activeRemontaItems;
+        setForm({ ...form, itensRemonta: itemsToKeep as ItemRemonta[] });
+    }
 
     setCategoryAllocations(prev => ({
         ...prev,
@@ -713,23 +856,27 @@ const ClasseVIIIForm = () => {
         }
     }));
     
-    if (selectedTab === 'Saúde') {
-        setForm({ ...form, itensSaude: itemsToKeep as ItemSaude[] });
-    } else {
-        setForm({ ...form, itensRemonta: itemsToKeep as ItemRemonta[] });
-    }
-    
     toast.success(`Itens e alocação de ND para ${getCategoryLabel(selectedTab)} atualizados!`);
   };
   
+  // --- Global Totals and Validation ---
+  const valorTotalSaude = form.itensSaude.reduce((sum, item) => sum + calculateSaudeItemTotal(item), 0);
+  const valorTotalRemonta = form.itensRemonta.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
   const valorTotalForm = valorTotalSaude + valorTotalRemonta;
 
   const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_30_value, 0);
   const totalND39Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_39_value, 0);
-
   const totalAlocado = totalND30Final + totalND39Final;
   
   const isTotalAlocadoCorrect = areNumbersEqual(valorTotalForm, totalAlocado);
+  
+  const itensAgrupadosPorCategoria = useMemo(() => {
+    const groups: Record<Categoria, (ItemSaude | ItemRemonta)[]> = {};
+    if (form.itensSaude.length > 0) groups['Saúde'] = form.itensSaude;
+    if (form.itensRemonta.length > 0) groups['Remonta/Veterinária'] = form.itensRemonta;
+    return groups;
+  }, [form.itensSaude, form.itensRemonta]);
+
 
   // --- Save Records to Database ---
   const handleSalvarRegistros = async () => {
@@ -751,21 +898,10 @@ const ClasseVIIIForm = () => {
     setLoading(true);
     
     try {
-      const omToSave = form.organizacao;
-      const ugToSave = form.ug;
-      
-      // 1. Deletar registros antigos APENAS para a OM/UG que está sendo salva
-      await supabase.from("classe_viii_saude_registros")
-        .delete()
-        .eq("p_trab_id", ptrabId)
-        .eq("organizacao", omToSave) // <-- NOVO FILTRO
-        .eq("ug", ugToSave); // <-- NOVO FILTRO
-        
-      await supabase.from("classe_viii_remonta_registros")
-        .delete()
-        .eq("p_trab_id", ptrabId)
-        .eq("organizacao", omToSave) // <-- NOVO FILTRO
-        .eq("ug", ugToSave); // <-- NOVO FILTRO
+      // 1. Deletar registros antigos
+      // Nota: Mantemos a exclusão total para simplificar a edição/substituição de registros
+      await supabase.from("classe_viii_saude_registros").delete().eq("p_trab_id", ptrabId);
+      await supabase.from("classe_viii_remonta_registros").delete().eq("p_trab_id", ptrabId);
       
       // 2. Inserir Saúde
       if (form.itensSaude.length > 0) {
@@ -809,8 +945,8 @@ const ClasseVIIIForm = () => {
         const registrosParaInserir: TablesInsert<'classe_viii_remonta_registros'>[] = [];
         
         // Calcular totais individuais para Equino e Canino
-        const valorEquino = (remontaItemsGrouped['Equino'] || []).reduce((sum, item) => sum + calculateRemontaItemTotal(item, form.dias_operacao), 0);
-        const valorCanino = (remontaItemsGrouped['Canino'] || []).reduce((sum, item) => sum + calculateRemontaItemTotal(item, form.dias_operacao), 0);
+        const valorEquino = (remontaItemsGrouped['Equino'] || []).reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+        const valorCanino = (remontaItemsGrouped['Canino'] || []).reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
         
         const totalGeralRemonta = valorEquino + valorCanino;
         
@@ -916,137 +1052,42 @@ const ClasseVIIIForm = () => {
     setLoading(true);
     resetFormFields();
     
-    const omToEdit = registro.organizacao;
-    const ugToEdit = registro.ug;
+    // Garante que os dados mais recentes estão no estado
+    const { saude: saudeRecords, remonta: remontaRecords } = await fetchRegistros(); 
     
-    // 1. Buscar TODOS os registros de CLASSE VIII para esta OM/UG específica
-    const [
-        { data: saudeData },
-        { data: remontaData }
-    ] = await Promise.all([
-        supabase
-            .from("classe_viii_saude_registros")
-            .select("*, detalhamento_customizado, valor_nd_30, valor_nd_39")
-            .eq("p_trab_id", ptrabId)
-            .eq("organizacao", omToEdit)
-            .eq("ug", ugToEdit),
-        supabase
-            .from("classe_viii_remonta_registros")
-            .select("*, detalhamento_customizado, valor_nd_30, valor_nd_39")
-            .eq("p_trab_id", ptrabId)
-            .eq("organizacao", omToEdit)
-            .eq("ug", ugToEdit),
-    ]);
+    // Reconstruir o estado do formulário com os dados carregados
+    // Filtramos os registros que pertencem à mesma OM/UG do registro clicado
+    const saudeToEdit = saudeRecords.filter(r => r.organizacao === registro.organizacao && r.ug === registro.ug);
+    const remontaToEdit = remontaRecords.filter(r => r.organizacao === registro.organizacao && r.ug === registro.ug);
     
-    const recordsToEdit: ClasseVIIIRegistro[] = [
-        ...(saudeData || []).map(r => ({ ...r, itens_saude: (r.itens_saude || []) as ItemSaude[] }) as ClasseVIIIRegistroSaude),
-        ...(remontaData || []).map(r => ({ ...r, itens_remonta: (r.itens_remonta || []) as ItemRemonta[] }) as ClasseVIIIRegistroRemonta),
-    ];
+    reconstructFormState(saudeToEdit, remontaToEdit);
     
-    if (recordsToEdit.length === 0) {
-        toast.error("Erro ao carregar registros para edição.");
-        setLoading(false);
-        return;
-    }
-    
-    const firstRecord = recordsToEdit[0];
-    
-    // 2. Consolidar Itens e Alocações
-    let consolidatedSaude: ItemSaude[] = [];
-    let consolidatedRemonta: ItemRemonta[] = [];
-    let newAllocations = { ...initialCategoryAllocations };
-    
-    recordsToEdit.forEach(r => {
-        const category = r.categoria === 'Saúde - KPSI/KPT' ? 'Saúde' : 'Remonta/Veterinária';
-        
-        if (category === 'Saúde') {
-            const saudeR = r as ClasseVIIIRegistroSaude;
-            consolidatedSaude = saudeR.itens_saude;
-            const totalValor = consolidatedSaude.reduce((sum, item) => sum + calculateSaudeItemTotal(item, saudeR.dias_operacao), 0);
-            newAllocations['Saúde'] = {
-                total_valor: totalValor,
-                nd_39_input: formatNumberForInput(Number(saudeR.valor_nd_39), 2),
-                nd_30_value: Number(saudeR.valor_nd_30),
-                nd_39_value: Number(saudeR.valor_nd_39),
-                om_destino_recurso: saudeR.organizacao,
-                ug_destino_recurso: saudeR.ug,
-                selectedOmDestinoId: undefined,
-            };
-        } else {
-            const remontaR = r as ClasseVIIIRegistroRemonta;
-            consolidatedRemonta = consolidatedRemonta.concat(remontaR.itens_remonta);
-            
-            // Acumular totais de ND para Remonta (pode haver Equino e Canino separados)
-            newAllocations['Remonta/Veterinária'].total_valor += remontaR.valor_total;
-            newAllocations['Remonta/Veterinária'].nd_30_value += Number(remontaR.valor_nd_30);
-            newAllocations['Remonta/Veterinária'].nd_39_value += Number(remontaR.valor_nd_39);
-            newAllocations['Remonta/Veterinária'].om_destino_recurso = remontaR.organizacao;
-            newAllocations['Remonta/Veterinária'].ug_destino_recurso = remontaR.ug;
-            newAllocations['Remonta/Veterinária'].selectedOmDestinoId = undefined;
-        }
-    });
-    
-    // Finalizar alocação de Remonta (ajustar input string)
-    if (newAllocations['Remonta/Veterinária'].total_valor > 0) {
-        newAllocations['Remonta/Veterinária'].nd_39_input = formatNumberForInput(newAllocations['Remonta/Veterinária'].nd_39_value, 2);
-    }
-    
-    // 3. Fetch OM IDs
-    const fetchOmId = async (nome: string, ug: string) => {
-      if (!nome || !ug) return undefined;
-      const { data } = await supabase
-        .from('organizacoes_militares')
-        .select('id')
-        .eq('nome_om', nome)
-        .eq('codug_om', ug)
-        .maybeSingle();
-      return data?.id;
-    };
-    
-    Promise.all([
-      fetchOmId(omToEdit, ugToEdit),
-      fetchOmId(newAllocations['Saúde'].om_destino_recurso, newAllocations['Saúde'].ug_destino_recurso),
-      fetchOmId(newAllocations['Remonta/Veterinária'].om_destino_recurso, newAllocations['Remonta/Veterinária'].ug_destino_recurso),
-    ]).then(([omDataId, saudeOmId, remontaOmId]) => {
-      setForm({
-        selectedOmId: omDataId,
-        organizacao: omToEdit,
-        ug: ugToEdit,
-        dias_operacao: firstRecord.dias_operacao,
-        itensSaude: consolidatedSaude,
-        itensRemonta: consolidatedRemonta,
-      });
-      
-      setCategoryAllocations(prev => ({
-        ...prev,
-        'Saúde': { ...newAllocations['Saúde'], selectedOmDestinoId: saudeOmId },
-        'Remonta/Veterinária': { ...newAllocations['Remonta/Veterinária'], selectedOmDestinoId: remontaOmId },
-      }));
-      
-      setEditingId(firstRecord.id);
-      setSelectedTab(registro.categoria === 'Saúde - KPSI/KPT' ? 'Saúde' : 'Remonta/Veterinária');
-    });
+    // Define a aba correta para visualização
+    setSelectedTab(registro.categoria === 'Saúde - KPSI/KPT' ? 'Saúde' : 'Remonta/Veterinária');
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setLoading(false);
   };
   
-  const registrosAgrupadosPorOM = useMemo(() => {
-    return registros.reduce((acc, registro) => {
-        const key = `${registro.organizacao} (${registro.ug})`;
-        if (!acc[key]) {
-            acc[key] = {
-                om: registro.organizacao,
-                ug: registro.ug,
-                total: 0,
-                registros: [],
-            };
-        }
-        acc[key].total += registro.valor_total;
-        acc[key].registros.push(registro);
-        return acc;
-    }, {} as Record<string, { om: string, ug: string, total: number, registros: ClasseVIIIRegistro[] }>);
-  }, [registros]);
+  const handleDeletarRegistro = async (registro: ClasseVIIIRegistro) => {
+    if (!confirm(`Deseja realmente deletar o registro de ${registro.categoria} para ${registro.organizacao}?`)) return;
+    
+    setLoading(true);
+    try {
+        const tableName = registro.categoria === 'Saúde - KPSI/KPT' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
+        const { error } = await supabase.from(tableName).delete().eq("id", registro.id);
+        
+        if (error) throw error;
+        
+        toast.success("Registro excluído!");
+        fetchRegistros();
+    } catch (error) {
+        console.error("Erro ao deletar registro:", error);
+        toast.error(sanitizeError(error));
+    } finally {
+        setLoading(false);
+    }
+  };
 
   const handleIniciarEdicaoMemoria = (registro: ClasseVIIIRegistro) => {
     setEditingMemoriaId(registro.id);
@@ -1058,18 +1099,19 @@ const ClasseVIIIForm = () => {
     setMemoriaEdit("");
   };
 
-  const handleSalvarMemoriaCustomizada = async (registroId: string, categoria: string) => {
+  const handleSalvarMemoriaCustomizada = async (registro: ClasseVIIIRegistro) => {
     setLoading(true);
     try {
-      if (categoria === 'Saúde - KPSI/KPT') {
-        await supabase.from("classe_viii_saude_registros")
-          .update({ detalhamento_customizado: memoriaEdit.trim() || null })
-          .eq("id", registroId);
-      } else {
-        await supabase.from("classe_viii_remonta_registros")
-          .update({ detalhamento_customizado: memoriaEdit.trim() || null })
-          .eq("id", registroId);
-      }
+      const tableName = registro.categoria === 'Saúde - KPSI/KPT' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
+      
+      const { error } = await supabase
+        .from(tableName)
+        .update({
+          detalhamento_customizado: memoriaEdit.trim() || null,
+        })
+        .eq("id", registro.id);
+
+      if (error) throw error;
 
       toast.success("Memória de cálculo atualizada com sucesso!");
       handleCancelarEdicaoMemoria();
@@ -1082,22 +1124,23 @@ const ClasseVIIIForm = () => {
     }
   };
 
-  const handleRestaurarMemoriaAutomatica = async (registroId: string, categoria: string) => {
+  const handleRestaurarMemoriaAutomatica = async (registro: ClasseVIIIRegistro) => {
     if (!confirm("Deseja restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
       return;
     }
     
     setLoading(true);
     try {
-      if (categoria === 'Saúde - KPSI/KPT') {
-        await supabase.from("classe_viii_saude_registros")
-          .update({ detalhamento_customizado: null })
-          .eq("id", registroId);
-      } else {
-        await supabase.from("classe_viii_remonta_registros")
-          .update({ detalhamento_customizado: null })
-          .eq("id", registroId);
-      }
+      const tableName = registro.categoria === 'Saúde - KPSI/KPT' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
+      
+      const { error } = await supabase
+        .from(tableName)
+        .update({
+          detalhamento_customizado: null,
+        })
+        .eq("id", registro.id);
+
+      if (error) throw error;
 
       toast.success("Memória de cálculo restaurada!");
       await fetchRegistros();
@@ -1108,17 +1151,34 @@ const ClasseVIIIForm = () => {
       setLoading(false);
     }
   };
-
+  
   const displayFases = useMemo(() => {
     return [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
   }, [fasesAtividade, customFaseAtividade]);
+  
+  const allRegistros = [...registrosSaude, ...registrosRemonta];
+  
+  const registrosAgrupadosPorOM = useMemo(() => {
+    return allRegistros.reduce((acc, registro) => {
+        const key = `${registro.organizacao} (${registro.ug})`;
+        if (!acc[key]) {
+            acc[key] = [];
+        }
+        acc[key].push(registro);
+        return acc;
+    }, {} as Record<string, ClasseVIIIRegistro[]>);
+  }, [allRegistros]);
+  
+  const getAnimalBadgeStyle = (animalType: 'Equino' | 'Canino') => {
+      if (animalType === 'Equino') {
+          return { label: 'Equino', className: 'bg-amber-700 text-white' };
+      }
+      if (animalType === 'Canino') {
+          return { label: 'Canino', className: 'bg-indigo-700 text-white' };
+      }
+      return { label: 'Remonta/Vet', className: 'bg-yellow-700 text-white' };
+  };
 
-  const currentAnimalQuantity = useMemo(() => {
-    if (selectedTab === 'Remonta/Veterinária' && currentCategoryItems.length > 0) {
-        return (currentCategoryItems[0] as ItemRemonta).quantidade_animais || 0;
-    }
-    return 0;
-  }, [selectedTab, currentCategoryItems]);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1165,11 +1225,11 @@ const ClasseVIIIForm = () => {
                 <div className="space-y-2">
                   <Label>Dias de Atividade (Global) *</Label>
                   <Input
-                    type="text"
-                    inputMode="numeric"
+                    type="number"
+                    min="1"
                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
                     value={form.dias_operacao || ""}
-                    onChange={handleDiasOperacaoChange}
+                    onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value) || 0 })}
                     placeholder="Ex: 7"
                     onKeyDown={handleEnterToNextField}
                   />
@@ -1227,206 +1287,230 @@ const ClasseVIIIForm = () => {
                     </PopoverContent>
                   </Popover>
                 </div>
-                
-                {selectedTab === 'Remonta/Veterinária' && (
-                    <div className="space-y-2">
-                        <Label>Quantidade de Animais *</Label>
-                        <Input
-                            type="number"
-                            min="1"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
-                            value={currentAnimalQuantity || ""}
-                            onChange={(e) => handleQuantityAnimalsChange(0, parseInt(e.target.value) || 0)}
-                            placeholder="Ex: 10"
-                            disabled={!form.organizacao || form.dias_operacao <= 0}
-                            onKeyDown={handleEnterToNextField}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            A quantidade de animais se aplica a todos os itens de Remonta.
-                        </p>
-                    </div>
-                )}
               </div>
             </div>
 
-            {/* 2. Adicionar Itens por Categoria (Aba) */}
+            {/* 2. Configurar Itens por Categoria (Aba) */}
             {form.organizacao && form.dias_operacao > 0 && (
-              <div className="space-y-4 border-b pb-4" ref={formRef}>
+              <div className="space-y-4 border-b pb-4">
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
                 <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as Categoria)}>
                   <TabsList className="grid w-full grid-cols-2">
                     {CATEGORIAS.map(cat => (
-                      <TabsTrigger key={cat} value={cat}>
-                        {getCategoryLabel(cat)}
-                      </TabsTrigger>
+                      <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
                     ))}
                   </TabsList>
                   
-                  {CATEGORIAS.map(cat => {
-                    const isSaude = cat === 'Saúde';
-                    const isRemonta = cat === 'Remonta/Veterinária';
-                    
-                    return (
-                      <TabsContent key={cat} value={cat} className="mt-4">
-                        <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                          
-                          <div className="max-h-[400px] overflow-y-auto rounded-md border">
-                              <Table className="w-full">
-                                  <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
-                                      <TableRow>
-                                          <TableHead className="w-[50%]">Item</TableHead>
-                                          <TableHead className="w-[20%] text-right">Valor/Unidade</TableHead>
-                                          <TableHead className="w-[15%] text-center">{isSaude ? 'Qtd Kits' : 'Qtd Itens'}</TableHead>
-                                          <TableHead className="w-[15%] text-right">Total</TableHead>
-                                      </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                      {currentCategoryItems.length === 0 ? (
-                                          <TableRow>
-                                              <TableCell colSpan={4} className="text-center text-muted-foreground">
-                                                  Nenhum item de diretriz encontrado para esta categoria.
-                                              </TableCell>
-                                          </TableRow>
-                                      ) : (
-                                          currentCategoryItems.map((item, index) => {
-                                              const itemTotal = isSaude 
-                                                ? calculateSaudeItemTotal(item as ItemSaude, form.dias_operacao)
-                                                : calculateRemontaItemTotal(item as ItemRemonta, form.dias_operacao);
-                                              
-                                              const isDisabled = isRemonta && currentAnimalQuantity === 0;
-                                              
-                                              return (
-                                                  <TableRow key={item.item} className="h-12">
-                                                      <TableCell className="font-medium text-sm py-1">
-                                                          {item.item}
-                                                      </TableCell>
-                                                      <TableCell className="text-right text-xs text-muted-foreground py-1">
-                                                          {formatCurrency(item.valor_mnt_dia)}
-                                                      </TableCell>
-                                                      <TableCell className="py-1">
-                                                          <Input
-                                                              type="number"
-                                                              min="0"
-                                                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
-                                                              value={item.quantidade === 0 ? "" : item.quantidade.toString()}
-                                                              onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
-                                                              placeholder="0"
-                                                              disabled={isDisabled}
-                                                              onKeyDown={handleEnterToNextField}
-                                                          />
-                                                      </TableCell>
-                                                      <TableCell className="text-right font-semibold text-sm py-1">
-                                                          {formatCurrency(itemTotal)}
-                                                      </TableCell>
-                                                  </TableRow>
-                                              );
-                                          })
-                                      )}
-                                  </TableBody>
-                              </Table>
-                          </div>
-                          
-                          <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
-                              <span className="font-bold text-sm">TOTAL DA CATEGORIA</span>
-                              <span className="font-extrabold text-lg text-primary">
-                                  {formatCurrency(currentCategoryTotalValue)}
-                              </span>
-                          </div>
-                          
-                          {/* BLOCO DE ALOCAÇÃO ND 30/39 */}
-                          {currentCategoryTotalValue > 0 && (
-                              <div className="space-y-4 p-4 border rounded-lg bg-background">
-                                  <h4 className="font-semibold text-sm">Alocação de Recursos para {getCategoryLabel(cat)}</h4>
-                                  
-                                  {/* CAMPO: OM de Destino do Recurso */}
-                                  <div className="space-y-2">
-                                      <Label>OM de Destino do Recurso *</Label>
-                                      <OmSelector
-                                          selectedOmId={categoryAllocations[cat].selectedOmDestinoId}
-                                          onChange={handleOMDestinoChange}
-                                          placeholder="Selecione a OM que receberá o recurso..."
-                                          disabled={!form.organizacao} 
-                                      />
-                                      {categoryAllocations[cat].ug_destino_recurso && (
-                                          <p className="text-xs text-muted-foreground">
-                                              UG de Destino: {categoryAllocations[cat].ug_destino_recurso}
-                                          </p>
-                                      )}
-                                  </div>
-                                  
-                                  <div className="grid grid-cols-2 gap-4">
-                                      {/* ND 30 (Material) - ESQUERDA */}
-                                      <div className="space-y-2">
-                                          <Label>ND 33.90.30 (Material)</Label>
-                                          <div className="relative">
-                                              <Input
-                                                  value={formatNumberForInput(nd30ValueTemp, 2)}
-                                                  readOnly
-                                                  disabled
-                                                  className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
-                                              />
-                                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
-                                          </div>
-                                          <p className="text-xs text-muted-foreground">
-                                              Calculado por diferença (Total - ND 39).
-                                          </p>
-                                      </div>
-                                      {/* ND 39 (Serviço) - DIREITA */}
-                                      <div className="space-y-2">
-                                          <Label htmlFor="nd39-input">ND 33.90.39 (Serviço)</Label>
-                                          <div className="relative">
-                                              <Input
-                                                  id="nd39-input"
-                                                  type="text"
-                                                  inputMode="decimal"
-                                                  value={currentND39Input}
-                                                  onChange={handleND39InputChange}
-                                                  onBlur={handleND39InputBlur}
-                                                  placeholder="0,00"
-                                                  className="pl-12 text-lg"
-                                                  disabled={currentCategoryTotalValue === 0}
-                                                  onKeyDown={handleEnterToNextField}
-                                              />
-                                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
-                                          </div>
-                                          <p className="text-xs text-muted-foreground">
-                                              Valor alocado para contratação de serviço.
-                                          </p>
-                                      </div>
-                                  </div>
-                                  <div className="flex justify-between text-sm font-bold border-t pt-2">
-                                      <span>TOTAL ALOCADO:</span>
-                                      <span className={cn(areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) ? "text-primary" : "text-destructive")}>
-                                          {formatCurrency(nd30ValueTemp + nd39ValueTemp)}
-                                      </span>
-                                  </div>
-                              </div>
-                          )}
-                          {/* FIM BLOCO DE ALOCAÇÃO */}
-
-                          <div className="flex justify-end">
-                              <Button 
-                                  type="button" 
-                                  onClick={handleUpdateCategoryItems} 
-                                  className="w-full md:w-auto" 
-                                  disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && !categoryAllocations[cat].om_destino_recurso)}
-                              >
-                                  Salvar Itens da Categoria
-                              </Button>
-                          </div>
+                  {CATEGORIAS.map(cat => (
+                    <TabsContent key={cat} value={cat} className="mt-4">
+                      <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                        
+                        {/* Tabela de Itens */}
+                        <div className="max-h-[400px] overflow-y-auto rounded-md border">
+                            <Table className="w-full">
+                                <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                                    <TableRow>
+                                        <TableHead className="w-[40%]">Item</TableHead>
+                                        {cat === 'Saúde' && (
+                                            <TableHead className="w-[25%] text-right">Valor Kit</TableHead>
+                                        )}
+                                        <TableHead className="w-[15%] text-center">{cat === 'Saúde' ? 'Qtd Kits' : 'Qtd Animais'}</TableHead>
+                                        {cat === 'Remonta/Veterinária' && (
+                                            <TableHead className="w-[15%] text-center">Qtd Dias</TableHead>
+                                        )}
+                                        <TableHead className="w-[20%] text-right">Total</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {currentCategoryItems.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={cat === 'Saúde' ? 4 : 4} className="text-center text-muted-foreground">
+                                                Nenhum item de diretriz encontrado para esta categoria.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        currentCategoryItems.map((item, index) => {
+                                            const isSaude = cat === 'Saúde';
+                                            const itemSaude = item as ItemSaude;
+                                            const itemRemonta = item as ItemRemonta;
+                                            
+                                            const quantity = isSaude ? itemSaude.quantidade : itemRemonta.quantidade_animais;
+                                            const valorMntDia = isSaude ? itemSaude.valor_mnt_dia : itemRemonta.valor_mnt_dia;
+                                            
+                                            const itemTotal = isSaude 
+                                                ? calculateSaudeItemTotal(itemSaude)
+                                                : calculateTotalForAnimalType(itemRemonta, diretrizesRemonta); // FIX: Usa a função correta para calcular o total do tipo de animal
+                                            
+                                            const itemLabel = isSaude ? itemSaude.item : itemRemonta.item;
+                                            
+                                            const unitLabel = isSaude ? 'kit' : (itemRemonta.item.includes('(Anual)') ? 'ano' : itemRemonta.item.includes('(Mensal)') ? 'mês' : 'dia');
+                                            
+                                            return (
+                                                <TableRow key={itemLabel} className="h-12">
+                                                    <TableCell className="font-medium text-sm py-1">
+                                                        {itemLabel}
+                                                        {!isSaude && itemLabel === 'Canino' && (
+                                                            <p className="text-xs text-muted-foreground mt-1">
+                                                                (Múltiplos de 5 cães)
+                                                            </p>
+                                                        )}
+                                                    </TableCell>
+                                                    
+                                                    {/* Coluna Valor Base (Apenas para Saúde) */}
+                                                    {isSaude && (
+                                                        <TableCell className="text-right text-xs text-muted-foreground py-1">
+                                                            {formatCurrency(valorMntDia)}
+                                                            {!isSaude && <span className="ml-1">/ {unitLabel}</span>}
+                                                        </TableCell>
+                                                    )}
+                                                    
+                                                    {/* Coluna Qtd Kits / Qtd Animais */}
+                                                    <TableCell className="py-1">
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
+                                                            value={typeof quantity === 'number' && quantity !== 0 ? quantity.toString() : ""}
+                                                            onChange={(e) => handleQuantityChange(index, e.target.value)}
+                                                            onBlur={() => handleQuantityBlur(index)}
+                                                            placeholder="0"
+                                                            onKeyDown={handleEnterToNextField}
+                                                        />
+                                                        {itemLabel === 'Canino' && remontaValidationWarning && (
+                                                            <p className="text-xs text-destructive mt-1">
+                                                                <AlertCircle className="h-3 w-3 inline mr-1" />
+                                                                {remontaValidationWarning}
+                                                            </p>
+                                                        )}
+                                                    </TableCell>
+                                                    
+                                                    {/* Coluna Qtd Dias (Apenas para Remonta) */}
+                                                    {!isSaude && (
+                                                        <TableCell className="py-1">
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
+                                                                value={itemRemonta.dias_operacao_item || ""}
+                                                                onChange={(e) => handleDiasOperacaoChange(index, parseInt(e.target.value) || 0)}
+                                                                placeholder="0" 
+                                                                onKeyDown={handleEnterToNextField}
+                                                            />
+                                                        </TableCell>
+                                                    )}
+                                                    
+                                                    {/* Coluna Total */}
+                                                    <TableCell className="text-right font-semibold text-sm py-1">
+                                                        {formatCurrency(itemTotal)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
+                                    )}
+                                </TableBody>
+                            </Table>
                         </div>
-                      </TabsContent>
-                    );
-                  })}
+                        
+                        <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
+                            <span className="font-bold text-sm">TOTAL DA CATEGORIA</span>
+                            <span className="font-extrabold text-lg text-primary">
+                                {formatCurrency(currentCategoryTotalValue)}
+                            </span>
+                        </div>
+                        
+                        {/* BLOCO DE ALOCAÇÃO ND 30/39 */}
+                        {currentCategoryTotalValue > 0 && (
+                            <div className="space-y-4 p-4 border rounded-lg bg-background">
+                                <h4 className="font-semibold text-sm">Alocação de Recursos para {cat}</h4>
+                                
+                                {/* CAMPO: OM de Destino do Recurso */}
+                                <div className="space-y-2">
+                                    <Label>OM de Destino do Recurso *</Label>
+                                    <OmSelector
+                                        selectedOmId={categoryAllocations[cat].selectedOmDestinoId}
+                                        onChange={handleOMDestinoChange}
+                                        placeholder="Selecione a OM que receberá o recurso..."
+                                        disabled={!form.organizacao} 
+                                    />
+                                    {categoryAllocations[cat].ug_destino_recurso && (
+                                        <p className="text-xs text-muted-foreground">
+                                            UG de Destino: {categoryAllocations[cat].ug_destino_recurso}
+                                        </p>
+                                    )}
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* ND 30 (Material) - ESQUERDA */}
+                                    <div className="space-y-2">
+                                        <Label>ND 33.90.30 (Material)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                value={formatNumberForInput(nd30ValueTemp, 2)}
+                                                readOnly
+                                                disabled
+                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
+                                            />
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Calculado por diferença (Total - ND 39).
+                                        </p>
+                                    </div>
+                                    {/* ND 39 (Serviço) - DIREITA */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nd39-input">ND 33.90.39 (Serviço)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                id="nd39-input"
+                                                type="text"
+                                                inputMode="decimal"
+                                                value={currentND39Input}
+                                                onChange={handleND39InputChange}
+                                                onBlur={handleND39InputBlur}
+                                                placeholder="0,00"
+                                                className="pl-12 text-lg"
+                                                disabled={currentCategoryTotalValue === 0}
+                                                onKeyDown={handleEnterToNextField}
+                                            />
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Valor alocado para contratação de serviço.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between text-sm font-bold border-t pt-2">
+                                    <span>TOTAL ALOCADO:</span>
+                                    <span className={cn(areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) ? "text-primary" : "text-destructive")}>
+                                        {formatCurrency(nd30ValueTemp + nd39ValueTemp)}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                        {/* FIM BLOCO DE ALOCAÇÃO */}
+
+                        <div className="flex justify-end">
+                            <Button 
+                                type="button" 
+                                onClick={handleUpdateCategoryItems} 
+                                className="w-full md:w-auto" 
+                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && !categoryAllocations[cat].om_destino_recurso) || !!remontaValidationWarning}
+                            >
+                                Salvar Itens da Categoria
+                            </Button>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  ))}
                 </Tabs>
               </div>
             )}
 
             {/* 3. Itens Adicionados e Consolidação */}
-            {(form.itensSaude.length > 0 || form.itensRemonta.length > 0) && (
+            {valorTotalForm > 0 && (
               <div className="space-y-4 border-b pb-4">
-                <h3 className="text-lg font-semibold">3. Itens Adicionados ({form.itensSaude.length + form.itensRemonta.length} itens)</h3>
+                <h3 className="text-lg font-semibold">3. Itens Adicionados ({form.itensSaude.length + form.itensRemonta.length})</h3>
                 
                 {/* Alerta de Validação Final */}
                 {!isTotalAlocadoCorrect && (
@@ -1441,34 +1525,54 @@ const ClasseVIIIForm = () => {
 
                 <div className="space-y-4">
                   {Object.entries(itensAgrupadosPorCategoria).map(([categoria, itens]) => {
-                    const totalCategoria = itens.reduce((sum, item) => 
-                        item.categoria === 'Saúde' 
-                            ? sum + calculateSaudeItemTotal(item as ItemSaude, form.dias_operacao)
-                            : sum + calculateRemontaItemTotal(item as ItemRemonta, form.dias_operacao)
-                    , 0);
-                    
-                    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
-                    
+                    const isSaude = categoria === 'Saúde';
+                    const totalCategoria = isSaude ? valorTotalSaude : valorTotalRemonta;
                     const allocation = categoryAllocations[categoria as Categoria];
                     
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
-                          <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} itens)</h4>
+                          <h4 className="font-bold text-base text-primary">{categoria}</h4>
                           <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
                         </div>
                         
                         <div className="space-y-2">
                           {itens.map((item, index) => {
-                            const itemTotal = item.categoria === 'Saúde' 
-                                ? calculateSaudeItemTotal(item as ItemSaude, form.dias_operacao)
-                                : calculateRemontaItemTotal(item as ItemRemonta, form.dias_operacao);
+                            const itemSaude = item as ItemSaude;
+                            const itemRemonta = item as ItemRemonta;
+                            
+                            const itemTotal = isSaude 
+                                ? calculateSaudeItemTotal(itemSaude)
+                                : calculateRemontaItemTotal(itemRemonta);
+                            
+                            const quantity = isSaude ? itemSaude.quantidade : itemRemonta.quantidade_animais;
+                            const unitValue = isSaude ? itemSaude.valor_mnt_dia : itemRemonta.valor_mnt_dia;
+                            
+                            const unitLabel = isSaude ? 'kit' : (itemRemonta.item.includes('(Anual)') ? 'ano' : itemRemonta.item.includes('(Mensal)') ? 'mês' : 'dia');
+                            
+                            let calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} / ${unitLabel}`;
+                            if (!isSaude) {
+                                if (itemRemonta.item.includes('(Mensal)')) {
+                                    calculationDetail = `${quantity} un. x (${formatCurrency(unitValue)} / 30 dias) x ${itemRemonta.dias_operacao_item} dias`;
+                                } else if (itemRemonta.item.includes('(Diário)')) {
+                                    calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} x ${itemRemonta.dias_operacao_item} dias`;
+                                } else {
+                                    const multiplier = Math.ceil(itemRemonta.dias_operacao_item / 365);
+                                    if (multiplier > 1) {
+                                        calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} x ${multiplier} anos`;
+                                    } else {
+                                        calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)}`;
+                                    }
+                                }
+                            } else {
+                                calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)}`;
+                            }
                             
                             return (
                               <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
-                                <span className="font-medium">{item.item}</span>
+                                <span className="font-medium">{isSaude ? itemSaude.item : itemRemonta.item}</span>
                                 <span className="text-right">
-                                  {item.quantidade} un. {item.categoria === 'Remonta/Veterinária' && `x ${(item as ItemRemonta).quantidade_animais} animais`} = {formatCurrency(itemTotal)}
+                                  {calculationDetail} = {formatCurrency(itemTotal)}
                                 </span>
                               </div>
                             );
@@ -1490,12 +1594,6 @@ const ClasseVIIIForm = () => {
                                 <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
                                 <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
                             </div>
-                            {!areNumbersEqual(allocation.total_valor, totalCategoria) && (
-                                <p className="text-xs text-destructive flex items-center gap-1 pt-1">
-                                    <AlertCircle className="h-3 w-3" />
-                                    Valores desatualizados. Salve a categoria novamente.
-                                </p>
-                            )}
                         </div>
                       </Card>
                     );
@@ -1523,23 +1621,24 @@ const ClasseVIIIForm = () => {
                     onClick={handleSalvarRegistros} 
                     disabled={loading || !form.organizacao || valorTotalForm === 0 || !isTotalAlocadoCorrect}
                   >
-                    {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")}
+                    {loading ? "Aguarde..." : "Salvar Registros"}
                   </Button>
                 </div>
               </div>
             )}
 
             {/* 4. Registros Salvos (OMs Cadastradas) - SUMMARY SECTION */}
-            {registros.length > 0 && (
+            {allRegistros.length > 0 && (
               <div className="space-y-4 mt-6">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-accent" />
                   OMs Cadastradas
                 </h2>
                 
-                {Object.entries(registrosAgrupadosPorOM).map(([omKey, group]) => {
-                    const omName = group.om;
-                    const ug = group.ug;
+                {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+                    const totalOM = omRegistros.reduce((sum, r) => sum + r.valor_total, 0);
+                    const omName = omKey.split(' (')[0];
+                    const ug = omKey.split(' (')[1].replace(')', '');
                     
                     return (
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
@@ -1548,16 +1647,22 @@ const ClasseVIIIForm = () => {
                                     {omName} (UG: {ug})
                                 </h3>
                                 <span className="font-extrabold text-xl text-primary">
-                                    {formatCurrency(group.total)}
+                                    {formatCurrency(totalOM)}
                                 </span>
                             </div>
                             
                             <div className="space-y-3">
-                                {group.registros.map((registro) => {
-                                    const isSaude = registro.categoria === 'Saúde - KPSI/KPT';
+                                {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(isSaude ? 'Saúde' : 'Remonta/Veterinária');
+                                    const isSaude = registro.categoria === 'Saúde - KPSI/KPT';
+                                    
+                                    let badgeStyle;
+                                    if (isSaude) {
+                                        badgeStyle = { label: 'Saúde', className: 'bg-red-500 text-white' };
+                                    } else {
+                                        badgeStyle = getAnimalBadgeStyle(registro.animal_tipo || 'Equino');
+                                    }
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1565,8 +1670,11 @@ const ClasseVIIIForm = () => {
                                                 <div className="flex flex-col">
                                                     <div className="flex items-center gap-2">
                                                         <h4 className="font-semibold text-base text-foreground">
-                                                            {isSaude ? 'Saúde - KPSI/KPT' : `Remonta - ${(registro as ClasseVIIIRegistroRemonta).animal_tipo}`}
+                                                            {isSaude ? 'Saúde' : 'Remonta/Veterinária'}
                                                         </h4>
+                                                        <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
+                                                            {badgeStyle.label}
+                                                        </Badge>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
@@ -1588,21 +1696,7 @@ const ClasseVIIIForm = () => {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            onClick={() => {
-                                                                if (confirm(`Deseja realmente deletar o registro de Classe VIII para ${omName} (${registro.categoria})?`)) {
-                                                                    const table = isSaude ? "classe_viii_saude_registros" : "classe_viii_remonta_registros";
-                                                                    supabase.from(table)
-                                                                        .delete()
-                                                                        .eq("id", registro.id)
-                                                                        .then(() => {
-                                                                            toast.success("Registro excluído!");
-                                                                            fetchRegistros();
-                                                                        })
-                                                                        .catch(err => {
-                                                                            toast.error(sanitizeError(err));
-                                                                        });
-                                                                }
-                                                            }}
+                                                            onClick={() => handleDeletarRegistro(registro)}
                                                             className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
@@ -1633,41 +1727,48 @@ const ClasseVIIIForm = () => {
             )}
 
             {/* 5. Memórias de Cálculos Detalhadas */}
-            {registros.length > 0 && (
+            {allRegistros.length > 0 && (
               <div className="space-y-4 mt-8">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   📋 Memórias de Cálculos Detalhadas
                 </h3>
                 
-                {registros.map(registro => {
+                {allRegistros.map(registro => {
                   const om = registro.organizacao;
                   const ug = registro.ug;
-                  const isSaude = registro.categoria === 'Saúde - KPSI/KPT';
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
+                  const isSaude = registro.categoria === 'Saúde - KPSI/KPT';
+                  
+                  const itensParaMemoria = isSaude ? registro.itens_saude as ItemSaude[] : registro.itens_remonta as ItemRemonta[];
                   
                   const memoriaAutomatica = isSaude 
                     ? generateSaudeMemoriaCalculo(
-                        (registro as ClasseVIIIRegistroSaude).itens_saude, registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
+                        itensParaMemoria as ItemSaude[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
                       )
                     : generateRemontaMemoriaCalculo(
-                        (registro as ClasseVIIIRegistroRemonta).animal_tipo, (registro as ClasseVIIIRegistroRemonta).itens_remonta, registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
+                        registro.animal_tipo || 'Equino', itensParaMemoria as ItemRemonta[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
                       );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
-                  const badgeStyle = getCategoryBadgeStyle(isSaude ? 'Saúde' : 'Remonta/Veterinária');
+                  
+                  let badgeStyle;
+                  if (isSaude) {
+                      badgeStyle = { label: 'Saúde', className: 'bg-red-500 text-white' };
+                  } else {
+                      badgeStyle = getAnimalBadgeStyle(registro.animal_tipo || 'Equino');
+                  }
                   
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                       
-                      {/* Container para H4 e Botões */}
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                               <h4 className="text-base font-semibold text-foreground">
                                 OM Destino: {om} ({ug})
                               </h4>
                               <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
-                                  {isSaude ? 'Saúde' : `Remonta - ${(registro as ClasseVIIIRegistroRemonta).animal_tipo}`}
+                                  {badgeStyle.label}
                               </Badge>
                           </div>
                           
@@ -1690,7 +1791,7 @@ const ClasseVIIIForm = () => {
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      onClick={() => handleRestaurarMemoriaAutomatica(registro.id, registro.categoria)}
+                                      onClick={() => handleRestaurarMemoriaAutomatica(registro)}
                                       disabled={loading}
                                       className="gap-2 text-muted-foreground"
                                     >
@@ -1704,7 +1805,7 @@ const ClasseVIIIForm = () => {
                                   <Button
                                     size="sm"
                                     variant="default"
-                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id, registro.categoria)}
+                                    onClick={() => handleSalvarMemoriaCustomizada(registro)}
                                     disabled={loading}
                                     className="gap-2"
                                   >
