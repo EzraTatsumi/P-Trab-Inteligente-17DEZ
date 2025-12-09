@@ -47,9 +47,9 @@ const PTrabForm = () => {
     { id: "classe-ii", name: "Classe II - Material de Intendência" },
     { id: "classe-iii", name: "Classe III - Combustíveis e Lubrificantes" },
     { id: "classe-v", name: "Classe V - Armamento" },
-    { id: "classe-vi", name: "Classe VI - Material de Engenharia" }, // Adicionado Classe VI
-    { id: "classe-vii", name: "Classe VII - Comunicações e Informática" }, // NOVO
-    { id: "classe-viii", name: "Classe VIII - Material de Saúde" },
+    { id: "classe-vi", name: "Classe VI - Material de Engenharia" },
+    { id: "classe-vii", name: "Classe VII - Comunicações e Informática" },
+    { id: "classe-viii", name: "Classe VIII - Material de Saúde e Remonta/Veterinária" }, // Rótulo atualizado
     { id: "classe-ix", name: "Classe IX - Material de Manutenção" },
   ];
 
@@ -168,8 +168,10 @@ const PTrabForm = () => {
       navigate(`/ptrab/classe-v?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-vi') {
       navigate(`/ptrab/classe-vi?ptrabId=${ptrabId}`);
-    } else if (itemId === 'classe-vii') { // NOVO
+    } else if (itemId === 'classe-vii') {
       navigate(`/ptrab/classe-vii?ptrabId=${ptrabId}`);
+    } else if (itemId === 'classe-viii') { // Rota para Classe VIII
+      navigate(`/ptrab/classe-viii?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-iii') {
       navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
     } else {
