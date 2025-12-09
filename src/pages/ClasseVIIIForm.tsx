@@ -895,13 +895,60 @@ const ClasseVIIIForm = () => {
         return;
     }
 
+    // Determine the target OM/UG for deletion/insertion
+    let targetOmDestino = "";
+    let targetUgDestino = "";
+    
+    if (form.itensSaude.length > 0) {
+        targetOmDestino = categoryAllocations['Saúde'].om_destino_recurso;
+        targetUgDestino = categoryAllocations['Saúde'].ug_destino_recurso;
+    }
+    
+    if (form.itensRemonta.length > 0) {
+        const remontaAlloc = categoryAllocations['Remonta/Veterinária'];
+        
+        if (form.itensSaude.length > 0) {
+            // Check consistency if both are present
+            if (targetOmDestino !== remontaAlloc.om_destino_recurso || targetUgDestino !== remontaAlloc.ug_destino_recurso) {
+                toast.error("Ao salvar Saúde e Remonta juntos, a OM de destino do recurso deve ser a mesma para ambas as categorias.");
+                setLoading(false);
+                return;
+            }
+        } else {
+            // Only Remonta is present
+            targetOmDestino = remontaAlloc.om_destino_recurso;
+            targetUgDestino = remontaAlloc.ug_destino_recurso;
+        }
+    }
+    
+    if (!targetOmDestino || !targetUgDestino) {
+        toast.error("OM de destino não definida."); 
+        setLoading(false);
+        return;
+    }
+
     setLoading(true);
     
     try {
-      // 1. Deletar registros antigos
-      // Nota: Mantemos a exclusão total para simplificar a edição/substituição de registros
-      await supabase.from("classe_viii_saude_registros").delete().eq("p_trab_id", ptrabId);
-      await supabase.from("classe_viii_remonta_registros").delete().eq("p_trab_id", ptrabId);
+      // 1. Deletar registros antigos APENAS para a OM/UG de destino atual (UPSERT logic)
+      
+      // Delete existing Saúde records if we are saving new Saúde items
+      if (form.itensSaude.length > 0) {
+        await supabase.from("classe_viii_saude_registros")
+          .delete()
+          .eq("p_trab_id", ptrabId)
+          .eq("organizacao", targetOmDestino)
+          .eq("ug", targetUgDestino);
+      }
+      
+      // Delete existing Remonta records if we are saving new Remonta items
+      if (form.itensRemonta.length > 0) {
+        await supabase.from("classe_viii_remonta_registros")
+          .delete()
+          .eq("p_trab_id", ptrabId)
+          .eq("organizacao", targetOmDestino)
+          .eq("ug", targetUgDestino);
+      }
       
       // 2. Inserir Saúde
       if (form.itensSaude.length > 0) {
@@ -1074,10 +1121,26 @@ const ClasseVIIIForm = () => {
     
     setLoading(true);
     try {
-        const tableName = registro.categoria === 'Saúde - KPSI/KPT' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
-        const { error } = await supabase.from(tableName).delete().eq("id", registro.id);
-        
-        if (error) throw error;
+        // Ao deletar um registro de Remonta/Veterinária, precisamos deletar todos os registros (Equino/Canino)
+        // que compartilham a mesma OM/UG de destino, pois eles representam uma única entrada lógica.
+        if (registro.categoria !== 'Saúde - KPSI/KPT') {
+            // Deletar todos os registros de Remonta para esta OM/UG
+            const { error } = await supabase.from('classe_viii_remonta_registros')
+                .delete()
+                .eq("p_trab_id", ptrabId)
+                .eq("organizacao", registro.organizacao)
+                .eq("ug", registro.ug);
+            
+            if (error) throw error;
+            
+        } else {
+            // Deletar apenas o registro de Saúde
+            const { error } = await supabase.from('classe_viii_saude_registros')
+                .delete()
+                .eq("id", registro.id);
+            
+            if (error) throw error;
+        }
         
         toast.success("Registro excluído!");
         fetchRegistros();
