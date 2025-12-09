@@ -733,6 +733,18 @@ const DiretrizesCusteioPage = () => {
             }
           };
           
+          // Função auxiliar para formatar o valor como moeda (R$ X.XXX,XX)
+          const formatCurrency = (value: number) => {
+            return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          };
+
+          // Função auxiliar para converter string de moeda para número
+          const parseCurrency = (value: string): number => {
+            // Remove pontos de milhar e substitui vírgula decimal por ponto
+            const cleanedValue = value.replace(/\./g, '').replace(/,/g, '.');
+            return parseFloat(cleanedValue) || 0;
+          };
+
           return (
             <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
               <div className="col-span-8">
@@ -745,13 +757,11 @@ const DiretrizesCusteioPage = () => {
                 />
               </div>
               <div className="col-span-3">
-                <Label className="text-xs">Valor Mnt/Dia (R$)</Label>
+                <Label className="text-xs">Valor (R$)</Label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={item.valor_mnt_dia === 0 ? "" : item.valor_mnt_dia}
-                  onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseFloat(e.target.value) || 0)}
+                  // Removendo type="number" e estilos para permitir digitação livre e formatação
+                  value={item.valor_mnt_dia === 0 ? "" : formatCurrency(item.valor_mnt_dia)}
+                  onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseCurrency(e.target.value))}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
@@ -1154,7 +1164,7 @@ const DiretrizesCusteioPage = () => {
                         <TabsList className="grid w-full grid-cols-2">
                           {CATEGORIAS_CLASSE_VIII.map(cat => (
                             <TabsTrigger key={cat} value={cat}>
-                              {cat === 'Saúde' ? <HeartPulse className="h-4 w-4 mr-2" /> : <Activity className="h-4 w-4 mr-2" />}
+                              {/* Ícones removidos conforme solicitado */}
                               {cat}
                             </TabsTrigger>
                           ))}
