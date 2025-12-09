@@ -98,7 +98,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .eq('p_trab_id', ptrabId),
     supabase // NOVO
       .from('classe_viii_remonta_registros')
-      .select('valor_total, itens_remonta, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39, quantidade_animais') // Adicionado quantidade_animais
+      .select('valor_total, itens_remonta, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
       .eq('p_trab_id', ptrabId),
   ]);
 
@@ -150,17 +150,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   
   (allClasseItemsData || []).forEach(record => {
     const category = record.categoria;
-    
-    let totalItemsCategory = 0;
-    
-    if (category === 'Remonta/Veterinária') {
-        // Para Remonta, usamos o campo de quantidade de animais de nível superior (agora selecionado)
-        totalItemsCategory = (record as any).quantidade_animais || 0;
-    } else {
-        // Para todas as outras classes (II, V, VI, VII, VIII Saúde), somamos as quantidades do array de itens
-        const items = (record.itens_equipamentos || []) as ItemClasseII[];
-        totalItemsCategory = items.reduce((sum, item) => sum + (item.quantidade || (item as any).quantidade_animais || 0), 0);
-    }
+    const items = (record.itens_equipamentos || []) as ItemClasseII[];
+    const totalItemsCategory = items.reduce((sum, item) => sum + (item.quantidade || item.quantidade_animais || 0), 0); // Ajuste para Remonta
     
     const valorTotal = record.valor_total;
     const valorND30 = Number(record.valor_nd_30);
@@ -250,12 +241,12 @@ const fetchPTrabTotals = async (ptrabId: string) => {
 
   // Combustível (ND 33.90.30)
   const combustivelRecords = (classeIIIData || []).filter(r => 
-    r.tipo_equipamento !== 'LUBRIFICANTE_CONSOLIDADO'
+    r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR' && r.tipo_equipamento !== 'LUBRIFICANTE_EMBARCACAO'
   );
   
   // Lubrificante (ND 33.90.30)
   const lubrificanteRecords = (classeIIIData || []).filter(r => 
-    r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO'
+    r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO'
   );
 
   // Totais de Combustível (ND 33.90.30)
@@ -343,13 +334,6 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalAviacaoExercito,
   };
 };
-
-interface PTrabCostSummaryProps {
-    ptrabId: string;
-    onOpenCreditDialog: () => void;
-    creditGND3: number;
-    creditGND4: number;
-}
 
 export const PTrabCostSummary = ({ 
   ptrabId, 
@@ -831,7 +815,7 @@ export const PTrabCostSummary = ({
                           {sortedClasseVIIICategories.map(([category, data]) => (
                             <div key={category} className="space-y-1">
                                 <div className="flex justify-between text-muted-foreground font-semibold pt-1">
-                                    <span className="w-1/2 text-left text-foreground font-bold">{category}</span>
+                                    <span className="w-1/2 text-left">{category}</span>
                                     <span className="w-1/4 text-right font-medium">
                                         {formatNumber(data.totalItens)} un.
                                     </span>
