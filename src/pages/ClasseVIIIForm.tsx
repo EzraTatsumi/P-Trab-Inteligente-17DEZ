@@ -579,7 +579,7 @@ const ClasseVIIIForm = () => {
         
         consolidatedRemonta = sanitizedItems;
         
-        const totalValor = sanitizedItems.reduce((sum, item) => calculateRemontaItemTotal(item) + sum, 0);
+        const totalValor = sanitizedItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
         
         newAllocations['Remonta/Veterinária'] = {
             total_valor: totalValor,
@@ -1345,7 +1345,7 @@ const ClasseVIIIForm = () => {
                                             
                                             const itemLabel = isSaude ? itemSaude.item : itemRemonta.item;
                                             
-                                            const unitLabel = !isSaude && itemLabel.includes('(Anual)') ? 'ano' : !isSaude && itemLabel.includes('(Mensal)') ? 'mês' : 'dia';
+                                            const unitLabel = isSaude ? 'kit' : (itemRemonta.item.includes('(Anual)') ? 'ano' : itemRemonta.item.includes('(Mensal)') ? 'mês' : 'dia');
                                             
                                             return (
                                                 <TableRow key={itemLabel} className="h-12">
@@ -1395,7 +1395,7 @@ const ClasseVIIIForm = () => {
                                                                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
                                                                 value={itemRemonta.dias_operacao_item || ""}
                                                                 onChange={(e) => handleDiasOperacaoChange(index, parseInt(e.target.value) || 0)}
-                                                                placeholder="0" {/* Removido o placeholder de form.dias_operacao */}
+                                                                placeholder="0" 
                                                                 onKeyDown={handleEnterToNextField}
                                                             />
                                                         </TableCell>
@@ -1748,7 +1748,7 @@ const ClasseVIIIForm = () => {
                         itensParaMemoria as ItemSaude[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
                       )
                     : generateRemontaMemoriaCalculo(
-                        registro.animal_tipo || 'Equino', itensParaMemoria as ItemRemonta[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
+                        registro.animal_tipo || 'Equino', itensParaMemonta as ItemRemonta[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
                       );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
