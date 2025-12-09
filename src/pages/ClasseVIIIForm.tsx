@@ -377,36 +377,38 @@ const ClasseVIIIForm = () => {
             const relatedDirectives = directives.filter(d => d.item.includes(animalType));
             
             if (relatedDirectives.length > 0) {
-                // O valor_mnt_dia aqui será o valor total de todas as diretrizes relacionadas ao animal
-                // Isso é necessário para que o cálculo de total do item (calculateRemontaItemTotal) funcione corretamente
-                
                 // Encontrar o item existente no formulário para manter o estado (quantidade e dias)
-                const existingItem = (formItems as ItemRemonta[]).find(item => item.item === animalType);
+                // Nota: O item salvo no form.itensRemonta é um array de diretrizes, não de animais.
+                // Precisamos consolidar a quantidade e dias a partir dos itens salvos que pertencem a este animalType.
                 
-                // Criar um item base que representa o tipo de animal, mas que carrega todas as diretrizes
+                const existingRelatedItems = (formItems as ItemRemonta[]).filter(item => item.item.includes(animalType));
+                
+                // Se houver itens salvos, pegamos a quantidade e dias do primeiro item relacionado (deve ser consistente)
+                const nrAnimaisSalvos = existingRelatedItems[0]?.quantidade_animais || 0;
+                const diasOperacaoSalvos = existingRelatedItems[0]?.dias_operacao_item || 0;
+                
+                // Criar um item base que representa o tipo de animal
                 const baseItem: ItemRemonta = {
                     item: animalType,
-                    quantidade_animais: existingItem?.quantidade_animais || 0,
-                    dias_operacao_item: existingItem?.dias_operacao_item || 0,
-                    valor_mnt_dia: 0, // Será preenchido abaixo com o valor total das diretrizes
+                    quantidade_animais: nrAnimaisSalvos,
+                    dias_operacao_item: diasOperacaoSalvos,
+                    valor_mnt_dia: 0, // Não usado para exibição, mas mantido na interface
                     categoria: 'Remonta/Veterinária',
                 };
                 
-                // Para o cálculo, precisamos de um array de ItemRemonta que contenha todas as diretrizes
-                // O valor_mnt_dia de cada diretriz é o que importa para o cálculo.
+                // Calcular o valor total (soma de todas as diretrizes) para este tipo de animal
+                // Para isso, criamos itens temporários de cálculo
                 const directivesAsItems: ItemRemonta[] = relatedDirectives.map(d => ({
                     item: d.item,
-                    quantidade_animais: baseItem.quantidade_animais,
-                    dias_operacao_item: baseItem.dias_operacao_item,
+                    quantidade_animais: nrAnimaisSalvos,
+                    dias_operacao_item: diasOperacaoSalvos,
                     valor_mnt_dia: Number(d.valor_mnt_dia),
                     categoria: 'Remonta/Veterinária',
                 }));
                 
-                // Calcular o valor total (soma de todas as diretrizes) para este tipo de animal
                 const totalValueForAnimal = directivesAsItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
                 
                 // Atualizar o valor_mnt_dia do item base para armazenar o valor total calculado (para exibição na coluna Total)
-                // Nota: Isso é um hack para usar a estrutura ItemRemonta para representar o total do animal.
                 baseItem.valor_mnt_dia = totalValueForAnimal; 
                 
                 baseItems.push(baseItem);
@@ -680,24 +682,34 @@ const ClasseVIIIForm = () => {
   };
 
   // --- Item Quantity Handlers ---
-  const handleQuantityChange = (itemIndex: number, quantity: number) => {
+  const handleQuantityChange = (itemIndex: number, rawQuantity: string) => {
     const newItems = [...currentCategoryItems];
+    const quantity = parseInt(rawQuantity) || 0;
     
     if (selectedTab === 'Saúde') {
         (newItems as ItemSaude[])[itemIndex].quantidade = Math.max(0, quantity);
     } else {
         // Lógica de Remonta/Veterinária
         const item = (newItems as ItemRemonta[])[itemIndex];
-        let finalQuantity = Math.max(0, quantity);
-        
-        // Regra Caninos: múltiplos de 5
-        if (item.item === 'Canino') {
-            // Arredonda para o múltiplo de 5 mais próximo
-            finalQuantity = Math.round(finalQuantity / 5) * 5;
-        }
-        
-        item.quantidade_animais = finalQuantity;
+        item.quantidade_animais = Math.max(0, quantity);
     }
+    setCurrentCategoryItems(newItems);
+  };
+  
+  const handleQuantityBlur = (itemIndex: number) => {
+    if (selectedTab !== 'Remonta/Veterinária') return;
+    
+    const newItems = [...currentCategoryItems];
+    const item = (newItems as ItemRemonta[])[itemIndex];
+    let finalQuantity = item.quantidade_animais;
+    
+    // Regra Caninos: múltiplos de 5 (aplicada no blur)
+    if (item.item === 'Canino') {
+        // Arredonda para o múltiplo de 5 mais próximo
+        finalQuantity = Math.round(finalQuantity / 5) * 5;
+    }
+    
+    item.quantidade_animais = finalQuantity;
     setCurrentCategoryItems(newItems);
   };
   
@@ -938,8 +950,7 @@ const ClasseVIIIForm = () => {
                 'Equino', remontaItemsGrouped['Equino'], form.dias_operacao, form.organizacao, form.ug, faseFinalString,
                 allocation.om_destino_recurso, allocation.ug_destino_recurso, 
                 // NDs são alocados globalmente para a categoria, mas a memória precisa do total
-                // Aqui, para simplificar, usaremos o total da categoria, mas o ideal seria dividir o ND por animal.
-                // Como o ND é global, vamos usar o total alocado para a categoria.
+                // Aqui, para simplificar, usaremos o total alocado para a categoria.
                 allocation.nd_30_value, allocation.nd_39_value
             );
         }
@@ -1264,7 +1275,7 @@ const ClasseVIIIForm = () => {
                                             // Se for Saúde, calcula o total do item
                                             const itemTotal = isSaude 
                                                 ? calculateSaudeItemTotal(itemSaude)
-                                                : currentCategoryTotalValue; // O total é calculado globalmente para Remonta
+                                                : calculateRemontaItemTotal(itemRemonta);
                                             
                                             const itemLabel = isSaude ? itemSaude.item : itemRemonta.item;
                                             
@@ -1275,6 +1286,11 @@ const ClasseVIIIForm = () => {
                                                 <TableRow key={itemLabel} className="h-12">
                                                     <TableCell className="font-medium text-sm py-1">
                                                         {itemLabel}
+                                                        {!isSaude && itemLabel === 'Canino' && (
+                                                            <p className="text-xs text-muted-foreground mt-1">
+                                                                (Múltiplos de 5 cães)
+                                                            </p>
+                                                        )}
                                                     </TableCell>
                                                     
                                                     {/* Coluna Valor Base (Apenas para Saúde) */}
@@ -1292,7 +1308,8 @@ const ClasseVIIIForm = () => {
                                                             min="0"
                                                             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
                                                             value={typeof quantity === 'number' && quantity !== 0 ? quantity.toString() : ""}
-                                                            onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
+                                                            onChange={(e) => handleQuantityChange(index, e.target.value)}
+                                                            onBlur={() => handleQuantityBlur(index)}
                                                             placeholder="0"
                                                             onKeyDown={handleEnterToNextField}
                                                         />
@@ -1463,11 +1480,34 @@ const ClasseVIIIForm = () => {
                             
                             const unitLabel = isSaude ? 'kit' : (itemRemonta.item.includes('(Anual)') ? 'ano' : itemRemonta.item.includes('(Mensal)') ? 'mês' : 'dia');
                             
+                            // Detalhamento do cálculo para Remonta
+                            let calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} / ${unitLabel}`;
+                            if (!isSaude) {
+                                if (itemRemonta.item.includes('(Mensal)')) {
+                                    // [Nr Animais x (Item C / 30 dias) x Nr dias]
+                                    calculationDetail = `${quantity} un. x (${formatCurrency(unitValue)} / 30 dias) x ${itemRemonta.dias_operacao_item} dias`;
+                                } else if (itemRemonta.item.includes('(Diário)')) {
+                                    // (Nr Animais x Item G x Nr dias)
+                                    calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} x ${itemRemonta.dias_operacao_item} dias`;
+                                } else {
+                                    // Item B, D, E (Annual): (Nr Animais x Item X)
+                                    const multiplier = Math.ceil(itemRemonta.dias_operacao_item / 365);
+                                    if (multiplier > 1) {
+                                        calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} x ${multiplier} anos`;
+                                    } else {
+                                        calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)}`;
+                                    }
+                                }
+                            } else {
+                                // Saúde: Nr Kits x Valor Kit
+                                calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)}`;
+                            }
+                            
                             return (
                               <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
                                 <span className="font-medium">{isSaude ? itemSaude.item : itemRemonta.item}</span>
                                 <span className="text-right">
-                                  {quantity} un. x {formatCurrency(unitValue)} / {unitLabel} = {formatCurrency(itemTotal)}
+                                  {calculationDetail} = {formatCurrency(itemTotal)}
                                 </span>
                               </div>
                             );
