@@ -154,8 +154,8 @@ const DiretrizesCusteioPage = () => {
   const [classeVConfig, setClasseVConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVConfig);
   const [classeVIConfig, setClasseVIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIConfig.map(c => ({...c, valor_acionamento_mensal: 0}))); // Adiciona valor_acionamento_mensal
   const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig.map(c => ({...c, valor_acionamento_mensal: 0}))); // Adiciona valor_acionamento_mensal
-  const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig.map(c => ({...c, valor_acionamento_mensal: 0}))); // Adiciona valor_acionamento_mensal
-  const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig.map(c => ({...c, valor_acionamento_mensal: 0}))); // Adiciona valor_acionamento_mensal
+  const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig.map(c => ({...c, valor_acionamento_mensal: 0})))); // Adiciona valor_acionamento_mensal
+  const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig.map(c => ({...c, valor_acionamento_mensal: 0})))); // Adiciona valor_acionamento_mensal
   const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseIXConfig); // NOVO ESTADO
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
@@ -727,7 +727,7 @@ const DiretrizesCusteioPage = () => {
         <div className={cn(gridLayout, "gap-2 items-end text-xs font-bold text-muted-foreground border-b pb-1")}>
           <div className={itemColSpan}>{isClasseIX ? "Tipo Vtr" : "Item"}</div>
           <div className={mntDiaColSpan}>Mnt/Dia Op Mil (R$)</div>
-          <div className={cn({ [acionamentoColSpan]: isClasseIX })}>
+          <div className={cn(acionamentoColSpan)}>
             {isClasseIX ? "Acionamento Mensal (R$)" : ""}
           </div>
           <div className="col-span-1"></div>
@@ -750,37 +750,37 @@ const DiretrizesCusteioPage = () => {
           };
           
           return (
-            <div key={index} className={cn(gridLayout, "gap-2 items-end border-b pb-3 last:border-0")}>
+            <div key={index} className={cn(gridLayout, "gap-2 items-center border-b pb-2 last:border-0")}>
               <div className={itemColSpan}>
-                <Label className={cn("text-xs", { 'hidden': isClasseIX })}>Item</Label>
                 <Input
                   value={item.item}
                   onChange={(e) => handleUpdateFilteredItem('item', e.target.value)}
                   placeholder={isClasseIX ? "Ex: VTP Sedan Médio" : "Ex: Colete balístico"}
                   onKeyDown={handleEnterToNextField}
+                  className="h-8 text-sm"
                 />
               </div>
               <div className={mntDiaColSpan}>
-                <Label className="text-xs">Mnt/Dia (R$)</Label>
                 <Input
                   type="text"
                   inputMode="decimal"
                   value={item.valor_mnt_dia === 0 ? "" : formatCurrency(item.valor_mnt_dia)}
                   onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseCurrency(e.target.value))}
                   onKeyDown={handleEnterToNextField}
+                  className="h-8 text-sm"
                 />
               </div>
               
               {/* CAMPO: Acionamento Mensal (Apenas para Classe IX) */}
               {isClasseIX && (
                 <div className="col-span-3">
-                  <Label className="text-xs">Acionamento (R$)</Label>
                   <Input
                     type="text"
                     inputMode="decimal"
                     value={item.valor_acionamento_mensal === 0 ? "" : formatCurrency(item.valor_acionamento_mensal)}
                     onChange={(e) => handleUpdateFilteredItem('valor_acionamento_mensal', parseCurrency(e.target.value))}
                     onKeyDown={handleEnterToNextField}
+                    className="h-8 text-sm"
                   />
                 </div>
               )}
@@ -791,6 +791,7 @@ const DiretrizesCusteioPage = () => {
                   size="icon"
                   onClick={handleRemoveFilteredItem}
                   type="button"
+                  className="h-8 w-8"
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
@@ -803,7 +804,7 @@ const DiretrizesCusteioPage = () => {
           variant="outline" 
           size="sm" 
           onClick={() => handleAddClasseItem(config, setConfig, selectedTab as DiretrizClasseIIForm['categoria'])} 
-          className="w-full"
+          className="w-full mt-4"
           type="button"
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -819,24 +820,32 @@ const DiretrizesCusteioPage = () => {
     
     return (
       <div className="space-y-4 pt-4">
+        {/* Cabeçalho da Tabela Classe III */}
+        <div className="grid grid-cols-12 gap-2 items-end text-xs font-bold text-muted-foreground border-b pb-1">
+          <div className="col-span-4">Nome do Equipamento</div>
+          <div className="col-span-2">Combustível</div>
+          <div className="col-span-2">Consumo</div>
+          <div className="col-span-3">Unidade</div>
+          <div className="col-span-1"></div>
+        </div>
+        
         {config.map((item, index) => (
-          <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
-            <div className="col-span-5">
-              <Label className="text-xs">Nome do Equipamento</Label>
+          <div key={index} className="grid grid-cols-12 gap-2 items-center border-b pb-2 last:border-0">
+            <div className="col-span-4">
               <Input
                 value={item.nome_equipamento}
                 onChange={(e) => handleUpdateItem(config, setConfig, index, 'nome_equipamento', e.target.value)}
                 placeholder="Ex: Retroescavadeira"
                 onKeyDown={handleEnterToNextField}
+                className="h-8 text-sm"
               />
             </div>
             <div className="col-span-2">
-              <Label className="text-xs">Combustível</Label>
               <Select
                 value={item.tipo_combustivel}
                 onValueChange={(val: 'GAS' | 'OD') => handleUpdateItem(config, setConfig, index, 'tipo_combustivel', val)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -846,19 +855,17 @@ const DiretrizesCusteioPage = () => {
               </Select>
             </div>
             <div className="col-span-2">
-              <Label className="text-xs">Consumo</Label>
               <Input
                 type="number"
                 step="0.01"
-                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 value={item.consumo === 0 ? "" : item.consumo}
                 onChange={(e) => handleUpdateItem(config, setConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
                 onKeyDown={handleEnterToNextField}
               />
             </div>
-            <div className="col-span-2">
-              <Label className="text-xs">Unidade</Label>
-              <Input value={unidade} disabled className="bg-muted text-muted-foreground" onKeyDown={handleEnterToNextField} />
+            <div className="col-span-3">
+              <Input value={unidade} disabled className="h-8 text-sm bg-muted text-muted-foreground" onKeyDown={handleEnterToNextField} />
             </div>
             <div className="col-span-1 flex justify-end">
               <Button
@@ -866,6 +873,7 @@ const DiretrizesCusteioPage = () => {
                 size="icon"
                 onClick={() => handleRemoveItem(config, setConfig, index)}
                 type="button"
+                className="h-8 w-8"
               >
                 <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
@@ -877,7 +885,7 @@ const DiretrizesCusteioPage = () => {
           variant="outline" 
           size="sm" 
           onClick={() => handleAddItem(config, setConfig, unidade as 'L/h' | 'km/L')} 
-          className="w-full"
+          className="w-full mt-4"
           type="button"
         >
           <Plus className="mr-2 h-4 w-4" />
