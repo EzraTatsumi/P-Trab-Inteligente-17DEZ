@@ -1085,7 +1085,7 @@ const ClasseVIIIForm = () => {
                                                             type="number"
                                                             min="0"
                                                             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
-                                                            value={quantity === 0 ? "" : quantity.toString()}
+                                                            value={typeof quantity === 'number' && quantity !== 0 ? quantity.toString() : ""}
                                                             onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
                                                             placeholder="0"
                                                             onKeyDown={handleEnterToNextField}
