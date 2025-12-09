@@ -158,8 +158,12 @@ const generateDetalhamento = (itens: ItemClasseVI[], diasOperacao: number, organ
         
         acc[categoria].totalValor += valorItem;
         acc[categoria].totalQuantidade += item.quantidade;
+        
+        // Valor do item com margem
+        const valorItemComMargem = valorItem * (1 + MARGEM_RESERVA);
+
         acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.`
+            `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias (+10% Margem) = ${formatCurrency(valorItemComMargem)}.`
         );
         
         return acc;
@@ -168,9 +172,13 @@ const generateDetalhamento = (itens: ItemClasseVI[], diasOperacao: number, organ
     let detalhamentoItens = "";
     
     Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
+        // O valor total base aqui é o valor SEM margem, mas o detalhamento abaixo usa o valor COM margem
+        const totalCategoriaComMargem = grupo.totalValor * (1 + MARGEM_RESERVA);
+
         detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`;
         detalhamentoItens += `Valor Total Base Categoria: ${formatCurrency(grupo.totalValor)}\n`;
-        detalhamentoItens += `Detalhes:\n`;
+        detalhamentoItens += `Valor Total Categoria (C/ Margem): ${formatCurrency(totalCategoriaComMargem)}\n`;
+        detalhamentoItens += `Detalhes (Valores já incluem 10% de Margem):\n`;
         detalhamentoItens += grupo.detalhes.join('\n');
         detalhamentoItens += `\n`;
     });
@@ -1145,21 +1153,25 @@ const ClasseVIForm = () => {
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
                           <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} itens)</h4>
-                          <span className="font-extrabold text-lg text-primary flex items-baseline gap-1">
+                          <span className="font-extrabold text-lg text-primary">
                             {formatCurrency(totalCategoriaComMargem)}
-                            <span className="text-xs font-normal text-primary/80">(C/ Margem 10%)</span>
                           </span>
                         </div>
                         
                         <div className="space-y-2">
-                          {itens.map((item, index) => (
-                            <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
-                              <span className="font-medium">{item.item}</span>
-                              <span className="text-right">
-                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)} (Base)
-                              </span>
-                            </div>
-                          ))}
+                          {itens.map((item, index) => {
+                            const itemBaseTotal = item.quantidade * item.valor_mnt_dia * form.dias_operacao;
+                            const itemTotalComMargem = itemBaseTotal * (1 + MARGEM_RESERVA);
+                            
+                            return (
+                              <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
+                                <span className="font-medium">{item.item}</span>
+                                <span className="text-right">
+                                  {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia (+10% Margem) = {formatCurrency(itemTotalComMargem)}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                         
                         <div className="pt-2 border-t mt-2">
