@@ -45,9 +45,10 @@ interface ItemSaude {
 }
 
 interface ItemRemonta {
-  item: string;
+  item: string; // Ex: Equino, Canino
   quantidade_animais: number;
-  valor_mnt_dia: number; // Valor base (Anual/Mensal/Diário)
+  dias_operacao_item: number; // Dias específicos de uso do animal
+  valor_mnt_dia: number; // Valor base (Anual/Mensal/Diário) - Usado apenas para cálculo interno
   categoria: 'Remonta/Veterinária';
 }
 
@@ -55,7 +56,7 @@ interface FormDataClasseVIII {
   selectedOmId?: string;
   organizacao: string; // OM Detentora (Global)
   ug: string; // UG Detentora (Global)
-  dias_operacao: number; // Global days of activity
+  dias_operacao: number; // Global days of activity (Used for header only)
   itensSaude: ItemSaude[];
   itensRemonta: ItemRemonta[];
   fase_atividade?: string; // Global
@@ -114,9 +115,10 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
 
 // --- Lógica de Cálculo Remonta/Veterinária ---
 
-const calculateRemontaItemTotal = (item: ItemRemonta, diasOperacao: number): number => {
+const calculateRemontaItemTotal = (item: ItemRemonta): number => {
     const baseValue = item.valor_mnt_dia;
     const nrAnimais = item.quantidade_animais;
+    const diasOperacao = item.dias_operacao_item;
     
     if (diasOperacao <= 0 || nrAnimais <= 0) return 0;
 
@@ -149,7 +151,7 @@ const calculateSaudeItemTotal = (item: ItemSaude): number => {
 const generateRemontaMemoriaCalculo = (
     animalTipo: 'Equino' | 'Canino',
     itens: ItemRemonta[],
-    diasOperacao: number,
+    diasOperacaoGlobal: number, // Dias globais do PTrab (para o cabeçalho)
     organizacao: string,
     ug: string,
     faseAtividade: string,
@@ -159,11 +161,19 @@ const generateRemontaMemoriaCalculo = (
     valorND39: number
 ): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalAnimais = itens.reduce((sum, item) => item.quantidade_animais, 0);
     const valorTotal = valorND30 + valorND39;
     
+    // Agrupar itens por tipo de animal (Equino ou Canino)
+    const itensPorAnimal = itens.filter(i => i.item.includes(animalTipo));
+    
+    if (itensPorAnimal.length === 0) return "";
+    
+    // Usamos o primeiro item para pegar a quantidade de animais e dias de operação específicos
+    const nrAnimais = itensPorAnimal[0].quantidade_animais;
+    const diasOperacaoItem = itensPorAnimal[0].dias_operacao_item;
+    
     // Group items by Item Type (B, C, D, E, G)
-    const groupedItems: Record<string, ItemRemonta[]> = itens.reduce((acc, item) => {
+    const groupedItems: Record<string, ItemRemonta[]> = itensPorAnimal.reduce((acc, item) => {
         const itemTypeMatch = item.item.match(/-\s([A-G]):/);
         if (itemTypeMatch) {
             const type = itemTypeMatch[1];
@@ -178,8 +188,6 @@ const generateRemontaMemoriaCalculo = (
     let calculationComponents: string[] = [];
     let totalBrutoCalculado = 0;
     
-    const nrAnimais = totalAnimais;
-    
     // Detailed Item Breakdown for the memory (Cálculo:)
     let detailedItems = "Cálculo:\n";
     
@@ -189,7 +197,7 @@ const generateRemontaMemoriaCalculo = (
         
         itemsOfType.forEach(item => {
             const baseValue = item.valor_mnt_dia;
-            const itemTotal = calculateRemontaItemTotal(item, diasOperacao);
+            const itemTotal = calculateRemontaItemTotal(item);
             totalBrutoCalculado += itemTotal;
             
             const itemDescription = item.item.split(/-\s[A-G]:\s/)[1].trim();
@@ -200,15 +208,22 @@ const generateRemontaMemoriaCalculo = (
             if (item.item.includes('(Mensal)')) {
                 // Item C: [Nr Animais x (Item C / 30 dias) x Nr dias]
                 formulaComponents.push(`[Nr ${animalTipo}s x (Item C / 30 dias) x Nr dias]`);
-                calculationComponents.push(`(${nrAnimais} x (${formatCurrency(baseValue)} / 30 dias) x ${diasOperacao} dias)`);
+                calculationComponents.push(`(${nrAnimais} x (${formatCurrency(baseValue)} / 30 dias) x ${diasOperacaoItem} dias)`);
             } else if (item.item.includes('(Diário)')) {
                 // Item G: (Nr Animais x Item G x Nr dias)
                 formulaComponents.push(`(Nr ${animalTipo}s x Item G x Nr dias)`);
-                calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${diasOperacao} dias)`);
+                calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${diasOperacaoItem} dias)`);
             } else {
                 // Item B, D, E (Annual): (Nr Animais x Item X)
+                // Nota: O cálculo anual usa Math.ceil(diasOperacaoItem / 365) como multiplicador, mas a fórmula simplificada na memória é (Nr Animais x Item X)
                 formulaComponents.push(`(Nr ${animalTipo}s x Item ${type})`);
-                calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)})`);
+                
+                const multiplier = Math.ceil(diasOperacaoItem / 365);
+                if (multiplier > 1) {
+                    calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${multiplier} anos)`);
+                } else {
+                    calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)})`);
+                }
             }
         });
     });
@@ -216,7 +231,7 @@ const generateRemontaMemoriaCalculo = (
     const formulaString = formulaComponents.join(' + ');
     const calculationString = calculationComponents.join(' + ');
     
-    let memoria = `33.90.30 / 33.90.39 - Aquisição meios ou contratação de serviços para a manutenção de ${nrAnimais} ${animalTipo.toLowerCase()}(s) do ${organizacao}, durante ${diasOperacao} dias de ${faseFormatada}.
+    let memoria = `33.90.30 / 33.90.39 - Aquisição meios ou contratação de serviços para a manutenção de ${nrAnimais} ${animalTipo.toLowerCase()}(s) do ${organizacao}, durante ${diasOperacaoItem} dias de ${faseFormatada}.
 Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
 Alocação:
@@ -334,34 +349,72 @@ const ClasseVIIIForm = () => {
         return;
     }
 
-    const existingItemsMap = new Map<string, ItemSaude | ItemRemonta>();
-    formItems.forEach(item => {
-        existingItemsMap.set(item.item, item);
-    });
+    if (isSaude) {
+        const existingItemsMap = new Map<string, ItemSaude>();
+        (formItems as ItemSaude[]).forEach(item => {
+            existingItemsMap.set(item.item, item);
+        });
 
-    const mergedItems = directives.map(directive => {
-        const existing = existingItemsMap.get(directive.item);
-        
-        if (isSaude) {
+        const mergedItems = directives.map(directive => {
+            const existing = existingItemsMap.get(directive.item);
             const defaultItem: ItemSaude = {
                 item: directive.item,
                 quantidade: 0,
                 valor_mnt_dia: Number(directive.valor_mnt_dia),
                 categoria: 'Saúde',
             };
-            return (existing as ItemSaude) || defaultItem;
-        } else {
-            const defaultItem: ItemRemonta = {
-                item: directive.item,
-                quantidade_animais: 0,
-                valor_mnt_dia: Number(directive.valor_mnt_dia),
-                categoria: 'Remonta/Veterinária',
-            };
-            return (existing as ItemRemonta) || defaultItem;
-        }
-    });
-
-    setCurrentCategoryItems(mergedItems);
+            return existing || defaultItem;
+        });
+        setCurrentCategoryItems(mergedItems);
+        
+    } else {
+        // Lógica específica para Remonta/Veterinária: Apenas 2 itens (Equino e Canino)
+        const animalTypes = ['Equino', 'Canino'];
+        const baseItems: ItemRemonta[] = [];
+        
+        animalTypes.forEach(animalType => {
+            // Agrupar todas as diretrizes relacionadas a este tipo de animal para calcular o valor base total
+            const relatedDirectives = directives.filter(d => d.item.includes(animalType));
+            
+            if (relatedDirectives.length > 0) {
+                // O valor_mnt_dia aqui será o valor total de todas as diretrizes relacionadas ao animal
+                // Isso é necessário para que o cálculo de total do item (calculateRemontaItemTotal) funcione corretamente
+                
+                // Encontrar o item existente no formulário para manter o estado (quantidade e dias)
+                const existingItem = (formItems as ItemRemonta[]).find(item => item.item === animalType);
+                
+                // Criar um item base que representa o tipo de animal, mas que carrega todas as diretrizes
+                const baseItem: ItemRemonta = {
+                    item: animalType,
+                    quantidade_animais: existingItem?.quantidade_animais || 0,
+                    dias_operacao_item: existingItem?.dias_operacao_item || 0,
+                    valor_mnt_dia: 0, // Será preenchido abaixo com o valor total das diretrizes
+                    categoria: 'Remonta/Veterinária',
+                };
+                
+                // Para o cálculo, precisamos de um array de ItemRemonta que contenha todas as diretrizes
+                // O valor_mnt_dia de cada diretriz é o que importa para o cálculo.
+                const directivesAsItems: ItemRemonta[] = relatedDirectives.map(d => ({
+                    item: d.item,
+                    quantidade_animais: baseItem.quantidade_animais,
+                    dias_operacao_item: baseItem.dias_operacao_item,
+                    valor_mnt_dia: Number(d.valor_mnt_dia),
+                    categoria: 'Remonta/Veterinária',
+                }));
+                
+                // Calcular o valor total (soma de todas as diretrizes) para este tipo de animal
+                const totalValueForAnimal = directivesAsItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+                
+                // Atualizar o valor_mnt_dia do item base para armazenar o valor total calculado (para exibição na coluna Total)
+                // Nota: Isso é um hack para usar a estrutura ItemRemonta para representar o total do animal.
+                baseItem.valor_mnt_dia = totalValueForAnimal; 
+                
+                baseItems.push(baseItem);
+            }
+        });
+        
+        setCurrentCategoryItems(baseItems);
+    }
   }, [selectedTab, diretrizesSaude, diretrizesRemonta, form.itensSaude, form.itensRemonta]);
 
 
@@ -519,11 +572,14 @@ const ClasseVIIIForm = () => {
         const sanitizedItems = (r.itens_remonta || []).map(item => ({
             ...item,
             quantidade_animais: Number((item as ItemRemonta).quantidade_animais || 0), // Ensure quantity is a number
+            dias_operacao_item: Number((item as ItemRemonta).dias_operacao_item || 0), // Ensure days is a number
         })) as ItemRemonta[];
         
         consolidatedRemonta = consolidatedRemonta.concat(sanitizedItems);
         
-        const totalValor = sanitizedItems.reduce((sum, item) => calculateRemontaItemTotal(item, diasOperacao) + sum, 0);
+        // Recalcular o valor total usando os dias de operação específicos do item
+        const totalValor = sanitizedItems.reduce((sum, item) => calculateRemontaItemTotal(item) + sum, 0);
+        
         newAllocations['Remonta/Veterinária'] = {
             total_valor: totalValor,
             nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
@@ -630,11 +686,12 @@ const ClasseVIIIForm = () => {
     if (selectedTab === 'Saúde') {
         (newItems as ItemSaude[])[itemIndex].quantidade = Math.max(0, quantity);
     } else {
+        // Lógica de Remonta/Veterinária
         const item = (newItems as ItemRemonta[])[itemIndex];
         let finalQuantity = Math.max(0, quantity);
         
         // Regra Caninos: múltiplos de 5
-        if (item.item.includes('Canino')) {
+        if (item.item === 'Canino') {
             // Arredonda para o múltiplo de 5 mais próximo
             finalQuantity = Math.round(finalQuantity / 5) * 5;
         }
@@ -643,15 +700,59 @@ const ClasseVIIIForm = () => {
     }
     setCurrentCategoryItems(newItems);
   };
+  
+  const handleDiasOperacaoChange = (itemIndex: number, days: number) => {
+    if (selectedTab !== 'Remonta/Veterinária') return;
+    
+    const newItems = [...currentCategoryItems];
+    const item = (newItems as ItemRemonta[])[itemIndex];
+    item.dias_operacao_item = Math.max(0, days);
+    
+    setCurrentCategoryItems(newItems);
+  };
 
   // --- ND Allocation Handlers ---
   const currentCategoryTotalValue = useMemo(() => {
     if (selectedTab === 'Saúde') {
         return (currentCategoryItems as ItemSaude[]).reduce((sum, item) => sum + calculateSaudeItemTotal(item), 0);
     } else {
-        return (currentCategoryItems as ItemRemonta[]).reduce((sum, item) => sum + calculateRemontaItemTotal(item, form.dias_operacao), 0);
+        // Para Remonta, o valor_mnt_dia do item já armazena o total calculado no useEffect
+        // Se a quantidade de animais ou dias for alterada, precisamos recalcular o total
+        
+        const remontaItems = currentCategoryItems as ItemRemonta[];
+        
+        // 1. Obter as diretrizes de Remonta
+        const directives = diretrizesRemonta;
+        
+        let totalRemonta = 0;
+        
+        remontaItems.forEach(animalItem => {
+            const animalType = animalItem.item; // 'Equino' ou 'Canino'
+            const nrAnimais = animalItem.quantidade_animais;
+            const diasOperacao = animalItem.dias_operacao_item;
+            
+            if (nrAnimais > 0 && diasOperacao > 0) {
+                // 2. Filtrar as diretrizes relacionadas a este tipo de animal
+                const relatedDirectives = directives.filter(d => d.item.includes(animalType));
+                
+                // 3. Criar itens temporários para cálculo
+                const directivesAsItems: ItemRemonta[] = relatedDirectives.map(d => ({
+                    item: d.item,
+                    quantidade_animais: nrAnimais,
+                    dias_operacao_item: diasOperacao,
+                    valor_mnt_dia: Number(d.valor_mnt_dia),
+                    categoria: 'Remonta/Veterinária',
+                }));
+                
+                // 4. Somar os totais calculados
+                const totalForAnimal = directivesAsItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+                totalRemonta += totalForAnimal;
+            }
+        });
+        
+        return totalRemonta;
     }
-  }, [currentCategoryItems, selectedTab, form.dias_operacao]);
+  }, [currentCategoryItems, selectedTab, diretrizesRemonta]);
   
   const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, parseInputToNumber(currentND39Input)));
   const nd30ValueTemp = currentCategoryTotalValue - nd39ValueTemp;
@@ -670,7 +771,7 @@ const ClasseVIIIForm = () => {
   // --- Save Category Items to Form State ---
   const handleUpdateCategoryItems = () => {
     if (!form.organizacao || form.dias_operacao <= 0) {
-        toast.error("Preencha a OM e os Dias de Atividade antes de salvar itens.");
+        toast.error("Preencha a OM e os Dias de Atividade (Global) antes de salvar itens.");
         return;
     }
     
@@ -690,10 +791,44 @@ const ClasseVIIIForm = () => {
         return;
     }
 
-    // 1. Itens válidos da categoria atual (quantidade > 0)
-    const itemsToKeep = selectedTab === 'Saúde' 
-        ? (currentCategoryItems as ItemSaude[]).filter(item => item.quantidade > 0)
-        : (currentCategoryItems as ItemRemonta[]).filter(item => item.quantidade_animais > 0);
+    let itemsToKeep: (ItemSaude | ItemRemonta)[] = [];
+    
+    if (selectedTab === 'Saúde') {
+        // 1. Itens válidos da categoria atual (quantidade > 0)
+        itemsToKeep = (currentCategoryItems as ItemSaude[]).filter(item => item.quantidade > 0);
+        setForm({ ...form, itensSaude: itemsToKeep as ItemSaude[] });
+    } else {
+        // Lógica de Remonta: Consolidar as diretrizes para cada animal ativo
+        const remontaItems = currentCategoryItems as ItemRemonta[];
+        const directives = diretrizesRemonta;
+        
+        const activeRemontaItems: ItemRemonta[] = [];
+        
+        remontaItems.forEach(animalItem => {
+            const animalType = animalItem.item; // 'Equino' ou 'Canino'
+            const nrAnimais = animalItem.quantidade_animais;
+            const diasOperacao = animalItem.dias_operacao_item;
+            
+            if (nrAnimais > 0 && diasOperacao > 0) {
+                // 1. Filtrar as diretrizes relacionadas a este tipo de animal
+                const relatedDirectives = directives.filter(d => d.item.includes(animalType));
+                
+                // 2. Criar um ItemRemonta para CADA diretriz, mas usando a Qtd Animais e Dias do item principal
+                relatedDirectives.forEach(d => {
+                    activeRemontaItems.push({
+                        item: d.item, // Ex: Item B (Encilhagem...)
+                        quantidade_animais: nrAnimais,
+                        dias_operacao_item: diasOperacao,
+                        valor_mnt_dia: Number(d.valor_mnt_dia),
+                        categoria: 'Remonta/Veterinária',
+                    });
+                });
+            }
+        });
+        
+        itemsToKeep = activeRemontaItems;
+        setForm({ ...form, itensRemonta: itemsToKeep as ItemRemonta[] });
+    }
 
     // 2. Update allocation state for the current category
     setCategoryAllocations(prev => ({
@@ -706,20 +841,13 @@ const ClasseVIIIForm = () => {
             nd_39_value: finalND39Value,
         }
     }));
-
-    // 3. Update form state (itensSaude or itensRemonta)
-    if (selectedTab === 'Saúde') {
-        setForm({ ...form, itensSaude: itemsToKeep as ItemSaude[] });
-    } else {
-        setForm({ ...form, itensRemonta: itemsToKeep as ItemRemonta[] });
-    }
     
     toast.success(`Itens e alocação de ND para ${getCategoryLabel(selectedTab)} atualizados!`);
   };
   
   // --- Global Totals and Validation ---
   const valorTotalSaude = form.itensSaude.reduce((sum, item) => sum + calculateSaudeItemTotal(item), 0);
-  const valorTotalRemonta = form.itensRemonta.reduce((sum, item) => sum + calculateRemontaItemTotal(item, form.dias_operacao), 0);
+  const valorTotalRemonta = form.itensRemonta.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
   const valorTotalForm = valorTotalSaude + valorTotalRemonta;
 
   const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_30_value, 0);
@@ -740,7 +868,7 @@ const ClasseVIIIForm = () => {
   const handleSalvarRegistros = async () => {
     if (!ptrabId) return;
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
-    if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
+    if (form.dias_operacao <= 0) { toast.error("Dias de operação (Global) deve ser maior que zero"); return; }
     if (form.itensSaude.length === 0 && form.itensRemonta.length === 0) { toast.error("Adicione pelo menos um item"); return; }
     
     let fasesFinais = [...fasesAtividade];
@@ -794,17 +922,45 @@ const ClasseVIIIForm = () => {
         // Determinar o tipo de animal predominante para o cabeçalho da memória
         const animalTipo = form.itensRemonta.some(i => i.item.includes('Equino')) ? 'Equino' : 'Canino';
         
-        const detalhamento = generateRemontaMemoriaCalculo(
-            animalTipo, form.itensRemonta, form.dias_operacao, form.organizacao, form.ug, faseFinalString,
-            allocation.om_destino_recurso, allocation.ug_destino_recurso, allocation.nd_30_value, allocation.nd_39_value
-        );
+        // Para a memória, precisamos agrupar os itens por animal para calcular o total de animais e dias
+        const remontaItemsGrouped = form.itensRemonta.reduce((acc, item) => {
+            const type = item.item.includes('Equino') ? 'Equino' : 'Canino';
+            if (!acc[type]) acc[type] = [];
+            acc[type].push(item);
+            return acc;
+        }, {} as Record<string, ItemRemonta[]>);
         
+        let detalhamento = "";
+        
+        // Gerar memória para Equino, se houver
+        if (remontaItemsGrouped['Equino'] && remontaItemsGrouped['Equino'].length > 0) {
+            detalhamento += generateRemontaMemoriaCalculo(
+                'Equino', remontaItemsGrouped['Equino'], form.dias_operacao, form.organizacao, form.ug, faseFinalString,
+                allocation.om_destino_recurso, allocation.ug_destino_recurso, 
+                // NDs são alocados globalmente para a categoria, mas a memória precisa do total
+                // Aqui, para simplificar, usaremos o total da categoria, mas o ideal seria dividir o ND por animal.
+                // Como o ND é global, vamos usar o total alocado para a categoria.
+                allocation.nd_30_value, allocation.nd_39_value
+            );
+        }
+        
+        // Gerar memória para Canino, se houver
+        if (remontaItemsGrouped['Canino'] && remontaItemsGrouped['Canino'].length > 0) {
+            if (detalhamento) detalhamento += "\n\n---\n\n";
+            detalhamento += generateRemontaMemoriaCalculo(
+                'Canino', remontaItemsGrouped['Canino'], form.dias_operacao, form.organizacao, form.ug, faseFinalString,
+                allocation.om_destino_recurso, allocation.ug_destino_recurso, 
+                allocation.nd_30_value, allocation.nd_39_value
+            );
+        }
+        
+        // O registro de Remonta armazena todos os itens consolidados
         const registroRemonta: TablesInsert<'classe_viii_remonta_registros'> = {
             p_trab_id: ptrabId,
             organizacao: allocation.om_destino_recurso,
             ug: allocation.ug_destino_recurso,
-            dias_operacao: form.dias_operacao,
-            animal_tipo: animalTipo,
+            dias_operacao: form.dias_operacao, // Dias globais (para compatibilidade com a tabela)
+            animal_tipo: animalTipo, // Tipo predominante
             quantidade_animais: form.itensRemonta.reduce((sum, item) => sum + item.quantidade_animais, 0),
             itens_remonta: form.itensRemonta as any,
             valor_total: valorTotal,
@@ -1077,16 +1233,21 @@ const ClasseVIIIForm = () => {
                             <Table className="w-full">
                                 <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                     <TableRow>
-                                        <TableHead className="w-[45%]">Item</TableHead>
-                                        <TableHead className="w-[25%] text-right">{cat === 'Saúde' ? 'Valor Kit' : 'Valor Base'}</TableHead>
+                                        <TableHead className="w-[40%]">Item</TableHead>
+                                        {cat === 'Saúde' && (
+                                            <TableHead className="w-[25%] text-right">Valor Kit</TableHead>
+                                        )}
                                         <TableHead className="w-[15%] text-center">{cat === 'Saúde' ? 'Qtd Kits' : 'Qtd Animais'}</TableHead>
-                                        <TableHead className="w-[15%] text-right">Total</TableHead>
+                                        {cat === 'Remonta/Veterinária' && (
+                                            <TableHead className="w-[15%] text-center">Qtd Dias</TableHead>
+                                        )}
+                                        <TableHead className="w-[20%] text-right">Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {currentCategoryItems.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                            <TableCell colSpan={cat === 'Saúde' ? 4 : 4} className="text-center text-muted-foreground">
                                                 Nenhum item de diretriz encontrado para esta categoria.
                                             </TableCell>
                                         </TableRow>
@@ -1099,13 +1260,15 @@ const ClasseVIIIForm = () => {
                                             const quantity = isSaude ? itemSaude.quantidade : itemRemonta.quantidade_animais;
                                             const valorMntDia = isSaude ? itemSaude.valor_mnt_dia : itemRemonta.valor_mnt_dia;
                                             
+                                            // Para Remonta, o itemTotal é o valor_mnt_dia do item (calculado no useEffect)
+                                            // Se for Saúde, calcula o total do item
                                             const itemTotal = isSaude 
                                                 ? calculateSaudeItemTotal(itemSaude)
-                                                : calculateRemontaItemTotal(itemRemonta, form.dias_operacao);
+                                                : currentCategoryTotalValue; // O total é calculado globalmente para Remonta
                                             
                                             const itemLabel = isSaude ? itemSaude.item : itemRemonta.item;
                                             
-                                            // Determine unit label for Remonta
+                                            // Determine unit label for Remonta (Not used in table, but kept for context)
                                             const unitLabel = !isSaude && itemLabel.includes('(Anual)') ? 'ano' : !isSaude && itemLabel.includes('(Mensal)') ? 'mês' : 'dia';
                                             
                                             return (
@@ -1113,10 +1276,16 @@ const ClasseVIIIForm = () => {
                                                     <TableCell className="font-medium text-sm py-1">
                                                         {itemLabel}
                                                     </TableCell>
-                                                    <TableCell className="text-right text-xs text-muted-foreground py-1">
-                                                        {formatCurrency(valorMntDia)}
-                                                        {!isSaude && <span className="ml-1">/ {unitLabel}</span>}
-                                                    </TableCell>
+                                                    
+                                                    {/* Coluna Valor Base (Apenas para Saúde) */}
+                                                    {isSaude && (
+                                                        <TableCell className="text-right text-xs text-muted-foreground py-1">
+                                                            {formatCurrency(valorMntDia)}
+                                                            {!isSaude && <span className="ml-1">/ {unitLabel}</span>}
+                                                        </TableCell>
+                                                    )}
+                                                    
+                                                    {/* Coluna Qtd Kits / Qtd Animais */}
                                                     <TableCell className="py-1">
                                                         <Input
                                                             type="number"
@@ -1128,8 +1297,25 @@ const ClasseVIIIForm = () => {
                                                             onKeyDown={handleEnterToNextField}
                                                         />
                                                     </TableCell>
+                                                    
+                                                    {/* Coluna Qtd Dias (Apenas para Remonta) */}
+                                                    {!isSaude && (
+                                                        <TableCell className="py-1">
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
+                                                                value={itemRemonta.dias_operacao_item || ""}
+                                                                onChange={(e) => handleDiasOperacaoChange(index, parseInt(e.target.value) || 0)}
+                                                                placeholder={form.dias_operacao.toString()}
+                                                                onKeyDown={handleEnterToNextField}
+                                                            />
+                                                        </TableCell>
+                                                    )}
+                                                    
+                                                    {/* Coluna Total */}
                                                     <TableCell className="text-right font-semibold text-sm py-1">
-                                                        {formatCurrency(itemTotal)}
+                                                        {formatCurrency(isSaude ? itemTotal : calculateRemontaItemTotal(itemRemonta))}
                                                     </TableCell>
                                                 </TableRow>
                                             );
@@ -1270,7 +1456,7 @@ const ClasseVIIIForm = () => {
                             
                             const itemTotal = isSaude 
                                 ? calculateSaudeItemTotal(itemSaude)
-                                : calculateRemontaItemTotal(itemRemonta, form.dias_operacao);
+                                : calculateRemontaItemTotal(itemRemonta);
                             
                             const quantity = isSaude ? itemSaude.quantidade : itemRemonta.quantidade_animais;
                             const unitValue = isSaude ? itemSaude.valor_mnt_dia : itemRemonta.valor_mnt_dia;
@@ -1443,12 +1629,15 @@ const ClasseVIIIForm = () => {
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   const isSaude = registro.categoria === 'Saúde - KPSI/KPT';
                   
+                  // Para Remonta, precisamos dos itens originais para gerar a memória
+                  const itensParaMemoria = isSaude ? registro.itens_saude as ItemSaude[] : registro.itens_remonta as ItemRemonta[];
+                  
                   const memoriaAutomatica = isSaude 
                     ? generateSaudeMemoriaCalculo(
-                        registro.itens_saude as ItemSaude[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
+                        itensParaMemoria as ItemSaude[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
                       )
                     : generateRemontaMemoriaCalculo(
-                        registro.animal_tipo || 'Equino', registro.itens_remonta as ItemRemonta[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
+                        registro.animal_tipo || 'Equino', itensParaMemoria as ItemRemonta[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
                       );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
