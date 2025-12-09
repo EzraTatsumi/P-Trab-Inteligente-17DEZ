@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings, HardHat, HeartPulse, Activity, Wrench } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings, HardHat, HeartPulse, Activity, Wrench, Loader2 } from "lucide-react";
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
@@ -24,18 +24,18 @@ import { defaultClasseVIIISaudeConfig, defaultClasseVIIIRemontaConfig } from "@/
 import { defaultClasseIXConfig } from "@/data/classeIXData";
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
-  { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
-  { nome_equipamento: "Gerador até 15 kva OD", tipo_combustivel: "OD", consumo: 4.0, unidade: "L/h" },
-  { nome_equipamento: "Gerador acima de 50 kva", tipo_combustivel: "OD", consumo: 20.0, unidade: "L/h" },
+  { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h", valor_acionamento_mensal: 0 },
+  { nome_equipamento: "Gerador até 15 kva OD", tipo_combustivel: "OD", consumo: 4.0, unidade: "L/h", valor_acionamento_mensal: 0 },
+  { nome_equipamento: "Gerador acima de 50 kva", tipo_combustivel: "OD", consumo: 20.0, unidade: "L/h", valor_acionamento_mensal: 0 },
 ];
 
 const defaultEmbarcacaoConfig: DiretrizEquipamentoForm[] = [
-  { nome_equipamento: "Motor de popa", tipo_combustivel: "GAS", consumo: 20, unidade: "L/h" },
-  { nome_equipamento: "Emb Guardian 25", tipo_combustivel: "GAS", consumo: 100, unidade: "L/h" },
-  { nome_equipamento: "Ferryboat", tipo_combustivel: "OD", consumo: 100, unidade: "L/h" },
-  { nome_equipamento: "Emb Regional", tipo_combustivel: "OD", consumo: 50, unidade: "L/h" },
-  { nome_equipamento: "Empurradores", tipo_combustivel: "OD", consumo: 80, unidade: "L/h" },
-  { nome_equipamento: "Emb Manobra", tipo_combustivel: "OD", consumo: 30, unidade: "L/h" },
+  { nome_equipamento: "Motor de popa", tipo_combustivel: "GAS", consumo: 20, unidade: "L/h", valor_acionamento_mensal: 0 },
+  { nome_equipamento: "Emb Guardian 25", tipo_combustivel: "GAS", consumo: 100, unidade: "L/h", valor_acionamento_mensal: 0 },
+  { nome_equipamento: "Ferryboat", tipo_combustivel: "OD", consumo: 100, unidade: "L/h", valor_acionamento_mensal: 0 },
+  { nome_equipamento: "Emb Regional", tipo_combustivel: "OD", consumo: 50, unidade: "L/h", valor_acionamento_mensal: 0 },
+  { nome_equipamento: "Empurradores", tipo_combustivel: "OD", consumo: 80, unidade: "L/h", valor_acionamento_mensal: 0 },
+  { nome_equipamento: "Emb Manobra", tipo_combustivel: "OD", consumo: 30, unidade: "L/h", valor_acionamento_mensal: 0 },
 ];
 
 const defaultMotomecanizacaoConfig: DiretrizEquipamentoForm[] = tipoViaturas.map(v => ({
@@ -43,6 +43,7 @@ const defaultMotomecanizacaoConfig: DiretrizEquipamentoForm[] = tipoViaturas.map
   tipo_combustivel: v.combustivel,
   consumo: v.consumo,
   unidade: v.unidade,
+  valor_acionamento_mensal: 0,
 }));
 
 const defaultEquipamentosEngenhariaConfig: DiretrizEquipamentoForm[] = tipoEquipamentosEngenharia.map(e => ({
@@ -50,6 +51,7 @@ const defaultEquipamentosEngenhariaConfig: DiretrizEquipamentoForm[] = tipoEquip
   tipo_combustivel: e.combustivel,
   consumo: e.consumo,
   unidade: e.unidade,
+  valor_acionamento_mensal: 0,
 }));
 
 const defaultClasseIIConfig: DiretrizClasseIIForm[] = [
@@ -339,6 +341,7 @@ const DiretrizesCusteioPage = () => {
             tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
             consumo: Number(eq.consumo),
             unidade: eq.unidade as 'L/h' | 'km/L',
+            valor_acionamento_mensal: 0, // Adicionado para compatibilidade com DiretrizEquipamentoForm
           })));
         } else {
           setter(defaultData);
@@ -428,7 +431,11 @@ const DiretrizesCusteioPage = () => {
             user_id: user.id,
             ano_referencia: diretrizes.ano_referencia,
             categoria: categoria,
-            ...g,
+            nome_equipamento: g.nome_equipamento,
+            tipo_combustivel: g.tipo_combustivel,
+            consumo: g.consumo,
+            unidade: g.unidade,
+            // valor_acionamento_mensal não é usado aqui, mas é seguro ignorar
           }));
 
         if (equipamentosParaSalvar.length > 0) {
@@ -647,7 +654,7 @@ const DiretrizesCusteioPage = () => {
   const handleAddItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, unidade: 'L/h' | 'km/L') => {
     setConfig([
       ...config,
-      { nome_equipamento: "", tipo_combustivel: "OD", consumo: 0, unidade: unidade }
+      { nome_equipamento: "", tipo_combustivel: "OD", consumo: 0, unidade: unidade, valor_acionamento_mensal: 0 }
     ]);
   };
 
@@ -753,6 +760,8 @@ const DiretrizesCusteioPage = () => {
               <div className={mntDiaColSpan}>
                 <Label className="text-xs">Mnt/Dia (R$)</Label>
                 <Input
+                  type="text"
+                  inputMode="decimal"
                   value={item.valor_mnt_dia === 0 ? "" : formatCurrency(item.valor_mnt_dia)}
                   onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseCurrency(e.target.value))}
                   onKeyDown={handleEnterToNextField}
@@ -764,6 +773,8 @@ const DiretrizesCusteioPage = () => {
                 <div className="col-span-3">
                   <Label className="text-xs">Acionamento (R$)</Label>
                   <Input
+                    type="text"
+                    inputMode="decimal"
                     value={item.valor_acionamento_mensal === 0 ? "" : formatCurrency(item.valor_acionamento_mensal)}
                     onChange={(e) => handleUpdateFilteredItem('valor_acionamento_mensal', parseCurrency(e.target.value))}
                     onKeyDown={handleEnterToNextField}
