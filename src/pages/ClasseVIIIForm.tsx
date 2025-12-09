@@ -47,7 +47,7 @@ interface ItemSaude {
 interface ItemRemonta {
   item: string;
   quantidade_animais: number;
-  valor_mnt_dia: number; // Valor bruto (Anual/Mensal/Diário)
+  valor_mnt_dia: number; // Valor base (Anual/Mensal/Diário)
   categoria: 'Remonta/Veterinária';
 }
 
@@ -114,20 +114,30 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
 
 // --- Lógica de Cálculo Remonta/Veterinária ---
 
-const getMultiplier = (itemName: string, diasOperacao: number): number => {
-    if (itemName.includes('(Anual)')) {
-        return Math.ceil(diasOperacao / 365);
-    }
-    if (itemName.includes('(Mensal)')) {
-        return Math.ceil(diasOperacao / 30);
-    }
-    // Diário ou Diário Op
-    return diasOperacao;
-};
-
 const calculateRemontaItemTotal = (item: ItemRemonta, diasOperacao: number): number => {
-    const multiplier = getMultiplier(item.item, diasOperacao);
-    return item.valor_mnt_dia * multiplier * item.quantidade_animais;
+    const baseValue = item.valor_mnt_dia;
+    const nrAnimais = item.quantidade_animais;
+    
+    if (diasOperacao <= 0 || nrAnimais <= 0) return 0;
+
+    let total = 0;
+    
+    if (item.item.includes('(Anual)')) {
+        // Item B, D, E (Annual): Nr Animais x Item Valor x ceil(diasOperacao / 365)
+        const multiplier = Math.ceil(diasOperacao / 365);
+        total = baseValue * multiplier * nrAnimais;
+        
+    } else if (item.item.includes('(Mensal)')) {
+        // Item C (Monthly): [Nr Animais x (Item C / 30 dias) x Nr dias]
+        // Formula: Nr Animais x Item C x (diasOperacao / 30)
+        total = nrAnimais * (baseValue / 30) * diasOperacao;
+        
+    } else {
+        // Item G (Daily): Nr Animais x Item Valor x diasOperacao
+        total = baseValue * diasOperacao * nrAnimais;
+    }
+    
+    return total;
 };
 
 const calculateSaudeItemTotal = (item: ItemSaude): number => {
@@ -152,48 +162,71 @@ const generateRemontaMemoriaCalculo = (
     const totalAnimais = itens.reduce((sum, item) => item.quantidade_animais, 0);
     const valorTotal = valorND30 + valorND39;
     
-    const diasMes = Math.ceil(diasOperacao / 30);
-    const diasAno = Math.ceil(diasOperacao / 365);
+    // Group items by Item Type (B, C, D, E, G)
+    const groupedItems: Record<string, ItemRemonta[]> = itens.reduce((acc, item) => {
+        const itemTypeMatch = item.item.match(/-\s([A-G]):/);
+        if (itemTypeMatch) {
+            const type = itemTypeMatch[1];
+            if (!acc[type]) acc[type] = [];
+            acc[type].push(item);
+        }
+        return acc;
+    }, {} as Record<string, ItemRemonta[]>);
     
-    // Agrupar itens por aspecto (B, C, D, E, G) para o detalhamento
-    const itensB = itens.filter(i => i.item.includes('- B:'));
-    const itensC = itens.filter(i => i.item.includes('- C:'));
-    const itensD = itens.filter(i => i.item.includes('- D:'));
-    const itensE = itens.filter(i => i.item.includes('- E:'));
-    const itensG = itens.filter(i => i.item.includes('- G:'));
+    // Calculate totals and build formula components
+    let formulaComponents: string[] = [];
+    let calculationComponents: string[] = [];
+    let totalBrutoCalculado = 0;
     
-    const totalValorB = itensB.reduce((sum, item) => calculateRemontaItemTotal(item, diasOperacao) + sum, 0);
-    const totalValorC = itensC.reduce((sum, item) => calculateRemontaItemTotal(item, diasOperacao) + sum, 0);
-    const totalValorD = itensD.reduce((sum, item) => calculateRemontaItemTotal(item, diasOperacao) + sum, 0);
-    const totalValorE = itensE.reduce((sum, item) => calculateRemontaItemTotal(item, diasOperacao) + sum, 0);
-    const totalValorG = itensG.reduce((sum, item) => calculateRemontaItemTotal(item, diasOperacao) + sum, 0);
+    const nrAnimais = totalAnimais;
     
-    const totalBrutoB = itensB.reduce((sum, item) => item.valor_mnt_dia + sum, 0);
-    const totalBrutoC = itensC.reduce((sum, item) => item.valor_mnt_dia + sum, 0);
-    const totalBrutoD = itensD.reduce((sum, item) => item.valor_mnt_dia + sum, 0);
-    const totalBrutoE = itensE.reduce((sum, item) => item.valor_mnt_dia + sum, 0);
-    const totalBrutoG = itensG.reduce((sum, item) => item.valor_mnt_dia + sum, 0);
+    // Detailed Item Breakdown for the memory (Cálculo:)
+    let detailedItems = "Cálculo:\n";
     
-    let memoria = `33.90.30 / 33.90.39 - Aquisição meios ou contratação de serviços para a manutenção de ${totalAnimais} ${animalTipo.toLowerCase()}(s) do ${organizacao}, durante ${diasOperacao} dias de ${faseFormatada}.
+    // Iterate over item types B, C, D, E, G in order
+    ['B', 'C', 'D', 'E', 'G'].forEach(type => {
+        const itemsOfType = groupedItems[type] || [];
+        
+        itemsOfType.forEach(item => {
+            const baseValue = item.valor_mnt_dia;
+            const itemTotal = calculateRemontaItemTotal(item, diasOperacao);
+            totalBrutoCalculado += itemTotal;
+            
+            const itemDescription = item.item.split(/-\s[A-G]:\s/)[1].trim();
+            const itemUnit = item.item.includes('(Anual)') ? 'ano' : item.item.includes('(Mensal)') ? 'mês' : 'dia';
+            
+            detailedItems += `- Item ${type} (${itemDescription}): ${formatCurrency(baseValue)} / ${animalTipo.toLowerCase()} / ${itemUnit}.\n`;
+            
+            if (item.item.includes('(Mensal)')) {
+                // Item C: [Nr Animais x (Item C / 30 dias) x Nr dias]
+                formulaComponents.push(`[Nr ${animalTipo}s x (Item C / 30 dias) x Nr dias]`);
+                calculationComponents.push(`(${nrAnimais} x (${formatCurrency(baseValue)} / 30 dias) x ${diasOperacao} dias)`);
+            } else if (item.item.includes('(Diário)')) {
+                // Item G: (Nr Animais x Item G x Nr dias)
+                formulaComponents.push(`(Nr ${animalTipo}s x Item G x Nr dias)`);
+                calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${diasOperacao} dias)`);
+            } else {
+                // Item B, D, E (Annual): (Nr Animais x Item X)
+                formulaComponents.push(`(Nr ${animalTipo}s x Item ${type})`);
+                calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)})`);
+            }
+        });
+    });
+    
+    const formulaString = formulaComponents.join(' + ');
+    const calculationString = calculationComponents.join(' + ');
+    
+    let memoria = `33.90.30 / 33.90.39 - Aquisição meios ou contratação de serviços para a manutenção de ${nrAnimais} ${animalTipo.toLowerCase()}(s) do ${organizacao}, durante ${diasOperacao} dias de ${faseFormatada}.
 Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
 Alocação:
 - ND 33.90.30 (Material): ${formatCurrency(valorND30)}
 - ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
-Cálculo:
-Período de Operação: ${diasOperacao} dias.
-Multiplicador Mensal: ${diasMes} mês(es).
-Multiplicador Anual: ${diasAno} ano(s).
+${detailedItems.trim()}
 
-Itens Consolidados:
-${animalTipo} - Item B (Anual): ${formatCurrency(totalBrutoB)} / ano. Total: ${formatCurrency(totalValorB)}.
-${animalTipo} - Item C (Mensal): ${formatCurrency(totalBrutoC)} / mês. Total: ${formatCurrency(totalValorC)}.
-${animalTipo} - Item D (Anual): ${formatCurrency(totalBrutoD)} / ano. Total: ${formatCurrency(totalValorD)}.
-${animalTipo} - Item E (Anual): ${formatCurrency(totalBrutoE)} / ano. Total: ${formatCurrency(totalValorE)}.
-${animalTipo} - Item G (Diário): ${formatCurrency(totalBrutoG)} / dia. Total: ${formatCurrency(totalValorG)}.
-
-Fórmula: (Nr Animais x Item B x Multiplicador Anual) + (Nr Animais x Item C x Multiplicador Mensal) + (Nr Animais x Item D x Multiplicador Anual) + (Nr Animais x Item E x Multiplicador Anual) + (Nr Animais x Item G x Dias Operação).
+Fórmula: ${formulaString} = ${formatCurrency(valorTotal)}.
+Cálculo Detalhado: ${calculationString} = ${formatCurrency(totalBrutoCalculado)}.
 
 Total: ${formatCurrency(valorTotal)}.`;
 
@@ -806,7 +839,7 @@ const ClasseVIIIForm = () => {
     reconstructFormState(registrosSaude, registrosRemonta);
     
     // Define a aba correta para visualização
-    setSelectedTab(registro.categoria as Categoria);
+    setSelectedTab(registro.categoria === 'Saúde - KPSI/KPT' ? 'Saúde' : 'Remonta/Veterinária');
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setLoading(false);
@@ -1044,9 +1077,9 @@ const ClasseVIIIForm = () => {
                             <Table className="w-full">
                                 <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                     <TableRow>
-                                        <TableHead className="w-[50%]">Item</TableHead>
-                                        <TableHead className="w-[20%] text-right">Valor/Unidade</TableHead>
-                                        <TableHead className="w-[15%] text-center">Quantidade</TableHead>
+                                        <TableHead className="w-[45%]">Item</TableHead>
+                                        <TableHead className="w-[25%] text-right">{cat === 'Saúde' ? 'Valor Kit' : 'Valor Base'}</TableHead>
+                                        <TableHead className="w-[15%] text-center">{cat === 'Saúde' ? 'Qtd Kits' : 'Qtd Animais'}</TableHead>
                                         <TableHead className="w-[15%] text-right">Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -1072,6 +1105,9 @@ const ClasseVIIIForm = () => {
                                             
                                             const itemLabel = isSaude ? itemSaude.item : itemRemonta.item;
                                             
+                                            // Determine unit label for Remonta
+                                            const unitLabel = !isSaude && itemLabel.includes('(Anual)') ? 'ano' : !isSaude && itemLabel.includes('(Mensal)') ? 'mês' : 'dia';
+                                            
                                             return (
                                                 <TableRow key={itemLabel} className="h-12">
                                                     <TableCell className="font-medium text-sm py-1">
@@ -1079,6 +1115,7 @@ const ClasseVIIIForm = () => {
                                                     </TableCell>
                                                     <TableCell className="text-right text-xs text-muted-foreground py-1">
                                                         {formatCurrency(valorMntDia)}
+                                                        {!isSaude && <span className="ml-1">/ {unitLabel}</span>}
                                                     </TableCell>
                                                     <TableCell className="py-1">
                                                         <Input
@@ -1090,9 +1127,6 @@ const ClasseVIIIForm = () => {
                                                             placeholder="0"
                                                             onKeyDown={handleEnterToNextField}
                                                         />
-                                                        {cat === 'Remonta/Veterinária' && itemLabel.includes('Canino') && quantity > 0 && quantity % 5 !== 0 && (
-                                                            <p className="text-xs text-destructive mt-1">Múltiplo de 5</p>
-                                                        )}
                                                     </TableCell>
                                                     <TableCell className="text-right font-semibold text-sm py-1">
                                                         {formatCurrency(itemTotal)}
@@ -1241,11 +1275,13 @@ const ClasseVIIIForm = () => {
                             const quantity = isSaude ? itemSaude.quantidade : itemRemonta.quantidade_animais;
                             const unitValue = isSaude ? itemSaude.valor_mnt_dia : itemRemonta.valor_mnt_dia;
                             
+                            const unitLabel = isSaude ? 'kit' : (itemRemonta.item.includes('(Anual)') ? 'ano' : itemRemonta.item.includes('(Mensal)') ? 'mês' : 'dia');
+                            
                             return (
                               <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
                                 <span className="font-medium">{isSaude ? itemSaude.item : itemRemonta.item}</span>
                                 <span className="text-right">
-                                  {quantity} un. x {formatCurrency(unitValue)} / {isSaude ? 'kit' : 'base'} = {formatCurrency(itemTotal)}
+                                  {quantity} un. x {formatCurrency(unitValue)} / {unitLabel} = {formatCurrency(itemTotal)}
                                 </span>
                               </div>
                             );
