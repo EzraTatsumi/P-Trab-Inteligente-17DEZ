@@ -12,5 +12,13 @@ export const defaultClasseVIIISaudeConfig: DiretrizClasseIIForm[] = [
 
 // Valores padrão para a categoria Remonta/Veterinária (Classe VIII)
 export const defaultClasseVIIIRemontaConfig: DiretrizClasseIIForm[] = [
-  // Placeholder para Remonta/Veterinária
+  // Equinos
+  { categoria: "Remonta/Veterinária", item: "Equino - B: Encilhagem/Selas (Anual)", valor_mnt_dia: 1750.00 },
+  { categoria: "Remonta/Veterinária", item: "Equino - C: Medicamento/Ferrageamento (Mensal)", valor_mnt_dia: 90.00 },
+  { categoria: "Remonta/Veterinária", item: "Equino - C: Alimentação (Mensal)", valor_mnt_dia: 795.00 },
+  { categoria: "Remonta/Veterinária", item: "Equino - D: Reposição/Desgaste (Anual)", valor_mnt_dia: 7200.00 },
+  { categoria: "Remonta/Veterinária", item: "Equino - E: Assistência Veterinária (Anual)", valor_mnt_dia: 4000.00 },
+  { categoria: "Remonta/Veterinária", item: "Equino - G: Custo Mnt/Dia Op (Diário)", valor_mnt_dia: 29.50 },
+  // Caninos
+  { categoria: "Remonta/Veterinária", item: "Canino - C: Medicamento (Mensal)", valor_mnt_dia: 60.00 },
 ];
