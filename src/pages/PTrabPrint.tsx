@@ -122,7 +122,11 @@ interface LinhaLubrificante {
 interface GrupoOM {
   linhasQS: LinhaTabela[];
   linhasQR: LinhaTabela[];
-  linhasClasseII: LinhaClasseII[]; // ATUALIZADO
+  linhasClasseII: LinhaClasseII[]; // Only Classe II
+  linhasClasseV: LinhaClasseII[];
+  linhasClasseVI: LinhaClasseII[];
+  linhasClasseVII: LinhaClasseII[];
+  linhasClasseVIII: LinhaClasseII[];
   linhasLubrificante: LinhaLubrificante[];
 }
 // --- FIM NOVAS INTERFACES ---
@@ -241,7 +245,7 @@ const PTrabPrint = () => {
           .eq('p_trab_id', ptrabId),
         supabase
           .from('classe_viii_remonta_registros')
-          .select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais')
+          .select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais') // REMOVED 'categoria'
           .eq('p_trab_id', ptrabId),
       ]);
 
@@ -453,7 +457,16 @@ Total QR: ${formatCurrency(total_qr)}.`;
 
   const initializeGroup = (name: string) => {
       if (!gruposPorOM[name]) {
-          gruposPorOM[name] = { linhasQS: [], linhasQR: [], linhasClasseII: [], linhasLubrificante: [] };
+          gruposPorOM[name] = { 
+              linhasQS: [], 
+              linhasQR: [], 
+              linhasClasseII: [], 
+              linhasClasseV: [],
+              linhasClasseVI: [],
+              linhasClasseVII: [],
+              linhasClasseVIII: [],
+              linhasLubrificante: [] 
+          };
       }
   };
 
@@ -472,9 +485,21 @@ Total QR: ${formatCurrency(total_qr)}.`;
   registrosClasseII.forEach((registro) => {
       // Classe II/V/VI/VII/VIII goes to OM de destino do recurso (organizacao)
       initializeGroup(registro.organizacao);
-      gruposPorOM[registro.organizacao].linhasClasseII.push({ 
-          registro,
-      });
+      
+      const omGroup = gruposPorOM[registro.organizacao];
+      
+      if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+          omGroup.linhasClasseV.push({ registro });
+      } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
+          omGroup.linhasClasseVI.push({ registro });
+      } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
+          omGroup.linhasClasseVII.push({ registro });
+      } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+          omGroup.linhasClasseVIII.push({ registro });
+      } else {
+          // Assume Classe II
+          omGroup.linhasClasseII.push({ registro });
+      }
   });
 
   // 3. Processar Classe III Lubrificante
@@ -507,16 +532,29 @@ Total QR: ${formatCurrency(total_qr)}.`;
     // Total Classe II/V/VI/VII/VIII (ND 30 + ND 39)
     const totalClasseII_ND30 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
     const totalClasseII_ND39 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
-    const totalClasseII = totalClasseII_ND30 + totalClasseII_ND39;
+    
+    const totalClasseV_ND30 = grupo.linhasClasseV.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
+    const totalClasseV_ND39 = grupo.linhasClasseV.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
+    
+    const totalClasseVI_ND30 = grupo.linhasClasseVI.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
+    const totalClasseVI_ND39 = grupo.linhasClasseVI.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
+    
+    const totalClasseVII_ND30 = grupo.linhasClasseVII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
+    const totalClasseVII_ND39 = grupo.linhasClasseVII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
+    
+    const totalClasseVIII_ND30 = grupo.linhasClasseVIII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
+    const totalClasseVIII_ND39 = grupo.linhasClasseVIII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
     
     // NEW: Total Lubrificante (ND 30)
     const totalLubrificante = grupo.linhasLubrificante.reduce((acc, linha) => acc + linha.registro.valor_total, 0);
     
-    // Total ND 30 (Coluna C) = Classe I + Classe II/V/VI/VII/VIII (ND 30) + Lubrificante
-    const total_33_90_30 = totalQS + totalQR + totalClasseII_ND30 + totalLubrificante; 
+    // Total ND 30 (Coluna C) = Classe I + Classes (ND 30) + Lubrificante
+    const total_33_90_30 = totalQS + totalQR + 
+                           totalClasseII_ND30 + totalClasseV_ND30 + totalClasseVI_ND30 + totalClasseVII_ND30 + totalClasseVIII_ND30 + 
+                           totalLubrificante; 
     
-    // Total ND 39 (Coluna D) = Classe II/V/VI/VII/VIII (ND 39)
-    const total_33_90_39 = totalClasseII_ND39;
+    // Total ND 39 (Coluna D) = Classes (ND 39)
+    const total_33_90_39 = totalClasseII_ND39 + totalClasseV_ND39 + totalClasseVI_ND39 + totalClasseVII_ND39 + totalClasseVIII_ND39;
     
     // Coluna E (TOTAL ND) = Coluna C + Coluna D
     const total_parte_azul = total_33_90_30 + total_33_90_39;
@@ -546,8 +584,8 @@ Total QR: ${formatCurrency(total_qr)}.`;
       .reduce((acc, reg) => acc + reg.total_litros, 0);
 
     return {
-      total_33_90_30, // Classe I + Classe II/V/VI/VII/VIII (ND 30) + Lubrificante
-      total_33_90_39, // Classe II/V/VI/VII/VIII (ND 39)
+      total_33_90_30, // Classe I + Classes (ND 30) + Lubrificante
+      total_33_90_39, // Classes (ND 39)
       total_parte_azul, // Total ND (C+D)
       total_combustivel: totalCombustivel, // Valor total da Classe III Combustível (Laranja)
       total_gnd3, // Valor Total Solicitado (GND 3)
@@ -781,113 +819,97 @@ Total QR: ${formatCurrency(total_qr)}.`;
         const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
         
         // Se o grupo não tem linhas, pula
-        if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasLubrificante.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
+        if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasClasseV.length === 0 && grupo.linhasClasseVI.length === 0 && grupo.linhasClasseVII.length === 0 && grupo.linhasClasseVIII.length === 0 && grupo.linhasLubrificante.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
           return;
         }
         
-        // 1. Linhas QS
-        grupo.linhasQS.forEach((linha) => {
-          const row = worksheet.getRow(currentRow);
-          row.getCell('A').value = `CLASSE I - SUBSISTÊNCIA\n${linha.registro.organizacao}`;
-          row.getCell('B').value = `${linha.registro.om_qs}\n(${linha.registro.ug_qs})`;
-          row.getCell('C').value = linha.registro.total_qs;
-          row.getCell('C').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
-          row.getCell('C').style = { ...row.getCell('C').style, alignment: centerTopAlignment }; // Aplicar alinhamento explícito
-          row.getCell('E').value = linha.registro.total_qs;
-          row.getCell('E').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
-          row.getCell('E').style = { ...row.getCell('E').style, alignment: centerTopAlignment }; // Aplicar alinhamento explícito
-          
-          const detalhamentoQS = linha.registro.memoria_calculo_qs_customizada || 
-                                 generateClasseIMemoriaCalculo(linha.registro).qs;
-          
-          row.getCell('I').value = detalhamentoQS;
-          row.getCell('I').alignment = { wrapText: true, vertical: 'top' };
-          row.getCell('I').font = { name: 'Arial', size: 6.5 };
-          
-          ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
-            row.getCell(col).border = cellBorder;
-            if (!row.getCell(col).font) {
-              row.getCell(col).font = { name: 'Arial', size: 8 };
-            }
-            row.getCell(col).alignment = { ...row.getCell(col).alignment, vertical: 'top' };
-          });
-          
-          currentRow++;
-        });
+        // Array de todas as linhas de despesa, ordenadas pela sequência romana:
+        const linhasDespesaOrdenadas = [
+            ...grupo.linhasQS,
+            ...grupo.linhasQR,
+            ...grupo.linhasClasseII,
+            ...grupo.linhasLubrificante, // Classe III Lubrificante
+            ...grupo.linhasClasseV,
+            ...grupo.linhasClasseVI,
+            ...grupo.linhasClasseVII,
+            ...grupo.linhasClasseVIII,
+        ];
         
-        // 2. Linhas QR
-        grupo.linhasQR.forEach((linha) => {
+        // 1. Renderizar todas as linhas de despesa (I, II, III Lub, V, VI, VII, VIII)
+        linhasDespesaOrdenadas.forEach((linha) => {
           const row = worksheet.getRow(currentRow);
-          row.getCell('A').value = `CLASSE I - SUBSISTÊNCIA`;
-          row.getCell('B').value = `${linha.registro.organizacao}\n(${linha.registro.ug})`;
-          row.getCell('C').value = linha.registro.total_qr;
-          row.getCell('C').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
-          row.getCell('C').style = { ...row.getCell('C').style, alignment: centerTopAlignment }; // Aplicar alinhamento explícito
-          row.getCell('E').value = linha.registro.total_qr;
-          row.getCell('E').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
-          row.getCell('E').style = { ...row.getCell('E').style, alignment: centerTopAlignment }; // Aplicar alinhamento explícito
           
-          const detalhamentoQR = linha.registro.memoria_calculo_qr_customizada || 
-                                 generateClasseIMemoriaCalculo(linha.registro).qr;
+          let despesasValue = '';
+          let omValue = '';
+          let detalhamentoValue = '';
+          let valorC = 0;
+          let valorD = 0;
+          let valorE = 0;
+          let valorF = '';
+          let valorG = '';
+          let valorH = '';
           
-          row.getCell('I').value = detalhamentoQR;
-          row.getCell('I').alignment = { wrapText: true, vertical: 'top' };
-          row.getCell('I').font = { name: 'Arial', size: 6.5 };
-          
-          ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
-            row.getCell(col).border = cellBorder;
-            if (!row.getCell(col).font) {
-              row.getCell(col).font = { name: 'Arial', size: 8 };
+          if ('tipo' in linha) { // Classe I (QS/QR)
+            const registro = linha.registro;
+            if (linha.tipo === 'QS') {
+              despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
+              omValue = `${registro.om_qs}\n(${registro.ug_qs})`;
+              valorC = registro.total_qs;
+              valorE = registro.total_qs;
+              detalhamentoValue = registro.memoria_calculo_qs_customizada || generateClasseIMemoriaCalculo(registro).qs;
+            } else { // QR
+              despesasValue = `CLASSE I - SUBSISTÊNCIA`;
+              omValue = `${registro.organizacao}\n(${registro.ug})`;
+              valorC = registro.total_qr;
+              valorE = registro.total_qr;
+              detalhamentoValue = registro.memoria_calculo_qr_customizada || generateClasseIMemoriaCalculo(registro).qr;
             }
-            row.getCell(col).alignment = { ...row.getCell(col).alignment, vertical: 'top' };
-          });
+          } else if ('categoria' in linha.registro) { // Classe II, V, VI, VII, VIII
+            const registro = linha.registro;
+            const omDestinoRecurso = registro.organizacao;
+            const ugDestinoRecurso = registro.ug;
+            
+            const secondDivContent = 
+              registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo
+                ? registro.animal_tipo.toUpperCase()
+                : registro.categoria.toUpperCase();
+                
+            despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
+            omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
+            valorC = registro.valor_nd_30;
+            valorD = registro.valor_nd_39;
+            valorE = registro.valor_nd_30 + registro.valor_nd_39;
+            detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+            
+          } else if ('tipo_equipamento' in linha.registro) { // Classe III Lubrificante
+            const registro = linha.registro;
+            const isOmDifferent = registro.organizacao !== nomeOM;
+            const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
+            
+            let despesasLubValue = `CLASSE III - LUBRIFICANTE ${tipoEquipamento}`;
+            if (isOmDifferent) {
+              despesasLubValue += `\n${registro.organizacao}`;
+            }
+            despesasValue = despesasLubValue;
+            omValue = `${registro.organizacao}\n(${registro.ug})`;
+            valorC = registro.valor_total;
+            valorE = registro.valor_total;
+            detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
+          }
           
-          currentRow++;
-        });
-        
-        // 3. Linhas Classe II/V/VI/VII/VIII (POR CATEGORIA/REGISTRO)
-        grupo.linhasClasseII.forEach((linha) => {
-          const registro = linha.registro;
-          const omDestinoRecurso = registro.organizacao;
-          const ugDestinoRecurso = registro.ug;
-          
-          // Determine the specific label for the second line
-          const specificLabel = 
-            registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo
-              ? registro.animal_tipo.toUpperCase()
-              : registro.categoria.toUpperCase();
-              
-          const row = worksheet.getRow(currentRow);
-          
-          // Coluna A: DESPESAS (Usando a função auxiliar)
-          row.getCell('A').value = `${getClasseIILabel(registro.categoria)}\n${specificLabel}`;
-          
-          // Coluna B: OM (UGE) CODUG
-          row.getCell('B').value = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
-          
-          // Coluna C: 33.90.30 (Material)
-          row.getCell('C').value = registro.valor_nd_30;
+          row.getCell('A').value = despesasValue;
+          row.getCell('B').value = omValue;
+          row.getCell('C').value = valorC > 0 ? valorC : '';
           row.getCell('C').numFmt = 'R$ #,##0.00';
           row.getCell('C').style = { ...row.getCell('C').style, alignment: centerTopAlignment };
-          
-          // Coluna D: 33.90.39 (Serviço)
-          row.getCell('D').value = registro.valor_nd_39;
+          row.getCell('D').value = valorD > 0 ? valorD : '';
           row.getCell('D').numFmt = 'R$ #,##0.00';
           row.getCell('D').style = { ...row.getCell('D').style, alignment: centerTopAlignment };
-          
-          // Coluna E: TOTAL ND (C + D)
-          row.getCell('E').value = registro.valor_nd_30 + registro.valor_nd_39;
+          row.getCell('E').value = valorE > 0 ? valorE : '';
           row.getCell('E').numFmt = 'R$ #,##0.00';
           row.getCell('E').style = { ...row.getCell('E').style, alignment: centerTopAlignment };
           
-          // Colunas F, G, H vazias
-          row.getCell('F').value = '';
-          row.getCell('G').value = '';
-          row.getCell('H').value = '';
-          
-          const detalhamentoClasseII = generateClasseIIMemoriaCalculo(registro);
-          
-          row.getCell('I').value = detalhamentoClasseII;
+          row.getCell('I').value = detalhamentoValue;
           row.getCell('I').alignment = { wrapText: true, vertical: 'top' };
           row.getCell('I').font = { name: 'Arial', size: 6.5 };
           
@@ -902,56 +924,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
           currentRow++;
         });
         
-        // 4. Linhas Lubrificante
-        grupo.linhasLubrificante.forEach((linha) => {
-          const isOmDifferent = linha.registro.organizacao !== nomeOM;
-          
-          const tipoEquipamento = linha.registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
-          
-          const row = worksheet.getRow(currentRow);
-          
-          // Coluna A: DESPESAS
-          let despesasValue = `CLASSE III - LUBRIFICANTE ${tipoEquipamento}`; // REMOVIDO O HÍFEN
-          if (isOmDifferent) {
-            despesasValue += `\n${linha.registro.organizacao}`;
-          }
-          row.getCell('A').value = despesasValue;
-          
-          // Coluna B: OM (UGE) CODUG
-          row.getCell('B').value = `${linha.registro.organizacao}\n(${linha.registro.ug})`;
-          
-          row.getCell('C').value = linha.registro.valor_total; // Valor na coluna 33.90.30
-          row.getCell('C').numFmt = 'R$ #,##0.00';
-          row.getCell('C').style = { ...row.getCell('C').style, alignment: centerTopAlignment };
-          row.getCell('D').value = ''; // 33.90.39 (Vazio) - CORREÇÃO APLICADA AQUI
-          row.getCell('D').style = { ...row.getCell('D').style, alignment: centerTopAlignment };
-          row.getCell('E').value = linha.registro.valor_total; // TOTAL (ND 30 + ND 39)
-          row.getCell('E').numFmt = 'R$ #,##0.00';
-          row.getCell('E').style = { ...row.getCell('E').style, alignment: centerTopAlignment };
-          
-          // Colunas de Combustível (F, G, H) vazias
-          row.getCell('F').value = '';
-          row.getCell('G').value = '';
-          row.getCell('H').value = '';
-          
-          const detalhamentoLubrificante = linha.registro.detalhamento_customizado || linha.registro.detalhamento || '';
-          
-          row.getCell('I').value = detalhamentoLubrificante;
-          row.getCell('I').alignment = { wrapText: true, vertical: 'top' };
-          row.getCell('I').font = { name: 'Arial', size: 6.5 };
-          
-          ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
-            row.getCell(col).border = cellBorder;
-            if (!row.getCell(col).font) {
-              row.getCell(col).font = { name: 'Arial', size: 8 };
-            }
-            row.getCell(col).alignment = { ...row.getCell(col).alignment, vertical: 'top' };
-          });
-          
-          currentRow++;
-        });
-        
-        // 5. Linhas Combustível (APENAS na RM)
+        // 2. Linhas Combustível (APENAS na RM) - Classe III Combustível
         if (nomeOM === nomeRM) {
           registrosClasseIII.filter(isCombustivel).forEach((registro) => {
             const getTipoEquipamentoLabel = (tipo: string) => {
@@ -1015,12 +988,12 @@ Total QR: ${formatCurrency(total_qr)}.`;
         subtotalRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
         subtotalRow.getCell('A').font = { name: 'Arial', size: 8, bold: true };
         
-        subtotalRow.getCell('C').value = totaisOM.total_33_90_30; // Total Classe I + Classe II/V/VI/VII/VIII (ND 30) + Lubrificante
+        subtotalRow.getCell('C').value = totaisOM.total_33_90_30; // Total Classe I + Classes (ND 30) + Lubrificante
         subtotalRow.getCell('C').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
         subtotalRow.getCell('C').font = { bold: true };
         subtotalRow.getCell('C').style = { ...subtotalRow.getCell('C').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
         
-        subtotalRow.getCell('D').value = totaisOM.total_33_90_39; // Total Classe II/V/VI/VII/VIII (ND 39)
+        subtotalRow.getCell('D').value = totaisOM.total_33_90_39; // Total Classes (ND 39)
         subtotalRow.getCell('D').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
         subtotalRow.getCell('D').font = { bold: true };
         subtotalRow.getCell('D').style = { ...subtotalRow.getCell('D').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
@@ -1094,13 +1067,13 @@ Total QR: ${formatCurrency(total_qr)}.`;
       somaRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
       somaRow.getCell('A').font = { bold: true };
       
-      somaRow.getCell('C').value = totalGeral_33_90_30; // Total Classe I + Classe II/V/VI/VII/VIII (ND 30) + Lubrificante
+      somaRow.getCell('C').value = totalGeral_33_90_30; // Total Classe I + Classes (ND 30) + Lubrificante
       somaRow.getCell('C').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       somaRow.getCell('C').font = { bold: true };
       somaRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
       somaRow.getCell('C').style = { ...somaRow.getCell('C').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
       
-      somaRow.getCell('D').value = totalGeral_33_90_39; // Total Classe II/V/VI/VII/VIII (ND 39)
+      somaRow.getCell('D').value = totalGeral_33_90_39; // Total Classes (ND 39)
       somaRow.getCell('D').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       somaRow.getCell('D').font = { bold: true };
       somaRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
@@ -1319,131 +1292,110 @@ Total QR: ${formatCurrency(total_qr)}.`;
                 const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
                 
                 // Se o grupo não tem linhas, pula
-                if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasLubrificante.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
+                if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasClasseV.length === 0 && grupo.linhasClasseVI.length === 0 && grupo.linhasClasseVII.length === 0 && grupo.linhasClasseVIII.length === 0 && grupo.linhasLubrificante.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
                   return [];
                 }
                 
+                // Array de todas as linhas de despesa, ordenadas pela sequência romana:
+                const linhasDespesaOrdenadas = [
+                    ...grupo.linhasQS,
+                    ...grupo.linhasQR,
+                    ...grupo.linhasClasseII,
+                    ...grupo.linhasLubrificante, // Classe III Lubrificante
+                    ...grupo.linhasClasseV,
+                    ...grupo.linhasClasseVI,
+                    ...grupo.linhasClasseVII,
+                    ...grupo.linhasClasseVIII,
+                ];
+                
                 return [
-                  // Renderizar todas as linhas QS
-                  ...grupo.linhasQS.map((linha) => (
-                    <tr key={`${linha.registro.id}-qs`}>
-                      <td className="col-despesas">
-                        <div>CLASSE I - SUBSISTÊNCIA</div>
-                        <div>{linha.registro.organizacao}</div>
-                      </td>
-                      <td className="col-om">
-                        <div>{linha.registro.om_qs}</div>
-                        <div>({linha.registro.ug_qs})</div>
-                      </td>
-                      <td className="col-valor-natureza">{formatCurrency(linha.registro.total_qs)}</td>
-                      <td className="col-valor-natureza"></td>
-                      <td className="col-valor-natureza">{formatCurrency(linha.registro.total_qs)}</td>
-                      <td className="col-combustivel-data-filled"></td>
-                      <td className="col-combustivel-data-filled"></td>
-                      <td className="col-combustivel-data-filled"></td>
-                      <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
-                        <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                          {linha.registro.memoria_calculo_qs_customizada || 
-                           generateClasseIMemoriaCalculo(linha.registro).qs}
-                        </pre>
-                      </td>
-                    </tr>
-                  )),
-                  
-                  // Renderizar todas as linhas QR
-                  ...grupo.linhasQR.map((linha) => (
-                    <tr key={`${linha.registro.id}-qr`}>
-                      <td className="col-despesas">
-                        <div>CLASSE I - SUBSISTÊNCIA</div>
-                      </td>
-                      <td className="col-om">
-                        <div>{linha.registro.organizacao}</div>
-                        <div>({linha.registro.ug})</div>
-                      </td>
-                      <td className="col-valor-natureza">{formatCurrency(linha.registro.total_qr)}</td>
-                      <td className="col-valor-natureza"></td>
-                      <td className="col-valor-natureza">{formatCurrency(linha.registro.total_qr)}</td>
-                      <td className="col-combustivel-data-filled"></td>
-                      <td className="col-combustivel-data-filled"></td>
-                      <td className="col-combustivel-data-filled"></td>
-                      <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
-                        <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                          {linha.registro.memoria_calculo_qr_customizada || 
-                           generateClasseIMemoriaCalculo(linha.registro).qr}
-                        </pre>
-                      </td>
-                    </tr>
-                  )),
-                  
-                  // Renderizar linhas Classe II/V/VI/VII/VIII (POR CATEGORIA/REGISTRO)
-                  ...grupo.linhasClasseII.map((linha) => {
-                    const registro = linha.registro;
-                    const omDestinoRecurso = registro.organizacao;
-                    const ugDestinoRecurso = registro.ug;
+                  // 1. Renderizar todas as linhas de despesa (I, II, III Lub, V, VI, VII, VIII)
+                  ...linhasDespesaOrdenadas.map((linha) => {
+                    const isClasseI = 'tipo' in linha;
+                    const isClasseII_VIII = 'categoria' in linha.registro;
+                    const isLubrificante = 'tipo_equipamento' in linha.registro;
                     
-                    const secondDivContent = 
-                      registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo
-                        ? registro.animal_tipo.toUpperCase()
-                        : registro.categoria.toUpperCase();
-
+                    const rowData = {
+                        despesasValue: '',
+                        omValue: '',
+                        detalhamentoValue: '',
+                        valorC: 0,
+                        valorD: 0,
+                        valorE: 0,
+                    };
+                    
+                    if (isClasseI) { // Classe I (QS/QR)
+                        const registro = linha.registro as ClasseIRegistro;
+                        if (linha.tipo === 'QS') {
+                            rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
+                            rowData.omValue = `${registro.om_qs}\n(${registro.ug_qs})`;
+                            rowData.valorC = registro.total_qs;
+                            rowData.valorE = registro.total_qs;
+                            rowData.detalhamentoValue = registro.memoria_calculo_qs_customizada || generateClasseIMemoriaCalculo(registro).qs;
+                        } else { // QR
+                            rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
+                            rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
+                            rowData.valorC = registro.total_qr;
+                            rowData.valorE = registro.total_qr;
+                            rowData.detalhamentoValue = registro.memoria_calculo_qr_customizada || generateClasseIMemoriaCalculo(registro).qr;
+                        }
+                    } else if (isClasseII_VIII) { // Classe II, V, VI, VII, VIII
+                        const registro = linha.registro as ClasseIIRegistro;
+                        const omDestinoRecurso = registro.organizacao;
+                        const ugDestinoRecurso = registro.ug;
+                        
+                        const secondDivContent = 
+                          registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo
+                            ? registro.animal_tipo.toUpperCase()
+                            : registro.categoria.toUpperCase();
+                            
+                        rowData.despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
+                        rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
+                        rowData.valorC = registro.valor_nd_30;
+                        rowData.valorD = registro.valor_nd_39;
+                        rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
+                        rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+                        
+                    } else if (isLubrificante) { // Classe III Lubrificante
+                        const registro = linha.registro as ClasseIIIRegistro;
+                        const isOmDifferent = registro.organizacao !== nomeOM;
+                        const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
+                        
+                        let despesasLubValue = `CLASSE III - LUBRIFICANTE ${tipoEquipamento}`;
+                        if (isOmDifferent) {
+                          despesasLubValue += `\n${registro.organizacao}`;
+                        }
+                        rowData.despesasValue = despesasLubValue;
+                        rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
+                        rowData.valorC = registro.valor_total;
+                        rowData.valorE = registro.valor_total;
+                        rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
+                    }
+                    
                     return (
-                      <tr key={`classe-ii-${registro.id}`}>
+                      <tr key={isClasseI ? `${linha.registro.id}-${linha.tipo}` : isLubrificante ? `lub-${linha.registro.id}` : `classe-ii-${linha.registro.id}`}>
                         <td className="col-despesas">
-                          <div>{getClasseIILabel(registro.categoria)}</div>
-                          <div className="uppercase">{secondDivContent}</div>
+                          {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
                         </td>
                         <td className="col-om">
-                          <div>{omDestinoRecurso}</div>
-                          <div>({ugDestinoRecurso})</div>
+                          {rowData.omValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
                         </td>
-                        <td className="col-valor-natureza">{formatCurrency(registro.valor_nd_30)}</td>
-                        <td className="col-valor-natureza">{formatCurrency(registro.valor_nd_39)}</td>
-                        <td className="col-valor-natureza">{formatCurrency(registro.valor_nd_30 + registro.valor_nd_39)}</td>
+                        <td className="col-valor-natureza">{rowData.valorC > 0 ? formatCurrency(rowData.valorC) : ''}</td>
+                        <td className="col-valor-natureza">{rowData.valorD > 0 ? formatCurrency(rowData.valorD) : ''}</td>
+                        <td className="col-valor-natureza">{rowData.valorE > 0 ? formatCurrency(rowData.valorE) : ''}</td>
                         <td className="col-combustivel-data-filled"></td>
                         <td className="col-combustivel-data-filled"></td>
                         <td className="col-combustivel-data-filled"></td>
                         <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
                           <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                            {generateClasseIIMemoriaCalculo(registro)}
+                            {rowData.detalhamentoValue}
                           </pre>
                         </td>
                       </tr>
                     );
                   }),
                   
-                  // Renderizar linhas de Lubrificante
-                  ...grupo.linhasLubrificante.map((linha) => {
-                    // Verifica se a OM de destino do recurso (organizacao) é diferente da OM que está sendo agrupada (nomeOM)
-                    const isOmDifferent = linha.registro.organizacao !== nomeOM;
-                    
-                    const tipoEquipamento = linha.registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
-                    
-                    return (
-                      <tr key={`lub-${linha.registro.id}`}>
-                        <td className="col-despesas">
-                          <div>CLASSE III - LUBRIFICANTE {tipoEquipamento}</div> {/* HÍFEN REMOVIDO AQUI */}
-                          {isOmDifferent && <div>{linha.registro.organizacao}</div>}
-                        </td>
-                        <td className="col-om">
-                          <div>{linha.registro.organizacao}</div>
-                          <div>({linha.registro.ug})</div>
-                        </td>
-                        <td className="col-valor-natureza">{formatCurrency(linha.registro.valor_total)}</td>
-                        <td className="col-valor-natureza"></td> {/* ND 33.90.39 (Vazio) - CORREÇÃO APLICADA AQUI */}
-                        <td className="col-valor-natureza">{formatCurrency(linha.registro.valor_total)}</td>
-                        <td className="col-combustivel-data-filled"></td>
-                        <td className="col-combustivel-data-filled"></td>
-                        <td className="col-combustivel-data-filled"></td>
-                        <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
-                          <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                            {linha.registro.detalhamento_customizado || linha.registro.detalhamento || ''}
-                          </pre>
-                        </td>
-                      </tr>
-                    );
-                  }),
-                  
-                  // Renderizar linhas de Classe III Combustível (APENAS na RM)
+                  // 2. Linhas Combustível (APENAS na RM) - Classe III Combustível
                   ...(nomeOM === nomeRM ? registrosClasseIII.filter(isCombustivel).map((registro) => {
                     const getTipoEquipamentoLabel = (tipo: string) => {
                       switch (tipo) {
