@@ -1145,7 +1145,10 @@ const ClasseVIForm = () => {
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
                           <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} itens)</h4>
-                          <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoriaComMargem)}</span>
+                          <span className="font-extrabold text-lg text-primary flex items-baseline gap-1">
+                            {formatCurrency(totalCategoriaComMargem)}
+                            <span className="text-xs font-normal text-primary/80">(C/ Margem 10%)</span>
+                          </span>
                         </div>
                         
                         <div className="space-y-2">
