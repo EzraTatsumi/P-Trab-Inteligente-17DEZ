@@ -48,9 +48,8 @@ const PTrabForm = () => {
     { id: "classe-iii", name: "Classe III - Combustíveis e Lubrificantes" },
     { id: "classe-v", name: "Classe V - Armamento" },
     { id: "classe-vi", name: "Classe VI - Material de Engenharia" }, // Adicionado Classe VI
-    { id: "classe-vii", name: "Classe VII - Comunicações e Informática" },
-    // Combinando Saúde e Remonta em uma única entrada
-    { id: "classe-viii-saude", name: "Classe VIII - Saúde e Remonta/Veterinária" }, 
+    { id: "classe-vii", name: "Classe VII - Comunicações e Informática" }, // NOVO
+    { id: "classe-viii", name: "Classe VIII - Material de Saúde" },
     { id: "classe-ix", name: "Classe IX - Material de Manutenção" },
   ];
 
@@ -169,11 +168,8 @@ const PTrabForm = () => {
       navigate(`/ptrab/classe-v?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-vi') {
       navigate(`/ptrab/classe-vi?ptrabId=${ptrabId}`);
-    } else if (itemId === 'classe-vii') {
+    } else if (itemId === 'classe-vii') { // NOVO
       navigate(`/ptrab/classe-vii?ptrabId=${ptrabId}`);
-    } else if (itemId === 'classe-viii-saude') { 
-      // Redireciona para o formulário de Classe VIII (que lida com Saúde e Remonta)
-      navigate(`/ptrab/classe-viii-saude?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-iii') {
       navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
     } else {
@@ -307,7 +303,7 @@ const PTrabForm = () => {
                           <div>
                             <div className="font-semibold">{classe.name.split(" - ")[0]}</div>
                             <div className="text-sm text-muted-foreground">
-                              {classe.name.split(" - ").slice(1).join(" - ")}
+                              {classe.name.split(" - ")[1]}
                             </div>
                           </div>
                         </Button>
