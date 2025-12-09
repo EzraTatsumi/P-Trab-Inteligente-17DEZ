@@ -235,9 +235,15 @@ const fetchPTrabTotals = async (ptrabId: string) => {
             const quantidadeAnimais = (record as any).quantidade_animais || 0;
             
             if (animalType) {
+                // Use a chave granular para Remonta
                 groupKey = `Remonta - ${animalType}`;
                 currentTotalItems = quantidadeAnimais;
             }
+        }
+        
+        // Se for Saúde, a chave é 'Saúde'
+        if (category === 'Saúde') {
+            groupKey = 'Saúde';
         }
         
         totalItensClasseVIII += currentTotalItems;
@@ -838,7 +844,8 @@ export const PTrabCostSummary = ({
                                 <div className="flex justify-between text-muted-foreground font-semibold pt-1">
                                     <span className="w-1/2 text-left">{category}</span>
                                     <span className="w-1/4 text-right font-medium">
-                                        {formatNumber(data.totalItens)} un.
+                                        {/* Se for Remonta, exibe a quantidade de animais */}
+                                        {category.includes('Remonta') ? `${formatNumber(data.totalItens)} animais` : `${formatNumber(data.totalItens)} un.`}
                                     </span>
                                     <span className="w-1/4 text-right font-medium">
                                         {formatCurrency(data.totalValor)}
