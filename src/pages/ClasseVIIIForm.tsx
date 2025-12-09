@@ -7,25 +7,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, Trash2, XCircle, Check, ChevronsUpDown, Sparkles, AlertCircle, HeartPulse, Horse } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, XCircle, Check, ChevronsUpDown, Sparkles, AlertCircle, HeartPulse, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
+import { formatCurrency, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
-import { defaultClasseVIIISaudeConfig, defaultClasseVIIIRemontaConfig } from "@/data/classeVIIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
+import { defaultClasseVIIISaudeConfig, defaultClasseVIIIRemontaConfig } from "@/data/classeVIIIData";
 
 type Categoria = 'Saúde' | 'Remonta/Veterinária';
 
@@ -37,40 +37,47 @@ const CATEGORIAS: Categoria[] = [
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
 
-interface ItemClasseVIII {
+interface ItemSaude {
   item: string;
-  quantidade: number;
-  valor_mnt_dia: number;
-  categoria: string;
-  memoria_customizada?: string | null;
+  quantidade: number; // Nr Kits
+  valor_mnt_dia: number; // Valor do Kit
+  categoria: 'Saúde';
+}
+
+interface ItemRemonta {
+  item: string; // Ex: Equino, Canino
+  quantidade_animais: number;
+  dias_operacao_item: number; // Dias específicos de uso do animal
+  valor_mnt_dia: number; // Valor base (Anual/Mensal/Diário) - Usado apenas para cálculo interno
+  categoria: 'Remonta/Veterinária';
 }
 
 interface FormDataClasseVIII {
   selectedOmId?: string;
   organizacao: string; // OM Detentora (Global)
   ug: string; // UG Detentora (Global)
-  dias_operacao: number; // Global
-  itens: ItemClasseVIII[]; // All items across all categories
+  dias_operacao: number; // Global days of activity (Used for header only)
+  itensSaude: ItemSaude[];
+  itensRemonta: ItemRemonta[];
   fase_atividade?: string; // Global
 }
 
 interface ClasseVIIIRegistro {
   id: string;
-  organizacao: string; // OM de Destino do Recurso (ND 30/39)
-  ug: string; // UG de Destino do Recurso (ND 30/39)
+  organizacao: string;
+  ug: string;
   dias_operacao: number;
   categoria: string;
-  itens_saude?: ItemClasseVIII[]; // Para Saúde
-  itens_remonta?: ItemClasseVIII[]; // Para Remonta
   valor_total: number;
   detalhamento: string;
   detalhamento_customizado?: string | null;
   fase_atividade?: string;
   valor_nd_30: number;
   valor_nd_39: number;
-  // Campos específicos de Remonta
+  itens_saude?: ItemSaude[];
   animal_tipo?: 'Equino' | 'Canino';
   quantidade_animais?: number;
+  itens_remonta?: ItemRemonta[];
 }
 
 interface CategoryAllocation {
@@ -81,14 +88,11 @@ interface CategoryAllocation {
   om_destino_recurso: string;
   ug_destino_recurso: string;
   selectedOmDestinoId?: string;
-  // Remonta specific fields
-  animal_tipo?: 'Equino' | 'Canino';
-  quantidade_animais?: number;
 }
 
 const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
     'Saúde': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
-    'Remonta/Veterinária': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined, animal_tipo: 'Equino', quantidade_animais: 0 },
+    'Remonta/Veterinária': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
 };
 
 const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
@@ -109,107 +113,164 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-// NOVO: Gera a memória de cálculo detalhada para uma categoria
-const generateCategoryMemoriaCalculo = (
-    categoria: Categoria, 
-    itens: ItemClasseVIII[], 
-    diasOperacao: number, 
-    organizacao: string, 
-    ug: string, 
-    faseAtividade: string | null | undefined,
-    animalTipo?: 'Equino' | 'Canino',
-    quantidadeAnimais?: number
-): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
+// --- Lógica de Cálculo Remonta/Veterinária ---
 
-    let detalhamentoItens = "";
-    itens.forEach(item => {
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
-    });
+const calculateRemontaItemTotal = (item: ItemRemonta): number => {
+    const baseValue = item.valor_mnt_dia;
+    const nrAnimais = item.quantidade_animais;
+    const diasOperacao = item.dias_operacao_item;
     
-    let header = `33.90.30 / 33.90.39 - Aquisição de Material de ${getCategoryLabel(categoria)}`;
+    if (diasOperacao <= 0 || nrAnimais <= 0) return 0;
+
+    let total = 0;
     
-    if (categoria === 'Remonta/Veterinária' && animalTipo && quantidadeAnimais) {
-        header += ` (${animalTipo} - ${quantidadeAnimais} un.)`;
-    } else if (categoria === 'Saúde') {
-        header += ` (Diversos)`;
+    if (item.item.includes('(Anual)')) {
+        // Item B, D, E (Annual): Nr Animais x Item Valor x ceil(diasOperacao / 365)
+        const multiplier = Math.ceil(diasOperacao / 365);
+        total = baseValue * multiplier * nrAnimais;
+        
+    } else if (item.item.includes('(Mensal)')) {
+        // Item C (Monthly): [Nr Animais x (Item C / 30 dias) x Nr dias]
+        // Formula: Nr Animais x Item C x (diasOperacao / 30)
+        total = nrAnimais * (baseValue / 30) * diasOperacao;
+        
+    } else {
+        // Item G (Daily): Nr Animais x Item Valor x diasOperacao
+        total = baseValue * diasOperacao * nrAnimais;
     }
-
-    return `${header}
-OM de Destino: ${organizacao} (UG: ${ug})
-Período: ${diasOperacao} dias de ${faseFormatada}
-Total de Itens na Categoria: ${totalQuantidade}
-
-Cálculo:
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
-
-Detalhes dos Itens:
-${detalhamentoItens.trim()}
-
-Valor Total da Categoria: ${formatCurrency(totalValor)}.`;
+    
+    return total;
 };
 
-const generateDetalhamento = (
-    itens: ItemClasseVIII[], 
-    diasOperacao: number, 
-    organizacao: string, 
-    ug: string, 
-    faseAtividade: string, 
-    omDestino: string, 
-    ugDestino: string, 
-    valorND30: number, 
-    valorND39: number,
-    categoria: Categoria,
-    animalTipo?: 'Equino' | 'Canino',
-    quantidadeAnimais?: number
+const calculateSaudeItemTotal = (item: ItemSaude): number => {
+    return item.valor_mnt_dia * item.quantidade;
+};
+
+// --- Geração de Memória de Cálculo ---
+
+const generateRemontaMemoriaCalculo = (
+    animalTipo: 'Equino' | 'Canino',
+    itens: ItemRemonta[],
+    diasOperacaoGlobal: number, // Dias globais do PTrab (para o cabeçalho)
+    organizacao: string,
+    ug: string,
+    faseAtividade: string,
+    omDestino: string,
+    ugDestino: string,
+    valorND30: number,
+    valorND39: number
 ): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const valorTotal = valorND30 + valorND39;
-
-    const gruposPorCategoria = itens.reduce((acc, item) => {
-        const categoria = item.categoria;
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        
-        if (!acc[categoria]) {
-            acc[categoria] = {
-                totalValor: 0,
-                totalQuantidade: 0,
-                detalhes: [],
-            };
-        }
-        
-        acc[categoria].totalValor += valorItem;
-        acc[categoria].totalQuantidade += item.quantidade;
-        acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.`
-        );
-        
-        return acc;
-    }, {} as Record<Categoria, { totalValor: number, totalQuantidade: number, detalhes: string[] }>);
-
-    let detalhamentoItens = "";
     
-    Object.entries(gruposPorCategoria).forEach(([cat, grupo]) => {
-        detalhamentoItens += `\n--- ${getCategoryLabel(cat).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`;
-        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
-        detalhamentoItens += `Detalhes:\n`;
-        detalhamentoItens += grupo.detalhes.join('\n');
-        detalhamentoItens += `\n`;
+    // Agrupar itens por tipo de animal (Equino ou Canino)
+    const itensPorAnimal = itens.filter(i => i.item.includes(animalTipo));
+    
+    if (itensPorAnimal.length === 0) return "";
+    
+    // Usamos o primeiro item para pegar a quantidade de animais e dias de operação específicos
+    const nrAnimais = itensPorAnimal[0].quantidade_animais;
+    const diasOperacaoItem = itensPorAnimal[0].dias_operacao_item;
+    
+    // Group items by Item Type (B, C, D, E, G)
+    const groupedItems: Record<string, ItemRemonta[]> = itensPorAnimal.reduce((acc, item) => {
+        const itemTypeMatch = item.item.match(/-\s([A-G]):/);
+        if (itemTypeMatch) {
+            const type = itemTypeMatch[1];
+            if (!acc[type]) acc[type] = [];
+            acc[type].push(item);
+        }
+        return acc;
+    }, {} as Record<string, ItemRemonta[]>);
+    
+    // Calculate totals and build formula components
+    let formulaComponents: string[] = [];
+    let calculationComponents: string[] = [];
+    let totalBrutoCalculado = 0;
+    
+    // Detailed Item Breakdown for the memory (Cálculo:)
+    let detailedItems = "Cálculo:\n";
+    
+    // Iterate over item types B, C, D, E, G in order
+    ['B', 'C', 'D', 'E', 'G'].forEach(type => {
+        const itemsOfType = groupedItems[type] || [];
+        
+        itemsOfType.forEach(item => {
+            const baseValue = item.valor_mnt_dia;
+            const itemTotal = calculateRemontaItemTotal(item);
+            totalBrutoCalculado += itemTotal;
+            
+            const itemDescription = item.item.split(/-\s[A-G]:\s/)[1].trim();
+            const itemUnit = item.item.includes('(Anual)') ? 'ano' : item.item.includes('(Mensal)') ? 'mês' : 'dia';
+            
+            detailedItems += `- Item ${type} (${itemDescription}): ${formatCurrency(baseValue)} / ${animalTipo.toLowerCase()} / ${itemUnit}.\n`;
+            
+            if (item.item.includes('(Mensal)')) {
+                // Item C: [Nr Animais x (Item C / 30 dias) x Nr dias]
+                formulaComponents.push(`[Nr ${animalTipo}s x (Item C / 30 dias) x Nr dias]`);
+                calculationComponents.push(`(${nrAnimais} x (${formatCurrency(baseValue)} / 30 dias) x ${diasOperacaoItem} dias)`);
+            } else if (item.item.includes('(Diário)')) {
+                // Item G: (Nr Animais x Item G x Nr dias)
+                formulaComponents.push(`(Nr ${animalTipo}s x Item G x Nr dias)`);
+                calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${diasOperacaoItem} dias)`);
+            } else {
+                // Item B, D, E (Annual): (Nr Animais x Item X)
+                // Nota: O cálculo anual usa Math.ceil(diasOperacaoItem / 365) como multiplicador, mas a fórmula simplificada na memória é (Nr Animais x Item X)
+                formulaComponents.push(`(Nr ${animalTipo}s x Item ${type})`);
+                
+                const multiplier = Math.ceil(diasOperacaoItem / 365);
+                if (multiplier > 1) {
+                    calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${multiplier} anos)`);
+                } else {
+                    calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)})`);
+                }
+            }
+        });
     });
     
-    detalhamentoItens = detalhamentoItens.trim();
+    const formulaString = formulaComponents.join(' + ');
+    const calculationString = calculationComponents.join(' + ');
     
-    let header = `33.90.30 / 33.90.39 - Aquisição de Material de ${getCategoryLabel(categoria)} (Diversos) para ${totalItens} itens`;
+    let memoria = `33.90.30 / 33.90.39 - Aquisição meios ou contratação de serviços para a manutenção de ${nrAnimais} ${animalTipo.toLowerCase()}(s) do ${organizacao}, durante ${diasOperacaoItem} dias de ${faseFormatada}.
+Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
+
+Alocação:
+- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
+- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
+
+${detailedItems.trim()}
+
+Fórmula: ${formulaString} = ${formatCurrency(valorTotal)}.
+Cálculo Detalhado: ${calculationString} = ${formatCurrency(totalBrutoCalculado)}.
+
+Total: ${formatCurrency(valorTotal)}.`;
+
+    return memoria;
+};
+
+const generateSaudeMemoriaCalculo = (
+    itens: ItemSaude[],
+    diasOperacao: number,
+    organizacao: string,
+    ug: string,
+    faseAtividade: string,
+    omDestino: string,
+    ugDestino: string,
+    valorND30: number,
+    valorND39: number
+): string => {
+    const faseFormatada = formatFasesParaTexto(faseAtividade);
+    const totalKits = itens.reduce((sum, item) => sum + item.quantidade, 0);
+    const valorTotal = valorND30 + valorND39;
     
-    if (categoria === 'Remonta/Veterinária' && animalTipo && quantidadeAnimais) {
-        header += ` (${animalTipo}: ${quantidadeAnimais} un.)`;
-    }
+    let detalhamentoCalculo = "";
     
-    header += `, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+    itens.forEach(item => {
+        const itemTotal = calculateSaudeItemTotal(item);
+        detalhamentoCalculo += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)} = ${formatCurrency(itemTotal)}.\n`;
+    });
+    
+    return `33.90.30 / 33.90.39 - Aquisição de KPSI/KPSC e KPT para utilização por ${totalKits} kits do ${organizacao}, durante ${diasOperacao} dias de ${faseFormatada}.
 Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
 Alocação:
@@ -217,14 +278,13 @@ Alocação:
 - ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
 Cálculo:
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
+Fórmula: Nr KPSC/KPT x valor do item
 
-${detalhamentoItens}
+Detalhes:
+${detalhamentoCalculo.trim()}
 
-Valor Total: ${formatCurrency(valorTotal)}.`;
-
-    return header;
-  };
+Total: ${formatCurrency(valorTotal)}.`;
+};
 
 
 const ClasseVIIIForm = () => {
@@ -234,13 +294,12 @@ const ClasseVIIIForm = () => {
   
   const [registrosSaude, setRegistrosSaude] = useState<ClasseVIIIRegistro[]>([]);
   const [registrosRemonta, setRegistrosRemonta] = useState<ClasseVIIIRegistro[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [diretrizes, setDiretrizes] = useState<DiretrizClasseII[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  const [diretrizesSaude, setDiretrizesSaude] = useState<DiretrizClasseII[]>([]);
+  const [diretrizesRemonta, setDiretrizesRemonta] = useState<DiretrizClasseII[]>([]);
+  
   const [selectedTab, setSelectedTab] = useState<Categoria>(CATEGORIAS[0]);
-  
-  const [editingId, setEditingId] = useState<string | null>(null);
-  
-  // Estados para edição de memória de cálculo
   const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
   const [memoriaEdit, setMemoriaEdit] = useState<string>("");
   
@@ -249,20 +308,21 @@ const ClasseVIIIForm = () => {
     organizacao: "",
     ug: "",
     dias_operacao: 0,
-    itens: [],
+    itensSaude: [],
+    itensRemonta: [],
   });
   
   const [categoryAllocations, setCategoryAllocations] = useState<Record<Categoria, CategoryAllocation>>(initialCategoryAllocations);
   const [currentND39Input, setCurrentND39Input] = useState<string>("");
   
-  const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemClasseVIII[]>([]);
+  const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemSaude[] | ItemRemonta[]>([]);
+  const [remontaValidationWarning, setRemontaValidationWarning] = useState<string | null>(null); // Novo estado para aviso de validação
   
   const [fasesAtividade, setFasesAtividade] = useState<string[]>(["Execução"]);
   const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
   const { handleEnterToNextField } = useFormNavigation();
-  const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!ptrabId) {
@@ -270,8 +330,9 @@ const ClasseVIIIForm = () => {
       navigate("/ptrab");
       return;
     }
+    setLoading(true);
     loadDiretrizes();
-    fetchRegistros();
+    fetchRegistros().then(() => setLoading(false)); // Initial load, but don't populate form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId]);
   
@@ -279,55 +340,78 @@ const ClasseVIIIForm = () => {
     setCurrentND39Input(categoryAllocations[selectedTab].nd_39_input);
   }, [selectedTab, categoryAllocations]);
 
+  // Efeito para gerenciar a lista de itens da categoria atual
   useEffect(() => {
-    if (diretrizes.length > 0 && form.organizacao) {
-        const availableItems = diretrizes
-            .filter(d => d.categoria === selectedTab)
-            .map(d => ({
-                item: d.item,
-                quantidade: 0,
-                valor_mnt_dia: Number(d.valor_mnt_dia),
-                categoria: d.categoria as Categoria,
-                memoria_customizada: null,
-            }));
+    const isSaude = selectedTab === 'Saúde';
+    const directives = isSaude ? diretrizesSaude : diretrizesRemonta;
+    const formItems = isSaude ? form.itensSaude : form.itensRemonta;
+    
+    if (directives.length === 0) {
+        setCurrentCategoryItems([]);
+        return;
+    }
 
-        const existingItemsMap = new Map<string, ItemClasseVIII>();
-        form.itens.filter(i => i.categoria === selectedTab).forEach(item => {
+    if (isSaude) {
+        const existingItemsMap = new Map<string, ItemSaude>();
+        (formItems as ItemSaude[]).forEach(item => {
             existingItemsMap.set(item.item, item);
         });
 
-        const mergedItems = availableItems.map(availableItem => {
-            const existing = existingItemsMap.get(availableItem.item);
-            return existing || availableItem;
-        });
-
-        setCurrentCategoryItems(mergedItems);
-    } else if (diretrizes.length > 0 && !form.organizacao) {
-        const availableItems = diretrizes
-            .filter(d => d.categoria === selectedTab)
-            .map(d => ({
-                item: d.item,
+        const mergedItems = directives.map(directive => {
+            const existing = existingItemsMap.get(directive.item);
+            const defaultItem: ItemSaude = {
+                item: directive.item,
                 quantidade: 0,
-                valor_mnt_dia: Number(d.valor_mnt_dia),
-                categoria: d.categoria as Categoria,
-                memoria_customizada: null,
-            }));
-        setCurrentCategoryItems(availableItems);
+                valor_mnt_dia: Number(directive.valor_mnt_dia),
+                categoria: 'Saúde',
+            };
+            return existing || defaultItem;
+        });
+        setCurrentCategoryItems(mergedItems);
+        
     } else {
-        setCurrentCategoryItems([]);
+        // Lógica específica para Remonta/Veterinária: Apenas 2 itens (Equino e Canino)
+        const animalTypes = ['Equino', 'Canino'];
+        const baseItems: ItemRemonta[] = [];
+        
+        animalTypes.forEach(animalType => {
+            const relatedDirectives = directives.filter(d => d.item.includes(animalType));
+            
+            if (relatedDirectives.length > 0) {
+                const existingRelatedItems = (formItems as ItemRemonta[]).filter(item => item.item.includes(animalType));
+                
+                // Se houver registros salvos, usamos a quantidade e dias do primeiro item relacionado
+                const nrAnimaisSalvos = existingRelatedItems[0]?.quantidade_animais || 0;
+                const diasOperacaoSalvos = existingRelatedItems[0]?.dias_operacao_item || 0;
+                
+                const baseItem: ItemRemonta = {
+                    item: animalType,
+                    quantidade_animais: nrAnimaisSalvos,
+                    dias_operacao_item: diasOperacaoSalvos,
+                    valor_mnt_dia: 0,
+                    categoria: 'Remonta/Veterinária',
+                };
+                
+                const directivesAsItems: ItemRemonta[] = relatedDirectives.map(d => ({
+                    item: d.item,
+                    quantidade_animais: nrAnimaisSalvos,
+                    dias_operacao_item: diasOperacaoSalvos,
+                    valor_mnt_dia: Number(d.valor_mnt_dia),
+                    categoria: 'Remonta/Veterinária',
+                }));
+                
+                const totalValueForAnimal = directivesAsItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+                
+                baseItem.valor_mnt_dia = totalValueForAnimal; 
+                
+                baseItems.push(baseItem);
+            }
+        });
+        
+        setCurrentCategoryItems(baseItems);
     }
-  }, [selectedTab, diretrizes, form.itens, form.organizacao, form.dias_operacao]);
+  }, [selectedTab, diretrizesSaude, diretrizesRemonta, form.itensSaude, form.itensRemonta]);
 
-  const itensAgrupadosPorCategoria = useMemo(() => {
-    return form.itens.reduce((acc, item) => {
-      if (!acc[item.categoria]) {
-        acc[item.categoria] = [];
-      }
-      acc[item.categoria].push(item);
-      return acc;
-    }, {} as Record<Categoria, ItemClasseVIII[]>);
-  }, [form.itens]);
-  
 
   const loadDiretrizes = async () => {
     try {
@@ -360,33 +444,34 @@ const ClasseVIIIForm = () => {
           }
       }
       
+      const allCategories = [...CATEGORIAS];
+      
       if (!anoReferencia) {
-        toast.warning(`Diretriz de Custeio não encontrada. Usando valores padrão.`);
-        setDiretrizes([...defaultClasseVIIISaudeConfig, ...defaultClasseVIIIRemontaConfig] as DiretrizClasseII[]);
+        setDiretrizesSaude(defaultClasseVIIISaudeConfig as DiretrizClasseII[]);
+        setDiretrizesRemonta(defaultClasseVIIIRemontaConfig as DiretrizClasseII[]);
         return;
       }
 
-      const { data: classeVIIIData, error } = await supabase
+      const { data: classeItemsData } = await supabase
         .from("diretrizes_classe_ii")
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", anoReferencia)
         .eq("ativo", true)
-        .in("categoria", CATEGORIAS);
+        .in("categoria", allCategories);
 
-      if (error) throw error;
-
-      if (classeVIIIData && classeVIIIData.length > 0) {
-        setDiretrizes((classeVIIIData || []) as DiretrizClasseII[]);
-      } else {
-        setDiretrizes([...defaultClasseVIIISaudeConfig, ...defaultClasseVIIIRemontaConfig] as DiretrizClasseII[]);
-        toast.warning(`Itens de Classe VIII não configurados para o ano ${anoReferencia}. Usando valores padrão.`);
-      }
+      const loadedItems = classeItemsData || [];
+      
+      const loadedSaude = loadedItems.filter(d => d.categoria === 'Saúde');
+      setDiretrizesSaude(loadedSaude.length > 0 ? loadedSaude as DiretrizClasseII[] : defaultClasseVIIISaudeConfig as DiretrizClasseII[]);
+      
+      const loadedRemonta = loadedItems.filter(d => d.categoria === 'Remonta/Veterinária');
+      setDiretrizesRemonta(loadedRemonta.length > 0 ? loadedRemonta as DiretrizClasseII[] : defaultClasseVIIIRemontaConfig as DiretrizClasseII[]);
       
     } catch (error) {
       console.error("Erro ao carregar diretrizes:", error);
-      setDiretrizes([...defaultClasseVIIISaudeConfig, ...defaultClasseVIIIRemontaConfig] as DiretrizClasseII[]);
-      toast.error("Erro ao carregar diretrizes. Usando valores padrão.");
+      setDiretrizesSaude(defaultClasseVIIISaudeConfig as DiretrizClasseII[]);
+      setDiretrizesRemonta(defaultClasseVIIIRemontaConfig as DiretrizClasseII[]);
     }
   };
 
@@ -411,78 +496,165 @@ const ClasseVIIIForm = () => {
     if (remontaError) { console.error("Erro ao carregar Remonta:", remontaError); toast.error("Erro ao carregar registros de Remonta"); }
 
     const newSaudeRecords = (saudeData || []) as ClasseVIIIRegistro[];
-    
-    // FIX: Mapear registros de Remonta para garantir que o campo 'categoria' esteja presente,
-    // pois a tabela separada pode não incluir este campo explicitamente.
-    const newRemontaRecords = (remontaData || []).map(r => ({
-        ...r,
-        categoria: 'Remonta/Veterinária',
-    })) as ClasseVIIIRegistro[];
+    const newRemontaRecords = (remontaData || []) as ClasseVIIIRegistro[];
 
     setRegistrosSaude(newSaudeRecords);
     setRegistrosRemonta(newRemontaRecords);
     
     return { saude: newSaudeRecords, remonta: newRemontaRecords };
   };
+  
+  const reconstructFormState = async (saudeRecords: ClasseVIIIRegistro[], remontaRecords: ClasseVIIIRegistro[]) => {
+    setLoading(true);
+    const allRecords = [...saudeRecords, ...remontaRecords];
+    if (allRecords.length === 0) {
+        setLoading(false);
+        return;
+    }
+
+    // Ao editar, usamos o primeiro registro para preencher os dados globais (OM, UG, Dias)
+    const firstRecord = allRecords[0];
+    
+    // 1. Extract global data
+    const omName = firstRecord.organizacao;
+    const ug = firstRecord.ug;
+    const diasOperacao = firstRecord.dias_operacao;
+    const fasesSalvas = (firstRecord.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+    const fasesPadrao = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
+    setFasesAtividade(fasesSalvas.filter(f => fasesPadrao.includes(f)));
+    setCustomFaseAtividade(fasesSalvas.find(f => !fasesPadrao.includes(f)) || "");
+    
+    // 2. Consolidate items and allocations
+    let consolidatedSaude: ItemSaude[] = [];
+    let consolidatedRemonta: ItemRemonta[] = [];
+    let newAllocations = { ...initialCategoryAllocations };
+    let selectedOmIdForEdit: string | undefined = undefined;
+    
+    const fetchOmId = async (nome: string, ug: string) => {
+        if (!nome || !ug) return undefined;
+        const { data } = await supabase
+            .from('organizacoes_militares')
+            .select('id')
+            .eq('nome_om', nome)
+            .eq('codug_om', ug)
+            .maybeSingle();
+        return data?.id;
+    };
+    
+    // Process Saúde
+    if (saudeRecords.length > 0) {
+        const r = saudeRecords[0]; // Apenas um registro por categoria é esperado
+        const sanitizedItems = (r.itens_saude || []).map(item => ({
+            ...item,
+            quantidade: Number((item as ItemSaude).quantidade || 0),
+        })) as ItemSaude[];
+        
+        consolidatedSaude = sanitizedItems;
+        
+        const totalValor = sanitizedItems.reduce((sum, item) => calculateSaudeItemTotal(item) + sum, 0);
+        newAllocations['Saúde'] = {
+            total_valor: totalValor,
+            nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
+            nd_30_value: Number(r.valor_nd_30),
+            nd_39_value: Number(r.valor_nd_39),
+            om_destino_recurso: r.organizacao,
+            ug_destino_recurso: r.ug,
+            selectedOmDestinoId: undefined,
+        };
+    }
+    
+    // Process Remonta
+    if (remontaRecords.length > 0) {
+        const r = remontaRecords[0]; // Apenas um registro por categoria é esperado
+        const sanitizedItems = (r.itens_remonta || []).map(item => ({
+            ...item,
+            quantidade_animais: Number((item as ItemRemonta).quantidade_animais || 0),
+            dias_operacao_item: Number((item as ItemRemonta).dias_operacao_item || 0),
+        })) as ItemRemonta[];
+        
+        consolidatedRemonta = sanitizedItems;
+        
+        const totalValor = sanitizedItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+        
+        newAllocations['Remonta/Veterinária'] = {
+            total_valor: totalValor,
+            nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
+            nd_30_value: Number(r.valor_nd_30),
+            nd_39_value: Number(r.valor_nd_39),
+            om_destino_recurso: r.organizacao,
+            ug_destino_recurso: r.ug,
+            selectedOmDestinoId: undefined,
+        };
+    }
+    
+    // Fetch OM IDs
+    selectedOmIdForEdit = await fetchOmId(omName, ug);
+    
+    for (const cat of CATEGORIAS) {
+        const alloc = newAllocations[cat];
+        if (alloc.om_destino_recurso) {
+            alloc.selectedOmDestinoId = await fetchOmId(alloc.om_destino_recurso, alloc.ug_destino_recurso);
+        }
+    }
+    
+    setForm({
+      selectedOmId: selectedOmIdForEdit,
+      organizacao: omName,
+      ug: ug,
+      dias_operacao: diasOperacao,
+      itensSaude: consolidatedSaude,
+      itensRemonta: consolidatedRemonta,
+    });
+    setCategoryAllocations(newAllocations);
+    
+    if (saudeRecords.length > 0) {
+        setSelectedTab('Saúde');
+    } else if (remontaRecords.length > 0) {
+        setSelectedTab('Remonta/Veterinária');
+    }
+    setLoading(false);
+  };
 
   const resetFormFields = () => {
-    setEditingId(null);
     setForm({
       selectedOmId: undefined,
       organizacao: "",
       ug: "",
       dias_operacao: 0,
-      itens: [],
+      itensSaude: [],
+      itensRemonta: [],
     });
-    
     setCategoryAllocations(initialCategoryAllocations);
     setCurrentND39Input("");
-    
     setCurrentCategoryItems([]);
-    
     setFasesAtividade(["Execução"]);
     setCustomFaseAtividade("");
+    setRemontaValidationWarning(null); // Resetar aviso
   };
 
   const handleOMChange = (omData: OMData | undefined) => {
-    if (omData) {
-      setForm({ 
-        ...form, 
-        selectedOmId: omData.id, 
-        organizacao: omData.nome_om, 
-        ug: omData.codug_om,
-      });
-      
-      const newAllocations = CATEGORIAS.reduce((acc, cat) => {
-          acc[cat] = {
-              ...categoryAllocations[cat],
-              om_destino_recurso: omData.nome_om,
-              ug_destino_recurso: omData.codug_om,
-              selectedOmDestinoId: omData.id,
-          };
-          return acc;
-      }, {} as Record<Categoria, CategoryAllocation>);
-      setCategoryAllocations(newAllocations);
-      
-    } else {
-      setForm({ 
-        ...form, 
-        selectedOmId: undefined, 
-        organizacao: "", 
-        ug: "",
-      });
-      
-      const newAllocations = CATEGORIAS.reduce((acc, cat) => {
-          acc[cat] = {
-              ...categoryAllocations[cat],
-              om_destino_recurso: "",
-              ug_destino_recurso: "",
-              selectedOmDestinoId: undefined,
-          };
-          return acc;
-      }, {} as Record<Categoria, CategoryAllocation>);
-      setCategoryAllocations(newAllocations);
-    }
+    const omName = omData?.nome_om || "";
+    const ug = omData?.codug_om || "";
+    const omId = omData?.id;
+    
+    setForm(prev => ({
+      ...prev,
+      selectedOmId: omId,
+      organizacao: omName,
+      ug: ug,
+    }));
+    
+    // Ao mudar a OM detentora, resetamos a OM de destino para a nova OM detentora
+    const newAllocations = CATEGORIAS.reduce((acc, cat) => {
+        acc[cat] = {
+            ...categoryAllocations[cat],
+            om_destino_recurso: omName,
+            ug_destino_recurso: ug,
+            selectedOmDestinoId: omId,
+        };
+        return acc;
+    }, {} as Record<Categoria, CategoryAllocation>);
+    setCategoryAllocations(newAllocations);
   };
   
   const handleOMDestinoChange = (omData: OMData | undefined) => {
@@ -505,13 +677,93 @@ const ClasseVIIIForm = () => {
     }
   };
 
-  const handleQuantityChange = (itemIndex: number, quantity: number) => {
+  // --- Item Quantity Handlers ---
+  const handleQuantityChange = (itemIndex: number, rawQuantity: string) => {
     const newItems = [...currentCategoryItems];
-    newItems[itemIndex].quantidade = Math.max(0, quantity);
+    const quantity = parseInt(rawQuantity) || 0;
+    
+    if (selectedTab === 'Saúde') {
+        (newItems as ItemSaude[])[itemIndex].quantidade = Math.max(0, quantity);
+    } else {
+        // Lógica de Remonta/Veterinária
+        const item = (newItems as ItemRemonta[])[itemIndex];
+        item.quantidade_animais = Math.max(0, quantity);
+        
+        // Validação imediata para Canino
+        if (item.item === 'Canino' && quantity > 0 && quantity % 5 !== 0) {
+            setRemontaValidationWarning("A quantidade de Caninos deve ser um múltiplo de 5.");
+        } else {
+            setRemontaValidationWarning(null);
+        }
+    }
+    setCurrentCategoryItems(newItems);
+  };
+  
+  const handleQuantityBlur = (itemIndex: number) => {
+    if (selectedTab !== 'Remonta/Veterinária') return;
+    
+    const newItems = [...currentCategoryItems];
+    const item = (newItems as ItemRemonta[])[itemIndex];
+    let finalQuantity = item.quantidade_animais;
+    
+    // Regra Caninos: múltiplos de 5 (aplicada no blur)
+    if (item.item === 'Canino') {
+        // Se o valor não for múltiplo de 5, arredondamos para o múltiplo de 5 mais próximo
+        if (finalQuantity > 0 && finalQuantity % 5 !== 0) {
+            finalQuantity = Math.round(finalQuantity / 5) * 5;
+            setRemontaValidationWarning(null); // Limpa o aviso após o arredondamento
+        }
+    }
+    
+    item.quantidade_animais = finalQuantity;
+    setCurrentCategoryItems(newItems);
+  };
+  
+  const handleDiasOperacaoChange = (itemIndex: number, days: number) => {
+    if (selectedTab !== 'Remonta/Veterinária') return;
+    
+    const newItems = [...currentCategoryItems];
+    const item = (newItems as ItemRemonta[])[itemIndex];
+    item.dias_operacao_item = Math.max(0, days);
+    
     setCurrentCategoryItems(newItems);
   };
 
-  const currentCategoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+  // --- ND Allocation Handlers ---
+  const currentCategoryTotalValue = useMemo(() => {
+    if (selectedTab === 'Saúde') {
+        return (currentCategoryItems as ItemSaude[]).reduce((sum, item) => sum + calculateSaudeItemTotal(item), 0);
+    } else {
+        const remontaItems = currentCategoryItems as ItemRemonta[];
+        const directives = diretrizesRemonta;
+        
+        let totalRemonta = 0;
+        
+        remontaItems.forEach(animalItem => {
+            const animalType = animalItem.item;
+            const nrAnimais = animalItem.quantidade_animais;
+            const diasOperacao = animalItem.dias_operacao_item;
+            
+            if (nrAnimais > 0 && diasOperacao > 0) {
+                const relatedDirectives = directives.filter(d => d.item.includes(animalType));
+                
+                const directivesAsItems: ItemRemonta[] = relatedDirectives.map(d => ({
+                    item: d.item,
+                    quantidade_animais: nrAnimais,
+                    dias_operacao_item: diasOperacao,
+                    valor_mnt_dia: Number(d.valor_mnt_dia),
+                    categoria: 'Remonta/Veterinária',
+                }));
+                
+                const totalForAnimal = directivesAsItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+                totalRemonta += totalForAnimal;
+            }
+        });
+        
+        return totalRemonta;
+    }
+  }, [currentCategoryItems, selectedTab, diretrizesRemonta]);
+  
   const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, parseInputToNumber(currentND39Input)));
   const nd30ValueTemp = currentCategoryTotalValue - nd39ValueTemp;
 
@@ -526,13 +778,14 @@ const ClasseVIIIForm = () => {
       setCurrentND39Input(formatNumberForInput(finalND39Value, 2));
   };
 
+  // --- Save Category Items to Form State ---
   const handleUpdateCategoryItems = () => {
     if (!form.organizacao || form.dias_operacao <= 0) {
-        toast.error("Preencha a OM e os Dias de Operação antes de salvar itens.");
+        toast.error("Preencha a OM e os Dias de Atividade (Global) antes de salvar itens.");
         return;
     }
     
-    const categoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+    const categoryTotalValue = currentCategoryTotalValue;
 
     const numericInput = parseInputToNumber(currentND39Input);
     const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
@@ -548,16 +801,45 @@ const ClasseVIIIForm = () => {
         return;
     }
     
-    if (selectedTab === 'Remonta/Veterinária' && categoryAllocations[selectedTab].quantidade_animais === 0) {
-        toast.error("Informe a quantidade de animais para Remonta/Veterinária.");
+    if (selectedTab === 'Remonta/Veterinária' && remontaValidationWarning) {
+        toast.error(remontaValidationWarning);
         return;
     }
 
-    const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
-
-    const itemsFromOtherCategories = form.itens.filter(item => item.categoria !== selectedTab);
-
-    const newFormItems = [...itemsFromOtherCategories, ...itemsToKeep];
+    let itemsToKeep: (ItemSaude | ItemRemonta)[] = [];
+    
+    if (selectedTab === 'Saúde') {
+        itemsToKeep = (currentCategoryItems as ItemSaude[]).filter(item => item.quantidade > 0);
+        setForm({ ...form, itensSaude: itemsToKeep as ItemSaude[] });
+    } else {
+        const remontaItems = currentCategoryItems as ItemRemonta[];
+        const directives = diretrizesRemonta;
+        
+        const activeRemontaItems: ItemRemonta[] = [];
+        
+        remontaItems.forEach(animalItem => {
+            const animalType = animalItem.item;
+            const nrAnimais = animalItem.quantidade_animais;
+            const diasOperacao = animalItem.dias_operacao_item;
+            
+            if (nrAnimais > 0 && diasOperacao > 0) {
+                const relatedDirectives = directives.filter(d => d.item.includes(animalType));
+                
+                relatedDirectives.forEach(d => {
+                    activeRemontaItems.push({
+                        item: d.item,
+                        quantidade_animais: nrAnimais,
+                        dias_operacao_item: diasOperacao,
+                        valor_mnt_dia: Number(d.valor_mnt_dia),
+                        categoria: 'Remonta/Veterinária',
+                    });
+                });
+            }
+        });
+        
+        itemsToKeep = activeRemontaItems;
+        setForm({ ...form, itensRemonta: itemsToKeep as ItemRemonta[] });
+    }
 
     setCategoryAllocations(prev => ({
         ...prev,
@@ -569,26 +851,35 @@ const ClasseVIIIForm = () => {
             nd_39_value: finalND39Value,
         }
     }));
-
-    setForm({ ...form, itens: newFormItems });
+    
     toast.success(`Itens e alocação de ND para ${getCategoryLabel(selectedTab)} atualizados!`);
   };
   
-  const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+  // --- Global Totals and Validation ---
+  const valorTotalSaude = form.itensSaude.reduce((sum, item) => sum + calculateSaudeItemTotal(item), 0);
+  const valorTotalRemonta = form.itensRemonta.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+  const valorTotalForm = valorTotalSaude + valorTotalRemonta;
 
   const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_30_value, 0);
   const totalND39Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_39_value, 0);
-
   const totalAlocado = totalND30Final + totalND39Final;
   
   const isTotalAlocadoCorrect = areNumbersEqual(valorTotalForm, totalAlocado);
+  
+  const itensAgrupadosPorCategoria = useMemo(() => {
+    const groups: Record<Categoria, (ItemSaude | ItemRemonta)[]> = {};
+    if (form.itensSaude.length > 0) groups['Saúde'] = form.itensSaude;
+    if (form.itensRemonta.length > 0) groups['Remonta/Veterinária'] = form.itensRemonta;
+    return groups;
+  }, [form.itensSaude, form.itensRemonta]);
 
 
+  // --- Save Records to Database ---
   const handleSalvarRegistros = async () => {
     if (!ptrabId) return;
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
-    if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
-    if (form.itens.length === 0) { toast.error("Adicione pelo menos um item"); return; }
+    if (form.dias_operacao <= 0) { toast.error("Dias de Atividade (Global) deve ser maior que zero"); return; }
+    if (form.itensSaude.length === 0 && form.itensRemonta.length === 0) { toast.error("Adicione pelo menos um item"); return; }
     
     let fasesFinais = [...fasesAtividade];
     if (customFaseAtividade.trim()) { fasesFinais = [...fasesFinais, customFaseAtividade.trim()]; }
@@ -602,115 +893,151 @@ const ClasseVIIIForm = () => {
 
     setLoading(true);
     
-    const itemsByActiveCategory = form.itens.reduce((acc, item) => {
-        if (item.quantidade > 0 && CATEGORIAS.includes(item.categoria as Categoria)) {
-            if (!acc[item.categoria]) {
-                acc[item.categoria] = [];
-            }
-            acc[item.categoria].push(item);
-        }
-        return acc;
-    }, {} as Record<Categoria, ItemClasseVIII[]>);
-    
-    const categoriesToSave = Object.keys(itemsByActiveCategory) as Categoria[];
-    
-    if (categoriesToSave.length === 0) {
-        toast.error("Nenhum item com quantidade maior que zero foi configurado.");
-        setLoading(false);
-        return;
-    }
-    
-    const registrosSaudeParaSalvar: TablesInsert<'classe_viii_saude_registros'>[] = [];
-    const registrosRemontaParaSalvar: TablesInsert<'classe_viii_remonta_registros'>[] = [];
-    
-    for (const categoria of categoriesToSave) {
-        const itens = itemsByActiveCategory[categoria];
-        const allocation = categoryAllocations[categoria];
-        
-        if (!allocation.om_destino_recurso || !allocation.ug_destino_recurso) {
-            toast.error(`Selecione a OM de destino do recurso para a categoria: ${getCategoryLabel(categoria)}.`);
-            setLoading(false);
-            return;
-        }
-        
-        const valorTotalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
-        
-        if (!areNumbersEqual(valorTotalCategoria, (allocation.nd_30_value + allocation.nd_39_value))) {
-            toast.error(`Erro de alocação na categoria ${getCategoryLabel(categoria)}: O valor total dos itens (${formatCurrency(valorTotalCategoria)}) não corresponde ao total alocado (${formatCurrency(allocation.nd_30_value + allocation.nd_39_value)}). Salve a categoria novamente.`);
-            setLoading(false);
-            return;
-        }
-        
-        const detalhamento = generateDetalhamento(
-            itens, 
-            form.dias_operacao, 
-            form.organizacao,
-            form.ug,
-            faseFinalString,
-            allocation.om_destino_recurso,
-            allocation.ug_destino_recurso,
-            allocation.nd_30_value,
-            allocation.nd_39_value,
-            categoria,
-            allocation.animal_tipo,
-            allocation.quantidade_animais
-        );
-        
-        if (categoria === 'Saúde') {
-            const registro: TablesInsert<'classe_viii_saude_registros'> = {
-                p_trab_id: ptrabId,
-                organizacao: allocation.om_destino_recurso,
-                ug: allocation.ug_destino_recurso,
-                dias_operacao: form.dias_operacao,
-                categoria: categoria,
-                itens_saude: itens as any,
-                valor_total: valorTotalCategoria,
-                detalhamento: detalhamento,
-                fase_atividade: faseFinalString,
-                detalhamento_customizado: null,
-                valor_nd_30: allocation.nd_30_value,
-                valor_nd_39: allocation.nd_39_value,
-            };
-            registrosSaudeParaSalvar.push(registro);
-        } else if (categoria === 'Remonta/Veterinária') {
-            const registro: TablesInsert<'classe_viii_remonta_registros'> = {
-                p_trab_id: ptrabId,
-                organizacao: allocation.om_destino_recurso,
-                ug: allocation.ug_destino_recurso,
-                dias_operacao: form.dias_operacao,
-                animal_tipo: allocation.animal_tipo,
-                quantidade_animais: allocation.quantidade_animais,
-                itens_remonta: itens as any,
-                valor_total: valorTotalCategoria,
-                detalhamento: detalhamento,
-                fase_atividade: faseFinalString,
-                detalhamento_customizado: null,
-                valor_nd_30: allocation.nd_30_value,
-                valor_nd_39: allocation.nd_39_value,
-            };
-            registrosRemontaParaSalvar.push(registro);
-        }
-    }
-
     try {
-      // 1. Deletar registros existentes
+      // 1. Deletar registros antigos
+      // Nota: Mantemos a exclusão total para simplificar a edição/substituição de registros
       await supabase.from("classe_viii_saude_registros").delete().eq("p_trab_id", ptrabId);
       await supabase.from("classe_viii_remonta_registros").delete().eq("p_trab_id", ptrabId);
       
-      // 2. Inserir novos registros
-      if (registrosSaudeParaSalvar.length > 0) {
-        const { error: insertSaudeError } = await supabase.from("classe_viii_saude_registros").insert(registrosSaudeParaSalvar);
-        if (insertSaudeError) throw insertSaudeError;
-      }
-      if (registrosRemontaParaSalvar.length > 0) {
-        const { error: insertRemontaError } = await supabase.from("classe_viii_remonta_registros").insert(registrosRemontaParaSalvar);
-        if (insertRemontaError) throw insertRemontaError;
+      // 2. Inserir Saúde
+      if (form.itensSaude.length > 0) {
+        const allocation = categoryAllocations['Saúde'];
+        const valorTotal = valorTotalSaude;
+        
+        const detalhamento = generateSaudeMemoriaCalculo(
+            form.itensSaude, form.dias_operacao, form.organizacao, form.ug, faseFinalString,
+            allocation.om_destino_recurso, allocation.ug_destino_recurso, allocation.nd_30_value, allocation.nd_39_value
+        );
+        
+        const registroSaude: TablesInsert<'classe_viii_saude_registros'> = {
+            p_trab_id: ptrabId,
+            organizacao: allocation.om_destino_recurso,
+            ug: allocation.ug_destino_recurso,
+            dias_operacao: form.dias_operacao,
+            categoria: 'Saúde - KPSI/KPT',
+            itens_saude: form.itensSaude as any,
+            valor_total: valorTotal,
+            detalhamento: detalhamento,
+            fase_atividade: faseFinalString,
+            valor_nd_30: allocation.nd_30_value,
+            valor_nd_39: allocation.nd_39_value,
+        };
+        await supabase.from("classe_viii_saude_registros").insert([registroSaude]);
       }
       
-      toast.success(editingId ? "Registros de Classe VIII atualizados com sucesso!" : "Registros de Classe VIII salvos com sucesso!");
+      // 3. Inserir Remonta/Veterinária
+      if (form.itensRemonta.length > 0) {
+        const allocation = categoryAllocations['Remonta/Veterinária'];
+        const totalRemonta = valorTotalRemonta;
+        
+        // Agrupar itens por tipo de animal (Equino e Canino)
+        const remontaItemsGrouped = form.itensRemonta.reduce((acc, item) => {
+            const type = item.item.includes('Equino') ? 'Equino' : 'Canino';
+            if (!acc[type]) acc[type] = [];
+            acc[type].push(item);
+            return acc;
+        }, {} as Record<string, ItemRemonta[]>);
+        
+        const registrosParaInserir: TablesInsert<'classe_viii_remonta_registros'>[] = [];
+        
+        // Calcular totais individuais para Equino e Canino
+        const valorEquino = (remontaItemsGrouped['Equino'] || []).reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+        const valorCanino = (remontaItemsGrouped['Canino'] || []).reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+        
+        const totalGeralRemonta = valorEquino + valorCanino;
+        
+        // Calcular proporções para dividir ND 30/39
+        const proporcaoEquino = totalGeralRemonta > 0 ? valorEquino / totalGeralRemonta : 0;
+        const proporcaoCanino = totalGeralRemonta > 0 ? valorCanino / totalGeralRemonta : 0;
+        
+        const nd30Equino = allocation.nd_30_value * proporcaoEquino;
+        const nd39Equino = allocation.nd_39_value * proporcaoEquino;
+        
+        const nd30Canino = allocation.nd_30_value * proporcaoCanino;
+        const nd39Canino = allocation.nd_39_value * proporcaoCanino;
+        
+        // Processar Equino
+        if (remontaItemsGrouped['Equino'] && remontaItemsGrouped['Equino'].length > 0) {
+            const equinoItems = remontaItemsGrouped['Equino'];
+            const nrAnimaisEquino = equinoItems[0].quantidade_animais;
+            
+            const detalhamentoEquino = generateRemontaMemoriaCalculo(
+                'Equino', equinoItems, form.dias_operacao, form.organizacao, form.ug, faseFinalString,
+                allocation.om_destino_recurso, allocation.ug_destino_recurso, 
+                nd30Equino, nd39Equino
+            );
+            
+            registrosParaInserir.push({
+                p_trab_id: ptrabId,
+                organizacao: allocation.om_destino_recurso,
+                ug: allocation.ug_destino_recurso,
+                dias_operacao: form.dias_operacao,
+                animal_tipo: 'Equino',
+                quantidade_animais: nrAnimaisEquino,
+                itens_remonta: equinoItems as any,
+                valor_total: valorEquino,
+                detalhamento: detalhamentoEquino,
+                fase_atividade: faseFinalString,
+                valor_nd_30: nd30Equino,
+                valor_nd_39: nd39Equino,
+                categoria: 'Remonta/Veterinária', // FIX: Adicionado o campo categoria
+            });
+        }
+        
+        // Processar Canino
+        if (remontaItemsGrouped['Canino'] && remontaItemsGrouped['Canino'].length > 0) {
+            const caninoItems = remontaItemsGrouped['Canino'];
+            const nrAnimaisCanino = caninoItems[0].quantidade_animais;
+            
+            const detalhamentoCanino = generateRemontaMemoriaCalculo(
+                'Canino', caninoItems, form.dias_operacao, form.organizacao, form.ug, faseFinalString,
+                allocation.om_destino_recurso, allocation.ug_destino_recurso, 
+                nd30Canino, nd39Canino
+            );
+            
+            registrosParaInserir.push({
+                p_trab_id: ptrabId,
+                organizacao: allocation.om_destino_recurso,
+                ug: allocation.ug_destino_recurso,
+                dias_operacao: form.dias_operacao,
+                animal_tipo: 'Canino',
+                quantidade_animais: nrAnimaisCanino,
+                itens_remonta: caninoItems as any,
+                valor_total: valorCanino,
+                detalhamento: detalhamentoCanino,
+                fase_atividade: faseFinalString,
+                valor_nd_30: nd30Canino,
+                valor_nd_39: nd39Canino,
+                categoria: 'Remonta/Veterinária', // FIX: Adicionado o campo categoria
+            });
+        }
+        
+        // Ajuste final de arredondamento (garantir que a soma seja exata)
+        if (registrosParaInserir.length === 2) {
+            const totalND30 = allocation.nd_30_value;
+            const totalND39 = allocation.nd_39_value;
+            
+            const somaND30 = registrosParaInserir[0].valor_nd_30 + registrosParaInserir[1].valor_nd_30;
+            const somaND39 = registrosParaInserir[0].valor_nd_39 + registrosParaInserir[1].valor_nd_39;
+            
+            // Adiciona a diferença de arredondamento ao primeiro registro
+            if (!areNumbersEqual(somaND30, totalND30)) {
+                registrosParaInserir[0].valor_nd_30 += (totalND30 - somaND30);
+            }
+            if (!areNumbersEqual(somaND39, totalND39)) {
+                registrosParaInserir[0].valor_nd_39 += (totalND39 - somaND39);
+            }
+        }
+            
+        if (registrosParaInserir.length > 0) {
+            await supabase.from("classe_viii_remonta_registros").insert(registrosParaInserir);
+        }
+      }
+      
+      toast.success("Registros de Classe VIII salvos com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
-      resetFormFields();
-      fetchRegistros();
+      resetFormFields(); // Resetar o formulário para permitir novo registro
+      fetchRegistros(); // Recarregar a lista de registros salvos
     } catch (error) {
       console.error("Erro ao salvar registros de Classe VIII:", error);
       toast.error("Erro ao salvar registros de Classe VIII");
@@ -723,120 +1050,42 @@ const ClasseVIIIForm = () => {
     setLoading(true);
     resetFormFields();
     
-    const [
-        { data: allSaudeRecords },
-        { data: allRemontaRecords },
-    ] = await Promise.all([
-        supabase.from("classe_viii_saude_registros").select("*, itens_saude, valor_nd_30, valor_nd_39").eq("p_trab_id", ptrabId),
-        supabase.from("classe_viii_remonta_registros").select("*, itens_remonta, valor_nd_30, valor_nd_39").eq("p_trab_id", ptrabId),
-    ]);
+    // Garante que os dados mais recentes estão no estado
+    const { saude: saudeRecords, remonta: remontaRecords } = await fetchRegistros(); 
     
-    let consolidatedItems: ItemClasseVIII[] = [];
-    let newAllocations = { ...initialCategoryAllocations };
-    let firstOmDetentora: { nome: string, ug: string } | null = null;
+    // Reconstruir o estado do formulário com os dados carregados
+    // Filtramos os registros que pertencem à mesma OM/UG do registro clicado
+    const saudeToEdit = saudeRecords.filter(r => r.organizacao === registro.organizacao && r.ug === registro.ug);
+    const remontaToEdit = remontaRecords.filter(r => r.organizacao === registro.organizacao && r.ug === registro.ug);
     
-    const allRecords = [
-        ...(allSaudeRecords || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde' })),
-        ...(allRemontaRecords || []).map(r => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária' })),
-    ] as ClasseVIIIRegistro[];
+    reconstructFormState(saudeToEdit, remontaToEdit);
     
-    allRecords.forEach(r => {
-        const category = r.categoria as Categoria;
-        const items = (r.itens_saude || r.itens_remonta || []) as ItemClasseVIII[];
-        
-        consolidatedItems = consolidatedItems.concat(items);
-        
-        if (newAllocations[category]) {
-            const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * r.dias_operacao), 0);
-            
-            newAllocations[category] = {
-                total_valor: totalValor,
-                nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
-                nd_30_value: Number(r.valor_nd_30),
-                nd_39_value: Number(r.valor_nd_39),
-                om_destino_recurso: r.organizacao,
-                ug_destino_recurso: r.ug,
-                selectedOmDestinoId: undefined,
-                animal_tipo: r.animal_tipo,
-                quantidade_animais: r.quantidade_animais,
-            };
-        }
-        
-        if (!firstOmDetentora) {
-            firstOmDetentora = { nome: r.organizacao, ug: r.ug };
-        }
-    });
-    
-    let selectedOmIdForEdit: string | undefined = undefined;
-    
-    if (firstOmDetentora) {
-        try {
-            const { data: omData } = await supabase
-                .from('organizacoes_militares')
-                .select('id')
-                .eq('nome_om', firstOmDetentora.nome)
-                .eq('codug_om', firstOmDetentora.ug)
-                .maybeSingle();
-            selectedOmIdForEdit = omData?.id;
-        } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
-    }
-    
-    setEditingId(registro.id); 
-    setForm({
-      selectedOmId: selectedOmIdForEdit,
-      organizacao: firstOmDetentora?.nome || "",
-      ug: firstOmDetentora?.ug || "",
-      dias_operacao: registro.dias_operacao,
-      itens: consolidatedItems,
-    });
-    
-    const categoriesToLoad = Object.keys(newAllocations) as Categoria[];
-    for (const cat of categoriesToLoad) {
-        const alloc = newAllocations[cat];
-        if (alloc.om_destino_recurso) {
-            try {
-                const { data: omData } = await supabase
-                    .from('organizacoes_militares')
-                    .select('id')
-                    .eq('nome_om', alloc.om_destino_recurso)
-                    .eq('codug_om', alloc.ug_destino_recurso)
-                    .maybeSingle();
-                alloc.selectedOmDestinoId = omData?.id;
-            } catch (e) { console.error(`Erro ao buscar OM Destino ID para ${cat}:`, e); }
-        }
-    }
-    setCategoryAllocations(newAllocations);
-    
-    const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
-    setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
-    setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
-    
-    if (consolidatedItems.length > 0) {
-        setSelectedTab(registro.categoria as Categoria);
-    } else {
-        setSelectedTab(CATEGORIAS[0]);
-    }
+    // Define a aba correta para visualização
+    setSelectedTab(registro.categoria === 'Saúde - KPSI/KPT' ? 'Saúde' : 'Remonta/Veterinária');
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setLoading(false);
   };
   
-  const allRegistros = useMemo(() => {
-    return [...registrosSaude, ...registrosRemonta].sort((a, b) => 
-        a.organizacao.localeCompare(b.organizacao) || a.categoria.localeCompare(b.categoria)
-    );
-  }, [registrosSaude, registrosRemonta]);
-
-  const registrosAgrupadosPorOM = useMemo(() => {
-    return allRegistros.reduce((acc, registro) => {
-        const key = `${registro.organizacao} (${registro.ug})`;
-        if (!acc[key]) {
-            acc[key] = [];
-        }
-        acc[key].push(registro);
-        return acc;
-    }, {} as Record<string, ClasseVIIIRegistro[]>);
-  }, [allRegistros]);
+  const handleDeletarRegistro = async (registro: ClasseVIIIRegistro) => {
+    if (!confirm(`Deseja realmente deletar o registro de ${registro.categoria} para ${registro.organizacao}?`)) return;
+    
+    setLoading(true);
+    try {
+        const tableName = registro.categoria === 'Saúde - KPSI/KPT' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
+        const { error } = await supabase.from(tableName).delete().eq("id", registro.id);
+        
+        if (error) throw error;
+        
+        toast.success("Registro excluído!");
+        fetchRegistros();
+    } catch (error) {
+        console.error("Erro ao deletar registro:", error);
+        toast.error(sanitizeError(error));
+    } finally {
+        setLoading(false);
+    }
+  };
 
   const handleIniciarEdicaoMemoria = (registro: ClasseVIIIRegistro) => {
     setEditingMemoriaId(registro.id);
@@ -848,17 +1097,17 @@ const ClasseVIIIForm = () => {
     setMemoriaEdit("");
   };
 
-  const handleSalvarMemoriaCustomizada = async (registroId: string, categoria: Categoria) => {
+  const handleSalvarMemoriaCustomizada = async (registro: ClasseVIIIRegistro) => {
     setLoading(true);
     try {
-      const table = categoria === 'Saúde' ? "classe_viii_saude_registros" : "classe_viii_remonta_registros";
+      const tableName = registro.categoria === 'Saúde - KPSI/KPT' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
       
       const { error } = await supabase
-        .from(table)
+        .from(tableName)
         .update({
           detalhamento_customizado: memoriaEdit.trim() || null,
         })
-        .eq("id", registroId);
+        .eq("id", registro.id);
 
       if (error) throw error;
 
@@ -873,21 +1122,21 @@ const ClasseVIIIForm = () => {
     }
   };
 
-  const handleRestaurarMemoriaAutomatica = async (registroId: string, categoria: Categoria) => {
+  const handleRestaurarMemoriaAutomatica = async (registro: ClasseVIIIRegistro) => {
     if (!confirm("Deseja restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
       return;
     }
     
     setLoading(true);
     try {
-      const table = categoria === 'Saúde' ? "classe_viii_saude_registros" : "classe_viii_remonta_registros";
+      const tableName = registro.categoria === 'Saúde - KPSI/KPT' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
       
       const { error } = await supabase
-        .from(table)
+        .from(tableName)
         .update({
           detalhamento_customizado: null,
         })
-        .eq("id", registroId);
+        .eq("id", registro.id);
 
       if (error) throw error;
 
@@ -900,12 +1149,34 @@ const ClasseVIIIForm = () => {
       setLoading(false);
     }
   };
-
+  
   const displayFases = useMemo(() => {
     return [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
   }, [fasesAtividade, customFaseAtividade]);
+  
+  const allRegistros = [...registrosSaude, ...registrosRemonta];
+  
+  const registrosAgrupadosPorOM = useMemo(() => {
+    return allRegistros.reduce((acc, registro) => {
+        const key = `${registro.organizacao} (${registro.ug})`;
+        if (!acc[key]) {
+            acc[key] = [];
+        }
+        acc[key].push(registro);
+        return acc;
+    }, {} as Record<string, ClasseVIIIRegistro[]>);
+  }, [allRegistros]);
+  
+  const getAnimalBadgeStyle = (animalType: 'Equino' | 'Canino') => {
+      if (animalType === 'Equino') {
+          return { label: 'Equino', className: 'bg-amber-700 text-white' };
+      }
+      if (animalType === 'Canino') {
+          return { label: 'Canino', className: 'bg-indigo-700 text-white' };
+      }
+      return { label: 'Remonta/Vet', className: 'bg-yellow-700 text-white' };
+  };
 
-  const currentRemontaAllocation = categoryAllocations['Remonta/Veterinária'];
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -925,7 +1196,7 @@ const ClasseVIIIForm = () => {
               Classe VIII - Saúde e Remonta/Veterinária
             </CardTitle>
             <CardDescription>
-              Solicitação de recursos para manutenção de material de Classe VIII.
+              Solicitação de recursos para manutenção de material de Saúde e Remonta/Veterinária.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -950,7 +1221,7 @@ const ClasseVIIIForm = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>Dias de Atividade *</Label>
+                  <Label>Dias de Atividade (Global) *</Label>
                   <Input
                     type="number"
                     min="1"
@@ -1017,15 +1288,15 @@ const ClasseVIIIForm = () => {
               </div>
             </div>
 
-            {/* 2. Adicionar Itens por Categoria (Aba) */}
+            {/* 2. Configurar Itens por Categoria (Aba) */}
             {form.organizacao && form.dias_operacao > 0 && (
-              <div className="space-y-4 border-b pb-4" ref={formRef}>
+              <div className="space-y-4 border-b pb-4">
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
                 <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as Categoria)}>
                   <TabsList className="grid w-full grid-cols-2">
                     {CATEGORIAS.map(cat => (
-                      <TabsTrigger key={cat} value={cat}>{getCategoryLabel(cat)}</TabsTrigger>
+                      <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
                     ))}
                   </TabsList>
                   
@@ -1033,94 +1304,101 @@ const ClasseVIIIForm = () => {
                     <TabsContent key={cat} value={cat} className="mt-4">
                       <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
                         
-                        {/* Campos Específicos de Remonta */}
-                        {cat === 'Remonta/Veterinária' && (
-                            <div className="grid grid-cols-2 gap-4 p-3 border rounded-lg bg-background">
-                                <div className="space-y-2">
-                                    <Label>Tipo de Animal *</Label>
-                                    <Select
-                                        value={currentRemontaAllocation.animal_tipo}
-                                        onValueChange={(val) => setCategoryAllocations(prev => ({
-                                            ...prev,
-                                            [cat]: { ...prev[cat], animal_tipo: val as 'Equino' | 'Canino' }
-                                        }))}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Selecione o tipo..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Equino">Equino</SelectItem>
-                                            <SelectItem value="Canino">Canino</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Quantidade de Animais *</Label>
-                                    <Input
-                                        type="number"
-                                        min="1"
-                                        value={currentRemontaAllocation.quantidade_animais || ""}
-                                        onChange={(e) => setCategoryAllocations(prev => ({
-                                            ...prev,
-                                            [cat]: { ...prev[cat], quantidade_animais: parseInt(e.target.value) || 0 }
-                                        }))}
-                                        placeholder="Ex: 10"
-                                    />
-                                </div>
-                            </div>
-                        )}
-                        
+                        {/* Tabela de Itens */}
                         <div className="max-h-[400px] overflow-y-auto rounded-md border">
                             <Table className="w-full">
                                 <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                     <TableRow>
-                                        <TableHead className="w-[50%]">Item</TableHead>
-                                        <TableHead className="w-[20%] text-right">Valor/Dia</TableHead>
-                                        <TableHead className="w-[15%] text-center">Quantidade</TableHead>
-                                        <TableHead className="w-[15%] text-right">Total</TableHead>
+                                        <TableHead className="w-[40%]">Item</TableHead>
+                                        {cat === 'Saúde' && (
+                                            <TableHead className="w-[25%] text-right">Valor Kit</TableHead>
+                                        )}
+                                        <TableHead className="w-[15%] text-center">{cat === 'Saúde' ? 'Qtd Kits' : 'Qtd Animais'}</TableHead>
+                                        {cat === 'Remonta/Veterinária' && (
+                                            <TableHead className="w-[15%] text-center">Qtd Dias</TableHead>
+                                        )}
+                                        <TableHead className="w-[20%] text-right">Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {currentCategoryItems.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                            <TableCell colSpan={cat === 'Saúde' ? 4 : 4} className="text-center text-muted-foreground">
                                                 Nenhum item de diretriz encontrado para esta categoria.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        currentCategoryItems
-                                            .filter(item => {
-                                                if (cat === 'Remonta/Veterinária') {
-                                                    // Filtra itens de Remonta/Veterinária pelo tipo de animal selecionado
-                                                    const animalType = currentRemontaAllocation.animal_tipo;
-                                                    if (animalType === 'Equino' && item.item.includes('Equino')) return true;
-                                                    if (animalType === 'Canino' && item.item.includes('Canino')) return true;
-                                                    return false;
-                                                }
-                                                return true;
-                                            })
-                                            .map((item, index) => {
-                                            const itemTotal = item.quantidade * item.valor_mnt_dia * form.dias_operacao;
+                                        currentCategoryItems.map((item, index) => {
+                                            const isSaude = cat === 'Saúde';
+                                            const itemSaude = item as ItemSaude;
+                                            const itemRemonta = item as ItemRemonta;
+                                            
+                                            const quantity = isSaude ? itemSaude.quantidade : itemRemonta.quantidade_animais;
+                                            const valorMntDia = isSaude ? itemSaude.valor_mnt_dia : itemRemonta.valor_mnt_dia;
+                                            
+                                            const itemTotal = isSaude 
+                                                ? calculateSaudeItemTotal(itemSaude)
+                                                : calculateRemontaItemTotal(itemRemonta);
+                                            
+                                            const itemLabel = isSaude ? itemSaude.item : itemRemonta.item;
+                                            
+                                            const unitLabel = isSaude ? 'kit' : (itemRemonta.item.includes('(Anual)') ? 'ano' : itemRemonta.item.includes('(Mensal)') ? 'mês' : 'dia');
                                             
                                             return (
-                                                <TableRow key={item.item} className="h-12">
+                                                <TableRow key={itemLabel} className="h-12">
                                                     <TableCell className="font-medium text-sm py-1">
-                                                        {item.item}
+                                                        {itemLabel}
+                                                        {!isSaude && itemLabel === 'Canino' && (
+                                                            <p className="text-xs text-muted-foreground mt-1">
+                                                                (Múltiplos de 5 cães)
+                                                            </p>
+                                                        )}
                                                     </TableCell>
-                                                    <TableCell className="text-right text-xs text-muted-foreground py-1">
-                                                        {formatCurrency(item.valor_mnt_dia)}
-                                                    </TableCell>
+                                                    
+                                                    {/* Coluna Valor Base (Apenas para Saúde) */}
+                                                    {isSaude && (
+                                                        <TableCell className="text-right text-xs text-muted-foreground py-1">
+                                                            {formatCurrency(valorMntDia)}
+                                                            {!isSaude && <span className="ml-1">/ {unitLabel}</span>}
+                                                        </TableCell>
+                                                    )}
+                                                    
+                                                    {/* Coluna Qtd Kits / Qtd Animais */}
                                                     <TableCell className="py-1">
                                                         <Input
                                                             type="number"
                                                             min="0"
                                                             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
-                                                            value={item.quantidade === 0 ? "" : item.quantidade.toString()}
-                                                            onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
+                                                            value={typeof quantity === 'number' && quantity !== 0 ? quantity.toString() : ""}
+                                                            onChange={(e) => handleQuantityChange(index, e.target.value)}
+                                                            onBlur={() => handleQuantityBlur(index)}
                                                             placeholder="0"
                                                             onKeyDown={handleEnterToNextField}
                                                         />
+                                                        {itemLabel === 'Canino' && remontaValidationWarning && (
+                                                            <p className="text-xs text-destructive mt-1">
+                                                                <AlertCircle className="h-3 w-3 inline mr-1" />
+                                                                {remontaValidationWarning}
+                                                            </p>
+                                                        )}
                                                     </TableCell>
+                                                    
+                                                    {/* Coluna Qtd Dias (Apenas para Remonta) */}
+                                                    {!isSaude && (
+                                                        <TableCell className="py-1">
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
+                                                                value={itemRemonta.dias_operacao_item || ""}
+                                                                onChange={(e) => handleDiasOperacaoChange(index, parseInt(e.target.value) || 0)}
+                                                                placeholder="0" 
+                                                                onKeyDown={handleEnterToNextField}
+                                                            />
+                                                        </TableCell>
+                                                    )}
+                                                    
+                                                    {/* Coluna Total */}
                                                     <TableCell className="text-right font-semibold text-sm py-1">
                                                         {formatCurrency(itemTotal)}
                                                     </TableCell>
@@ -1142,7 +1420,7 @@ const ClasseVIIIForm = () => {
                         {/* BLOCO DE ALOCAÇÃO ND 30/39 */}
                         {currentCategoryTotalValue > 0 && (
                             <div className="space-y-4 p-4 border rounded-lg bg-background">
-                                <h4 className="font-semibold text-sm">Alocação de Recursos para {getCategoryLabel(cat)}</h4>
+                                <h4 className="font-semibold text-sm">Alocação de Recursos para {cat}</h4>
                                 
                                 {/* CAMPO: OM de Destino do Recurso */}
                                 <div className="space-y-2">
@@ -1215,7 +1493,7 @@ const ClasseVIIIForm = () => {
                                 type="button" 
                                 onClick={handleUpdateCategoryItems} 
                                 className="w-full md:w-auto" 
-                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && !categoryAllocations[cat].om_destino_recurso) || (cat === 'Remonta/Veterinária' && currentRemontaAllocation.quantidade_animais === 0)}
+                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && !categoryAllocations[cat].om_destino_recurso) || !!remontaValidationWarning}
                             >
                                 Salvar Itens da Categoria
                             </Button>
@@ -1228,9 +1506,9 @@ const ClasseVIIIForm = () => {
             )}
 
             {/* 3. Itens Adicionados e Consolidação */}
-            {form.itens.length > 0 && (
+            {valorTotalForm > 0 && (
               <div className="space-y-4 border-b pb-4">
-                <h3 className="text-lg font-semibold">3. Itens Adicionados ({form.itens.length})</h3>
+                <h3 className="text-lg font-semibold">3. Itens Adicionados ({form.itensSaude.length + form.itensRemonta.length})</h3>
                 
                 {/* Alerta de Validação Final */}
                 {!isTotalAlocadoCorrect && (
@@ -1245,27 +1523,58 @@ const ClasseVIIIForm = () => {
 
                 <div className="space-y-4">
                   {Object.entries(itensAgrupadosPorCategoria).map(([categoria, itens]) => {
-                    const totalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
-                    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
-                    
+                    const isSaude = categoria === 'Saúde';
+                    const totalCategoria = isSaude ? valorTotalSaude : valorTotalRemonta;
                     const allocation = categoryAllocations[categoria as Categoria];
                     
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
-                          <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} itens)</h4>
+                          <h4 className="font-bold text-base text-primary">{categoria}</h4>
                           <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
                         </div>
                         
                         <div className="space-y-2">
-                          {itens.map((item, index) => (
-                            <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
-                              <span className="font-medium">{item.item}</span>
-                              <span className="text-right">
-                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
-                              </span>
-                            </div>
-                          ))}
+                          {itens.map((item, index) => {
+                            const itemSaude = item as ItemSaude;
+                            const itemRemonta = item as ItemRemonta;
+                            
+                            const itemTotal = isSaude 
+                                ? calculateSaudeItemTotal(itemSaude)
+                                : calculateRemontaItemTotal(itemRemonta);
+                            
+                            const quantity = isSaude ? itemSaude.quantidade : itemRemonta.quantidade_animais;
+                            const unitValue = isSaude ? itemSaude.valor_mnt_dia : itemRemonta.valor_mnt_dia;
+                            
+                            const unitLabel = isSaude ? 'kit' : (itemRemonta.item.includes('(Anual)') ? 'ano' : itemRemonta.item.includes('(Mensal)') ? 'mês' : 'dia');
+                            
+                            let calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} / ${unitLabel}`;
+                            if (!isSaude) {
+                                if (itemRemonta.item.includes('(Mensal)')) {
+                                    calculationDetail = `${quantity} un. x (${formatCurrency(unitValue)} / 30 dias) x ${itemRemonta.dias_operacao_item} dias`;
+                                } else if (itemRemonta.item.includes('(Diário)')) {
+                                    calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} x ${itemRemonta.dias_operacao_item} dias`;
+                                } else {
+                                    const multiplier = Math.ceil(itemRemonta.dias_operacao_item / 365);
+                                    if (multiplier > 1) {
+                                        calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} x ${multiplier} anos`;
+                                    } else {
+                                        calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)}`;
+                                    }
+                                }
+                            } else {
+                                calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)}`;
+                            }
+                            
+                            return (
+                              <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
+                                <span className="font-medium">{isSaude ? itemSaude.item : itemRemonta.item}</span>
+                                <span className="text-right">
+                                  {calculationDetail} = {formatCurrency(itemTotal)}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                         
                         <div className="pt-2 border-t mt-2">
@@ -1275,14 +1584,6 @@ const ClasseVIIIForm = () => {
                                     {allocation.om_destino_recurso} ({allocation.ug_destino_recurso})
                                 </span>
                             </div>
-                            {categoria === 'Remonta/Veterinária' && (
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-muted-foreground">Tipo/Qtd Animais:</span>
-                                    <span className="font-medium text-foreground">
-                                        {allocation.animal_tipo} ({allocation.quantidade_animais})
-                                    </span>
-                                </div>
-                            )}
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
                                 <span className="font-medium text-green-600">{formatCurrency(allocation.nd_30_value)}</span>
@@ -1291,12 +1592,6 @@ const ClasseVIIIForm = () => {
                                 <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
                                 <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
                             </div>
-                            {!areNumbersEqual(allocation.total_valor, totalCategoria) && (
-                                <p className="text-xs text-destructive flex items-center gap-1 pt-1">
-                                    <AlertCircle className="h-3 w-3" />
-                                    Valores desatualizados. Salve a categoria novamente.
-                                </p>
-                            )}
                         </div>
                       </Card>
                     );
@@ -1322,9 +1617,9 @@ const ClasseVIIIForm = () => {
                   <Button 
                     type="button" 
                     onClick={handleSalvarRegistros} 
-                    disabled={loading || !form.organizacao || form.itens.length === 0 || !isTotalAlocadoCorrect}
+                    disabled={loading || !form.organizacao || valorTotalForm === 0 || !isTotalAlocadoCorrect}
                   >
-                    {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")}
+                    {loading ? "Aguarde..." : "Salvar Registros"}
                   </Button>
                 </div>
               </div>
@@ -1358,7 +1653,14 @@ const ClasseVIIIForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
+                                    const isSaude = registro.categoria === 'Saúde - KPSI/KPT';
+                                    
+                                    let badgeStyle;
+                                    if (isSaude) {
+                                        badgeStyle = { label: 'Saúde', className: 'bg-red-500 text-white' };
+                                    } else {
+                                        badgeStyle = getAnimalBadgeStyle(registro.animal_tipo || 'Equino');
+                                    }
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1366,7 +1668,7 @@ const ClasseVIIIForm = () => {
                                                 <div className="flex flex-col">
                                                     <div className="flex items-center gap-2">
                                                         <h4 className="font-semibold text-base text-foreground">
-                                                            {getCategoryLabel(registro.categoria)}
+                                                            {isSaude ? 'Saúde' : 'Remonta/Veterinária'}
                                                         </h4>
                                                         <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
                                                             {badgeStyle.label}
@@ -1374,9 +1676,6 @@ const ClasseVIIIForm = () => {
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
-                                                        {registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo && (
-                                                            <span className="ml-2">| {registro.animal_tipo}: {registro.quantidade_animais} un.</span>
-                                                        )}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -1395,21 +1694,7 @@ const ClasseVIIIForm = () => {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            onClick={() => {
-                                                                if (confirm(`Deseja realmente deletar o registro de Classe VIII para ${omName} (${registro.categoria})?`)) {
-                                                                    const table = registro.categoria === 'Saúde' ? "classe_viii_saude_registros" : "classe_viii_remonta_registros";
-                                                                    supabase.from(table)
-                                                                        .delete()
-                                                                        .eq("id", registro.id)
-                                                                        .then(() => {
-                                                                            toast.success("Registro excluído!");
-                                                                            fetchRegistros();
-                                                                        })
-                                                                        .catch(err => {
-                                                                            toast.error(sanitizeError(err));
-                                                                        });
-                                                                }
-                                                            }}
+                                                            onClick={() => handleDeletarRegistro(registro)}
                                                             className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
@@ -1451,31 +1736,30 @@ const ClasseVIIIForm = () => {
                   const ug = registro.ug;
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
+                  const isSaude = registro.categoria === 'Saúde - KPSI/KPT';
                   
-                  const itens = (registro.categoria === 'Saúde' ? registro.itens_saude : registro.itens_remonta) || [];
+                  const itensParaMemoria = isSaude ? registro.itens_saude as ItemSaude[] : registro.itens_remonta as ItemRemonta[];
                   
-                  const memoriaAutomatica = generateDetalhamento(
-                      itens as ItemClasseVIII[], 
-                      registro.dias_operacao, 
-                      registro.organizacao, 
-                      registro.ug, 
-                      registro.fase_atividade || '', 
-                      registro.organizacao, 
-                      registro.ug, 
-                      registro.valor_nd_30, 
-                      registro.valor_nd_39,
-                      registro.categoria as Categoria,
-                      registro.animal_tipo,
-                      registro.quantidade_animais
-                  );
+                  const memoriaAutomatica = isSaude 
+                    ? generateSaudeMemoriaCalculo(
+                        itensParaMemoria as ItemSaude[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
+                      )
+                    : generateRemontaMemoriaCalculo(
+                        registro.animal_tipo || 'Equino', itensParaMemoria as ItemRemonta[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
+                      );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
-                  const badgeStyle = getCategoryBadgeStyle(registro.categoria);
+                  
+                  let badgeStyle;
+                  if (isSaude) {
+                      badgeStyle = { label: 'Saúde', className: 'bg-red-500 text-white' };
+                  } else {
+                      badgeStyle = getAnimalBadgeStyle(registro.animal_tipo || 'Equino');
+                  }
                   
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                       
-                      {/* Container para H4 e Botões */}
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                               <h4 className="text-base font-semibold text-foreground">
@@ -1505,7 +1789,7 @@ const ClasseVIIIForm = () => {
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      onClick={() => handleRestaurarMemoriaAutomatica(registro.id, registro.categoria as Categoria)}
+                                      onClick={() => handleRestaurarMemoriaAutomatica(registro)}
                                       disabled={loading}
                                       className="gap-2 text-muted-foreground"
                                     >
@@ -1519,7 +1803,7 @@ const ClasseVIIIForm = () => {
                                   <Button
                                     size="sm"
                                     variant="default"
-                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id, registro.categoria as Categoria)}
+                                    onClick={() => handleSalvarMemoriaCustomizada(registro)}
                                     disabled={loading}
                                     className="gap-2"
                                   >
