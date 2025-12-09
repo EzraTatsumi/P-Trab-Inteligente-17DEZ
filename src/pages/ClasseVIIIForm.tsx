@@ -933,6 +933,7 @@ const ClasseVIIIForm = () => {
       // 3. Inserir Remonta/Veterinária
       if (form.itensRemonta.length > 0) {
         const allocation = categoryAllocations['Remonta/Veterinária'];
+        const totalRemonta = valorTotalRemonta;
         
         // Agrupar itens por tipo de animal (Equino e Canino)
         const remontaItemsGrouped = form.itensRemonta.reduce((acc, item) => {
@@ -942,28 +943,33 @@ const ClasseVIIIForm = () => {
             return acc;
         }, {} as Record<string, ItemRemonta[]>);
         
-        // Vamos inserir um registro para Equino e um para Canino, se existirem
-        
         const registrosParaInserir: TablesInsert<'classe_viii_remonta_registros'>[] = [];
+        
+        // Calcular totais individuais para Equino e Canino
+        const valorEquino = (remontaItemsGrouped['Equino'] || []).reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+        const valorCanino = (remontaItemsGrouped['Canino'] || []).reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+        
+        const totalGeralRemonta = valorEquino + valorCanino;
+        
+        // Calcular proporções para dividir ND 30/39
+        const proporcaoEquino = totalGeralRemonta > 0 ? valorEquino / totalGeralRemonta : 0;
+        const proporcaoCanino = totalGeralRemonta > 0 ? valorCanino / totalGeralRemonta : 0;
+        
+        const nd30Equino = allocation.nd_30_value * proporcaoEquino;
+        const nd39Equino = allocation.nd_39_value * proporcaoEquino;
+        
+        const nd30Canino = allocation.nd_30_value * proporcaoCanino;
+        const nd39Canino = allocation.nd_39_value * proporcaoCanino;
         
         // Processar Equino
         if (remontaItemsGrouped['Equino'] && remontaItemsGrouped['Equino'].length > 0) {
             const equinoItems = remontaItemsGrouped['Equino'];
-            const valorTotalEquino = equinoItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
             const nrAnimaisEquino = equinoItems[0].quantidade_animais;
             
             const detalhamentoEquino = generateRemontaMemoriaCalculo(
                 'Equino', equinoItems, form.dias_operacao, form.organizacao, form.ug, faseFinalString,
                 allocation.om_destino_recurso, allocation.ug_destino_recurso, 
-                // Nota: A alocação ND 30/39 é feita no nível da categoria 'Remonta/Veterinária' (total), 
-                // mas para a memória de cálculo individual, precisamos dividir o valor total alocado 
-                // proporcionalmente ao custo de cada animal.
-                // Simplificando, vamos usar a alocação total para o primeiro registro e 0 para o segundo, 
-                // ou, melhor, vamos manter a lógica de um único registro para a categoria Remonta/Veterinária, 
-                // mas garantir que a memória de cálculo seja separada.
-                // Como a tabela `classe_viii_remonta_registros` só tem um campo para ND30/39, 
-                // vamos manter a inserção de um único registro, mas com o detalhamento concatenado.
-                allocation.nd_30_value, allocation.nd_39_value
+                nd30Equino, nd39Equino
             );
             
             registrosParaInserir.push({
@@ -974,24 +980,23 @@ const ClasseVIIIForm = () => {
                 animal_tipo: 'Equino',
                 quantidade_animais: nrAnimaisEquino,
                 itens_remonta: equinoItems as any,
-                valor_total: valorTotalEquino,
+                valor_total: valorEquino,
                 detalhamento: detalhamentoEquino,
                 fase_atividade: faseFinalString,
-                valor_nd_30: 0, // Será ajustado no final
-                valor_nd_39: 0, // Será ajustado no final
+                valor_nd_30: nd30Equino,
+                valor_nd_39: nd39Equino,
             });
         }
         
         // Processar Canino
         if (remontaItemsGrouped['Canino'] && remontaItemsGrouped['Canino'].length > 0) {
             const caninoItems = remontaItemsGrouped['Canino'];
-            const valorTotalCanino = caninoItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
             const nrAnimaisCanino = caninoItems[0].quantidade_animais;
             
             const detalhamentoCanino = generateRemontaMemoriaCalculo(
                 'Canino', caninoItems, form.dias_operacao, form.organizacao, form.ug, faseFinalString,
                 allocation.om_destino_recurso, allocation.ug_destino_recurso, 
-                allocation.nd_30_value, allocation.nd_39_value
+                nd30Canino, nd39Canino
             );
             
             registrosParaInserir.push({
@@ -1002,66 +1007,32 @@ const ClasseVIIIForm = () => {
                 animal_tipo: 'Canino',
                 quantidade_animais: nrAnimaisCanino,
                 itens_remonta: caninoItems as any,
-                valor_total: valorTotalCanino,
+                valor_total: valorCanino,
                 detalhamento: detalhamentoCanino,
                 fase_atividade: faseFinalString,
-                valor_nd_30: 0, // Será ajustado no final
-                valor_nd_39: 0, // Será ajustado no final
+                valor_nd_30: nd30Canino,
+                valor_nd_39: nd39Canino,
             });
         }
         
-        // Se houver registros de remonta, ajustamos o detalhamento e alocação ND
-        if (registrosParaInserir.length > 0) {
-            const totalRemonta = valorTotalRemonta;
+        // Ajuste final de arredondamento (garantir que a soma seja exata)
+        if (registrosParaInserir.length === 2) {
+            const totalND30 = allocation.nd_30_value;
+            const totalND39 = allocation.nd_39_value;
             
-            // Se houver apenas um tipo de animal, ele recebe a alocação total
-            if (registrosParaInserir.length === 1) {
-                registrosParaInserir[0].valor_nd_30 = allocation.nd_30_value;
-                registrosParaInserir[0].valor_nd_39 = allocation.nd_39_value;
-            } else {
-                // Se houver dois tipos (Equino e Canino), dividimos a alocação proporcionalmente
-                const valorEquino = registrosParaInserir.find(r => r.animal_tipo === 'Equino')?.valor_total || 0;
-                const valorCanino = registrosParaInserir.find(r => r.animal_tipo === 'Canino')?.valor_total || 0;
-                
-                const proporcaoEquino = totalRemonta > 0 ? valorEquino / totalRemonta : 0;
-                const proporcaoCanino = totalRemonta > 0 ? valorCanino / totalRemonta : 0;
-                
-                const nd30Equino = allocation.nd_30_value * proporcaoEquino;
-                const nd39Equino = allocation.nd_39_value * proporcaoEquino;
-                
-                const nd30Canino = allocation.nd_30_value * proporcaoCanino;
-                const nd39Canino = allocation.nd_39_value * proporcaoCanino;
-                
-                // Arredondamento para garantir que a soma seja igual ao total alocado
-                const totalND30 = allocation.nd_30_value;
-                const totalND39 = allocation.nd_39_value;
-                
-                const registroEquino = registrosParaInserir.find(r => r.animal_tipo === 'Equino');
-                const registroCanino = registrosParaInserir.find(r => r.animal_tipo === 'Canino');
-                
-                if (registroEquino) {
-                    registroEquino.valor_nd_30 = nd30Equino;
-                    registroEquino.valor_nd_39 = nd39Equino;
-                }
-                if (registroCanino) {
-                    registroCanino.valor_nd_30 = nd30Canino;
-                    registroCanino.valor_nd_39 = nd39Canino;
-                }
-                
-                // Ajuste final de arredondamento (garantir que a soma seja exata)
-                if (registroEquino && registroCanino) {
-                    const somaND30 = registroEquino.valor_nd_30 + registroCanino.valor_nd_30;
-                    const somaND39 = registroEquino.valor_nd_39 + registroCanino.valor_nd_39;
-                    
-                    if (!areNumbersEqual(somaND30, totalND30)) {
-                        registroEquino.valor_nd_30 += (totalND30 - somaND30);
-                    }
-                    if (!areNumbersEqual(somaND39, totalND39)) {
-                        registroEquino.valor_nd_39 += (totalND39 - somaND39);
-                    }
-                }
+            const somaND30 = registrosParaInserir[0].valor_nd_30 + registrosParaInserir[1].valor_nd_30;
+            const somaND39 = registrosParaInserir[0].valor_nd_39 + registrosParaInserir[1].valor_nd_39;
+            
+            // Adiciona a diferença de arredondamento ao primeiro registro
+            if (!areNumbersEqual(somaND30, totalND30)) {
+                registrosParaInserir[0].valor_nd_30 += (totalND30 - somaND30);
             }
+            if (!areNumbersEqual(somaND39, totalND39)) {
+                registrosParaInserir[0].valor_nd_39 += (totalND39 - somaND39);
+            }
+        }
             
+        if (registrosParaInserir.length > 0) {
             await supabase.from("classe_viii_remonta_registros").insert(registrosParaInserir);
         }
       }
@@ -1424,7 +1395,7 @@ const ClasseVIIIForm = () => {
                                                                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
                                                                 value={itemRemonta.dias_operacao_item || ""}
                                                                 onChange={(e) => handleDiasOperacaoChange(index, parseInt(e.target.value) || 0)}
-                                                                placeholder={form.dias_operacao.toString()}
+                                                                placeholder="0" {/* Removido o placeholder de form.dias_operacao */}
                                                                 onKeyDown={handleEnterToNextField}
                                                             />
                                                         </TableCell>
