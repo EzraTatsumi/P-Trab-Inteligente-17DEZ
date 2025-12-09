@@ -933,7 +933,6 @@ Total QR: ${formatCurrency(total_qr)}.`;
                 case 'EMBARCACAO': return 'EMBARCAÇÃO';
                 case 'EQUIPAMENTO_ENGENHARIA': return 'EQUIPAMENTO DE ENGENHARIA';
                 case 'MOTOMECANIZACAO': return 'MOTOMECANIZAÇÃO';
-                case 'COMBUSTÍVEL_CONSOLIDADO': return ''; // Retorna string vazia para omitir na concatenação
                 default: return tipo;
               }
             };
@@ -944,15 +943,8 @@ Total QR: ${formatCurrency(total_qr)}.`;
               return tipo;
             };
             
-            const equipamentoLabel = getTipoEquipamentoLabel(registro.tipo_equipamento);
-            
-            let despesasCell = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}`;
-            if (equipamentoLabel) {
-                despesasCell += `\n${equipamentoLabel}`;
-            }
-            despesasCell += `\n${registro.organizacao}`;
-            
-            row.getCell('A').value = despesasCell;
+            const row = worksheet.getRow(currentRow);
+            row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
             row.getCell('B').value = `${nomeRM}\n(${gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || 'UG'})`;
             
             // Colunas azuis (C, D, E) devem ser vazias/zero para Classe III Combustível
@@ -1411,7 +1403,6 @@ Total QR: ${formatCurrency(total_qr)}.`;
                         case 'EMBARCACAO': return 'EMBARCAÇÃO';
                         case 'EQUIPAMENTO_ENGENHARIA': return 'EQUIPAMENTO DE ENGENHARIA';
                         case 'MOTOMECANIZACAO': return 'MOTOMECANIZAÇÃO';
-                        case 'COMBUSTÍVEL_CONSOLIDADO': return null; // Retorna null para omitir na renderização
                         default: return tipo;
                       }
                     };
@@ -1424,14 +1415,12 @@ Total QR: ${formatCurrency(total_qr)}.`;
                       }
                       return tipo;
                     };
-                    
-                    const equipamentoLabel = getTipoEquipamentoLabel(registro.tipo_equipamento);
 
                     return (
                       <tr key={`classe-iii-${registro.id}`}>
                         <td className="col-despesas">
                           <div>CLASSE III - {getTipoCombustivelLabel(registro.tipo_combustivel)}</div>
-                          {equipamentoLabel && <div>{equipamentoLabel}</div>}
+                          <div>{getTipoEquipamentoLabel(registro.tipo_equipamento)}</div>
                           <div>{registro.organizacao}</div>
                         </td>
                         <td className="col-om">

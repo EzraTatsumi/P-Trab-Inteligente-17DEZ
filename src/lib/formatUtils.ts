@@ -1,119 +1,131 @@
-export const formatCurrency = (value: number | undefined | null): string => {
-    if (value === undefined || value === null) return 'R$ 0,00';
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-    }).format(value);
+import { format, subWeeks, startOfWeek, endOfWeek } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+export const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
 };
 
-export const formatNumber = (value: number | undefined | null): string => {
-    if (value === undefined || value === null) return '0';
-    return new Intl.NumberFormat('pt-BR', {
-        maximumFractionDigits: 2,
-    }).format(value);
+export const formatNumber = (value: number, decimals: number = 0): string => {
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value);
 };
 
 /**
- * Converte uma string formatada (ponto como milhar, vírgula como decimal) para um número.
- * @param input A string de entrada (ex: "12.345,67").
- * @returns O valor numérico.
+ * Parses a string input (allowing comma as decimal separator) into a number.
+ * Handles optional thousand separators (dots) by removing them.
  */
 export const parseInputToNumber = (input: string): number => {
-    // Remove pontos (separador de milhar) e substitui vírgula (separador decimal) por ponto
-    const cleaned = input.replace(/\./g, '').replace(',', '.');
-    return parseFloat(cleaned) || 0;
+  // 1. Remove dots (thousand separators)
+  // 2. Replace comma (decimal separator) with dot
+  const cleaned = input.replace(/\./g, '').replace(',', '.');
+  return parseFloat(cleaned) || 0;
 };
 
 /**
- * Formata um número para uma string adequada para inputs (padrão pt-BR, com vírgula decimal).
- * @param num O valor numérico.
- * @param decimals Número de casas decimais.
- * @returns A string formatada (ex: "12.345,67").
+ * Formats a number for display in an input field using the Brazilian standard (comma for decimal).
+ * Ensures a minimum number of fraction digits.
  */
-export const formatNumberForInput = (num: number | string | undefined | null, decimals: number = 2): string => {
-    if (num === undefined || num === null || num === "") return "";
-    
-    const numericValue = typeof num === 'string' ? parseInputToNumber(num) : num;
-    
-    if (isNaN(numericValue) || numericValue === 0) {
-        return "";
-    }
-    
-    // Usa Intl.NumberFormat para formatar com separador de milhar (ponto) e decimal (vírgula)
-    return new Intl.NumberFormat('pt-BR', {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
-    }).format(numericValue);
+export const formatNumberForInput = (num: number, minFractionDigits: number = 2): string => {
+  if (num === 0) return ""; // Retorna string vazia se for zero
+  
+  // Use Intl.NumberFormat to format with thousand separator (dot) and decimal separator (comma)
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: minFractionDigits,
+    maximumFractionDigits: minFractionDigits,
+  }).format(num);
 };
 
 /**
- * Formata uma string de entrada com separadores de milhar (ponto) e decimal (vírgula)
- * para uso em campos de input (padrão brasileiro).
- * @param value A string de entrada (ex: "12345,67").
- * @returns A string formatada (ex: "12.345,67").
+ * Cleans a raw string input, allowing only digits, dots (for thousands), and one comma (for decimal).
+ * This version is designed to be permissive during typing.
  */
-export const formatInputWithThousands = (value: string): string => {
-    // 1. Remove todos os caracteres não-dígitos, exceto a vírgula
-    let cleanedValue = value.replace(/[^\d,]/g, '');
+export const formatInputWithThousands = (value: string | undefined | null): string => {
+  // FIX: Ensure value is treated as a string, defaulting to empty string if null or undefined
+  const stringValue = String(value || '');
+  
+  // 1. Remove tudo exceto dígitos, ponto e vírgula
+  let cleaned = stringValue.replace(/[^\d,.]/g, '');
 
-    // 2. Garante que haja apenas uma vírgula (separador decimal)
-    const parts = cleanedValue.split(',');
-    if (parts.length > 2) {
-        // Se houver múltiplas vírgulas, mantém a primeira e junta o resto
-        cleanedValue = parts[0] + ',' + parts.slice(1).join('');
-    }
+  // 2. Garante que haja apenas uma vírgula (decimal separator)
+  const parts = cleaned.split(',');
+  if (parts.length > 2) {
+    // Se houver mais de uma vírgula, mantém apenas a primeira
+    cleaned = parts[0] + ',' + parts.slice(1).join('');
+  }
+  
+  // 3. Remove pontos que não estejam na posição correta de milhar (simplificado para ser mais permissivo)
+  // Para inputs de valor, vamos apenas remover todos os pontos para evitar confusão durante a digitação.
+  // A formatação de milhar será aplicada apenas no blur.
+  
+  // Se houver vírgula, remove todos os pontos da parte inteira
+  if (cleaned.includes(',')) {
+    const [integerPart, decimalPart] = cleaned.split(',');
+    const cleanInteger = integerPart.replace(/\./g, '');
     
-    // Re-split após a limpeza
-    const finalParts = cleanedValue.split(',');
-    let integerPart = finalParts[0];
-    const decimalPart = finalParts.length > 1 ? finalParts[1] : '';
-
-    // 3. Formata a parte inteira com separador de milhar (ponto)
-    // Remove zeros à esquerda (exceto se for apenas '0')
-    if (integerPart.length > 1 && integerPart.startsWith('0')) {
-        integerPart = integerPart.replace(/^0+/, '');
-    }
-    if (integerPart === '') integerPart = '0';
-
-    // Aplica o separador de milhar (ponto)
-    integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-    // 4. Recombina
-    let formattedValue = integerPart;
-    if (finalParts.length > 1) {
-        formattedValue += ',' + decimalPart;
-    }
-
-    return formattedValue;
+    // Limita a parte decimal a 4 dígitos (para consumo)
+    const limitedDecimal = decimalPart.substring(0, 4); 
+    
+    return `${cleanInteger}${limitedDecimal ? `,${limitedDecimal}` : ''}`;
+  }
+  
+  // Se não houver vírgula, remove todos os pontos
+  return cleaned.replace(/\./g, '');
 };
 
 /**
- * Formata uma string de dígitos para o formato de moeda (R$ X.XXX,XX) para inputs mascarados.
- * Retorna o valor numérico e a string de dígitos limpa.
- * @param digits String contendo apenas dígitos (centavos).
+ * Formata uma string de dígitos para o formato monetário brasileiro (preenchimento da direita).
+ * Ex: "1" -> "0,01", "12" -> "0,12", "123" -> "1,23"
+ * @param value String contendo apenas dígitos.
+ * @returns String formatada com vírgula e ponto de milhar.
  */
-export const formatCurrencyInput = (digits: string): { formatted: string, numericValue: number, digits: string } => {
-    // 1. Garante que apenas dígitos sejam mantidos
-    const cleanedDigits = digits.replace(/\D/g, '');
-    
-    if (cleanedDigits.length === 0) {
-        return { formatted: "", numericValue: 0, digits: "" };
-    }
+export const formatCurrencyInput = (value: string | undefined | null): { formatted: string, numericValue: number, digits: string } => {
+  // FIX: Ensure value is treated as a string, defaulting to empty string if null or undefined
+  const stringValue = String(value || '');
+  
+  // 1. Remove tudo que não for dígito
+  const digits = stringValue.replace(/\D/g, '');
 
-    // 2. Padroniza para ter pelo menos 3 dígitos (para incluir R$ 0,0X)
-    const paddedDigits = cleanedDigits.padStart(3, '0');
-    
-    // 3. Separa a parte inteira e decimal
-    const integerPart = paddedDigits.slice(0, -2);
-    const decimalPart = paddedDigits.slice(-2);
-    
-    // 4. Formata a parte inteira com separador de milhar (ponto)
-    const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    
-    const formatted = `${formattedInteger},${decimalPart}`;
-    
-    // 5. Calcula o valor numérico (R$ 123,45 -> 123.45)
-    const numericValue = parseFloat(`${integerPart}.${decimalPart}`);
+  if (digits.length === 0) {
+    return { formatted: "", numericValue: 0, digits: "" };
+  }
 
-    return { formatted, numericValue: numericValue / 100, digits: cleanedDigits };
+  // 2. Trata como centavos (ex: "12345" -> 123.45)
+  const numericValue = parseInt(digits) / 100;
+
+  // 3. Formata para exibição (R$ 123.456,78)
+  const formatted = new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(numericValue);
+
+  return { formatted, numericValue, digits };
+};
+
+
+/**
+ * Calculates the start (Monday) and end (Friday) dates of the previous week.
+ * @returns { start: string, end: string } Dates in YYYY-MM-DD format.
+ */
+export const getPreviousWeekRange = (): { start: string, end: string } => {
+  const now = new Date();
+  // Subtrai uma semana
+  const previousWeek = subWeeks(now, 1);
+  
+  // Encontra a segunda-feira da semana anterior (startOfWeek usa 1 para Monday por padrão em ptBR)
+  const monday = startOfWeek(previousWeek, { locale: ptBR, weekStartsOn: 1 });
+  
+  // Encontra a sexta-feira da semana anterior
+  // 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb
+  const friday = endOfWeek(monday, { locale: ptBR, weekStartsOn: 1 });
+  friday.setDate(friday.getDate() - 1); // Move do domingo para a sexta-feira
+  
+  return {
+    start: format(monday, 'yyyy-MM-dd'),
+    end: format(friday, 'yyyy-MM-dd'),
+  };
 };
