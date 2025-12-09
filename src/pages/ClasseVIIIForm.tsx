@@ -980,6 +980,7 @@ const ClasseVIIIForm = () => {
                 fase_atividade: faseFinalString,
                 valor_nd_30: nd30Equino,
                 valor_nd_39: nd39Equino,
+                categoria: 'Remonta/Veterinária', // FIX: Adicionado o campo categoria
             });
         }
         
@@ -1007,6 +1008,7 @@ const ClasseVIIIForm = () => {
                 fase_atividade: faseFinalString,
                 valor_nd_30: nd30Canino,
                 valor_nd_39: nd39Canino,
+                categoria: 'Remonta/Veterinária', // FIX: Adicionado o campo categoria
             });
         }
         
