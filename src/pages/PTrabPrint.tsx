@@ -729,8 +729,6 @@ Total QR: ${formatCurrency(total_qr)}.`;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
-      // REMOVIDO: Linha em branco solicitada anteriormente (currentRow++)
-      
       // Títulos do P Trab
       const fullTitleRow = worksheet.getRow(currentRow);
       fullTitleRow.getCell(1).value = `PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO ${ptrabData.nome_operacao.toUpperCase()}`;
@@ -750,15 +748,20 @@ Total QR: ${formatCurrency(total_qr)}.`;
       
       const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
       
+      // Função modificada para colocar rótulo e valor na mesma célula (A:I)
       const addInfoRow = (label: string, value: string) => {
         const row = worksheet.getRow(currentRow);
-        row.getCell(1).value = label;
-        row.getCell(1).font = { name: 'Arial', size: 11, bold: true };
         
-        // Colocar o valor na coluna B e mesclar B:I
-        row.getCell(2).value = value;
-        row.getCell(2).font = { name: 'Arial', size: 11 };
-        worksheet.mergeCells(`B${currentRow}:I${currentRow}`);
+        // Usar rich text para formatar o rótulo em negrito e o valor normal na mesma célula
+        row.getCell(1).value = {
+          richText: [
+            { text: label, font: { name: 'Arial', size: 11, bold: true } },
+            { text: ` ${value}`, font: { name: 'Arial', size: 11, bold: false } }
+          ]
+        };
+        
+        row.getCell(1).alignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true };
+        worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
         currentRow++;
       };
       
