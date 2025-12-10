@@ -1388,7 +1388,6 @@ const DiretrizesCusteioPage = () => {
                   onClick={() => setShowClasseIXConfig(!showClasseIXConfig)}
                 >
                   <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Car className="h-5 w-5 text-primary" />
                     Classe IX - Motomecanização
                   </h3>
                   {showClasseIXConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
