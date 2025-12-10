@@ -676,7 +676,6 @@ Total QR: ${formatCurrency(total_qr)}.`;
         title: "Erro ao gerar PDF",
         description: "Não foi possível exportar o documento. Verifique o console para detalhes.",
         variant: "destructive",
-        duration: 5000,
       });
     }
   }, [ptrabData, toast, handleExportSuccess]);
@@ -714,7 +713,22 @@ Total QR: ${formatCurrency(total_qr)}.`;
       addHeaderRow('MINISTÉRIO DA DEFESA');
       addHeaderRow('EXÉRCITO BRASILEIRO');
       addHeaderRow(ptrabData.comando_militar_area.toUpperCase());
-      addHeaderRow((ptrabData.nome_om_extenso || ptrabData.nome_om).toUpperCase());
+      
+      // CORREÇÃO 1: Separar OM e OM Extenso em duas linhas distintas
+      const omRow = worksheet.getRow(currentRow);
+      omRow.getCell(1).value = ptrabData.nome_om.toUpperCase();
+      omRow.getCell(1).font = { name: 'Arial', size: 11, bold: true };
+      omRow.getCell(1).alignment = { horizontal: 'center' as const, vertical: 'middle' as const };
+      worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
+      currentRow++;
+      
+      const omExtensoRow = worksheet.getRow(currentRow);
+      omExtensoRow.getCell(1).value = (ptrabData.nome_om_extenso || '').toUpperCase();
+      omExtensoRow.getCell(1).font = { name: 'Arial', size: 11, bold: true };
+      omExtensoRow.getCell(1).alignment = { horizontal: 'center' as const, vertical: 'middle' as const };
+      worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
+      currentRow++;
+      
       currentRow++;
       
       const titleRow = worksheet.getRow(currentRow);
@@ -732,6 +746,8 @@ Total QR: ${formatCurrency(total_qr)}.`;
         const row = worksheet.getRow(currentRow);
         row.getCell(1).value = label;
         row.getCell(1).font = { name: 'Arial', size: 11, bold: true };
+        
+        // CORREÇÃO 2: Colocar o valor na coluna B e mesclar B:I
         row.getCell(2).value = value;
         row.getCell(2).font = { name: 'Arial', size: 11 };
         worksheet.mergeCells(`B${currentRow}:I${currentRow}`);
@@ -747,7 +763,8 @@ Total QR: ${formatCurrency(total_qr)}.`;
       despesasRow.getCell(1).value = '5. DESPESAS OPERACIONAIS:';
       despesasRow.getCell(1).font = { name: 'Arial', size: 11, bold: true };
       currentRow++;
-      currentRow++;
+      
+      // CORREÇÃO 3: Remover a linha em branco antes da tabela (currentRow++ removido)
       
       const headerRow1 = currentRow;
       const headerRow2 = currentRow + 1;
@@ -1051,7 +1068,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       const totalGeral_33_90_39 = Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_39, 0);
       const totalValorCombustivel = registrosClasseIII.filter(isCombustivel).reduce((acc, reg) => acc + reg.valor_total, 0);
       
-      const totalGeralAcumulado = totalGeral_33_90_30 + totalGeral_33_90_39; 
+      const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39; // Soma das colunas azuis (C+D)
       
       const totalDiesel = registrosClasseIII.filter(isCombustivel)
         .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
@@ -1079,7 +1096,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       somaRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
       somaRow.getCell('D').style = { ...somaRow.getCell('D').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
       
-      somaRow.getCell('E').value = totalGeralAcumulado; // Total C + D
+      somaRow.getCell('E').value = totalGeral_GND3_ND; // Total C + D
       somaRow.getCell('E').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
       somaRow.getCell('E').font = { bold: true };
       somaRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
