@@ -50,7 +50,7 @@ const PTrabForm = () => {
     { id: "classe-vi", name: "Classe VI - Material de Engenharia" },
     { id: "classe-vii", name: "Classe VII - Comunicações e Informática" },
     { id: "classe-viii", name: "Classe VIII - Material de Saúde e Remonta/Veterinária" }, // Rótulo atualizado
-    { id: "classe-ix", name: "Classe IX - Motomecanização" }, // Rótulo atualizado
+    { id: "classe-ix", name: "Classe IX - Material de Manutenção" },
   ];
 
   const itensOperacional = [
@@ -172,8 +172,6 @@ const PTrabForm = () => {
       navigate(`/ptrab/classe-vii?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-viii') { // Rota para Classe VIII
       navigate(`/ptrab/classe-viii?ptrabId=${ptrabId}`);
-    } else if (itemId === 'classe-ix') { // Rota para Classe IX
-      navigate(`/ptrab/classe-ix?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-iii') {
       navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
     } else {
