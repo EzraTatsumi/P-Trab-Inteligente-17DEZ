@@ -1295,11 +1295,11 @@ Total QR: ${formatCurrency(total_qr)}.`;
             <table className="ptrab-table">
               <thead>
                 <tr>
-                  <th rowSpan={2} className="col-despesas">DESPESAS</th>
+                  <th rowSpan={2} className="col-despesas">DESPESAS<br/>(ORDENAR POR CLASSE DE SUBSISTÊNCIA)</th>
                   <th rowSpan={2} className="col-om">OM (UGE)<br/>CODUG</th>
                   <th colSpan={3} className="col-natureza-header">NATUREZA DE DESPESA</th>
                   <th colSpan={3} className="col-combustivel-header">COMBUSTÍVEL</th>
-                  <th rowSpan={2} className="col-detalhamento">DETALHAMENTO / MEMÓRIA DE CÁLCULO</th>
+                  <th rowSpan={2} className="col-detalhamento">DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/>OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</th>
                 </tr>
                 <tr>
                   <th className="col-nd col-natureza">33.90.30</th>
@@ -1597,18 +1597,18 @@ Total QR: ${formatCurrency(total_qr)}.`;
         .ptrab-table-wrapper { margin-top: 0.2rem; margin-bottom: 2rem; overflow-x: auto; }
         .ptrab-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 2px solid #000; line-height: 1.1; }
         .ptrab-table th, .ptrab-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; }
-        .ptrab-table thead th { background-color: #F8CBAD !important; font-weight: bold; text-align: center; font-size: 9pt; }
-        .col-despesas { width: 14%; text-align: center; }
+        .ptrab-table thead th { background-color: #E8E8E8; font-weight: bold; text-align: center; font-size: 9pt; }
+        .col-despesas { width: 14%; text-align: left; }
         .col-om { width: 9%; text-align: center; }
-        .col-natureza-header { background-color: #F8CBAD !important; text-align: center; font-weight: bold; }
-        .col-natureza { background-color: #F8CBAD !important; width: 8%; text-align: center; }
+        .col-natureza-header { background-color: #B4C7E7 !important; text-align: center; font-weight: bold; }
+        .col-natureza { background-color: #B4C7E7 !important; width: 8%; text-align: center; }
         .col-nd { width: 8%; text-align: center; }
         .col-combustivel-header { background-color: #F8CBAD !important; text-align: center; font-weight: bold; }
-        .col-combustivel { background-color: #F8CBAD !important; width: 6%; text-align: center; font-size: 9pt; }
+        .col-combustivel { background-color: #F8CBAD !important; width: 6%; text-align: center; font-size: 8pt; }
         .col-combustivel-data { background-color: #FFF; text-align: center; width: 6%; }
         .col-valor-natureza { background-color: #B4C7E7 !important; text-align: center; padding: 6px 8px; }
         .col-combustivel-data-filled { background-color: #F8CBAD !important; text-align: center; padding: 6px 8px; }
-        .col-detalhamento { width: 28%; text-align: center; }
+        .col-detalhamento { width: 28%; text-align: left; }
         .detalhamento-cell { font-size: 6.5pt; line-height: 1.2; }
         .total-row { background-color: #FFFF99; font-weight: bold; }
         .subtotal-row { background-color: #D3D3D3; font-weight: bold; border-top: 2px solid #000; }
