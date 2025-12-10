@@ -74,3 +74,11 @@ src/lib/cryptoUtils.ts
 src/pages/PTrabManager.tsx
 src/components/CloneVariationDialog.tsx
 src/components/CreditPromptDialog.tsx
+
+# Otimização Mínima Adicional (UI/Utilitários)
+src/pages/NotFound.tsx
+src/App.css
+src/hooks/use-toast.ts
+src/components/EmailVerificationDialog.tsx
+src/components/OmUploadConfirmDialog.tsx
+src/components/CreditInputCard.tsx
