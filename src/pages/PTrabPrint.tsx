@@ -731,10 +731,18 @@ Total QR: ${formatCurrency(total_qr)}.`;
       
       currentRow++;
       
-      const titleRow = worksheet.getRow(currentRow);
-      titleRow.getCell(1).value = `PLANO DE TRABALHO LOGÍSTICO - OPERAÇÃO ${ptrabData.nome_operacao.toUpperCase()}`;
-      titleRow.getCell(1).font = { name: 'Arial', size: 11, bold: true, underline: true };
-      titleRow.getCell(1).alignment = { horizontal: 'center' as const, vertical: 'middle' as const };
+      // CORREÇÃO 4: Adicionar as duas linhas de título do P Trab
+      const fullTitleRow = worksheet.getRow(currentRow);
+      fullTitleRow.getCell(1).value = `PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO ${ptrabData.nome_operacao.toUpperCase()}`;
+      fullTitleRow.getCell(1).font = { name: 'Arial', size: 11, bold: true };
+      fullTitleRow.getCell(1).alignment = { horizontal: 'center' as const, vertical: 'middle' as const };
+      worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
+      currentRow++;
+
+      const shortTitleRow = worksheet.getRow(currentRow);
+      shortTitleRow.getCell(1).value = 'PLANO DE TRABALHO LOGÍSTICO';
+      shortTitleRow.getCell(1).font = { name: 'Arial', size: 11, bold: true, underline: true };
+      shortTitleRow.getCell(1).alignment = { horizontal: 'center' as const, vertical: 'middle' as const };
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
@@ -1268,10 +1276,11 @@ Total QR: ${formatCurrency(total_qr)}.`;
           <p className="text-[11pt] font-bold uppercase">Exército Brasileiro</p>
           <p className="text-[11pt] font-bold uppercase">{ptrabData.comando_militar_area}</p>
           <p className="text-[11pt] font-bold uppercase">{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
+          {/* CORREÇÃO 5: Removendo mt-4 da segunda linha de título para aproximar */}
           <p className="text-[11pt] font-bold uppercase mt-4">
             Plano de Trabalho Logístico de Solicitação de Recursos Orçamentários e Financeiros Operação {ptrabData.nome_operacao}
           </p>
-          <p className="text-[11pt] font-bold uppercase mt-4 underline">Plano de Trabalho Logístico</p>
+          <p className="text-[11pt] font-bold uppercase underline">Plano de Trabalho Logístico</p>
         </div>
 
         <div className="ptrab-info">
