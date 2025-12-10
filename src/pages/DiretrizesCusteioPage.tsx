@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings, HardHat, HeartPulse, Activity } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Settings, HardHat, HeartPulse, Activity, Car } from "lucide-react";
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
+import { DiretrizClasseIXForm } from "@/types/diretrizesClasseIX"; // NOVO IMPORT
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -20,7 +21,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { YearManagementDialog } from "@/components/YearManagementDialog";
 import { defaultClasseVIConfig } from "@/data/classeVIData";
 import { defaultClasseVIIConfig } from "@/data/classeVIIData";
-import { defaultClasseVIIISaudeConfig, defaultClasseVIIIRemontaConfig } from "@/data/classeVIIIData"; // NOVO IMPORT
+import { defaultClasseVIIISaudeConfig, defaultClasseVIIIRemontaConfig } from "@/data/classeVIIIData";
+import { defaultClasseIXConfig } from "@/data/classeIXData"; // NOVO IMPORT
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -99,10 +101,16 @@ const CATEGORIAS_CLASSE_VII = [
   "Informática",
 ];
 
-// NOVO: Categorias da Classe VIII
 const CATEGORIAS_CLASSE_VIII = [
   "Saúde",
   "Remonta/Veterinária",
+];
+
+const CATEGORIAS_CLASSE_IX = [ // NOVO
+  "Vtr Administrativa",
+  "Vtr Operacional",
+  "Motocicleta",
+  "Vtr Blindada",
 ];
 
 const CATEGORIAS_CLASSE_III = [
@@ -130,7 +138,8 @@ const DiretrizesCusteioPage = () => {
   const [showClasseVConfig, setShowClasseVConfig] = useState(false);
   const [showClasseVIConfig, setShowClasseVIConfig] = useState(false); 
   const [showClasseVIIConfig, setShowClasseVIIConfig] = useState(false);
-  const [showClasseVIIIConfig, setShowClasseVIIIConfig] = useState(false); // NOVO ESTADO
+  const [showClasseVIIIConfig, setShowClasseVIIIConfig] = useState(false);
+  const [showClasseIXConfig, setShowClasseIXConfig] = useState(false); // NOVO ESTADO
   const [showClasseIIIConfig, setShowClasseIIIConfig] = useState(false);
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
@@ -142,8 +151,9 @@ const DiretrizesCusteioPage = () => {
   const [classeVConfig, setClasseVConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVConfig);
   const [classeVIConfig, setClasseVIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIConfig); 
   const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig);
-  const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig); // NOVO ESTADO
-  const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig); // NOVO ESTADO
+  const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig);
+  const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig);
+  const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIXForm[]>(defaultClasseIXConfig); // NOVO ESTADO
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -153,7 +163,8 @@ const DiretrizesCusteioPage = () => {
   const [selectedClasseVITab, setSelectedClasseVITab] = useState<string>(CATEGORIAS_CLASSE_VI[0]); 
   const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key);
   const [selectedClasseVIITab, setSelectedClasseVIITab] = useState<string>(CATEGORIAS_CLASSE_VII[0]);
-  const [selectedClasseVIIITab, setSelectedClasseVIIITab] = useState<string>(CATEGORIAS_CLASSE_VIII[0]); // NOVO ESTADO
+  const [selectedClasseVIIITab, setSelectedClasseVIIITab] = useState<string>(CATEGORIAS_CLASSE_VIII[0]);
+  const [selectedClasseIXTab, setSelectedClasseIXTab] = useState<string>(CATEGORIAS_CLASSE_IX[0]); // NOVO ESTADO
   
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   const [defaultYear, setDefaultYear] = useState<number | null>(null);
@@ -348,6 +359,27 @@ const DiretrizesCusteioPage = () => {
       } else {
         setClasseVIIIRemontaConfig(defaultClasseVIIIRemontaConfig);
       }
+      
+      // --- Carregar Classe IX ---
+      const { data: classeIXData, error: classeIXError } = await supabase
+        .from("diretrizes_classe_ix")
+        .select("categoria, item, valor_mnt_dia, valor_acionamento_mensal")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year)
+        .eq("ativo", true);
+        
+      if (classeIXError) throw classeIXError;
+      
+      if (classeIXData && classeIXData.length > 0) {
+        setClasseIXConfig(classeIXData.map(d => ({
+          categoria: d.categoria as DiretrizClasseIXForm['categoria'],
+          item: d.item,
+          valor_mnt_dia: Number(d.valor_mnt_dia),
+          valor_acionamento_mensal: Number(d.valor_acionamento_mensal),
+        })));
+      } else {
+        setClasseIXConfig(defaultClasseIXConfig);
+      }
 
 
       // --- Carregar Classe III - Equipamentos ---
@@ -480,8 +512,8 @@ const DiretrizesCusteioPage = () => {
         ...classeVConfig, 
         ...classeVIConfig, 
         ...classeVIIConfig,
-        ...classeVIIISaudeConfig, // NOVO
-        ...classeVIIIRemontaConfig, // NOVO
+        ...classeVIIISaudeConfig,
+        ...classeVIIIRemontaConfig,
       ];
         
       const classeItemsParaSalvar = allClasseItems
@@ -501,6 +533,35 @@ const DiretrizesCusteioPage = () => {
           .insert(classeItemsParaSalvar);
         if (c2Error) throw c2Error;
       }
+      
+      // 4. Salvar Configurações de Classe IX (Motomecanização)
+      
+      // Deletar registros antigos de Classe IX
+      await supabase
+        .from("diretrizes_classe_ix")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("ano_referencia", diretrizes.ano_referencia!);
+        
+      const classeIXItemsParaSalvar = classeIXConfig
+        .filter(item => item.item && item.valor_mnt_dia >= 0 && item.valor_acionamento_mensal >= 0)
+        .map(item => ({
+          user_id: user.id,
+          ano_referencia: diretrizes.ano_referencia,
+          categoria: item.categoria,
+          item: item.item,
+          valor_mnt_dia: item.valor_mnt_dia,
+          valor_acionamento_mensal: item.valor_acionamento_mensal,
+          ativo: true,
+        }));
+        
+      if (classeIXItemsParaSalvar.length > 0) {
+        const { error: c9Error } = await supabase
+          .from("diretrizes_classe_ix")
+          .insert(classeIXItemsParaSalvar);
+        if (c9Error) throw c9Error;
+      }
+
 
       await loadAvailableYears();
     } catch (error: any) {
@@ -604,6 +665,27 @@ const DiretrizesCusteioPage = () => {
           .insert(newClasseItems);
         if (insertC2Error) console.error("Erro ao inserir Classe II/V/VI/VII/VIII copiada:", insertC2Error);
       }
+      
+      // 4. Copiar Diretrizes de Classe IX
+      const { data: sourceClasseIX, error: classeIXError } = await supabase
+        .from("diretrizes_classe_ix")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", sourceYear);
+        
+      if (classeIXError) console.error("Erro ao buscar Classe IX para cópia:", classeIXError);
+      
+      if (sourceClasseIX && sourceClasseIX.length > 0) {
+        const newClasseIX = sourceClasseIX.map(c9 => {
+          const { id: oldC9Id, created_at: oldC9Created, updated_at: oldC9Updated, ...restC9 } = c9;
+          return { ...restC9, ano_referencia: targetYear, user_id: user.id };
+        });
+        const { error: insertC9Error } = await supabase
+          .from("diretrizes_classe_ix")
+          .insert(newClasseIX);
+        if (insertC9Error) console.error("Erro ao inserir Classe IX copiada:", insertC9Error);
+      }
+
 
       toast.success(`Diretrizes do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
       setIsYearManagementDialogOpen(false);
@@ -646,7 +728,14 @@ const DiretrizesCusteioPage = () => {
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
         
-      // 3. Excluir Diretriz de Custeio (Valores e Fatores)
+      // 3. Excluir Diretrizes de Classe IX
+      await supabase
+        .from("diretrizes_classe_ix")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year);
+        
+      // 4. Excluir Diretriz de Custeio (Valores e Fatores)
       const { error: custeioError } = await supabase
         .from("diretrizes_custeio")
         .delete()
@@ -788,6 +877,117 @@ const DiretrizesCusteioPage = () => {
         >
           <Plus className="mr-2 h-4 w-4" />
           Adicionar Item
+        </Button>
+      </div>
+    );
+  };
+  
+  // --- Funções de Gerenciamento da Classe IX ---
+  const handleAddClasseIXItem = (config: DiretrizClasseIXForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIXForm[]>>, categoria: DiretrizClasseIXForm['categoria']) => {
+    setConfig(prev => [
+      ...prev,
+      { categoria: categoria, item: "", valor_mnt_dia: 0, valor_acionamento_mensal: 0 } as DiretrizClasseIXForm
+    ]);
+  };
+
+  const handleRemoveClasseIXItem = (config: DiretrizClasseIXForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIXForm[]>>, index: number) => {
+    setConfig(config.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateClasseIXItem = (config: DiretrizClasseIXForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIXForm[]>>, index: number, field: keyof DiretrizClasseIXForm, value: any) => {
+    const novosItens = [...config];
+    novosItens[index] = { ...novosItens[index], [field]: value };
+    setConfig(novosItens);
+  };
+  
+  // Função para renderizar a lista de itens da Classe IX por categoria
+  const renderClasseIXList = (
+    config: DiretrizClasseIXForm[], 
+    setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIXForm[]>>,
+    categorias: string[],
+    selectedTab: string
+  ) => {
+    const filteredItems = config.filter(item => item.categoria === selectedTab);
+    
+    // Função auxiliar para formatar o valor como moeda (R$ X.XXX,XX)
+    const formatCurrency = (value: number) => {
+      return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    // Função auxiliar para converter string de moeda para número
+    const parseCurrency = (value: string): number => {
+      const cleanedValue = value.replace(/\./g, '').replace(/,/g, '.');
+      return parseFloat(cleanedValue) || 0;
+    };
+    
+    return (
+      <div className="space-y-4 pt-4">
+        {filteredItems.map((item, index) => {
+          // Encontrar o índice original no array completo para permitir a atualização/remoção
+          const indexInMainArray = config.findIndex(c => c === item);
+          
+          const handleUpdateFilteredItem = (field: keyof DiretrizClasseIXForm, value: any) => {
+            if (indexInMainArray !== -1) {
+              handleUpdateClasseIXItem(config, setConfig, indexInMainArray, field, value);
+            }
+          };
+
+          const handleRemoveFilteredItem = () => {
+            if (indexInMainArray !== -1) {
+              handleRemoveClasseIXItem(config, setConfig, indexInMainArray);
+            }
+          };
+
+          return (
+            <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
+              <div className="col-span-6">
+                <Label className="text-xs">Tipo Vtr</Label>
+                <Input
+                  value={item.item}
+                  onChange={(e) => handleUpdateFilteredItem('item', e.target.value)}
+                  placeholder="Ex: VTP Sedan Médio"
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="col-span-3">
+                <Label className="text-xs">Mnt/Dia Op Mil (R$)</Label>
+                <Input
+                  value={item.valor_mnt_dia === 0 ? "" : formatCurrency(item.valor_mnt_dia)}
+                  onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseCurrency(e.target.value))}
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label className="text-xs">Acionamento Mensal (R$)</Label>
+                <Input
+                  value={item.valor_acionamento_mensal === 0 ? "" : formatCurrency(item.valor_acionamento_mensal)}
+                  onChange={(e) => handleUpdateFilteredItem('valor_acionamento_mensal', parseCurrency(e.target.value))}
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="col-span-1 flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleRemoveFilteredItem}
+                  type="button"
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => handleAddClasseIXItem(config, setConfig, selectedTab as DiretrizClasseIXForm['categoria'])} 
+          className="w-full"
+          type="button"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Adicionar Viatura
         </Button>
       </div>
     );
@@ -1145,7 +1345,7 @@ const DiretrizesCusteioPage = () => {
                 )}
               </div>
               
-              {/* NOVO: SEÇÃO CLASSE VIII - SAÚDE E REMONTA/VETERINÁRIA */}
+              {/* SEÇÃO CLASSE VIII - SAÚDE E REMONTA/VETERINÁRIA */}
               <div className="border-t pt-4 mt-6">
                 <div 
                   className="flex items-center justify-between cursor-pointer py-2" 
@@ -1164,7 +1364,6 @@ const DiretrizesCusteioPage = () => {
                         <TabsList className="grid w-full grid-cols-2">
                           {CATEGORIAS_CLASSE_VIII.map(cat => (
                             <TabsTrigger key={cat} value={cat}>
-                              {/* Ícones removidos conforme solicitado */}
                               {cat}
                             </TabsTrigger>
                           ))}
@@ -1176,6 +1375,40 @@ const DiretrizesCusteioPage = () => {
                         <TabsContent value="Remonta/Veterinária">
                           {renderClasseList(classeVIIIRemontaConfig, setClasseVIIIRemontaConfig, CATEGORIAS_CLASSE_VIII, 'Remonta/Veterinária')}
                         </TabsContent>
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              
+              {/* NOVO: SEÇÃO CLASSE IX - MOTOMECANIZAÇÃO */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseIXConfig(!showClasseIXConfig)}
+                >
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Car className="h-5 w-5 text-primary" />
+                    Classe IX - Motomecanização
+                  </h3>
+                  {showClasseIXConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseIXConfig && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <Tabs value={selectedClasseIXTab} onValueChange={setSelectedClasseIXTab}>
+                        <TabsList className="grid w-full grid-cols-4">
+                          {CATEGORIAS_CLASSE_IX.map(cat => (
+                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        {CATEGORIAS_CLASSE_IX.map(cat => (
+                          <TabsContent key={cat} value={cat}>
+                            {renderClasseIXList(classeIXConfig, setClasseIXConfig, CATEGORIAS_CLASSE_IX, cat)}
+                          </TabsContent>
+                        ))}
                       </Tabs>
                     </CardContent>
                   </Card>
