@@ -49,7 +49,7 @@ const PTrabForm = () => {
     { id: "classe-v", name: "Classe V - Armamento" },
     { id: "classe-vi", name: "Classe VI - Material de Engenharia" },
     { id: "classe-vii", name: "Classe VII - Comunicações e Informática" },
-    { id: "classe-viii", name: "Classe VIII - Material de Saúde e Remonta/Veterinária" }, // Rótulo atualizado
+    { id: "classe-viii", name: "Classe VIII - Material de Saúde e Remonta/Veterinária" },
     { id: "classe-ix", name: "Classe IX - Material de Manutenção" },
   ];
 
@@ -162,18 +162,11 @@ const PTrabForm = () => {
     
     if (itemId === 'classe-i') {
       navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`);
-    } else if (itemId === 'classe-ii') {
-      navigate(`/ptrab/classe-ii?ptrabId=${ptrabId}`);
-    } else if (itemId === 'classe-v') {
-      navigate(`/ptrab/classe-v?ptrabId=${ptrabId}`);
-    } else if (itemId === 'classe-vi') {
-      navigate(`/ptrab/classe-vi?ptrabId=${ptrabId}`);
-    } else if (itemId === 'classe-vii') {
-      navigate(`/ptrab/classe-vii?ptrabId=${ptrabId}`);
-    } else if (itemId === 'classe-viii') { // Rota para Classe VIII
-      navigate(`/ptrab/classe-viii?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-iii') {
       navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
+    } else if (['classe-ii', 'classe-v', 'classe-vi', 'classe-vii', 'classe-viii', 'classe-ix'].includes(itemId)) {
+      // Redireciona todas as classes de material (exceto I e III) para a rota da Classe IX
+      navigate(`/ptrab/classe-ix?ptrabId=${ptrabId}`);
     } else {
       console.log(`Selecionado: ${itemId} do tipo ${type}`);
     }
