@@ -715,15 +715,11 @@ Total QR: ${formatCurrency(total_qr)}.`;
       addHeaderRow(ptrabData.comando_militar_area.toUpperCase());
       
       // OM e OM Extenso
-      const omRow = worksheet.getRow(currentRow);
-      omRow.getCell(1).value = ptrabData.nome_om.toUpperCase();
-      omRow.getCell(1).font = { name: 'Arial', size: 11, bold: true };
-      omRow.getCell(1).alignment = { horizontal: 'center' as const, vertical: 'middle' as const };
-      worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
-      currentRow++;
+      // REMOVIDO: Linha da sigla da OM (ptrabData.nome_om)
       
       const omExtensoRow = worksheet.getRow(currentRow);
-      omExtensoRow.getCell(1).value = (ptrabData.nome_om_extenso || '').toUpperCase();
+      // Usa o nome extenso, com fallback para a sigla se o extenso for nulo
+      omExtensoRow.getCell(1).value = (ptrabData.nome_om_extenso || ptrabData.nome_om).toUpperCase();
       omExtensoRow.getCell(1).font = { name: 'Arial', size: 11, bold: true };
       omExtensoRow.getCell(1).alignment = { horizontal: 'center' as const, vertical: 'middle' as const };
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
