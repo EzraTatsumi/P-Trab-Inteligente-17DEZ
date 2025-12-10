@@ -714,7 +714,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       addHeaderRow('EXÉRCITO BRASILEIRO');
       addHeaderRow(ptrabData.comando_militar_area.toUpperCase());
       
-      // CORREÇÃO 1: Separar OM e OM Extenso em duas linhas distintas
+      // OM e OM Extenso
       const omRow = worksheet.getRow(currentRow);
       omRow.getCell(1).value = ptrabData.nome_om.toUpperCase();
       omRow.getCell(1).font = { name: 'Arial', size: 11, bold: true };
@@ -729,9 +729,9 @@ Total QR: ${formatCurrency(total_qr)}.`;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
-      currentRow++;
+      // REMOVIDO: Linha em branco solicitada anteriormente (currentRow++)
       
-      // CORREÇÃO 4: Adicionar as duas linhas de título do P Trab
+      // Títulos do P Trab
       const fullTitleRow = worksheet.getRow(currentRow);
       fullTitleRow.getCell(1).value = `PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO ${ptrabData.nome_operacao.toUpperCase()}`;
       fullTitleRow.getCell(1).font = { name: 'Arial', size: 11, bold: true };
@@ -755,7 +755,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
         row.getCell(1).value = label;
         row.getCell(1).font = { name: 'Arial', size: 11, bold: true };
         
-        // CORREÇÃO 2: Colocar o valor na coluna B e mesclar B:I
+        // Colocar o valor na coluna B e mesclar B:I
         row.getCell(2).value = value;
         row.getCell(2).font = { name: 'Arial', size: 11 };
         worksheet.mergeCells(`B${currentRow}:I${currentRow}`);
@@ -772,7 +772,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       despesasRow.getCell(1).font = { name: 'Arial', size: 11, bold: true };
       currentRow++;
       
-      // CORREÇÃO 3: Remover a linha em branco antes da tabela (currentRow++ removido)
+      // Remoção da linha em branco antes da tabela (já corrigido)
       
       const headerRow1 = currentRow;
       const headerRow2 = currentRow + 1;
@@ -1276,8 +1276,8 @@ Total QR: ${formatCurrency(total_qr)}.`;
           <p className="text-[11pt] font-bold uppercase">Exército Brasileiro</p>
           <p className="text-[11pt] font-bold uppercase">{ptrabData.comando_militar_area}</p>
           <p className="text-[11pt] font-bold uppercase">{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
-          {/* CORREÇÃO 5: Removendo mt-4 da segunda linha de título para aproximar */}
-          <p className="text-[11pt] font-bold uppercase mt-4">
+          {/* Linha em branco removida aqui */}
+          <p className="text-[11pt] font-bold uppercase">
             Plano de Trabalho Logístico de Solicitação de Recursos Orçamentários e Financeiros Operação {ptrabData.nome_operacao}
           </p>
           <p className="text-[11pt] font-bold uppercase underline">Plano de Trabalho Logístico</p>
