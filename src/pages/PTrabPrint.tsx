@@ -683,6 +683,25 @@ Total QR: ${formatCurrency(total_qr)}.`;
   const exportExcel = useCallback(async () => {
     if (!ptrabData) return;
 
+    // --- Definição de Estilos e Alinhamentos ---
+    const leftTopAlignment = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
+    const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
+    const rightTopAlignment = { horizontal: 'right' as const, vertical: 'top' as const, wrapText: true };
+    const centerMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
+    const rightMiddleAlignment = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
+    
+    const cellBorder = {
+      top: { style: 'thin' as const },
+      left: { style: 'thin' as const },
+      bottom: { style: 'thin' as const },
+      right: { style: 'thin' as const }
+    };
+    
+    const baseFontStyle = { name: 'Arial', size: 8 };
+    const headerFontStyle = { name: 'Arial', size: 9, bold: true };
+    const titleFontStyle = { name: 'Arial', size: 11, bold: true };
+    // -------------------------------------------
+
     try {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('P Trab');
@@ -704,8 +723,8 @@ Total QR: ${formatCurrency(total_qr)}.`;
       const addHeaderRow = (text: string) => {
         const row = worksheet.getRow(currentRow);
         row.getCell(1).value = text;
-        row.getCell(1).font = { name: 'Arial', size: 11, bold: true };
-        row.getCell(1).alignment = { horizontal: 'center' as const, vertical: 'middle' as const };
+        row.getCell(1).font = titleFontStyle;
+        row.getCell(1).alignment = centerMiddleAlignment;
         worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
         currentRow++;
       };
@@ -714,29 +733,24 @@ Total QR: ${formatCurrency(total_qr)}.`;
       addHeaderRow('EXÉRCITO BRASILEIRO');
       addHeaderRow(ptrabData.comando_militar_area.toUpperCase());
       
-      // OM e OM Extenso
-      // REMOVIDO: Linha da sigla da OM (ptrabData.nome_om)
-      
       const omExtensoRow = worksheet.getRow(currentRow);
-      // Usa o nome extenso, com fallback para a sigla se o extenso for nulo
       omExtensoRow.getCell(1).value = (ptrabData.nome_om_extenso || ptrabData.nome_om).toUpperCase();
-      omExtensoRow.getCell(1).font = { name: 'Arial', size: 11, bold: true };
-      omExtensoRow.getCell(1).alignment = { horizontal: 'center' as const, vertical: 'middle' as const };
+      omExtensoRow.getCell(1).font = titleFontStyle;
+      omExtensoRow.getCell(1).alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
-      // Títulos do P Trab
       const fullTitleRow = worksheet.getRow(currentRow);
       fullTitleRow.getCell(1).value = `PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO ${ptrabData.nome_operacao.toUpperCase()}`;
-      fullTitleRow.getCell(1).font = { name: 'Arial', size: 11, bold: true };
-      fullTitleRow.getCell(1).alignment = { horizontal: 'center' as const, vertical: 'middle' as const };
+      fullTitleRow.getCell(1).font = titleFontStyle;
+      fullTitleRow.getCell(1).alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
 
       const shortTitleRow = worksheet.getRow(currentRow);
       shortTitleRow.getCell(1).value = 'PLANO DE TRABALHO LOGÍSTICO';
-      shortTitleRow.getCell(1).font = { name: 'Arial', size: 11, bold: true, underline: true };
-      shortTitleRow.getCell(1).alignment = { horizontal: 'center' as const, vertical: 'middle' as const };
+      shortTitleRow.getCell(1).font = { ...titleFontStyle, underline: true };
+      shortTitleRow.getCell(1).alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
@@ -744,14 +758,12 @@ Total QR: ${formatCurrency(total_qr)}.`;
       
       const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
       
-      // Função modificada para colocar rótulo e valor na mesma célula (A:I)
       const addInfoRow = (label: string, value: string) => {
         const row = worksheet.getRow(currentRow);
         
-        // Usar rich text para formatar o rótulo em negrito e o valor normal na mesma célula
         row.getCell(1).value = {
           richText: [
-            { text: label, font: { name: 'Arial', size: 11, bold: true } },
+            { text: label, font: titleFontStyle },
             { text: ` ${value}`, font: { name: 'Arial', size: 11, bold: false } }
           ]
         };
@@ -768,20 +780,18 @@ Total QR: ${formatCurrency(total_qr)}.`;
       
       const despesasRow = worksheet.getRow(currentRow);
       despesasRow.getCell(1).value = '5. DESPESAS OPERACIONAIS:';
-      despesasRow.getCell(1).font = { name: 'Arial', size: 11, bold: true };
+      despesasRow.getCell(1).font = titleFontStyle;
       currentRow++;
-      
-      // Remoção da linha em branco antes da tabela (já corrigido)
       
       const headerRow1 = currentRow;
       const headerRow2 = currentRow + 1;
       
       const hdr1 = worksheet.getRow(headerRow1);
-      hdr1.getCell('A').value = 'DESPESAS';
+      hdr1.getCell('A').value = 'DESPESAS\n(ORDENAR POR CLASSE DE SUBSISTÊNCIA)';
       hdr1.getCell('B').value = 'OM (UGE)\nCODUG';
       hdr1.getCell('C').value = 'NATUREZA DE DESPESA';
       hdr1.getCell('F').value = 'COMBUSTÍVEL';
-      hdr1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO';
+      hdr1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG';
       
       worksheet.mergeCells(`A${headerRow1}:A${headerRow2}`);
       worksheet.mergeCells(`B${headerRow1}:B${headerRow2}`);
@@ -798,14 +808,9 @@ Total QR: ${formatCurrency(total_qr)}.`;
       hdr2.getCell('H').value = 'PREÇO\nTOTAL';
       
       const headerStyle = {
-        font: { name: 'Arial', size: 9, bold: true },
-        alignment: { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true },
-        border: {
-          top: { style: 'thin' as const },
-          left: { style: 'thin' as const },
-          bottom: { style: 'thin' as const },
-          right: { style: 'thin' as const }
-        }
+        font: headerFontStyle,
+        alignment: centerMiddleAlignment,
+        border: cellBorder
       };
       
       ['A', 'B', 'C', 'F', 'I'].forEach(col => {
@@ -816,50 +821,45 @@ Total QR: ${formatCurrency(total_qr)}.`;
         hdr2.getCell(col).style = headerStyle;
       });
       
-      hdr1.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
-      hdr1.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8CBAD' } };
-      hdr2.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
-      hdr2.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
-      hdr2.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
-      hdr2.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8CBAD' } };
-      hdr2.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8CBAD' } };
-      hdr2.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8CBAD' } };
+      // Cores padronizadas
+      const corAzul = 'FFB4C7E7'; // Natureza de Despesa
+      const corLaranja = 'FFF8CBAD'; // Combustível
+      
+      hdr1.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      hdr1.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      hdr2.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      hdr2.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      hdr2.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      hdr2.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      hdr2.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      hdr2.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       
       currentRow = headerRow2 + 1;
 
-      // Reusable alignment styles
-      const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
-      const centerMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
-      
-      const cellBorder = {
-        top: { style: 'thin' as const },
-        left: { style: 'thin' as const },
-        bottom: { style: 'thin' as const },
-        right: { style: 'thin' as const }
-      };
+      // Reusable alignment styles for data
+      const dataCurrencyStyle = { horizontal: 'right' as const, vertical: 'top' as const, wrapText: true };
+      const dataTextStyle = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
+      const dataCenterStyle = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
       
       omsOrdenadas.forEach((nomeOM) => {
         const grupo = gruposPorOM[nomeOM];
         const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
         
-        // Se o grupo não tem linhas, pula
         if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasClasseV.length === 0 && grupo.linhasClasseVI.length === 0 && grupo.linhasClasseVII.length === 0 && grupo.linhasClasseVIII.length === 0 && grupo.linhasLubrificante.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
           return;
         }
         
-        // Array de todas as linhas de despesa, ordenadas pela sequência romana:
         const linhasDespesaOrdenadas = [
             ...grupo.linhasQS,
             ...grupo.linhasQR,
             ...grupo.linhasClasseII,
-            ...grupo.linhasLubrificante, // Classe III Lubrificante
+            ...grupo.linhasLubrificante,
             ...grupo.linhasClasseV,
             ...grupo.linhasClasseVI,
             ...grupo.linhasClasseVII,
             ...grupo.linhasClasseVIII,
         ];
         
-        // 1. Renderizar todas as linhas de despesa (I, II, III Lub, V, VI, VII, VIII)
         linhasDespesaOrdenadas.forEach((linha) => {
           const row = worksheet.getRow(currentRow);
           
@@ -869,9 +869,6 @@ Total QR: ${formatCurrency(total_qr)}.`;
           let valorC = 0;
           let valorD = 0;
           let valorE = 0;
-          let valorF = '';
-          let valorG = '';
-          let valorH = '';
           
           if ('tipo' in linha) { // Classe I (QS/QR)
             const registro = linha.registro;
@@ -898,12 +895,12 @@ Total QR: ${formatCurrency(total_qr)}.`;
                 ? registro.animal_tipo.toUpperCase()
                 : registro.categoria.toUpperCase();
                 
-            despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
-            omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
-            valorC = registro.valor_nd_30;
-            valorD = registro.valor_nd_39;
-            valorE = registro.valor_nd_30 + registro.valor_nd_39;
-            detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+            rowData.despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
+            rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
+            rowData.valorC = registro.valor_nd_30;
+            rowData.valorD = registro.valor_nd_39;
+            rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
+            rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
             
           } else if ('tipo_equipamento' in linha.registro) { // Classe III Lubrificante
             const registro = linha.registro;
@@ -925,25 +922,26 @@ Total QR: ${formatCurrency(total_qr)}.`;
           row.getCell('B').value = omValue;
           row.getCell('C').value = valorC > 0 ? valorC : '';
           row.getCell('C').numFmt = 'R$ #,##0.00';
-          row.getCell('C').style = { ...row.getCell('C').style, alignment: centerTopAlignment };
           row.getCell('D').value = valorD > 0 ? valorD : '';
           row.getCell('D').numFmt = 'R$ #,##0.00';
-          row.getCell('D').style = { ...row.getCell('D').style, alignment: centerTopAlignment };
           row.getCell('E').value = valorE > 0 ? valorE : '';
           row.getCell('E').numFmt = 'R$ #,##0.00';
-          row.getCell('E').style = { ...row.getCell('E').style, alignment: centerTopAlignment };
           
           row.getCell('I').value = detalhamentoValue;
-          row.getCell('I').alignment = { wrapText: true, vertical: 'top' };
           row.getCell('I').font = { name: 'Arial', size: 6.5 };
           
           ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
             row.getCell(col).border = cellBorder;
-            if (!row.getCell(col).font) {
-              row.getCell(col).font = { name: 'Arial', size: 8 };
-            }
-            row.getCell(col).alignment = { ...row.getCell(col).alignment, vertical: 'top' };
+            row.getCell(col).font = baseFontStyle;
           });
+          
+          // Aplica alinhamentos específicos para dados
+          row.getCell('A').alignment = dataTextStyle;
+          row.getCell('B').alignment = centerTopAlignment;
+          row.getCell('C').alignment = dataCurrencyStyle;
+          row.getCell('D').alignment = dataCurrencyStyle;
+          row.getCell('E').alignment = dataCurrencyStyle;
+          row.getCell('I').alignment = dataTextStyle;
           
           currentRow++;
         });
@@ -972,34 +970,38 @@ Total QR: ${formatCurrency(total_qr)}.`;
             row.getCell('B').value = `${nomeRM}\n(${gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || 'UG'})`;
             
             // Colunas azuis (C, D, E) devem ser vazias/zero para Classe III Combustível
-            row.getCell('C').value = ''; // 33.90.30
-            row.getCell('D').value = ''; // 33.90.39
-            row.getCell('E').value = ''; // TOTAL ND
+            row.getCell('C').value = ''; 
+            row.getCell('D').value = ''; 
+            row.getCell('E').value = ''; 
             
             // Colunas Laranjas (F, G, H) permanecem preenchidas
             row.getCell('F').value = Math.round(registro.total_litros);
             row.getCell('F').numFmt = '#,##0 "L"';
-            row.getCell('F').style = { ...row.getCell('F').style, alignment: centerTopAlignment };
             row.getCell('G').value = registro.preco_litro;
             row.getCell('G').numFmt = 'R$ #,##0.00';
-            row.getCell('G').style = { ...row.getCell('G').style, alignment: centerTopAlignment };
             row.getCell('H').value = registro.valor_total;
             row.getCell('H').numFmt = 'R$ #,##0.00';
-            row.getCell('H').style = { ...row.getCell('H').style, alignment: centerTopAlignment };
             
             const detalhamentoCombustivel = registro.detalhamento_customizado || registro.detalhamento || '';
             
             row.getCell('I').value = detalhamentoCombustivel;
-            row.getCell('I').alignment = { wrapText: true, vertical: 'top' };
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
             
             ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
               row.getCell(col).border = cellBorder;
-              if (!row.getCell(col).font) {
-                row.getCell(col).font = { name: 'Arial', size: 8 };
-              }
-              row.getCell(col).alignment = { ...row.getCell(col).alignment, vertical: 'top' };
+              row.getCell(col).font = baseFontStyle;
             });
+            
+            // Aplica alinhamentos específicos para dados de Combustível
+            row.getCell('A').alignment = dataTextStyle;
+            row.getCell('B').alignment = centerTopAlignment;
+            row.getCell('C').alignment = centerTopAlignment;
+            row.getCell('D').alignment = centerTopAlignment;
+            row.getCell('E').alignment = centerTopAlignment;
+            row.getCell('F').alignment = centerTopAlignment;
+            row.getCell('G').alignment = rightTopAlignment;
+            row.getCell('H').alignment = rightTopAlignment;
+            row.getCell('I').alignment = dataTextStyle;
             
             currentRow++;
           });
@@ -1009,43 +1011,56 @@ Total QR: ${formatCurrency(total_qr)}.`;
         const subtotalRow = worksheet.getRow(currentRow);
         subtotalRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
         worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
-        subtotalRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
+        subtotalRow.getCell('A').alignment = rightMiddleAlignment;
         subtotalRow.getCell('A').font = { name: 'Arial', size: 8, bold: true };
         
-        subtotalRow.getCell('C').value = totaisOM.total_33_90_30; // Total Classe I + Classes (ND 30) + Lubrificante
-        subtotalRow.getCell('C').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
-        subtotalRow.getCell('C').font = { bold: true };
-        subtotalRow.getCell('C').style = { ...subtotalRow.getCell('C').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
+        // Cor de fundo para a linha de subtotal
+        const corSubtotal = 'FFD3D3D3'; // Light Gray
         
-        subtotalRow.getCell('D').value = totaisOM.total_33_90_39; // Total Classes (ND 39)
-        subtotalRow.getCell('D').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
+        subtotalRow.getCell('C').value = totaisOM.total_33_90_30;
+        subtotalRow.getCell('C').numFmt = 'R$ #,##0.00';
+        subtotalRow.getCell('C').font = { bold: true };
+        subtotalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+        subtotalRow.getCell('C').style = { ...subtotalRow.getCell('C').style, alignment: rightMiddleAlignment };
+        
+        subtotalRow.getCell('D').value = totaisOM.total_33_90_39;
+        subtotalRow.getCell('D').numFmt = 'R$ #,##0.00';
         subtotalRow.getCell('D').font = { bold: true };
-        subtotalRow.getCell('D').style = { ...subtotalRow.getCell('D').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
+        subtotalRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+        subtotalRow.getCell('D').style = { ...subtotalRow.getCell('D').style, alignment: rightMiddleAlignment };
 
-        subtotalRow.getCell('E').value = totaisOM.total_parte_azul; // Total ND (C+D)
-        subtotalRow.getCell('E').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
+        subtotalRow.getCell('E').value = totaisOM.total_parte_azul;
+        subtotalRow.getCell('E').numFmt = 'R$ #,##0.00';
         subtotalRow.getCell('E').font = { bold: true };
-        subtotalRow.getCell('E').style = { ...subtotalRow.getCell('E').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
+        subtotalRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+        subtotalRow.getCell('E').style = { ...subtotalRow.getCell('E').style, alignment: rightMiddleAlignment };
         
         if (nomeOM === nomeRM && totaisOM.totalDieselLitros > 0) {
           subtotalRow.getCell('F').value = `${formatNumber(totaisOM.totalDieselLitros)} L OD`;
           subtotalRow.getCell('F').font = { bold: true };
-          subtotalRow.getCell('F').style = { ...subtotalRow.getCell('F').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
+          subtotalRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+          subtotalRow.getCell('F').style = { ...subtotalRow.getCell('F').style, alignment: centerMiddleAlignment };
         }
         if (nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0) {
           subtotalRow.getCell('G').value = `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS`;
           subtotalRow.getCell('G').font = { bold: true };
-          subtotalRow.getCell('G').style = { ...subtotalRow.getCell('G').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
+          subtotalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+          subtotalRow.getCell('G').style = { ...subtotalRow.getCell('G').style, alignment: centerMiddleAlignment };
         }
         if (nomeOM === nomeRM && totaisOM.total_combustivel > 0) {
           subtotalRow.getCell('H').value = totaisOM.total_combustivel;
-          subtotalRow.getCell('H').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
+          subtotalRow.getCell('H').numFmt = 'R$ #,##0.00';
           subtotalRow.getCell('H').font = { bold: true };
-          subtotalRow.getCell('H').style = { ...subtotalRow.getCell('H').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
+          subtotalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+          subtotalRow.getCell('H').style = { ...subtotalRow.getCell('H').style, alignment: rightMiddleAlignment };
         }
         
         ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
             subtotalRow.getCell(col).border = cellBorder;
+            // Aplica cor de fundo cinza claro para as células não coloridas (A, B, I)
+            if (!subtotalRow.getCell(col).fill) {
+                subtotalRow.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+            }
         });
         
         currentRow++;
@@ -1053,16 +1068,22 @@ Total QR: ${formatCurrency(total_qr)}.`;
         const totalOMRow = worksheet.getRow(currentRow);
         totalOMRow.getCell('A').value = `VALOR TOTAL DO ${nomeOM}`;
         worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
-        totalOMRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
+        totalOMRow.getCell('A').alignment = rightMiddleAlignment;
         totalOMRow.getCell('A').font = { name: 'Arial', size: 8, bold: true };
         
+        const corTotalOM = 'FFE8E8E8'; // Very Light Gray
+        
         totalOMRow.getCell('E').value = totaisOM.total_gnd3;
-        totalOMRow.getCell('E').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
+        totalOMRow.getCell('E').numFmt = 'R$ #,##0.00';
         totalOMRow.getCell('E').font = { bold: true };
-        totalOMRow.getCell('E').style = { ...totalOMRow.getCell('E').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
+        totalOMRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+        totalOMRow.getCell('E').style = { ...totalOMRow.getCell('E').style, alignment: rightMiddleAlignment };
         
         ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
             totalOMRow.getCell(col).border = cellBorder;
+            if (!totalOMRow.getCell(col).fill) {
+                totalOMRow.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+            }
         });
         
         currentRow++;
@@ -1075,7 +1096,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       const totalGeral_33_90_39 = Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_39, 0);
       const totalValorCombustivel = registrosClasseIII.filter(isCombustivel).reduce((acc, reg) => acc + reg.valor_total, 0);
       
-      const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39; // Soma das colunas azuis (C+D)
+      const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39;
       
       const totalDiesel = registrosClasseIII.filter(isCombustivel)
         .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
@@ -1088,47 +1109,47 @@ Total QR: ${formatCurrency(total_qr)}.`;
       const somaRow = worksheet.getRow(currentRow);
       somaRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
       worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
-      somaRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
+      somaRow.getCell('A').alignment = rightMiddleAlignment;
       somaRow.getCell('A').font = { bold: true };
       
-      somaRow.getCell('C').value = totalGeral_33_90_30; // Total Classe I + Classes (ND 30) + Lubrificante
-      somaRow.getCell('C').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
+      somaRow.getCell('C').value = totalGeral_33_90_30;
+      somaRow.getCell('C').numFmt = 'R$ #,##0.00';
       somaRow.getCell('C').font = { bold: true };
-      somaRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
-      somaRow.getCell('C').style = { ...somaRow.getCell('C').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
+      somaRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      somaRow.getCell('C').style = { ...somaRow.getCell('C').style, alignment: rightMiddleAlignment };
       
-      somaRow.getCell('D').value = totalGeral_33_90_39; // Total Classes (ND 39)
-      somaRow.getCell('D').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
+      somaRow.getCell('D').value = totalGeral_33_90_39;
+      somaRow.getCell('D').numFmt = 'R$ #,##0.00';
       somaRow.getCell('D').font = { bold: true };
-      somaRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
-      somaRow.getCell('D').style = { ...somaRow.getCell('D').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
+      somaRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      somaRow.getCell('D').style = { ...somaRow.getCell('D').style, alignment: rightMiddleAlignment };
       
-      somaRow.getCell('E').value = totalGeral_GND3_ND; // Total C + D
-      somaRow.getCell('E').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
+      somaRow.getCell('E').value = totalGeral_GND3_ND;
+      somaRow.getCell('E').numFmt = 'R$ #,##0.00';
       somaRow.getCell('E').font = { bold: true };
-      somaRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB4C7E7' } };
-      somaRow.getCell('E').style = { ...somaRow.getCell('E').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
+      somaRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      somaRow.getCell('E').style = { ...somaRow.getCell('E').style, alignment: rightMiddleAlignment };
       
       if (totalDiesel > 0) {
         somaRow.getCell('F').value = `${formatNumber(totalDiesel)} L OD`;
         somaRow.getCell('F').font = { bold: true };
-        somaRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8CBAD' } };
-        somaRow.getCell('F').style = { ...somaRow.getCell('F').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
+        somaRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+        somaRow.getCell('F').style = { ...somaRow.getCell('F').style, alignment: centerMiddleAlignment };
       }
       
       if (totalGasolina > 0) {
         somaRow.getCell('G').value = `${formatNumber(totalGasolina)} L GAS`;
         somaRow.getCell('G').font = { bold: true };
-        somaRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8CBAD' } };
-        somaRow.getCell('G').style = { ...somaRow.getCell('G').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
+        somaRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+        somaRow.getCell('G').style = { ...somaRow.getCell('G').style, alignment: centerMiddleAlignment };
       }
       
       if (totalValorCombustivelFinal > 0) {
         somaRow.getCell('H').value = totalValorCombustivelFinal;
-        somaRow.getCell('H').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
+        somaRow.getCell('H').numFmt = 'R$ #,##0.00';
         somaRow.getCell('H').font = { bold: true };
-        somaRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8CBAD' } };
-        somaRow.getCell('H').style = { ...somaRow.getCell('H').style, alignment: centerMiddleAlignment }; // Aplicar alinhamento explícito
+        somaRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+        somaRow.getCell('H').style = { ...somaRow.getCell('H').style, alignment: rightMiddleAlignment };
       }
       
       ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].forEach(col => {
@@ -1140,12 +1161,12 @@ Total QR: ${formatCurrency(total_qr)}.`;
       const valorTotalRow = worksheet.getRow(currentRow);
       valorTotalRow.getCell('G').value = 'VALOR TOTAL';
       valorTotalRow.getCell('G').font = { bold: true };
-      valorTotalRow.getCell('G').alignment = { horizontal: 'center', vertical: 'middle' };
+      valorTotalRow.getCell('G').alignment = centerMiddleAlignment;
       
-      valorTotalRow.getCell('H').value = valorTotalSolicitado; // Total C + H
-      valorTotalRow.getCell('H').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
+      valorTotalRow.getCell('H').value = valorTotalSolicitado;
+      valorTotalRow.getCell('H').numFmt = 'R$ #,##0.00';
       valorTotalRow.getCell('H').font = { bold: true };
-      valorTotalRow.getCell('H').alignment = { horizontal: 'center' };
+      valorTotalRow.getCell('H').alignment = centerMiddleAlignment;
       
       ['G', 'H'].forEach(col => {
         valorTotalRow.getCell(col).border = cellBorder;
@@ -1156,7 +1177,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
       const gndLabelRow = worksheet.getRow(currentRow);
       gndLabelRow.getCell('H').value = 'GND - 3';
       gndLabelRow.getCell('H').font = { bold: true };
-      gndLabelRow.getCell('H').alignment = { horizontal: 'center', vertical: 'middle' };
+      gndLabelRow.getCell('H').alignment = centerMiddleAlignment;
       gndLabelRow.getCell('H').border = {
         top: { style: 'thin' as const },
         left: { style: 'thin' as const },
@@ -1166,10 +1187,10 @@ Total QR: ${formatCurrency(total_qr)}.`;
       currentRow++;
       
       const gndValueRow = worksheet.getRow(currentRow);
-      gndValueRow.getCell('H').value = valorTotalSolicitado; // Total C + H
-      gndValueRow.getCell('H').numFmt = 'R$ #,##0.00'; // Alterado para formato brasileiro
+      gndValueRow.getCell('H').value = valorTotalSolicitado;
+      gndValueRow.getCell('H').numFmt = 'R$ #,##0.00';
       gndValueRow.getCell('H').font = { bold: true };
-      gndValueRow.getCell('H').alignment = { horizontal: 'center', vertical: 'middle' };
+      gndValueRow.getCell('H').alignment = centerMiddleAlignment;
       gndValueRow.getCell('H').border = {
         left: { style: 'thin' as const },
         bottom: { style: 'thick' as const },
