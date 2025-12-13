@@ -18,7 +18,8 @@ const CATEGORIAS_CLASSE_II = ["Equipamento Individual", "Proteção Balística",
 const CATEGORIAS_CLASSE_V = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 const CATEGORIAS_CLASSE_VI = ["Embarcação", "Equipamento de Engenharia"];
 const CATEGORIAS_CLASSE_VII = ["Comunicações", "Informática"];
-const CATEGORIAS_CLASSE_VIII = ["Saúde", "Remonta/Veterinária"]; // NOVO
+const CATEGORIAS_CLASSE_VIII = ["Saúde", "Remonta/Veterinária"];
+const CATEGORIAS_CLASSE_IX = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"]; // NOVO
 
 interface ItemClasseII {
   item: string;
@@ -67,7 +68,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalRefeicoesIntermediarias += record.efetivo * record.nr_ref_int * record.dias_operacao;
   });
   
-  // 2. Fetch Classe II/V/VI/VII/VIII records from their respective tables
+  // 2. Fetch Classe II/V/VI/VII/VIII/IX records from their respective tables
   const [
     { data: classeIIData, error: classeIIError },
     { data: classeVData, error: classeVError },
@@ -75,6 +76,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     { data: classeVIIData, error: classeVIIError },
     { data: classeVIIISaudeData, error: classeVIIISaudeError },
     { data: classeVIIIRemontaData, error: classeVIIIRemontaError },
+    { data: classeIXData, error: classeIXError }, // NOVO
   ] = await Promise.all([
     supabase
       .from('classe_ii_registros')
@@ -98,7 +100,11 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .eq('p_trab_id', ptrabId),
     supabase
       .from('classe_viii_remonta_registros')
-      .select('valor_total, itens_remonta, dias_operacao, organizacao, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais') // REMOVED 'categoria'
+      .select('valor_total, itens_remonta, dias_operacao, organizacao, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais')
+      .eq('p_trab_id', ptrabId),
+    supabase
+      .from('classe_ix_registros') // NOVO
+      .select('valor_total, itens_motomecanizacao, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
       .eq('p_trab_id', ptrabId),
   ]);
 
@@ -108,6 +114,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   if (classeVIIError) throw classeVIIError;
   if (classeVIIISaudeError) console.error("Erro ao carregar Classe VIII Saúde:", classeVIIISaudeError);
   if (classeVIIIRemontaError) console.error("Erro ao carregar Classe VIII Remonta:", classeVIIIRemontaError);
+  if (classeIXError) console.error("Erro ao carregar Classe IX:", classeIXError); // NOVO
   
   const allClasseItemsData = [
     ...(classeIIData || []),
@@ -119,8 +126,13 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         ...r, 
         itens_equipamentos: r.itens_remonta, 
         categoria: 'Remonta/Veterinária',
-        animal_tipo: r.animal_tipo, // Pass animal_tipo through
-        quantidade_animais: r.quantidade_animais, // Pass quantity through
+        animal_tipo: r.animal_tipo,
+        quantidade_animais: r.quantidade_animais,
+    })),
+    ...(classeIXData || []).map(r => ({ // NOVO
+        ...r, 
+        itens_equipamentos: r.itens_motomecanizacao, 
+        categoria: r.categoria,
     })),
   ];
   
@@ -153,6 +165,12 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   let totalClasseVIII_ND39 = 0;
   let totalItensClasseVIII = 0;
   const groupedClasseVIIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
+  
+  let totalClasseIX = 0; // NOVO
+  let totalClasseIX_ND30 = 0; // NOVO
+  let totalClasseIX_ND39 = 0; // NOVO
+  let totalItensClasseIX = 0; // NOVO
+  const groupedClasseIXCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {}; // NOVO
   
   (allClasseItemsData || []).forEach(record => {
     const category = record.categoria;
@@ -221,12 +239,11 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         groupedClasseVIICategories[category].totalND39 += valorND39;
         groupedClasseVIICategories[category].totalItens += totalItemsCategory;
     } else if (CATEGORIAS_CLASSE_VIII.includes(category)) {
-        // CLASSE VIII (NOVO)
+        // CLASSE VIII
         totalClasseVIII += valorTotal;
         totalClasseVIII_ND30 += valorND30;
         totalClasseVIII_ND39 += valorND39;
         
-        // Determine the key for granular grouping
         let groupKey = category;
         let currentTotalItems = totalItemsCategory;
         
@@ -235,13 +252,11 @@ const fetchPTrabTotals = async (ptrabId: string) => {
             const quantidadeAnimais = (record as any).quantidade_animais || 0;
             
             if (animalType) {
-                // Use a chave granular para Remonta
                 groupKey = `Remonta - ${animalType}`;
                 currentTotalItems = quantidadeAnimais;
             }
         }
         
-        // Se for Saúde, a chave é 'Saúde'
         if (category === 'Saúde') {
             groupKey = 'Saúde';
         }
@@ -255,6 +270,20 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         groupedClasseVIIICategories[groupKey].totalND30 += valorND30;
         groupedClasseVIIICategories[groupKey].totalND39 += valorND39;
         groupedClasseVIIICategories[groupKey].totalItens += currentTotalItems;
+    } else if (CATEGORIAS_CLASSE_IX.includes(category)) { // NOVO
+        // CLASSE IX
+        totalClasseIX += valorTotal;
+        totalClasseIX_ND30 += valorND30;
+        totalClasseIX_ND39 += valorND39;
+        totalItensClasseIX += totalItemsCategory;
+
+        if (!groupedClasseIXCategories[category]) {
+            groupedClasseIXCategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
+        }
+        groupedClasseIXCategories[category].totalValor += valorTotal;
+        groupedClasseIXCategories[category].totalND30 += valorND30;
+        groupedClasseIXCategories[category].totalND39 += valorND39;
+        groupedClasseIXCategories[category].totalItens += totalItemsCategory;
     }
   });
   
@@ -302,8 +331,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const totalLubrificanteLitros = lubrificanteRecords
     .reduce((sum, record) => sum + record.total_litros, 0);
 
-  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classe II (ND 30 + ND 39) + Classe V (ND 30 + ND 39) + Classe VI (ND 30 + ND 39) + Classe VII (ND 30 + ND 39) + Classe VIII (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
-  const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalCombustivel + totalLubrificanteValor;
+  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
+  const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX + totalCombustivel + totalLubrificanteValor;
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
@@ -345,6 +374,12 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalClasseVIII_ND39,
     totalItensClasseVIII,
     groupedClasseVIIICategories,
+    
+    totalClasseIX, // NOVO
+    totalClasseIX_ND30, // NOVO
+    totalClasseIX_ND39, // NOVO
+    totalItensClasseIX, // NOVO
+    groupedClasseIXCategories, // NOVO
     
     totalComplemento,
     totalEtapaSolicitadaValor,
@@ -404,6 +439,11 @@ export const PTrabCostSummary = ({
       totalClasseVIII_ND39: 0,
       groupedClasseVIIICategories: {},
       totalItensClasseVIII: 0,
+      totalClasseIX: 0, // NOVO
+      totalClasseIX_ND30: 0, // NOVO
+      totalClasseIX_ND39: 0, // NOVO
+      totalItensClasseIX: 0, // NOVO
+      groupedClasseIXCategories: {}, // NOVO
       totalComplemento: 0,
       totalEtapaSolicitadaValor: 0,
       totalDiasEtapaSolicitada: 0,
@@ -413,7 +453,6 @@ export const PTrabCostSummary = ({
       totalDieselLitros: 0,
       totalGasolinaLitros: 0,
       totalLubrificanteValor: 0,
-      totalLubrificanteLitros: 0,
       totalCombustivel: 0,
       totalMaterialPermanente: 0,
       totalAviacaoExercito: 0,
@@ -477,6 +516,7 @@ export const PTrabCostSummary = ({
   const sortedClasseVICategories = Object.entries(totals.groupedClasseVICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const sortedClasseVIICategories = Object.entries(totals.groupedClasseVIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const sortedClasseVIIICategories = Object.entries(totals.groupedClasseVIIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
+  const sortedClasseIXCategories = Object.entries(totals.groupedClasseIXCategories ?? {}).sort(([a], [b]) => a.localeCompare(b)); // NOVO
 
   return (
     <Card className="shadow-lg">
@@ -822,7 +862,7 @@ export const PTrabCostSummary = ({
                     </AccordionItem>
                   </Accordion>
                   
-                  {/* NOVO: Classe VIII - Saúde e Remonta/Veterinária */}
+                  {/* Classe VIII - Saúde e Remonta/Veterinária */}
                   <Accordion type="single" collapsible className="w-full pt-1">
                     <AccordionItem value="item-classe-viii" className="border-b-0">
                       <AccordionTrigger className="p-0 hover:no-underline">
@@ -867,9 +907,53 @@ export const PTrabCostSummary = ({
                     </AccordionItem>
                   </Accordion>
                   
+                  {/* NOVO: Classe IX - Motomecanização */}
+                  <Accordion type="single" collapsible className="w-full pt-1">
+                    <AccordionItem value="item-classe-ix" className="border-b-0">
+                      <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                          <div className="flex items-center gap-1 text-foreground">
+                            <Truck className="h-3 w-3 text-orange-500" />
+                            Classe IX
+                          </div>
+                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                            {formatCurrency(totals.totalClasseIX)}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                          {/* Detalhes por Categoria */}
+                          {sortedClasseIXCategories.map(([category, data]) => (
+                            <div key={category} className="space-y-1">
+                                <div className="flex justify-between text-muted-foreground font-semibold pt-1">
+                                    <span className="w-1/2 text-left">{category}</span>
+                                    <span className="w-1/4 text-right font-medium">
+                                        {formatNumber(data.totalItens)} vtr
+                                    </span>
+                                    <span className="w-1/4 text-right font-medium">
+                                        {formatCurrency(data.totalValor)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
+                                    <span className="w-1/2 text-left">ND 30 / ND 39</span>
+                                    <span className="w-1/4 text-right text-green-600 font-medium">
+                                        {formatCurrency(data.totalND30)}
+                                    </span>
+                                    <span className="w-1/4 text-right text-blue-600 font-medium">
+                                        {formatCurrency(data.totalND39)}
+                                    </span>
+                                </div>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                  
                   {/* Outras Abas Logísticas (Placeholder) */}
                   <div className="flex justify-between text-xs text-muted-foreground pt-2">
-                    <span className="w-1/2 text-left">Outras Classes (IV, IX, X)</span>
+                    <span className="w-1/2 text-left">Outras Classes (IV, X)</span>
                     <span className="w-1/4 text-right font-medium">
                       {/* Vazio */}
                     </span>

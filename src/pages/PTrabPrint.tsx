@@ -66,6 +66,14 @@ interface ItemClasseII {
   memoria_customizada?: string | null;
 }
 
+interface ItemClasseIX {
+  item: string;
+  quantidade: number;
+  valor_mnt_dia: number;
+  valor_acionamento_mensal: number;
+  categoria: string;
+}
+
 interface ClasseIIRegistro {
   id: string;
   organizacao: string; // OM de Destino do Recurso (ND 30/39)
@@ -82,6 +90,8 @@ interface ClasseIIRegistro {
   // Campos específicos para Classe VIII (Remonta)
   animal_tipo?: 'Equino' | 'Canino';
   quantidade_animais?: number;
+  // Campos específicos para Classe IX
+  itens_motomecanizacao?: ItemClasseIX[];
 }
 
 interface ClasseIIIRegistro {
@@ -127,6 +137,7 @@ interface GrupoOM {
   linhasClasseVI: LinhaClasseII[];
   linhasClasseVII: LinhaClasseII[];
   linhasClasseVIII: LinhaClasseII[];
+  linhasClasseIX: LinhaClasseII[]; // NOVO
   linhasLubrificante: LinhaLubrificante[];
 }
 // --- FIM NOVAS INTERFACES ---
@@ -135,13 +146,15 @@ interface GrupoOM {
 const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 // Categorias que representam a Classe VI (Material de Engenharia)
 const CLASSE_VI_CATEGORIES = ["Embarcação", "Equipamento de Engenharia"];
-// NOVO: Categorias que representam a Classe VII (Comunicações e Informática)
+// Categorias que representam a Classe VII (Comunicações e Informática)
 const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
-// NOVO: Categorias que representam a Classe VIII (Saúde e Remonta/Veterinária)
+// Categorias que representam a Classe VIII (Saúde e Remonta/Veterinária)
 const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
+// Categorias que representam a Classe IX (Motomecanização)
+const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
 
 
-// Função auxiliar para determinar o rótulo da Classe II/V/VI/VII/VIII
+// Função auxiliar para determinar o rótulo da Classe II/V/VI/VII/VIII/IX
 const getClasseIILabel = (categoria: string): string => {
     if (CLASSE_V_CATEGORIES.includes(categoria)) {
         return 'CLASSE V - ARMAMENTO';
@@ -155,7 +168,105 @@ const getClasseIILabel = (categoria: string): string => {
     if (CLASSE_VIII_CATEGORIES.includes(categoria)) {
         return 'CLASSE VIII - SAÚDE E REMONTA/VETERINÁRIA';
     }
+    if (CLASSE_IX_CATEGORIES.includes(categoria)) {
+        return 'CLASSE IX - MOTOMECANIZAÇÃO';
+    }
     return 'CLASSE II - MATERIAL DE INTENDÊNCIA';
+};
+
+// Função de cálculo principal para Classe IX (SEM MARGEM)
+const calculateItemTotalClasseIX = (item: ItemClasseIX, diasOperacao: number): { base: number, acionamento: number, total: number } => {
+    const nrVtr = item.quantidade;
+    const valorDia = item.valor_mnt_dia;
+    const valorMensal = item.valor_acionamento_mensal;
+    
+    if (nrVtr <= 0 || diasOperacao <= 0) {
+        return { base: 0, acionamento: 0, total: 0 };
+    }
+    
+    const custoBase = nrVtr * valorDia * diasOperacao;
+    const nrMeses = Math.ceil(diasOperacao / 30);
+    const custoAcionamento = nrVtr * valorMensal * nrMeses;
+    
+    const total = custoBase + custoAcionamento;
+    
+    return { base: custoBase, acionamento: custoAcionamento, total };
+};
+
+// NOVO: Gera a memória de cálculo detalhada para Classe IX (SEM MARGEM)
+const generateClasseIXMemoriaCalculo = (registro: ClasseIIRegistro): string => {
+    if (registro.detalhamento_customizado) {
+      return registro.detalhamento_customizado;
+    }
+    
+    const itens = (registro.itens_motomecanizacao || []) as ItemClasseIX[];
+    const diasOperacao = registro.dias_operacao;
+    const organizacao = registro.organizacao;
+    const ug = registro.ug;
+    const faseAtividade = registro.fase_atividade;
+    const valorND30 = registro.valor_nd_30;
+    const valorND39 = registro.valor_nd_39;
+    
+    const faseFormatada = formatFasesParaTexto(faseAtividade);
+    const valorTotalFinal = valorND30 + valorND39;
+
+    let totalItens = 0;
+    let totalValorBase = 0;
+    let totalValorAcionamento = 0;
+
+    const gruposPorCategoria = itens.reduce((acc, item) => {
+        const categoria = item.categoria;
+        const { base, acionamento, total } = calculateItemTotalClasseIX(item, diasOperacao);
+        
+        if (!acc[categoria]) {
+            acc[categoria] = {
+                totalValorBase: 0,
+                totalValorAcionamento: 0,
+                totalQuantidade: 0,
+                detalhes: [],
+            };
+        }
+        
+        acc[categoria].totalValorBase += base;
+        acc[categoria].totalValorAcionamento += acionamento;
+        acc[categoria].totalQuantidade += item.quantidade;
+        totalItens += item.quantidade;
+        
+        const nrMeses = Math.ceil(diasOperacao / 30);
+
+        acc[categoria].detalhes.push(
+            `- ${item.quantidade} ${item.item} (Base: ${formatCurrency(base)}, Acionamento: ${formatCurrency(acionamento)} em ${nrMeses} meses) = ${formatCurrency(total)}.`
+        );
+        
+        return acc;
+    }, {} as Record<string, { totalValorBase: number, totalValorAcionamento: number, totalQuantidade: number, detalhes: string[] }>);
+
+    let detalhamentoItens = "";
+    
+    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
+        const totalCategoria = grupo.totalValorBase + grupo.totalValorAcionamento;
+
+        detalhamentoItens += `\n--- ${getClasseIILabel(categoria).toUpperCase()} (${grupo.totalQuantidade} VTR) ---\n`;
+        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(totalCategoria)}\n`;
+        detalhamentoItens += `Detalhes:\n`;
+        detalhamentoItens += grupo.detalhes.join('\n');
+        detalhamentoItens += `\n`;
+    });
+    
+    detalhamentoItens = detalhamentoItens.trim();
+
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe IX (Motomecanização) para ${totalItens} viaturas, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+Recurso destinado à OM proprietária: ${organizacao} (UG: ${ug})
+
+Alocação:
+- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
+- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
+
+Fórmula Base: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
+
+${detalhamentoItens}
+
+Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
 };
 
 
@@ -214,7 +325,7 @@ const PTrabPrint = () => {
         });
       }
       
-      // Busca Classe II, V, VI, VII e VIII de suas respectivas tabelas
+      // Busca Classe II, V, VI, VII, VIII e IX de suas respectivas tabelas
       const [
         { data: classeIIData, error: classeIIError },
         { data: classeVData, error: classeVError },
@@ -222,6 +333,7 @@ const PTrabPrint = () => {
         { data: classeVIIData, error: classeVIIError },
         { data: classeVIIISaudeData, error: classeVIIISaudeError },
         { data: classeVIIIRemontaData, error: classeVIIIRemontaError },
+        { data: classeIXData, error: classeIXError }, // NOVO: Classe IX
       ] = await Promise.all([
         supabase
           .from('classe_ii_registros')
@@ -247,6 +359,10 @@ const PTrabPrint = () => {
           .from('classe_viii_remonta_registros')
           .select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais') // REMOVED 'categoria'
           .eq('p_trab_id', ptrabId),
+        supabase
+          .from('classe_ix_registros') // NOVO: Tabela Classe IX
+          .select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39')
+          .eq('p_trab_id', ptrabId),
       ]);
 
       if (classeIIError) { console.error("Erro ao carregar Classe II:", classeIIError); }
@@ -255,6 +371,7 @@ const PTrabPrint = () => {
       if (classeVIIError) { console.error("Erro ao carregar Classe VII:", classeVIIError); }
       if (classeVIIISaudeError) { console.error("Erro ao carregar Classe VIII Saúde:", classeVIIISaudeError); }
       if (classeVIIIRemontaError) { console.error("Erro ao carregar Classe VIII Remonta:", classeVIIIRemontaError); }
+      if (classeIXError) { console.error("Erro ao carregar Classe IX:", classeIXError); }
 
 
       const allClasseItems = [
@@ -271,6 +388,12 @@ const PTrabPrint = () => {
             categoria: 'Remonta/Veterinária',
             animal_tipo: r.animal_tipo, // Pass animal_tipo through
             quantidade_animais: r.quantidade_animais, // Pass quantity through
+        })),
+        // Classe IX records
+        ...(classeIXData || []).map(r => ({ 
+            ...r, 
+            itens_equipamentos: r.itens_motomecanizacao, // Mapeia para itens_equipamentos para unificação
+            categoria: r.categoria,
         })),
       ];
 
@@ -336,6 +459,8 @@ const PTrabPrint = () => {
       diasEtapaSolicitada = ciclosCompletos * 8;
     } else if (diasRestantesNoCiclo > 22) {
       diasEtapaSolicitada = (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
+    } else {
+      diasEtapaSolicitada = 0;
     }
     
     const faseFormatada = formatFasesParaTexto(fase_atividade);
@@ -373,32 +498,23 @@ Total QR: ${formatCurrency(total_qr)}.`;
     return { qs: memoriaQS, qr: memoriaQR };
   };
   
-  // Função para gerar memória automática de Classe II/V/VI/VII/VIII (NOVO)
+  // Função para gerar memória automática de Classe II/V/VI/VII/VIII/IX
   const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro): string => {
     if (registro.detalhamento_customizado) {
       return registro.detalhamento_customizado;
     }
     
-    // O detalhamento automático é gerado no formulário e salvo no campo 'detalhamento'
+    // Se for Classe IX, usa a função específica
+    if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+        return generateClasseIXMemoriaCalculo(registro);
+    }
+    
+    // Caso contrário, usa o detalhamento salvo (gerado no formulário)
     return registro.detalhamento;
   };
   
   // Função auxiliar para determinar o rótulo da Classe II/V/VI/VII
-  const getClasseIILabel = (categoria: string): string => {
-      if (CLASSE_V_CATEGORIES.includes(categoria)) {
-          return 'CLASSE V - ARMAMENTO';
-      }
-      if (CLASSE_VI_CATEGORIES.includes(categoria)) {
-          return 'CLASSE VI - MATERIAL DE ENGENHARIA';
-      }
-      if (CLASSE_VII_CATEGORIES.includes(categoria)) {
-          return 'CLASSE VII - COMUNICAÇÕES E INFORMÁTICA';
-      }
-      if (CLASSE_VIII_CATEGORIES.includes(categoria)) {
-          return 'CLASSE VIII - SAÚDE E REMONTA/VETERINÁRIA';
-      }
-      return 'CLASSE II - MATERIAL DE INTENDÊNCIA';
-  };
+  // (Mantida a função getClasseIILabel no topo do arquivo)
 
   const handlePrint = () => {
     window.print();
@@ -465,6 +581,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
               linhasClasseVI: [],
               linhasClasseVII: [],
               linhasClasseVIII: [],
+              linhasClasseIX: [], // NOVO
               linhasLubrificante: [] 
           };
       }
@@ -481,9 +598,9 @@ Total QR: ${formatCurrency(total_qr)}.`;
       gruposPorOM[registro.organizacao].linhasQR.push({ registro, tipo: 'QR' });
   });
   
-  // 2. Processar Classe II/V/VI/VII/VIII (AGORA POR REGISTRO/CATEGORIA)
+  // 2. Processar Classe II/V/VI/VII/VIII/IX (AGORA POR REGISTRO/CATEGORIA)
   registrosClasseII.forEach((registro) => {
-      // Classe II/V/VI/VII/VIII goes to OM de destino do recurso (organizacao)
+      // Classe II/V/VI/VII/VIII/IX goes to OM de destino do recurso (organizacao)
       initializeGroup(registro.organizacao);
       
       const omGroup = gruposPorOM[registro.organizacao];
@@ -496,6 +613,8 @@ Total QR: ${formatCurrency(total_qr)}.`;
           omGroup.linhasClasseVII.push({ registro });
       } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
           omGroup.linhasClasseVIII.push({ registro });
+      } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) { // NOVO
+          omGroup.linhasClasseIX.push({ registro });
       } else {
           // Assume Classe II
           omGroup.linhasClasseII.push({ registro });
@@ -529,7 +648,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
     const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.total_qs, 0);
     const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + linha.registro.total_qr, 0);
     
-    // Total Classe II/V/VI/VII/VIII (ND 30 + ND 39)
+    // Total Classe II/V/VI/VII/VIII/IX (ND 30 + ND 39)
     const totalClasseII_ND30 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
     const totalClasseII_ND39 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
     
@@ -545,16 +664,19 @@ Total QR: ${formatCurrency(total_qr)}.`;
     const totalClasseVIII_ND30 = grupo.linhasClasseVIII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
     const totalClasseVIII_ND39 = grupo.linhasClasseVIII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
     
-    // NEW: Total Lubrificante (ND 30)
+    const totalClasseIX_ND30 = grupo.linhasClasseIX.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0); // NOVO
+    const totalClasseIX_ND39 = grupo.linhasClasseIX.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0); // NOVO
+    
+    // Total Lubrificante (ND 30)
     const totalLubrificante = grupo.linhasLubrificante.reduce((acc, linha) => acc + linha.registro.valor_total, 0);
     
     // Total ND 30 (Coluna C) = Classe I + Classes (ND 30) + Lubrificante
     const total_33_90_30 = totalQS + totalQR + 
-                           totalClasseII_ND30 + totalClasseV_ND30 + totalClasseVI_ND30 + totalClasseVII_ND30 + totalClasseVIII_ND30 + 
+                           totalClasseII_ND30 + totalClasseV_ND30 + totalClasseVI_ND30 + totalClasseVII_ND30 + totalClasseVIII_ND30 + totalClasseIX_ND30 +
                            totalLubrificante; 
     
     // Total ND 39 (Coluna D) = Classes (ND 39)
-    const total_33_90_39 = totalClasseII_ND39 + totalClasseV_ND39 + totalClasseVI_ND39 + totalClasseVII_ND39 + totalClasseVIII_ND39;
+    const total_33_90_39 = totalClasseII_ND39 + totalClasseV_ND39 + totalClasseVI_ND39 + totalClasseVII_ND39 + totalClasseVIII_ND39 + totalClasseIX_ND39;
     
     // Coluna E (TOTAL ND) = Coluna C + Coluna D
     const total_parte_azul = total_33_90_30 + total_33_90_39;
@@ -853,7 +975,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
         const grupo = gruposPorOM[nomeOM];
         const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
         
-        if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasClasseV.length === 0 && grupo.linhasClasseVI.length === 0 && grupo.linhasClasseVII.length === 0 && grupo.linhasClasseVIII.length === 0 && grupo.linhasLubrificante.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
+        if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasClasseV.length === 0 && grupo.linhasClasseVI.length === 0 && grupo.linhasClasseVII.length === 0 && grupo.linhasClasseVIII.length === 0 && grupo.linhasClasseIX.length === 0 && grupo.linhasLubrificante.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
           return;
         }
         
@@ -861,11 +983,12 @@ Total QR: ${formatCurrency(total_qr)}.`;
             ...grupo.linhasQS,
             ...grupo.linhasQR,
             ...grupo.linhasClasseII,
-            ...grupo.linhasLubrificante,
+            ...grupo.linhasLubrificante, // Classe III Lubrificante
             ...grupo.linhasClasseV,
             ...grupo.linhasClasseVI,
             ...grupo.linhasClasseVII,
             ...grupo.linhasClasseVIII,
+            ...grupo.linhasClasseIX, // NOVO
         ];
         
         linhasDespesaOrdenadas.forEach((linha) => {
@@ -893,22 +1016,28 @@ Total QR: ${formatCurrency(total_qr)}.`;
               valorE = registro.total_qr;
               detalhamentoValue = registro.memoria_calculo_qr_customizada || generateClasseIMemoriaCalculo(registro).qr;
             }
-          } else if ('categoria' in linha.registro) { // Classe II, V, VI, VII, VIII
+          } else if ('categoria' in linha.registro) { // Classe II, V, VI, VII, VIII, IX
             const registro = linha.registro as ClasseIIRegistro;
             const omDestinoRecurso = registro.organizacao;
             const ugDestinoRecurso = registro.ug;
             
-            const secondDivContent = 
-              registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo
-                ? registro.animal_tipo.toUpperCase()
-                : registro.categoria.toUpperCase();
+            let secondDivContent = registro.categoria.toUpperCase();
+            
+            if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
+                secondDivContent = registro.animal_tipo.toUpperCase();
+            }
                 
             despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
             omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
             valorC = registro.valor_nd_30;
             valorD = registro.valor_nd_39;
             valorE = registro.valor_nd_30 + registro.valor_nd_39;
-            detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+            
+            if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+                detalhamentoValue = generateClasseIXMemoriaCalculo(registro); // NOVO
+            } else {
+                detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+            }
             
           } else if ('tipo_equipamento' in linha.registro) { // Classe III Lubrificante
             const registro = linha.registro as ClasseIIIRegistro;
@@ -1266,7 +1395,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
   // O total geral agora inclui os novos placeholders
   const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39; // Soma das colunas azuis (C+D)
   
-  // O valor total solicitado é a soma de todos os itens (Classe I + Classe II/V/VI/VII/VIII + Classe III)
+  // O valor total solicitado é a soma de todos os itens (Classe I + Classe II/V/VI/VII/VIII/IX + Classe III)
   const valorTotalSolicitado = totalGeral_33_90_30 + totalGeral_33_90_39 + totalValorCombustivel;
   
   const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
@@ -1344,7 +1473,7 @@ Total QR: ${formatCurrency(total_qr)}.`;
                 const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
                 
                 // Se o grupo não tem linhas, pula
-                if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasClasseV.length === 0 && grupo.linhasClasseVI.length === 0 && grupo.linhasClasseVII.length === 0 && grupo.linhasClasseVIII.length === 0 && grupo.linhasLubrificante.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
+                if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasClasseV.length === 0 && grupo.linhasClasseVI.length === 0 && grupo.linhasClasseVII.length === 0 && grupo.linhasClasseVIII.length === 0 && grupo.linhasClasseIX.length === 0 && grupo.linhasLubrificante.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
                   return [];
                 }
                 
@@ -1358,13 +1487,14 @@ Total QR: ${formatCurrency(total_qr)}.`;
                     ...grupo.linhasClasseVI,
                     ...grupo.linhasClasseVII,
                     ...grupo.linhasClasseVIII,
+                    ...grupo.linhasClasseIX, // NOVO
                 ];
                 
                 return [
-                  // 1. Renderizar todas as linhas de despesa (I, II, III Lub, V, VI, VII, VIII)
+                  // 1. Renderizar todas as linhas de despesa (I, II, III Lub, V, VI, VII, VIII, IX)
                   ...linhasDespesaOrdenadas.map((linha) => {
                     const isClasseI = 'tipo' in linha;
-                    const isClasseII_VIII = 'categoria' in linha.registro;
+                    const isClasseII_IX = 'categoria' in linha.registro;
                     const isLubrificante = 'tipo_equipamento' in linha.registro;
                     
                     const rowData = {
@@ -1391,22 +1521,28 @@ Total QR: ${formatCurrency(total_qr)}.`;
                             rowData.valorE = registro.total_qr;
                             rowData.detalhamentoValue = registro.memoria_calculo_qr_customizada || generateClasseIMemoriaCalculo(registro).qr;
                         }
-                    } else if (isClasseII_VIII) { // Classe II, V, VI, VII, VIII
+                    } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
                         const registro = linha.registro as ClasseIIRegistro;
                         const omDestinoRecurso = registro.organizacao;
                         const ugDestinoRecurso = registro.ug;
                         
-                        const secondDivContent = 
-                          registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo
-                            ? registro.animal_tipo.toUpperCase()
-                            : registro.categoria.toUpperCase();
+                        let secondDivContent = registro.categoria.toUpperCase();
+                        
+                        if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
+                            secondDivContent = registro.animal_tipo.toUpperCase();
+                        }
                             
                         rowData.despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
                         rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
                         rowData.valorC = registro.valor_nd_30;
                         rowData.valorD = registro.valor_nd_39;
                         rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
-                        rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+                        
+                        if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+                            rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro); // NOVO
+                        } else {
+                            rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+                        }
                         
                     } else if (isLubrificante) { // Classe III Lubrificante
                         const registro = linha.registro as ClasseIIIRegistro;

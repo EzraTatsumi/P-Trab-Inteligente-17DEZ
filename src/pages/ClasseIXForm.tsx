@@ -39,8 +39,7 @@ const CATEGORIAS: Categoria[] = [
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
 
-// CONSTANTE DA MARGEM DE RESERVA (10% para Classe IX)
-const MARGEM_RESERVA = 0.10; 
+// REMOVIDO: CONSTANTE DA MARGEM DE RESERVA
 
 interface ItemClasseIX {
   item: string;
@@ -75,21 +74,20 @@ interface ClasseIXRegistro {
 }
 
 interface CategoryAllocation {
-  total_valor: number; // Valor calculado SEM margem
-  total_valor_com_margem: number; // Valor calculado COM margem
-  nd_39_input: string; // User input string for ND 39 (baseado no valor COM margem)
-  nd_30_value: number; // Calculated ND 30 value (COM margem)
-  nd_39_value: number; // Calculated ND 39 value (COM margem)
+  total_valor: number; // Valor calculado (agora sem margem)
+  nd_39_input: string; // User input string for ND 39
+  nd_30_value: number; // Calculated ND 30 value
+  nd_39_value: number; // Calculated ND 39 value
   om_destino_recurso: string;
   ug_destino_recurso: string;
   selectedOmDestinoId?: string;
 }
 
 const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
-    'Vtr Administrativa': { total_valor: 0, total_valor_com_margem: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
-    'Vtr Operacional': { total_valor: 0, total_valor_com_margem: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
-    'Motocicleta': { total_valor: 0, total_valor_com_margem: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
-    'Vtr Blindada': { total_valor: 0, total_valor_com_margem: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Vtr Administrativa': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Vtr Operacional': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Motocicleta': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+    'Vtr Blindada': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
 };
 
 const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
@@ -154,9 +152,7 @@ const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseI
         detalhamentoItens += `  - Total Item: ${formatCurrency(total)}.\n`;
     });
 
-    const totalValorSemMargem = totalValorBase + totalValorAcionamento;
-    const totalValorComMargem = totalValorSemMargem * (1 + MARGEM_RESERVA);
-    const valorMargem = totalValorComMargem - totalValorSemMargem;
+    const totalValorFinal = totalValorBase + totalValorAcionamento;
 
     return `33.90.30 - Aquisição de Material de Classe IX (Motomecanização)
 OM de Destino: ${organizacao} (UG: ${ug})
@@ -166,22 +162,20 @@ Total de Viaturas na Categoria: ${totalQuantidade}
 Cálculo:
 Fórmula Base: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
 
-Detalhes dos Itens (Valor Base + Acionamento):
+Detalhes dos Itens:
 ${detalhamentoItens.trim()}
 
-Valor Total Base: ${formatCurrency(totalValorSemMargem)}.
-Margem de Reserva (${MARGEM_RESERVA * 100}%): ${formatCurrency(valorMargem)}.
-
-Valor Total Solicitado (Com Margem): ${formatCurrency(totalValorComMargem)}.`;
+Valor Total Solicitado: ${formatCurrency(totalValorFinal)}.`;
 };
 
 
 const generateDetalhamento = (itens: ItemClasseIX[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => item.quantidade, 0);
-    const valorTotalComMargem = valorND30 + valorND39;
-    const valorTotalSemMargem = valorTotalComMargem / (1 + MARGEM_RESERVA);
-    const valorMargem = valorTotalComMargem - valorTotalSemMargem;
+    const valorTotalFinal = valorND30 + valorND39;
+
+    let totalValorBase = 0;
+    let totalValorAcionamento = 0;
 
     const gruposPorCategoria = itens.reduce((acc, item) => {
         const categoria = item.categoria;
@@ -200,12 +194,10 @@ const generateDetalhamento = (itens: ItemClasseIX[], diasOperacao: number, organ
         acc[categoria].totalValorAcionamento += acionamento;
         acc[categoria].totalQuantidade += item.quantidade;
         
-        // Valor do item com margem
-        const totalComMargem = total * (1 + MARGEM_RESERVA);
         const nrMeses = Math.ceil(diasOperacao / 30);
 
         acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} (Base: ${formatCurrency(base)}, Acionamento: ${formatCurrency(acionamento)} em ${nrMeses} meses) (+10% Margem) = ${formatCurrency(totalComMargem)}.`
+            `- ${item.quantidade} ${item.item} (Base: ${formatCurrency(base)}, Acionamento: ${formatCurrency(acionamento)} em ${nrMeses} meses) = ${formatCurrency(total)}.`
         );
         
         return acc;
@@ -214,13 +206,11 @@ const generateDetalhamento = (itens: ItemClasseIX[], diasOperacao: number, organ
     let detalhamentoItens = "";
     
     Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        const totalCategoriaBase = grupo.totalValorBase + grupo.totalValorAcionamento;
-        const totalCategoriaComMargem = totalCategoriaBase * (1 + MARGEM_RESERVA);
+        const totalCategoria = grupo.totalValorBase + grupo.totalValorAcionamento;
 
         detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} VTR) ---\n`;
-        detalhamentoItens += `Valor Total Base Categoria: ${formatCurrency(totalCategoriaBase)}\n`;
-        detalhamentoItens += `Valor Total Categoria (C/ Margem): ${formatCurrency(totalCategoriaComMargem)}\n`;
-        detalhamentoItens += `Detalhes (Valores já incluem 10% de Margem):\n`;
+        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(totalCategoria)}\n`;
+        detalhamentoItens += `Detalhes:\n`;
         detalhamentoItens += grupo.detalhes.join('\n');
         detalhamentoItens += `\n`;
     });
@@ -230,10 +220,7 @@ const generateDetalhamento = (itens: ItemClasseIX[], diasOperacao: number, organ
     return `33.90.30 / 33.90.39 - Aquisição de Material de Classe IX (Motomecanização) para ${totalItens} viaturas, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
 Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
-Cálculo Base (Sem Margem): ${formatCurrency(valorTotalSemMargem)}.
-Margem de Reserva (${MARGEM_RESERVA * 100}%): ${formatCurrency(valorMargem)}.
-
-Alocação (Com Margem):
+Alocação:
 - ND 33.90.30 (Material): ${formatCurrency(valorND30)}
 - ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
@@ -241,7 +228,7 @@ Fórmula Base: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/
 
 ${detalhamentoItens}
 
-Valor Total Solicitado (Com Margem): ${formatCurrency(valorTotalComMargem)}.`;
+Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
   };
 
 
@@ -526,10 +513,8 @@ const ClasseIXForm = () => {
     setCurrentCategoryItems(newItems);
   };
 
-  // CÁLCULO BASE SEM MARGEM
-  const currentCategoryBaseValue = currentCategoryItems.reduce((sum, item) => sum + calculateItemTotal(item, form.dias_operacao).total, 0);
-  // CÁLCULO COM MARGEM DE 10%
-  const currentCategoryTotalValue = currentCategoryBaseValue * (1 + MARGEM_RESERVA);
+  // CÁLCULO BASE SEM MARGEM (VALOR FINAL)
+  const currentCategoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + calculateItemTotal(item, form.dias_operacao).total, 0);
   
   const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, parseInputToNumber(currentND39Input)));
   const nd30ValueTemp = currentCategoryTotalValue - nd39ValueTemp;
@@ -551,18 +536,18 @@ const ClasseIXForm = () => {
         return;
     }
     
-    const categoryTotalValueComMargem = currentCategoryTotalValue;
+    const categoryTotalValue = currentCategoryTotalValue;
 
     const numericInput = parseInputToNumber(currentND39Input);
-    const finalND39Value = Math.min(categoryTotalValueComMargem, Math.max(0, numericInput));
-    const finalND30Value = categoryTotalValueComMargem - finalND39Value;
+    const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
+    const finalND30Value = categoryTotalValue - finalND39Value;
     
-    if (categoryTotalValueComMargem > 0 && !areNumbersEqual(finalND30Value + finalND39Value, categoryTotalValueComMargem)) {
-        toast.error("Erro de cálculo: A soma de ND 30 e ND 39 deve ser igual ao Total da Categoria (com margem).");
+    if (categoryTotalValue > 0 && !areNumbersEqual(finalND30Value + finalND39Value, categoryTotalValue)) {
+        toast.error("Erro de cálculo: A soma de ND 30 e ND 39 deve ser igual ao Total da Categoria.");
         return;
     }
     
-    if (categoryTotalValueComMargem > 0 && (!categoryAllocations[selectedTab].om_destino_recurso || !categoryAllocations[selectedTab].ug_destino_recurso)) {
+    if (categoryTotalValue > 0 && (!categoryAllocations[selectedTab].om_destino_recurso || !categoryAllocations[selectedTab].ug_destino_recurso)) {
         toast.error("Selecione a OM de destino do recurso antes de salvar a alocação.");
         return;
     }
@@ -577,8 +562,7 @@ const ClasseIXForm = () => {
         ...prev,
         [selectedTab]: {
             ...prev[selectedTab],
-            total_valor: currentCategoryBaseValue, // Salva o valor base
-            total_valor_com_margem: categoryTotalValueComMargem, // Salva o valor com margem
+            total_valor: categoryTotalValue, // Salva o valor final (sem margem)
             nd_39_input: formatNumberForInput(finalND39Value, 2),
             nd_30_value: finalND30Value,
             nd_39_value: finalND39Value,
@@ -589,8 +573,8 @@ const ClasseIXForm = () => {
     toast.success(`Itens e alocação de ND para ${getCategoryLabel(selectedTab)} atualizados!`);
   };
   
-  // CÁLCULO GLOBAL (USANDO VALORES COM MARGEM)
-  const valorTotalForm = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.total_valor_com_margem, 0);
+  // CÁLCULO GLOBAL (USANDO VALORES SEM MARGEM)
+  const valorTotalForm = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.total_valor, 0);
 
   const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_30_value, 0);
   const totalND39Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_39_value, 0);
@@ -648,10 +632,10 @@ const ClasseIXForm = () => {
             return;
         }
         
-        const valorTotalCategoriaComMargem = allocation.total_valor_com_margem;
+        const valorTotalCategoria = allocation.total_valor;
         
-        if (!areNumbersEqual(valorTotalCategoriaComMargem, (allocation.nd_30_value + allocation.nd_39_value))) {
-            toast.error(`Erro de alocação na categoria ${getCategoryLabel(categoria)}: O valor total dos itens (${formatCurrency(valorTotalCategoriaComMargem)}) não corresponde ao total alocado (${formatCurrency(allocation.nd_30_value + allocation.nd_39_value)}). Salve a categoria novamente.`);
+        if (!areNumbersEqual(valorTotalCategoria, (allocation.nd_30_value + allocation.nd_39_value))) {
+            toast.error(`Erro de alocação na categoria ${getCategoryLabel(categoria)}: O valor total dos itens (${formatCurrency(valorTotalCategoria)}) não corresponde ao total alocado (${formatCurrency(allocation.nd_30_value + allocation.nd_39_value)}). Salve a categoria novamente.`);
             setLoading(false);
             return;
         }
@@ -675,7 +659,7 @@ const ClasseIXForm = () => {
             dias_operacao: form.dias_operacao,
             categoria: categoria,
             itens_motomecanizacao: itens as any, // MUDANÇA: Usar o campo correto
-            valor_total: valorTotalCategoriaComMargem, // Salva o valor COM margem
+            valor_total: valorTotalCategoria, // Salva o valor SEM margem
             detalhamento: detalhamento,
             fase_atividade: faseFinalString,
             detalhamento_customizado: null,
@@ -737,11 +721,9 @@ const ClasseIXForm = () => {
         
         if (newAllocations[category]) {
             const totalValorBase = items.reduce((sum, item) => sum + calculateItemTotal(item, r.dias_operacao).total, 0);
-            const totalValorComMargem = totalValorBase * (1 + MARGEM_RESERVA);
             
             newAllocations[category] = {
                 total_valor: totalValorBase,
-                total_valor_com_margem: totalValorComMargem,
                 nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
                 nd_30_value: Number(r.valor_nd_30),
                 nd_39_value: Number(r.valor_nd_39),
@@ -1020,7 +1002,7 @@ const ClasseIXForm = () => {
                                         <TableHead className="w-[15%] text-right">Valor/Dia</TableHead>
                                         <TableHead className="w-[15%] text-right">Acionamento/Mês</TableHead>
                                         <TableHead className="w-[15%] text-center">Qtd Vtr</TableHead>
-                                        <TableHead className="w-[20%] text-right">Total Base</TableHead>
+                                        <TableHead className="w-[20%] text-right">Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -1032,7 +1014,7 @@ const ClasseIXForm = () => {
                                         </TableRow>
                                     ) : (
                                         currentCategoryItems.map((item, index) => {
-                                            const { total: itemBaseTotal } = calculateItemTotal(item, form.dias_operacao);
+                                            const { total: itemTotal } = calculateItemTotal(item, form.dias_operacao);
                                             
                                             return (
                                                 <TableRow key={item.item} className="h-12">
@@ -1057,7 +1039,7 @@ const ClasseIXForm = () => {
                                                         />
                                                     </TableCell>
                                                     <TableCell className="text-right font-semibold text-sm py-1">
-                                                        {formatCurrency(itemBaseTotal)}
+                                                        {formatCurrency(itemTotal)}
                                                     </TableCell>
                                                 </TableRow>
                                             );
@@ -1068,26 +1050,13 @@ const ClasseIXForm = () => {
                         </div>
                         
                         <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
-                            <span className="font-bold text-sm">TOTAL BASE DA CATEGORIA</span>
+                            <span className="font-bold text-sm">TOTAL DA CATEGORIA</span>
                             <span className="font-extrabold text-lg text-primary">
-                                {formatCurrency(currentCategoryBaseValue)}
-                            </span>
-                        </div>
-                        
-                        {/* Margem de Reserva */}
-                        <div className="flex justify-between items-center p-3 bg-yellow-50/50 rounded-lg border border-yellow-200">
-                            <span className="font-bold text-sm text-yellow-700">MARGEM DE RESERVA (10%)</span>
-                            <span className="font-extrabold text-lg text-yellow-700">
-                                {formatCurrency(currentCategoryTotalValue - currentCategoryBaseValue)}
-                            </span>
-                        </div>
-                        
-                        <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20">
-                            <span className="font-bold text-base text-primary">TOTAL SOLICITADO (C/ MARGEM)</span>
-                            <span className="font-extrabold text-xl text-primary">
                                 {formatCurrency(currentCategoryTotalValue)}
                             </span>
                         </div>
+                        
+                        {/* REMOVIDO: Margem de Reserva */}
                         
                         {/* BLOCO DE ALOCAÇÃO ND 30/39 */}
                         {currentCategoryTotalValue > 0 && (
@@ -1195,8 +1164,7 @@ const ClasseIXForm = () => {
 
                 <div className="space-y-4">
                   {Object.entries(itensAgrupadosPorCategoria).map(([categoria, itens]) => {
-                    const totalCategoriaBase = itens.reduce((sum, item) => sum + calculateItemTotal(item, form.dias_operacao).total, 0);
-                    const totalCategoriaComMargem = totalCategoriaBase * (1 + MARGEM_RESERVA);
+                    const totalCategoria = itens.reduce((sum, item) => sum + calculateItemTotal(item, form.dias_operacao).total, 0);
                     const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
                     
                     const allocation = categoryAllocations[categoria as Categoria];
@@ -1206,21 +1174,20 @@ const ClasseIXForm = () => {
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
                           <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} vtr)</h4>
                           <span className="font-extrabold text-lg text-primary">
-                            {formatCurrency(totalCategoriaComMargem)}
+                            {formatCurrency(totalCategoria)}
                           </span>
                         </div>
                         
                         <div className="space-y-2">
                           {itens.map((item, index) => {
-                            const { total: itemBaseTotal } = calculateItemTotal(item, form.dias_operacao);
-                            const itemTotalComMargem = itemBaseTotal * (1 + MARGEM_RESERVA);
+                            const { total: itemTotal } = calculateItemTotal(item, form.dias_operacao);
                             const nrMeses = Math.ceil(form.dias_operacao / 30);
                             
                             return (
                               <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
                                 <span className="font-medium">{item.item}</span>
                                 <span className="text-right">
-                                  {item.quantidade} un. x ({formatCurrency(item.valor_mnt_dia)}/dia + {formatCurrency(item.valor_acionamento_mensal)}/{nrMeses} meses) (+10% Margem) = {formatCurrency(itemTotalComMargem)}
+                                  {item.quantidade} un. x ({formatCurrency(item.valor_mnt_dia)}/dia + {formatCurrency(item.valor_acionamento_mensal)}/{nrMeses} meses) = {formatCurrency(itemTotal)}
                                 </span>
                               </div>
                             );
@@ -1242,7 +1209,7 @@ const ClasseIXForm = () => {
                                 <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
                                 <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
                             </div>
-                            {!areNumbersEqual(allocation.total_valor_com_margem, totalCategoriaComMargem) && (
+                            {!areNumbersEqual(allocation.total_valor, totalCategoria) && (
                                 <p className="text-xs text-destructive flex items-center gap-1 pt-1">
                                     <AlertCircle className="h-3 w-3" />
                                     Valores desatualizados. Salve a categoria novamente.
@@ -1255,7 +1222,7 @@ const ClasseIXForm = () => {
                 </div>
                 
                 <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
-                  <span className="font-bold text-base text-primary">VALOR TOTAL SOLICITADO (C/ MARGEM)</span>
+                  <span className="font-bold text-base text-primary">VALOR TOTAL SOLICITADO</span>
                   <span className="font-extrabold text-xl text-primary">
                     {formatCurrency(valorTotalForm)}
                   </span>
