@@ -1,5 +1,4 @@
 import { format, subWeeks, startOfWeek, endOfWeek } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 export const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat("pt-BR", {
@@ -117,11 +116,11 @@ export const getPreviousWeekRange = (): { start: string, end: string } => {
   const previousWeek = subWeeks(now, 1);
   
   // Encontra a segunda-feira da semana anterior (startOfWeek usa 1 para Monday por padrão em ptBR)
-  const monday = startOfWeek(previousWeek, { locale: ptBR, weekStartsOn: 1 });
+  const monday = startOfWeek(previousWeek, { weekStartsOn: 1 });
   
   // Encontra a sexta-feira da semana anterior
   // 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb
-  const friday = endOfWeek(monday, { locale: ptBR, weekStartsOn: 1 });
+  const friday = endOfWeek(monday, { weekStartsOn: 1 });
   friday.setDate(friday.getDate() - 1); // Move do domingo para a sexta-feira
   
   return {

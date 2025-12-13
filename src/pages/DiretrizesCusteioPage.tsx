@@ -11,18 +11,16 @@ import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Setting
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
-import { DiretrizClasseIXForm } from "@/types/diretrizesClasseIX"; // NOVO IMPORT
+import { DiretrizClasseIXForm } from "@/types/diretrizesClasseIX";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { tipoViaturas, tipoEquipamentosEngenharia } from "@/data/classeIIIData";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { YearManagementDialog } from "@/components/YearManagementDialog";
-import { defaultClasseVIConfig } from "@/data/classeVIData";
-import { defaultClasseVIIConfig } from "@/data/classeVIIData";
-import { defaultClasseVIIISaudeConfig, defaultClasseVIIIRemontaConfig } from "@/data/classeVIIIData";
-import { defaultClasseIXConfig } from "@/data/classeIXData"; // NOVO IMPORT
+import { defaultClasseIXConfig } from "@/data/classeIXData";
+
+// --- Valores Padrão Definidos Localmente (Substituindo imports de src/data) ---
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -39,44 +37,53 @@ const defaultEmbarcacaoConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Emb Manobra", tipo_combustivel: "OD", consumo: 30, unidade: "L/h" },
 ];
 
-const defaultMotomecanizacaoConfig: DiretrizEquipamentoForm[] = tipoViaturas.map(v => ({
-  nome_equipamento: v.nome,
-  tipo_combustivel: v.combustivel,
-  consumo: v.consumo,
-  unidade: v.unidade,
-}));
+const defaultMotomecanizacaoConfig: DiretrizEquipamentoForm[] = [
+  { nome_equipamento: "Vtr Adm Pqn Porte - Adm Pqn", tipo_combustivel: "GAS", consumo: 8, unidade: "km/L" },
+  { nome_equipamento: "Vtr Adm Pqn Porte - Pick-up", tipo_combustivel: "OD", consumo: 7, unidade: "km/L" },
+  { nome_equipamento: "Vtr Adm Pqn Porte - Van/Micro", tipo_combustivel: "OD", consumo: 6, unidade: "km/L" },
+  { nome_equipamento: "Vtr Op Leve - Marruá", tipo_combustivel: "OD", consumo: 5, unidade: "km/L" },
+  { nome_equipamento: "Vtr Op Gde Porte - Vtr 5 ton", tipo_combustivel: "OD", consumo: 3, unidade: "km/L" },
+];
 
-const defaultEquipamentosEngenhariaConfig: DiretrizEquipamentoForm[] = tipoEquipamentosEngenharia.map(e => ({
-  nome_equipamento: e.nome,
-  tipo_combustivel: e.combustivel,
-  consumo: e.consumo,
-  unidade: e.unidade,
-}));
+const defaultEquipamentosEngenhariaConfig: DiretrizEquipamentoForm[] = [
+  { nome_equipamento: "Retroescavadeira", tipo_combustivel: "OD", consumo: 7, unidade: "L/h" },
+  { nome_equipamento: "Carregadeira sobre rodas", tipo_combustivel: "OD", consumo: 16, unidade: "L/h" },
+  { nome_equipamento: "Motoniveladora", tipo_combustivel: "OD", consumo: 18, unidade: "L/h" },
+];
 
 const defaultClasseIIConfig: DiretrizClasseIIForm[] = [
   { categoria: "Equipamento Individual", item: "Equipamento Individual", valor_mnt_dia: 2.42 },
   { categoria: "Proteção Balística", item: "Colete balístico", valor_mnt_dia: 3.23 },
-  { categoria: "Proteção Balística", item: "Capacete balístico", valor_mnt_dia: 2.56 },
   { categoria: "Material de Estacionamento", item: "Barraca de campanha", valor_mnt_dia: 7.55 },
-  { categoria: "Material de Estacionamento", item: "Toldo modular", valor_mnt_dia: 1.88 },
-  { categoria: "Material de Estacionamento", item: "Barraca individual", valor_mnt_dia: 0.26 },
-  { categoria: "Material de Estacionamento", item: "Cama de campanha", valor_mnt_dia: 0.32 },
-  { categoria: "Material de Estacionamento", item: "Marmita Térmica", valor_mnt_dia: 0.67 },
-  { categoria: "Material de Estacionamento", item: "Armário", valor_mnt_dia: 0.82 },
-  { categoria: "Material de Estacionamento", item: "Beliche", valor_mnt_dia: 0.66 },
-  { categoria: "Material de Estacionamento", item: "Colchão", valor_mnt_dia: 0.28 },
 ];
 
 const defaultClasseVConfig: DiretrizClasseIIForm[] = [
   { categoria: "Armt L", item: "Fuzil 5,56mm IA2 IMBEL", valor_mnt_dia: 1.40 },
-  { categoria: "Armt L", item: "Fuzil 7,62mm", valor_mnt_dia: 1.50 },
-  { categoria: "Armt L", item: "Pistola 9 mm", valor_mnt_dia: 0.40 },
-  { categoria: "Armt L", item: "Metralhadora FN MINIMI 5,56 x 45mm", valor_mnt_dia: 10.60 },
-  { categoria: "Armt L", item: "Metralhadora FN MINIMI 7,62 x 51mm", valor_mnt_dia: 11.00 },
   { categoria: "Armt P", item: "Obuseiro", valor_mnt_dia: 175.00 },
   { categoria: "IODCT", item: "OVN", valor_mnt_dia: 9.50 },
   { categoria: "DQBRN", item: "Falcon 4GS", valor_mnt_dia: 723.30 },
 ];
+
+const defaultClasseVIConfig: DiretrizClasseIIForm[] = [
+  { categoria: "Embarcação", item: "Embarcação Guardian", valor_mnt_dia: 354.11 },
+  { categoria: "Equipamento de Engenharia", item: "Carregadeira de Pneus", valor_mnt_dia: 74.33 },
+];
+
+const defaultClasseVIIConfig: DiretrizClasseIIForm[] = [
+  { categoria: "Comunicações", item: "RF-7800V-HH (VAA)", valor_mnt_dia: 25.88 },
+  { categoria: "Informática", item: "Notebook", valor_mnt_dia: 7.34 },
+];
+
+const defaultClasseVIIISaudeConfig: DiretrizClasseIIForm[] = [
+  { categoria: "Saúde", item: "KPSI / KPTI", valor_mnt_dia: 1600.00 },
+];
+
+const defaultClasseVIIIRemontaConfig: DiretrizClasseIIForm[] = [
+  { categoria: "Remonta/Veterinária", item: "Equino - G: Custo Mnt/Dia Op (Diário)", valor_mnt_dia: 29.50 },
+];
+
+// --- FIM Valores Padrão Definidos Localmente ---
+
 
 const CATEGORIAS_CLASSE_II = [
   "Equipamento Individual",
@@ -106,7 +113,7 @@ const CATEGORIAS_CLASSE_VIII = [
   "Remonta/Veterinária",
 ];
 
-const CATEGORIAS_CLASSE_IX = [ // NOVO
+const CATEGORIAS_CLASSE_IX = [
   "Vtr Administrativa",
   "Vtr Operacional",
   "Motocicleta",
@@ -139,7 +146,7 @@ const DiretrizesCusteioPage = () => {
   const [showClasseVIConfig, setShowClasseVIConfig] = useState(false); 
   const [showClasseVIIConfig, setShowClasseVIIConfig] = useState(false);
   const [showClasseVIIIConfig, setShowClasseVIIIConfig] = useState(false);
-  const [showClasseIXConfig, setShowClasseIXConfig] = useState(false); // NOVO ESTADO
+  const [showClasseIXConfig, setShowClasseIXConfig] = useState(false);
   const [showClasseIIIConfig, setShowClasseIIIConfig] = useState(false);
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
@@ -153,7 +160,7 @@ const DiretrizesCusteioPage = () => {
   const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig);
   const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig);
   const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig);
-  const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIXForm[]>(defaultClasseIXConfig); // NOVO ESTADO
+  const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIXForm[]>(defaultClasseIXConfig);
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -164,7 +171,7 @@ const DiretrizesCusteioPage = () => {
   const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key);
   const [selectedClasseVIITab, setSelectedClasseVIITab] = useState<string>(CATEGORIAS_CLASSE_VII[0]);
   const [selectedClasseVIIITab, setSelectedClasseVIIITab] = useState<string>(CATEGORIAS_CLASSE_VIII[0]);
-  const [selectedClasseIXTab, setSelectedClasseIXTab] = useState<string>(CATEGORIAS_CLASSE_IX[0]); // NOVO ESTADO
+  const [selectedClasseIXTab, setSelectedClasseIXTab] = useState<string>(CATEGORIAS_CLASSE_IX[0]);
   
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   const [defaultYear, setDefaultYear] = useState<number | null>(null);

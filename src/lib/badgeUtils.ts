@@ -4,7 +4,9 @@ type CategoriaClasse =
   'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento' |
   'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN' |
   'Embarcação' | 'Equipamento de Engenharia' |
-  'Comunicações' | 'Informática';
+  'Comunicações' | 'Informática' |
+  'Saúde' | 'Remonta/Veterinária' |
+  'Vtr Administrativa' | 'Vtr Operacional' | 'Motocicleta' | 'Vtr Blindada'; // Adicionando Classe IX
 
 interface BadgeStyle {
   label: string;
@@ -30,6 +32,16 @@ const CATEGORY_STYLES: Record<CategoriaClasse, BadgeStyle> = {
   // Classe VII - Comunicações e Informática (Azul)
   'Comunicações': { label: 'Comunicações', className: 'bg-blue-600 hover:bg-blue-700 text-white' },
   'Informática': { label: 'Informática', className: 'bg-blue-800 hover:bg-blue-900 text-white' },
+  
+  // Classe VIII - Saúde e Remonta (Roxo/Rosa)
+  'Saúde': { label: 'Saúde', className: 'bg-pink-600 hover:bg-pink-700 text-white' },
+  'Remonta/Veterinária': { label: 'Remonta/Vet', className: 'bg-purple-600 hover:bg-purple-700 text-white' },
+  
+  // Classe IX - Motomecanização (Cinza/Preto)
+  'Vtr Administrativa': { label: 'Vtr Adm', className: 'bg-gray-600 hover:bg-gray-700 text-white' },
+  'Vtr Operacional': { label: 'Vtr Op', className: 'bg-gray-700 hover:bg-gray-800 text-white' },
+  'Motocicleta': { label: 'Motocicleta', className: 'bg-gray-500 hover:bg-gray-600 text-white' },
+  'Vtr Blindada': { label: 'Vtr Bld', className: 'bg-gray-800 hover:bg-gray-900 text-white' },
 };
 
 /**

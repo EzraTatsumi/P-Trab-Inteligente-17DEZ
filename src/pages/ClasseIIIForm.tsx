@@ -10,13 +10,11 @@ import { toast } from "sonner";
 import { ArrowLeft, Fuel, Ship, Truck, Zap, Pencil, Trash2, Sparkles, Tractor, Droplet, Check, ChevronsUpDown, XCircle, AlertCircle, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getEquipamentosPorTipo, TipoEquipamentoDetalhado } from "@/data/classeIIIData";
 import { RefLPC } from "@/types/refLPC";
 import RefLPCFormSection from "@/components/RefLPCFormSection";
 import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput } from "@/lib/formatUtils";
 import { TablesInsert } from "@/integrations/supabase/types";
 import { OmSelector } from "@/components/OmSelector";
-import { RmSelector } from "@/components/RmSelector";
 import { OMData } from "@/lib/omUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
@@ -27,9 +25,134 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getClasseIIICategoryBadgeStyle, getClasseIIICategoryLabel } from "@/lib/classeIIIBadgeUtils";
 
+// Definindo tipos e dados padrão localmente para evitar importações de arquivos removidos
+export interface TipoEquipamentoDetalhado {
+  nome: string;
+  combustivel: 'GAS' | 'OD';
+  consumo: number;
+  unidade: 'L/h' | 'km/L';
+}
+
+const defaultGeradorConfig: TipoEquipamentoDetalhado[] = [
+  { nome: "Gerador até 15 kva GAS", combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
+  { nome: "Gerador até 15 kva OD", combustivel: "OD", consumo: 4.0, unidade: "L/h" },
+  { nome: "Gerador acima de 50 kva", combustivel: "OD", consumo: 20.0, unidade: "L/h" },
+];
+
+const defaultEmbarcacaoConfig: TipoEquipamentoDetalhado[] = [
+  { nome: "Motor de popa", combustivel: "GAS", consumo: 20, unidade: "L/h" },
+  { nome: "Emb Guardian 25", combustivel: "GAS", consumo: 100, unidade: "L/h" },
+  { nome: "Ferryboat", combustivel: "OD", consumo: 100, unidade: "L/h" },
+];
+
+const defaultEquipamentosEngenhariaConfig: TipoEquipamentoDetalhado[] = [
+  { nome: "Retroescavadeira", combustivel: "OD", consumo: 7, unidade: "L/h" },
+  { nome: "Carregadeira sobre rodas", combustivel: "OD", consumo: 16, unidade: "L/h" },
+];
+
+const defaultMotomecanizacaoConfig: TipoEquipamentoDetalhado[] = [
+  { nome: "Vtr Adm Pqn Porte - Adm Pqn", combustivel: "GAS", consumo: 8, unidade: "km/L" },
+  { nome: "Vtr Adm Pqn Porte - Pick-up", combustivel: "OD", consumo: 7, unidade: "km/L" },
+  { nome: "Vtr Op Leve - Marruá", combustivel: "OD", consumo: 5, unidade: "km/L" },
+];
+
+function getFallbackEquipamentos(tipo: string): TipoEquipamentoDetalhado[] {
+  switch (tipo) {
+    case 'GERADOR':
+      return defaultGeradorConfig;
+    case 'EMBARCACAO':
+      return defaultEmbarcacaoConfig;
+    case 'EQUIPAMENTO_ENGENHARIA':
+      return defaultEquipamentosEngenhariaConfig;
+    case 'MOTOMECANIZACAO':
+      return defaultMotomecanizacaoConfig;
+    default:
+      return [];
+  }
+}
+
+// Função assíncrona para buscar equipamentos configurados (mantida a lógica de DB)
+async function getEquipamentosPorTipo(tipo: string): Promise<TipoEquipamentoDetalhado[]> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return getFallbackEquipamentos(tipo);
+
+    let anoReferencia: number | null = null;
+
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("default_diretriz_year")
+      .eq("id", user.id)
+      .maybeSingle();
+      
+    if (profileData?.default_diretriz_year) {
+        anoReferencia = profileData.default_diretriz_year;
+    }
+
+    if (!anoReferencia) {
+        const { data: diretrizData } = await supabase
+          .from("diretrizes_custeio")
+          .select("ano_referencia")
+          .eq("user_id", user.id)
+          .order("ano_referencia", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+          
+        if (diretrizData) {
+            anoReferencia = diretrizData.ano_referencia;
+        }
+    }
+    
+    if (!anoReferencia) return getFallbackEquipamentos(tipo);
+
+    const { data: equipamentos } = await supabase
+      .from("diretrizes_equipamentos_classe_iii")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("ano_referencia", anoReferencia)
+      .eq("categoria", tipo)
+      .eq("ativo", true);
+
+    if (equipamentos && equipamentos.length > 0) {
+      return equipamentos.map(eq => ({
+        nome: eq.nome_equipamento,
+        tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
+        consumo: Number(eq.consumo),
+        unidade: eq.unidade as 'L/h' | 'km/L',
+      }));
+    }
+
+    return getFallbackEquipamentos(tipo);
+  } catch (error) {
+    console.error("Erro ao buscar equipamentos:", error);
+    return getFallbackEquipamentos(tipo);
+  }
+}
+
+// Funções de Badge (Simplificadas)
 type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
+const getClasseIIICategoryLabel = (categoria: TipoEquipamento): string => {
+    switch (categoria) {
+        case 'GERADOR': return 'Gerador';
+        case 'EMBARCACAO': return 'Embarcação';
+        case 'EQUIPAMENTO_ENGENHARIA': return 'Equipamento de engenharia';
+        case 'MOTOMECANIZACAO': return 'Motomecanização';
+        default: return categoria;
+    }
+};
+const getClasseIIICategoryBadgeClass = (categoria: TipoEquipamento): string => {
+    const baseClass = "w-fit shrink-0 text-xs font-medium";
+    switch (categoria) {
+        case 'GERADOR': return `${baseClass} bg-yellow-600 text-white hover:bg-yellow-700`;
+        case 'EMBARCACAO': return `${baseClass} bg-blue-600 text-white hover:bg-blue-700`;
+        case 'EQUIPAMENTO_ENGENHARIA': return `${baseClass} bg-green-600 text-white hover:bg-green-700`;
+        case 'MOTOMECANIZACAO': return `${baseClass} bg-red-600 text-white hover:bg-red-700`;
+        default: return `${baseClass} bg-gray-500 text-white hover:bg-gray-600`;
+    }
+};
+// FIM Funções de Badge
+
 type CombustivelTipo = 'GASOLINA' | 'DIESEL';
 
 const CATEGORIAS: { key: TipoEquipamento, label: string, icon: React.FC<any> }[] = [
@@ -253,7 +376,7 @@ Detalhes dos Itens:
 ${detailed_items.map(item => {
     const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, dias_operacao);
     
-    return `- ${item.quantidade} ${item.item} (${item.categoria}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosLubrificante, 2)} L. Valor: ${formatCurrency(valorLubrificante)}.`;
+    return `- ${item.quantidade} ${item.item} x Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosLubrificante, 2)} L. Valor: ${formatCurrency(valorLubrificante)}.`;
 }).join('\n')}
 
 Total Litros: ${formatNumber(total_litros, 2)} L.
@@ -905,7 +1028,7 @@ Detalhes dos Itens:
 ${itensComLubrificante.map(item => {
     const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
     
-    return `- ${item.quantidade} ${item.item} (${item.categoria}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosLubrificante, 2)} L. Valor: ${formatCurrency(valorLubrificante)}.`;
+    return `- ${item.quantidade} ${item.item} x Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosLubrificante, 2)} L. Valor: ${formatCurrency(valorLubrificante)}.`;
 }).join('\n')}
 
 Total Litros: ${formatNumber(totalLitrosLubrificante, 2)} L.
@@ -1407,7 +1530,11 @@ const getMemoriaRecords = granularRegistros;
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <Button variant="ghost" onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)} className="mb-4">
+        <Button
+          variant="ghost"
+          onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)}
+          className="mb-4"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
         </Button>
         
@@ -2051,7 +2178,7 @@ const getMemoriaRecords = granularRegistros;
                                 {CATEGORIAS.map(cat => {
                                   const totais = suprimentoGroup.categoria_totais[cat.key];
                                   if (totais.valor > 0) {
-                                    const categoryBadgeStyle = getClasseIIICategoryBadgeStyle(cat.key);
+                                    const categoryBadgeStyle = { label: getClasseIIICategoryLabel(cat.key), className: getClasseIIICategoryBadgeClass(cat.key) };
                                     return (
                                       <div key={cat.key} className="flex justify-between text-xs">
                                         <span className="text-muted-foreground flex items-center gap-1">
@@ -2108,7 +2235,7 @@ const getMemoriaRecords = granularRegistros;
                   const badgeClass = getSuprimentoBadgeClass(item);
                   
                   // Encontrar o label e estilo da categoria do material usando o novo utilitário
-                  const categoryBadgeStyle = getClasseIIICategoryBadgeStyle(item.categoria);
+                  const categoryBadgeStyle = { label: getClasseIIICategoryLabel(item.categoria), className: getClasseIIICategoryBadgeClass(item.categoria) };
                   const displayCategoryLabel = categoryLabelMap[item.categoria] || categoryBadgeStyle.label; // Use map for correct capitalization
                   
                   return (
