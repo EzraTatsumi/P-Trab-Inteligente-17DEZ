@@ -365,9 +365,8 @@ const DiretrizesCusteioPage = () => {
         .from("diretrizes_classe_ix")
         .select("categoria, item, valor_mnt_dia, valor_acionamento_mensal")
         .eq("user_id", user.id)
-        .eq("ano_referencia", year)
-        .eq("ativo", true);
-        
+        .eq("ano_referencia", year); // REMOVIDO: .eq("ativo", true)
+
       if (classeIXError) throw classeIXError;
       
       if (classeIXData && classeIXData.length > 0) {
@@ -379,6 +378,7 @@ const DiretrizesCusteioPage = () => {
         })));
       } else {
         setClasseIXConfig(defaultClasseIXConfig);
+        toast.warning(`Itens de Classe IX não configurados para o ano ${year}. Usando valores padrão.`);
       }
 
 
@@ -488,6 +488,7 @@ const DiretrizesCusteioPage = () => {
             ano_referencia: diretrizes.ano_referencia,
             categoria: categoria,
             ...g,
+            ativo: true, // Mantido para Classe III, pois a tabela tem o campo
           }));
 
         if (equipamentosParaSalvar.length > 0) {
@@ -552,7 +553,7 @@ const DiretrizesCusteioPage = () => {
           item: item.item,
           valor_mnt_dia: item.valor_mnt_dia,
           valor_acionamento_mensal: item.valor_acionamento_mensal,
-          ativo: true,
+          // REMOVIDO: ativo: true,
         }));
         
       if (classeIXItemsParaSalvar.length > 0) {
