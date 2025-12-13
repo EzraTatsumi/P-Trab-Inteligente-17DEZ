@@ -21,10 +21,17 @@ import { defaultClasseIXConfig } from "@/data/classeIXData";
 const defaultClasseIIConfig: DiretrizClasseIIForm[] = []; 
 
 type CategoriaClasseIX = 'Vtr Administrativa' | 'Vtr Operacional' | 'Motocicleta' | 'Vtr Blindada';
-type CategoriaClasseII = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
+type CategoriaClasseII = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento' | 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN' | 'Embarcação' | 'Equipamento de Engenharia' | 'Comunicações' | 'Informática' | 'Saúde' | 'Remonta/Veterinária';
 
 const CATEGORIAS_CLASSE_IX: CategoriaClasseIX[] = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
-const CATEGORIAS_CLASSE_II: CategoriaClasseII[] = ["Equipamento Individual", "Proteção Balística", "Material de Estacionamento"];
+// Todas as categorias que usam a tabela diretrizes_classe_ii
+const ALL_CATEGORIAS_CLASSE_II: CategoriaClasseII[] = [
+    "Equipamento Individual", "Proteção Balística", "Material de Estacionamento",
+    "Armt L", "Armt P", "IODCT", "DQBRN",
+    "Embarcação", "Equipamento de Engenharia",
+    "Comunicações", "Informática",
+    "Saúde", "Remonta/Veterinária"
+];
 
 interface DiretrizesFormState {
   ano_referencia: number | null;
@@ -61,7 +68,7 @@ const DiretrizesCusteioPage = () => {
     valor_acionamento_mensal: 0,
   });
   
-  // State for Classe II (simplified)
+  // State for Classe II (all classes using diretrizes_classe_ii)
   const [classeIIConfig, setClasseIIConfig] = useState<DiretrizClasseIIForm[]>([]);
   
   useEffect(() => {
@@ -216,8 +223,8 @@ const DiretrizesCusteioPage = () => {
           ano_referencia: anoReferencia,
           categoria: item.categoria,
           item: item.item,
-          valor_mnt_dia: Number(item.valor_mnt_dia), 
-          valor_acionamento_mensal: Number(item.valor_acionamento_mensal), 
+          valor_mnt_dia: Number(item.valor_mnt_dia), // Mantendo a correção de tipagem
+          valor_acionamento_mensal: Number(item.valor_acionamento_mensal), // Mantendo a correção de tipagem
         }));
         
       if (classeIXItemsParaSalvar.length > 0) {
@@ -302,20 +309,12 @@ const DiretrizesCusteioPage = () => {
   const handleAddClasseIIItem = () => {
     // Simplified logic for adding a new item
     setClasseIIConfig(prev => [...prev, {
-        categoria: CATEGORIAS_CLASSE_II[0],
+        categoria: ALL_CATEGORIAS_CLASSE_II[0],
         item: '',
         valor_mnt_dia: 0,
     }]);
   };
 
-  const filteredClasseIXConfig = useMemo(() => {
-    return classeIXConfig.filter(item => item.categoria === selectedTab);
-  }, [classeIXConfig, selectedTab]);
-  
-  const filteredClasseIIConfig = useMemo(() => {
-    return classeIIConfig.filter(item => item.categoria === selectedTab);
-  }, [classeIIConfig, selectedTab]);
-  
   const totalClasseIX = classeIXConfig.length;
   const totalClasseII = classeIIConfig.length;
 
@@ -437,10 +436,54 @@ const DiretrizesCusteioPage = () => {
               <TabsContent value="classe-ii" className="space-y-4 p-4 border rounded-lg bg-muted/50">
                 <h3 className="font-semibold text-lg">Itens de Manutenção (Valor Mnt/Dia)</h3>
                 <p className="text-sm text-muted-foreground">
-                    Configure os valores diários de manutenção para as categorias de Classe II, V, VI, VII e VIII.
+                    Configure os valores diários de manutenção para as categorias de Classe II, V, VI, VII e VIII. Total de itens: {totalClasseII}
                 </p>
                 
-                {/* Simplificado: Apenas mostra a lista de itens carregados */}
+                {/* Formulário de Adição Simplificado */}
+                <Card className="p-4 bg-background">
+                    <h4 className="font-semibold mb-3">Adicionar Novo Item</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                            <Label>Categoria</Label>
+                            <Select
+                                value={ALL_CATEGORIAS_CLASSE_II[0]}
+                                onValueChange={(value) => setNewClasseIXItem(prev => ({ ...prev, categoria: value as CategoriaClasseIX }))}
+                                disabled // Desabilitado para forçar o uso do botão Adicionar
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecione" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {ALL_CATEGORIAS_CLASSE_II.map(cat => (
+                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Item (Descrição)</Label>
+                            <Input
+                                value={""}
+                                placeholder="Ex: Kit de Primeiros Socorros"
+                                disabled
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Valor Mnt/Dia (R$)</Label>
+                            <Input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="0,00"
+                                disabled
+                            />
+                        </div>
+                    </div>
+                    <Button onClick={handleAddClasseIIItem} variant="outline" className="mt-4 w-full md:w-auto">
+                        <Plus className="h-4 w-4 mr-2" /> Adicionar Novo Item
+                    </Button>
+                </Card>
+                
+                {/* Tabela de Itens Configurados */}
                 <div className="max-h-[400px] overflow-y-auto rounded-md border">
                     <Table>
                         <TableHeader>
@@ -461,8 +504,30 @@ const DiretrizesCusteioPage = () => {
                             ) : (
                                 classeIIConfig.map((item, index) => (
                                     <TableRow key={index}>
-                                        <TableCell className="text-xs">{item.categoria}</TableCell>
-                                        <TableCell className="font-medium">{item.item}</TableCell>
+                                        <TableCell className="text-xs">
+                                            <Select
+                                                value={item.categoria}
+                                                onValueChange={(value) => handleClasseIIChange(index, 'categoria', value as CategoriaClasseII)}
+                                            >
+                                                <SelectTrigger className="h-8 text-xs">
+                                                    <SelectValue placeholder="Selecione" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {ALL_CATEGORIAS_CLASSE_II.map(cat => (
+                                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </TableCell>
+                                        <TableCell className="font-medium">
+                                            <Input
+                                                type="text"
+                                                className="h-8"
+                                                value={item.item}
+                                                onChange={(e) => handleClasseIIChange(index, 'item', e.target.value)}
+                                                placeholder="Descrição do Item"
+                                            />
+                                        </TableCell>
                                         <TableCell className="text-right">
                                             <Input
                                                 type="text"
@@ -484,9 +549,6 @@ const DiretrizesCusteioPage = () => {
                         </TableBody>
                     </Table>
                 </div>
-                <Button onClick={handleAddClasseIIItem} variant="outline" className="w-full">
-                    <Plus className="h-4 w-4 mr-2" /> Adicionar Novo Item
-                </Button>
               </TabsContent>
 
               {/* Tab 3: Classe IX (Motomecanização) */}
