@@ -1,0 +1,40 @@
+user_id,ano_referencia,categoria,item,valor_mnt_dia,valor_acionamento_mensal,ativo
+<USER_ID>,2024,Vtr Administrativa,VTP Sedan Médio,46.00,400.00,true
+<USER_ID>,2024,Vtr Administrativa,VTP Sedan Compacto,29.00,400.00,true
+<USER_ID>,2024,Vtr Administrativa,VTP Minivan 7 Psg,34.00,400.00,true
+<USER_ID>,2024,Vtr Administrativa,VTP Pick-up 4x4 Cabine Dupla,67.00,400.00,true
+<USER_ID>,2024,Vtr Administrativa,VTP Van Executiva 16 Psg,90.00,400.00,true
+<USER_ID>,2024,Vtr Administrativa,VTE Amb Suporte Avançado,118.00,400.00,true
+<USER_ID>,2024,Vtr Administrativa,VTR Amb Simples Remoção,90.00,400.00,true
+<USER_ID>,2024,Vtr Administrativa,VTNE VUC com carroceria baú,69.00,650.00,true
+<USER_ID>,2024,Vtr Administrativa,VTP Micro-ônibus,163.00,650.00,true
+<USER_ID>,2024,Vtr Administrativa,VTNE 9 t Baú,138.00,910.00,true
+<USER_ID>,2024,Vtr Administrativa,VTP Ônibus Intermunicipal,308.00,910.00,true
+<USER_ID>,2024,Vtr Administrativa,VTP Ônibus Rodoviário,419.00,910.00,true
+<USER_ID>,2024,Vtr Administrativa,VTNE Baú 13 t,308.00,1200.00,true
+<USER_ID>,2024,Vtr Administrativa,VTNE Cav Mec 45 t,228.00,1200.00,true
+<USER_ID>,2024,Vtr Administrativa,VTNE Cav Mec 60 t,333.00,1200.00,true
+<USER_ID>,2024,Vtr Operacional,VTNE 3/4 Marruá,154.00,400.00,true
+<USER_ID>,2024,Vtr Operacional,VTNE Pick-up VOP 2 (Mitsubishi L 200),78.00,400.00,true
+<USER_ID>,2024,Vtr Operacional,VTE Amb SR 4x4,227.00,400.00,true
+<USER_ID>,2024,Vtr Operacional,VTNE 1 1/2 t AM 31 (Marruá),182.00,400.00,true
+<USER_ID>,2024,Vtr Operacional,Caminhão Op de 1,5 até 5 t (exclusive),182.00,650.00,true
+<USER_ID>,2024,Vtr Operacional,VTP Micro-ônibus,192.00,650.00,true
+<USER_ID>,2024,Vtr Operacional,VTNE 5 t (WORKER/ATEGO),285.00,910.00,true
+<USER_ID>,2024,Vtr Operacional,VTP Ônibus Urbano,308.00,910.00,true
+<USER_ID>,2024,Vtr Operacional,VTP Ônibus choque e rodoviário,419.00,910.00,true
+<USER_ID>,2024,Vtr Operacional,VTNE Cav Mec 60 t e caminhão acima de 10 t,454.00,1200.00,true
+<USER_ID>,2024,Vtr Operacional,VR até 1,5 t,20.09,150.00,true
+<USER_ID>,2024,Vtr Operacional,VR Cisterna até 1.500l,9.15,150.00,true
+<USER_ID>,2024,Vtr Operacional,Cozinha de Campanha,35.00,310.00,true
+<USER_ID>,2024,Vtr Operacional,VSRNE Prancha 45 t,33.00,600.00,true
+<USER_ID>,2024,Vtr Operacional,VSRNE Prancha 60 t,50.00,600.00,true
+<USER_ID>,2024,Motocicleta,VTP motocicleta estafeta,5.00,200.00,true
+<USER_ID>,2024,Motocicleta,Vtr Mct Policial Gp III,13.00,300.00,true
+<USER_ID>,2024,Motocicleta,Quadriciclo,17.00,300.00,true
+<USER_ID>,2024,Motocicleta,Vtr Mct Policial Gp II,33.00,320.00,true
+<USER_ID>,2024,Motocicleta,Vtr Mct Policial Gp I,44.00,950.00,true
+<USER_ID>,2024,Vtr Blindada,Série Blindada Americana,1476.70,3800.00,true
+<USER_ID>,2024,Vtr Blindada,Série Blindada Alemã,1011.39,48000.00,true
+<USER_ID>,2024,Vtr Blindada,Série IDV,1656.90,4000.00,true
+<USER_ID>,2024,Vtr Blindada,Série Engesa,1330.00,628.00,true
