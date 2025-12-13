@@ -172,6 +172,8 @@ const PTrabForm = () => {
       navigate(`/ptrab/classe-vii?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-viii') { // Rota para Classe VIII
       navigate(`/ptrab/classe-viii?ptrabId=${ptrabId}`);
+    } else if (itemId === 'classe-ix') { // Rota para Classe IX
+      navigate(`/ptrab/classe-ix?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-iii') {
       navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
     } else {
@@ -305,7 +307,7 @@ const PTrabForm = () => {
                           <div>
                             <div className="font-semibold">{classe.name.split(" - ")[0]}</div>
                             <div className="text-sm text-muted-foreground">
-                              {classe.name.split(" - ")[1]}
+                              {classe.id === 'classe-ix' ? 'Motomecanização' : classe.name.split(" - ")[1]}
                             </div>
                           </div>
                         </Button>
