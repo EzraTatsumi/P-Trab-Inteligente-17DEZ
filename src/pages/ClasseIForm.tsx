@@ -30,7 +30,6 @@ import { Textarea } from "@/components/ui/textarea"; // Importar Textarea
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
-import { formatFasesParaTexto } from "@/lib/classeUtils"; // NOVO IMPORT
 
 interface OMRegistro {
   id: string;
@@ -128,6 +127,22 @@ const calculateClasseICalculations = (
     etapaQR,
     totalQR,
   };
+};
+
+// Função para formatar as fases de forma natural no texto
+const formatFasesParaTexto = (faseCSV: string | undefined): string => {
+  if (!faseCSV) return 'operação';
+  
+  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
+  
+  if (fases.length === 0) return 'operação';
+  if (fases.length === 1) return fases[0];
+  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
+  
+  // 3 ou mais fases: "Fase1, Fase2 e Fase3"
+  const ultimaFase = fases[fases.length - 1];
+  const demaisFases = fases.slice(0, -1).join(', ');
+  return `${demaisFases} e ${ultimaFase}`;
 };
 
 // Nova função para gerar a memória de cálculo formatada
@@ -920,7 +935,7 @@ export default function ClasseIForm() {
                       <p className="font-semibold mt-2">Total QS: {formatCurrency(calculos.totalQS)}</p>
                     </div>
                     
-                    <div className="h-px bg-border my-2" />
+                    <div className="h-px bg-border" />
                     
                     <div>
                       <p className="font-semibold mb-2">QR - Quantitativo de Rancho:</p>

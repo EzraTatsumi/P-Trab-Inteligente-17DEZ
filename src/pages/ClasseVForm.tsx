@@ -21,12 +21,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
-import { defaultDirectives } from "@/data/defaultDirectives"; // Importação consolidada
+import { defaultClasseVConfig } from "@/data/classeIIData"; // CORRIGIDO
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
-import { areNumbersEqual, formatFasesParaTexto } from "@/lib/classeUtils"; // NOVO IMPORT
+import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils"; // NOVO IMPORT
 
 type Categoria = 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN';
 
@@ -88,6 +87,24 @@ const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
     'Armt P': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
     'IODCT': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
     'DQBRN': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
+};
+
+const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
+    return Math.abs(a - b) < tolerance;
+};
+
+const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
+  if (!faseCSV) return 'operação';
+  
+  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
+  
+  if (fases.length === 0) return 'operação';
+  if (fases.length === 1) return fases[0];
+  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
+  
+  const ultimaFase = fases[fases.length - 1];
+  const demaisFases = fases.slice(0, -1).join(', ');
+  return `${demaisFases} e ${ultimaFase}`;
 };
 
 const generateDetalhamento = (itens: ItemClasseV[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
@@ -278,7 +295,7 @@ const ClasseVForm = () => {
       
       if (!anoReferencia) {
         toast.warning(`Diretriz de Custeio não encontrada. Usando valores padrão.`);
-        setDiretrizes(defaultDirectives.defaultClasseVConfig as DiretrizClasseII[]);
+        setDiretrizes(defaultClasseVConfig as DiretrizClasseII[]);
         return;
       }
 
@@ -295,13 +312,13 @@ const ClasseVForm = () => {
       if (classeVData && classeVData.length > 0) {
         setDiretrizes((classeVData || []) as DiretrizClasseII[]);
       } else {
-        setDiretrizes(defaultDirectives.defaultClasseVConfig as DiretrizClasseII[]);
+        setDiretrizes(defaultClasseVConfig as DiretrizClasseII[]);
         toast.warning(`Itens de Classe V não configurados para o ano ${anoReferencia}. Usando valores padrão.`);
       }
       
     } catch (error) {
       console.error("Erro ao carregar diretrizes:", error);
-      setDiretrizes(defaultDirectives.defaultClasseVConfig as DiretrizClasseII[]);
+      setDiretrizes(defaultClasseVConfig as DiretrizClasseII[]);
       toast.error("Erro ao carregar diretrizes. Usando valores padrão.");
     }
   };
@@ -1182,6 +1199,7 @@ const ClasseVForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
+                                                        {/* REMOVIDO: Badge da Categoria */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
@@ -1204,7 +1222,8 @@ const ClasseVForm = () => {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => {
-                                                                if (confirm(`Deseja realmente deletar o registro de Classe II para ${omName} (${registro.categoria})?`)) {
+                                                                if (confirm(`Deseja realmente deletar o registro de Classe V para ${omName} (${registro.categoria})?`)) {
+                                                                    // MUDANÇA: Deletar da tabela correta
                                                                     supabase.from("classe_v_registros")
                                                                         .delete()
                                                                         .eq("id", registro.id)
@@ -1259,6 +1278,7 @@ const ClasseVForm = () => {
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
+                  // NOVO: Gera a memória automática com o rótulo padronizado
                   const memoriaAutomatica = generateDetalhamento(
                       registro.itens_equipamentos as ItemClasseV[], 
                       registro.dias_operacao, 
@@ -1283,12 +1303,14 @@ const ClasseVForm = () => {
                               <h4 className="text-base font-semibold text-foreground">
                                 OM Destino: {om} ({ug})
                               </h4>
-                              <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
+                              {/* Badge da Categoria movido para o lado esquerdo, junto ao h4 */}
+                              <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
                                   {badgeStyle.label}
                               </Badge>
                           </div>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
+                              
                               {!isEditing ? (
                                 <>
                                   <Button

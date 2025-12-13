@@ -21,12 +21,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
-import { defaultDirectives } from "@/data/defaultDirectives"; // Importação consolidada
+import { defaultClasseIIConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
-import { areNumbersEqual, formatFasesParaTexto } from "@/lib/classeUtils"; // NOVO IMPORT
+import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils"; // NOVO IMPORT
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -91,6 +90,11 @@ const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
     'Material de Estacionamento': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
 };
 
+// Função para comparar números de ponto flutuante com tolerância
+const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
+    return Math.abs(a - b) < tolerance;
+};
+
 // Helper para agrupar itens de um registro por categoria
 const groupRecordItemsByCategory = (items: ItemClasseII[]) => {
     return items.reduce((acc, item) => {
@@ -100,6 +104,21 @@ const groupRecordItemsByCategory = (items: ItemClasseII[]) => {
         acc[item.categoria].push(item);
         return acc;
     }, {} as Record<Categoria, ItemClasseII[]>);
+};
+
+// Função para formatar fases (MOVIDA PARA O TOPO)
+const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
+  if (!faseCSV) return 'operação';
+  
+  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
+  
+  if (fases.length === 0) return 'operação';
+  if (fases.length === 1) return fases[0];
+  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
+  
+  const ultimaFase = fases[fases.length - 1];
+  const demaisFases = fases.slice(0, -1).join(', ');
+  return `${demaisFases} e ${ultimaFase}`;
 };
 
 // NOVO: Gera a memória de cálculo detalhada para uma categoria
@@ -336,7 +355,7 @@ const ClasseIIForm = () => {
       
       if (!anoReferencia) {
         toast.warning(`Diretriz de Custeio não encontrada. Usando valores padrão.`);
-        setDiretrizes(defaultDirectives.defaultClasseIIConfig as DiretrizClasseII[]);
+        setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
         return;
       }
 
@@ -354,13 +373,13 @@ const ClasseIIForm = () => {
       if (classeIIData && classeIIData.length > 0) {
         setDiretrizes((classeIIData || []) as DiretrizClasseII[]);
       } else {
-        setDiretrizes(defaultDirectives.defaultClasseIIConfig as DiretrizClasseII[]);
+        setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
         toast.warning(`Itens de Classe II não configurados para o ano ${anoReferencia}. Usando valores padrão.`);
       }
       
     } catch (error) {
       console.error("Erro ao carregar diretrizes:", error);
-      setDiretrizes(defaultDirectives.defaultClasseIIConfig as DiretrizClasseII[]);
+      setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
       toast.error("Erro ao carregar diretrizes. Usando valores padrão.");
     }
   };
@@ -1260,7 +1279,7 @@ const ClasseIIForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1270,6 +1289,7 @@ const ClasseIIForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
+                                                        {/* REMOVIDO O BADGE DUPLICADO AQUI */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
