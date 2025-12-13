@@ -487,7 +487,10 @@ const DiretrizesCusteioPage = () => {
             user_id: user.id,
             ano_referencia: diretrizes.ano_referencia,
             categoria: categoria,
-            ...g,
+            nome_equipamento: g.nome_equipamento,
+            tipo_combustivel: g.tipo_combustivel,
+            consumo: Number(g.consumo),
+            unidade: g.unidade,
           }));
 
         if (equipamentosParaSalvar.length > 0) {
@@ -523,7 +526,7 @@ const DiretrizesCusteioPage = () => {
           ano_referencia: diretrizes.ano_referencia,
           categoria: item.categoria,
           item: item.item,
-          valor_mnt_dia: item.valor_mnt_dia,
+          valor_mnt_dia: Number(item.valor_mnt_dia),
           ativo: true,
         }));
         
@@ -550,8 +553,9 @@ const DiretrizesCusteioPage = () => {
           ano_referencia: diretrizes.ano_referencia,
           categoria: item.categoria,
           item: item.item,
-          valor_mnt_dia: item.valor_mnt_dia,
-          valor_acionamento_mensal: item.valor_acionamento_mensal,
+          // CORREÇÃO CRÍTICA: Garantir que os valores são números antes de salvar
+          valor_mnt_dia: Number(item.valor_mnt_dia),
+          valor_acionamento_mensal: Number(item.valor_acionamento_mensal),
           ativo: true,
         }));
         
