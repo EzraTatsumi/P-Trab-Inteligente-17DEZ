@@ -561,11 +561,12 @@ const DiretrizesCusteioPage = () => {
           };
         });
         
-      if (classeIXItemsParaSalvar.length > 0) {
-        const { error: c9Error } = await supabase
-          .from("diretrizes_classe_ix")
-          .insert(classeIXItemsParaSalvar);
-        if (c9Error) throw c9Error;
+      // MUDANÇA: Inserção individual para maior robustez
+      for (const item of classeIXItemsParaSalvar) {
+          const { error: c9Error } = await supabase
+            .from("diretrizes_classe_ix")
+            .insert([item]);
+          if (c9Error) throw c9Error;
       }
 
 
