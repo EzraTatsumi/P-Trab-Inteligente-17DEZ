@@ -21,11 +21,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
-import { defaultDirectives } from "@/data/defaultDirectives"; // NOVO IMPORT
+import { defaultDirectives } from "@/data/defaultDirectives"; // Importação consolidada
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils"; // NOVO IMPORT
+import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
 
 type Categoria = 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN';
 
@@ -104,7 +104,7 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   
   const ultimaFase = fases[fases.length - 1];
   const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFase}`;
+  return `${demaisFases} e ${ultimaFases}`;
 };
 
 const generateDetalhamento = (itens: ItemClasseV[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
@@ -1189,7 +1189,7 @@ const ClasseVForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1199,7 +1199,6 @@ const ClasseVForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
-                                                        {/* REMOVIDO O BADGE DUPLICADO AQUI */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
@@ -1223,7 +1222,7 @@ const ClasseVForm = () => {
                                                             size="icon"
                                                             onClick={() => {
                                                                 if (confirm(`Deseja realmente deletar o registro de Classe II para ${omName} (${registro.categoria})?`)) {
-                                                                    supabase.from("classe_ii_registros")
+                                                                    supabase.from("classe_v_registros")
                                                                         .delete()
                                                                         .eq("id", registro.id)
                                                                         .then(() => {
@@ -1277,14 +1276,16 @@ const ClasseVForm = () => {
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
-                  // NOVO: Gera a memória automática com o rótulo padronizado
-                  const memoriaAutomatica = generateCategoryMemoriaCalculo(
-                      registro.categoria as Categoria, 
-                      registro.itens_equipamentos as ItemClasseII[], 
+                  const memoriaAutomatica = generateDetalhamento(
+                      registro.itens_equipamentos as ItemClasseV[], 
                       registro.dias_operacao, 
                       registro.organizacao, 
                       registro.ug, 
-                      registro.fase_atividade
+                      registro.fase_atividade || '', 
+                      registro.organizacao, 
+                      registro.ug, 
+                      registro.valor_nd_30, 
+                      registro.valor_nd_39
                   );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
@@ -1384,4 +1385,4 @@ const ClasseVForm = () => {
   );
 }
 
-export default ClasseIIForm;
+export default ClasseVForm;

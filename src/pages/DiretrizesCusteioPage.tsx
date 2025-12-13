@@ -11,72 +11,14 @@ import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Setting
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
-import { DiretrizClasseIXForm } from "@/types/diretrizesClasseIX"; // NOVO IMPORT
+import { DiretrizClasseIXForm } from "@/types/diretrizesClasseIX";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { tipoViaturas, tipoEquipamentosEngenharia } from "@/data/classeIIIData";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { YearManagementDialog } from "@/components/YearManagementDialog";
-import { defaultClasseVIConfig } from "@/data/classeVIData";
-import { defaultClasseVIIConfig } from "@/data/classeVIIData";
-import { defaultClasseVIIISaudeConfig, defaultClasseVIIIRemontaConfig } from "@/data/classeVIIIData";
-import { defaultClasseIXConfig } from "@/data/classeIXData"; // NOVO IMPORT
-
-const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
-  { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
-  { nome_equipamento: "Gerador até 15 kva OD", tipo_combustivel: "OD", consumo: 4.0, unidade: "L/h" },
-  { nome_equipamento: "Gerador acima de 50 kva", tipo_combustivel: "OD", consumo: 20.0, unidade: "L/h" },
-];
-
-const defaultEmbarcacaoConfig: DiretrizEquipamentoForm[] = [
-  { nome_equipamento: "Motor de popa", tipo_combustivel: "GAS", consumo: 20, unidade: "L/h" },
-  { nome_equipamento: "Emb Guardian 25", tipo_combustivel: "GAS", consumo: 100, unidade: "L/h" },
-  { nome_equipamento: "Ferryboat", tipo_combustivel: "OD", consumo: 100, unidade: "L/h" },
-  { nome_equipamento: "Emb Regional", tipo_combustivel: "OD", consumo: 50, unidade: "L/h" },
-  { nome_equipamento: "Empurradores", tipo_combustivel: "OD", consumo: 80, unidade: "L/h" },
-  { nome_equipamento: "Emb Manobra", tipo_combustivel: "OD", consumo: 30, unidade: "L/h" },
-];
-
-const defaultMotomecanizacaoConfig: DiretrizEquipamentoForm[] = tipoViaturas.map(v => ({
-  nome_equipamento: v.nome,
-  tipo_combustivel: v.combustivel,
-  consumo: v.consumo,
-  unidade: v.unidade,
-}));
-
-const defaultEquipamentosEngenhariaConfig: DiretrizEquipamentoForm[] = tipoEquipamentosEngenharia.map(e => ({
-  nome_equipamento: e.nome,
-  tipo_combustivel: e.combustivel,
-  consumo: e.consumo,
-  unidade: e.unidade,
-}));
-
-const defaultClasseIIConfig: DiretrizClasseIIForm[] = [
-  { categoria: "Equipamento Individual", item: "Equipamento Individual", valor_mnt_dia: 2.42 },
-  { categoria: "Proteção Balística", item: "Colete balístico", valor_mnt_dia: 3.23 },
-  { categoria: "Proteção Balística", item: "Capacete balístico", valor_mnt_dia: 2.56 },
-  { categoria: "Material de Estacionamento", item: "Barraca de campanha", valor_mnt_dia: 7.55 },
-  { categoria: "Material de Estacionamento", item: "Toldo modular", valor_mnt_dia: 1.88 },
-  { categoria: "Material de Estacionamento", item: "Barraca individual", valor_mnt_dia: 0.26 },
-  { categoria: "Material de Estacionamento", item: "Cama de campanha", valor_mnt_dia: 0.32 },
-  { categoria: "Material de Estacionamento", item: "Marmita Térmica", valor_mnt_dia: 0.67 },
-  { categoria: "Material de Estacionamento", item: "Armário", valor_mnt_dia: 0.82 },
-  { categoria: "Material de Estacionamento", item: "Beliche", valor_mnt_dia: 0.66 },
-  { categoria: "Material de Estacionamento", item: "Colchão", valor_mnt_dia: 0.28 },
-];
-
-const defaultClasseVConfig: DiretrizClasseIIForm[] = [
-  { categoria: "Armt L", item: "Fuzil 5,56mm IA2 IMBEL", valor_mnt_dia: 1.40 },
-  { categoria: "Armt L", item: "Fuzil 7,62mm", valor_mnt_dia: 1.50 },
-  { categoria: "Armt L", item: "Pistola 9 mm", valor_mnt_dia: 0.40 },
-  { categoria: "Armt L", item: "Metralhadora FN MINIMI 5,56 x 45mm", valor_mnt_dia: 10.60 },
-  { categoria: "Armt L", item: "Metralhadora FN MINIMI 7,62 x 51mm", valor_mnt_dia: 11.00 },
-  { categoria: "Armt P", item: "Obuseiro", valor_mnt_dia: 175.00 },
-  { categoria: "IODCT", item: "OVN", valor_mnt_dia: 9.50 },
-  { categoria: "DQBRN", item: "Falcon 4GS", valor_mnt_dia: 723.30 },
-];
+import { defaultDirectives } from "@/data/defaultDirectives"; // Importação consolidada
 
 const CATEGORIAS_CLASSE_II = [
   "Equipamento Individual",
@@ -106,7 +48,7 @@ const CATEGORIAS_CLASSE_VIII = [
   "Remonta/Veterinária",
 ];
 
-const CATEGORIAS_CLASSE_IX = [ // NOVO
+const CATEGORIAS_CLASSE_IX = [
   "Vtr Administrativa",
   "Vtr Operacional",
   "Motocicleta",
@@ -139,21 +81,22 @@ const DiretrizesCusteioPage = () => {
   const [showClasseVIConfig, setShowClasseVIConfig] = useState(false); 
   const [showClasseVIIConfig, setShowClasseVIIConfig] = useState(false);
   const [showClasseVIIIConfig, setShowClasseVIIIConfig] = useState(false);
-  const [showClasseIXConfig, setShowClasseIXConfig] = useState(false); // NOVO ESTADO
+  const [showClasseIXConfig, setShowClasseIXConfig] = useState(false);
   const [showClasseIIIConfig, setShowClasseIIIConfig] = useState(false);
   
-  const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
-  const [embarcacaoConfig, setEmbarcacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultEmbarcacaoConfig);
-  const [motomecanizacaoConfig, setMotomecanizacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultMotomecanizacaoConfig);
-  const [equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig] = useState<DiretrizEquipamentoForm[]>(defaultEquipamentosEngenhariaConfig);
+  // Usando defaultDirectives
+  const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultDirectives.grupoGeradores.map(d => ({ ...d, nome_equipamento: d.nome })));
+  const [embarcacaoConfig, setEmbarcacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultDirectives.tipoEmbarcacoes.map(d => ({ ...d, nome_equipamento: d.nome })));
+  const [motomecanizacaoConfig, setMotomecanizacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultDirectives.tipoViaturas.map(d => ({ ...d, nome_equipamento: d.nome })));
+  const [equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig] = useState<DiretrizEquipamentoForm[]>(defaultDirectives.tipoEquipamentosEngenharia.map(d => ({ ...d, nome_equipamento: d.nome })));
   
-  const [classeIIConfig, setClasseIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseIIConfig);
-  const [classeVConfig, setClasseVConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVConfig);
-  const [classeVIConfig, setClasseVIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIConfig); 
-  const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig);
-  const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig);
-  const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig);
-  const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIXForm[]>(defaultClasseIXConfig); // NOVO ESTADO
+  const [classeIIConfig, setClasseIIConfig] = useState<DiretrizClasseIIForm[]>(defaultDirectives.defaultClasseIIConfig);
+  const [classeVConfig, setClasseVConfig] = useState<DiretrizClasseIIForm[]>(defaultDirectives.defaultClasseVConfig);
+  const [classeVIConfig, setClasseVIConfig] = useState<DiretrizClasseIIForm[]>(defaultDirectives.defaultClasseVIConfig); 
+  const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultDirectives.defaultClasseVIIConfig);
+  const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultDirectives.defaultClasseVIIISaudeConfig);
+  const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultDirectives.defaultClasseVIIIRemontaConfig);
+  const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIXForm[]>(defaultDirectives.defaultClasseIXConfig);
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -164,7 +107,7 @@ const DiretrizesCusteioPage = () => {
   const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key);
   const [selectedClasseVIITab, setSelectedClasseVIITab] = useState<string>(CATEGORIAS_CLASSE_VII[0]);
   const [selectedClasseVIIITab, setSelectedClasseVIIITab] = useState<string>(CATEGORIAS_CLASSE_VIII[0]);
-  const [selectedClasseIXTab, setSelectedClasseIXTab] = useState<string>(CATEGORIAS_CLASSE_IX[0]); // NOVO ESTADO
+  const [selectedClasseIXTab, setSelectedClasseIXTab] = useState<string>(CATEGORIAS_CLASSE_IX[0]);
   
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   const [defaultYear, setDefaultYear] = useState<number | null>(null);
@@ -297,7 +240,7 @@ const DiretrizesCusteioPage = () => {
           valor_mnt_dia: Number(d.valor_mnt_dia),
         })));
       } else {
-        setClasseIIConfig(defaultClasseIIConfig);
+        setClasseIIConfig(defaultDirectives.defaultClasseIIConfig);
       }
       
       // Filtrar e setar Classe V
@@ -309,7 +252,7 @@ const DiretrizesCusteioPage = () => {
           valor_mnt_dia: Number(d.valor_mnt_dia),
         })));
       } else {
-        setClasseVConfig(defaultClasseVConfig);
+        setClasseVConfig(defaultDirectives.defaultClasseVConfig);
       }
       
       // Filtrar e setar Classe VI
@@ -321,7 +264,7 @@ const DiretrizesCusteioPage = () => {
           valor_mnt_dia: Number(d.valor_mnt_dia),
         })));
       } else {
-        setClasseVIConfig(defaultClasseVIConfig);
+        setClasseVIConfig(defaultDirectives.defaultClasseVIConfig);
       }
       
       // Filtrar e setar Classe VII
@@ -333,7 +276,7 @@ const DiretrizesCusteioPage = () => {
           valor_mnt_dia: Number(d.valor_mnt_dia),
         })));
       } else {
-        setClasseVIIConfig(defaultClasseVIIConfig);
+        setClasseVIIConfig(defaultDirectives.defaultClasseVIIConfig);
       }
       
       // Filtrar e setar Classe VIII - Saúde
@@ -345,7 +288,7 @@ const DiretrizesCusteioPage = () => {
           valor_mnt_dia: Number(d.valor_mnt_dia),
         })));
       } else {
-        setClasseVIIISaudeConfig(defaultClasseVIIISaudeConfig);
+        setClasseVIIISaudeConfig(defaultDirectives.defaultClasseVIIISaudeConfig);
       }
       
       // Filtrar e setar Classe VIII - Remonta/Veterinária
@@ -357,7 +300,7 @@ const DiretrizesCusteioPage = () => {
           valor_mnt_dia: Number(d.valor_mnt_dia),
         })));
       } else {
-        setClasseVIIIRemontaConfig(defaultClasseVIIIRemontaConfig);
+        setClasseVIIIRemontaConfig(defaultDirectives.defaultClasseVIIIRemontaConfig);
       }
       
       // --- Carregar Classe IX ---
@@ -378,12 +321,12 @@ const DiretrizesCusteioPage = () => {
           valor_acionamento_mensal: Number(d.valor_acionamento_mensal),
         })));
       } else {
-        setClasseIXConfig(defaultClasseIXConfig);
+        setClasseIXConfig(defaultDirectives.defaultClasseIXConfig);
       }
 
 
       // --- Carregar Classe III - Equipamentos ---
-      const loadEquipamentos = async (categoria: string, setter: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, defaultData: DiretrizEquipamentoForm[]) => {
+      const loadEquipamentos = async (categoria: string, setter: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, defaultData: any[]) => {
         const { data: equipamentosData } = await supabase
           .from("diretrizes_equipamentos_classe_iii")
           .select("*")
@@ -400,14 +343,14 @@ const DiretrizesCusteioPage = () => {
             unidade: eq.unidade as 'L/h' | 'km/L',
           })));
         } else {
-          setter(defaultData);
+          setter(defaultData.map((d: any) => ({ ...d, nome_equipamento: d.nome })));
         }
       };
 
-      await loadEquipamentos("GERADOR", setGeradorConfig, defaultGeradorConfig);
-      await loadEquipamentos("EMBARCACAO", setEmbarcacaoConfig, defaultEmbarcacaoConfig);
-      await loadEquipamentos("MOTOMECANIZACAO", setMotomecanizacaoConfig, defaultMotomecanizacaoConfig);
-      await loadEquipamentos("EQUIPAMENTO_ENGENHARIA", setEquipamentosEngenhariaConfig, defaultEquipamentosEngenhariaConfig);
+      await loadEquipamentos("GERADOR", setGeradorConfig, defaultDirectives.grupoGeradores);
+      await loadEquipamentos("EMBARCACAO", setEmbarcacaoConfig, defaultDirectives.tipoEmbarcacoes);
+      await loadEquipamentos("MOTOMECANIZACAO", setMotomecanizacaoConfig, defaultDirectives.tipoViaturas);
+      await loadEquipamentos("EQUIPAMENTO_ENGENHARIA", setEquipamentosEngenhariaConfig, defaultDirectives.tipoEquipamentosEngenharia);
         
     } catch (error: any) {
       console.error("Erro ao carregar diretrizes:", error);

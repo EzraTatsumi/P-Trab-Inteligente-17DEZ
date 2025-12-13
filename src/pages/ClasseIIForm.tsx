@@ -21,11 +21,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
-import { defaultDirectives } from "@/data/defaultDirectives"; // NOVO IMPORT
+import { defaultDirectives } from "@/data/defaultDirectives"; // Importação consolidada
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils"; // NOVO IMPORT
+import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -1279,7 +1279,7 @@ const ClasseIIForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1289,7 +1289,6 @@ const ClasseIIForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
-                                                        {/* REMOVIDO O BADGE DUPLICADO AQUI */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
