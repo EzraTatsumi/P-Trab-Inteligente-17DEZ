@@ -87,8 +87,7 @@ const useDiretrizesClasseIX = (anoReferencia: number | 'latest') => {
   });
 
   const refresh = () => {
-    // Invalida a query específica para o ano selecionado
-    queryClient.invalidateQueries({ queryKey: queryKey });
+    queryClient.invalidateQueries({ queryKey: ['diretrizesClasseIX', userId] });
   };
 
   return { data, isLoading, error, refresh };
@@ -253,12 +252,21 @@ export const DiretrizesClasseIXManager: React.FC = () => {
         toast.success("Diretriz atualizada com sucesso!");
       }
       
-      // Reset the editing state for the specific item
-      setEditableList(prev => prev.map(d => 
-        d.id === diretriz.id ? { ...d, isEditing: false, isNew: false } : d
-      ));
+      // 1. Atualiza o estado local imediatamente com os novos valores numéricos
+      setEditableList(prev => prev.map(d => {
+        if (d.id === diretriz.id) {
+            return {
+                ...d,
+                valor_mnt_dia: valorMntDia,
+                valor_acionamento_mensal: valorAcionamentoMensal,
+                isEditing: false,
+                isNew: false,
+            };
+        }
+        return d;
+      }));
       
-      // Force refresh data to update the list with the latest values from DB
+      // 2. Força o refresh para sincronizar com o DB e atualizar o cache
       await refresh();
       
     } catch (error) {
@@ -378,8 +386,8 @@ export const DiretrizesClasseIXManager: React.FC = () => {
                         <TableCell>
                             <Input 
                                 value={newItem.valor_mnt_dia_input} 
-                                onChange={(e) => handleNewItemChange('valor_mnt_dia_input', formatInputWithThousands(e.target.value))} 
-                                onBlur={(e) => handleNewItemChange('valor_mnt_dia_input', formatNumberForInput(parseInputToNumber(e.target.value), 2))}
+                                onChange={(e) => handleFieldChange(newId, 'valor_mnt_dia_input', formatInputWithThousands(e.target.value))} 
+                                onBlur={(e) => handleFieldChange(newId, 'valor_mnt_dia_input', formatNumberForInput(parseInputToNumber(e.target.value), 2))}
                                 placeholder="0,00"
                                 className="h-8 text-right"
                             />
@@ -387,8 +395,8 @@ export const DiretrizesClasseIXManager: React.FC = () => {
                         <TableCell>
                             <Input 
                                 value={newItem.valor_acionamento_mensal_input} 
-                                onChange={(e) => handleNewItemChange('valor_acionamento_mensal_input', formatInputWithThousands(e.target.value))} 
-                                onBlur={(e) => handleNewItemChange('valor_acionamento_mensal_input', formatNumberForInput(parseInputToNumber(e.target.value), 2))}
+                                onChange={(e) => handleFieldChange(newId, 'valor_acionamento_mensal_input', formatInputWithThousands(e.target.value))} 
+                                onBlur={(e) => handleFieldChange(newId, 'valor_acionamento_mensal_input', formatNumberForInput(parseInputToNumber(e.target.value), 2))}
                                 placeholder="0,00"
                                 className="h-8 text-right"
                             />
