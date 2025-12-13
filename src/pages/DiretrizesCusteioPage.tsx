@@ -11,7 +11,7 @@ import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Setting
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
-import { DiretrizClasseIXForm } from "@/types/diretrizesClasseIX"; // NOVO IMPORT
+import { DiretrizClasseIXForm } from "@/types/diretrizesClasseIX";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -22,7 +22,8 @@ import { YearManagementDialog } from "@/components/YearManagementDialog";
 import { defaultClasseVIConfig } from "@/data/classeVIData";
 import { defaultClasseVIIConfig } from "@/data/classeVIIData";
 import { defaultClasseVIIISaudeConfig, defaultClasseVIIIRemontaConfig } from "@/data/classeVIIIData";
-import { defaultClasseIXConfig } from "@/data/classeIXData"; // NOVO IMPORT
+import { defaultClasseIXConfig } from "@/data/classeIXData";
+import { formatCurrencyInput } from "@/lib/formatUtils"; // Importar utilitário de máscara
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -67,17 +68,6 @@ const defaultClasseIIConfig: DiretrizClasseIIForm[] = [
   { categoria: "Material de Estacionamento", item: "Colchão", valor_mnt_dia: 0.28 },
 ];
 
-const defaultClasseVConfig: DiretrizClasseIIForm[] = [
-  { categoria: "Armt L", item: "Fuzil 5,56mm IA2 IMBEL", valor_mnt_dia: 1.40 },
-  { categoria: "Armt L", item: "Fuzil 7,62mm", valor_mnt_dia: 1.50 },
-  { categoria: "Armt L", item: "Pistola 9 mm", valor_mnt_dia: 0.40 },
-  { categoria: "Armt L", item: "Metralhadora FN MINIMI 5,56 x 45mm", valor_mnt_dia: 10.60 },
-  { categoria: "Armt L", item: "Metralhadora FN MINIMI 7,62 x 51mm", valor_mnt_dia: 11.00 },
-  { categoria: "Armt P", item: "Obuseiro", valor_mnt_dia: 175.00 },
-  { categoria: "IODCT", item: "OVN", valor_mnt_dia: 9.50 },
-  { categoria: "DQBRN", item: "Falcon 4GS", valor_mnt_dia: 723.30 },
-];
-
 const CATEGORIAS_CLASSE_II = [
   "Equipamento Individual",
   "Proteção Balística",
@@ -106,7 +96,7 @@ const CATEGORIAS_CLASSE_VIII = [
   "Remonta/Veterinária",
 ];
 
-const CATEGORIAS_CLASSE_IX = [ // NOVO
+const CATEGORIAS_CLASSE_IX = [
   "Vtr Administrativa",
   "Vtr Operacional",
   "Motocicleta",
@@ -139,8 +129,12 @@ const DiretrizesCusteioPage = () => {
   const [showClasseVIConfig, setShowClasseVIConfig] = useState(false); 
   const [showClasseVIIConfig, setShowClasseVIIConfig] = useState(false);
   const [showClasseVIIIConfig, setShowClasseVIIIConfig] = useState(false);
-  const [showClasseIXConfig, setShowClasseIXConfig] = useState(false); // NOVO ESTADO
+  const [showClasseIXConfig, setShowClasseIXConfig] = useState(false);
   const [showClasseIIIConfig, setShowClasseIIIConfig] = useState(false);
+  
+  // NOVOS ESTADOS PARA INPUT MASCARADO DA CLASSE I
+  const [qsInput, setQsInput] = useState<string>("");
+  const [qrInput, setQrInput] = useState<string>("");
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
   const [embarcacaoConfig, setEmbarcacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultEmbarcacaoConfig);
@@ -153,7 +147,7 @@ const DiretrizesCusteioPage = () => {
   const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig);
   const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig);
   const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig);
-  const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIXForm[]>(defaultClasseIXConfig); // NOVO ESTADO
+  const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIXForm[]>(defaultClasseIXConfig);
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -164,7 +158,7 @@ const DiretrizesCusteioPage = () => {
   const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key);
   const [selectedClasseVIITab, setSelectedClasseVIITab] = useState<string>(CATEGORIAS_CLASSE_VII[0]);
   const [selectedClasseVIIITab, setSelectedClasseVIIITab] = useState<string>(CATEGORIAS_CLASSE_VIII[0]);
-  const [selectedClasseIXTab, setSelectedClasseIXTab] = useState<string>(CATEGORIAS_CLASSE_IX[0]); // NOVO ESTADO
+  const [selectedClasseIXTab, setSelectedClasseIXTab] = useState<string>(CATEGORIAS_CLASSE_IX[0]);
   
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   const [defaultYear, setDefaultYear] = useState<number | null>(null);
@@ -259,23 +253,36 @@ const DiretrizesCusteioPage = () => {
 
       if (error) throw error;
 
+      const defaultValues = defaultDiretrizes(year);
+      
       if (data) {
+        const qsValue = Number(data.classe_i_valor_qs);
+        const qrValue = Number(data.classe_i_valor_qr);
+        
         setDiretrizes({
           id: data.id,
           user_id: data.user_id,
           ano_referencia: data.ano_referencia,
-          classe_i_valor_qs: Number(data.classe_i_valor_qs),
-          classe_i_valor_qr: Number(data.classe_i_valor_qr),
+          classe_i_valor_qs: qsValue,
+          classe_i_valor_qr: qrValue,
           classe_iii_fator_gerador: Number(data.classe_iii_fator_gerador),
           classe_iii_fator_embarcacao: Number(data.classe_iii_fator_embarcacao),
           classe_iii_fator_equip_engenharia: Number(data.classe_iii_fator_equip_engenharia),
           observacoes: data.observacoes || "",
         });
+        
+        // Inicializa os inputs mascarados
+        setQsInput(String(Math.round(qsValue * 100)));
+        setQrInput(String(Math.round(qrValue * 100)));
+        
       } else {
-        setDiretrizes(defaultDiretrizes(year));
+        setDiretrizes(defaultValues);
+        // Inicializa os inputs mascarados com os valores padrão
+        setQsInput(String(Math.round(defaultValues.classe_i_valor_qs * 100)));
+        setQrInput(String(Math.round(defaultValues.classe_i_valor_qr * 100)));
       }
       
-      // --- Carregar Classe II, V, VI, VII e VIII (usando a mesma tabela) ---
+      // --- Carregar Classes II, V, VI, VII e VIII ---
       const allClasseItemsCategories = [...CATEGORIAS_CLASSE_II, ...CATEGORIAS_CLASSE_V, ...CATEGORIAS_CLASSE_VI, ...CATEGORIAS_CLASSE_VII, ...CATEGORIAS_CLASSE_VIII];
       
       const { data: classeItemsData } = await supabase
@@ -288,77 +295,29 @@ const DiretrizesCusteioPage = () => {
 
       const loadedItems = classeItemsData || [];
       
-      // Filtrar e setar Classe II
+      const mapToForm = (d: any) => ({
+          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
+          item: d.item,
+          valor_mnt_dia: Number(d.valor_mnt_dia),
+      });
+      
       const loadedClasseII = loadedItems.filter(d => CATEGORIAS_CLASSE_II.includes(d.categoria));
-      if (loadedClasseII.length > 0) {
-        setClasseIIConfig(loadedClasseII.map(d => ({
-          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
-          item: d.item,
-          valor_mnt_dia: Number(d.valor_mnt_dia),
-        })));
-      } else {
-        setClasseIIConfig(defaultClasseIIConfig);
-      }
+      setClasseIIConfig(loadedClasseII.length > 0 ? loadedClasseII.map(mapToForm) : defaultClasseIIConfig);
       
-      // Filtrar e setar Classe V
       const loadedClasseV = loadedItems.filter(d => CATEGORIAS_CLASSE_V.includes(d.categoria));
-      if (loadedClasseV.length > 0) {
-        setClasseVConfig(loadedClasseV.map(d => ({
-          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
-          item: d.item,
-          valor_mnt_dia: Number(d.valor_mnt_dia),
-        })));
-      } else {
-        setClasseVConfig(defaultClasseVConfig);
-      }
+      setClasseVConfig(loadedClasseV.length > 0 ? loadedClasseV.map(mapToForm) : defaultClasseVConfig);
       
-      // Filtrar e setar Classe VI
       const loadedClasseVI = loadedItems.filter(d => CATEGORIAS_CLASSE_VI.includes(d.categoria));
-      if (loadedClasseVI.length > 0) {
-        setClasseVIConfig(loadedClasseVI.map(d => ({
-          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
-          item: d.item,
-          valor_mnt_dia: Number(d.valor_mnt_dia),
-        })));
-      } else {
-        setClasseVIConfig(defaultClasseVIConfig);
-      }
+      setClasseVIConfig(loadedClasseVI.length > 0 ? loadedClasseVI.map(mapToForm) : defaultClasseVIConfig);
       
-      // Filtrar e setar Classe VII
       const loadedClasseVII = loadedItems.filter(d => CATEGORIAS_CLASSE_VII.includes(d.categoria));
-      if (loadedClasseVII.length > 0) {
-        setClasseVIIConfig(loadedClasseVII.map(d => ({
-          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
-          item: d.item,
-          valor_mnt_dia: Number(d.valor_mnt_dia),
-        })));
-      } else {
-        setClasseVIIConfig(defaultClasseVIIConfig);
-      }
+      setClasseVIIConfig(loadedClasseVII.length > 0 ? loadedClasseVII.map(mapToForm) : defaultClasseVIIConfig);
       
-      // Filtrar e setar Classe VIII - Saúde
       const loadedClasseVIIISaude = loadedItems.filter(d => d.categoria === 'Saúde');
-      if (loadedClasseVIIISaude.length > 0) {
-        setClasseVIIISaudeConfig(loadedClasseVIIISaude.map(d => ({
-          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
-          item: d.item,
-          valor_mnt_dia: Number(d.valor_mnt_dia),
-        })));
-      } else {
-        setClasseVIIISaudeConfig(defaultClasseVIIISaudeConfig);
-      }
+      setClasseVIIISaudeConfig(loadedClasseVIIISaude.length > 0 ? loadedClasseVIIISaude.map(mapToForm) : defaultClasseVIIISaudeConfig);
       
-      // Filtrar e setar Classe VIII - Remonta/Veterinária
       const loadedClasseVIIIRemonta = loadedItems.filter(d => d.categoria === 'Remonta/Veterinária');
-      if (loadedClasseVIIIRemonta.length > 0) {
-        setClasseVIIIRemontaConfig(loadedClasseVIIIRemonta.map(d => ({
-          categoria: d.categoria as DiretrizClasseIIForm['categoria'],
-          item: d.item,
-          valor_mnt_dia: Number(d.valor_mnt_dia),
-        })));
-      } else {
-        setClasseVIIIRemontaConfig(defaultClasseVIIIRemontaConfig);
-      }
+      setClasseVIIIRemontaConfig(loadedClasseVIIIRemonta.length > 0 ? loadedClasseVIIIRemonta.map(mapToForm) : defaultClasseVIIIRemontaConfig);
       
       // --- Carregar Classe IX ---
       const { data: classeIXData, error: classeIXError } = await supabase
@@ -429,7 +388,12 @@ const DiretrizesCusteioPage = () => {
         toast.error("Informe o ano de referência");
         return;
       }
-      if ((diretrizes.classe_i_valor_qs || 0) <= 0 || (diretrizes.classe_i_valor_qr || 0) <= 0) {
+      
+      // Converte inputs mascarados para valores numéricos
+      const { numericValue: qsNumeric } = formatCurrencyInput(qsInput);
+      const { numericValue: qrNumeric } = formatCurrencyInput(qrInput);
+      
+      if (qsNumeric <= 0 || qrNumeric <= 0) {
         toast.error("Valores de Classe I devem ser maiores que zero");
         return;
       }
@@ -437,8 +401,8 @@ const DiretrizesCusteioPage = () => {
       const diretrizData = {
         user_id: user.id,
         ano_referencia: diretrizes.ano_referencia,
-        classe_i_valor_qs: diretrizes.classe_i_valor_qs,
-        classe_i_valor_qr: diretrizes.classe_i_valor_qr,
+        classe_i_valor_qs: qsNumeric,
+        classe_i_valor_qr: qrNumeric,
         classe_iii_fator_gerador: diretrizes.classe_iii_fator_gerador,
         classe_iii_fator_embarcacao: diretrizes.classe_iii_fator_embarcacao,
         classe_iii_fator_equip_engenharia: diretrizes.classe_iii_fator_equip_engenharia,
@@ -498,7 +462,7 @@ const DiretrizesCusteioPage = () => {
         }
       }
       
-      // 3. Salvar Configurações de Classe II, V, VI, VII e VIII (usando a mesma tabela diretrizes_classe_ii)
+      // 3. Salvar Configurações de Classe II, V, VI, VII e VIII
       
       // Deletar registros antigos de Classe II, V, VI, VII e VIII
       await supabase
@@ -523,7 +487,7 @@ const DiretrizesCusteioPage = () => {
           ano_referencia: diretrizes.ano_referencia,
           categoria: item.categoria,
           item: item.item,
-          valor_mnt_dia: Number(item.valor_mnt_dia || 0),
+          valor_mnt_dia: Number(item.valor_mnt_dia || 0).toFixed(2),
           ativo: true,
         }));
         
@@ -554,14 +518,12 @@ const DiretrizesCusteioPage = () => {
             ano_referencia: diretrizes.ano_referencia,
             categoria: item.categoria,
             item: item.item,
-            // CORREÇÃO CRÍTICA: Conversão explícita para string com 2 casas decimais para garantir o tipo 'numeric' no DB
             valor_mnt_dia: valorMntDia.toFixed(2), 
             valor_acionamento_mensal: valorAcionamentoMensal.toFixed(2),
             ativo: true,
           };
         });
         
-      // MUDANÇA: Inserção individual para maior robustez
       for (const item of classeIXItemsParaSalvar) {
           const { error: c9Error } = await supabase
             .from("diretrizes_classe_ix")
@@ -829,17 +791,9 @@ const DiretrizesCusteioPage = () => {
             }
           };
           
-          // Função auxiliar para formatar o valor como moeda (R$ X.XXX,XX)
-          const formatCurrency = (value: number) => {
-            return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          };
-
-          // Função auxiliar para converter string de moeda para número
-          const parseCurrency = (value: string): number => {
-            // Remove pontos de milhar e substitui vírgula decimal por ponto
-            const cleanedValue = value.replace(/\./g, '').replace(/,/g, '.');
-            return parseFloat(cleanedValue) || 0;
-          };
+          // Converte valor numérico para string de dígitos para o input mascarado
+          const initialValueDigits = String(Math.round(item.valor_mnt_dia * 100));
+          const { formatted: formattedValue } = formatCurrencyInput(initialValueDigits);
 
           return (
             <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
@@ -855,9 +809,15 @@ const DiretrizesCusteioPage = () => {
               <div className="col-span-3">
                 <Label className="text-xs">Valor (R$)</Label>
                 <Input
-                  // Removendo type="number" e estilos para permitir digitação livre e formatação
-                  value={item.valor_mnt_dia === 0 ? "" : formatCurrency(item.valor_mnt_dia)}
-                  onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseCurrency(e.target.value))}
+                  type="text"
+                  inputMode="numeric"
+                  className="text-right"
+                  value={item.valor_mnt_dia === 0 ? "" : formattedValue}
+                  onChange={(e) => {
+                    const { numericValue } = formatCurrencyInput(e.target.value);
+                    // Atualiza o valor numérico no estado
+                    handleUpdateFilteredItem('valor_mnt_dia', numericValue);
+                  }}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
@@ -916,17 +876,6 @@ const DiretrizesCusteioPage = () => {
   ) => {
     const filteredItems = config.filter(item => item.categoria === selectedTab);
     
-    // Função auxiliar para formatar o valor como moeda (R$ X.XXX,XX)
-    const formatCurrency = (value: number) => {
-      return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    };
-
-    // Função auxiliar para converter string de moeda para número
-    const parseCurrency = (value: string): number => {
-      const cleanedValue = value.replace(/\./g, '').replace(/,/g, '.');
-      return parseFloat(cleanedValue) || 0;
-    };
-    
     return (
       <div className="space-y-4 pt-4">
         {filteredItems.map((item, index) => {
@@ -944,6 +893,14 @@ const DiretrizesCusteioPage = () => {
               handleRemoveClasseIXItem(config, setConfig, indexInMainArray);
             }
           };
+          
+          // Mnt/Dia Op Mil
+          const initialMntDiaDigits = String(Math.round(item.valor_mnt_dia * 100));
+          const { formatted: formattedMntDia } = formatCurrencyInput(initialMntDiaDigits);
+          
+          // Acionamento Mensal
+          const initialAcionamentoDigits = String(Math.round(item.valor_acionamento_mensal * 100));
+          const { formatted: formattedAcionamento } = formatCurrencyInput(initialAcionamentoDigits);
 
           return (
             <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
@@ -959,16 +916,28 @@ const DiretrizesCusteioPage = () => {
               <div className="col-span-3">
                 <Label className="text-xs">Mnt/Dia Op Mil (R$)</Label>
                 <Input
-                  value={item.valor_mnt_dia === 0 ? "" : formatCurrency(item.valor_mnt_dia)}
-                  onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseCurrency(e.target.value))}
+                  type="text"
+                  inputMode="numeric"
+                  className="text-right"
+                  value={item.valor_mnt_dia === 0 ? "" : formattedMntDia}
+                  onChange={(e) => {
+                    const { numericValue } = formatCurrencyInput(e.target.value);
+                    handleUpdateFilteredItem('valor_mnt_dia', numericValue);
+                  }}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
               <div className="col-span-2">
                 <Label className="text-xs">Acionamento Mensal (R$)</Label>
                 <Input
-                  value={item.valor_acionamento_mensal === 0 ? "" : formatCurrency(item.valor_acionamento_mensal)}
-                  onChange={(e) => handleUpdateFilteredItem('valor_acionamento_mensal', parseCurrency(e.target.value))}
+                  type="text"
+                  inputMode="numeric"
+                  className="text-right"
+                  value={item.valor_acionamento_mensal === 0 ? "" : formattedAcionamento}
+                  onChange={(e) => {
+                    const { numericValue } = formatCurrencyInput(e.target.value);
+                    handleUpdateFilteredItem('valor_acionamento_mensal', numericValue);
+                  }}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
@@ -1082,6 +1051,10 @@ const DiretrizesCusteioPage = () => {
       </div>
     );
   }
+  
+  // Formatação dos inputs da Classe I
+  const { formatted: formattedQs } = formatCurrencyInput(qsInput);
+  const { formatted: formattedQr } = formatCurrencyInput(qrInput);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1151,11 +1124,11 @@ const DiretrizesCusteioPage = () => {
                         <Label>Valor QS</Label>
                         <div className="relative">
                           <Input
-                            type="number"
-                            step="0.01"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                            value={diretrizes.classe_i_valor_qs?.toFixed(2)}
-                            onChange={(e) => setDiretrizes({ ...diretrizes, classe_i_valor_qs: parseFloat(e.target.value) || 0 })}
+                            type="text"
+                            inputMode="numeric"
+                            className="text-right pr-16"
+                            value={qsInput === "" ? "" : formattedQs}
+                            onChange={(e) => setQsInput(e.target.value)}
                             onKeyDown={handleEnterToNextField}
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
@@ -1165,11 +1138,11 @@ const DiretrizesCusteioPage = () => {
                         <Label>Valor QR</Label>
                         <div className="relative">
                           <Input
-                            type="number"
-                            step="0.01"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                            value={diretrizes.classe_i_valor_qr?.toFixed(2)}
-                            onChange={(e) => setDiretrizes({ ...diretrizes, classe_i_valor_qr: parseFloat(e.target.value) || 0 })}
+                            type="text"
+                            inputMode="numeric"
+                            className="text-right pr-16"
+                            value={qrInput === "" ? "" : formattedQr}
+                            onChange={(e) => setQrInput(e.target.value)}
                             onKeyDown={handleEnterToNextField}
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
