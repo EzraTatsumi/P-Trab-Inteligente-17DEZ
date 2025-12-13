@@ -42,6 +42,10 @@ src/integrations/supabase/types.ts
 
 # Excluir arquivos de dados estáticos e assets
 src/data/classeIIData.ts
+src/data/classeVIData.ts
+src/data/classeVIIData.ts
+src/data/classeVIIIData.ts
+src/data/classeIIIData.ts
 src/assets/
 
 # Excluir componentes da Landing Page
@@ -58,6 +62,7 @@ src/components/ScrollIndicatorButton.tsx
 src/pages/OmConfigPage.tsx
 src/pages/OmBulkUploadPage.tsx
 src/pages/VisualizacaoConfigPage.tsx
+src/pages/DiretrizesCusteioPage.tsx
 
 # Excluir arquivos de consolidação e numeração
 src/components/PTrabConsolidationDialog.tsx
@@ -74,6 +79,7 @@ src/lib/cryptoUtils.ts
 src/pages/PTrabManager.tsx
 src/components/CloneVariationDialog.tsx
 src/components/CreditPromptDialog.tsx
+src/components/CreditInputDialog.tsx
 
 # Otimização Mínima Adicional (UI/Utilitários)
 src/pages/NotFound.tsx
@@ -82,3 +88,16 @@ src/hooks/use-toast.ts
 src/components/EmailVerificationDialog.tsx
 src/components/OmUploadConfirmDialog.tsx
 src/components/CreditInputCard.tsx
+src/components/RmSelector.tsx
+src/components/MarkdownAccordion.tsx
+src/components/MarkdownViewer.tsx
+src/components/HelpDialog.tsx
+src/components/YearManagementDialog.tsx
+src/components/RefLPCFormSection.tsx
+src/components/ClasseIIIRegistryForm.tsx
+src/hooks/useFormNavigation.ts
+src/hooks/use-mobile.tsx
+src/lib/omUtils.ts
+src/lib/ptrabUtils.ts
+src/lib/creditUtils.ts
+src/lib/validationSchemas.ts
