@@ -545,16 +545,21 @@ const DiretrizesCusteioPage = () => {
         
       const classeIXItemsParaSalvar = classeIXConfig
         .filter(item => item.item && (item.valor_mnt_dia || 0) >= 0 && (item.valor_acionamento_mensal || 0) >= 0)
-        .map(item => ({
-          user_id: user.id,
-          ano_referencia: diretrizes.ano_referencia,
-          categoria: item.categoria,
-          item: item.item,
-          // CORREÇÃO FINAL: Coerção robusta para 0 antes de Number()
-          valor_mnt_dia: Number(item.valor_mnt_dia || 0),
-          valor_acionamento_mensal: Number(item.valor_acionamento_mensal || 0),
-          ativo: true,
-        }));
+        .map(item => {
+          const valorMntDia = Number(item.valor_mnt_dia || 0);
+          const valorAcionamentoMensal = Number(item.valor_acionamento_mensal || 0);
+          
+          return {
+            user_id: user.id,
+            ano_referencia: diretrizes.ano_referencia,
+            categoria: item.categoria,
+            item: item.item,
+            // CORREÇÃO CRÍTICA: Conversão explícita para string com 2 casas decimais para garantir o tipo 'numeric' no DB
+            valor_mnt_dia: valorMntDia.toFixed(2), 
+            valor_acionamento_mensal: valorAcionamentoMensal.toFixed(2),
+            ativo: true,
+          };
+        });
         
       if (classeIXItemsParaSalvar.length > 0) {
         const { error: c9Error } = await supabase
