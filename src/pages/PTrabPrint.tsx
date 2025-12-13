@@ -147,7 +147,7 @@ const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 const CLASSE_VI_CATEGORIES = ["Embarcação", "Equipamento de Engenharia"];
 const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
 const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
-const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada", "Motomecanização Consolidada"]; // Adicionado o consolidado
+const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
 
 // =================================================================
 // FUNÇÕES AUXILIARES (MOVIDAS PARA O ESCOPO DO MÓDULO)
@@ -218,19 +218,12 @@ const calculateItemTotalClasseIX = (item: ItemClasseIX, diasOperacao: number): {
     return { base: custoBase, acionamento: custoAcionamento, total };
 };
 
-// NOVO: Gera a memória de cálculo detalhada para Classe IX (CONSOLIDADA)
+// NOVO: Gera a memória de cálculo detalhada para Classe IX (SEM MARGEM)
 const generateClasseIXMemoriaCalculo = (registro: ClasseIIRegistro): string => {
     if (registro.detalhamento_customizado) {
       return registro.detalhamento_customizado;
     }
     
-    // Se o detalhamento automático já foi salvo no registro (o que acontece no ClasseIXForm.tsx), usamos ele.
-    // Isso garante que a memória gerada no formulário (que é o formato consolidado) seja usada.
-    if (registro.detalhamento) {
-        return registro.detalhamento;
-    }
-    
-    // Fallback: Recalcular a memória consolidada se o detalhamento não estiver salvo (não deve acontecer)
     const itens = (registro.itens_motomecanizacao || []) as ItemClasseIX[];
     const diasOperacao = registro.dias_operacao;
     const organizacao = registro.organizacao;
@@ -242,34 +235,61 @@ const generateClasseIXMemoriaCalculo = (registro: ClasseIIRegistro): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const valorTotalFinal = valorND30 + valorND39;
 
-    let totalValorBase = 0;
-    let totalValorAcionamento = 0;
-    let detalhamentoItens = "";
     let totalItens = 0;
 
-    itens.forEach(item => {
+    const gruposPorCategoria = itens.reduce((acc, item) => {
+        const categoria = item.categoria;
         const { base, acionamento, total } = calculateItemTotalClasseIX(item, diasOperacao);
         
-        totalValorBase += base;
-        totalValorAcionamento += acionamento;
+        if (!acc[categoria]) {
+            acc[categoria] = {
+                totalValorBase: 0,
+                totalValorAcionamento: 0,
+                totalQuantidade: 0,
+                detalhes: [],
+            };
+        }
+        
+        acc[categoria].totalValorBase += base;
+        acc[categoria].totalValorAcionamento += acionamento;
+        acc[categoria].totalQuantidade += item.quantidade;
         totalItens += item.quantidade;
         
         const nrMeses = Math.ceil(diasOperacao / 30);
+
+        acc[categoria].detalhes.push(
+            `- ${item.quantidade} ${item.item} (Base: ${formatCurrency(base)}, Acionamento: ${formatCurrency(acionamento)} em ${nrMeses} meses) = ${formatCurrency(total)}.`
+        );
         
-        detalhamentoItens += `\n- (${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)} Mnt/dia x ${diasOperacao} dias) + (${item.quantidade} ${item.item} x ${formatCurrency(item.valor_acionamento_mensal)} / ciclo x ${nrMeses} ciclos) = ${formatCurrency(base)} + ${formatCurrency(acionamento)}.`;
+        return acc;
+    }, {} as Record<string, { totalValorBase: number, totalValorAcionamento: number, totalQuantidade: number, detalhes: string[] }>);
+
+    let detalhamentoItens = "";
+    
+    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
+        const totalCategoria = grupo.totalValorBase + grupo.totalValorAcionamento;
+
+        detalhamentoItens += `\n--- ${getClasseIILabel(categoria).toUpperCase()} (${grupo.totalQuantidade} VTR) ---\n`;
+        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(totalCategoria)}\n`;
+        detalhamentoItens += `Detalhes:\n`;
+        detalhamentoItens += grupo.detalhes.join('\n');
+        detalhamentoItens += `\n`;
     });
     
-    const cabecalho = `33.90.30 / 33.90.39 - Manutenção de ${totalItens} Viaturas Militares do ${organizacao} (UG: ${ug}), durante ${diasOperacao} dias de ${faseFormatada}.
+    detalhamentoItens = detalhamentoItens.trim();
 
-Fórmula: (Qtd e Tipo Vtr x Custo Mnt/dia x Nr dias de operação) + (Qtd e Tipo Vtr x Custo Acionamento Ciclo 30 dias x Nr Ciclos 30 dias).`;
-
-    const rodape = `\n\nTotal: R$ ${formatNumber(totalValorBase, 2)} + R$ ${formatNumber(totalValorAcionamento, 2)} = ${formatCurrency(valorTotalFinal)}.
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe IX (Motomecanização) para ${totalItens} viaturas, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+Recurso destinado à OM proprietária: ${organizacao} (UG: ${ug})
 
 Alocação:
 - ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}.`;
+- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
-    return `${cabecalho}${detalhamentoItens}${rodape}`;
+Fórmula Base: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
+
+${detalhamentoItens}
+
+Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
 };
 
 // Função para gerar memória automática de Classe I
@@ -665,10 +685,10 @@ const PTrabPrint = () => {
     
     const valorDiesel = classeIIIDestaOM
       .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
-      .reduce((sum, record) => sum + record.valor_total, 0);
+      .reduce((acc, reg) => acc + reg.valor_total, 0);
     const valorGasolina = classeIIIDestaOM
       .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
-      .reduce((sum, record) => sum + record.valor_total, 0);
+      .reduce((acc, reg) => acc + reg.valor_total, 0);
     
     const totalCombustivel = valorDiesel + valorGasolina; // Valor total da Classe III Combustível (ND 39)
     
@@ -1010,7 +1030,11 @@ const PTrabPrint = () => {
             valorD = registro.valor_nd_39;
             valorE = registro.valor_nd_30 + registro.valor_nd_39;
             
-            detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+            if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+                detalhamentoValue = generateClasseIXMemoriaCalculo(registro); // NOVO
+            } else {
+                detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+            }
             
           } else if ('tipo_equipamento' in linha.registro) { // Classe III Lubrificante
             const registro = linha.registro as ClasseIIIRegistro;
@@ -1446,7 +1470,7 @@ const PTrabPrint = () => {
                 const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
                 
                 // Se o grupo não tem linhas, pula
-                if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasClasseV.length === 0 && grupo.linhasClasseVI.length === 0 && grupo.linhasClasseVII.length === 0 && grupo.linhasClasseVIII.length === 0 && grupo.linhasClasseIX.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
+                if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasClasseV.length === 0 && grupo.linhasClasseVI.length === 0 && grupo.linhasClasseVII.length === 0 && grupo.linhasClasseVIII.length === 0 && grupo.linhasClasseIX.length === 0 && grupo.linhasLubrificante.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
                   return [];
                 }
                 
@@ -1506,12 +1530,16 @@ const PTrabPrint = () => {
                         }
                             
                         rowData.despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
-                        omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
-                        valorC = registro.valor_nd_30;
-                        valorD = registro.valor_nd_39;
-                        valorE = registro.valor_nd_30 + registro.valor_nd_39;
+                        rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
+                        rowData.valorC = registro.valor_nd_30;
+                        rowData.valorD = registro.valor_nd_39;
+                        rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
                         
-                        rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+                        if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+                            rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro); // NOVO
+                        } else {
+                            rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+                        }
                         
                     } else if (isLubrificante) { // Classe III Lubrificante
                         const registro = linha.registro as ClasseIIIRegistro;
@@ -1524,8 +1552,8 @@ const PTrabPrint = () => {
                         }
                         rowData.despesasValue = despesasLubValue;
                         rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
-                        valorC = registro.valor_total;
-                        valorE = registro.valor_total;
+                        rowData.valorC = registro.valor_total;
+                        rowData.valorE = registro.valor_total;
                         rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
                     }
                     
