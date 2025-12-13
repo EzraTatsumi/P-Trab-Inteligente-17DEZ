@@ -1,121 +1,64 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'sonner';
-import { ThemeProvider } from '@/components/ThemeProvider'; // Caminho corrigido
-import { SessionContextProvider, useSession } from '@/components/SessionContextProvider';
-import { Loader2 } from 'lucide-react';
-
-// Pages
-import Index from '@/pages/Index';
-import Login from '@/pages/Login';
-import PTrabManager from '@/pages/PTrabManager';
-import PTrabForm from '@/pages/PTrabForm';
-import OmConfigPage from '@/pages/OmConfigPage';
-import OmBulkUploadPage from '@/pages/OmBulkUploadPage';
-import VisualizacaoConfigPage from '@/pages/VisualizacaoConfigPage';
-import DiretrizesCusteioPage from '@/pages/DiretrizesCusteioPage';
-import PTrabExportImportPage from '@/pages/PTrabExportImportPage';
-import NotFound from '@/pages/NotFound';
-
-// Classe Forms
-import ClasseIForm from '@/pages/ClasseIForm';
-import ClasseIIForm from '@/pages/ClasseIIForm';
-import ClasseIIIForm from '@/pages/ClasseIIIForm';
-import ClasseVForm from '@/pages/ClasseVForm';
-import ClasseVIForm from '@/pages/ClasseVIForm';
-import ClasseVIIForm from '@/pages/ClasseVIIForm';
-import ClasseVIIIForm from '@/pages/ClasseVIIIForm';
-import ClasseIXForm from '@/pages/ClasseIXForm'; // Adicionado import para Classe IX
-
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
+import { SessionContextProvider } from "./components/SessionContextProvider"; // Importar SessionContextProvider
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import PTrabManager from "./pages/PTrabManager";
+import PTrabForm from "./pages/PTrabForm";
+import PTrabPrint from "./pages/PTrabPrint";
+import ClasseIForm from "./pages/ClasseIForm";
+import ClasseIIForm from "./pages/ClasseIIForm"; // Importar ClasseIIForm
+import ClasseVForm from "./pages/ClasseVForm"; // Importar ClasseVForm
+import ClasseIIIForm from "./pages/ClasseIIIForm";
+import ClasseVIForm from "./pages/ClasseVIForm"; // Importar ClasseVIForm
+import ClasseVIIForm from "./pages/ClasseVIIForm"; // Importar ClasseVIIForm
+import ClasseVIIIForm from "./pages/ClasseVIIIForm"; // NOVO: Importar ClasseVIIIForm
+import DiretrizesCusteioPage from "./pages/DiretrizesCusteioPage";
+import VisualizacaoConfigPage from "./pages/VisualizacaoConfigPage";
+import OmConfigPage from "./pages/OmConfigPage";
+import OmBulkUploadPage from "./pages/OmBulkUploadPage";
+import PTrabExportImportPage from "./pages/PTrabExportImportPage";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-// Componente de Rota Protegida
-const ProtectedRoute = ({ element }: { element: React.ReactElement }) => {
-  const { user, loading } = useSession();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return element;
-};
-
-// Componente de Rota de Login
-const LoginRoute = ({ element }: { element: React.ReactElement }) => {
-  const { user, loading } = useSession();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (user) {
-    return <Navigate to="/ptrab" replace />;
-  }
-
-  return element;
-};
-
-
-function AppRoutes() {
-  return (
-    <Routes>
-      {/* Rotas Públicas */}
-      <Route path="/" element={<Index />} />
-      <Route path="/login" element={<LoginRoute element={<Login />} />} />
-
-      {/* Rotas Protegidas */}
-      <Route path="/ptrab" element={<ProtectedRoute element={<PTrabManager />} />} />
-      <Route path="/ptrab/form" element={<ProtectedRoute element={<PTrabForm />} />} />
-      
-      {/* Rotas de Formulários de Classes */}
-      <Route path="/ptrab/classe-i" element={<ProtectedRoute element={<ClasseIForm />} />} />
-      <Route path="/ptrab/classe-ii" element={<ProtectedRoute element={<ClasseIIForm />} />} />
-      <Route path="/ptrab/classe-iii" element={<ProtectedRoute element={<ClasseIIIForm />} />} />
-      <Route path="/ptrab/classe-v" element={<ProtectedRoute element={<ClasseVForm />} />} />
-      <Route path="/ptrab/classe-vi" element={<ProtectedRoute element={<ClasseVIForm />} />} />
-      <Route path="/ptrab/classe-vii" element={<ProtectedRoute element={<ClasseVIIForm />} />} />
-      <Route path="/ptrab/classe-viii" element={<ProtectedRoute element={<ClasseVIIIForm />} />} />
-      <Route path="/ptrab/classe-ix" element={<ProtectedRoute element={<ClasseIXForm />} />} /> {/* Adicionada rota para Classe IX */}
-
-      {/* Rotas de Configuração */}
-      <Route path="/config/om" element={<ProtectedRoute element={<OmConfigPage />} />} />
-      <Route path="/config/om/upload" element={<ProtectedRoute element={<OmBulkUploadPage />} />} />
-      <Route path="/config/visualizacao" element={<ProtectedRoute element={<VisualizacaoConfigPage />} />} />
-      <Route path="/config/custeio" element={<ProtectedRoute element={<DiretrizesCusteioPage />} />} />
-      <Route path="/config/export-import" element={<ProtectedRoute element={<PTrabExportImportPage />} />} />
-
-      {/* Rota 404 */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
-}
-
-function App() {
-  return (
-    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
-      <QueryClientProvider client={queryClient}>
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
         <BrowserRouter>
-          <SessionContextProvider>
-            <AppRoutes />
-            <Toaster richColors />
+          <SessionContextProvider> {/* Envolver a aplicação com SessionContextProvider */}
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/ptrab" element={<PTrabManager />} />
+              <Route path="/ptrab/form" element={<PTrabForm />} />
+              <Route path="/ptrab/print" element={<PTrabPrint />} />
+              <Route path="/ptrab/classe-i" element={<ClasseIForm />} />
+              <Route path="/ptrab/classe-ii" element={<ClasseIIForm />} />
+              <Route path="/ptrab/classe-v" element={<ClasseVForm />} />
+              <Route path="/ptrab/classe-vi" element={<ClasseVIForm />} />
+              <Route path="/ptrab/classe-vii" element={<ClasseVIIForm />} />
+              <Route path="/ptrab/classe-viii" element={<ClasseVIIIForm />} /> {/* Rota para Classe VIII */}
+              <Route path="/ptrab/classe-iii" element={<ClasseIIIForm />} />
+              <Route path="/config/diretrizes" element={<DiretrizesCusteioPage />} />
+              <Route path="/config/visualizacao" element={<VisualizacaoConfigPage />} />
+              <Route path="/config/om" element={<OmConfigPage />} />
+              <Route path="/config/om/bulk-upload" element={<OmBulkUploadPage />} />
+              <Route path="/config/ptrab-export-import" element={<PTrabExportImportPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </SessionContextProvider>
         </BrowserRouter>
-      </QueryClientProvider>
+      </TooltipProvider>
     </ThemeProvider>
-  );
-}
+  </QueryClientProvider>
+);
 
 export default App;
