@@ -500,12 +500,15 @@ const DiretrizesCusteioPage = () => {
         // Inserir novos registros
         const configList = configsClasseIII[categoria as keyof typeof configsClasseIII];
         const equipamentosParaSalvar = configList
-          .filter(g => g.nome_equipamento && g.consumo > 0)
+          .filter(g => g.nome_equipamento.trim().length > 0 && g.consumo > 0)
           .map(g => ({
             user_id: user.id,
             ano_referencia: diretrizes.ano_referencia,
             categoria: categoria,
-            ...g,
+            nome_equipamento: g.nome_equipamento,
+            tipo_combustivel: g.tipo_combustivel,
+            consumo: Number(g.consumo).toFixed(2), // Garantir precisão
+            unidade: g.unidade,
           }));
 
         if (equipamentosParaSalvar.length > 0) {
@@ -535,13 +538,13 @@ const DiretrizesCusteioPage = () => {
       ];
         
       const classeItemsParaSalvar = allClasseItems
-        .filter(item => item.item && (item.valor_mnt_dia || 0) >= 0)
+        .filter(item => item.item.trim().length > 0 && (item.valor_mnt_dia || 0) >= 0)
         .map(item => ({
           user_id: user.id,
           ano_referencia: diretrizes.ano_referencia,
           categoria: item.categoria,
           item: item.item,
-          valor_mnt_dia: Number(item.valor_mnt_dia || 0),
+          valor_mnt_dia: Number(item.valor_mnt_dia || 0).toFixed(2), // Garantir precisão
           ativo: true,
         }));
         
@@ -562,7 +565,7 @@ const DiretrizesCusteioPage = () => {
         .eq("ano_referencia", diretrizes.ano_referencia!);
         
       const classeIXItemsParaSalvar = classeIXConfig
-        .filter(item => item.item && (item.valor_mnt_dia || 0) >= 0 && (item.valor_acionamento_mensal || 0) >= 0)
+        .filter(item => item.item.trim().length > 0 && (item.valor_mnt_dia || 0) >= 0 && (item.valor_acionamento_mensal || 0) >= 0)
         .map(item => {
           const valorMntDia = Number(item.valor_mnt_dia || 0);
           const valorAcionamentoMensal = Number(item.valor_acionamento_mensal || 0);
@@ -572,14 +575,14 @@ const DiretrizesCusteioPage = () => {
             ano_referencia: diretrizes.ano_referencia,
             categoria: item.categoria,
             item: item.item,
-            // CORREÇÃO CRÍTICA: Conversão explícita para string com 2 casas decimais para garantir o tipo 'numeric' no DB
+            // Conversão explícita para string com 2 casas decimais para garantir o tipo 'numeric' no DB
             valor_mnt_dia: valorMntDia.toFixed(2), 
             valor_acionamento_mensal: valorAcionamentoMensal.toFixed(2),
             ativo: true,
           };
         });
         
-      // MUDANÇA: Inserção individual para maior robustez
+      // Inserção individual para maior robustez
       for (const item of classeIXItemsParaSalvar) {
           const { error: c9Error } = await supabase
             .from("diretrizes_classe_ix")
