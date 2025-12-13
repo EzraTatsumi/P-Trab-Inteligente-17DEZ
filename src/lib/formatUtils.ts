@@ -78,10 +78,21 @@ export const formatInputWithThousands = (value: string | undefined | null): stri
 };
 
 /**
+ * Converts a numeric value (e.g., 9.00) into a raw string of digits (e.g., "900") 
+ * suitable for the formatCurrencyInput masking function.
+ */
+export const numberToRawDigits = (num: number | undefined | null): string => {
+  if (num === undefined || num === null || isNaN(num)) return "";
+  // Multiply by 100, round to handle floating point issues, convert to string
+  return String(Math.round(num * 100));
+};
+
+
+/**
  * Formata uma string de dígitos para o formato monetário brasileiro (preenchimento da direita).
  * Ex: "1" -> "0,01", "12" -> "0,12", "123" -> "1,23"
  * @param value String contendo apenas dígitos.
- * @returns String formatada com vírgula e ponto de milhar.
+ * @returns { formatted: string, numericValue: number, digits: string } String formatada com vírgula e ponto de milhar, valor numérico e dígitos brutos.
  */
 export const formatCurrencyInput = (value: string | undefined | null): { formatted: string, numericValue: number, digits: string } => {
   // FIX: Ensure value is treated as a string, defaulting to empty string if null or undefined

@@ -11,7 +11,7 @@ import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeft, Fuel, Package, Setting
 import { DiretrizCusteio } from "@/types/diretrizes";
 import { DiretrizEquipamentoForm } from "@/types/diretrizesEquipamentos";
 import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
-import { DiretrizClasseIXForm } from "@/types/diretrizesClasseIX"; // NOVO IMPORT
+import { DiretrizClasseIXForm } from "@/types/diretrizesClasseIX";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -22,7 +22,8 @@ import { YearManagementDialog } from "@/components/YearManagementDialog";
 import { defaultClasseVIConfig } from "@/data/classeVIData";
 import { defaultClasseVIIConfig } from "@/data/classeVIIData";
 import { defaultClasseVIIISaudeConfig, defaultClasseVIIIRemontaConfig } from "@/data/classeVIIIData";
-import { defaultClasseIXConfig } from "@/data/classeIXData"; // NOVO IMPORT
+import { defaultClasseIXConfig } from "@/data/classeIXData";
+import { formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils"; // Import new utilities
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -106,7 +107,7 @@ const CATEGORIAS_CLASSE_VIII = [
   "Remonta/Veterinária",
 ];
 
-const CATEGORIAS_CLASSE_IX = [ // NOVO
+const CATEGORIAS_CLASSE_IX = [
   "Vtr Administrativa",
   "Vtr Operacional",
   "Motocicleta",
@@ -139,7 +140,7 @@ const DiretrizesCusteioPage = () => {
   const [showClasseVIConfig, setShowClasseVIConfig] = useState(false); 
   const [showClasseVIIConfig, setShowClasseVIIConfig] = useState(false);
   const [showClasseVIIIConfig, setShowClasseVIIIConfig] = useState(false);
-  const [showClasseIXConfig, setShowClasseIXConfig] = useState(false); // NOVO ESTADO
+  const [showClasseIXConfig, setShowClasseIXConfig] = useState(false);
   const [showClasseIIIConfig, setShowClasseIIIConfig] = useState(false);
   
   const [geradorConfig, setGeradorConfig] = useState<DiretrizEquipamentoForm[]>(defaultGeradorConfig);
@@ -153,7 +154,7 @@ const DiretrizesCusteioPage = () => {
   const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig);
   const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig);
   const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig);
-  const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIXForm[]>(defaultClasseIXConfig); // NOVO ESTADO
+  const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIXForm[]>(defaultClasseIXConfig);
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -164,13 +165,20 @@ const DiretrizesCusteioPage = () => {
   const [selectedClasseIIITab, setSelectedClasseIIITab] = useState<string>(CATEGORIAS_CLASSE_III[0].key);
   const [selectedClasseVIITab, setSelectedClasseVIITab] = useState<string>(CATEGORIAS_CLASSE_VII[0]);
   const [selectedClasseVIIITab, setSelectedClasseVIIITab] = useState<string>(CATEGORIAS_CLASSE_VIII[0]);
-  const [selectedClasseIXTab, setSelectedClasseIXTab] = useState<string>(CATEGORIAS_CLASSE_IX[0]); // NOVO ESTADO
+  const [selectedClasseIXTab, setSelectedClasseIXTab] = useState<string>(CATEGORIAS_CLASSE_IX[0]);
   
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   const [defaultYear, setDefaultYear] = useState<number | null>(null);
   
-  const { handleEnterToNextField } = useFormNavigation();
+  // NOVOS ESTADOS PARA RAW INPUTS (CLASSE I)
   const currentYear = new Date().getFullYear();
+  const [rawQSInput, setRawQSInput] = useState<string>(numberToRawDigits(defaultDiretrizes(currentYear).classe_i_valor_qs));
+  const [rawQRInput, setRawQRInput] = useState<string>(numberToRawDigits(defaultDiretrizes(currentYear).classe_i_valor_qr));
+  
+  // NOVO ESTADO PARA RASTREAR O INPUT FOCADO NA LISTA DINÂMICA
+  const [focusedInput, setFocusedInput] = useState<{ index: number, field: string, rawDigits: string } | null>(null);
+  
+  const { handleEnterToNextField } = useFormNavigation();
 
   useEffect(() => {
     checkAuthAndLoadYears();
@@ -271,8 +279,18 @@ const DiretrizesCusteioPage = () => {
           classe_iii_fator_equip_engenharia: Number(data.classe_iii_fator_equip_engenharia),
           observacoes: data.observacoes || "",
         });
+        
+        // Initialize raw inputs based on loaded numeric values
+        setRawQSInput(numberToRawDigits(Number(data.classe_i_valor_qs)));
+        setRawQRInput(numberToRawDigits(Number(data.classe_i_valor_qr)));
+        
       } else {
-        setDiretrizes(defaultDiretrizes(year));
+        const defaultValues = defaultDiretrizes(year);
+        setDiretrizes(defaultValues);
+        
+        // Initialize raw inputs based on default numeric values
+        setRawQSInput(numberToRawDigits(defaultValues.classe_i_valor_qs));
+        setRawQRInput(numberToRawDigits(defaultValues.classe_i_valor_qr));
       }
       
       // --- Carregar Classe II, V, VI, VII e VIII (usando a mesma tabela) ---
@@ -784,6 +802,19 @@ const DiretrizesCusteioPage = () => {
     setConfig(novosItens);
   };
   
+  // Handler para Classe I inputs
+  const handleClasseIChange = (field: 'classe_i_valor_qs' | 'classe_i_valor_qr', rawValue: string) => {
+    const { numericValue, digits } = formatCurrencyInput(rawValue);
+    
+    if (field === 'classe_i_valor_qs') {
+        setRawQSInput(digits);
+        setDiretrizes(prev => ({ ...prev, classe_i_valor_qs: numericValue }));
+    } else {
+        setRawQRInput(digits);
+        setDiretrizes(prev => ({ ...prev, classe_i_valor_qr: numericValue }));
+    }
+  };
+  
   // --- Funções de Gerenciamento da Classe II, V, VI, VII e VIII ---
   const handleAddClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, categoria: DiretrizClasseIIForm['categoria']) => {
     setConfig(prev => [
@@ -811,35 +842,62 @@ const DiretrizesCusteioPage = () => {
   ) => {
     const filteredItems = config.filter(item => item.categoria === selectedTab);
     
+    // --- MASKING LOGIC HELPERS ---
+    const fieldName = 'valor_mnt_dia';
+    
+    const getMaskingProps = (item: DiretrizClasseIIForm, indexInMainArray: number) => {
+        const isFocused = focusedInput?.index === indexInMainArray && focusedInput.field === fieldName;
+        
+        let displayValue = isFocused 
+            ? formatCurrencyInput(focusedInput.rawDigits).formatted
+            : formatCurrencyInput(numberToRawDigits(item.valor_mnt_dia)).formatted;
+            
+        if (item.valor_mnt_dia === 0 && !isFocused) {
+            displayValue = "";
+        }
+
+        const handleFocus = () => {
+            setFocusedInput({ 
+                index: indexInMainArray, 
+                field: fieldName, 
+                rawDigits: numberToRawDigits(item.valor_mnt_dia) 
+            });
+        };
+
+        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const { numericValue, digits } = formatCurrencyInput(e.target.value);
+            setFocusedInput(prev => prev ? { ...prev, rawDigits: digits } : null);
+            handleUpdateClasseItem(config, setConfig, indexInMainArray, fieldName, numericValue);
+        };
+        
+        const handleBlur = () => {
+            setFocusedInput(null);
+        };
+        
+        return {
+            value: displayValue,
+            onChange: handleChange,
+            onFocus: handleFocus,
+            onBlur: handleBlur,
+            type: "text" as const,
+            inputMode: "numeric" as const,
+        };
+    };
+    // --- END MASKING LOGIC HELPERS ---
+    
     return (
       <div className="space-y-4 pt-4">
         {filteredItems.map((item, index) => {
           // Encontrar o índice original no array completo para permitir a atualização/remoção
           const indexInMainArray = config.findIndex(c => c === item);
           
-          const handleUpdateFilteredItem = (field: keyof DiretrizClasseIIForm, value: any) => {
-            if (indexInMainArray !== -1) {
-              handleUpdateClasseItem(config, setConfig, indexInMainArray, field, value);
-            }
-          };
-
           const handleRemoveFilteredItem = () => {
             if (indexInMainArray !== -1) {
               handleRemoveClasseItem(config, setConfig, indexInMainArray);
             }
           };
           
-          // Função auxiliar para formatar o valor como moeda (R$ X.XXX,XX)
-          const formatCurrency = (value: number) => {
-            return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          };
-
-          // Função auxiliar para converter string de moeda para número
-          const parseCurrency = (value: string): number => {
-            // Remove pontos de milhar e substitui vírgula decimal por ponto
-            const cleanedValue = value.replace(/\./g, '').replace(/,/g, '.');
-            return parseFloat(cleanedValue) || 0;
-          };
+          const mntDiaProps = getMaskingProps(item, indexInMainArray);
 
           return (
             <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
@@ -847,7 +905,7 @@ const DiretrizesCusteioPage = () => {
                 <Label className="text-xs">Item</Label>
                 <Input
                   value={item.item}
-                  onChange={(e) => handleUpdateFilteredItem('item', e.target.value)}
+                  onChange={(e) => handleUpdateClasseItem(config, setConfig, indexInMainArray, 'item', e.target.value)}
                   placeholder="Ex: Colete balístico"
                   onKeyDown={handleEnterToNextField}
                 />
@@ -855,9 +913,7 @@ const DiretrizesCusteioPage = () => {
               <div className="col-span-3">
                 <Label className="text-xs">Valor (R$)</Label>
                 <Input
-                  // Removendo type="number" e estilos para permitir digitação livre e formatação
-                  value={item.valor_mnt_dia === 0 ? "" : formatCurrency(item.valor_mnt_dia)}
-                  onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseCurrency(e.target.value))}
+                  {...mntDiaProps}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
@@ -916,16 +972,46 @@ const DiretrizesCusteioPage = () => {
   ) => {
     const filteredItems = config.filter(item => item.categoria === selectedTab);
     
-    // Função auxiliar para formatar o valor como moeda (R$ X.XXX,XX)
-    const formatCurrency = (value: number) => {
-      return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    };
+    // --- MASKING LOGIC HELPERS ---
+    const getMaskingProps = (item: DiretrizClasseIXForm, indexInMainArray: number, fieldName: keyof DiretrizClasseIXForm) => {
+        const isFocused = focusedInput?.index === indexInMainArray && focusedInput.field === fieldName;
+        
+        let displayValue = isFocused 
+            ? formatCurrencyInput(focusedInput.rawDigits).formatted
+            : formatCurrencyInput(numberToRawDigits(item[fieldName] as number)).formatted;
+            
+        if ((item[fieldName] as number) === 0 && !isFocused) {
+            displayValue = "";
+        }
 
-    // Função auxiliar para converter string de moeda para número
-    const parseCurrency = (value: string): number => {
-      const cleanedValue = value.replace(/\./g, '').replace(/,/g, '.');
-      return parseFloat(cleanedValue) || 0;
+        const handleFocus = () => {
+            setFocusedInput({ 
+                index: indexInMainArray, 
+                field: fieldName, 
+                rawDigits: numberToRawDigits(item[fieldName] as number) 
+            });
+        };
+
+        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const { numericValue, digits } = formatCurrencyInput(e.target.value);
+            setFocusedInput(prev => prev ? { ...prev, rawDigits: digits } : null);
+            handleUpdateClasseIXItem(config, setConfig, indexInMainArray, fieldName, numericValue);
+        };
+        
+        const handleBlur = () => {
+            setFocusedInput(null);
+        };
+        
+        return {
+            value: displayValue,
+            onChange: handleChange,
+            onFocus: handleFocus,
+            onBlur: handleBlur,
+            type: "text" as const,
+            inputMode: "numeric" as const,
+        };
     };
+    // --- END MASKING LOGIC HELPERS ---
     
     return (
       <div className="space-y-4 pt-4">
@@ -933,17 +1019,14 @@ const DiretrizesCusteioPage = () => {
           // Encontrar o índice original no array completo para permitir a atualização/remoção
           const indexInMainArray = config.findIndex(c => c === item);
           
-          const handleUpdateFilteredItem = (field: keyof DiretrizClasseIXForm, value: any) => {
-            if (indexInMainArray !== -1) {
-              handleUpdateClasseIXItem(config, setConfig, indexInMainArray, field, value);
-            }
-          };
-
           const handleRemoveFilteredItem = () => {
             if (indexInMainArray !== -1) {
               handleRemoveClasseIXItem(config, setConfig, indexInMainArray);
             }
           };
+          
+          const mntDiaProps = getMaskingProps(item, indexInMainArray, 'valor_mnt_dia');
+          const acionamentoMensalProps = getMaskingProps(item, indexInMainArray, 'valor_acionamento_mensal');
 
           return (
             <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
@@ -951,7 +1034,7 @@ const DiretrizesCusteioPage = () => {
                 <Label className="text-xs">Tipo Vtr</Label>
                 <Input
                   value={item.item}
-                  onChange={(e) => handleUpdateFilteredItem('item', e.target.value)}
+                  onChange={(e) => handleUpdateClasseIXItem(config, setConfig, indexInMainArray, 'item', e.target.value)}
                   placeholder="Ex: VTP Sedan Médio"
                   onKeyDown={handleEnterToNextField}
                 />
@@ -959,16 +1042,14 @@ const DiretrizesCusteioPage = () => {
               <div className="col-span-3">
                 <Label className="text-xs">Mnt/Dia Op Mil (R$)</Label>
                 <Input
-                  value={item.valor_mnt_dia === 0 ? "" : formatCurrency(item.valor_mnt_dia)}
-                  onChange={(e) => handleUpdateFilteredItem('valor_mnt_dia', parseCurrency(e.target.value))}
+                  {...mntDiaProps}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
               <div className="col-span-2">
                 <Label className="text-xs">Acionamento Mensal (R$)</Label>
                 <Input
-                  value={item.valor_acionamento_mensal === 0 ? "" : formatCurrency(item.valor_acionamento_mensal)}
-                  onChange={(e) => handleUpdateFilteredItem('valor_acionamento_mensal', parseCurrency(e.target.value))}
+                  {...acionamentoMensalProps}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
@@ -1151,11 +1232,11 @@ const DiretrizesCusteioPage = () => {
                         <Label>Valor QS</Label>
                         <div className="relative">
                           <Input
-                            type="number"
-                            step="0.01"
+                            type="text"
+                            inputMode="numeric"
                             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                            value={diretrizes.classe_i_valor_qs?.toFixed(2)}
-                            onChange={(e) => setDiretrizes({ ...diretrizes, classe_i_valor_qs: parseFloat(e.target.value) || 0 })}
+                            value={formatCurrencyInput(rawQSInput).formatted}
+                            onChange={(e) => handleClasseIChange('classe_i_valor_qs', e.target.value)}
                             onKeyDown={handleEnterToNextField}
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
@@ -1165,11 +1246,11 @@ const DiretrizesCusteioPage = () => {
                         <Label>Valor QR</Label>
                         <div className="relative">
                           <Input
-                            type="number"
-                            step="0.01"
+                            type="text"
+                            inputMode="numeric"
                             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                            value={diretrizes.classe_i_valor_qr?.toFixed(2)}
-                            onChange={(e) => setDiretrizes({ ...diretrizes, classe_i_valor_qr: parseFloat(e.target.value) || 0 })}
+                            value={formatCurrencyInput(rawQRInput).formatted}
+                            onChange={(e) => handleClasseIChange('classe_i_valor_qr', e.target.value)}
                             onKeyDown={handleEnterToNextField}
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
