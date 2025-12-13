@@ -687,7 +687,7 @@ const ClasseIXForm = () => {
       fetchRegistros();
     } catch (error) {
       console.error("Erro ao salvar registros de Classe IX:", error);
-      toast.error("Erro ao salvar registros de Classe IX");
+      toast.error(sanitizeError(error)); // FIX: Use sanitizeError
     } finally {
       setLoading(false);
     }
