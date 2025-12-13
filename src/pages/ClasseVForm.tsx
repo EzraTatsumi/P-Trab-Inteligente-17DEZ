@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
+import { areNumbersEqual, formatFasesParaTexto } from "@/lib/classeUtils"; // NOVO IMPORT
 
 type Categoria = 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN';
 
@@ -87,24 +88,6 @@ const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
     'Armt P': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
     'IODCT': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
     'DQBRN': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
-};
-
-const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
-    return Math.abs(a - b) < tolerance;
-};
-
-const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
-  if (!faseCSV) return 'operação';
-  
-  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
-  
-  if (fases.length === 0) return 'operação';
-  if (fases.length === 1) return fases[0];
-  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
-  
-  const ultimaFase = fases[fases.length - 1];
-  const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFases}`;
 };
 
 const generateDetalhamento = (itens: ItemClasseV[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {

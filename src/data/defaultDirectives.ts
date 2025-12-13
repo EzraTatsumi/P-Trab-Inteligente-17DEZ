@@ -1,13 +1,14 @@
 import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
 import { DiretrizClasseIXForm } from "@/types/diretrizesClasseIX";
 
-// --- CLASSE III EQUIPMENT FALLBACKS ---
+// --- CLASSE III EQUIPMENT FALLBACKS TYPE DEFINITION ---
 export interface TipoEquipamentoDetalhado {
   nome: string;
   combustivel: 'GAS' | 'OD';
   consumo: number;
   unidade: 'L/h' | 'km/L';
 }
+// ------------------------------------------------------
 
 export const grupoGeradores: TipoEquipamentoDetalhado[] = [
   { nome: "Gerador até 15 kva GAS", combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
