@@ -763,22 +763,24 @@ const DiretrizesCusteioPage = () => {
 
   // Função genérica para adicionar item (Classe III)
   const handleAddItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, unidade: 'L/h' | 'km/L') => {
-    setConfig([
-      ...config,
+    setConfig(prevConfig => [
+      ...prevConfig,
       { nome_equipamento: "", tipo_combustivel: "OD", consumo: 0, unidade: unidade }
     ]);
   };
 
   // Função genérica para remover item (Classe III)
   const handleRemoveItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, index: number) => {
-    setConfig(config.filter((_, i) => i !== index));
+    setConfig(prevConfig => prevConfig.filter((_, i) => i !== index));
   };
 
   // Função genérica para atualizar item (Classe III)
-  const handleUpdateItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, index: number, field: keyof DiretrizEquipamentoForm, value: any) => {
-    const novosItens = [...config];
-    novosItens[index] = { ...novosItens[index], [field]: value };
-    setConfig(novosItens);
+  const handleUpdateItem = (setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, index: number, field: keyof DiretrizEquipamentoForm, value: any) => {
+    setConfig(prevConfig => {
+      const novosItens = [...prevConfig];
+      novosItens[index] = { ...novosItens[index], [field]: value };
+      return novosItens;
+    });
   };
   
   // --- Funções de Gerenciamento da Classe II, V, VI, VII e VIII ---
@@ -790,13 +792,15 @@ const DiretrizesCusteioPage = () => {
   };
 
   const handleRemoveClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, index: number) => {
-    setConfig(config.filter((_, i) => i !== index));
+    setConfig(prevConfig => prevConfig.filter((_, i) => i !== index));
   };
 
-  const handleUpdateClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, index: number, field: keyof DiretrizClasseIIForm, value: any) => {
-    const novosItens = [...config];
-    novosItens[index] = { ...novosItens[index], [field]: value };
-    setConfig(novosItens);
+  const handleUpdateClasseItem = (setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, index: number, field: keyof DiretrizClasseIIForm, value: any) => {
+    setConfig(prevConfig => {
+      const novosItens = [...prevConfig];
+      novosItens[index] = { ...novosItens[index], [field]: value };
+      return novosItens;
+    });
   };
   
   // Função para renderizar a lista de itens da Classe II/V/VI/VII/VIII por categoria
@@ -808,6 +812,18 @@ const DiretrizesCusteioPage = () => {
   ) => {
     const filteredItems = config.filter(item => item.categoria === selectedTab);
     
+    // Função auxiliar para formatar o valor como moeda (R$ X.XXX,XX)
+    const formatCurrency = (value: number) => {
+      return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    // Função auxiliar para converter string de moeda para número
+    const parseCurrency = (value: string): number => {
+      // Remove pontos de milhar e substitui vírgula decimal por ponto
+      const cleanedValue = value.replace(/\./g, '').replace(/,/g, '.');
+      return parseFloat(cleanedValue) || 0;
+    };
+    
     return (
       <div className="space-y-4 pt-4">
         {filteredItems.map((item, index) => {
@@ -816,7 +832,7 @@ const DiretrizesCusteioPage = () => {
           
           const handleUpdateFilteredItem = (field: keyof DiretrizClasseIIForm, value: any) => {
             if (indexInMainArray !== -1) {
-              handleUpdateClasseItem(config, setConfig, indexInMainArray, field, value);
+              handleUpdateClasseItem(setConfig, indexInMainArray, field, value);
             }
           };
 
@@ -826,18 +842,6 @@ const DiretrizesCusteioPage = () => {
             }
           };
           
-          // Função auxiliar para formatar o valor como moeda (R$ X.XXX,XX)
-          const formatCurrency = (value: number) => {
-            return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          };
-
-          // Função auxiliar para converter string de moeda para número
-          const parseCurrency = (value: string): number => {
-            // Remove pontos de milhar e substitui vírgula decimal por ponto
-            const cleanedValue = value.replace(/\./g, '').replace(/,/g, '.');
-            return parseFloat(cleanedValue) || 0;
-          };
-
           return (
             <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
               <div className="col-span-8">
@@ -895,13 +899,15 @@ const DiretrizesCusteioPage = () => {
   };
 
   const handleRemoveClasseIXItem = (config: DiretrizClasseIXForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIXForm[]>>, index: number) => {
-    setConfig(config.filter((_, i) => i !== index));
+    setConfig(prevConfig => prevConfig.filter((_, i) => i !== index));
   };
 
-  const handleUpdateClasseIXItem = (config: DiretrizClasseIXForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIXForm[]>>, index: number, field: keyof DiretrizClasseIXForm, value: any) => {
-    const novosItens = [...config];
-    novosItens[index] = { ...novosItens[index], [field]: value };
-    setConfig(novosItens);
+  const handleUpdateClasseIXItem = (setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIXForm[]>>, index: number, field: keyof DiretrizClasseIXForm, value: any) => {
+    setConfig(prevConfig => {
+      const novosItens = [...prevConfig];
+      novosItens[index] = { ...novosItens[index], [field]: value };
+      return novosItens;
+    });
   };
   
   // Função para renderizar a lista de itens da Classe IX por categoria
@@ -932,7 +938,7 @@ const DiretrizesCusteioPage = () => {
           
           const handleUpdateFilteredItem = (field: keyof DiretrizClasseIXForm, value: any) => {
             if (indexInMainArray !== -1) {
-              handleUpdateClasseIXItem(config, setConfig, indexInMainArray, field, value);
+              handleUpdateClasseIXItem(setConfig, indexInMainArray, field, value);
             }
           };
 
@@ -1009,7 +1015,7 @@ const DiretrizesCusteioPage = () => {
               <Label className="text-xs">Nome do Equipamento</Label>
               <Input
                 value={item.nome_equipamento}
-                onChange={(e) => handleUpdateItem(config, setConfig, index, 'nome_equipamento', e.target.value)}
+                onChange={(e) => handleUpdateItem(setConfig, index, 'nome_equipamento', e.target.value)}
                 placeholder="Ex: Retroescavadeira"
                 onKeyDown={handleEnterToNextField}
               />
@@ -1018,7 +1024,7 @@ const DiretrizesCusteioPage = () => {
               <Label className="text-xs">Combustível</Label>
               <Select
                 value={item.tipo_combustivel}
-                onValueChange={(val: 'GAS' | 'OD') => handleUpdateItem(config, setConfig, index, 'tipo_combustivel', val)}
+                onValueChange={(val: 'GAS' | 'OD') => handleUpdateItem(setConfig, index, 'tipo_combustivel', val)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -1036,7 +1042,7 @@ const DiretrizesCusteioPage = () => {
                 step="0.01"
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 value={item.consumo === 0 ? "" : item.consumo}
-                onChange={(e) => handleUpdateItem(config, setConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
+                onChange={(e) => handleUpdateItem(setConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
                 onKeyDown={handleEnterToNextField}
               />
             </div>
