@@ -142,17 +142,42 @@ interface GrupoOM {
 }
 // --- FIM NOVAS INTERFACES ---
 
-// Categorias que representam a Classe V (Armamento)
+// Categorias que representam as Classes
 const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
-// Categorias que representam a Classe VI (Material de Engenharia)
 const CLASSE_VI_CATEGORIES = ["Embarcação", "Equipamento de Engenharia"];
-// Categorias que representam a Classe VII (Comunicações e Informática)
 const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
-// Categorias que representam a Classe VIII (Saúde e Remonta/Veterinária)
 const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
-// Categorias que representam a Classe IX (Motomecanização)
 const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
 
+// =================================================================
+// FUNÇÕES AUXILIARES (MOVIDAS PARA O ESCOPO DO MÓDULO)
+// =================================================================
+
+const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString('pt-BR');
+};
+
+const calculateDays = (inicio: string, fim: string) => {
+  const start = new Date(inicio);
+  const end = new Date(fim);
+  const diff = end.getTime() - start.getTime();
+  return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
+};
+
+// Função para formatar fases
+const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
+  if (!faseCSV) return 'operação';
+  
+  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
+  
+  if (fases.length === 0) return 'operação';
+  if (fases.length === 1) return fases[0];
+  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
+  
+  const ultimaFase = fases[fases.length - 1];
+  const demaisFases = fases.slice(0, -1).join(', ');
+  return `${demaisFases} e ${ultimaFase}`;
+};
 
 // Função auxiliar para determinar o rótulo da Classe II/V/VI/VII/VIII/IX
 const getClasseIILabel = (categoria: string): string => {
@@ -211,8 +236,6 @@ const generateClasseIXMemoriaCalculo = (registro: ClasseIIRegistro): string => {
     const valorTotalFinal = valorND30 + valorND39;
 
     let totalItens = 0;
-    let totalValorBase = 0;
-    let totalValorAcionamento = 0;
 
     const gruposPorCategoria = itens.reduce((acc, item) => {
         const categoria = item.categoria;
@@ -269,6 +292,80 @@ ${detalhamentoItens}
 Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
 };
 
+// Função para gerar memória automática de Classe I
+const generateClasseIMemoriaCalculo = (registro: ClasseIRegistro): { qs: string, qr: string } => {
+    const { 
+      organizacao, ug, om_qs, ug_qs, efetivo, dias_operacao, nr_ref_int, 
+      valor_qs, valor_qr, complemento_qs, etapa_qs, total_qs, 
+      complemento_qr, etapa_qr, total_qr, fase_atividade 
+    } = registro;
+    
+    // Calcular dias de etapa solicitada
+    const diasRestantesNoCiclo = dias_operacao % 30;
+    const ciclosCompletos = Math.floor(dias_operacao / 30);
+    
+    let diasEtapaSolicitada = 0;
+    if (diasRestantesNoCiclo <= 22 && dias_operacao >= 30) {
+      diasEtapaSolicitada = ciclosCompletos * 8;
+    } else if (diasRestantesNoCiclo > 22) {
+      diasEtapaSolicitada = (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
+    } else {
+      diasEtapaSolicitada = 0;
+    }
+    
+    const faseFormatada = formatFasesParaTexto(fase_atividade);
+    
+    // Memória QS
+    const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${efetivo} militares do ${organizacao}, durante ${dias_operacao} dias de ${faseFormatada}.
+OM Fornecedora: ${om_qs} (UG: ${ug_qs})
+
+Cálculo:
+- Valor da Etapa (QS): ${formatCurrency(valor_qs)}.
+- Nr Refeições Intermediárias: ${nr_ref_int}.
+
+Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
+
+- [${efetivo} militares do ${organizacao} x ${nr_ref_int} Ref Int x (${formatCurrency(valor_qs)}/3) x ${dias_operacao} dias de atividade] = ${formatCurrency(complemento_qs)}.
+- [${efetivo} militares do ${organizacao} x ${formatCurrency(valor_qs)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(etapa_qs)}.
+
+Total QS: ${formatCurrency(total_qs)}.`;
+
+    // Memória QR
+    const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Rancho Pronto) destinados à complementação de alimentação de ${efetivo} militares do ${organizacao}, durante ${dias_operacao} dias de ${faseFormatada}.
+OM de Destino: ${organizacao} (UG: ${ug})
+
+Cálculo:
+- Valor da Etapa (QR): ${formatCurrency(valor_qr)}.
+- Nr Refeições Intermediárias: ${nr_ref_int}.
+
+Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
+
+- [${efetivo} militares do ${organizacao} x ${nr_ref_int} Ref Int x (${formatCurrency(valor_qr)}/3) x ${dias_operacao} dias de atividade] = ${formatCurrency(complemento_qr)}.
+- [${efetivo} militares do ${organizacao} x ${formatCurrency(valor_qr)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(etapa_qr)}.
+
+Total QR: ${formatCurrency(total_qr)}.`;
+
+    return { qs: memoriaQS, qr: memoriaQR };
+  };
+
+// Função para gerar memória automática de Classe II/V/VI/VII/VIII/IX
+const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro): string => {
+    if (registro.detalhamento_customizado) {
+      return registro.detalhamento_customizado;
+    }
+    
+    // Se for Classe IX, usa a função específica
+    if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+        return generateClasseIXMemoriaCalculo(registro);
+    }
+    
+    // Caso contrário, usa o detalhamento salvo (gerado no formulário)
+    return registro.detalhamento;
+};
+
+// =================================================================
+// FIM FUNÇÕES AUXILIARES
+// =================================================================
 
 const PTrabPrint = () => {
   const navigate = useNavigate();
@@ -415,106 +512,6 @@ const PTrabPrint = () => {
 
     loadData();
   }, [ptrabId, navigate, toast]);
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR');
-  };
-
-  const calculateDays = (inicio: string, fim: string) => {
-    const start = new Date(inicio);
-    const end = new Date(fim);
-    const diff = end.getTime() - start.getTime();
-    return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
-  };
-
-  // Função para formatar fases
-  const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
-    if (!faseCSV) return 'operação';
-    
-    const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
-    
-    if (fases.length === 0) return 'operação';
-    if (fases.length === 1) return fases[0];
-    if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
-    
-    const ultimaFase = fases[fases.length - 1];
-    const demaisFases = fases.slice(0, -1).join(', ');
-    return `${demaisFases} e ${ultimaFase}`;
-  };
-
-  // Função para gerar memória automática de Classe I
-  const generateClasseIMemoriaCalculo = (registro: ClasseIRegistro): { qs: string, qr: string } => {
-    const { 
-      organizacao, ug, om_qs, ug_qs, efetivo, dias_operacao, nr_ref_int, 
-      valor_qs, valor_qr, complemento_qs, etapa_qs, total_qs, 
-      complemento_qr, etapa_qr, total_qr, fase_atividade 
-    } = registro;
-    
-    // Calcular dias de etapa solicitada
-    const diasRestantesNoCiclo = dias_operacao % 30;
-    const ciclosCompletos = Math.floor(dias_operacao / 30);
-    
-    let diasEtapaSolicitada = 0;
-    if (diasRestantesNoCiclo <= 22 && dias_operacao >= 30) {
-      diasEtapaSolicitada = ciclosCompletos * 8;
-    } else if (diasRestantesNoCiclo > 22) {
-      diasEtapaSolicitada = (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
-    } else {
-      diasEtapaSolicitada = 0;
-    }
-    
-    const faseFormatada = formatFasesParaTexto(fase_atividade);
-    
-    // Memória QS
-    const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${efetivo} militares do ${organizacao}, durante ${dias_operacao} dias de ${faseFormatada}.
-OM Fornecedora: ${om_qs} (UG: ${ug_qs})
-
-Cálculo:
-- Valor da Etapa (QS): ${formatCurrency(valor_qs)}.
-- Nr Refeições Intermediárias: ${nr_ref_int}.
-
-Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
-
-- [${efetivo} militares do ${organizacao} x ${nr_ref_int} Ref Int x (${formatCurrency(valor_qs)}/3) x ${dias_operacao} dias de atividade] = ${formatCurrency(complemento_qs)}.
-- [${efetivo} militares do ${organizacao} x ${formatCurrency(valor_qs)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(etapa_qs)}.
-
-Total QS: ${formatCurrency(total_qs)}.`;
-
-    // Memória QR
-    const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Rancho Pronto) destinados à complementação de alimentação de ${efetivo} militares do ${organizacao}, durante ${dias_operacao} dias de ${faseFormatada}.
-OM de Destino: ${organizacao} (UG: ${ug})
-
-Cálculo:
-- Valor da Etapa (QR): ${formatCurrency(valor_qr)}.
-- Nr Refeições Intermediárias: ${nr_ref_int}.
-
-Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
-
-- [${efetivo} militares do ${organizacao} x ${nr_ref_int} Ref Int x (${formatCurrency(valor_qr)}/3) x ${dias_operacao} dias de atividade] = ${formatCurrency(complemento_qr)}.
-- [${efetivo} militares do ${organizacao} x ${formatCurrency(valor_qr)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(etapa_qr)}.
-
-Total QR: ${formatCurrency(total_qr)}.`;
-
-    return { qs: memoriaQS, qr: memoriaQR };
-  };
-  
-  // Função para gerar memória automática de Classe II/V/VI/VII/VIII/IX
-  const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro): string => {
-    if (registro.detalhamento_customizado) {
-      return registro.detalhamento_customizado;
-    }
-    
-    // Se for Classe IX, usa a função específica
-    if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-        return generateClasseIXMemoriaCalculo(registro);
-    }
-    
-    // Caso contrário, usa o detalhamento salvo (gerado no formulário)
-    return registro.detalhamento;
-  };
-  
-  // Função auxiliar para determinar o rótulo da Classe II/V/VI/VII
-  // (Mantida a função getClasseIILabel no topo do arquivo)
 
   const handlePrint = () => {
     window.print();
