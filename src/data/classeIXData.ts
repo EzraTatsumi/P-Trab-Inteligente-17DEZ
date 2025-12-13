@@ -31,11 +31,15 @@ export const defaultClasseIXConfig: DiretrizClasseIXForm[] = [
   { categoria: "Vtr Operacional", item: "Cozinha de Campanha", valor_mnt_dia: 35.00, valor_acionamento_mensal: 310.00 },
   { categoria: "Vtr Operacional", item: "VSRNE Prancha 45 t", valor_mnt_dia: 33.00, valor_acionamento_mensal: 600.00 },
   { categoria: "Vtr Operacional", item: "VSRNE Prancha 60 t", valor_mnt_dia: 50.00, valor_acionamento_mensal: 600.00 },
+  
+  // NOVOS ITENS: Motocicleta
   { categoria: "Motocicleta", item: "VTP motocicleta estafeta", valor_mnt_dia: 5.00, valor_acionamento_mensal: 200.00 },
   { categoria: "Motocicleta", item: "Vtr Mct Policial Gp III", valor_mnt_dia: 13.00, valor_acionamento_mensal: 300.00 },
   { categoria: "Motocicleta", item: "Quadriciclo", valor_mnt_dia: 17.00, valor_acionamento_mensal: 300.00 },
   { categoria: "Motocicleta", item: "Vtr Mct Policial Gp II", valor_mnt_dia: 33.00, valor_acionamento_mensal: 320.00 },
   { categoria: "Motocicleta", item: "Vtr Mct Policial Gp I", valor_mnt_dia: 44.00, valor_acionamento_mensal: 950.00 },
+  
+  // NOVOS ITENS: Vtr Blindada
   { categoria: "Vtr Blindada", item: "Série Blindada Americana", valor_mnt_dia: 1476.70, valor_acionamento_mensal: 3800.00 },
   { categoria: "Vtr Blindada", item: "Série Blindada Alemã", valor_mnt_dia: 1011.39, valor_acionamento_mensal: 48000.00 },
   { categoria: "Vtr Blindada", item: "Série IDV", valor_mnt_dia: 1656.90, valor_acionamento_mensal: 4000.00 },
