@@ -62,7 +62,7 @@ src/components/ScrollIndicatorButton.tsx
 src/pages/OmConfigPage.tsx
 src/pages/OmBulkUploadPage.tsx
 src/pages/VisualizacaoConfigPage.tsx
-src/pages/DiretrizesCusteioPage.tsx
+# src/pages/DiretrizesCusteioPage.tsx
 
 # Excluir arquivos de consolidação e numeração
 src/components/PTrabConsolidationDialog.tsx
