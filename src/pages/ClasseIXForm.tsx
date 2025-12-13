@@ -130,45 +130,7 @@ const calculateItemTotal = (item: ItemClasseIX, diasOperacao: number): { base: n
     return { base: custoBase, acionamento: custoAcionamento, total };
 };
 
-// NOVO: Gera a memória de cálculo detalhada para uma categoria
-const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseIX[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    
-    let totalValorBase = 0;
-    let totalValorAcionamento = 0;
-    
-    let detalhamentoItens = "";
-    itens.forEach(item => {
-        const { base, acionamento, total } = calculateItemTotal(item, diasOperacao);
-        totalValorBase += base;
-        totalValorAcionamento += acionamento;
-        
-        const nrMeses = Math.ceil(diasOperacao / 30);
-        
-        detalhamentoItens += `- ${item.quantidade} ${item.item}:\n`;
-        detalhamentoItens += `  - Custo Diário: ${item.quantidade} un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(base)}.\n`;
-        detalhamentoItens += `  - Custo Acionamento: ${item.quantidade} un. x ${formatCurrency(item.valor_acionamento_mensal)}/mês x ${nrMeses} meses = ${formatCurrency(acionamento)}.\n`;
-        detalhamentoItens += `  - Total Item: ${formatCurrency(total)}.\n`;
-    });
-
-    const totalValorFinal = totalValorBase + totalValorAcionamento;
-
-    return `33.90.30 - Aquisição de Material de Classe IX (Motomecanização)
-OM de Destino: ${organizacao} (UG: ${ug})
-Período: ${diasOperacao} dias de ${faseFormatada}
-Total de Viaturas na Categoria: ${totalQuantidade}
-
-Cálculo:
-Fórmula Base: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
-
-Detalhes dos Itens:
-${detalhamentoItens.trim()}
-
-Valor Total Solicitado: ${formatCurrency(totalValorFinal)}.`;
-};
-
-
+// NOVO: Gera a memória de cálculo CONSOLIDADA para a OM
 const generateDetalhamento = (itens: ItemClasseIX[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => item.quantidade, 0);
@@ -176,60 +138,35 @@ const generateDetalhamento = (itens: ItemClasseIX[], diasOperacao: number, organ
 
     let totalValorBase = 0;
     let totalValorAcionamento = 0;
+    let detalhamentoItens = "";
 
-    const gruposPorCategoria = itens.reduce((acc, item) => {
-        const categoria = item.categoria;
+    // 1. Calcular e detalhar cada item
+    itens.forEach(item => {
         const { base, acionamento, total } = calculateItemTotal(item, diasOperacao);
         
-        if (!acc[categoria]) {
-            acc[categoria] = {
-                totalValorBase: 0,
-                totalValorAcionamento: 0,
-                totalQuantidade: 0,
-                detalhes: [],
-            };
-        }
-        
-        acc[categoria].totalValorBase += base;
-        acc[categoria].totalValorAcionamento += acionamento;
-        acc[categoria].totalQuantidade += item.quantidade;
+        totalValorBase += base;
+        totalValorAcionamento += acionamento;
         
         const nrMeses = Math.ceil(diasOperacao / 30);
-
-        acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} (Base: ${formatCurrency(base)}, Acionamento: ${formatCurrency(acionamento)} em ${nrMeses} meses) = ${formatCurrency(total)}.`
-        );
         
-        return acc;
-    }, {} as Record<Categoria, { totalValorBase: number, totalValorAcionamento: number, totalQuantidade: number, detalhes: string[] }>);
-
-    let detalhamentoItens = "";
-    
-    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        const totalCategoria = grupo.totalValorBase + grupo.totalValorAcionamento;
-
-        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} VTR) ---\n`;
-        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(totalCategoria)}\n`;
-        detalhamentoItens += `Detalhes:\n`;
-        detalhamentoItens += grupo.detalhes.join('\n');
-        detalhamentoItens += `\n`;
+        // Formato detalhado solicitado pelo usuário
+        detalhamentoItens += `\n- (${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)} Mnt/dia x ${diasOperacao} dias) + (${item.quantidade} ${item.item} x ${formatCurrency(item.valor_acionamento_mensal)} / ciclo x ${nrMeses} ciclos) = ${formatCurrency(base)} + ${formatCurrency(acionamento)}.`;
     });
     
-    detalhamentoItens = detalhamentoItens.trim();
+    // 2. Montar o cabeçalho e a fórmula
+    const cabecalho = `33.90.30 / 33.90.39 - Manutenção de ${totalItens} Viaturas Militares do ${omDestino} (UG: ${ugDestino}), durante ${diasOperacao} dias de ${faseFormatada}.
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe IX (Motomecanização) para ${totalItens} viaturas, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
-Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
+Fórmula: (Qtd e Tipo Vtr x Custo Mnt/dia x Nr dias de operação) + (Qtd e Tipo Vtr x Custo Acionamento Ciclo 30 dias x Nr Ciclos 30 dias).`;
+
+    // 3. Montar o rodapé com os totais
+    const rodape = `\n\nTotal: R$ ${formatNumber(totalValorBase, 2)} + R$ ${formatNumber(totalValorAcionamento, 2)} = ${formatCurrency(valorTotalFinal)}.
 
 Alocação:
 - ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
+- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}.`;
 
-Fórmula Base: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
-
-${detalhamentoItens}
-
-Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
-  };
+    return `${cabecalho}${detalhamentoItens}${rodape}`;
+};
 
 
 const ClasseIXForm = () => {
@@ -412,19 +349,41 @@ const ClasseIXForm = () => {
       return;
     }
 
-    const uniqueRecordsMap = new Map<string, ClasseIXRegistro>();
+    // Consolidar todos os registros em um único registro por OM/UG de destino
+    const consolidatedRecordsMap = new Map<string, ClasseIXRegistro>();
+    
     (data || []).forEach(r => {
-        const key = `${r.organizacao}-${r.ug}-${r.categoria}`;
-        const record = {
-            ...r,
-            itens_motomecanizacao: (r.itens_motomecanizacao || []) as ItemClasseIX[],
-            valor_nd_30: Number(r.valor_nd_30),
-            valor_nd_39: Number(r.valor_nd_39),
-        } as ClasseIXRegistro;
-        uniqueRecordsMap.set(key, record);
+        const key = `${r.organizacao}-${r.ug}`; // Chave única por OM de destino
+        
+        if (!consolidatedRecordsMap.has(key)) {
+            // Cria o registro base usando o primeiro registro encontrado para a OM
+            consolidatedRecordsMap.set(key, {
+                ...r,
+                itens_motomecanizacao: [],
+                valor_total: 0,
+                valor_nd_30: 0,
+                valor_nd_39: 0,
+            } as ClasseIXRegistro);
+        }
+        
+        const consolidated = consolidatedRecordsMap.get(key)!;
+        
+        // Acumula itens e valores
+        consolidated.itens_motomecanizacao = consolidated.itens_motomecanizacao.concat((r.itens_motomecanizacao || []) as ItemClasseIX[]);
+        consolidated.valor_total += Number(r.valor_total);
+        consolidated.valor_nd_30 += Number(r.valor_nd_30);
+        consolidated.valor_nd_39 += Number(r.valor_nd_39);
+        
+        // Mantém o detalhamento customizado do último registro (ou o mais relevante)
+        if (r.detalhamento_customizado) {
+            consolidated.detalhamento_customizado = r.detalhamento_customizado;
+        }
+        
+        // Atualiza o ID para o ID do último registro (para fins de edição de memória)
+        consolidated.id = r.id;
     });
 
-    setRegistros(Array.from(uniqueRecordsMap.values()));
+    setRegistros(Array.from(consolidatedRecordsMap.values()));
   };
 
   const resetFormFields = () => {
@@ -602,92 +561,80 @@ const ClasseIXForm = () => {
 
     setLoading(true);
     
-    const itemsByActiveCategory = form.itens.reduce((acc, item) => {
-        if (item.quantidade > 0 && CATEGORIAS.includes(item.categoria as Categoria)) {
-            if (!acc[item.categoria]) {
-                acc[item.categoria] = [];
-            }
-            acc[item.categoria].push(item);
-        }
-        return acc;
-    }, {} as Record<Categoria, ItemClasseIX[]>);
+    // 1. Agrupar itens por OM de Destino (que é a mesma para todas as categorias neste formulário)
+    const omDestino = categoryAllocations[CATEGORIAS[0]].om_destino_recurso;
+    const ugDestino = categoryAllocations[CATEGORIAS[0]].ug_destino_recurso;
     
-    const categoriesToSave = Object.keys(itemsByActiveCategory) as Categoria[];
+    if (!omDestino || !ugDestino) {
+        toast.error("OM de destino não definida.");
+        setLoading(false);
+        return;
+    }
     
-    if (categoriesToSave.length === 0) {
+    // 2. Consolidar todos os itens ativos em um único array
+    const allActiveItems = form.itens.filter(item => item.quantidade > 0);
+    
+    if (allActiveItems.length === 0) {
         toast.error("Nenhum item com quantidade maior que zero foi configurado.");
         setLoading(false);
         return;
     }
     
-    const registrosParaSalvar: TablesInsert<'classe_ix_registros'>[] = [];
+    // 3. Calcular totais consolidados
+    const totalValorConsolidado = allActiveItems.reduce((sum, item) => sum + calculateItemTotal(item, form.dias_operacao).total, 0);
+    const totalND30Consolidado = totalND30Final;
+    const totalND39Consolidado = totalND39Final;
     
-    for (const categoria of categoriesToSave) {
-        const itens = itemsByActiveCategory[categoria];
-        const allocation = categoryAllocations[categoria];
-        
-        if (!allocation.om_destino_recurso || !allocation.ug_destino_recurso) {
-            toast.error(`Selecione a OM de destino do recurso para a categoria: ${getCategoryLabel(categoria)}.`);
-            setLoading(false);
-            return;
-        }
-        
-        const valorTotalCategoria = allocation.total_valor;
-        
-        if (!areNumbersEqual(valorTotalCategoria, (allocation.nd_30_value + allocation.nd_39_value))) {
-            toast.error(`Erro de alocação na categoria ${getCategoryLabel(categoria)}: O valor total dos itens (${formatCurrency(valorTotalCategoria)}) não corresponde ao total alocado (${formatCurrency(allocation.nd_30_value + allocation.nd_39_value)}). Salve a categoria novamente.`);
-            setLoading(false);
-            return;
-        }
-        
-        const detalhamento = generateDetalhamento(
-            itens, 
-            form.dias_operacao, 
-            form.organizacao,
-            form.ug,
-            faseFinalString,
-            allocation.om_destino_recurso,
-            allocation.ug_destino_recurso,
-            allocation.nd_30_value,
-            allocation.nd_39_value
-        );
-        
-        const registro: TablesInsert<'classe_ix_registros'> = {
-            p_trab_id: ptrabId,
-            organizacao: allocation.om_destino_recurso,
-            ug: allocation.ug_destino_recurso,
-            dias_operacao: form.dias_operacao,
-            categoria: categoria,
-            itens_motomecanizacao: itens as any, // MUDANÇA: Usar o campo correto
-            valor_total: valorTotalCategoria, // Salva o valor SEM margem
-            detalhamento: detalhamento,
-            fase_atividade: faseFinalString,
-            detalhamento_customizado: null,
-            valor_nd_30: allocation.nd_30_value,
-            valor_nd_39: allocation.nd_39_value,
-        };
-        registrosParaSalvar.push(registro);
-    }
+    // 4. Gerar o detalhamento consolidado
+    const detalhamento = generateDetalhamento(
+        allActiveItems, 
+        form.dias_operacao, 
+        form.organizacao, // OM Detentora
+        form.ug, // UG Detentora
+        faseFinalString,
+        omDestino,
+        ugDestino,
+        totalND30Consolidado,
+        totalND39Consolidado
+    );
+    
+    // 5. Criar um único registro consolidado para a OM de destino
+    const registroConsolidado: TablesInsert<'classe_ix_registros'> = {
+        p_trab_id: ptrabId,
+        organizacao: omDestino,
+        ug: ugDestino,
+        dias_operacao: form.dias_operacao,
+        categoria: 'Motomecanização Consolidada', // Usar uma categoria genérica para o registro consolidado
+        itens_motomecanizacao: allActiveItems as any,
+        valor_total: totalValorConsolidado,
+        detalhamento: detalhamento,
+        fase_atividade: faseFinalString,
+        detalhamento_customizado: null,
+        valor_nd_30: totalND30Consolidado,
+        valor_nd_39: totalND39Consolidado,
+    };
 
     try {
-      // MUDANÇA: Deletar APENAS registros de Classe IX existentes
+      // 6. Deletar TODOS os registros de Classe IX existentes para o PTrab e a OM de destino
       const { error: deleteError } = await supabase
         .from("classe_ix_registros")
         .delete()
-        .eq("p_trab_id", ptrabId);
+        .eq("p_trab_id", ptrabId)
+        .eq("organizacao", omDestino)
+        .eq("ug", ugDestino);
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
-      // MUDANÇA: Inserir os novos registros na tabela correta
-      const { error: insertError } = await supabase.from("classe_ix_registros").insert(registrosParaSalvar);
+      // 7. Inserir o novo registro consolidado
+      const { error: insertError } = await supabase.from("classe_ix_registros").insert([registroConsolidado]);
       if (insertError) throw insertError;
       
-      toast.success(editingId ? "Registros de Classe IX atualizados com sucesso!" : "Registros de Classe IX salvos com sucesso!");
+      toast.success("Registros de Classe IX salvos com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
       resetFormFields();
       fetchRegistros();
     } catch (error) {
       console.error("Erro ao salvar registros de Classe IX:", error);
-      toast.error(sanitizeError(error)); // FIX: Use sanitizeError
+      toast.error(sanitizeError(error));
     } finally {
       setLoading(false);
     }
@@ -697,87 +644,85 @@ const ClasseIXForm = () => {
     setLoading(true);
     resetFormFields();
     
-    // 1. Buscar TODOS os registros de CLASSE IX para este PTrab
-    const { data: allRecords, error: fetchAllError } = await supabase
-        .from("classe_ix_registros")
-        .select("*, itens_motomecanizacao, valor_nd_30, valor_nd_39")
-        .eq("p_trab_id", ptrabId);
-        
-    if (fetchAllError) {
-        toast.error("Erro ao carregar todos os registros para edição.");
-        setLoading(false);
-        return;
-    }
+    // 1. O registro já está consolidado, então usamos seus dados diretamente
+    const consolidatedItems = registro.itens_motomecanizacao as ItemClasseIX[];
+    const omDestino = registro.organizacao;
+    const ugDestino = registro.ug;
     
-    let consolidatedItems: ItemClasseIX[] = [];
+    // 2. Recalcular as alocações por categoria (para preencher as abas)
     let newAllocations = { ...initialCategoryAllocations };
-    let firstOmDetentora: { nome: string, ug: string } | null = null;
+    let totalValorConsolidado = 0;
     
-    (allRecords || []).forEach(r => {
-        const category = r.categoria as Categoria;
-        const items = (r.itens_motomecanizacao || []) as ItemClasseIX[];
+    // Agrupar itens por categoria para calcular o subtotal de valor
+    const itemsBySubCategory = consolidatedItems.reduce((acc, item) => {
+        const category = item.categoria as Categoria;
+        if (!acc[category]) {
+            acc[category] = [];
+        }
+        acc[category].push(item);
+        return acc;
+    }, {} as Record<Categoria, ItemClasseIX[]>);
+    
+    // Calcular a proporção de ND 30/39 para cada subcategoria
+    const totalND30Global = registro.valor_nd_30;
+    const totalND39Global = registro.valor_nd_39;
+    const totalGeral = registro.valor_total;
+    
+    CATEGORIAS.forEach(category => {
+        const items = itemsBySubCategory[category] || [];
+        const subTotal = items.reduce((sum, item) => sum + calculateItemTotal(item, registro.dias_operacao).total, 0);
         
-        consolidatedItems = consolidatedItems.concat(items);
-        
-        if (newAllocations[category]) {
-            const totalValorBase = items.reduce((sum, item) => sum + calculateItemTotal(item, r.dias_operacao).total, 0);
+        if (subTotal > 0) {
+            const proportion = totalGeral > 0 ? subTotal / totalGeral : 0;
+            const nd30Sub = totalND30Global * proportion;
+            const nd39Sub = totalND39Global * proportion;
             
             newAllocations[category] = {
-                total_valor: totalValorBase,
-                nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
-                nd_30_value: Number(r.valor_nd_30),
-                nd_39_value: Number(r.valor_nd_39),
-                om_destino_recurso: r.organizacao,
-                ug_destino_recurso: r.ug,
-                selectedOmDestinoId: undefined,
+                total_valor: subTotal,
+                nd_39_input: formatNumberForInput(nd39Sub, 2),
+                nd_30_value: nd30Sub,
+                nd_39_value: nd39Sub,
+                om_destino_recurso: omDestino,
+                ug_destino_recurso: ugDestino,
+                selectedOmDestinoId: undefined, // Será preenchido abaixo
             };
-        }
-        
-        if (!firstOmDetentora) {
-            firstOmDetentora = { nome: r.organizacao, ug: r.ug };
+            totalValorConsolidado += subTotal;
         }
     });
     
+    // 3. Buscar IDs das OMs
     let selectedOmIdForEdit: string | undefined = undefined;
     
-    if (firstOmDetentora) {
-        try {
-            const { data: omData } = await supabase
-                .from('organizacoes_militares')
-                .select('id')
-                .eq('nome_om', firstOmDetentora.nome)
-                .eq('codug_om', firstOmDetentora.ug)
-                .maybeSingle();
-            selectedOmIdForEdit = omData?.id;
-        } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
-    }
+    try {
+        const { data: omData } = await supabase
+            .from('organizacoes_militares')
+            .select('id')
+            .eq('nome_om', omDestino)
+            .eq('codug_om', ugDestino)
+            .maybeSingle();
+        selectedOmIdForEdit = omData?.id;
+    } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
     
+    // 4. Preencher o formulário principal
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
-      organizacao: firstOmDetentora?.nome || "",
-      ug: firstOmDetentora?.ug || "",
+      organizacao: omDestino,
+      ug: ugDestino,
       dias_operacao: registro.dias_operacao,
       itens: consolidatedItems,
     });
     
-    const categoriesToLoad = Object.keys(newAllocations) as Categoria[];
-    for (const cat of categoriesToLoad) {
+    // 5. Preencher o estado de alocação e buscar IDs de destino
+    CATEGORIAS.forEach(cat => {
         const alloc = newAllocations[cat];
         if (alloc.om_destino_recurso) {
-            try {
-                const { data: omData } = await supabase
-                    .from('organizacoes_militares')
-                    .select('id')
-                    .eq('nome_om', alloc.om_destino_recurso)
-                    .eq('codug_om', alloc.ug_destino_recurso)
-                    .maybeSingle();
-                alloc.selectedOmDestinoId = omData?.id;
-            } catch (e) { console.error(`Erro ao buscar OM Destino ID para ${cat}:`, e); }
+            alloc.selectedOmDestinoId = selectedOmIdForEdit; // Já temos o ID
         }
-    }
+    });
     setCategoryAllocations(newAllocations);
     
+    // 6. Preencher fases e aba
     const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
@@ -792,13 +737,11 @@ const ClasseIXForm = () => {
     setLoading(false);
   };
   
+  // Ao invés de agrupar, apenas usamos o array de registros (que já são consolidados por OM)
   const registrosAgrupadosPorOM = useMemo(() => {
     return registros.reduce((acc, registro) => {
         const key = `${registro.organizacao} (${registro.ug})`;
-        if (!acc[key]) {
-            acc[key] = [];
-        }
-        acc[key].push(registro);
+        acc[key] = [registro]; // Cada OM tem apenas um registro consolidado
         return acc;
     }, {} as Record<string, ClasseIXRegistro[]>);
   }, [registros]);
@@ -1256,6 +1199,7 @@ const ClasseIXForm = () => {
                   OMs Cadastradas
                 </h2>
                 
+                {/* MUDANÇA: Agora só há um registro por OM, que é o consolidado */}
                 {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
                     const totalOM = omRegistros.reduce((sum, r) => sum + r.valor_total, 0);
                     const omName = omKey.split(' (')[0];
@@ -1276,7 +1220,7 @@ const ClasseIXForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
+                                    const totalViaturas = registro.itens_motomecanizacao.reduce((sum, item) => sum + item.quantidade, 0);
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1284,11 +1228,11 @@ const ClasseIXForm = () => {
                                                 <div className="flex flex-col">
                                                     <div className="flex items-center gap-2">
                                                         <h4 className="font-semibold text-base text-foreground">
-                                                            {getCategoryLabel(registro.categoria)}
+                                                            Motomecanização
                                                         </h4>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Dias: {registro.dias_operacao} | Fases: {fases}
+                                                        {totalViaturas} Viaturas | Dias: {registro.dias_operacao} | Fases: {fases}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -1308,7 +1252,7 @@ const ClasseIXForm = () => {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => {
-                                                                if (confirm(`Deseja realmente deletar o registro de Classe IX para ${omName} (${registro.categoria})?`)) {
+                                                                if (confirm(`Deseja realmente deletar o registro consolidado de Classe IX para ${omName}?`)) {
                                                                     supabase.from("classe_ix_registros")
                                                                         .delete()
                                                                         .eq("id", registro.id)
@@ -1357,26 +1301,28 @@ const ClasseIXForm = () => {
                   📋 Memórias de Cálculos Detalhadas
                 </h3>
                 
+                {/* MUDANÇA: Renderiza apenas um bloco de memória por registro consolidado */}
                 {registros.map(registro => {
                   const om = registro.organizacao;
                   const ug = registro.ug;
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
+                  // A memória automática é gerada com base em TODOS os itens do registro consolidado
                   const memoriaAutomatica = generateDetalhamento(
                       registro.itens_motomecanizacao as ItemClasseIX[], 
                       registro.dias_operacao, 
-                      registro.organizacao, 
-                      registro.ug, 
+                      form.organizacao, // OM Detentora (do formulário)
+                      form.ug, // UG Detentora (do formulário)
                       registro.fase_atividade || '', 
-                      registro.organizacao, 
-                      registro.ug, 
+                      registro.organizacao, // OM Destino
+                      registro.ug, // UG Destino
                       registro.valor_nd_30, 
                       registro.valor_nd_39
                   );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
-                  const badgeStyle = getCategoryBadgeStyle(registro.categoria);
+                  const badgeStyle = getCategoryBadgeStyle('Vtr Administrativa'); // Usar um badge genérico para Motomecanização
                   
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
@@ -1388,7 +1334,7 @@ const ClasseIXForm = () => {
                                 OM Destino: {om} ({ug})
                               </h4>
                               <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
-                                  {badgeStyle.label}
+                                  Motomecanização
                               </Badge>
                           </div>
                           
