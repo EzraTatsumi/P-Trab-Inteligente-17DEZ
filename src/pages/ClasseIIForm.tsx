@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
-import { defaultClasseIIConfig } from "@/data/classeIIData";
+import { defaultDirectives } from "@/data/defaultDirectives"; // NOVO IMPORT
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -355,7 +355,7 @@ const ClasseIIForm = () => {
       
       if (!anoReferencia) {
         toast.warning(`Diretriz de Custeio não encontrada. Usando valores padrão.`);
-        setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
+        setDiretrizes(defaultDirectives.defaultClasseIIConfig as DiretrizClasseII[]);
         return;
       }
 
@@ -373,13 +373,13 @@ const ClasseIIForm = () => {
       if (classeIIData && classeIIData.length > 0) {
         setDiretrizes((classeIIData || []) as DiretrizClasseII[]);
       } else {
-        setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
+        setDiretrizes(defaultDirectives.defaultClasseIIConfig as DiretrizClasseII[]);
         toast.warning(`Itens de Classe II não configurados para o ano ${anoReferencia}. Usando valores padrão.`);
       }
       
     } catch (error) {
       console.error("Erro ao carregar diretrizes:", error);
-      setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
+      setDiretrizes(defaultDirectives.defaultClasseIIConfig as DiretrizClasseII[]);
       toast.error("Erro ao carregar diretrizes. Usando valores padrão.");
     }
   };

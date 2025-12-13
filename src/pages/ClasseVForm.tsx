@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
-import { defaultClasseVConfig } from "@/data/classeIIData"; // CORRIGIDO
+import { defaultDirectives } from "@/data/defaultDirectives"; // NOVO IMPORT
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -295,7 +295,7 @@ const ClasseVForm = () => {
       
       if (!anoReferencia) {
         toast.warning(`Diretriz de Custeio não encontrada. Usando valores padrão.`);
-        setDiretrizes(defaultClasseVConfig as DiretrizClasseII[]);
+        setDiretrizes(defaultDirectives.defaultClasseVConfig as DiretrizClasseII[]);
         return;
       }
 
@@ -312,13 +312,13 @@ const ClasseVForm = () => {
       if (classeVData && classeVData.length > 0) {
         setDiretrizes((classeVData || []) as DiretrizClasseII[]);
       } else {
-        setDiretrizes(defaultClasseVConfig as DiretrizClasseII[]);
+        setDiretrizes(defaultDirectives.defaultClasseVConfig as DiretrizClasseII[]);
         toast.warning(`Itens de Classe V não configurados para o ano ${anoReferencia}. Usando valores padrão.`);
       }
       
     } catch (error) {
       console.error("Erro ao carregar diretrizes:", error);
-      setDiretrizes(defaultClasseVConfig as DiretrizClasseII[]);
+      setDiretrizes(defaultDirectives.defaultClasseVConfig as DiretrizClasseII[]);
       toast.error("Erro ao carregar diretrizes. Usando valores padrão.");
     }
   };
@@ -1189,7 +1189,7 @@ const ClasseVForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1199,7 +1199,7 @@ const ClasseVForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
-                                                        {/* REMOVIDO: Badge da Categoria */}
+                                                        {/* REMOVIDO O BADGE DUPLICADO AQUI */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
@@ -1222,9 +1222,8 @@ const ClasseVForm = () => {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => {
-                                                                if (confirm(`Deseja realmente deletar o registro de Classe V para ${omName} (${registro.categoria})?`)) {
-                                                                    // MUDANÇA: Deletar da tabela correta
-                                                                    supabase.from("classe_v_registros")
+                                                                if (confirm(`Deseja realmente deletar o registro de Classe II para ${omName} (${registro.categoria})?`)) {
+                                                                    supabase.from("classe_ii_registros")
                                                                         .delete()
                                                                         .eq("id", registro.id)
                                                                         .then(() => {
@@ -1279,16 +1278,13 @@ const ClasseVForm = () => {
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
                   // NOVO: Gera a memória automática com o rótulo padronizado
-                  const memoriaAutomatica = generateDetalhamento(
-                      registro.itens_equipamentos as ItemClasseV[], 
+                  const memoriaAutomatica = generateCategoryMemoriaCalculo(
+                      registro.categoria as Categoria, 
+                      registro.itens_equipamentos as ItemClasseII[], 
                       registro.dias_operacao, 
                       registro.organizacao, 
                       registro.ug, 
-                      registro.fase_atividade || '', 
-                      registro.organizacao, 
-                      registro.ug, 
-                      registro.valor_nd_30, 
-                      registro.valor_nd_39
+                      registro.fase_atividade
                   );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
@@ -1303,14 +1299,12 @@ const ClasseVForm = () => {
                               <h4 className="text-base font-semibold text-foreground">
                                 OM Destino: {om} ({ug})
                               </h4>
-                              {/* Badge da Categoria movido para o lado esquerdo, junto ao h4 */}
-                              <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
+                              <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
                                   {badgeStyle.label}
                               </Badge>
                           </div>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
-                              
                               {!isEditing ? (
                                 <>
                                   <Button
@@ -1390,4 +1384,4 @@ const ClasseVForm = () => {
   );
 }
 
-export default ClasseVForm;
+export default ClasseIIForm;

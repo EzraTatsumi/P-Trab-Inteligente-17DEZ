@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
-import { defaultClasseVIConfig } from "@/data/classeVIData";
+import { defaultDirectives } from "@/data/defaultDirectives"; // NOVO IMPORT
 
 type Categoria = 'Embarcação' | 'Equipamento de Engenharia'; // Categorias corretas para Classe VI
 
@@ -338,7 +338,7 @@ const ClasseVIForm = () => {
       
       if (!anoReferencia) {
         toast.warning(`Diretriz de Custeio não encontrada. Usando valores padrão.`);
-        setDiretrizes(defaultClasseVIConfig as DiretrizClasseII[]);
+        setDiretrizes(defaultDirectives.defaultClasseVIConfig as DiretrizClasseII[]);
         return;
       }
 
@@ -355,13 +355,13 @@ const ClasseVIForm = () => {
       if (classeVIData && classeVIData.length > 0) {
         setDiretrizes((classeVIData || []) as DiretrizClasseII[]);
       } else {
-        setDiretrizes(defaultClasseVIConfig as DiretrizClasseII[]);
+        setDiretrizes(defaultDirectives.defaultClasseVIConfig as DiretrizClasseII[]);
         toast.warning(`Itens de Classe VI não configurados para o ano ${anoReferencia}. Usando valores padrão.`);
       }
       
     } catch (error) {
       console.error("Erro ao carregar diretrizes:", error);
-      setDiretrizes(defaultClasseVIConfig as DiretrizClasseII[]);
+      setDiretrizes(defaultDirectives.defaultClasseVIConfig as DiretrizClasseII[]);
       toast.error("Erro ao carregar diretrizes. Usando valores padrão.");
     }
   };
@@ -1266,6 +1266,7 @@ const ClasseVIForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
+                                                        {/* REMOVIDO: Badge da Categoria */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
