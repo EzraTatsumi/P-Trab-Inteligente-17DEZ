@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Package, RefreshCw, PlusCircle, Pencil, Trash2, XCircle, Check, ChevronsUpDown, Sparkles, AlertCircle, Car, Motorcycle, Shield } from "lucide-react";
+import { ArrowLeft, Loader2, Package, RefreshCw, PlusCircle, Pencil, Trash2, XCircle, Check, ChevronsUpDown, Sparkles, AlertCircle, Car, Bike, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -814,7 +814,7 @@ const ClasseIXForm = () => {
     switch (category) {
         case 'Vtr Administrativa': return <Car className="h-4 w-4" />;
         case 'Vtr Operacional': return <Truck className="h-4 w-4" />;
-        case 'Motocicleta': return <Motorcycle className="h-4 w-4" />;
+        case 'Motocicleta': return <Bike className="h-4 w-4" />; // CORRIGIDO: Usando Bike
         case 'Vtr Blindada': return <Shield className="h-4 w-4" />;
         default: return <Car className="h-4 w-4" />;
     }
