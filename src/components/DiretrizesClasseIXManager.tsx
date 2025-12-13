@@ -77,15 +77,18 @@ const useDiretrizesClasseIX = (anoReferencia: number | 'latest') => {
   const userId = user?.id;
   const queryClient = useQueryClient();
 
+  const queryKey = ['diretrizesClasseIX', userId, anoReferencia];
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['diretrizesClasseIX', userId, anoReferencia],
+    queryKey: queryKey,
     queryFn: () => fetchDiretrizesData(userId!, anoReferencia),
     enabled: !!userId,
     initialData: { diretrizes: [], availableYears: [], currentYear: new Date().getFullYear() },
   });
 
   const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['diretrizesClasseIX', userId] });
+    // Invalida a query específica para o ano selecionado
+    queryClient.invalidateQueries({ queryKey: queryKey });
   };
 
   return { data, isLoading, error, refresh };
@@ -250,7 +253,12 @@ export const DiretrizesClasseIXManager: React.FC = () => {
         toast.success("Diretriz atualizada com sucesso!");
       }
       
-      // Refresh data to update the list and reset editing state
+      // Reset the editing state for the specific item
+      setEditableList(prev => prev.map(d => 
+        d.id === diretriz.id ? { ...d, isEditing: false, isNew: false } : d
+      ));
+      
+      // Force refresh data to update the list with the latest values from DB
       await refresh();
       
     } catch (error) {
