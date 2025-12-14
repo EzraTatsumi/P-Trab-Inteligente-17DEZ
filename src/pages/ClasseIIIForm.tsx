@@ -353,8 +353,9 @@ const ClasseIIIForm = () => {
     await loadRefLPC();
     setIsLpcLoaded(true); // Marca que o LPC foi carregado (mesmo que seja null)
     
-    // Depois carrega os registros e reconstrói o estado do formulário
-    await fetchRegistros(true); 
+    // Depois carrega os registros e garante que o formulário está limpo
+    await fetchRegistros(); // Fetch records but don't reconstruct automatically
+    resetFormFields(); // Ensure form is reset initially
     
     setLoading(false);
   };
@@ -394,7 +395,7 @@ const ClasseIIIForm = () => {
     toast.success("Referência LPC atualizada!");
   };
 
-  const fetchRegistros = async (initialLoad = false) => {
+  const fetchRegistros = async () => {
     if (!ptrabId) return;
     const { data, error } = await supabase
       .from("classe_iii_registros")
@@ -408,16 +409,7 @@ const ClasseIIIForm = () => {
       return;
     }
     setRegistros((data || []) as ClasseIIIRegistro[]);
-    if (initialLoad && data && data.length > 0) {
-      // Ensure directives are loaded before reconstruction
-      if (Object.values(allDiretrizItems).flat().length === 0) {
-        await loadAllDiretrizItems();
-      }
-      reconstructFormState(data as ClasseIIIRegistro[]);
-    } else if (!initialLoad) {
-      // Se não for a carga inicial, apenas atualiza a lista de registros, mas não mexe no formulário
-      // O reset do formulário é feito em handleSalvarRegistros
-    }
+    // A reconstrução do formulário foi removida daqui para que ele inicie limpo.
   };
 
   const reconstructFormState = (records: ClasseIIIRegistro[]) => {
@@ -441,27 +433,30 @@ const ClasseIIIForm = () => {
     setCustomFaseAtividade(fasesSalvas.find(f => !fasesPadrao.includes(f)) || "");
     
     // 2. Extract RM Fornecimento (from detailing)
+    let rmFromDetailing = "";
+    let codugRmFromDetailing = "";
     const rmMatch = firstRecord.detalhamento?.match(/Fornecido por: (.*?) \(CODUG: (.*?)\)/);
     if (rmMatch) {
-      setRmFornecimento(rmMatch[1]);
-      setCodugRmFornecimento(rmMatch[2]);
+      rmFromDetailing = rmMatch[1];
+      codugRmFromDetailing = rmMatch[2];
+      setRmFornecimento(rmFromDetailing);
+      setCodugRmFornecimento(codugRmFromDetailing);
+    } else {
+      // Clear RM/CODUG state if not found in detailing, relying on OM fetch later if possible
+      setRmFornecimento("");
+      setCodugRmFornecimento("");
     }
     
     // 3. Extract Lubricant Allocation
-    if (lubricantRecords.length > 0) {
-      const lubRecord = lubricantRecords[0];
-      setLubricantAllocation({
-        om_destino_recurso: lubRecord.organizacao,
-        ug_destino_recurso: lubRecord.ug,
-        selectedOmDestinoId: undefined, // Will be fetched below
-      });
-    } else {
-      setLubricantAllocation({
-        om_destino_recurso: omName,
-        ug_destino_recurso: ug,
-        selectedOmDestinoId: undefined
-      });
-    }
+    const lubRecord = lubricantRecords[0];
+    const lubOmName = lubRecord?.organizacao || omName;
+    const lubUg = lubRecord?.ug || ug;
+    
+    setLubricantAllocation({
+      om_destino_recurso: lubOmName,
+      ug_destino_recurso: lubUg,
+      selectedOmDestinoId: undefined, // Will be fetched below
+    });
     
     // 4. Consolidate all ItemClasseIII data
     let consolidatedItems: ItemClasseIII[] = [];
@@ -519,7 +514,7 @@ const ClasseIIIForm = () => {
     
     Promise.all([
       fetchOmId(omName, ug),
-      fetchOmId(lubricantRecords[0]?.organizacao || '', lubricantRecords[0]?.ug || '')
+      fetchOmId(lubOmName, lubUg)
     ]).then(([omData, lubOmData]) => {
       setForm({
         selectedOmId: omData?.id,
@@ -528,8 +523,13 @@ const ClasseIIIForm = () => {
         dias_operacao: diasOperacao,
         itens: consolidatedItems,
       });
-      setRmFornecimento(omData?.rm || rmFornecimento);
-      setCodugRmFornecimento(omData?.codugRm || codugRmFornecimento);
+      
+      // If RM/CODUG was NOT found in detailing, use the OM's default RM
+      if (!rmFromDetailing) {
+        setRmFornecimento(omData?.rm || "");
+        setCodugRmFornecimento(omData?.codugRm || "");
+      }
+      
       setLubricantAllocation(prev => ({
         ...prev,
         selectedOmDestinoId: lubOmData?.id
@@ -1254,11 +1254,15 @@ const getMemoriaRecords = granularRegistros;
     
     try {
       setLoading(true);
-      // 3. Deletar TODOS os registros de Classe III existentes para este PTrab
+      
+      // 3. Deletar TODOS os registros de Classe III existentes para a OM/UG atual
       const { error: deleteError } = await supabase
         .from("classe_iii_registros")
         .delete()
-        .eq("p_trab_id", ptrabId);
+        .eq("p_trab_id", ptrabId)
+        .eq("organizacao", form.organizacao)
+        .eq("ug", form.ug);
+        
       if (deleteError) {
         throw deleteError;
       }
@@ -1303,15 +1307,33 @@ const getMemoriaRecords = granularRegistros;
   };
 
   const handleEditarConsolidado = (registro: ClasseIIIRegistro) => {
-    // Ao editar, reconstruímos o estado principal (form.itens) e o useEffect recarrega o localCategoryItems
-    fetchRegistros(true).then(() => {
-      if (registro.itens_equipamentos && registro.itens_equipamentos.length > 0) {
-        const firstItemCategory = (registro.itens_equipamentos as any[])[0].categoria as TipoEquipamento;
-        setSelectedTab(firstItemCategory);
-      } else {
+    // 1. Identify the OM/UG pair to edit
+    const omToEdit = registro.organizacao;
+    const ugToEdit = registro.ug;
+    
+    // 2. Filter all existing records (from state) belonging to this OM/UG pair
+    const recordsToReconstruct = registros.filter(r => 
+      r.organizacao === omToEdit && r.ug === ugToEdit
+    );
+    
+    if (recordsToReconstruct.length === 0) {
+        toast.error("Não foi possível encontrar registros para edição.");
+        return;
+    }
+
+    // 3. Reconstruct the form state using these records
+    reconstructFormState(recordsToReconstruct);
+    
+    // 4. Set the tab based on the first item found (if any)
+    const firstItem = (recordsToReconstruct[0].itens_equipamentos as any[])?.[0];
+    if (firstItem) {
+        setSelectedTab(firstItem.categoria as TipoEquipamento);
+    } else {
         setSelectedTab(CATEGORIAS[0].key);
-      }
-    });
+    }
+    
+    toast.info(`Editando registros para ${omToEdit} (${ugToEdit}).`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleIniciarEdicaoMemoria = (registro: ClasseIIIRegistro) => {
