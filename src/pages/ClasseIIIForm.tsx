@@ -353,7 +353,7 @@ const ClasseIIIForm = () => {
     await loadRefLPC();
     setIsLpcLoaded(true); // Marca que o LPC foi carregado (mesmo que seja null)
     
-    // Depois carrega os registros
+    // Depois carrega os registros e reconstrói o estado do formulário
     await fetchRegistros(true); 
     
     setLoading(false);
@@ -415,8 +415,8 @@ const ClasseIIIForm = () => {
       }
       reconstructFormState(data as ClasseIIIRegistro[]);
     } else if (!initialLoad) {
-      // If not initial load (e.g., after save/delete), just reset form fields
-      resetFormFields();
+      // Se não for a carga inicial, apenas atualiza a lista de registros, mas não mexe no formulário
+      // O reset do formulário é feito em handleSalvarRegistros
     }
   };
 
@@ -744,6 +744,40 @@ const ClasseIIIForm = () => {
     const itemsFromOtherCategories = form.itens.filter(item => item.categoria !== selectedTab);
     const newFormItems = [...itemsFromOtherCategories, ...itemsToKeep];
     
+    // --- CÁLCULO DE VALOR TOTAL DA CATEGORIA ---
+    const categoryTotalValue = itemsToKeep.reduce((sum, item) => {
+        const { itemTotal } = calculateItemTotals(item, refLPC, form.dias_operacao);
+        return sum + itemTotal;
+    }, 0);
+    
+    // 2. Calculate final ND split for this category based on current input
+    const numericInput = parseInputToNumber(currentND39Input);
+    const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
+    const finalND30Value = categoryTotalValue - finalND39Value;
+    
+    if (categoryTotalValue > 0 && !areNumbersEqual(finalND30Value + finalND39Value, categoryTotalValue)) {
+        toast.error("Erro de cálculo: A soma de ND 30 e ND 39 deve ser igual ao Total da Categoria.");
+        return;
+    }
+    
+    if (categoryTotalValue > 0 && (!lubricantAllocation.om_destino_recurso || !lubricantAllocation.ug_destino_recurso)) {
+        toast.error("Selecione a OM de destino do recurso Lubrificante antes de salvar a alocação.");
+        return;
+    }
+    
+    // Update allocation state for the current category (ND 39 is always 0 for Classe III)
+    setCategoryAllocations(prev => ({
+        ...prev,
+        [selectedTab]: {
+            ...prev[selectedTab],
+            total_valor: categoryTotalValue,
+            nd_39_input: formatNumberForInput(0, 2), // ND 39 is always 0 for Classe III
+            nd_30_value: categoryTotalValue, // ND 30 is always Total for Classe III
+            nd_39_value: 0,
+        }
+    }));
+    // ------------------------------------------
+    
     // Atualiza o estado principal (que alimenta a Seção 3)
     setForm({ ...form, itens: newFormItems });
     toast.success(`Itens da categoria ${selectedTab} atualizados!`);
@@ -769,10 +803,12 @@ const ClasseIIIForm = () => {
     
     // --- CÁLCULO DE COMBUSTÍVEL (ND 33.90.30) ---
     const gruposPorCombustivel = itens.reduce((grupos, item) => {
-      if (!grupos[item.tipo_combustivel_fixo]) {
-        grupos[item.tipo_combustivel_fixo] = [];
+      if (item.tipo_combustivel_fixo === 'GASOLINA' || item.tipo_combustivel_fixo === 'DIESEL') {
+        if (!grupos[item.tipo_combustivel_fixo]) {
+          grupos[item.tipo_combustivel_fixo] = [];
+        }
+        grupos[item.tipo_combustivel_fixo].push(item);
       }
-      grupos[item.tipo_combustivel_fixo].push(item);
       return grupos;
     }, {} as Record<CombustivelTipo, ItemClasseIII[]>);
     
@@ -834,7 +870,7 @@ const ClasseIIIForm = () => {
 
 Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
 
-Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${combustivelLabel} - ${formatCurrency(precoLitro)}.
+Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
 
 Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
 
@@ -1240,6 +1276,7 @@ const getMemoriaRecords = granularRegistros;
       
       toast.success("Registros de Classe III atualizados com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
+      resetFormFields(); // CHAMADA ADICIONADA AQUI
       fetchRegistros(); // Reload data
     } catch (error) {
       console.error("Erro ao salvar/atualizar registros de Classe III:", error);
@@ -1252,17 +1289,24 @@ const getMemoriaRecords = granularRegistros;
   // --- UI Helpers ---
   const handleDeletarConsolidado = async (id: string) => {
     if (!confirm("Deseja realmente deletar este registro consolidado?")) return;
-    const { error } = await supabase
-      .from("classe_iii_registros")
-      .delete()
-      .eq("id", id);
-    if (error) {
-      toast.error("Erro ao deletar registro");
-      console.error(error);
-      return;
+    setLoading(true);
+    try {
+        const { error } = await supabase
+          .from("classe_iii_registros")
+          .delete()
+          .eq("id", id);
+        if (error) {
+          throw error;
+        }
+        toast.success("Registro deletado!");
+        resetFormFields(); // CHAMADA ADICIONADA AQUI
+        fetchRegistros();
+    } catch (error) {
+        console.error("Erro ao deletar registro:", error);
+        toast.error(sanitizeError(error));
+    } finally {
+        setLoading(false);
     }
-    toast.success("Registro deletado!");
-    fetchRegistros();
   };
 
   const handleEditarConsolidado = (registro: ClasseIIIRegistro) => {
@@ -1520,10 +1564,10 @@ const getMemoriaRecords = granularRegistros;
                   <Label>Fase da Atividade *</Label>
                   <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                     <PopoverTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        role="combobox" 
-                        type="button" 
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        type="button"
                         className="w-full justify-between"
                         disabled={loading}
                       >
@@ -1544,9 +1588,9 @@ const getMemoriaRecords = granularRegistros;
                               className="flex items-center justify-between cursor-pointer"
                             >
                               <div className="flex items-center space-x-2">
-                                <Checkbox 
-                                  checked={fasesAtividade.includes(fase)} 
-                                  onCheckedChange={(checked) => handleFaseChange(fase, !!checked)} 
+                                <Checkbox
+                                  checked={fasesAtividade.includes(fase)}
+                                  onCheckedChange={(checked) => handleFaseChange(fase, !!checked)}
                                 />
                                 <Label>{fase}</Label>
                               </div>
@@ -1556,9 +1600,9 @@ const getMemoriaRecords = granularRegistros;
                         </CommandGroup>
                         <div className="p-2 border-t">
                           <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade (Opcional)</Label>
-                          <Input 
-                            value={customFaseAtividade} 
-                            onChange={(e) => setCustomFaseAtividade(e.target.value)} 
+                          <Input
+                            value={customFaseAtividade}
+                            onChange={(e) => setCustomFaseAtividade(e.target.value)}
                             placeholder="Ex: Patrulhamento"
                             onKeyDown={handleEnterToNextField}
                           />
@@ -1855,6 +1899,18 @@ const getMemoriaRecords = granularRegistros;
               <div className="space-y-4 border-b pb-4">
                 <h3 className="text-lg font-semibold">3. Itens Adicionados ({form.itens.filter(i => i.quantidade > 0).length})</h3>
                 
+                {/* Alerta de Validação Final */}
+                {/* NOTA: Classe III não tem ND 39, então totalAlocado deve ser igual a custoTotalClasseIII */}
+                {!areNumbersEqual(custoTotalClasseIII, totalCustoCombustivel + totalCustoLubrificante) && (
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="font-medium">
+                            Atenção: O Custo Total dos Itens ({formatCurrency(custoTotalClasseIII)}) não corresponde ao Total Alocado ({formatCurrency(totalCustoCombustivel + totalCustoLubrificante)}). 
+                            Clique em "Salvar Itens da Categoria" em todas as abas ativas.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 <div className="space-y-4">
                   {Object.entries(itensAgrupadosPorCategoriaParaResumo).map(([categoria, itens]) => {
                     const categoriaLabel = CATEGORIAS.find(c => c.key === categoria)?.label || categoria;
