@@ -390,12 +390,18 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalDieselLitros,
     totalGasolinaLitros,
     totalLubrificanteValor,
-    totalLubrificanteLitros,
     totalCombustivel,
     totalMaterialPermanente,
     totalAviacaoExercito,
   };
 };
+
+interface PTrabCostSummaryProps {
+  ptrabId: string;
+  onOpenCreditDialog: () => void;
+  creditGND3: number;
+  creditGND4: number;
+}
 
 export const PTrabCostSummary = ({ 
   ptrabId, 
@@ -952,15 +958,7 @@ export const PTrabCostSummary = ({
                   </Accordion>
                   
                   {/* Outras Abas Logísticas (Placeholder) */}
-                  <div className="flex justify-between text-xs text-muted-foreground pt-2">
-                    <span className="w-1/2 text-left">Outras Classes (IV, X)</span>
-                    <span className="w-1/4 text-right font-medium">
-                      {/* Vazio */}
-                    </span>
-                    <span className="w-1/4 text-right font-medium">
-                      {formatCurrency(0)}
-                    </span>
-                  </div>
+                  {/* REMOVIDO: Não haverá valores para Classes IV e X */}
                 </div>
 
                 {/* Aba Operacional (Placeholder) */}
