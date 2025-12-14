@@ -1318,9 +1318,6 @@ const ClasseIXForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
-                                                        <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
-                                                            {badgeStyle.label}
-                                                        </Badge>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}

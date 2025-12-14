@@ -7,19 +7,19 @@ interface BadgeStyle {
 
 const CATEGORY_MAP: Record<CategoriaIX, { label: string, className: string }> = {
   'Vtr Administrativa': {
-    label: 'Vtr Adm',
+    label: 'Viatura Administrativa',
     className: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
   },
   'Vtr Operacional': {
-    label: 'Vtr Op',
+    label: 'Viatura Operacional',
     className: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
   },
   'Motocicleta': {
-    label: 'Moto',
+    label: 'Motocicleta',
     className: 'bg-violet-500/10 text-violet-600 border-violet-500/20',
   },
   'Vtr Blindada': {
-    label: 'Blindada',
+    label: 'Viatura Blindada',
     className: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
   },
 };
