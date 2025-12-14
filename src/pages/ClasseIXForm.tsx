@@ -1307,7 +1307,7 @@ const ClasseIXForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // Calculate style here
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1317,10 +1317,6 @@ const ClasseIXForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
-                                                        {/* Adicionando o Badge aqui para melhor identificação */}
-                                                        <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
-                                                            {badgeStyle.label}
-                                                        </Badge>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
