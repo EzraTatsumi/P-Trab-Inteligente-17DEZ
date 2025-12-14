@@ -750,12 +750,12 @@ const ClasseIIIForm = () => {
         return sum + itemTotal;
     }, 0);
     
-    // 2. Calculate final ND split for this category based on current input
-    const numericInput = parseInputToNumber(currentND39Input);
-    const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
-    const finalND30Value = categoryTotalValue - finalND39Value;
+    // ND 39 is always 0 for Classe III, ND 30 is the total value
+    const finalND39Value = 0;
+    const finalND30Value = categoryTotalValue;
     
     if (categoryTotalValue > 0 && !areNumbersEqual(finalND30Value + finalND39Value, categoryTotalValue)) {
+        // Should not happen if ND39 is 0, but kept for robustness
         toast.error("Erro de cálculo: A soma de ND 30 e ND 39 deve ser igual ao Total da Categoria.");
         return;
     }
@@ -766,16 +766,9 @@ const ClasseIIIForm = () => {
     }
     
     // Update allocation state for the current category (ND 39 is always 0 for Classe III)
-    setCategoryAllocations(prev => ({
-        ...prev,
-        [selectedTab]: {
-            ...prev[selectedTab],
-            total_valor: categoryTotalValue,
-            nd_39_input: formatNumberForInput(0, 2), // ND 39 is always 0 for Classe III
-            nd_30_value: categoryTotalValue, // ND 30 is always Total for Classe III
-            nd_39_value: 0,
-        }
-    }));
+    // NOTE: We don't need categoryAllocations state for ND split anymore, but we keep it for total_valor tracking
+    // The ND split logic is now hardcoded to ND 30 = Total, ND 39 = 0.
+    
     // ------------------------------------------
     
     // Atualiza o estado principal (que alimenta a Seção 3)
