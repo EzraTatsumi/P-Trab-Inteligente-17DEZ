@@ -620,15 +620,27 @@ const ClasseIXForm = () => {
         return;
     }
     
-    // Determine the target OM/UG for deletion/insertion
+    // Determine the target OM/UG for deletion/insertion and validate consistency
     let targetOmDestino = "";
     let targetUgDestino = "";
     
-    // Find the destination OM/UG from the first active category
-    const firstActiveCategory = categoriesToSave[0];
-    if (firstActiveCategory) {
-        targetOmDestino = categoryAllocations[firstActiveCategory].om_destino_recurso;
-        targetUgDestino = categoryAllocations[firstActiveCategory].ug_destino_recurso;
+    for (const category of categoriesToSave) {
+        const allocation = categoryAllocations[category];
+        
+        if (!allocation.om_destino_recurso || !allocation.ug_destino_recurso) {
+            toast.error(`Selecione a OM de destino do recurso para a categoria: ${getCategoryLabel(category)}.`);
+            setLoading(false);
+            return;
+        }
+        
+        if (!targetOmDestino) {
+            targetOmDestino = allocation.om_destino_recurso;
+            targetUgDestino = allocation.ug_destino_recurso;
+        } else if (targetOmDestino !== allocation.om_destino_recurso || targetUgDestino !== allocation.ug_destino_recurso) {
+            toast.error("Todos os itens ativos em diferentes categorias devem ser alocados para a mesma OM de Destino em uma única submissão.");
+            setLoading(false);
+            return;
+        }
     }
     
     if (!targetOmDestino || !targetUgDestino) {
@@ -642,12 +654,6 @@ const ClasseIXForm = () => {
     for (const categoria of categoriesToSave) {
         const itens = itemsByActiveCategory[categoria];
         const allocation = categoryAllocations[categoria];
-        
-        if (!allocation.om_destino_recurso || !allocation.ug_destino_recurso) {
-            toast.error(`Selecione a OM de destino do recurso para a categoria: ${getCategoryLabel(categoria)}.`);
-            setLoading(false);
-            return;
-        }
         
         const valorTotalCategoria = allocation.total_valor;
         
@@ -702,7 +708,7 @@ const ClasseIXForm = () => {
       
       toast.success(editingId ? "Registros de Classe IX atualizados com sucesso!" : "Registros de Classe IX salvos com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
-      resetFormFields();
+      resetFormFields(); // IMPORTANTE: Limpa o formulário para permitir nova inserção
       fetchRegistros();
     } catch (error) {
       console.error("Erro ao salvar registros de Classe IX:", error);
@@ -776,6 +782,7 @@ const ClasseIXForm = () => {
         } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
     }
     
+    // Definir editingId para que a mensagem de sucesso seja 'Atualizar'
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
