@@ -620,6 +620,23 @@ const ClasseIXForm = () => {
         return;
     }
     
+    // Determine the target OM/UG for deletion/insertion
+    let targetOmDestino = "";
+    let targetUgDestino = "";
+    
+    // Find the destination OM/UG from the first active category
+    const firstActiveCategory = categoriesToSave[0];
+    if (firstActiveCategory) {
+        targetOmDestino = categoryAllocations[firstActiveCategory].om_destino_recurso;
+        targetUgDestino = categoryAllocations[firstActiveCategory].ug_destino_recurso;
+    }
+    
+    if (!targetOmDestino || !targetUgDestino) {
+        toast.error("OM de destino não definida."); 
+        setLoading(false);
+        return;
+    }
+    
     const registrosParaSalvar: TablesInsert<'classe_ix_registros'>[] = [];
     
     for (const categoria of categoriesToSave) {
@@ -670,11 +687,13 @@ const ClasseIXForm = () => {
     }
 
     try {
-      // MUDANÇA: Deletar APENAS registros de Classe IX existentes
+      // MUDANÇA: Deletar APENAS registros de Classe IX existentes para a OM/UG de destino atual
       const { error: deleteError } = await supabase
         .from("classe_ix_registros")
         .delete()
-        .eq("p_trab_id", ptrabId);
+        .eq("p_trab_id", ptrabId)
+        .eq("organizacao", targetOmDestino) // SCOPE DELETION
+        .eq("ug", targetUgDestino); // SCOPE DELETION
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
       // MUDANÇA: Inserir os novos registros na tabela correta
@@ -713,7 +732,12 @@ const ClasseIXForm = () => {
     let newAllocations = { ...initialCategoryAllocations };
     let firstOmDetentora: { nome: string, ug: string } | null = null;
     
-    (allRecords || []).forEach(r => {
+    // Filter records belonging to the same OM/UG destination as the clicked record
+    const recordsToEdit = (allRecords || []).filter(r => 
+        r.organizacao === registro.organizacao && r.ug === registro.ug
+    );
+    
+    recordsToEdit.forEach(r => {
         const category = r.categoria as Categoria;
         const items = (r.itens_motomecanizacao || []) as ItemClasseIX[];
         
