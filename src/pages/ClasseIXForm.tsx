@@ -24,7 +24,8 @@ import { TablesInsert } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
+import { getCategoryLabel } from "@/lib/badgeUtils";
+import { getClasseIXBadgeStyle } from "@/lib/classeIXUtils";
 import { defaultClasseIXConfig } from "@/data/classeIXData";
 
 type Categoria = 'Vtr Administrativa' | 'Vtr Operacional' | 'Motocicleta' | 'Vtr Blindada';
@@ -1307,7 +1308,7 @@ const ClasseIXForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
+                                    const badgeStyle = getClasseIXBadgeStyle(registro.categoria); // Use Classe IX specific style
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1317,6 +1318,9 @@ const ClasseIXForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
+                                                        <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
+                                                            {badgeStyle.label}
+                                                        </Badge>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
@@ -1407,7 +1411,7 @@ const ClasseIXForm = () => {
                   );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
-                  const badgeStyle = getCategoryBadgeStyle(registro.categoria);
+                  const badgeStyle = getClasseIXBadgeStyle(registro.categoria); // Use Classe IX specific style
                   
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
