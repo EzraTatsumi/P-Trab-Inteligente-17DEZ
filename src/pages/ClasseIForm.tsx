@@ -1284,7 +1284,7 @@ export default function ClasseIForm() {
 
                           {/* Coluna 3: UG de Destino (QS) */}
                           <div className="space-y-2">
-                            <Label htmlFor="ugQS">UG de Destino (QS)</Label>
+                            <Label htmlFor="ugQS">UG de Destino</Label>
                             <Input
                               id="ugQS"
                               value={ugQS}
@@ -1469,8 +1469,8 @@ export default function ClasseIForm() {
                                     {/* Linha 1: Destinos */}
                                     <div className="font-medium text-muted-foreground">OM Destino Recurso</div>
                                     <div className="flex justify-between">
-                                        <span className="font-medium text-green-600">{organizacao} (UG: {ug})</span>
-                                        <span className="font-medium text-blue-600">{currentOMConsolidatedData.RACAO_QUENTE.om_qs} (UG: {currentOMConsolidatedData.RACAO_QUENTE.ug_qs})</span>
+                                        <span className="font-medium text-green-600">{organizacao} ({ug})</span>
+                                        <span className="font-medium text-blue-600">{currentOMConsolidatedData.RACAO_QUENTE.om_qs} ({currentOMConsolidatedData.RACAO_QUENTE.ug_qs})</span>
                                     </div>
                                     
                                     {/* Linha 2: ND e Valores */}
