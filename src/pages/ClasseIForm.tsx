@@ -1336,6 +1336,19 @@ export default function ClasseIForm() {
                             </div>
                           </div>
                         )}
+                        
+                        {/* Botão Salvar Configuração da Categoria - MOVIDO AQUI */}
+                        <div className="flex justify-end gap-2 pt-4">
+                          <Button
+                            type="button"
+                            onClick={handleSaveCategoryConfig}
+                            className="gap-2"
+                            disabled={loading || !organizacao || diasOperacao <= 0 || efetivo <= 0 || (!displayFases)}
+                          >
+                            <Check className="h-4 w-4" />
+                            Salvar Item da Categoria
+                          </Button>
+                        </div>
                       </div>
                     </TabsContent>
                     
@@ -1399,13 +1412,26 @@ export default function ClasseIForm() {
                             </p>
                           </div>
                         )}
+                        
+                        {/* Botão Salvar Configuração da Categoria - MOVIDO AQUI */}
+                        <div className="flex justify-end gap-2 pt-4">
+                          <Button
+                            type="button"
+                            onClick={handleSaveCategoryConfig}
+                            className="gap-2"
+                            disabled={loading || !organizacao || diasOperacao <= 0 || efetivo <= 0 || (!displayFases)}
+                          >
+                            <Check className="h-4 w-4" />
+                            Salvar Item da Categoria
+                          </Button>
+                        </div>
                       </div>
                     </TabsContent>
                   </Tabs>
                 </div>
 
-                {/* Botão Salvar Configuração da Categoria */}
-                <div className="flex justify-end gap-2">
+                {/* Botão Salvar Configuração da Categoria - REMOVIDO DAQUI */}
+                {/* <div className="flex justify-end gap-2">
                   <Button
                     type="button"
                     onClick={handleSaveCategoryConfig}
@@ -1415,7 +1441,7 @@ export default function ClasseIForm() {
                     <Check className="h-4 w-4" />
                     Salvar Item da Categoria
                   </Button>
-                </div>
+                </div> */}
               </>
             )}
             
