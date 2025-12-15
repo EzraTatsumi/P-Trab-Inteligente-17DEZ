@@ -16,5 +16,4 @@ export interface DiretrizClasseIXForm {
   item: string;
   valor_mnt_dia: number;
   valor_acionamento_mensal: number;
-  ativo?: boolean;
 }
