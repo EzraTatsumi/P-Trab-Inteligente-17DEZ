@@ -1108,7 +1108,7 @@ export default function ClasseIForm() {
                         
                         {/* Preview dos Cálculos Ração Quente */}
                         {calculosRacaoQuente && (
-                          <div className="space-y-4 mt-6 p-4 bg-background rounded-lg border">
+                          <div className="space-y-2 mt-6 p-4 bg-background rounded-lg border">
                             <h5 className="font-semibold text-sm">Previsão de Custo (Ração Quente)</h5>
                             <div className="flex justify-between items-center text-sm">
                               <span className="text-muted-foreground">Total QS (Quantitativo de Subsistência)</span>
@@ -1119,7 +1119,7 @@ export default function ClasseIForm() {
                               <span className="font-semibold text-green-600">{formatCurrency(calculosRacaoQuente.totalQR)}</span>
                             </div>
                             <div className="h-px bg-border my-2" />
-                            <div className="flex justify-between items-center text-lg">
+                            <div className="flex justify-between items-center text-lg pt-1">
                               <span className="font-bold">Total Ração Quente</span>
                               <span className="font-bold text-primary">{formatCurrency(calculosRacaoQuente.totalQS + calculosRacaoQuente.totalQR)}</span>
                             </div>
