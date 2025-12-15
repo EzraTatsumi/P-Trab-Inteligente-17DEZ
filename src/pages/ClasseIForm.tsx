@@ -1761,6 +1761,7 @@ export default function ClasseIForm() {
               </div>
             )}
           
+          </div> {/* <-- FECHAMENTO CORRETO DO DIV space-y-6 */}
         </Card>
       </div>
     </div>
