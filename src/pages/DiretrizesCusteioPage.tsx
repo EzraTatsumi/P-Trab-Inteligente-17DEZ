@@ -198,31 +198,35 @@ const DiretrizesCusteioPage = () => {
       navigate("/login");
       return;
     }
-    await loadAvailableYears();
-    await loadDefaultYear(session.user.id);
+    
+    // 1. Load default year first
+    const fetchedDefaultYear = await loadDefaultYear(session.user.id);
+    
+    // 2. Then load available years and set the initial selected year
+    await loadAvailableYears(fetchedDefaultYear);
   };
-  
-  const loadDefaultYear = async (userId: string) => {
+
+  const loadDefaultYear = async (userId: string): Promise<number | null> => {
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('default_diretriz_year')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
         
       if (error && error.code !== 'PGRST116') throw error;
       
-      if (data && data.default_diretriz_year) {
-        setDefaultYear(data.default_diretriz_year);
-      } else {
-        setDefaultYear(null);
-      }
+      const year = data?.default_diretriz_year || null;
+      setDefaultYear(year);
+      return year;
     } catch (error) {
       console.error("Erro ao carregar ano padrão:", error);
+      setDefaultYear(null);
+      return null;
     }
   };
 
-  const loadAvailableYears = async () => {
+  const loadAvailableYears = async (defaultYearId: number | null) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -238,15 +242,20 @@ const DiretrizesCusteioPage = () => {
       const years = data ? data.map(d => d.ano_referencia) : [];
       
       // Garante que o ano atual (calendário) e o ano padrão (se existir) estejam na lista
-      const uniqueYears = Array.from(new Set([...years, currentYear, defaultYear || 0])).filter(y => y > 0).sort((a, b) => b - a);
+      const uniqueYears = Array.from(new Set([...years, currentYear, defaultYearId || 0])).filter(y => y > 0).sort((a, b) => b - a);
       setAvailableYears(uniqueYears);
 
-      // Se o ano selecionado não estiver mais disponível, ou se for o primeiro carregamento, 
-      // tenta selecionar o ano padrão, ou o mais recente.
-      if (!uniqueYears.includes(selectedYear)) {
-        const yearToSelect = defaultYear || (uniqueYears.length > 0 ? uniqueYears[0] : currentYear);
-        setSelectedYear(yearToSelect);
+      // Determine the year to select: Default year > Most recent available year > Current year
+      let yearToSelect = currentYear;
+      
+      if (defaultYearId && uniqueYears.includes(defaultYearId)) {
+          yearToSelect = defaultYearId;
+      } else if (uniqueYears.length > 0) {
+          yearToSelect = uniqueYears[0];
       }
+      
+      // Only update selectedYear if it's different from the current state to avoid unnecessary re-renders/re-fetches
+      setSelectedYear(prevYear => prevYear !== yearToSelect ? yearToSelect : prevYear);
 
     } catch (error: any) {
       console.error("Erro ao carregar anos disponíveis:", error);
@@ -595,7 +604,7 @@ const DiretrizesCusteioPage = () => {
       }
 
 
-      await loadAvailableYears();
+      await loadAvailableYears(defaultYear); // Passa o defaultYear atualizado
     } catch (error: any) {
       if (error.code === '23505') {
         toast.error("Já existe uma diretriz para este ano");
@@ -722,7 +731,7 @@ const DiretrizesCusteioPage = () => {
       toast.success(`Diretrizes do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
       setIsYearManagementDialogOpen(false);
       setSelectedYear(targetYear);
-      await loadAvailableYears();
+      await loadAvailableYears(defaultYear);
       
     } catch (error: any) {
       console.error("Erro ao copiar diretrizes:", error);
@@ -778,7 +787,7 @@ const DiretrizesCusteioPage = () => {
 
       toast.success(`Diretrizes do ano ${year} excluídas com sucesso!`);
       setIsYearManagementDialogOpen(false);
-      await loadAvailableYears();
+      await loadAvailableYears(defaultYear);
       
     } catch (error: any) {
       console.error("Erro ao excluir diretrizes:", error);
