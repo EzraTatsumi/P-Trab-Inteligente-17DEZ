@@ -31,7 +31,7 @@ import {
   formatNumberForInput, 
   parseInputToNumber, 
   numberToRawDigits,
-  formatCurrencyInput // <-- Importação corrigida
+  formatCurrencyInput
 } from "@/lib/formatUtils";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -948,11 +948,13 @@ export default function ClasseIForm() {
             
             {/* 1. Dados da Organização */}
             <div className="space-y-3 border-b pb-4">
-              <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
+              <h3 className="text-lg font-semibold">1. Dados da Organização e Atividade</h3>
               
-              <div className="grid md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-muted/30 rounded-lg">
+                
+                {/* OM de Destino (QR / Ração Operacional) */}
                 <div className="space-y-2">
-                  <Label htmlFor="om">OM de Destino</Label>
+                  <Label htmlFor="om">OM de Destino (QR / Ração Operacional) *</Label>
                   <OmSelector
                     selectedOmId={selectedOmId}
                     onChange={handleOMChange}
@@ -970,26 +972,13 @@ export default function ClasseIForm() {
                     className="disabled:opacity-60"
                   />
                 </div>
-
+                
                 <div className="space-y-2">
-                  <Label htmlFor="efetivo">Efetivo de Militares</Label>
-                  <Input
-                    id="efetivo"
-                    type="number"
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    value={efetivo === 0 ? "" : efetivo.toString()}
-                    onChange={(e) => setEfetivo(Number(e.target.value))}
-                    placeholder="Ex: 246"
-                    onKeyDown={handleEnterToNextField}
-                    disabled={!organizacao}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="diasOperacao">Dias de atividade</Label>
+                  <Label htmlFor="diasOperacao">Dias de Atividade *</Label>
                   <Input
                     id="diasOperacao"
                     type="number"
+                    min="1"
                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     value={diasOperacao === 0 ? "" : diasOperacao.toString()}
                     onChange={(e) => setDiasOperacao(Number(e.target.value))}
@@ -999,8 +988,45 @@ export default function ClasseIForm() {
                   />
                 </div>
                 
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="faseAtividade">Fase da Atividade</Label>
+                {/* OM que receberá o QS (RM) */}
+                <div className="space-y-2">
+                  <Label htmlFor="omQS">OM de Destino (QS) *</Label>
+                  <RmSelector
+                    value={omQS}
+                    onChange={handleRMQSChange}
+                    placeholder="Selecione a RM de destino do QS..."
+                    disabled={!organizacao}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ugQS">UG de Destino (QS)</Label>
+                  <Input
+                    id="ugQS"
+                    value={ugQS}
+                    readOnly
+                    disabled={true}
+                    className="disabled:opacity-60"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="efetivo">Efetivo de Militares *</Label>
+                  <Input
+                    id="efetivo"
+                    type="number"
+                    min="1"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    value={efetivo === 0 ? "" : efetivo.toString()}
+                    onChange={(e) => setEfetivo(Number(e.target.value))}
+                    placeholder="Ex: 246"
+                    onKeyDown={handleEnterToNextField}
+                    disabled={!organizacao}
+                  />
+                </div>
+                
+                <div className="space-y-2 md:col-span-3">
+                  <Label htmlFor="faseAtividade">Fase da Atividade *</Label>
                   <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                     <PopoverTrigger asChild>
                       <Button
@@ -1068,29 +1094,6 @@ export default function ClasseIForm() {
                   <TabsContent value="RACAO_QUENTE" className="mt-4">
                     <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
                       <h4 className="font-semibold text-base">Configuração de QS/QR</h4>
-                      
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="omQS">RM que receberá o QS</Label>
-                          <RmSelector
-                            value={omQS}
-                            onChange={handleRMQSChange}
-                            placeholder="Selecione a RM de destino do QS..."
-                            disabled={!organizacao}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="ugQS">CODUG da RM do QS</Label>
-                          <Input
-                            id="ugQS"
-                            value={ugQS}
-                            readOnly
-                            disabled={true}
-                            className="disabled:opacity-60"
-                          />
-                        </div>
-                      </div>
                       
                       <div className="grid md:grid-cols-3 gap-4">
                         <div className="space-y-2">
