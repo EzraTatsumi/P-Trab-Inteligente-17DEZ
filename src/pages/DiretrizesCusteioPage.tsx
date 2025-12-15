@@ -742,8 +742,8 @@ const DiretrizesCusteioPage = () => {
   };
 
   const handleDeleteDiretrizes = async (year: number) => {
-    if (year === currentYear) {
-      toast.error("Não é possível excluir a diretriz do ano atual.");
+    if (year === defaultYear) {
+      toast.error("Não é possível excluir a diretriz do ano padrão.");
       return;
     }
     
@@ -830,6 +830,9 @@ const DiretrizesCusteioPage = () => {
         setDiretrizes(prev => ({ ...prev, classe_i_valor_qr: numericValue }));
     }
   };
+  
+  // NOVO ESTADO PARA RASTREAR O INPUT FOCADO NA LISTA DINÂMICA
+  const [focusedInput, setFocusedInput] = useState<{ index: number, field: string, rawDigits: string } | null>(null);
   
   // --- Funções de Gerenciamento da Classe II, V, VI, VII e VIII ---
   const handleAddClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, categoria: DiretrizClasseIIForm['categoria']) => {
@@ -1555,7 +1558,7 @@ const DiretrizesCusteioPage = () => {
         open={isYearManagementDialogOpen}
         onOpenChange={setIsYearManagementDialogOpen}
         availableYears={availableYears}
-        currentYear={currentYear}
+        defaultYear={defaultYear} // Passando o defaultYear
         onCopy={handleCopyDiretrizes}
         onDelete={handleDeleteDiretrizes}
         loading={loading}
