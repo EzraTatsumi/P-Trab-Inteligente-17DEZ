@@ -300,7 +300,7 @@ const DiretrizesCusteioPage = () => {
         .from("diretrizes_classe_ii")
         .select("categoria, item, valor_mnt_dia")
         .eq("user_id", user.id)
-        .eq("ano_referencia", year)
+        .eq("ano_referencia", anoReferencia)
         .eq("ativo", true)
         .in("categoria", allClasseItemsCategories);
 
@@ -383,7 +383,7 @@ const DiretrizesCusteioPage = () => {
         .from("diretrizes_classe_ix")
         .select("categoria, item, valor_mnt_dia, valor_acionamento_mensal")
         .eq("user_id", user.id)
-        .eq("ano_referencia", year)
+        .eq("ano_referencia", anoReferencia)
         .eq("ativo", true);
         
       if (classeIXError) throw classeIXError;
@@ -894,6 +894,8 @@ const DiretrizesCusteioPage = () => {
           // Encontrar o índice original no array completo para permitir a atualização/remoção
           const indexInMainArray = config.findIndex(c => c === item);
           
+          if (indexInMainArray === -1) return null; // Adicionado: Ignora se a referência do item for perdida
+          
           const handleRemoveFilteredItem = () => {
             if (indexInMainArray !== -1) {
               handleRemoveClasseItem(config, setConfig, indexInMainArray);
@@ -1021,6 +1023,8 @@ const DiretrizesCusteioPage = () => {
         {filteredItems.map((item, index) => {
           // Encontrar o índice original no array completo para permitir a atualização/remoção
           const indexInMainArray = config.findIndex(c => c === item);
+          
+          if (indexInMainArray === -1) return null; // Adicionado: Ignora se a referência do item for perdida
           
           const handleRemoveFilteredItem = () => {
             if (indexInMainArray !== -1) {
