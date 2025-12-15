@@ -1451,21 +1451,51 @@ export default function ClasseIForm() {
                             </div>
                             
                             <div className="space-y-1 text-sm">
-                                <div className="flex justify-between text-muted-foreground">
-                                    <span className="font-medium">OM Detentora:</span>
-                                    <span className="font-semibold text-foreground">{organizacao} (UG: {ug})</span>
-                                </div>
-                                <div className="flex justify-between text-muted-foreground">
-                                    <span className="font-medium">Efetivo / Dias:</span>
-                                    <span className="font-semibold text-foreground">{currentOMConsolidatedData.RACAO_QUENTE.efetivo} militares / {currentOMConsolidatedData.RACAO_QUENTE.dias_operacao} dias</span>
-                                </div>
-                                <div className="flex justify-between text-muted-foreground">
-                                    <span className="font-medium">Fase da Atividade:</span>
-                                    <span className="font-semibold text-foreground">{formatFasesParaTexto(currentOMConsolidatedData.RACAO_QUENTE.fase_atividade)}</span>
+                                {/* Detalhes do Cálculo */}
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                    <div className="font-medium text-muted-foreground">Efetivo / Dias / Ref. Int.</div>
+                                    <div className="font-semibold text-foreground text-right">
+                                        {currentOMConsolidatedData.RACAO_QUENTE.efetivo} mil. / {currentOMConsolidatedData.RACAO_QUENTE.dias_operacao} dias / {currentOMConsolidatedData.RACAO_QUENTE.nr_ref_int} ref.
+                                    </div>
+                                    
+                                    <div className="font-medium text-muted-foreground">Fase da Atividade</div>
+                                    <div className="font-semibold text-foreground text-right">
+                                        {formatFasesParaTexto(currentOMConsolidatedData.RACAO_QUENTE.fase_atividade)}
+                                    </div>
                                 </div>
                                 
-                                {/* NOVO FORMATO DE EXIBIÇÃO DE RECURSOS */}
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-2 border-t mt-2 text-xs">
+                                <div className="h-px bg-border my-2" />
+                                
+                                {/* Detalhamento do Cálculo QS */}
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                    <div className="font-bold text-blue-600">QS (Subsistência)</div>
+                                    <div className="font-bold text-blue-600 text-right">Total: {formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_qs || 0)}</div>
+                                    
+                                    <div className="text-muted-foreground pl-2">Complemento de Etapa</div>
+                                    <div className="text-foreground text-right">{formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.complemento_qs || 0)}</div>
+                                    
+                                    <div className="text-muted-foreground pl-2">Etapa a Solicitar</div>
+                                    <div className="text-foreground text-right">{formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.etapa_qs || 0)}</div>
+                                </div>
+                                
+                                <div className="h-px bg-border my-2" />
+                                
+                                {/* Detalhamento do Cálculo QR */}
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                    <div className="font-bold text-green-600">QR (Reforço)</div>
+                                    <div className="font-bold text-green-600 text-right">Total: {formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_qr || 0)}</div>
+                                    
+                                    <div className="text-muted-foreground pl-2">Complemento de Etapa</div>
+                                    <div className="text-foreground text-right">{formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.complemento_qr || 0)}</div>
+                                    
+                                    <div className="text-muted-foreground pl-2">Etapa a Solicitar</div>
+                                    <div className="text-foreground text-right">{formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.etapa_qr || 0)}</div>
+                                </div>
+                                
+                                <div className="h-px bg-border my-2" />
+                                
+                                {/* Linha de Destinos e ND (Mantida) */}
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-2 text-xs">
                                     {/* Linha 1: Destinos */}
                                     <div className="font-medium text-muted-foreground">OM Destino Recurso</div>
                                     <div className="flex justify-between">
