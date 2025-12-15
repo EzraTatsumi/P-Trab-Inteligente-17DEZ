@@ -952,6 +952,8 @@ export default function ClasseIForm() {
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-muted/30 rounded-lg">
                 
+                {/* Linha 1: OM Destino (QR/R Op), UG Destino (QR/R Op), OM Destino (QS) */}
+                
                 {/* OM de Destino (QR / Ração Operacional) */}
                 <div className="space-y-2">
                   <Label htmlFor="om">OM de Destino (QR / Ração Operacional) *</Label>
@@ -973,6 +975,30 @@ export default function ClasseIForm() {
                   />
                 </div>
                 
+                {/* OM que receberá o QS (RM) */}
+                <div className="space-y-2">
+                  <Label htmlFor="omQS">OM de Destino (QS) *</Label>
+                  <RmSelector
+                    value={omQS}
+                    onChange={handleRMQSChange}
+                    placeholder="Selecione a RM de destino do QS..."
+                    disabled={!organizacao}
+                  />
+                </div>
+
+                {/* Linha 2: UG Destino (QS), Dias de Atividade, Efetivo de Militares */}
+                
+                <div className="space-y-2">
+                  <Label htmlFor="ugQS">UG de Destino (QS)</Label>
+                  <Input
+                    id="ugQS"
+                    value={ugQS}
+                    readOnly
+                    disabled={true}
+                    className="disabled:opacity-60"
+                  />
+                </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="diasOperacao">Dias de Atividade *</Label>
                   <Input
@@ -985,28 +1011,6 @@ export default function ClasseIForm() {
                     placeholder="Ex: 30"
                     onKeyDown={handleEnterToNextField}
                     disabled={!organizacao}
-                  />
-                </div>
-                
-                {/* OM que receberá o QS (RM) */}
-                <div className="space-y-2">
-                  <Label htmlFor="omQS">OM de Destino (QS) *</Label>
-                  <RmSelector
-                    value={omQS}
-                    onChange={handleRMQSChange}
-                    placeholder="Selecione a RM de destino do QS..."
-                    disabled={!organizacao}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="ugQS">UG de Destino (QS)</Label>
-                  <Input
-                    id="ugQS"
-                    value={ugQS}
-                    readOnly
-                    disabled={true}
-                    className="disabled:opacity-60"
                   />
                 </div>
                 
@@ -1025,6 +1029,7 @@ export default function ClasseIForm() {
                   />
                 </div>
                 
+                {/* Linha 3: Fase da Atividade (3 colunas) */}
                 <div className="space-y-2 md:col-span-3">
                   <Label htmlFor="faseAtividade">Fase da Atividade *</Label>
                   <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
