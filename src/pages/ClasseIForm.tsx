@@ -1064,205 +1064,207 @@ export default function ClasseIForm() {
 
             {/* 2. Configurar Itens por Categoria */}
             {organizacao && diasOperacao > 0 && efetivo > 0 && (
-              <div className="space-y-4 border-b pb-4">
-                <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
-                
-                <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as CategoriaClasseI)}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="RACAO_QUENTE">Ração Quente (R1)</TabsTrigger>
-                    <TabsTrigger value="RACAO_OPERACIONAL">Ração Operacional (R2/R3)</TabsTrigger>
-                  </TabsList>
+              <>
+                <div className="space-y-4 border-b pb-4">
+                  <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                   
-                  {/* Ração Quente (R1) - QS/QR */}
-                  <TabsContent value="RACAO_QUENTE" className="mt-4">
-                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
-                      <h4 className="font-semibold text-base">Configuração de QS/QR</h4>
-                      
-                      {/* Linha OM/UG QS (MOVIDA PARA CÁ) */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="omQS">OM de Destino (QS) *</Label>
-                          <RmSelector
-                            value={omQS}
-                            onChange={handleRMQSChange}
-                            placeholder="Selecione a RM de destino do QS..."
-                            disabled={!organizacao}
-                          />
-                        </div>
+                  <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as CategoriaClasseI)}>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="RACAO_QUENTE">Ração Quente (R1)</TabsTrigger>
+                      <TabsTrigger value="RACAO_OPERACIONAL">Ração Operacional (R2/R3)</TabsTrigger>
+                    </TabsList>
+                    
+                    {/* Ração Quente (R1) - QS/QR */}
+                    <TabsContent value="RACAO_QUENTE" className="mt-4">
+                      <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                        <h4 className="font-semibold text-base">Configuração de QS/QR</h4>
+                        
+                        {/* Linha OM/UG QS (MOVIDA PARA CÁ) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <Label htmlFor="omQS">OM de Destino (QS) *</Label>
+                            <RmSelector
+                              value={omQS}
+                              onChange={handleRMQSChange}
+                              placeholder="Selecione a RM de destino do QS..."
+                              disabled={!organizacao}
+                            />
+                          </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="ugQS">UG de Destino (QS)</Label>
-                          <Input
-                            id="ugQS"
-                            value={ugQS}
-                            readOnly
-                            disabled={true}
-                            className="disabled:opacity-60"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="grid md:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="nrRefInt">Nº Refeições Intermediárias</Label>
-                          <Select
-                            value={nrRefInt.toString()}
-                            onValueChange={(value) => setNrRefInt(Number(value))}
-                          >
-                            <SelectTrigger id="nrRefInt">
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-background">
-                              <SelectItem value="1">1 refeição</SelectItem>
-                              <SelectItem value="2">2 refeições</SelectItem>
-                              <SelectItem value="3">3 refeições</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <div className="space-y-2">
+                            <Label htmlFor="ugQS">UG de Destino (QS)</Label>
+                            <Input
+                              id="ugQS"
+                              value={ugQS}
+                              readOnly
+                              disabled={true}
+                              className="disabled:opacity-60"
+                            />
+                          </div>
                         </div>
                         
-                        <div className="space-y-2">
-                          <Label>Valor QS (R$)</Label>
-                          <div className="relative">
+                        <div className="grid md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="nrRefInt">Nº Refeições Intermediárias</Label>
+                            <Select
+                              value={nrRefInt.toString()}
+                              onValueChange={(value) => setNrRefInt(Number(value))}
+                            >
+                              <SelectTrigger id="nrRefInt">
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-background">
+                                <SelectItem value="1">1 refeição</SelectItem>
+                                <SelectItem value="2">2 refeições</SelectItem>
+                                <SelectItem value="3">3 refeições</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label>Valor QS (R$)</Label>
+                            <div className="relative">
+                              <Input
+                                type="text"
+                                inputMode="numeric"
+                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
+                                value={formatPriceForInput(valorQS, rawQSInput)}
+                                onChange={(e) => handlePriceChange(e, 'valorQS')}
+                                onBlur={() => handlePriceBlur('valorQS')}
+                                onKeyDown={handleEnterToNextField}
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label>Valor QR (R$)</Label>
+                            <div className="relative">
+                              <Input
+                                type="text"
+                                inputMode="numeric"
+                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
+                                value={formatPriceForInput(valorQR, rawQRInput)}
+                                onChange={(e) => handlePriceChange(e, 'valorQR')}
+                                onBlur={() => handlePriceBlur('valorQR')}
+                                onKeyDown={handleEnterToNextField}
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Preview dos Cálculos Ração Quente */}
+                        {calculosRacaoQuente && (
+                          <div className="space-y-4 mt-6 p-4 bg-background rounded-lg border">
+                            <h5 className="font-semibold text-sm">Previsão de Custo (Ração Quente)</h5>
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">Total QS (Subsistência)</span>
+                              <span className="font-semibold text-blue-600">{formatCurrency(calculosRacaoQuente.totalQS)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">Total QR (Rancho Pronto)</span>
+                              <span className="font-semibold text-green-600">{formatCurrency(calculosRacaoQuente.totalQR)}</span>
+                            </div>
+                            <div className="h-px bg-border my-2" />
+                            <div className="flex justify-between items-center text-lg">
+                              <span className="font-bold">Total Ração Quente</span>
+                              <span className="font-bold text-primary">{formatCurrency(calculosRacaoQuente.totalQS + calculosRacaoQuente.totalQR)}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+                    
+                    {/* Ração Operacional (R2/R3) */}
+                    <TabsContent value="RACAO_OPERACIONAL" className="mt-4">
+                      <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                        <h4 className="font-semibold text-base">Quantitativo de Ração Operacional</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Informe a quantidade total de rações operacionais necessárias para o efetivo e dias de atividade.
+                        </p>
+                        
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="quantidadeR2">Ração Operacional R2 (24h)</Label>
                             <Input
-                              type="text"
-                              inputMode="numeric"
-                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                              value={formatPriceForInput(valorQS, rawQSInput)}
-                              onChange={(e) => handlePriceChange(e, 'valorQS')}
-                              onBlur={() => handlePriceBlur('valorQS')}
+                              id="quantidadeR2"
+                              type="number"
+                              min="0"
+                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              value={quantidadeR2 === 0 ? "" : quantidadeR2.toString()}
+                              onChange={(e) => setQuantidadeR2(Number(e.target.value))}
+                              placeholder="0"
                               onKeyDown={handleEnterToNextField}
                             />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
                           </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label>Valor QR (R$)</Label>
-                          <div className="relative">
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="quantidadeR3">Ração Operacional R3 (12h)</Label>
                             <Input
-                              type="text"
-                              inputMode="numeric"
-                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                              value={formatPriceForInput(valorQR, rawQRInput)}
-                              onChange={(e) => handlePriceChange(e, 'valorQR')}
-                              onBlur={() => handlePriceBlur('valorQR')}
+                              id="quantidadeR3"
+                              type="number"
+                              min="0"
+                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              value={quantidadeR3 === 0 ? "" : quantidadeR3.toString()}
+                              onChange={(e) => setQuantidadeR3(Number(e.target.value))}
+                              placeholder="0"
                               onKeyDown={handleEnterToNextField}
                             />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
                           </div>
-                        </div>
-                      </div>
-                      
-                      {/* Preview dos Cálculos Ração Quente */}
-                      {calculosRacaoQuente && (
-                        <div className="space-y-4 mt-6 p-4 bg-background rounded-lg border">
-                          <h5 className="font-semibold text-sm">Previsão de Custo (Ração Quente)</h5>
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Total QS (Subsistência)</span>
-                            <span className="font-semibold text-blue-600">{formatCurrency(calculosRacaoQuente.totalQS)}</span>
-                          </div>
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Total QR (Rancho Pronto)</span>
-                            <span className="font-semibold text-green-600">{formatCurrency(calculosRacaoQuente.totalQR)}</span>
-                          </div>
-                          <div className="h-px bg-border my-2" />
-                          <div className="flex justify-between items-center text-lg">
-                            <span className="font-bold">Total Ração Quente</span>
-                            <span className="font-bold text-primary">{formatCurrency(calculosRacaoQuente.totalQS + calculosRacaoQuente.totalQR)}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </TabsContent>
-                  
-                  {/* Ração Operacional (R2/R3) */}
-                  <TabsContent value="RACAO_OPERACIONAL" className="mt-4">
-                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
-                      <h4 className="font-semibold text-base">Quantitativo de Ração Operacional</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Informe a quantidade total de rações operacionais necessárias para o efetivo e dias de atividade.
-                      </p>
-                      
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="quantidadeR2">Ração Operacional R2 (24h)</Label>
-                          <Input
-                            id="quantidadeR2"
-                            type="number"
-                            min="0"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            value={quantidadeR2 === 0 ? "" : quantidadeR2.toString()}
-                            onChange={(e) => setQuantidadeR2(Number(e.target.value))}
-                            placeholder="0"
-                            onKeyDown={handleEnterToNextField}
-                          />
                         </div>
                         
-                        <div className="space-y-2">
-                          <Label htmlFor="quantidadeR3">Ração Operacional R3 (12h)</Label>
-                          <Input
-                            id="quantidadeR3"
-                            type="number"
-                            min="0"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            value={quantidadeR3 === 0 ? "" : quantidadeR3.toString()}
-                            onChange={(e) => setQuantidadeR3(Number(e.target.value))}
-                            placeholder="0"
-                            onKeyDown={handleEnterToNextField}
-                          />
-                        </div>
+                        {/* Preview Ração Operacional */}
+                        {(quantidadeR2 > 0 || quantidadeR3 > 0) && (
+                          <div className="space-y-4 mt-6 p-4 bg-background rounded-lg border">
+                            <h5 className="font-semibold text-sm">Resumo (Ração Operacional)</h5>
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">Total de Unidades R2</span>
+                              <span className="font-semibold">{formatNumber(quantidadeR2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">Total de Unidades R3</span>
+                              <span className="font-semibold">{formatNumber(quantidadeR3)}</span>
+                            </div>
+                            <div className="h-px bg-border my-2" />
+                            <div className="flex justify-between items-center text-lg">
+                              <span className="font-bold">Total de Rções Operacionais</span>
+                              <span className="font-bold text-secondary">{formatNumber(totalRacoesOperacionais)} un.</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              * Nota: O valor monetário desta solicitação é considerado R$ 0,00 para fins de cálculo logístico interno.
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      
-                      {/* Preview Ração Operacional */}
-                      {(quantidadeR2 > 0 || quantidadeR3 > 0) && (
-                        <div className="space-y-4 mt-6 p-4 bg-background rounded-lg border">
-                          <h5 className="font-semibold text-sm">Resumo (Ração Operacional)</h5>
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Total de Unidades R2</span>
-                            <span className="font-semibold">{formatNumber(quantidadeR2)}</span>
-                          </div>
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Total de Unidades R3</span>
-                            <span className="font-semibold">{formatNumber(quantidadeR3)}</span>
-                          </div>
-                          <div className="h-px bg-border my-2" />
-                          <div className="flex justify-between items-center text-lg">
-                            <span className="font-bold">Total de Rções Operacionais</span>
-                            <span className="font-bold text-secondary">{formatNumber(totalRacoesOperacionais)} un.</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            * Nota: O valor monetário desta solicitação é considerado R$ 0,00 para fins de cálculo logístico interno.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+
+                {/* Botão Cadastrar/Atualizar e Cancelar */}
+                <div className="flex justify-end gap-2">
+                  {editingRegistroId && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={resetFormFields}
+                      className="gap-2"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Cancelar Edição
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    className="gap-2"
+                    disabled={loading || !organizacao || diasOperacao <= 0 || efetivo <= 0 || (!displayFases)}
+                  >
+                    <Plus className="h-4 w-4" />
+                    {loading ? "Aguarde..." : (editingRegistroId ? "Atualizar Registro" : "Cadastrar Registro")}
+                  </Button>
+                </div>
+              </>
             )}
-
-            {/* Botão Cadastrar/Atualizar e Cancelar */}
-            <div className="flex justify-end gap-2">
-              {editingRegistroId && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={resetFormFields}
-                  className="gap-2"
-                >
-                  <XCircle className="h-4 w-4" />
-                  Cancelar Edição
-                </Button>
-              )}
-              <Button
-                type="submit"
-                className="gap-2"
-                disabled={loading || !organizacao || diasOperacao <= 0 || efetivo <= 0 || (!displayFases)}
-              >
-                <Plus className="h-4 w-4" />
-                {loading ? "Aguarde..." : (editingRegistroId ? "Atualizar Registro" : "Cadastrar Registro")}
-              </Button>
-            </div>
           </form>
 
             {/* 3. Tabela de Registros */}
