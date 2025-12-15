@@ -25,52 +25,35 @@ import { Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Textarea } from "@/components/ui/textarea"; // Importar Textarea
+import { formatCurrency, formatNumber, formatNumberForInput, parseInputToNumber, numberToRawDigits } from "@/lib/formatUtils";
+import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface OMRegistro {
-  id: string;
-  om: string;
-  ug: string;
-  omQS: string;
-  ugQS: string;
-  efetivo: number;
-  diasOperacao: number;
-  nrRefInt: number;
-  valorQS: number;
-  valorQR: number;
-  faseAtividade?: string; // Mantido como string, mas conterá CSV
-  memoriaQSCustomizada?: string | null;
-  memoriaQRCustomizada?: string | null;
-  calculos: {
-    nrCiclos: number;
-    diasEtapaPaga: number;
-    diasEtapaSolicitada: number;
-    totalEtapas: number;
-    complementoQS: number;
-    etapaQS: number;
-    totalQS: number;
-    complementoQR: number;
-    etapaQR: number;
-    totalQR: number;
-  };
-}
+// New types for Classe I categories
+type CategoriaClasseI = 'RACAO_QUENTE' | 'RACAO_OPERACIONAL';
+const CATEGORIAS_CLASSE_I: CategoriaClasseI[] = ['RACAO_QUENTE', 'RACAO_OPERACIONAL'];
 
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
 
 // Helper function to encapsulate calculation logic
 const calculateClasseICalculations = (
-  efetivo: number,
+  efetivo: number | null,
   diasOperacao: number,
   nrRefInt: number,
   valorQS: number,
   valorQR: number
 ) => {
-  if (efetivo <= 0 || diasOperacao <= 0) {
+  const E = efetivo || 0;
+  const D = diasOperacao || 0;
+  const R = nrRefInt || 0;
+  const VQS = valorQS || 0;
+  const VQR = valorQR || 0;
+
+  if (E <= 0 || D <= 0) {
     return {
       nrCiclos: 0,
       diasEtapaPaga: 0,
@@ -85,34 +68,30 @@ const calculateClasseICalculations = (
     };
   }
 
-  const B7 = diasOperacao / 30;
-  const C7 = Math.floor(B7);
-  const D7 = B7 - C7;
-  
-  const nrCiclos = Math.ceil(diasOperacao / 30);
+  const nrCiclos = Math.ceil(D / 30);
   const diasEtapaPaga = 22 * nrCiclos;
   
   let diasEtapaSolicitada = 0;
   
-  const diasRestantesNoCiclo = diasOperacao % 30;
-  const ciclosCompletos = Math.floor(diasOperacao / 30);
+  const diasRestantesNoCiclo = D % 30;
+  const ciclosCompletos = Math.floor(D / 30);
   
-  if (diasRestantesNoCiclo <= 22 && diasOperacao >= 30) {
+  if (diasRestantesNoCiclo <= 22 && D >= 30) {
     diasEtapaSolicitada = ciclosCompletos * 8;
   } else if (diasRestantesNoCiclo > 22) {
     diasEtapaSolicitada = (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
   } else {
-    diasEtapaSolicitada = 0; // Se diasOperacao < 30 e <= 22
+    diasEtapaSolicitada = 0;
   }
   
-  const totalEtapas = diasEtapaSolicitada + (nrRefInt * diasOperacao);
+  const totalEtapas = diasEtapaSolicitada + (R * D);
 
-  const complementoQS = efetivo * Math.min(nrRefInt, 3) * (valorQS / 3) * diasOperacao;
-  const etapaQS = efetivo * valorQS * diasEtapaSolicitada;
+  const complementoQS = E * Math.min(R, 3) * (VQS / 3) * D;
+  const etapaQS = E * VQS * diasEtapaSolicitada;
   const totalQS = complementoQS + etapaQS;
 
-  const complementoQR = efetivo * Math.min(nrRefInt, 3) * (valorQR / 3) * diasOperacao;
-  const etapaQR = efetivo * valorQR * diasEtapaSolicitada;
+  const complementoQR = E * Math.min(R, 3) * (VQR / 3) * D;
+  const etapaQR = E * VQR * diasEtapaSolicitada;
   const totalQR = complementoQR + etapaQR;
 
   return {
@@ -129,8 +108,46 @@ const calculateClasseICalculations = (
   };
 };
 
+// Updated interface for records loaded from DB
+interface ClasseIRegistro {
+  id: string;
+  categoria: CategoriaClasseI;
+  organizacao: string;
+  ug: string;
+  diasOperacao: number;
+  faseAtividade?: string | null;
+  
+  // RACAO_QUENTE specific fields
+  omQS: string | null;
+  ugQS: string | null;
+  efetivo: number | null;
+  nrRefInt: number | null;
+  valorQS: number | null;
+  valorQR: number | null;
+  memoriaQSCustomizada?: string | null;
+  memoriaQRCustomizada?: string | null;
+  
+  // Calculated fields (only for RACAO_QUENTE)
+  calculos: {
+    totalQS: number;
+    totalQR: number;
+    nrCiclos: number;
+    diasEtapaPaga: number;
+    diasEtapaSolicitada: number;
+    totalEtapas: number;
+    complementoQS: number;
+    etapaQS: number;
+    complementoQR: number;
+    etapaQR: number;
+  };
+  
+  // RACAO_OPERACIONAL specific fields
+  quantidadeR2: number | null;
+  quantidadeR3: number | null;
+}
+
 // Função para formatar as fases de forma natural no texto
-const formatFasesParaTexto = (faseCSV: string | undefined): string => {
+const formatFasesParaTexto = (faseCSV: string | undefined | null): string => {
   if (!faseCSV) return 'operação';
   
   const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
@@ -145,44 +162,80 @@ const formatFasesParaTexto = (faseCSV: string | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-// Nova função para gerar a memória de cálculo formatada
-const generateClasseIMemoriaCalculo = (registro: OMRegistro): { qs: string, qr: string } => {
-  const { om, ug, omQS, ugQS, efetivo, diasOperacao, nrRefInt, valorQS, valorQR, calculos, faseAtividade } = registro;
+// Nova função para gerar a memória de cálculo formatada para Ração Quente
+const generateRacaoQuenteMemoriaCalculo = (registro: ClasseIRegistro): { qs: string, qr: string } => {
+  const { organizacao, ug, omQS, ugQS, efetivo, diasOperacao, nrRefInt, valorQS, valorQR, calculos, faseAtividade } = registro;
+  
+  if (registro.categoria !== 'RACAO_QUENTE' || efetivo === null || valorQS === null || valorQR === null || nrRefInt === null || omQS === null || ugQS === null) {
+      return { qs: "Memória não aplicável para Ração Operacional.", qr: "" };
+  }
+  
+  const E = efetivo;
+  const D = diasOperacao;
+  const R = nrRefInt;
+  const VQS = valorQS;
+  const VQR = valorQR;
   
   const diasEtapaSolicitada = calculos.diasEtapaSolicitada;
   const faseFormatada = formatFasesParaTexto(faseAtividade);
   
   // Memória QS (Quantitativo de Subsistência) - Fornecido pela RM (omQS/ugQS)
-  const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${efetivo} militares do ${om}, durante ${diasOperacao} dias de ${faseFormatada}.
+  const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${E} militares do ${organizacao}, durante ${D} dias de ${faseFormatada}.
 OM Fornecedora: ${omQS} (UG: ${ugQS})
 
 Cálculo:
-- Valor da Etapa (QS): ${formatCurrency(valorQS)}.
-- Nr Refeições Intermediárias: ${nrRefInt}.
+- Valor da Etapa (QS): ${formatCurrency(VQS)}.
+- Nr Refeições Intermediárias: ${R}.
 
 Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
 
-- [${efetivo} militares do ${om} x ${nrRefInt} Ref Int x (${formatCurrency(valorQS)}/3) x ${diasOperacao} dias de atividade] = ${formatCurrency(calculos.complementoQS)}.
-- [${efetivo} militares do ${om} x ${formatCurrency(valorQS)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(calculos.etapaQS)}.
+- [${E} militares do ${organizacao} x ${R} Ref Int x (${formatCurrency(VQS)}/3) x ${D} dias de atividade] = ${formatCurrency(calculos.complementoQS)}.
+- [${E} militares do ${organizacao} x ${formatCurrency(VQS)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(calculos.etapaQS)}.
 
 Total QS: ${formatCurrency(calculos.totalQS)}.`;
 
-  // Memória QR (Quantitativo de Rancho) - Para a OM de Destino (om/ug)
-  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Rancho Pronto) destinados à complementação de alimentação de ${efetivo} militares do ${om}, durante ${diasOperacao} dias de ${faseFormatada}.
-OM de Destino: ${om} (UG: ${ug})
+  // Memória QR (Quantitativo de Rancho) - Para a OM de Destino (organizacao/ug)
+  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Rancho Pronto) destinados à complementação de alimentação de ${E} militares do ${organizacao}, durante ${D} dias de ${faseFormatada}.
+OM de Destino: ${organizacao} (UG: ${ug})
 
 Cálculo:
-- Valor da Etapa (QR): ${formatCurrency(valorQR)}.
-- Nr Refeições Intermediárias: ${nrRefInt}.
+- Valor da Etapa (QR): ${formatCurrency(VQR)}.
+- Nr Refeições Intermediárias: ${R}.
 
 Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
 
-- [${efetivo} militares do ${om} x ${nrRefInt} Ref Int x (${formatCurrency(valorQR)}/3) x ${diasOperacao} dias de atividade] = ${formatCurrency(calculos.complementoQR)}.
-- [${efetivo} militares do ${om} x ${formatCurrency(valorQR)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(calculos.etapaQR)}.
+- [${E} militares do ${organizacao} x ${R} Ref Int x (${formatCurrency(VQR)}/3) x ${D} dias de atividade] = ${formatCurrency(calculos.complementoQR)}.
+- [${E} militares do ${organizacao} x ${formatCurrency(VQR)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(calculos.etapaQR)}.
 
 Total QR: ${formatCurrency(calculos.totalQR)}.`;
 
   return { qs: memoriaQS, qr: memoriaQR };
+};
+
+// Nova função para gerar a memória de cálculo formatada para Ração Operacional
+const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro): string => {
+    if (registro.categoria !== 'RACAO_OPERACIONAL') {
+        return "Memória não aplicável para Ração Quente.";
+    }
+    
+    const { organizacao, ug, efetivo, diasOperacao, quantidadeR2, quantidadeR3, faseAtividade } = registro;
+    
+    const E = efetivo || 0;
+    const D = diasOperacao || 0;
+    const R2 = quantidadeR2 || 0;
+    const R3 = quantidadeR3 || 0;
+    const totalRacoes = R2 + R3;
+    const faseFormatada = formatFasesParaTexto(faseAtividade);
+
+    return `33.90.30 - Aquisição de Ração Operacional (R2/R3) para ${E} militares do ${organizacao}, durante ${D} dias de ${faseFormatada}.
+OM de Destino: ${organizacao} (UG: ${ug})
+
+Cálculo:
+- Ração Operacional R2 (24h): ${R2} unidades.
+- Ração Operacional R3 (12h): ${R3} unidades.
+
+Total de Rções Operacionais: ${totalRacoes} unidades.
+(Nota: O valor monetário desta solicitação é considerado R$ 0,00 para fins de cálculo logístico interno, conforme diretriz atual, mas o quantitativo é registrado.)`;
 };
 
 
@@ -192,26 +245,36 @@ export default function ClasseIForm() {
   const ptrabId = searchParams.get('ptrabId');
   const [loading, setLoading] = useState(false);
   const [ptrabNome, setPtrabNome] = useState<string>("");
-  const [efetivo, setEfetivo] = useState<number>(0);
-  const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined); // Novo estado para o ID da OM
-  const [om, setOm] = useState<string>("");
-  const [ug, setUg] = useState<string>("");
-  // rmVinculacao não é mais necessário como estado separado, pois omQS/ugQS representam a RM de destino
-  const [omQS, setOmQS] = useState<string>("");
-  const [ugQS, setUgQS] = useState<string>("");
-  const [diasOperacao, setDiasOperacao] = useState<number>(0);
-  const [nrRefInt, setNrRefInt] = useState<number>(1);
-  const [valorQS, setValorQS] = useState<number>(9.0);
-  const [valorQR, setValorQR] = useState<number>(6.0);
-  const [registros, setRegistros] = useState<OMRegistro[]>([]);
-  const [diretrizAno, setDiretrizAno] = useState<number | null>(null);
-  const [editingRegistroId, setEditingRegistroId] = useState<string | null>(null);
   
-  // NOVO ESTADO PARA FASE DA ATIVIDADE (Array de strings)
+  // --- Global OM/Activity State ---
+  const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
+  const [organizacao, setOrganizacao] = useState<string>("");
+  const [ug, setUg] = useState<string>("");
+  const [diasOperacao, setDiasOperacao] = useState<number>(0);
+  const [efetivo, setEfetivo] = useState<number>(0);
   const [fasesAtividade, setFasesAtividade] = useState<string[]>(["Execução"]);
   const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-
+  
+  // --- RACAO_QUENTE State ---
+  const [omQS, setOmQS] = useState<string>("");
+  const [ugQS, setUgQS] = useState<string>("");
+  const [nrRefInt, setNrRefInt] = useState<number>(1);
+  const [valorQS, setValorQS] = useState<number>(9.0);
+  const [valorQR, setValorQR] = useState<number>(6.0);
+  const [rawQSInput, setRawQSInput] = useState<string>(numberToRawDigits(9.0));
+  const [rawQRInput, setRawQRInput] = useState<string>(numberToRawDigits(6.0));
+  
+  // --- RACAO_OPERACIONAL State ---
+  const [quantidadeR2, setQuantidadeR2] = useState<number>(0);
+  const [quantidadeR3, setQuantidadeR3] = useState<number>(0);
+  
+  // --- General Control State ---
+  const [registros, setRegistros] = useState<ClasseIRegistro[]>([]);
+  const [diretrizAno, setDiretrizAno] = useState<number | null>(null);
+  const [selectedTab, setSelectedTab] = useState<CategoriaClasseI>('RACAO_QUENTE');
+  const [editingRegistroId, setEditingRegistroId] = useState<string | null>(null);
+  
   // Estados para controle de edição de memória de cálculo
   const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
   const [memoriaQSEdit, setMemoriaQSEdit] = useState<string>("");
@@ -223,6 +286,66 @@ export default function ClasseIForm() {
     checkAuthAndLoadData();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  const loadDiretrizes = async (userId: string) => {
+    try {
+      let anoReferencia: number | null = null;
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("default_diretriz_year")
+        .eq("id", userId)
+        .maybeSingle();
+        
+      if (profileData?.default_diretriz_year) {
+          anoReferencia = profileData.default_diretriz_year;
+      }
+
+      if (!anoReferencia) {
+          const { data: diretrizCusteio } = await supabase
+            .from("diretrizes_custeio")
+            .select("ano_referencia")
+            .eq("user_id", userId)
+            .order("ano_referencia", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+            
+          if (diretrizCusteio) {
+            anoReferencia = diretrizCusteio.ano_referencia;
+          }
+      }
+      
+      if (!anoReferencia) {
+        setValorQS(9.0);
+        setValorQR(6.0);
+        setRawQSInput(numberToRawDigits(9.0));
+        setRawQRInput(numberToRawDigits(6.0));
+        setDiretrizAno(null);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("diretrizes_custeio")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("ano_referencia", anoReferencia)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        const qs = Number(data.classe_i_valor_qs);
+        const qr = Number(data.classe_i_valor_qr);
+        setValorQS(qs);
+        setValorQR(qr);
+        setRawQSInput(numberToRawDigits(qs));
+        setRawQRInput(numberToRawDigits(qr));
+        setDiretrizAno(data.ano_referencia);
+      }
+    } catch (error: any) {
+      console.error("Erro ao carregar diretrizes:", error);
+    }
+  };
 
   const checkAuthAndLoadData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -239,69 +362,8 @@ export default function ClasseIForm() {
     }
 
     await loadPTrab(ptrabId);
-    await loadDiretrizes();
+    await loadDiretrizes(session.user.id);
     await loadRegistros(ptrabId);
-  };
-
-  const loadDiretrizes = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      let anoReferencia: number | null = null;
-
-      // 1. Tentar buscar o ano padrão do perfil do usuário
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("default_diretriz_year")
-        .eq("id", user.id)
-        .maybeSingle();
-        
-      if (profileData?.default_diretriz_year) {
-          anoReferencia = profileData.default_diretriz_year;
-      }
-
-      // 2. Se não houver ano padrão, buscar o ano mais recente na tabela de diretrizes
-      if (!anoReferencia) {
-          const { data: diretrizCusteio } = await supabase
-            .from("diretrizes_custeio")
-            .select("ano_referencia")
-            .eq("user_id", user.id)
-            .order("ano_referencia", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-            
-          if (diretrizCusteio) {
-            anoReferencia = diretrizCusteio.ano_referencia;
-          }
-      }
-      
-      if (!anoReferencia) {
-        // Se não houver diretriz configurada, usa os valores padrão e sai
-        setValorQS(9.0);
-        setValorQR(6.0);
-        setDiretrizAno(null);
-        return;
-      }
-
-      // 3. Buscar diretrizes de Custeio usando o ano de referência encontrado
-      const { data, error } = await supabase
-        .from("diretrizes_custeio")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("ano_referencia", anoReferencia)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (data) {
-        setValorQS(Number(data.classe_i_valor_qs));
-        setValorQR(Number(data.classe_i_valor_qr));
-        setDiretrizAno(data.ano_referencia);
-      }
-    } catch (error: any) {
-      console.error("Erro ao carregar diretrizes:", error);
-    }
   };
 
   const loadPTrab = async (id: string) => {
@@ -325,46 +387,67 @@ export default function ClasseIForm() {
       setLoading(true);
       const { data, error } = await supabase
         .from("classe_i_registros")
-        .select("*, fase_atividade, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada")
+        .select("*, fase_atividade, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, categoria, quantidade_r2, quantidade_r3")
         .eq("p_trab_id", ptrabId)
-        .order("created_at", { ascending: true });
+        .order("organizacao", { ascending: true })
+        .order("categoria", { ascending: true });
 
       if (error) throw error;
 
-      const registrosCarregados: OMRegistro[] = (data || []).map((r) => {
-        const derivedCalculations = calculateClasseICalculations(
-          r.efetivo,
-          r.dias_operacao,
-          r.nr_ref_int,
-          Number(r.valor_qs),
-          Number(r.valor_qr)
-        );
+      const registrosCarregados: ClasseIRegistro[] = (data || []).map((r) => {
+        const categoria = (r.categoria || 'RACAO_QUENTE') as CategoriaClasseI;
+        
+        // Only calculate if RACAO_QUENTE and necessary fields are present
+        const isRacaoQuenteValid = categoria === 'RACAO_QUENTE' && r.efetivo && r.valor_qs && r.valor_qr && r.nr_ref_int;
+        
+        const derivedCalculations = isRacaoQuenteValid
+          ? calculateClasseICalculations(
+              r.efetivo,
+              r.dias_operacao,
+              r.nr_ref_int!,
+              Number(r.valor_qs!),
+              Number(r.valor_qr!)
+            )
+          : {
+              nrCiclos: 0, diasEtapaPaga: 0, diasEtapaSolicitada: 0, totalEtapas: 0,
+              complementoQS: 0, etapaQS: 0, totalQS: 0, complementoQR: 0, etapaQR: 0, totalQR: 0,
+            };
+
         return {
           id: r.id,
-          om: r.organizacao,
+          categoria: categoria,
+          organizacao: r.organizacao,
           ug: r.ug,
+          diasOperacao: r.dias_operacao,
+          faseAtividade: r.fase_atividade,
+          
+          // RACAO_QUENTE fields
           omQS: r.om_qs,
           ugQS: r.ug_qs,
           efetivo: r.efetivo,
-          diasOperacao: r.dias_operacao,
           nrRefInt: r.nr_ref_int,
-          valorQS: Number(r.valor_qs),
-          valorQR: Number(r.valor_qr),
-          faseAtividade: r.fase_atividade || 'Execução',
+          valorQS: r.valor_qs ? Number(r.valor_qs) : null,
+          valorQR: r.valor_qr ? Number(r.valor_qr) : null,
           memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
           memoriaQRCustomizada: r.memoria_calculo_qr_customizada,
+          
+          // Calculated fields (using DB values if available, otherwise derived)
           calculos: {
+            totalQS: Number(r.total_qs || 0),
+            totalQR: Number(r.total_qr || 0),
             nrCiclos: derivedCalculations.nrCiclos,
             diasEtapaPaga: derivedCalculations.diasEtapaPaga,
             diasEtapaSolicitada: derivedCalculations.diasEtapaSolicitada,
             totalEtapas: derivedCalculations.totalEtapas,
-            complementoQS: Number(r.complemento_qs),
-            etapaQS: Number(r.etapa_qs),
-            totalQS: Number(r.total_qs),
-            complementoQR: Number(r.complemento_qr),
-            etapaQR: Number(r.etapa_qr),
-            totalQR: Number(r.total_qr),
+            complementoQS: Number(r.complemento_qs || 0),
+            etapaQS: Number(r.etapa_qs || 0),
+            complementoQR: Number(r.complemento_qr || 0),
+            etapaQR: Number(r.etapa_qr || 0),
           },
+          
+          // RACAO_OPERACIONAL fields
+          quantidadeR2: r.quantidade_r2 || 0,
+          quantidadeR3: r.quantidade_r3 || 0,
         };
       });
 
@@ -376,38 +459,112 @@ export default function ClasseIForm() {
     }
   };
 
-  const calculos = useMemo(() => {
+  // Calculations for RACAO_QUENTE preview
+  const calculosRacaoQuente = useMemo(() => {
+    if (selectedTab !== 'RACAO_QUENTE') return null;
     return calculateClasseICalculations(efetivo, diasOperacao, nrRefInt, valorQS, valorQR);
-  }, [efetivo, diasOperacao, nrRefInt, valorQS, valorQR]);
+  }, [efetivo, diasOperacao, nrRefInt, valorQS, valorQR, selectedTab]);
+  
+  // Calculations for RACAO_OPERACIONAL preview
+  const totalRacoesOperacionais = quantidadeR2 + quantidadeR3;
 
   const resetFormFields = () => {
     setSelectedOmId(undefined);
-    setOm("");
+    setOrganizacao("");
     setUg("");
-    setOmQS("");
-    setUgQS("");
     setEfetivo(0);
     setDiasOperacao(0);
     setNrRefInt(1);
+    setOmQS("");
+    setUgQS("");
+    setQuantidadeR2(0);
+    setQuantidadeR3(0);
     setEditingRegistroId(null);
     setFasesAtividade(["Execução"]);
     setCustomFaseAtividade("");
+    setSelectedTab('RACAO_QUENTE'); // Reset to default tab
+    
+    // Reset monetary inputs to current diretriz values
+    if (diretrizAno) {
+        loadDiretrizes(supabase.auth.getUser().then(res => res.data.user?.id || ''));
+    } else {
+        setRawQSInput(numberToRawDigits(9.0));
+        setRawQRInput(numberToRawDigits(6.0));
+        setValorQS(9.0);
+        setValorQR(6.0);
+    }
   };
 
   const handleOMChange = async (omData: OMData | undefined) => {
     if (omData) {
       setSelectedOmId(omData.id);
-      setOm(omData.nome_om);
+      setOrganizacao(omData.nome_om);
       setUg(omData.codug_om);
+      
       // Define a RM de vinculação da OM como padrão para a RM que receberá o QS
-      setOmQS(omData.rm_vinculacao);
-      setUgQS(omData.codug_rm_vinculacao);
+      const defaultOmQS = omData.rm_vinculacao;
+      const defaultUgQS = omData.codug_rm_vinculacao;
+      
+      setOmQS(defaultOmQS);
+      setUgQS(defaultUgQS);
+      
+      // Tenta carregar dados existentes para esta OM
+      const existingR1 = registros.find(r => r.organizacao === omData.nome_om && r.ug === omData.codug_om && r.categoria === 'RACAO_QUENTE');
+      const existingR2 = registros.find(r => r.organizacao === omData.nome_om && r.ug === omData.codug_om && r.categoria === 'RACAO_OPERACIONAL');
+      
+      // Se houver registros, preenche os campos globais e os campos da aba ativa
+      if (existingR1 || existingR2) {
+          const primaryRecord = existingR1 || existingR2;
+          setDiasOperacao(primaryRecord!.diasOperacao);
+          setEfetivo(primaryRecord!.efetivo || 0);
+          
+          const fasesSalvas = (primaryRecord!.faseAtividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+          setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
+          setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
+          
+          // Preenche R1
+          if (existingR1) {
+              setOmQS(existingR1.omQS || defaultOmQS);
+              setUgQS(existingR1.ugQS || defaultUgQS);
+              setNrRefInt(existingR1.nrRefInt || 1);
+              const qs = existingR1.valorQS || valorQS;
+              const qr = existingR1.valorQR || valorQR;
+              setValorQS(qs);
+              setValorQR(qr);
+              setRawQSInput(numberToRawDigits(qs));
+              setRawQRInput(numberToRawDigits(qr));
+          }
+          
+          // Preenche R2/R3
+          if (existingR2) {
+              setQuantidadeR2(existingR2.quantidadeR2 || 0);
+              setQuantidadeR3(existingR2.quantidadeR3 || 0);
+          }
+          
+          // Define o ID de edição para o primeiro registro encontrado (R1 tem prioridade)
+          setEditingRegistroId(existingR1?.id || existingR2?.id || null);
+          setSelectedTab(existingR1 ? 'RACAO_QUENTE' : 'RACAO_OPERACIONAL');
+          
+      } else {
+          // Se não houver registros, reseta os campos específicos da categoria
+          setDiasOperacao(0);
+          setEfetivo(0);
+          setNrRefInt(1);
+          setQuantidadeR2(0);
+          setQuantidadeR3(0);
+          setEditingRegistroId(null);
+          setFasesAtividade(["Execução"]);
+          setCustomFaseAtividade("");
+          setSelectedTab('RACAO_QUENTE');
+          
+          // Recarrega valores padrão de diretriz
+          if (diretrizAno) {
+              loadDiretrizes(supabase.auth.getUser().then(res => res.data.user?.id || ''));
+          }
+      }
+      
     } else {
-      setSelectedOmId(undefined);
-      setOm("");
-      setUg("");
-      setOmQS("");
-      setUgQS("");
+      resetFormFields();
     }
   };
 
@@ -423,87 +580,162 @@ export default function ClasseIForm() {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
   };
+  
+  // Handler para inputs de preço (para permitir vírgula e formatação)
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'valorQS' | 'valorQR') => {
+    const rawValue = e.target.value;
+    const { numericValue, digits } = formatCurrencyInput(rawValue);
+    
+    if (field === 'valorQS') {
+        setRawQSInput(digits);
+        setValorQS(numericValue);
+    } else {
+        setRawQRInput(digits);
+        setValorQR(numericValue);
+    }
+  };
+
+  const handlePriceBlur = (field: 'valorQS' | 'valorQR') => {
+    // Re-formata o input para garantir 2 casas decimais
+    const numericValue = field === 'valorQS' ? valorQS : valorQR;
+    
+    if (field === 'valorQS') {
+        setRawQSInput(numberToRawDigits(numericValue));
+    } else {
+        setRawQRInput(numberToRawDigits(numericValue));
+    }
+  };
+  
+  // Função para formatar o valor numérico para exibição no input
+  const formatPriceForInput = (price: number, rawDigits: string): string => {
+    if (rawDigits.length > 0) {
+        return formatCurrencyInput(rawDigits).formatted;
+    }
+    return formatNumberForInput(price, 2);
+  };
+
 
   const handleCadastrar = async () => {
-    if (!ptrabId) {
-      toast.error("P Trab não selecionado");
+    if (!ptrabId || !organizacao || !ug) {
+      toast.error("Selecione uma OM e um P Trab válidos");
+      return;
+    }
+    if (diasOperacao <= 0 || efetivo <= 0) {
+      toast.error("Efetivo e Dias de Operação devem ser maiores que zero.");
       return;
     }
 
-    const validationResult = classeIFormSchema.safeParse({
-      organizacao: om,
-      ug: ug,
-      om_qs: omQS,
-      ug_qs: ugQS,
-      efetivo: efetivo,
-      dias_operacao: diasOperacao,
-      nr_ref_int: nrRefInt,
-      valor_qs: valorQS,
-      valor_qr: valorQR,
-    });
-
-    if (!validationResult.success) {
-      toast.error(validationResult.error.errors[0].message);
-      return;
-    }
-    
-    // Constrói a string final da fase de atividade
     let fasesFinais = [...fasesAtividade];
-    if (customFaseAtividade.trim()) {
-      fasesFinais = [...fasesFinais, customFaseAtividade.trim()];
-    }
-    
-    const faseFinalString = fasesFinais.filter(f => f && FASES_PADRAO.includes(f) || f === customFaseAtividade.trim()).join('; ');
+    if (customFaseAtividade.trim()) { fasesFinais = [...fasesFinais, customFaseAtividade.trim()]; }
+    const faseFinalString = fasesFinais.filter(f => f).join('; ');
 
     if (!faseFinalString) {
       toast.error("Selecione ou digite pelo menos uma Fase da Atividade.");
       return;
     }
+    
+    setLoading(true);
+    
+    // 1. Encontrar ID existente para a OM/UG e CATEGORIA atual
+    const existingRecord = registros.find(r => 
+        r.organizacao === organizacao && 
+        r.ug === ug && 
+        r.categoria === selectedTab
+    );
+    const idToUpdate = existingRecord?.id;
+    
+    // 2. Preparar dados base
+    let registroData: any = {
+        p_trab_id: ptrabId,
+        organizacao: organizacao,
+        ug: ug,
+        dias_operacao: diasOperacao,
+        efetivo: efetivo,
+        fase_atividade: faseFinalString,
+        categoria: selectedTab,
+        
+        // Reset fields not used by the current category to ensure clean data
+        om_qs: null, ug_qs: null, nr_ref_int: null, valor_qs: null, valor_qr: null,
+        complemento_qs: 0, etapa_qs: 0, total_qs: 0, complemento_qr: 0, etapa_qr: 0, total_qr: 0, total_geral: 0,
+        quantidade_r2: 0, quantidade_r3: 0,
+    };
+
+    if (selectedTab === 'RACAO_QUENTE') {
+        if (!omQS || !ugQS) {
+            toast.error("Selecione a RM que receberá o QS.");
+            setLoading(false);
+            return;
+        }
+        if (valorQS <= 0 || valorQR <= 0) {
+            toast.error("Valores QS e QR devem ser maiores que zero.");
+            setLoading(false);
+            return;
+        }
+        
+        const calculos = calculateClasseICalculations(efetivo, diasOperacao, nrRefInt, valorQS, valorQR);
+        
+        registroData = {
+            ...registroData,
+            om_qs: omQS,
+            ug_qs: ugQS,
+            nr_ref_int: nrRefInt,
+            valor_qs: valorQS,
+            valor_qr: valorQR,
+            complemento_qs: calculos.complementoQS,
+            etapa_qs: calculos.etapaQS,
+            total_qs: calculos.totalQS,
+            complemento_qr: calculos.complementoQR,
+            etapa_qr: calculos.etapaQR,
+            total_qr: calculos.totalQR,
+            total_geral: calculos.totalQS + calculos.totalQR,
+        };
+        
+        if (registroData.total_geral === 0) {
+            toast.error("O cálculo da Ração Quente resultou em zero. Verifique Efetivo, Dias e Valores.");
+            setLoading(false);
+            return;
+        }
+        
+    } else if (selectedTab === 'RACAO_OPERACIONAL') {
+        if (quantidadeR2 <= 0 && quantidadeR3 <= 0) {
+            toast.error("Informe a quantidade de Ração Operacional (R2 ou R3).");
+            setLoading(false);
+            return;
+        }
+        
+        registroData = {
+            ...registroData,
+            quantidade_r2: quantidadeR2,
+            quantidade_r3: quantidadeR3,
+            // Total geral remains 0 for now, as requested (no monetary value)
+        };
+    }
 
     try {
-      setLoading(true);
-
-      const registroData = {
-        p_trab_id: ptrabId,
-        organizacao: om,
-        ug: ug,
-        om_qs: omQS,
-        ug_qs: ugQS,
-        efetivo: efetivo,
-        dias_operacao: diasOperacao,
-        nr_ref_int: nrRefInt,
-        valor_qs: valorQS,
-        valor_qr: valorQR,
-        complemento_qs: calculos.complementoQS,
-        etapa_qs: calculos.etapaQS,
-        total_qs: calculos.totalQS,
-        complemento_qr: calculos.complementoQR,
-        etapa_qr: calculos.etapaQR,
-        total_qr: calculos.totalQR,
-        total_geral: calculos.totalQS + calculos.totalQR,
-        fase_atividade: faseFinalString, // Salvar a string CSV
-      };
-
-      if (editingRegistroId) {
+      if (idToUpdate) {
+        // Update: Preserva as memórias de cálculo customizadas se existirem
+        const existingMemoria = registros.find(r => r.id === idToUpdate);
+        
         const { error } = await supabase
           .from("classe_i_registros")
-          .update(registroData)
-          .eq("id", editingRegistroId);
+          .update({
+              ...registroData,
+              memoria_calculo_qs_customizada: existingMemoria?.memoriaQSCustomizada || null,
+              memoria_calculo_qr_customizada: existingMemoria?.memoriaQRCustomizada || null,
+          })
+          .eq("id", idToUpdate);
 
         if (error) throw error;
-        toast.success("OM atualizada com sucesso!");
+        toast.success(`${selectedTab === 'RACAO_QUENTE' ? 'Ração Quente' : 'Ração Operacional'} atualizada com sucesso para ${organizacao}!`);
       } else {
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from("classe_i_registros")
-          .insert([registroData])
-          .select()
-          .single();
+          .insert([registroData]);
 
         if (error) throw error;
-        toast.success("OM cadastrada com sucesso!");
+        toast.success(`${selectedTab === 'RACAO_QUENTE' ? 'Ração Quente' : 'Ração Operacional'} cadastrada com sucesso para ${organizacao}!`);
       }
       
-      // Atualiza o status do PTrab para 'em_andamento' se estiver 'aberto'
       await updatePTrabStatusIfAberto(ptrabId);
 
       resetFormFields();
@@ -516,7 +748,12 @@ export default function ClasseIForm() {
   };
 
   const handleRemover = async (id: string) => {
-    if (!confirm("Tem certeza que deseja remover este registro?")) return;
+    const registro = registros.find(r => r.id === id);
+    if (!registro) return;
+    
+    const categoriaLabel = registro.categoria === 'RACAO_QUENTE' ? 'Ração Quente (QS/QR)' : 'Ração Operacional (R2/R3)';
+    
+    if (!confirm(`Tem certeza que deseja remover o registro de ${categoriaLabel} para a OM ${registro.organizacao}?`)) return;
 
     try {
       setLoading(true);
@@ -528,7 +765,13 @@ export default function ClasseIForm() {
       if (error) throw error;
 
       setRegistros(registros.filter((r) => r.id !== id));
-      toast.success("OM removida com sucesso!");
+      toast.success("Registro removido com sucesso!");
+      
+      // Se o registro removido era o que estava sendo editado, reseta o formulário
+      if (editingRegistroId === id) {
+          resetFormFields();
+      }
+      
     } catch (error: any) {
       toast.error(sanitizeError(error));
     } finally {
@@ -536,33 +779,51 @@ export default function ClasseIForm() {
     }
   };
 
-  const handleEditRegistro = async (registro: OMRegistro) => {
+  const handleEditRegistro = async (registro: ClasseIRegistro) => {
     setEditingRegistroId(registro.id);
-    setOm(registro.om);
+    setSelectedTab(registro.categoria);
+    
+    // 1. Set Global Fields
+    setOrganizacao(registro.organizacao);
     setUg(registro.ug);
-    setOmQS(registro.omQS);
-    setUgQS(registro.ugQS);
-    setEfetivo(registro.efetivo);
+    setEfetivo(registro.efetivo || 0);
     setDiasOperacao(registro.diasOperacao);
-    setNrRefInt(registro.nrRefInt);
-    setValorQS(registro.valorQS);
-    setValorQR(registro.valorQR);
     
-    // Preencher fasesAtividade
     const fasesSalvas = (registro.faseAtividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
-    
-    const fasesPadraoSelecionadas = fasesSalvas.filter(f => FASES_PADRAO.includes(f));
-    const faseCustomizada = fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "";
-    
-    setFasesAtividade(fasesPadraoSelecionadas);
-    setCustomFaseAtividade(faseCustomizada);
+    setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
+    setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
 
-    // Buscar o ID da OM para preencher o OmSelector
+    // 2. Set Category Specific Fields
+    if (registro.categoria === 'RACAO_QUENTE') {
+        setOmQS(registro.omQS || "");
+        setUgQS(registro.ugQS || "");
+        setNrRefInt(registro.nrRefInt || 1);
+        const qs = registro.valorQS || valorQS;
+        const qr = registro.valorQR || valorQR;
+        setValorQS(qs);
+        setValorQR(qr);
+        setRawQSInput(numberToRawDigits(qs));
+        setRawQRInput(numberToRawDigits(qr));
+        setQuantidadeR2(0);
+        setQuantidadeR3(0);
+    } else if (registro.categoria === 'RACAO_OPERACIONAL') {
+        setOmQS("");
+        setUgQS("");
+        setNrRefInt(1);
+        setValorQS(9.0);
+        setValorQR(6.0);
+        setRawQSInput(numberToRawDigits(9.0));
+        setRawQRInput(numberToRawDigits(6.0));
+        setQuantidadeR2(registro.quantidadeR2 || 0);
+        setQuantidadeR3(registro.quantidadeR3 || 0);
+    }
+
+    // 3. Find OM ID for OmSelector
     try {
       const { data: omData, error: omError } = await supabase
         .from('organizacoes_militares')
         .select('id')
-        .eq('nome_om', registro.om)
+        .eq('nome_om', registro.organizacao)
         .eq('codug_om', registro.ug)
         .single();
       if (omData && !omError) {
@@ -576,8 +837,13 @@ export default function ClasseIForm() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleIniciarEdicaoMemoria = (registro: OMRegistro) => {
-    const { qs, qr } = generateClasseIMemoriaCalculo(registro);
+  const handleIniciarEdicaoMemoria = (registro: ClasseIRegistro) => {
+    if (registro.categoria !== 'RACAO_QUENTE') {
+        toast.warning("Memória de cálculo não aplicável para Ração Operacional.");
+        return;
+    }
+    
+    const { qs, qr } = generateRacaoQuenteMemoriaCalculo(registro);
     
     setEditingMemoriaId(registro.id);
     setMemoriaQSEdit(registro.memoriaQSCustomizada || qs);
@@ -641,9 +907,11 @@ export default function ClasseIForm() {
     }
   };
 
-  const totalGeralQS = registros.reduce((sum, r) => sum + r.calculos.totalQS, 0);
-  const totalGeralQR = registros.reduce((sum, r) => sum + r.calculos.totalQR, 0);
+  const totalGeralQS = registros.filter(r => r.categoria === 'RACAO_QUENTE').reduce((sum, r) => sum + r.calculos.totalQS, 0);
+  const totalGeralQR = registros.filter(r => r.categoria === 'RACAO_QUENTE').reduce((sum, r) => sum + r.calculos.totalQR, 0);
   const totalGeral = totalGeralQS + totalGeralQR;
+  
+  const totalRacoesOperacionaisGeral = registros.filter(r => r.categoria === 'RACAO_OPERACIONAL').reduce((sum, r) => sum + (r.quantidadeR2 || 0) + (r.quantidadeR3 || 0), 0);
 
   const displayFases = [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
 
@@ -665,156 +933,296 @@ export default function ClasseIForm() {
               Classe I - Subsistência
             </h1>
             <p className="text-muted-foreground">
-              Configure a sua necessidade de alimentação (QS e QR) por OM.
+              Configure a sua necessidade de alimentação (Ração Quente e Ração Operacional) por OM.
             </p>
           </div>
 
-          <form onSubmit={(e) => { e.preventDefault(); handleCadastrar(); }} className="space-y-4">
-            {/* Dados Básicos */}
-            <div className="grid md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-lg">
-              <div className="space-y-2">
-                <Label htmlFor="om">OM de Destino (QR)</Label>
-                <OmSelector
-                  selectedOmId={selectedOmId}
-                  onChange={handleOMChange}
-                  placeholder="Selecione uma OM de Destino..."
-                />
-              </div>
+          <form onSubmit={(e) => { e.preventDefault(); handleCadastrar(); }} className="space-y-6">
+            
+            {/* 1. Dados da Organização */}
+            <div className="space-y-3 border-b pb-4">
+              <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
+              
+              <div className="grid md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-lg">
+                <div className="space-y-2">
+                  <Label htmlFor="om">OM de Destino</Label>
+                  <OmSelector
+                    selectedOmId={selectedOmId}
+                    onChange={handleOMChange}
+                    placeholder="Selecione uma OM de Destino..."
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="ug">CODUG de Destino (QR)</Label>
-                <Input
-                  id="ug"
-                  value={ug}
-                  readOnly
-                  disabled={true}
-                  className="disabled:opacity-60"
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ug">UG de Destino</Label>
+                  <Input
+                    id="ug"
+                    value={ug}
+                    readOnly
+                    disabled={true}
+                    className="disabled:opacity-60"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="omQS">RM que receberá o QS</Label>
-                <RmSelector
-                  value={omQS}
-                  onChange={handleRMQSChange}
-                  placeholder="Selecione a RM de destino do QS..."
-                  disabled={!om}
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="efetivo">Efetivo de Militares</Label>
+                  <Input
+                    id="efetivo"
+                    type="number"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    value={efetivo === 0 ? "" : efetivo.toString()}
+                    onChange={(e) => setEfetivo(Number(e.target.value))}
+                    placeholder="Ex: 246"
+                    onKeyDown={handleEnterToNextField}
+                    disabled={!organizacao}
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="ugQS">CODUG da RM do QS</Label>
-                <Input
-                  id="ugQS"
-                  value={ugQS}
-                  readOnly
-                  disabled={true}
-                  className="disabled:opacity-60"
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="diasOperacao">Dias de atividade</Label>
+                  <Input
+                    id="diasOperacao"
+                    type="number"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    value={diasOperacao === 0 ? "" : diasOperacao.toString()}
+                    onChange={(e) => setDiasOperacao(Number(e.target.value))}
+                    placeholder="Ex: 30"
+                    onKeyDown={handleEnterToNextField}
+                    disabled={!organizacao}
+                  />
+                </div>
+                
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="faseAtividade">Fase da Atividade</Label>
+                  <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        type="button"
+                        className="w-full justify-between"
+                        disabled={!organizacao}
+                      >
+                        <span className="truncate">
+                          {displayFases || "Selecione a(s) fase(s)..."}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0" align="start">
+                      <Command>
+                        <CommandGroup>
+                          {FASES_PADRAO.map((fase) => (
+                            <CommandItem
+                              key={fase}
+                              value={fase}
+                              onSelect={() => handleFaseChange(fase, !fasesAtividade.includes(fase))}
+                              className="flex items-center justify-between cursor-pointer"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <Checkbox
+                                  checked={fasesAtividade.includes(fase)}
+                                  onCheckedChange={(checked) => handleFaseChange(fase, !!checked)}
+                                />
+                                <Label>{fase}</Label>
+                              </div>
+                              {fasesAtividade.includes(fase) && <Check className="ml-auto h-4 w-4" />}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                        <div className="p-2 border-t">
+                          <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade (Opcional)</Label>
+                          <Input
+                            value={customFaseAtividade}
+                            onChange={(e) => setCustomFaseAtividade(e.target.value)}
+                            placeholder="Ex: Patrulhamento"
+                            onKeyDown={handleEnterToNextField}
+                          />
+                        </div>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
             </div>
 
-            {/* Efetivo e Dias */}
-            <div className="grid md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-lg">
-              <div className="space-y-2">
-                <Label htmlFor="efetivo">Efetivo de Militares</Label>
-                <Input
-                  id="efetivo"
-                  type="number"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={efetivo === 0 ? "" : efetivo.toString()}
-                  onChange={(e) => setEfetivo(Number(e.target.value))}
-                  placeholder="Ex: 246"
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
+            {/* 2. Configurar Itens por Categoria */}
+            {organizacao && diasOperacao > 0 && efetivo > 0 && (
+              <div className="space-y-4 border-b pb-4">
+                <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
+                
+                <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as CategoriaClasseI)}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="RACAO_QUENTE">Ração Quente (R1)</TabsTrigger>
+                    <TabsTrigger value="RACAO_OPERACIONAL">Ração Operacional (R2/R3)</TabsTrigger>
+                  </TabsList>
+                  
+                  {/* Ração Quente (R1) - QS/QR */}
+                  <TabsContent value="RACAO_QUENTE" className="mt-4">
+                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                      <h4 className="font-semibold text-base">Configuração de QS/QR</h4>
+                      
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="omQS">RM que receberá o QS</Label>
+                          <RmSelector
+                            value={omQS}
+                            onChange={handleRMQSChange}
+                            placeholder="Selecione a RM de destino do QS..."
+                            disabled={!organizacao}
+                          />
+                        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="diasOperacao">Dias de atividade</Label>
-                <Input
-                  id="diasOperacao"
-                  type="number"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={diasOperacao === 0 ? "" : diasOperacao.toString()}
-                  onChange={(e) => setDiasOperacao(Number(e.target.value))}
-                  placeholder="Ex: 30"
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-            </div>
-
-            {/* Configuração de Valores e Fase da Atividade */}
-            <div className="grid md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-lg">
-              <div className="space-y-2">
-                <Label htmlFor="nrRefInt">
-                  Nº Refeições Intermediárias
-                </Label>
-                <Select
-                  value={nrRefInt.toString()}
-                  onValueChange={(value) => setNrRefInt(Number(value))}
-                >
-                  <SelectTrigger id="nrRefInt">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background">
-                    <SelectItem value="1">1 refeição</SelectItem>
-                    <SelectItem value="2">2 refeições</SelectItem>
-                    <SelectItem value="3">3 refeições</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="faseAtividade">Fase da Atividade</Label>
-                <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      type="button"
-                      className="w-full justify-between"
-                    >
-                      <span className="truncate">
-                        {displayFases || "Selecione a(s) fase(s)..."}
-                      </span>
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0" align="start">
-                    <Command>
-                      <CommandGroup>
-                        {FASES_PADRAO.map((fase) => (
-                          <CommandItem
-                            key={fase}
-                            value={fase}
-                            onSelect={() => handleFaseChange(fase, !fasesAtividade.includes(fase))}
-                            className="flex items-center justify-between cursor-pointer"
-                          >
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={fasesAtividade.includes(fase)}
-                                onCheckedChange={(checked) => handleFaseChange(fase, !!checked)}
-                              />
-                              <Label>{fase}</Label>
-                            </div>
-                            {fasesAtividade.includes(fase) && <Check className="ml-auto h-4 w-4" />}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                      <div className="p-2 border-t">
-                        <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade (Opcional)</Label>
-                        <Input
-                          value={customFaseAtividade}
-                          onChange={(e) => setCustomFaseAtividade(e.target.value)}
-                          placeholder="Ex: Patrulhamento"
-                          onKeyDown={handleEnterToNextField}
-                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="ugQS">CODUG da RM do QS</Label>
+                          <Input
+                            id="ugQS"
+                            value={ugQS}
+                            readOnly
+                            disabled={true}
+                            className="disabled:opacity-60"
+                          />
+                        </div>
                       </div>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                      
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="nrRefInt">Nº Refeições Intermediárias</Label>
+                          <Select
+                            value={nrRefInt.toString()}
+                            onValueChange={(value) => setNrRefInt(Number(value))}
+                          >
+                            <SelectTrigger id="nrRefInt">
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background">
+                              <SelectItem value="1">1 refeição</SelectItem>
+                              <SelectItem value="2">2 refeições</SelectItem>
+                              <SelectItem value="3">3 refeições</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Valor QS (R$)</Label>
+                          <div className="relative">
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
+                              value={formatPriceForInput(valorQS, rawQSInput)}
+                              onChange={(e) => handlePriceChange(e, 'valorQS')}
+                              onBlur={() => handlePriceBlur('valorQS')}
+                              onKeyDown={handleEnterToNextField}
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Valor QR (R$)</Label>
+                          <div className="relative">
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
+                              value={formatPriceForInput(valorQR, rawQRInput)}
+                              onChange={(e) => handlePriceChange(e, 'valorQR')}
+                              onBlur={() => handlePriceBlur('valorQR')}
+                              onKeyDown={handleEnterToNextField}
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Preview dos Cálculos Ração Quente */}
+                      {calculosRacaoQuente && (
+                        <div className="space-y-4 mt-6 p-4 bg-background rounded-lg border">
+                          <h5 className="font-semibold text-sm">Previsão de Custo (Ração Quente)</h5>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Total QS (Subsistência)</span>
+                            <span className="font-semibold text-blue-600">{formatCurrency(calculosRacaoQuente.totalQS)}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Total QR (Rancho Pronto)</span>
+                            <span className="font-semibold text-green-600">{formatCurrency(calculosRacaoQuente.totalQR)}</span>
+                          </div>
+                          <div className="h-px bg-border my-2" />
+                          <div className="flex justify-between items-center text-lg">
+                            <span className="font-bold">Total Ração Quente</span>
+                            <span className="font-bold text-primary">{formatCurrency(calculosRacaoQuente.totalQS + calculosRacaoQuente.totalQR)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                  
+                  {/* Ração Operacional (R2/R3) */}
+                  <TabsContent value="RACAO_OPERACIONAL" className="mt-4">
+                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                      <h4 className="font-semibold text-base">Quantitativo de Ração Operacional</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Informe a quantidade total de rações operacionais necessárias para o efetivo e dias de atividade.
+                      </p>
+                      
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="quantidadeR2">Ração Operacional R2 (24h)</Label>
+                          <Input
+                            id="quantidadeR2"
+                            type="number"
+                            min="0"
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            value={quantidadeR2 === 0 ? "" : quantidadeR2.toString()}
+                            onChange={(e) => setQuantidadeR2(Number(e.target.value))}
+                            placeholder="0"
+                            onKeyDown={handleEnterToNextField}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="quantidadeR3">Ração Operacional R3 (12h)</Label>
+                          <Input
+                            id="quantidadeR3"
+                            type="number"
+                            min="0"
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            value={quantidadeR3 === 0 ? "" : quantidadeR3.toString()}
+                            onChange={(e) => setQuantidadeR3(Number(e.target.value))}
+                            placeholder="0"
+                            onKeyDown={handleEnterToNextField}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Preview Ração Operacional */}
+                      {(quantidadeR2 > 0 || quantidadeR3 > 0) && (
+                        <div className="space-y-4 mt-6 p-4 bg-background rounded-lg border">
+                          <h5 className="font-semibold text-sm">Resumo (Ração Operacional)</h5>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Total de Unidades R2</span>
+                            <span className="font-semibold">{formatNumber(quantidadeR2)}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Total de Unidades R3</span>
+                            <span className="font-semibold">{formatNumber(quantidadeR3)}</span>
+                          </div>
+                          <div className="h-px bg-border my-2" />
+                          <div className="flex justify-between items-center text-lg">
+                            <span className="font-bold">Total de Rções Operacionais</span>
+                            <span className="font-bold text-primary">{formatNumber(totalRacoesOperacionais)} un.</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            * Nota: O valor monetário desta solicitação é considerado R$ 0,00 para fins de cálculo logístico interno.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
-            </div>
+            )}
 
             {/* Botão Cadastrar/Atualizar e Cancelar */}
             <div className="flex justify-end gap-2">
@@ -832,133 +1240,21 @@ export default function ClasseIForm() {
               <Button
                 type="submit"
                 className="gap-2"
-                disabled={loading || !om || !ug || !omQS || !ugQS || efetivo <= 0 || diasOperacao <= 0 || (!displayFases)}
+                disabled={loading || !organizacao || diasOperacao <= 0 || efetivo <= 0 || (!displayFases)}
               >
                 <Plus className="h-4 w-4" />
-                {loading ? "Aguarde..." : (editingRegistroId ? "Atualizar OM" : "Cadastrar OM")}
+                {loading ? "Aguarde..." : (editingRegistroId ? "Atualizar Registro" : "Cadastrar Registro")}
               </Button>
             </div>
           </form>
 
-            {/* Preview dos Cálculos */}
-            {efetivo > 0 && diasOperacao > 0 && (
-              <div className="space-y-6 mt-6">
-                {/* Informações de Ciclo */}
-                <div className="p-6 bg-primary/5 rounded-lg border border-primary/10">
-                  <h3 className="font-semibold text-lg mb-4">Ciclo de Operação</h3>
-                  <div className="grid md:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Nº Ciclos (30 dias)</p>
-                      <p className="text-2xl font-bold">{calculos.nrCiclos}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Dias Etapa Paga</p>
-                      <p className="text-2xl font-bold">{calculos.diasEtapaPaga}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Dias Etapa Solicitada</p>
-                      <p className="text-2xl font-bold">{calculos.diasEtapaSolicitada}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Dias de Complemento</p>
-                      <p className="text-2xl font-bold">{diasOperacao}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Cálculos QS */}
-                <div className="p-6 bg-blue-500/5 rounded-lg border border-blue-500/10">
-                  <h3 className="font-semibold text-lg mb-4">Quantitativo de Subsistência (QS)</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Valor Etapa QS (R$ {valorQS.toFixed(2)} x {calculos.diasEtapaSolicitada} dias)</span>
-                      <span className="font-semibold">{formatCurrency(calculos.etapaQS)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">
-                        Valor Complemento QS ({efetivo} militares x {Math.min(nrRefInt, 3)} Ref Int x R$ {(valorQS / 3).toFixed(2)}/Ref Int x {diasOperacao} dias)
-                      </span>
-                      <span className="font-semibold">{formatCurrency(calculos.complementoQS)}</span>
-                    </div>
-                    <div className="h-px bg-border my-2" />
-                    <div className="flex justify-between items-center text-lg">
-                      <span className="font-bold">Total QS</span>
-                      <span className="font-bold text-blue-600">{formatCurrency(calculos.totalQS)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Cálculos QR */}
-                <div className="p-6 bg-green-500/5 rounded-lg border border-green-500/10">
-                  <h3 className="font-semibold text-lg mb-4">Quantitativo de Rancho (QR)</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Valor Etapa QR (R$ {valorQR.toFixed(2)} x {calculos.diasEtapaSolicitada} dias)</span>
-                      <span className="font-semibold">{formatCurrency(calculos.etapaQR)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">
-                        Valor Complemento QR ({efetivo} militares x {Math.min(nrRefInt, 3)} Ref Int x R$ {(valorQR / 3).toFixed(2)}/Ref Int x {diasOperacao} dias)
-                      </span>
-                      <span className="font-semibold">{formatCurrency(calculos.complementoQR)}</span>
-                    </div>
-                    <div className="h-px bg-border my-2" />
-                    <div className="flex justify-between items-center text-lg">
-                      <span className="font-bold">Total QR</span>
-                      <span className="font-bold text-green-600">{formatCurrency(calculos.totalQR)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Total Geral */}
-                <div className="p-6 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border-2 border-primary/20">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xl font-bold">Valor Total a Solicitar</span>
-                    <span className="text-3xl font-bold text-primary">
-                      {formatCurrency(calculos.totalQS + calculos.totalQR)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Memória de Cálculo */}
-                <div className="p-6 bg-muted/50 rounded-lg">
-                  <h3 className="font-semibold text-lg mb-4">Memória de Cálculo</h3>
-                  <div className="space-y-4 text-sm">
-                    <div>
-                      <p className="font-semibold mb-2">QS - Quantitativo de Subsistência:</p>
-                      <p className="text-muted-foreground">
-                        • Complemento: [{efetivo} militares x {nrRefInt} Ref Int x (R$ {valorQS.toFixed(2)}/3) x {diasOperacao} dias] = {formatCurrency(calculos.complementoQS)}
-                      </p>
-                      <p className="text-muted-foreground">
-                        • Etapa: [{efetivo} militares x R$ {valorQS.toFixed(2)} x {calculos.diasEtapaSolicitada} dias] = {formatCurrency(calculos.etapaQS)}
-                      </p>
-                      <p className="font-semibold mt-2">Total QS: {formatCurrency(calculos.totalQS)}</p>
-                    </div>
-                    
-                    <div className="h-px bg-border" />
-                    
-                    <div>
-                      <p className="font-semibold mb-2">QR - Quantitativo de Rancho:</p>
-                      <p className="text-muted-foreground">
-                        • Complemento: [{efetivo} militares x {nrRefInt} Ref Int x (R$ {valorQR.toFixed(2)}/3) x {diasOperacao} dias] = {formatCurrency(calculos.complementoQR)}
-                      </p>
-                      <p className="text-muted-foreground">
-                        • Etapa: [{efetivo} militares x R$ {valorQR.toFixed(2)} x {calculos.diasEtapaSolicitada} dias] = {formatCurrency(calculos.etapaQR)}
-                      </p>
-                      <p className="font-semibold mt-2">Total QR: {formatCurrency(calculos.totalQR)}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tabela de Registros */}
+            {/* 3. Tabela de Registros */}
             {registros.length > 0 && (
               <div className="space-y-4 mt-8">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-accent" />
-                    OMs Cadastradas
+                    Registros Cadastrados
                   </h2>
                   <Badge variant="secondary" className="text-sm">
                     {registros.length} {registros.length === 1 ? 'registro' : 'registros'}
@@ -970,65 +1266,76 @@ export default function ClasseIForm() {
                     <table className="w-full table-fixed">
                       <thead className="bg-muted">
                         <tr>
-                          <th className="text-left p-3 font-semibold text-sm w-[12%]">OM Destino (QR)</th>
-                          <th className="text-center p-3 font-semibold text-sm w-[9%]">UG (QR)</th>
-                          <th className="text-left p-3 font-semibold text-sm w-[12%]">RM QS</th>
-                          <th className="text-center p-3 font-semibold text-sm w-[10%]">CODUG RM QS</th>
+                          <th className="text-left p-3 font-semibold text-sm w-[15%]">OM Destino</th>
+                          <th className="text-center p-3 font-semibold text-sm w-[10%]">UG</th>
+                          <th className="text-center p-3 font-semibold text-sm w-[15%]">Categoria</th>
                           <th className="text-center p-3 font-semibold text-sm w-[8%]">Efetivo</th>
                           <th className="text-center p-3 font-semibold text-sm w-[8%]">Dias</th>
-                          <th className="text-right p-3 font-semibold text-sm w-[11%]">Total QS</th>
-                          <th className="text-right p-3 font-semibold text-sm w-[11%]">Total QR</th>
-                          <th className="text-right p-3 font-semibold text-sm w-[11%]">Total</th>
+                          <th className="text-right p-3 font-semibold text-sm w-[12%]">Total QS/R2</th>
+                          <th className="text-right p-3 font-semibold text-sm w-[12%]">Total QR/R3</th>
+                          <th className="text-right p-3 font-semibold text-sm w-[12%]">Total Geral</th>
                           <th className="text-center p-3 font-semibold text-sm w-[8%]">Ações</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {registros.map((registro) => (
-                          <tr key={registro.id} className="border-t hover:bg-muted/50">
-                            <td className="p-3 text-sm">{registro.om}</td>
-                            <td className="p-3 text-sm text-center">{registro.ug}</td>
-                            <td className="p-3 text-sm">{registro.omQS}</td>
-                            <td className="p-3 text-sm text-center">{registro.ugQS}</td>
-                            <td className="p-3 text-sm text-center">{registro.efetivo}</td>
-                            <td className="p-3 text-sm text-center">{registro.diasOperacao}</td>
-                            <td className="p-3 px-4 text-sm text-right font-medium text-blue-600 whitespace-nowrap">
-                              {formatCurrency(registro.calculos.totalQS)}
-                            </td>
-                            <td className="p-3 px-4 text-sm text-right font-medium text-green-600 whitespace-nowrap">
-                              {formatCurrency(registro.calculos.totalQR)}
-                            </td>
-                            <td className="p-3 px-4 text-sm text-right font-bold whitespace-nowrap">
-                              {formatCurrency(registro.calculos.totalQS + registro.calculos.totalQR)}
-                            </td>
-                            <td className="p-3 text-center">
-                              <div className="flex gap-1 justify-center">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleEditRegistro(registro)}
-                                  disabled={loading}
-                                  className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleRemover(registro.id)}
-                                  disabled={loading}
-                                  className="h-8 w-8 text-destructive hover:text-destructive/10"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                        {registros.map((registro) => {
+                          const isRacaoQuente = registro.categoria === 'RACAO_QUENTE';
+                          const totalQS_R2 = isRacaoQuente ? registro.calculos.totalQS : (registro.quantidadeR2 || 0);
+                          const totalQR_R3 = isRacaoQuente ? registro.calculos.totalQR : (registro.quantidadeR3 || 0);
+                          const totalGeralRegistro = isRacaoQuente ? (registro.calculos.totalQS + registro.calculos.totalQR) : (totalQS_R2 + totalQR_R3);
+                          
+                          return (
+                            <tr key={registro.id} className="border-t hover:bg-muted/50">
+                              <td className="p-3 text-sm">{registro.organizacao}</td>
+                              <td className="p-3 text-sm text-center">{registro.ug}</td>
+                              <td className="p-3 text-sm text-center">
+                                <Badge variant="outline" className={cn(
+                                    isRacaoQuente ? "bg-primary/10 text-primary" : "bg-secondary/10 text-secondary"
+                                )}>
+                                    {isRacaoQuente ? 'Ração Quente (R1)' : 'Ração Operacional (R2/R3)'}
+                                </Badge>
+                              </td>
+                              <td className="p-3 text-sm text-center">{registro.efetivo}</td>
+                              <td className="p-3 text-sm text-center">{registro.diasOperacao}</td>
+                              <td className="p-3 px-4 text-sm text-right font-medium whitespace-nowrap">
+                                {isRacaoQuente ? formatCurrency(totalQS_R2) : `${formatNumber(totalQS_R2)} un.`}
+                              </td>
+                              <td className="p-3 px-4 text-sm text-right font-medium whitespace-nowrap">
+                                {isRacaoQuente ? formatCurrency(totalQR_R3) : `${formatNumber(totalQR_R3)} un.`}
+                              </td>
+                              <td className="p-3 px-4 text-sm text-right font-bold whitespace-nowrap">
+                                {isRacaoQuente ? formatCurrency(totalGeralRegistro) : `${formatNumber(totalGeralRegistro)} un.`}
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="flex gap-1 justify-center">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleEditRegistro(registro)}
+                                    disabled={loading}
+                                    className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRemover(registro.id)}
+                                    disabled={loading}
+                                    className="h-8 w-8 text-destructive hover:text-destructive/10"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                       <tfoot className="bg-muted/50 border-t-2">
                         <tr>
-                          <td colSpan={6} className="p-3 text-right text-sm font-semibold">
-                            TOTAL GERAL:
+                          <td colSpan={5} className="p-3 text-right text-sm font-semibold">
+                            TOTAL GERAL (Ração Quente):
                           </td>
                           <td className="p-3 px-4 text-sm text-right font-bold text-blue-600 whitespace-nowrap">
                             {formatCurrency(totalGeralQS)}
@@ -1041,52 +1348,63 @@ export default function ClasseIForm() {
                           </td>
                           <td className="p-3"></td>
                         </tr>
+                        <tr>
+                          <td colSpan={5} className="p-3 text-right text-sm font-semibold">
+                            TOTAL GERAL (Ração Operacional):
+                          </td>
+                          <td colSpan={3} className="p-3 px-4 text-sm text-right font-extrabold text-secondary text-base whitespace-nowrap">
+                            {formatNumber(totalRacoesOperacionaisGeral)} un.
+                          </td>
+                          <td className="p-3"></td>
+                        </tr>
                       </tfoot>
                     </table>
                   </div>
                 </div>
 
-                {/* Detalhamento das Memórias de Cálculo - NOVO FORMATO */}
+                {/* Detalhamento das Memórias de Cálculo */}
                 <div className="space-y-4 mt-6">
                   <h3 className="text-xl font-bold flex items-center gap-2">
                     📋 Memórias de Cálculo Detalhadas
                   </h3>
                   
                   {registros.map((registro) => {
-                    const { qs, qr } = generateClasseIMemoriaCalculo(registro);
+                    const isRacaoQuente = registro.categoria === 'RACAO_QUENTE';
                     const isEditing = editingMemoriaId === registro.id;
-                    const hasCustomMemoria = !!(registro.memoriaQSCustomizada || registro.memoriaQRCustomizada);
+                    const hasCustomMemoria = isRacaoQuente && !!(registro.memoriaQSCustomizada || registro.memoriaQRCustomizada);
                     
-                    const memoriaQSFinal = isEditing ? memoriaQSEdit : (registro.memoriaQSCustomizada || qs);
-                    const memoriaQRFinal = isEditing ? memoriaQREdit : (registro.memoriaQRCustomizada || qr);
+                    let memoriaQSFinal = "";
+                    let memoriaQRFinal = "";
+                    let memoriaOperacionalFinal = "";
+                    
+                    if (isRacaoQuente) {
+                        const { qs, qr } = generateRacaoQuenteMemoriaCalculo(registro);
+                        memoriaQSFinal = isEditing ? memoriaQSEdit : (registro.memoriaQSCustomizada || qs);
+                        memoriaQRFinal = isEditing ? memoriaQREdit : (registro.memoriaQRCustomizada || qr);
+                    } else {
+                        memoriaOperacionalFinal = generateRacaoOperacionalMemoriaCalculo(registro);
+                    }
                     
                     return (
                       <Card key={registro.id} className="p-6 bg-muted/30">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <h4 className="text-lg font-semibold text-foreground">
-                              {registro.om} (UG: {registro.ug})
+                              {registro.organizacao} (UG: {registro.ug})
                             </h4>
+                            <Badge variant="default" className={cn(
+                                isRacaoQuente ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
+                            )}>
+                                {isRacaoQuente ? 'Ração Quente (R1)' : 'Ração Operacional (R2/R3)'}
+                            </Badge>
                             {hasCustomMemoria && !isEditing && (
                               <Badge variant="outline" className="text-xs">
                                 Editada manualmente
                               </Badge>
                             )}
                           </div>
-                          <Badge 
-                            variant="default" 
-                            className="bg-primary text-primary-foreground"
-                          >
-                            Classe I
-                          </Badge>
-                        </div>
-                        <div className="h-px bg-border my-4" /> 
-                        
-                        {/* Bloco QS */}
-                        <div className="space-y-2 mb-6">
-                          <div className="flex items-center justify-between">
-                            <h5 className="font-bold text-sm text-blue-600">QS - Quantitativo de Subsistência (RM: {registro.omQS})</h5>
-                            
+                          
+                          {isRacaoQuente && (
                             <div className="flex items-center gap-2">
                               {!isEditing ? (
                                 <>
@@ -1139,38 +1457,60 @@ export default function ClasseIForm() {
                                 </>
                               )}
                             </div>
-                          </div>
-                          
-                          <Card className="p-4 bg-background rounded-lg border">
-                            <Textarea
-                              value={memoriaQSFinal}
-                              onChange={(e) => isEditing && setMemoriaQSEdit(e.target.value)}
-                              readOnly={!isEditing}
-                              rows={10}
-                              className={cn(
-                                "font-mono text-xs whitespace-pre-wrap text-foreground",
-                                isEditing && "border-blue-500 focus:ring-2 focus:ring-blue-500"
-                              )}
-                            />
-                          </Card>
+                          )}
                         </div>
+                        <div className="h-px bg-border my-4" /> 
+                        
+                        {isRacaoQuente ? (
+                            <>
+                                {/* Bloco QS */}
+                                <div className="space-y-2 mb-6">
+                                  <h5 className="font-bold text-sm text-blue-600">QS - Quantitativo de Subsistência (RM: {registro.omQS})</h5>
+                                  <Card className="p-4 bg-background rounded-lg border">
+                                    <Textarea
+                                      value={memoriaQSFinal}
+                                      onChange={(e) => isEditing && setMemoriaQSEdit(e.target.value)}
+                                      readOnly={!isEditing}
+                                      rows={10}
+                                      className={cn(
+                                        "font-mono text-xs whitespace-pre-wrap text-foreground",
+                                        isEditing && "border-blue-500 focus:ring-2 focus:ring-blue-500"
+                                      )}
+                                    />
+                                  </Card>
+                                </div>
 
-                        {/* Bloco QR */}
-                        <div className="space-y-2">
-                          <h5 className="font-bold text-sm text-green-600">QR - Quantitativo de Rancho (OM: {registro.om})</h5>
-                          <Card className="p-4 bg-background rounded-lg border">
-                            <Textarea
-                              value={memoriaQRFinal}
-                              onChange={(e) => isEditing && setMemoriaQREdit(e.target.value)}
-                              readOnly={!isEditing}
-                              rows={10}
-                              className={cn(
-                                "font-mono text-xs whitespace-pre-wrap text-foreground",
-                                isEditing && "border-green-500 focus:ring-2 focus:ring-green-500"
-                              )}
-                            />
-                          </Card>
-                        </div>
+                                {/* Bloco QR */}
+                                <div className="space-y-2">
+                                  <h5 className="font-bold text-sm text-green-600">QR - Quantitativo de Rancho (OM: {registro.organizacao})</h5>
+                                  <Card className="p-4 bg-background rounded-lg border">
+                                    <Textarea
+                                      value={memoriaQRFinal}
+                                      onChange={(e) => isEditing && setMemoriaQREdit(e.target.value)}
+                                      readOnly={!isEditing}
+                                      rows={10}
+                                      className={cn(
+                                        "font-mono text-xs whitespace-pre-wrap text-foreground",
+                                        isEditing && "border-green-500 focus:ring-2 focus:ring-green-500"
+                                      )}
+                                    />
+                                  </Card>
+                                </div>
+                            </>
+                        ) : (
+                            /* Bloco Ração Operacional */
+                            <div className="space-y-2">
+                              <h5 className="font-bold text-sm text-secondary">Ração Operacional (R2/R3)</h5>
+                              <Card className="p-4 bg-background rounded-lg border">
+                                <Textarea
+                                  value={memoriaOperacionalFinal}
+                                  readOnly
+                                  rows={8}
+                                  className="font-mono text-xs whitespace-pre-wrap text-foreground"
+                                />
+                              </Card>
+                            </div>
+                        )}
                       </Card>
                     );
                   })}
