@@ -1424,42 +1424,52 @@ export default function ClasseIForm() {
               <div className="space-y-4 border-b pb-4 pt-4">
                 <h3 className="text-lg font-semibold">3. Itens Adicionados para {organizacao}</h3>
                 
-                <Card className="p-4 bg-secondary/10 border-secondary">
-                    <div className="flex items-center justify-between mb-3 border-b pb-2">
-                        <h4 className="font-bold text-base text-primary">
-                            {organizacao} (UG: {ug})
-                        </h4>
-                        <span className="font-extrabold text-lg text-primary">
-                            {formatCurrency(totalMonetarioConsolidado)}
-                        </span>
-                    </div>
-                    
-                    <div className="space-y-2">
-                        {currentOMConsolidatedData?.RACAO_QUENTE && (
-                            <div className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1">
-                                <span className="font-medium flex items-center gap-2 text-blue-600">
+                <div className="space-y-4">
+                    {/* Card Ração Quente */}
+                    {currentOMConsolidatedData?.RACAO_QUENTE && (
+                        <Card className="p-4 bg-secondary/10 border-secondary">
+                            <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                <h4 className="font-bold text-base text-primary flex items-center gap-2">
                                     <Utensils className="h-4 w-4" />
                                     Ração Quente (QS/QR)
-                                </span>
-                                <span className="text-right font-semibold text-foreground">
+                                </h4>
+                                <span className="font-extrabold text-lg text-primary">
                                     {formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_geral)}
                                 </span>
                             </div>
-                        )}
-                        
-                        {currentOMConsolidatedData?.RACAO_OPERACIONAL && (
-                            <div className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1">
-                                <span className="font-medium flex items-center gap-2 text-secondary">
+                            
+                            <div className="space-y-1 text-sm text-muted-foreground">
+                                <p>OM: {organizacao} (UG: {ug})</p>
+                                <p>Efetivo: {currentOMConsolidatedData.RACAO_QUENTE.efetivo} militares</p>
+                                <p>Dias de Atividade: {currentOMConsolidatedData.RACAO_QUENTE.dias_operacao} dias</p>
+                                <p>Fase: {formatFasesParaTexto(currentOMConsolidatedData.RACAO_QUENTE.fase_atividade)}</p>
+                            </div>
+                        </Card>
+                    )}
+                    
+                    {/* Card Ração Operacional */}
+                    {currentOMConsolidatedData?.RACAO_OPERACIONAL && (
+                        <Card className="p-4 bg-secondary/10 border-secondary">
+                            <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                <h4 className="font-bold text-base text-primary flex items-center gap-2">
                                     <Package className="h-4 w-4" />
                                     Ração Operacional (R2/R3)
-                                </span>
-                                <span className="text-right font-semibold text-foreground">
+                                </h4>
+                                <span className="font-extrabold text-lg text-secondary">
                                     {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.total_unidades)} un.
                                 </span>
                             </div>
-                        )}
-                    </div>
-                </Card>
+                            
+                            <div className="space-y-1 text-sm text-muted-foreground">
+                                <p>OM: {organizacao} (UG: {ug})</p>
+                                <p>Efetivo: {currentOMConsolidatedData.RACAO_OPERACIONAL.efetivo} militares</p>
+                                <p>Dias de Atividade: {currentOMConsolidatedData.RACAO_OPERACIONAL.dias_operacao} dias</p>
+                                <p>R2: {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.quantidade_r2 || 0)} un. | R3: {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.quantidade_r3 || 0)} un.</p>
+                                <p>Fase: {formatFasesParaTexto(currentOMConsolidatedData.RACAO_OPERACIONAL.fase_atividade)}</p>
+                            </div>
+                        </Card>
+                    )}
+                </div>
                 
                 <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
                   <span className="font-bold text-base text-primary">VALOR TOTAL DA OM</span>
