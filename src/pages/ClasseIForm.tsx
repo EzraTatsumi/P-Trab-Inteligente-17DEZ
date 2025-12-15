@@ -686,8 +686,11 @@ export default function ClasseIForm() {
             return;
         }
         
+        // Tenta encontrar o ID existente no DB para esta categoria
+        const existingDbRecord = registros.find(r => r.organizacao === organizacao && r.ug === ug && r.categoria === 'RACAO_QUENTE');
+        
         newRecord = {
-            id: currentOMConsolidatedData?.RACAO_QUENTE?.id,
+            id: existingDbRecord?.id, // Usa o ID do DB se existir
             categoria: 'RACAO_QUENTE',
             organizacao: organizacao,
             ug: ug,
@@ -717,8 +720,11 @@ export default function ClasseIForm() {
         
         const totalUnidades = quantidadeR2 + quantidadeR3;
         
+        // Tenta encontrar o ID existente no DB para esta categoria
+        const existingDbRecord = registros.find(r => r.organizacao === organizacao && r.ug === ug && r.categoria === 'RACAO_OPERACIONAL');
+        
         newRecord = {
-            id: currentOMConsolidatedData?.RACAO_OPERACIONAL?.id,
+            id: existingDbRecord?.id, // Usa o ID do DB se existir
             categoria: 'RACAO_OPERACIONAL',
             organizacao: organizacao,
             ug: ug,
