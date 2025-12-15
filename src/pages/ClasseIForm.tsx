@@ -269,8 +269,6 @@ export default function ClasseIForm() {
   const [nrRefInt, setNrRefInt] = useState<number>(1);
   const [valorQS, setValorQS] = useState<number>(9.0);
   const [valorQR, setValorQR] = useState<number>(6.0);
-  const [rawQSInput, setRawQSInput] = useState<string>(numberToRawDigits(9.0));
-  const [rawQRInput, setRawQRInput] = useState<string>(numberToRawDigits(6.0));
   
   // --- RACAO_OPERACIONAL State ---
   const [quantidadeR2, setQuantidadeR2] = useState<number>(0);
@@ -325,8 +323,6 @@ export default function ClasseIForm() {
       if (!anoReferencia) {
         setValorQS(9.0);
         setValorQR(6.0);
-        setRawQSInput(numberToRawDigits(9.0));
-        setRawQRInput(numberToRawDigits(6.0));
         setDiretrizAno(null);
         return;
       }
@@ -345,8 +341,6 @@ export default function ClasseIForm() {
         const qr = Number(data.classe_i_valor_qr);
         setValorQS(qs);
         setValorQR(qr);
-        setRawQSInput(numberToRawDigits(qs));
-        setRawQRInput(numberToRawDigits(qr));
         setDiretrizAno(data.ano_referencia);
       }
     } catch (error: any) {
@@ -404,16 +398,20 @@ export default function ClasseIForm() {
       const registrosCarregados: ClasseIRegistro[] = (data || []).map((r) => {
         const categoria = (r.categoria || 'RACAO_QUENTE') as CategoriaClasseI;
         
+        // Use stored values if available, otherwise use defaults (9.0/6.0)
+        const currentValorQS = r.valor_qs ? Number(r.valor_qs) : 9.0;
+        const currentValorQR = r.valor_qr ? Number(r.valor_qr) : 6.0;
+
         // Only calculate if RACAO_QUENTE and necessary fields are present
-        const isRacaoQuenteValid = categoria === 'RACAO_QUENTE' && r.efetivo && r.valor_qs && r.valor_qr && r.nr_ref_int;
+        const isRacaoQuenteValid = categoria === 'RACAO_QUENTE' && r.efetivo && r.nr_ref_int;
         
         const derivedCalculations = isRacaoQuenteValid
           ? calculateClasseICalculations(
               r.efetivo,
               r.dias_operacao,
               r.nr_ref_int!,
-              Number(r.valor_qs!),
-              Number(r.valor_qr!)
+              currentValorQS,
+              currentValorQR
             )
           : {
               nrCiclos: 0, diasEtapaPaga: 0, diasEtapaSolicitada: 0, totalEtapas: 0,
@@ -433,8 +431,8 @@ export default function ClasseIForm() {
           ugQS: r.ug_qs,
           efetivo: r.efetivo,
           nrRefInt: r.nr_ref_int,
-          valorQS: r.valor_qs ? Number(r.valor_qs) : null,
-          valorQR: r.valor_qr ? Number(r.valor_qr) : null,
+          valorQS: currentValorQS,
+          valorQR: currentValorQR,
           memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
           memoriaQRCustomizada: r.memoria_calculo_qr_customizada,
           
@@ -493,10 +491,9 @@ export default function ClasseIForm() {
     
     // Reset monetary inputs to current diretriz values
     if (diretrizAno) {
+        // Reloading diretrizes will reset valorQS/QR to current defaults
         loadDiretrizes(supabase.auth.getUser().then(res => res.data.user?.id || ''));
     } else {
-        setRawQSInput(numberToRawDigits(9.0));
-        setRawQRInput(numberToRawDigits(6.0));
         setValorQS(9.0);
         setValorQR(6.0);
     }
@@ -538,8 +535,6 @@ export default function ClasseIForm() {
               const qr = existingR1.valorQR || valorQR;
               setValorQS(qs);
               setValorQR(qr);
-              setRawQSInput(numberToRawDigits(qs));
-              setRawQRInput(numberToRawDigits(qr));
           }
           
           // Preenche R2/R3
@@ -588,39 +583,7 @@ export default function ClasseIForm() {
     }
   };
   
-  // Handler para inputs de preço (para permitir vírgula e formatação)
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'valorQS' | 'valorQR') => {
-    const rawValue = e.target.value;
-    const { numericValue, digits } = formatCurrencyInput(rawValue);
-    
-    if (field === 'valorQS') {
-        setRawQSInput(digits);
-        setValorQS(numericValue);
-    } else {
-        setRawQRInput(digits);
-        setValorQR(numericValue);
-    }
-  };
-
-  const handlePriceBlur = (field: 'valorQS' | 'valorQR') => {
-    // Re-formata o input para garantir 2 casas decimais
-    const numericValue = field === 'valorQS' ? valorQS : valorQR;
-    
-    if (field === 'valorQS') {
-        setRawQSInput(numberToRawDigits(numericValue));
-    } else {
-        setRawQRInput(numberToRawDigits(numericValue));
-    }
-  };
-  
-  // Função para formatar o valor numérico para exibição no input
-  const formatPriceForInput = (price: number, rawDigits: string): string => {
-    if (rawDigits.length > 0) {
-        return formatCurrencyInput(rawDigits).formatted;
-    }
-    return formatNumberForInput(price, 2);
-  };
-
+  // Removendo handlers de preço, pois os campos não são mais editáveis.
 
   const handleCadastrar = async () => {
     if (!ptrabId || !organizacao || !ug) {
@@ -673,8 +636,9 @@ export default function ClasseIForm() {
             setLoading(false);
             return;
         }
+        // Os valores de valorQS e valorQR são carregados da diretriz e estão no estado.
         if (valorQS <= 0 || valorQR <= 0) {
-            toast.error("Valores QS e QR devem ser maiores que zero.");
+            toast.error("Os valores QS e QR da Diretriz de Custeio devem ser maiores que zero.");
             setLoading(false);
             return;
         }
@@ -686,8 +650,8 @@ export default function ClasseIForm() {
             om_qs: omQS,
             ug_qs: ugQS,
             nr_ref_int: nrRefInt,
-            valor_qs: valorQS,
-            valor_qr: valorQR,
+            valor_qs: valorQS, // Usando valor carregado da diretriz
+            valor_qr: valorQR, // Usando valor carregado da diretriz
             complemento_qs: calculos.complementoQS,
             etapa_qs: calculos.etapaQS,
             total_qs: calculos.totalQS,
@@ -809,8 +773,6 @@ export default function ClasseIForm() {
         const qr = registro.valorQR || valorQR;
         setValorQS(qs);
         setValorQR(qr);
-        setRawQSInput(numberToRawDigits(qs));
-        setRawQRInput(numberToRawDigits(qr));
         setQuantidadeR2(0);
         setQuantidadeR3(0);
     } else if (registro.categoria === 'RACAO_OPERACIONAL') {
@@ -819,8 +781,6 @@ export default function ClasseIForm() {
         setNrRefInt(1);
         setValorQS(9.0);
         setValorQR(6.0);
-        setRawQSInput(numberToRawDigits(9.0));
-        setRawQRInput(numberToRawDigits(6.0));
         setQuantidadeR2(registro.quantidadeR2 || 0);
         setQuantidadeR3(registro.quantidadeR3 || 0);
     }
@@ -1079,31 +1039,10 @@ export default function ClasseIForm() {
                       <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
                         <h4 className="font-semibold text-base">Configuração de QS/QR</h4>
                         
-                        {/* Linha OM/UG QS (MOVIDA PARA CÁ) */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <Label htmlFor="omQS">OM de Destino (QS) *</Label>
-                            <RmSelector
-                              value={omQS}
-                              onChange={handleRMQSChange}
-                              placeholder="Selecione a RM de destino do QS..."
-                              disabled={!organizacao}
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="ugQS">UG de Destino (QS)</Label>
-                            <Input
-                              id="ugQS"
-                              value={ugQS}
-                              readOnly
-                              disabled={true}
-                              className="disabled:opacity-60"
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="grid md:grid-cols-3 gap-4">
+                        {/* Linha de Configuração (3 Colunas) */}
+                        <div className="grid md:grid-cols-3 gap-6">
+                          
+                          {/* Coluna 1: Nº Refeições Intermediárias */}
                           <div className="space-y-2">
                             <Label htmlFor="nrRefInt">Nº Refeições Intermediárias</Label>
                             <Select
@@ -1121,37 +1060,50 @@ export default function ClasseIForm() {
                             </Select>
                           </div>
                           
+                          {/* Coluna 2: OM de Destino (QS) */}
                           <div className="space-y-2">
-                            <Label>Valor QS (R$)</Label>
-                            <div className="relative">
-                              <Input
-                                type="text"
-                                inputMode="numeric"
-                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                                value={formatPriceForInput(valorQS, rawQSInput)}
-                                onChange={(e) => handlePriceChange(e, 'valorQS')}
-                                onBlur={() => handlePriceBlur('valorQS')}
-                                onKeyDown={handleEnterToNextField}
-                              />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
-                            </div>
+                            <Label htmlFor="omQS">OM de Destino (QS) *</Label>
+                            <RmSelector
+                              value={omQS}
+                              onChange={handleRMQSChange}
+                              placeholder="Selecione a RM de destino do QS..."
+                              disabled={!organizacao}
+                            />
                           </div>
-                          
+
+                          {/* Coluna 3: UG de Destino (QS) */}
                           <div className="space-y-2">
-                            <Label>Valor QR (R$)</Label>
-                            <div className="relative">
-                              <Input
-                                type="text"
-                                inputMode="numeric"
-                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                                value={formatPriceForInput(valorQR, rawQRInput)}
-                                onChange={(e) => handlePriceChange(e, 'valorQR')}
-                                onBlur={() => handlePriceBlur('valorQR')}
-                                onKeyDown={handleEnterToNextField}
-                              />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
-                            </div>
+                            <Label htmlFor="ugQS">UG de Destino (QS)</Label>
+                            <Input
+                              id="ugQS"
+                              value={ugQS}
+                              readOnly
+                              disabled={true}
+                              className="disabled:opacity-60"
+                            />
                           </div>
+                        </div>
+                        
+                        {/* Valores da Diretriz (Apenas exibição) */}
+                        <div className="grid md:grid-cols-2 gap-4 pt-2">
+                            <div className="space-y-2">
+                                <Label>Valor QS (Diretriz {diretrizAno || 'Atual'})</Label>
+                                <Input
+                                    value={formatCurrency(valorQS)}
+                                    readOnly
+                                    disabled
+                                    className="font-semibold text-blue-600 disabled:opacity-100"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Valor QR (Diretriz {diretrizAno || 'Atual'})</Label>
+                                <Input
+                                    value={formatCurrency(valorQR)}
+                                    readOnly
+                                    disabled
+                                    className="font-semibold text-green-600 disabled:opacity-100"
+                                />
+                            </div>
                         </div>
                         
                         {/* Preview dos Cálculos Ração Quente */}
