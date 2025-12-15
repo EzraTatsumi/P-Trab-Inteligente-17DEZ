@@ -564,14 +564,11 @@ const DiretrizesCusteioPage = () => {
         .eq("user_id", user.id)
         .eq("ano_referencia", diretrizes.ano_referencia!);
         
-      // FIX: Ensure all items in classeIXConfig are processed, not just filtered ones.
       const classeIXItemsParaSalvar = classeIXConfig
+        .filter(item => item.item.trim().length > 0 && (item.valor_mnt_dia || 0) >= 0 && (item.valor_acionamento_mensal || 0) >= 0)
         .map(item => {
           const valorMntDia = Number(item.valor_mnt_dia || 0);
           const valorAcionamentoMensal = Number(item.valor_acionamento_mensal || 0);
-          
-          // Only save if the item name is not empty (allowing 0 values for cost)
-          if (item.item.trim().length === 0) return null;
           
           return {
             user_id: user.id,
@@ -583,13 +580,13 @@ const DiretrizesCusteioPage = () => {
             valor_acionamento_mensal: valorAcionamentoMensal.toFixed(2),
             ativo: true,
           };
-        }).filter(item => item !== null); // Filter out nulls (empty item names)
+        });
         
       // Inserção individual para maior robustez
-      if (classeIXItemsParaSalvar.length > 0) {
+      for (const item of classeIXItemsParaSalvar) {
           const { error: c9Error } = await supabase
             .from("diretrizes_classe_ix")
-            .insert(classeIXItemsParaSalvar);
+            .insert([item]);
           if (c9Error) throw c9Error;
       }
 
