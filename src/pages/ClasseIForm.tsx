@@ -166,7 +166,7 @@ const formatFasesParaTexto = (faseCSV: string | undefined | null): string => {
   // 3 ou mais fases: "Fase1, Fase2 e Fase3"
   const ultimaFase = fases[fases.length - 1];
   const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFase}`;
+  return `${demaisFases} e ${ultimaFases}`;
 };
 
 // Nova função para gerar a memória de cálculo formatada para Ração Quente
@@ -948,7 +948,7 @@ export default function ClasseIForm() {
             
             {/* 1. Dados da Organização */}
             <div className="space-y-3 border-b pb-4">
-              <h3 className="text-lg font-semibold">1. Dados da Organização e Atividade</h3>
+              <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
               
               <div className="space-y-6 p-4 bg-muted/30 rounded-lg">
                 
