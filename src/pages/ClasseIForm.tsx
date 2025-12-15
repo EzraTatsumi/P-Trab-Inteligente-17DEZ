@@ -265,6 +265,31 @@ Total de Rções Operacionais: ${totalRacoes} unidades.
 (Nota: O valor monetário desta solicitação é considerado R$ 0,00 para fins de cálculo logístico interno, conforme diretriz atual, mas o quantitativo é registrado.)`;
 };
 
+// Função auxiliar para formatar a fórmula de cálculo
+const formatFormula = (
+    efetivo: number,
+    diasOperacao: number,
+    nrRefInt: number,
+    valorEtapa: number,
+    diasEtapaSolicitada: number,
+    tipo: 'complemento' | 'etapa'
+): string => {
+    const E = efetivo;
+    const D = diasOperacao;
+    const R = nrRefInt;
+    const V = valorEtapa;
+    const DES = diasEtapaSolicitada;
+    
+    if (tipo === 'complemento') {
+        // Fórmula: Efetivo x min(Ref. Int., 3) x (Valor Etapa / 3) x Dias de Atividade
+        const minR = Math.min(R, 3);
+        return `${E} x ${minR} x (${formatCurrency(V)} / 3) x ${D} dias`;
+    } else {
+        // Fórmula: Efetivo x Valor Etapa x Dias de Etapa Solicitada
+        return `${E} x ${formatCurrency(V)} x ${DES} dias`;
+    }
+};
+
 
 export default function ClasseIForm() {
   const navigate = useNavigate();
@@ -1092,6 +1117,11 @@ export default function ClasseIForm() {
   const totalMonetarioConsolidado = (currentOMConsolidatedData?.RACAO_QUENTE?.total_geral || 0);
   const totalUnidadesConsolidado = (currentOMConsolidatedData?.RACAO_OPERACIONAL?.total_unidades || 0);
 
+  // Dados necessários para formatar a fórmula no card de consolidação
+  const RACAO_QUENTE_DATA = currentOMConsolidatedData?.RACAO_QUENTE;
+  const diasEtapaSolicitada = calculosRacaoQuente?.diasEtapaSolicitada || 0;
+
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
       <div className="container mx-auto px-4 py-2">
@@ -1433,20 +1463,20 @@ export default function ClasseIForm() {
             )}
             
             {/* 3. Itens Adicionados e Consolidação */}
-            {isConfigReady && (
+            {isConfigReady && RACAO_QUENTE_DATA && (
               <div className="space-y-4 border-b pb-4 pt-4">
                 <h3 className="text-lg font-semibold">3. Itens Adicionados</h3>
                 
                 <div className="space-y-4">
                     {/* Card Ração Quente */}
-                    {currentOMConsolidatedData?.RACAO_QUENTE && (
+                    {RACAO_QUENTE_DATA && (
                         <Card className="p-4 bg-secondary/10 border-secondary">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h4 className="font-bold text-base text-primary flex items-center gap-2">
                                     Ração Quente (QS/QR)
                                 </h4>
                                 <span className="font-extrabold text-lg text-primary">
-                                    {formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_geral)}
+                                    {formatCurrency(RACAO_QUENTE_DATA.total_geral)}
                                 </span>
                             </div>
                             
@@ -1455,12 +1485,12 @@ export default function ClasseIForm() {
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                                     <div className="font-medium text-muted-foreground">Efetivo / Dias / Ref. Int.</div>
                                     <div className="font-semibold text-foreground text-right">
-                                        {currentOMConsolidatedData.RACAO_QUENTE.efetivo} mil. / {currentOMConsolidatedData.RACAO_QUENTE.dias_operacao} dias / {currentOMConsolidatedData.RACAO_QUENTE.nr_ref_int} ref.
+                                        {RACAO_QUENTE_DATA.efetivo} mil. / {RACAO_QUENTE_DATA.dias_operacao} dias / {RACAO_QUENTE_DATA.nr_ref_int} ref.
                                     </div>
                                     
                                     <div className="font-medium text-muted-foreground">Fase da Atividade</div>
                                     <div className="font-semibold text-foreground text-right">
-                                        {formatFasesParaTexto(currentOMConsolidatedData.RACAO_QUENTE.fase_atividade)}
+                                        {formatFasesParaTexto(RACAO_QUENTE_DATA.fase_atividade)}
                                     </div>
                                 </div>
                                 
@@ -1469,13 +1499,23 @@ export default function ClasseIForm() {
                                 {/* Detalhamento do Cálculo QS */}
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                                     <div className="font-bold text-blue-600">QS (Subsistência)</div>
-                                    <div className="font-bold text-blue-600 text-right">Total: {formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_qs || 0)}</div>
+                                    <div className="font-bold text-blue-600 text-right">Total: {formatCurrency(RACAO_QUENTE_DATA.total_qs || 0)}</div>
                                     
                                     <div className="text-muted-foreground pl-2">Complemento de Etapa</div>
-                                    <div className="text-foreground text-right">{formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.complemento_qs || 0)}</div>
+                                    <div className="text-foreground text-right flex flex-col items-end">
+                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.complemento_qs || 0)}</span>
+                                        <span className="text-[10px] text-muted-foreground/80">
+                                            {formatFormula(RACAO_QUENTE_DATA.efetivo, RACAO_QUENTE_DATA.dias_operacao, RACAO_QUENTE_DATA.nr_ref_int || 0, RACAO_QUENTE_DATA.valor_qs || 0, 0, 'complemento')}
+                                        </span>
+                                    </div>
                                     
                                     <div className="text-muted-foreground pl-2">Etapa a Solicitar</div>
-                                    <div className="text-foreground text-right">{formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.etapa_qs || 0)}</div>
+                                    <div className="text-foreground text-right flex flex-col items-end">
+                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.etapa_qs || 0)}</span>
+                                        <span className="text-[10px] text-muted-foreground/80">
+                                            {formatFormula(RACAO_QUENTE_DATA.efetivo, RACAO_QUENTE_DATA.dias_operacao, RACAO_QUENTE_DATA.nr_ref_int || 0, RACAO_QUENTE_DATA.valor_qs || 0, diasEtapaSolicitada, 'etapa')}
+                                        </span>
+                                    </div>
                                 </div>
                                 
                                 <div className="h-px bg-border my-2" />
@@ -1483,13 +1523,23 @@ export default function ClasseIForm() {
                                 {/* Detalhamento do Cálculo QR */}
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                                     <div className="font-bold text-green-600">QR (Reforço)</div>
-                                    <div className="font-bold text-green-600 text-right">Total: {formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_qr || 0)}</div>
+                                    <div className="font-bold text-green-600 text-right">Total: {formatCurrency(RACAO_QUENTE_DATA.total_qr || 0)}</div>
                                     
                                     <div className="text-muted-foreground pl-2">Complemento de Etapa</div>
-                                    <div className="text-foreground text-right">{formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.complemento_qr || 0)}</div>
+                                    <div className="text-foreground text-right flex flex-col items-end">
+                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.complemento_qr || 0)}</span>
+                                        <span className="text-[10px] text-muted-foreground/80">
+                                            {formatFormula(RACAO_QUENTE_DATA.efetivo, RACAO_QUENTE_DATA.dias_operacao, RACAO_QUENTE_DATA.nr_ref_int || 0, RACAO_QUENTE_DATA.valor_qr || 0, 0, 'complemento')}
+                                        </span>
+                                    </div>
                                     
                                     <div className="text-muted-foreground pl-2">Etapa a Solicitar</div>
-                                    <div className="text-foreground text-right">{formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.etapa_qr || 0)}</div>
+                                    <div className="text-foreground text-right flex flex-col items-end">
+                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.etapa_qr || 0)}</span>
+                                        <span className="text-[10px] text-muted-foreground/80">
+                                            {formatFormula(RACAO_QUENTE_DATA.efetivo, RACAO_QUENTE_DATA.dias_operacao, RACAO_QUENTE_DATA.nr_ref_int || 0, RACAO_QUENTE_DATA.valor_qr || 0, diasEtapaSolicitada, 'etapa')}
+                                        </span>
+                                    </div>
                                 </div>
                                 
                                 <div className="h-px bg-border my-2" />
@@ -1500,14 +1550,14 @@ export default function ClasseIForm() {
                                     <div className="font-medium text-muted-foreground">OM Destino Recurso</div>
                                     <div className="flex justify-between">
                                         <span className="font-medium text-green-600">{organizacao} ({ug})</span>
-                                        <span className="font-medium text-blue-600">{currentOMConsolidatedData.RACAO_QUENTE.om_qs} ({currentOMConsolidatedData.RACAO_QUENTE.ug_qs})</span>
+                                        <span className="font-medium text-blue-600">{RACAO_QUENTE_DATA.om_qs} ({RACAO_QUENTE_DATA.ug_qs})</span>
                                     </div>
                                     
                                     {/* Linha 2: ND e Valores */}
                                     <div className="font-medium text-muted-foreground">ND 33.90.30 (Material)</div>
                                     <div className="flex justify-between">
-                                        <span className="font-medium text-green-600">QR: {formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_qr || 0)}</span>
-                                        <span className="font-medium text-blue-600">QS: {formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_qs || 0)}</span>
+                                        <span className="font-medium text-green-600">QR: {formatCurrency(RACAO_QUENTE_DATA.total_qr || 0)}</span>
+                                        <span className="font-medium text-blue-600">QS: {formatCurrency(RACAO_QUENTE_DATA.total_qs || 0)}</span>
                                     </div>
                                 </div>
                             </div>
