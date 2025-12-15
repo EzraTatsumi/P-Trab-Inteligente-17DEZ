@@ -25,7 +25,14 @@ import { Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, formatNumberForInput, parseInputToNumber, numberToRawDigits } from "@/lib/formatUtils";
+import { 
+  formatCurrency, 
+  formatNumber, 
+  formatNumberForInput, 
+  parseInputToNumber, 
+  numberToRawDigits,
+  formatCurrencyInput // <-- Importação corrigida
+} from "@/lib/formatUtils";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
