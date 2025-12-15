@@ -1,14 +1,13 @@
 import { useState, useMemo, useEffect } from "react";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Trash2, Pencil, XCircle, Sparkles, Check, ChevronsUpDown } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Pencil, XCircle, Sparkles, Check, ChevronsUpDown, Utensils, Package } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeError } from "@/lib/errorUtils";
-import { classeIFormSchema } from "@/lib/validationSchemas";
 import {
   Select,
   SelectContent,
@@ -21,23 +20,18 @@ import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
 import { OMData } from "@/lib/omUtils";
-import { Info } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
 import { 
   formatCurrency, 
   formatNumber, 
-  formatNumberForInput, 
-  parseInputToNumber, 
-  numberToRawDigits,
-  formatCurrencyInput
 } from "@/lib/formatUtils";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TablesInsert } from "@/integrations/supabase/types";
 
 // New types for Classe I categories
 type CategoriaClasseI = 'RACAO_QUENTE' | 'RACAO_OPERACIONAL';
@@ -115,7 +109,37 @@ const calculateClasseICalculations = (
   };
 };
 
-// Updated interface for records loaded from DB
+// Interface para o registro pendente (configurado na Seção 2)
+interface PendingRecord {
+  id?: string; // Existing ID if updating
+  categoria: CategoriaClasseI;
+  organizacao: string;
+  ug: string;
+  dias_operacao: number;
+  efetivo: number;
+  fase_atividade: string;
+  
+  // Racao Quente fields
+  om_qs?: string;
+  ug_qs?: string;
+  nr_ref_int?: number;
+  valor_qs?: number;
+  valor_qr?: number;
+  complemento_qs?: number;
+  etapa_qs?: number;
+  total_qs?: number;
+  complemento_qr?: number;
+  etapa_qr?: number;
+  total_qr?: number;
+  total_geral: number; // Monetary total
+  
+  // Racao Operacional fields
+  quantidade_r2?: number;
+  quantidade_r3?: number;
+  total_unidades: number; // Unit total (R2 + R3)
+}
+
+// Interface para o registro carregado do DB
 interface ClasseIRegistro {
   id: string;
   categoria: CategoriaClasseI;
@@ -124,7 +148,6 @@ interface ClasseIRegistro {
   diasOperacao: number;
   faseAtividade?: string | null;
   
-  // RACAO_QUENTE specific fields
   omQS: string | null;
   ugQS: string | null;
   efetivo: number | null;
@@ -134,7 +157,6 @@ interface ClasseIRegistro {
   memoriaQSCustomizada?: string | null;
   memoriaQRCustomizada?: string | null;
   
-  // Calculated fields (only for RACAO_QUENTE)
   calculos: {
     totalQS: number;
     totalQR: number;
@@ -148,7 +170,6 @@ interface ClasseIRegistro {
     etapaQR: number;
   };
   
-  // RACAO_OPERACIONAL specific fields
   quantidadeR2: number | null;
   quantidadeR3: number | null;
 }
@@ -163,7 +184,6 @@ const formatFasesParaTexto = (faseCSV: string | undefined | null): string => {
   if (fases.length === 1) return fases[0];
   if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
   
-  // 3 ou mais fases: "Fase1, Fase2 e Fase3"
   const ultimaFase = fases[fases.length - 1];
   const demaisFases = fases.slice(0, -1).join(', ');
   return `${demaisFases} e ${ultimaFase}`;
@@ -279,6 +299,12 @@ export default function ClasseIForm() {
   const [diretrizAno, setDiretrizAno] = useState<number | null>(null);
   const [selectedTab, setSelectedTab] = useState<CategoriaClasseI>('RACAO_QUENTE');
   const [editingRegistroId, setEditingRegistroId] = useState<string | null>(null);
+  
+  // NOVO ESTADO: Consolidação dos dados da OM atual (R1 e R2/R3)
+  const [currentOMConsolidatedData, setCurrentOMConsolidatedData] = useState<{
+    RACAO_QUENTE?: PendingRecord;
+    RACAO_OPERACIONAL?: PendingRecord;
+  } | null>(null);
   
   // Estados para controle de edição de memória de cálculo
   const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
@@ -398,11 +424,9 @@ export default function ClasseIForm() {
       const registrosCarregados: ClasseIRegistro[] = (data || []).map((r) => {
         const categoria = (r.categoria || 'RACAO_QUENTE') as CategoriaClasseI;
         
-        // Use stored values if available, otherwise use defaults (9.0/6.0)
         const currentValorQS = r.valor_qs ? Number(r.valor_qs) : 9.0;
         const currentValorQR = r.valor_qr ? Number(r.valor_qr) : 6.0;
 
-        // Only calculate if RACAO_QUENTE and necessary fields are present
         const isRacaoQuenteValid = categoria === 'RACAO_QUENTE' && r.efetivo && r.nr_ref_int;
         
         const derivedCalculations = isRacaoQuenteValid
@@ -426,7 +450,6 @@ export default function ClasseIForm() {
           diasOperacao: r.dias_operacao,
           faseAtividade: r.fase_atividade,
           
-          // RACAO_QUENTE fields
           omQS: r.om_qs,
           ugQS: r.ug_qs,
           efetivo: r.efetivo,
@@ -436,7 +459,6 @@ export default function ClasseIForm() {
           memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
           memoriaQRCustomizada: r.memoria_calculo_qr_customizada,
           
-          // Calculated fields (using DB values if available, otherwise derived)
           calculos: {
             totalQS: Number(r.total_qs || 0),
             totalQR: Number(r.total_qr || 0),
@@ -450,7 +472,6 @@ export default function ClasseIForm() {
             etapaQR: Number(r.etapa_qr || 0),
           },
           
-          // RACAO_OPERACIONAL fields
           quantidadeR2: r.quantidade_r2 || 0,
           quantidadeR3: r.quantidade_r3 || 0,
         };
@@ -487,11 +508,10 @@ export default function ClasseIForm() {
     setEditingRegistroId(null);
     setFasesAtividade(["Execução"]);
     setCustomFaseAtividade("");
-    setSelectedTab('RACAO_QUENTE'); // Reset to default tab
+    setSelectedTab('RACAO_QUENTE');
+    setCurrentOMConsolidatedData(null); // Reset consolidated data
     
-    // Reset monetary inputs to current diretriz values
     if (diretrizAno) {
-        // Reloading diretrizes will reset valorQS/QR to current defaults
         loadDiretrizes(supabase.auth.getUser().then(res => res.data.user?.id || ''));
     } else {
         setValorQS(9.0);
@@ -505,7 +525,6 @@ export default function ClasseIForm() {
       setOrganizacao(omData.nome_om);
       setUg(omData.codug_om);
       
-      // Define a RM de vinculação da OM como padrão para a RM que receberá o QS
       const defaultOmQS = omData.rm_vinculacao;
       const defaultUgQS = omData.codug_rm_vinculacao;
       
@@ -516,7 +535,53 @@ export default function ClasseIForm() {
       const existingR1 = registros.find(r => r.organizacao === omData.nome_om && r.ug === omData.codug_om && r.categoria === 'RACAO_QUENTE');
       const existingR2 = registros.find(r => r.organizacao === omData.nome_om && r.ug === omData.codug_om && r.categoria === 'RACAO_OPERACIONAL');
       
-      // Se houver registros, preenche os campos globais e os campos da aba ativa
+      const newConsolidatedData: typeof currentOMConsolidatedData = {};
+      
+      if (existingR1) {
+          const calc = calculateClasseICalculations(existingR1.efetivo, existingR1.diasOperacao, existingR1.nrRefInt || 1, existingR1.valorQS || valorQS, existingR1.valorQR || valorQR);
+          newConsolidatedData.RACAO_QUENTE = {
+              id: existingR1.id,
+              categoria: 'RACAO_QUENTE',
+              organizacao: existingR1.organizacao,
+              ug: existingR1.ug,
+              dias_operacao: existingR1.diasOperacao,
+              efetivo: existingR1.efetivo || 0,
+              fase_atividade: existingR1.faseAtividade || "",
+              om_qs: existingR1.omQS,
+              ug_qs: existingR1.ugQS,
+              nr_ref_int: existingR1.nrRefInt,
+              valor_qs: existingR1.valorQS,
+              valor_qr: existingR1.valorQR,
+              complemento_qs: existingR1.calculos.complementoQS,
+              etapa_qs: existingR1.calculos.etapaQS,
+              total_qs: existingR1.calculos.totalQS,
+              complemento_qr: existingR1.calculos.complementoQR,
+              etapa_qr: existingR1.calculos.etapaQR,
+              total_qr: existingR1.calculos.totalQR,
+              total_geral: existingR1.calculos.totalQS + existingR1.calculos.totalQR,
+              total_unidades: 0,
+          };
+      }
+      
+      if (existingR2) {
+          newConsolidatedData.RACAO_OPERACIONAL = {
+              id: existingR2.id,
+              categoria: 'RACAO_OPERACIONAL',
+              organizacao: existingR2.organizacao,
+              ug: existingR2.ug,
+              dias_operacao: existingR2.diasOperacao,
+              efetivo: existingR2.efetivo || 0,
+              fase_atividade: existingR2.faseAtividade || "",
+              quantidade_r2: existingR2.quantidadeR2,
+              quantidade_r3: existingR2.quantidadeR3,
+              total_geral: 0, // Ração Operacional não tem custo monetário
+              total_unidades: (existingR2.quantidadeR2 || 0) + (existingR2.quantidadeR3 || 0),
+          };
+      }
+      
+      setCurrentOMConsolidatedData(newConsolidatedData);
+
+      // Preenche campos globais e da aba ativa para edição
       if (existingR1 || existingR2) {
           const primaryRecord = existingR1 || existingR2;
           setDiasOperacao(primaryRecord!.diasOperacao);
@@ -526,29 +591,30 @@ export default function ClasseIForm() {
           setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
           setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
           
-          // Preenche R1
           if (existingR1) {
               setOmQS(existingR1.omQS || defaultOmQS);
               setUgQS(existingR1.ugQS || defaultUgQS);
               setNrRefInt(existingR1.nrRefInt || 1);
-              const qs = existingR1.valorQS || valorQS;
-              const qr = existingR1.valorQR || valorQR;
-              setValorQS(qs);
-              setValorQR(qr);
+              setValorQS(existingR1.valorQS || valorQS);
+              setValorQR(existingR1.valorQR || valorQR);
+          } else {
+              setOmQS(defaultOmQS);
+              setUgQS(defaultUgQS);
+              setNrRefInt(1);
           }
           
-          // Preenche R2/R3
           if (existingR2) {
               setQuantidadeR2(existingR2.quantidadeR2 || 0);
               setQuantidadeR3(existingR2.quantidadeR3 || 0);
+          } else {
+              setQuantidadeR2(0);
+              setQuantidadeR3(0);
           }
           
-          // Define o ID de edição para o primeiro registro encontrado (R1 tem prioridade)
           setEditingRegistroId(existingR1?.id || existingR2?.id || null);
           setSelectedTab(existingR1 ? 'RACAO_QUENTE' : 'RACAO_OPERACIONAL');
           
       } else {
-          // Se não houver registros, reseta os campos específicos da categoria
           setDiasOperacao(0);
           setEfetivo(0);
           setNrRefInt(1);
@@ -558,8 +624,6 @@ export default function ClasseIForm() {
           setFasesAtividade(["Execução"]);
           setCustomFaseAtividade("");
           setSelectedTab('RACAO_QUENTE');
-          
-          // Recarrega valores padrão de diretriz
           if (diretrizAno) {
               loadDiretrizes(supabase.auth.getUser().then(res => res.data.user?.id || ''));
           }
@@ -583,9 +647,7 @@ export default function ClasseIForm() {
     }
   };
   
-  // Removendo handlers de preço, pois os campos não são mais editáveis.
-
-  const handleCadastrar = async () => {
+  const handleSaveCategoryConfig = () => {
     if (!ptrabId || !organizacao || !ug) {
       toast.error("Selecione uma OM e um P Trab válidos");
       return;
@@ -604,117 +666,200 @@ export default function ClasseIForm() {
       return;
     }
     
-    setLoading(true);
+    let newRecord: PendingRecord | null = null;
     
-    // 1. Encontrar ID existente para a OM/UG e CATEGORIA atual
-    const existingRecord = registros.find(r => 
-        r.organizacao === organizacao && 
-        r.ug === ug && 
-        r.categoria === selectedTab
-    );
-    const idToUpdate = existingRecord?.id;
-    
-    // 2. Preparar dados base
-    let registroData: any = {
-        p_trab_id: ptrabId,
-        organizacao: organizacao,
-        ug: ug,
-        dias_operacao: diasOperacao,
-        efetivo: efetivo,
-        fase_atividade: faseFinalString,
-        categoria: selectedTab,
-        
-        // Reset fields not used by the current category to ensure clean data
-        om_qs: null, ug_qs: null, nr_ref_int: null, valor_qs: null, valor_qr: null,
-        complemento_qs: 0, etapa_qs: 0, total_qs: 0, complemento_qr: 0, etapa_qr: 0, total_qr: 0, total_geral: 0,
-        quantidade_r2: 0, quantidade_r3: 0,
-    };
-
     if (selectedTab === 'RACAO_QUENTE') {
         if (!omQS || !ugQS) {
             toast.error("Selecione a RM que receberá o QS.");
-            setLoading(false);
             return;
         }
-        // Os valores de valorQS e valorQR são carregados da diretriz e estão no estado.
         if (valorQS <= 0 || valorQR <= 0) {
             toast.error("Os valores QS e QR da Diretriz de Custeio devem ser maiores que zero.");
-            setLoading(false);
             return;
         }
         
         const calculos = calculateClasseICalculations(efetivo, diasOperacao, nrRefInt, valorQS, valorQR);
+        const totalGeral = calculos.totalQS + calculos.totalQR;
         
-        registroData = {
-            ...registroData,
+        if (totalGeral === 0) {
+            toast.error("O cálculo da Ração Quente resultou em zero. Verifique Efetivo, Dias e Valores.");
+            return;
+        }
+        
+        newRecord = {
+            id: currentOMConsolidatedData?.RACAO_QUENTE?.id,
+            categoria: 'RACAO_QUENTE',
+            organizacao: organizacao,
+            ug: ug,
+            dias_operacao: diasOperacao,
+            efetivo: efetivo,
+            fase_atividade: faseFinalString,
             om_qs: omQS,
             ug_qs: ugQS,
             nr_ref_int: nrRefInt,
-            valor_qs: valorQS, // Usando valor carregado da diretriz
-            valor_qr: valorQR, // Usando valor carregado da diretriz
+            valor_qs: valorQS,
+            valor_qr: valorQR,
             complemento_qs: calculos.complementoQS,
             etapa_qs: calculos.etapaQS,
             total_qs: calculos.totalQS,
             complemento_qr: calculos.complementoQR,
             etapa_qr: calculos.etapaQR,
             total_qr: calculos.totalQR,
-            total_geral: calculos.totalQS + calculos.totalQR,
+            total_geral: totalGeral,
+            total_unidades: 0,
         };
-        
-        if (registroData.total_geral === 0) {
-            toast.error("O cálculo da Ração Quente resultou em zero. Verifique Efetivo, Dias e Valores.");
-            setLoading(false);
-            return;
-        }
         
     } else if (selectedTab === 'RACAO_OPERACIONAL') {
         if (quantidadeR2 <= 0 && quantidadeR3 <= 0) {
             toast.error("Informe a quantidade de Ração Operacional (R2 ou R3).");
-            setLoading(false);
             return;
         }
         
-        registroData = {
-            ...registroData,
+        const totalUnidades = quantidadeR2 + quantidadeR3;
+        
+        newRecord = {
+            id: currentOMConsolidatedData?.RACAO_OPERACIONAL?.id,
+            categoria: 'RACAO_OPERACIONAL',
+            organizacao: organizacao,
+            ug: ug,
+            dias_operacao: diasOperacao,
+            efetivo: efetivo,
+            fase_atividade: faseFinalString,
             quantidade_r2: quantidadeR2,
             quantidade_r3: quantidadeR3,
-            // Total geral remains 0 for now, as requested (no monetary value)
+            total_geral: 0,
+            total_unidades: totalUnidades,
         };
     }
+    
+    if (newRecord) {
+        setCurrentOMConsolidatedData(prev => ({
+            ...prev,
+            [selectedTab]: newRecord,
+        }));
+        toast.success(`Configuração de ${selectedTab === 'RACAO_QUENTE' ? 'Ração Quente' : 'Ração Operacional'} salva temporariamente.`);
+    }
+  };
 
-    try {
-      if (idToUpdate) {
-        // Update: Preserva as memórias de cálculo customizadas se existirem
-        const existingMemoria = registros.find(r => r.id === idToUpdate);
+  const handleFinalSave = async () => {
+    if (!ptrabId) return;
+    if (!currentOMConsolidatedData || (!currentOMConsolidatedData.RACAO_QUENTE && !currentOMConsolidatedData.RACAO_OPERACIONAL)) {
+        toast.error("Nenhuma configuração de categoria foi salva para esta OM.");
+        return;
+    }
+    
+    setLoading(true);
+    
+    const recordsToSave: TablesInsert<'classe_i_registros'>[] = [];
+    const recordsToDelete: string[] = [];
+    
+    const currentOmName = organizacao;
+    const currentOmUg = ug;
+    
+    // 1. Processar Ração Quente
+    if (currentOMConsolidatedData.RACAO_QUENTE) {
+        const r = currentOMConsolidatedData.RACAO_QUENTE;
+        const existingMemoria = registros.find(reg => reg.id === r.id);
         
-        const { error } = await supabase
-          .from("classe_i_registros")
-          .update({
-              ...registroData,
-              memoria_calculo_qs_customizada: existingMemoria?.memoriaQSCustomizada || null,
-              memoria_calculo_qr_customizada: existingMemoria?.memoriaQRCustomizada || null,
-          })
-          .eq("id", idToUpdate);
-
-        if (error) throw error;
-        toast.success(`${selectedTab === 'RACAO_QUENTE' ? 'Ração Quente' : 'Ração Operacional'} atualizada com sucesso para ${organizacao}!`);
-      } else {
-        const { error } = await supabase
-          .from("classe_i_registros")
-          .insert([registroData]);
-
-        if (error) throw error;
-        toast.success(`${selectedTab === 'RACAO_QUENTE' ? 'Ração Quente' : 'Ração Operacional'} cadastrada com sucesso para ${organizacao}!`);
-      }
-      
-      await updatePTrabStatusIfAberto(ptrabId);
-
-      resetFormFields();
-      loadRegistros(ptrabId);
-    } catch (error: any) {
-      toast.error(sanitizeError(error));
+        recordsToSave.push({
+            p_trab_id: ptrabId,
+            organizacao: r.organizacao,
+            ug: r.ug,
+            dias_operacao: r.dias_operacao,
+            efetivo: r.efetivo,
+            fase_atividade: r.fase_atividade,
+            categoria: r.categoria,
+            om_qs: r.om_qs,
+            ug_qs: r.ug_qs,
+            nr_ref_int: r.nr_ref_int,
+            valor_qs: r.valor_qs,
+            valor_qr: r.valor_qr,
+            complemento_qs: r.complemento_qs,
+            etapa_qs: r.etapa_qs,
+            total_qs: r.total_qs,
+            complemento_qr: r.complemento_qr,
+            etapa_qr: r.etapa_qr,
+            total_qr: r.total_qr,
+            total_geral: r.total_geral,
+            quantidade_r2: 0,
+            quantidade_r3: 0,
+            // Preservar memórias customizadas
+            memoria_calculo_qs_customizada: existingMemoria?.memoriaQSCustomizada || null,
+            memoria_calculo_qr_customizada: existingMemoria?.memoriaQRCustomizada || null,
+        });
+    } else {
+        // Se não há Ração Quente configurada, mas existia no DB, marcamos para deletar
+        const existingR1 = registros.find(r => r.organizacao === currentOmName && r.ug === currentOmUg && r.categoria === 'RACAO_QUENTE');
+        if (existingR1) recordsToDelete.push(existingR1.id);
+    }
+    
+    // 2. Processar Ração Operacional
+    if (currentOMConsolidatedData.RACAO_OPERACIONAL) {
+        const r = currentOMConsolidatedData.RACAO_OPERACIONAL;
+        const existingMemoria = registros.find(reg => reg.id === r.id);
+        
+        recordsToSave.push({
+            p_trab_id: ptrabId,
+            organizacao: r.organizacao,
+            ug: r.ug,
+            dias_operacao: r.dias_operacao,
+            efetivo: r.efetivo,
+            fase_atividade: r.fase_atividade,
+            categoria: r.categoria,
+            quantidade_r2: r.quantidade_r2,
+            quantidade_r3: r.quantidade_r3,
+            // Campos de Ração Quente zerados/nulos
+            om_qs: null, ug_qs: null, nr_ref_int: null, valor_qs: null, valor_qr: null,
+            complemento_qs: 0, etapa_qs: 0, total_qs: 0, complemento_qr: 0, etapa_qr: 0, total_qr: 0, total_geral: 0,
+            // Preservar memórias customizadas (embora não sejam usadas para R2/R3)
+            memoria_calculo_qs_customizada: existingMemoria?.memoriaQSCustomizada || null,
+            memoria_calculo_qr_customizada: existingMemoria?.memoriaQRCustomizada || null,
+        });
+    } else {
+        // Se não há Ração Operacional configurada, mas existia no DB, marcamos para deletar
+        const existingR2 = registros.find(r => r.organizacao === currentOmName && r.ug === currentOmUg && r.categoria === 'RACAO_OPERACIONAL');
+        if (existingR2) recordsToDelete.push(existingR2.id);
+    }
+    
+    try {
+        // 3. Deletar registros antigos que não foram reconfigurados
+        if (recordsToDelete.length > 0) {
+            const { error: deleteError } = await supabase
+                .from("classe_i_registros")
+                .delete()
+                .in("id", recordsToDelete);
+            if (deleteError) throw deleteError;
+        }
+        
+        // 4. Inserir/Atualizar registros
+        for (const record of recordsToSave) {
+            if (record.id) {
+                // Update
+                const { id, ...updateData } = record;
+                const { error: updateError } = await supabase
+                    .from("classe_i_registros")
+                    .update(updateData)
+                    .eq("id", id);
+                if (updateError) throw updateError;
+            } else {
+                // Insert
+                const { error: insertError } = await supabase
+                    .from("classe_i_registros")
+                    .insert([record]);
+                if (insertError) throw insertError;
+            }
+        }
+        
+        toast.success(`Registros de Classe I para ${organizacao} salvos com sucesso!`);
+        await updatePTrabStatusIfAberto(ptrabId);
+        resetFormFields();
+        loadRegistros(ptrabId);
+        
+    } catch (error) {
+        console.error("Erro ao salvar registros de Classe I:", error);
+        toast.error(sanitizeError(error));
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
 
@@ -738,7 +883,6 @@ export default function ClasseIForm() {
       setRegistros(registros.filter((r) => r.id !== id));
       toast.success("Registro removido com sucesso!");
       
-      // Se o registro removido era o que estava sendo editado, reseta o formulário
       if (editingRegistroId === id) {
           resetFormFields();
       }
@@ -751,10 +895,12 @@ export default function ClasseIForm() {
   };
 
   const handleEditRegistro = async (registro: ClasseIRegistro) => {
+    // Ao editar um registro, carregamos TODOS os registros daquela OM para o estado de consolidação
+    
     setEditingRegistroId(registro.id);
     setSelectedTab(registro.categoria);
     
-    // 1. Set Global Fields
+    // 1. Set Global Fields (usando o registro clicado como base)
     setOrganizacao(registro.organizacao);
     setUg(registro.ug);
     setEfetivo(registro.efetivo || 0);
@@ -764,28 +910,76 @@ export default function ClasseIForm() {
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
 
-    // 2. Set Category Specific Fields
-    if (registro.categoria === 'RACAO_QUENTE') {
-        setOmQS(registro.omQS || "");
-        setUgQS(registro.ugQS || "");
-        setNrRefInt(registro.nrRefInt || 1);
-        const qs = registro.valorQS || valorQS;
-        const qr = registro.valorQR || valorQR;
-        setValorQS(qs);
-        setValorQR(qr);
-        setQuantidadeR2(0);
-        setQuantidadeR3(0);
-    } else if (registro.categoria === 'RACAO_OPERACIONAL') {
+    // 2. Encontrar todos os registros da OM no DB
+    const allRecordsForOM = registros.filter(r => r.organizacao === registro.organizacao && r.ug === registro.ug);
+    
+    const existingR1 = allRecordsForOM.find(r => r.categoria === 'RACAO_QUENTE');
+    const existingR2 = allRecordsForOM.find(r => r.categoria === 'RACAO_OPERACIONAL');
+    
+    const newConsolidatedData: typeof currentOMConsolidatedData = {};
+    
+    // 3. Preencher Ração Quente (se existir)
+    if (existingR1) {
+        setOmQS(existingR1.omQS || "");
+        setUgQS(existingR1.ugQS || "");
+        setNrRefInt(existingR1.nrRefInt || 1);
+        setValorQS(existingR1.valorQS || valorQS);
+        setValorQR(existingR1.valorQR || valorQR);
+        
+        newConsolidatedData.RACAO_QUENTE = {
+            id: existingR1.id,
+            categoria: 'RACAO_QUENTE',
+            organizacao: existingR1.organizacao,
+            ug: existingR1.ug,
+            dias_operacao: existingR1.diasOperacao,
+            efetivo: existingR1.efetivo || 0,
+            fase_atividade: existingR1.faseAtividade || "",
+            om_qs: existingR1.omQS,
+            ug_qs: existingR1.ugQS,
+            nr_ref_int: existingR1.nrRefInt,
+            valor_qs: existingR1.valorQS,
+            valor_qr: existingR1.valorQR,
+            complemento_qs: existingR1.calculos.complementoQS,
+            etapa_qs: existingR1.calculos.etapaQS,
+            total_qs: existingR1.calculos.totalQS,
+            complemento_qr: existingR1.calculos.complementoQR,
+            etapa_qr: existingR1.calculos.etapaQR,
+            total_qr: existingR1.calculos.totalQR,
+            total_geral: existingR1.calculos.totalQS + existingR1.calculos.totalQR,
+            total_unidades: 0,
+        };
+    } else {
         setOmQS("");
         setUgQS("");
         setNrRefInt(1);
-        setValorQS(9.0);
-        setValorQR(6.0);
-        setQuantidadeR2(registro.quantidadeR2 || 0);
-        setQuantidadeR3(registro.quantidadeR3 || 0);
     }
+    
+    // 4. Preencher Ração Operacional (se existir)
+    if (existingR2) {
+        setQuantidadeR2(existingR2.quantidadeR2 || 0);
+        setQuantidadeR3(existingR2.quantidadeR3 || 0);
+        
+        newConsolidatedData.RACAO_OPERACIONAL = {
+            id: existingR2.id,
+            categoria: 'RACAO_OPERACIONAL',
+            organizacao: existingR2.organizacao,
+            ug: existingR2.ug,
+            dias_operacao: existingR2.diasOperacao,
+            efetivo: existingR2.efetivo || 0,
+            fase_atividade: existingR2.faseAtividade || "",
+            quantidade_r2: existingR2.quantidadeR2,
+            quantidade_r3: existingR2.quantidadeR3,
+            total_geral: 0,
+            total_unidades: (existingR2.quantidadeR2 || 0) + (existingR2.quantidadeR3 || 0),
+        };
+    } else {
+        setQuantidadeR2(0);
+        setQuantidadeR3(0);
+    }
+    
+    setCurrentOMConsolidatedData(newConsolidatedData);
 
-    // 3. Find OM ID for OmSelector
+    // 5. Find OM ID for OmSelector
     try {
       const { data: omData, error: omError } = await supabase
         .from('organizacoes_militares')
@@ -881,6 +1075,10 @@ export default function ClasseIForm() {
   const totalRacoesOperacionaisGeral = registros.filter(r => r.categoria === 'RACAO_OPERACIONAL').reduce((sum, r) => sum + (r.quantidadeR2 || 0) + (r.quantidadeR3 || 0), 0);
 
   const displayFases = [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
+  
+  const isConfigReady = currentOMConsolidatedData && (currentOMConsolidatedData.RACAO_QUENTE || currentOMConsolidatedData.RACAO_OPERACIONAL);
+  const totalMonetarioConsolidado = (currentOMConsolidatedData?.RACAO_QUENTE?.total_geral || 0);
+  const totalUnidadesConsolidado = (currentOMConsolidatedData?.RACAO_OPERACIONAL?.total_unidades || 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
@@ -904,7 +1102,8 @@ export default function ClasseIForm() {
             </p>
           </div>
 
-          <form onSubmit={(e) => { e.preventDefault(); handleCadastrar(); }} className="space-y-6">
+          {/* Removido o tag <form> principal */}
+          <div className="space-y-6">
             
             {/* 1. Dados da Organização */}
             <div className="space-y-3 border-b pb-4">
@@ -1195,31 +1394,92 @@ export default function ClasseIForm() {
 
                 {/* Botão Salvar Configuração da Categoria */}
                 <div className="flex justify-end gap-2">
-                  {editingRegistroId && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={resetFormFields}
-                      className="gap-2"
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Cancelar Edição
-                    </Button>
-                  )}
                   <Button
-                    type="submit"
+                    type="button"
+                    variant="outline"
+                    onClick={resetFormFields}
+                    className="gap-2"
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Limpar Configuração
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSaveCategoryConfig}
                     className="gap-2"
                     disabled={loading || !organizacao || diasOperacao <= 0 || efetivo <= 0 || (!displayFases)}
                   >
                     <Check className="h-4 w-4" />
-                    {loading ? "Aguarde..." : "Salvar Configuração da Categoria"}
+                    Salvar Item da Categoria
                   </Button>
                 </div>
               </>
             )}
-          </form>
+            
+            {/* 3. Itens Adicionados e Consolidação */}
+            {isConfigReady && (
+              <div className="space-y-4 border-b pb-4 pt-4">
+                <h3 className="text-lg font-semibold">3. Itens Adicionados para {organizacao}</h3>
+                
+                <Card className="p-4 bg-primary/5 border-primary/20">
+                    <div className="flex items-center justify-between mb-3 border-b pb-2">
+                        <h4 className="font-bold text-base text-primary">
+                            {organizacao} (UG: {ug})
+                        </h4>
+                        <span className="font-extrabold text-lg text-primary">
+                            {formatCurrency(totalMonetarioConsolidado)}
+                        </span>
+                    </div>
+                    
+                    <div className="space-y-2">
+                        {currentOMConsolidatedData?.RACAO_QUENTE && (
+                            <div className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1">
+                                <span className="font-medium flex items-center gap-2 text-blue-600">
+                                    <Utensils className="h-4 w-4" />
+                                    Ração Quente (QS/QR)
+                                </span>
+                                <span className="text-right font-semibold">
+                                    {formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_geral)}
+                                </span>
+                            </div>
+                        )}
+                        
+                        {currentOMConsolidatedData?.RACAO_OPERACIONAL && (
+                            <div className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1">
+                                <span className="font-medium flex items-center gap-2 text-secondary">
+                                    <Package className="h-4 w-4" />
+                                    Ração Operacional (R2/R3)
+                                </span>
+                                <span className="text-right font-semibold">
+                                    {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.total_unidades)} un.
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </Card>
+                
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={resetFormFields}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Limpar Formulário
+                  </Button>
+                  <Button 
+                    type="button" 
+                    onClick={handleFinalSave} 
+                    disabled={loading || !isConfigReady}
+                  >
+                    {loading ? "Aguarde..." : (editingRegistroId ? "Atualizar Registros" : "Salvar Registros")}
+                  </Button>
+                </div>
+              </div>
+            )}
 
-            {/* 3. Tabela de Registros */}
+
+            {/* 4. Tabela de Registros (Antiga Seção 3) */}
             {registros.length > 0 && (
               <div className="space-y-4 mt-8">
                 <div className="flex items-center justify-between">
@@ -1333,7 +1593,7 @@ export default function ClasseIForm() {
                   </div>
                 </div>
 
-                {/* Detalhamento das Memórias de Cálculo */}
+                {/* Detalhamento das Memórias de Cálculo (Antiga Seção 4) */}
                 <div className="space-y-4 mt-6">
                   <h3 className="text-xl font-bold flex items-center gap-2">
                     📋 Memórias de Cálculo Detalhadas
