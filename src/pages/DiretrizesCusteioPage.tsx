@@ -1547,7 +1547,6 @@ const DiretrizesCusteioPage = () => {
         onOpenChange={setIsYearManagementDialogOpen}
         availableYears={availableYears}
         currentYear={currentYear}
-        defaultYear={defaultYear}
         onCopy={handleCopyDiretrizes}
         onDelete={handleDeleteDiretrizes}
         loading={loading}
