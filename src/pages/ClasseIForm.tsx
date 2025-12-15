@@ -1429,26 +1429,13 @@ export default function ClasseIForm() {
                     </TabsContent>
                   </Tabs>
                 </div>
-
-                {/* Botão Salvar Configuração da Categoria - REMOVIDO DAQUI */}
-                {/* <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    onClick={handleSaveCategoryConfig}
-                    className="gap-2"
-                    disabled={loading || !organizacao || diasOperacao <= 0 || efetivo <= 0 || (!displayFases)}
-                  >
-                    <Check className="h-4 w-4" />
-                    Salvar Item da Categoria
-                  </Button>
-                </div> */}
               </>
             )}
             
             {/* 3. Itens Adicionados e Consolidação */}
             {isConfigReady && (
               <div className="space-y-4 border-b pb-4 pt-4">
-                <h3 className="text-lg font-semibold">3. Itens Adicionados para {organizacao}</h3>
+                <h3 className="text-lg font-semibold">3. Itens Adicionados</h3>
                 
                 <div className="space-y-4">
                     {/* Card Ração Quente */}
@@ -1456,7 +1443,6 @@ export default function ClasseIForm() {
                         <Card className="p-4 bg-secondary/10 border-secondary">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h4 className="font-bold text-base text-primary flex items-center gap-2">
-                                    <Utensils className="h-4 w-4" />
                                     Ração Quente (QS/QR)
                                 </h4>
                                 <span className="font-extrabold text-lg text-primary">
