@@ -975,31 +975,7 @@ export default function ClasseIForm() {
                   </div>
                 </div>
                 
-                {/* Linha 2: OM de Destino (QS) e UG de Destino (QS) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="omQS">OM de Destino (QS) *</Label>
-                    <RmSelector
-                      value={omQS}
-                      onChange={handleRMQSChange}
-                      placeholder="Selecione a RM de destino do QS..."
-                      disabled={!organizacao}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="ugQS">UG de Destino (QS)</Label>
-                    <Input
-                      id="ugQS"
-                      value={ugQS}
-                      readOnly
-                      disabled={true}
-                      className="disabled:opacity-60"
-                    />
-                  </div>
-                </div>
-                
-                {/* Linha 3: Efetivo, Dias de Atividade, Fase da Atividade */}
+                {/* Linha 2: Efetivo, Dias de Atividade, Fase da Atividade */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="efetivo">Efetivo de Militares *</Label>
@@ -1101,6 +1077,30 @@ export default function ClasseIForm() {
                   <TabsContent value="RACAO_QUENTE" className="mt-4">
                     <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
                       <h4 className="font-semibold text-base">Configuração de QS/QR</h4>
+                      
+                      {/* Linha OM/UG QS (MOVIDA PARA CÁ) */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="omQS">OM de Destino (QS) *</Label>
+                          <RmSelector
+                            value={omQS}
+                            onChange={handleRMQSChange}
+                            placeholder="Selecione a RM de destino do QS..."
+                            disabled={!organizacao}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="ugQS">UG de Destino (QS)</Label>
+                          <Input
+                            id="ugQS"
+                            value={ugQS}
+                            readOnly
+                            disabled={true}
+                            className="disabled:opacity-60"
+                          />
+                        </div>
+                      </div>
                       
                       <div className="grid md:grid-cols-3 gap-4">
                         <div className="space-y-2">
@@ -1228,7 +1228,7 @@ export default function ClasseIForm() {
                           <div className="h-px bg-border my-2" />
                           <div className="flex justify-between items-center text-lg">
                             <span className="font-bold">Total de Rções Operacionais</span>
-                            <span className="font-bold text-primary">{formatNumber(totalRacoesOperacionais)} un.</span>
+                            <span className="font-bold text-secondary">{formatNumber(totalRacoesOperacionais)} un.</span>
                           </div>
                           <p className="text-xs text-muted-foreground mt-2">
                             * Nota: O valor monetário desta solicitação é considerado R$ 0,00 para fins de cálculo logístico interno.
