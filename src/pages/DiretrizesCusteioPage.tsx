@@ -298,11 +298,11 @@ const DiretrizesCusteioPage = () => {
       
       const { data: classeItemsData } = await supabase
         .from("diretrizes_classe_ii")
-        .select("categoria, item, valor_mnt_dia")
+        .select("categoria, item, valor_mnt_dia, ativo") // Include 'ativo'
         .eq("user_id", user.id)
-        .eq("ano_referencia", anoReferencia)
-        .eq("ativo", true)
-        .in("categoria", allClasseItemsCategories);
+        .eq("ano_referencia", year);
+        // REMOVIDO: .eq("ativo", true)
+        // REMOVIDO: .in("categoria", allClasseItemsCategories) - Filter locally instead
 
       const loadedItems = classeItemsData || [];
       
@@ -313,6 +313,7 @@ const DiretrizesCusteioPage = () => {
           categoria: d.categoria as DiretrizClasseIIForm['categoria'],
           item: d.item,
           valor_mnt_dia: Number(d.valor_mnt_dia),
+          ativo: d.ativo ?? true,
         })));
       } else {
         setClasseIIConfig(defaultClasseIIConfig);
@@ -325,6 +326,7 @@ const DiretrizesCusteioPage = () => {
           categoria: d.categoria as DiretrizClasseIIForm['categoria'],
           item: d.item,
           valor_mnt_dia: Number(d.valor_mnt_dia),
+          ativo: d.ativo ?? true,
         })));
       } else {
         setClasseVConfig(defaultClasseVConfig);
@@ -337,6 +339,7 @@ const DiretrizesCusteioPage = () => {
           categoria: d.categoria as DiretrizClasseIIForm['categoria'],
           item: d.item,
           valor_mnt_dia: Number(d.valor_mnt_dia),
+          ativo: d.ativo ?? true,
         })));
       } else {
         setClasseVIConfig(defaultClasseVIConfig);
@@ -349,6 +352,7 @@ const DiretrizesCusteioPage = () => {
           categoria: d.categoria as DiretrizClasseIIForm['categoria'],
           item: d.item,
           valor_mnt_dia: Number(d.valor_mnt_dia),
+          ativo: d.ativo ?? true,
         })));
       } else {
         setClasseVIIConfig(defaultClasseVIIConfig);
@@ -361,6 +365,7 @@ const DiretrizesCusteioPage = () => {
           categoria: d.categoria as DiretrizClasseIIForm['categoria'],
           item: d.item,
           valor_mnt_dia: Number(d.valor_mnt_dia),
+          ativo: d.ativo ?? true,
         })));
       } else {
         setClasseVIIISaudeConfig(defaultClasseVIIISaudeConfig);
@@ -373,6 +378,7 @@ const DiretrizesCusteioPage = () => {
           categoria: d.categoria as DiretrizClasseIIForm['categoria'],
           item: d.item,
           valor_mnt_dia: Number(d.valor_mnt_dia),
+          ativo: d.ativo ?? true,
         })));
       } else {
         setClasseVIIIRemontaConfig(defaultClasseVIIIRemontaConfig);
@@ -381,10 +387,9 @@ const DiretrizesCusteioPage = () => {
       // --- Carregar Classe IX ---
       const { data: classeIXData, error: classeIXError } = await supabase
         .from("diretrizes_classe_ix")
-        .select("categoria, item, valor_mnt_dia, valor_acionamento_mensal")
+        .select("categoria, item, valor_mnt_dia, valor_acionamento_mensal, ativo") // Include 'ativo'
         .eq("user_id", user.id)
-        .eq("ano_referencia", anoReferencia)
-        .eq("ativo", true);
+        .eq("ano_referencia", year);
         
       if (classeIXError) throw classeIXError;
       
@@ -394,6 +399,7 @@ const DiretrizesCusteioPage = () => {
           item: d.item,
           valor_mnt_dia: Number(d.valor_mnt_dia),
           valor_acionamento_mensal: Number(d.valor_acionamento_mensal),
+          ativo: d.ativo ?? true,
         })));
       } else {
         setClasseIXConfig(defaultClasseIXConfig);
@@ -404,11 +410,10 @@ const DiretrizesCusteioPage = () => {
       const loadEquipamentos = async (categoria: string, setter: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, defaultData: DiretrizEquipamentoForm[]) => {
         const { data: equipamentosData } = await supabase
           .from("diretrizes_equipamentos_classe_iii")
-          .select("*")
+          .select("*, ativo") // Include 'ativo'
           .eq("user_id", user.id)
           .eq("ano_referencia", year)
-          .eq("categoria", categoria)
-          .eq("ativo", true);
+          .eq("categoria", categoria);
 
         if (equipamentosData && equipamentosData.length > 0) {
           setter(equipamentosData.map(eq => ({
@@ -416,6 +421,7 @@ const DiretrizesCusteioPage = () => {
             tipo_combustivel: eq.tipo_combustivel as 'GAS' | 'OD',
             consumo: Number(eq.consumo),
             unidade: eq.unidade as 'L/h' | 'km/L',
+            ativo: eq.ativo ?? true,
           })));
         } else {
           setter(defaultData);
@@ -509,6 +515,7 @@ const DiretrizesCusteioPage = () => {
             tipo_combustivel: g.tipo_combustivel,
             consumo: Number(g.consumo).toFixed(2), // Garantir precisão
             unidade: g.unidade,
+            ativo: g.ativo ?? true, // Salvar status ativo
           }));
 
         if (equipamentosParaSalvar.length > 0) {
@@ -545,7 +552,7 @@ const DiretrizesCusteioPage = () => {
           categoria: item.categoria,
           item: item.item,
           valor_mnt_dia: Number(item.valor_mnt_dia || 0).toFixed(2), // Garantir precisão
-          ativo: true,
+          ativo: item.ativo ?? true, // Salvar status ativo
         }));
         
       if (classeItemsParaSalvar.length > 0) {
@@ -575,10 +582,9 @@ const DiretrizesCusteioPage = () => {
             ano_referencia: diretrizes.ano_referencia,
             categoria: item.categoria,
             item: item.item,
-            // Conversão explícita para string com 2 casas decimais para garantir o tipo 'numeric' no DB
             valor_mnt_dia: valorMntDia.toFixed(2), 
             valor_acionamento_mensal: valorAcionamentoMensal.toFixed(2),
-            ativo: true,
+            ativo: item.ativo ?? true, // Salvar status ativo
           };
         });
         
@@ -789,7 +795,7 @@ const DiretrizesCusteioPage = () => {
   const handleAddItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, unidade: 'L/h' | 'km/L') => {
     setConfig([
       ...config,
-      { nome_equipamento: "", tipo_combustivel: "OD", consumo: 0, unidade: unidade }
+      { nome_equipamento: "", tipo_combustivel: "OD", consumo: 0, unidade: unidade, ativo: true }
     ]);
   };
 
@@ -822,7 +828,7 @@ const DiretrizesCusteioPage = () => {
   const handleAddClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, categoria: DiretrizClasseIIForm['categoria']) => {
     setConfig(prev => [
       ...prev,
-      { categoria: categoria, item: "", valor_mnt_dia: 0 } as DiretrizClasseIIForm
+      { categoria: categoria, item: "", valor_mnt_dia: 0, ativo: true } as DiretrizClasseIIForm
     ]);
   };
 
@@ -906,7 +912,7 @@ const DiretrizesCusteioPage = () => {
 
           return (
             <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
-              <div className="col-span-8">
+              <div className="col-span-7">
                 <Label className="text-xs">Item</Label>
                 <Input
                   value={item.item}
@@ -920,6 +926,14 @@ const DiretrizesCusteioPage = () => {
                 <Input
                   {...mntDiaProps}
                   onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="col-span-1 flex justify-center items-center">
+                <Label className="text-xs sr-only">Ativo</Label>
+                <Checkbox
+                  checked={item.ativo ?? true}
+                  onCheckedChange={(checked) => handleUpdateClasseItem(config, setConfig, indexInMainArray, 'ativo', checked)}
+                  aria-label="Ativo"
                 />
               </div>
               <div className="col-span-1 flex justify-end">
@@ -954,7 +968,7 @@ const DiretrizesCusteioPage = () => {
   const handleAddClasseIXItem = (config: DiretrizClasseIXForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIXForm[]>>, categoria: DiretrizClasseIXForm['categoria']) => {
     setConfig(prev => [
       ...prev,
-      { categoria: categoria, item: "", valor_mnt_dia: 0, valor_acionamento_mensal: 0 } as DiretrizClasseIXForm
+      { categoria: categoria, item: "", valor_mnt_dia: 0, valor_acionamento_mensal: 0, ativo: true } as DiretrizClasseIXForm
     ]);
   };
 
@@ -1037,7 +1051,7 @@ const DiretrizesCusteioPage = () => {
 
           return (
             <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
-              <div className="col-span-6">
+              <div className="col-span-5">
                 <Label className="text-xs">Tipo Vtr</Label>
                 <Input
                   value={item.item}
@@ -1058,6 +1072,14 @@ const DiretrizesCusteioPage = () => {
                 <Input
                   {...acionamentoMensalProps}
                   onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="col-span-1 flex justify-center items-center">
+                <Label className="text-xs sr-only">Ativo</Label>
+                <Checkbox
+                  checked={item.ativo ?? true}
+                  onCheckedChange={(checked) => handleUpdateClasseIXItem(config, setConfig, indexInMainArray, 'ativo', checked)}
+                  aria-label="Ativo"
                 />
               </div>
               <div className="col-span-1 flex justify-end">
@@ -1096,7 +1118,7 @@ const DiretrizesCusteioPage = () => {
       <div className="space-y-4 pt-4">
         {config.map((item, index) => (
           <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
-            <div className="col-span-5">
+            <div className="col-span-4">
               <Label className="text-xs">Nome do Equipamento</Label>
               <Input
                 value={item.nome_equipamento}
@@ -1134,6 +1156,14 @@ const DiretrizesCusteioPage = () => {
             <div className="col-span-2">
               <Label className="text-xs">Unidade</Label>
               <Input value={unidade} disabled className="bg-muted text-muted-foreground" onKeyDown={handleEnterToNextField} />
+            </div>
+            <div className="col-span-1 flex justify-center items-center">
+                <Label className="text-xs sr-only">Ativo</Label>
+                <Checkbox
+                  checked={item.ativo ?? true}
+                  onCheckedChange={(checked) => handleUpdateItem(config, setConfig, index, 'ativo', checked)}
+                  aria-label="Ativo"
+                />
             </div>
             <div className="col-span-1 flex justify-end">
               <Button
