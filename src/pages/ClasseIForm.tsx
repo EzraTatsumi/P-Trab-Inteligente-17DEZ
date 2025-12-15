@@ -1036,11 +1036,11 @@ export default function ClasseIForm() {
                     
                     {/* Ração Quente (R1) - QS/QR */}
                     <TabsContent value="RACAO_QUENTE" className="mt-4">
-                      <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                      <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
                         <h4 className="font-semibold text-base">Configuração de QS/QR</h4>
                         
                         {/* Linha de Configuração (3 Colunas) */}
-                        <div className="grid md:grid-cols-3 gap-6">
+                        <div className="grid md:grid-cols-3 gap-6 pt-2">
                           
                           {/* Coluna 1: Nº Refeições Intermediárias */}
                           <div className="space-y-2">
@@ -1085,7 +1085,7 @@ export default function ClasseIForm() {
                         </div>
                         
                         {/* Valores da Diretriz (Apenas exibição) */}
-                        <div className="grid md:grid-cols-2 gap-4 pt-2">
+                        <div className="grid md:grid-cols-2 gap-4 pt-4">
                             <div className="space-y-2">
                                 <Label>Valor QS (Diretriz {diretrizAno || 'Atual'})</Label>
                                 <Input
@@ -1108,7 +1108,7 @@ export default function ClasseIForm() {
                         
                         {/* Preview dos Cálculos Ração Quente */}
                         {calculosRacaoQuente && (
-                          <div className="space-y-2 mt-6 p-4 bg-background rounded-lg border">
+                          <div className="space-y-1 mt-6 p-4 bg-background rounded-lg border">
                             <h5 className="font-semibold text-sm">Previsão de Custo (Ração Quente)</h5>
                             <div className="flex justify-between items-center text-sm">
                               <span className="text-muted-foreground">Total QS (Quantitativo de Subsistência)</span>
@@ -1130,13 +1130,13 @@ export default function ClasseIForm() {
                     
                     {/* Ração Operacional (R2/R3) */}
                     <TabsContent value="RACAO_OPERACIONAL" className="mt-4">
-                      <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                      <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
                         <h4 className="font-semibold text-base">Quantitativo de Ração Operacional</h4>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground pt-2">
                           Informe a quantidade total de rações operacionais necessárias para o efetivo e dias de atividade.
                         </p>
                         
-                        <div className="grid md:grid-cols-2 gap-4">
+                        <div className="grid md:grid-cols-2 gap-4 pt-2">
                           <div className="space-y-2">
                             <Label htmlFor="quantidadeR2">Ração Operacional R2 (24h)</Label>
                             <Input
@@ -1168,7 +1168,7 @@ export default function ClasseIForm() {
                         
                         {/* Preview Ração Operacional */}
                         {(quantidadeR2 > 0 || quantidadeR3 > 0) && (
-                          <div className="space-y-4 mt-6 p-4 bg-background rounded-lg border">
+                          <div className="space-y-1 mt-6 p-4 bg-background rounded-lg border">
                             <h5 className="font-semibold text-sm">Resumo (Ração Operacional)</h5>
                             <div className="flex justify-between items-center text-sm">
                               <span className="text-muted-foreground">Total de Unidades R2</span>
@@ -1193,7 +1193,7 @@ export default function ClasseIForm() {
                   </Tabs>
                 </div>
 
-                {/* Botão Cadastrar/Atualizar e Cancelar */}
+                {/* Botão Salvar Configuração da Categoria */}
                 <div className="flex justify-end gap-2">
                   {editingRegistroId && (
                     <Button
@@ -1211,8 +1211,8 @@ export default function ClasseIForm() {
                     className="gap-2"
                     disabled={loading || !organizacao || diasOperacao <= 0 || efetivo <= 0 || (!displayFases)}
                   >
-                    <Plus className="h-4 w-4" />
-                    {loading ? "Aguarde..." : (editingRegistroId ? "Atualizar Registro" : "Cadastrar Registro")}
+                    <Check className="h-4 w-4" />
+                    {loading ? "Aguarde..." : "Salvar Configuração da Categoria"}
                   </Button>
                 </div>
               </>
