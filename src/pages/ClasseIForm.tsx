@@ -166,7 +166,7 @@ const formatFasesParaTexto = (faseCSV: string | undefined | null): string => {
   // 3 ou mais fases: "Fase1, Fase2 e Fase3"
   const ultimaFase = fases[fases.length - 1];
   const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFases}`;
+  return `${demaisFases} e ${ultimaFase}`;
 };
 
 // Nova função para gerar a memória de cálculo formatada para Ração Quente
@@ -1111,7 +1111,7 @@ export default function ClasseIForm() {
                           <div className="space-y-4 mt-6 p-4 bg-background rounded-lg border">
                             <h5 className="font-semibold text-sm">Previsão de Custo (Ração Quente)</h5>
                             <div className="flex justify-between items-center text-sm">
-                              <span className="text-muted-foreground">Total QS (Subsistência)</span>
+                              <span className="text-muted-foreground">Total QS (Quantitativo de Subsistência)</span>
                               <span className="font-semibold text-blue-600">{formatCurrency(calculosRacaoQuente.totalQS)}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
