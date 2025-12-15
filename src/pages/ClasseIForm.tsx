@@ -1438,11 +1438,34 @@ export default function ClasseIForm() {
                                 </span>
                             </div>
                             
-                            <div className="space-y-1 text-sm text-muted-foreground">
-                                <p>OM: {organizacao} (UG: {ug})</p>
-                                <p>Efetivo: {currentOMConsolidatedData.RACAO_QUENTE.efetivo} militares</p>
-                                <p>Dias de Atividade: {currentOMConsolidatedData.RACAO_QUENTE.dias_operacao} dias</p>
-                                <p>Fase: {formatFasesParaTexto(currentOMConsolidatedData.RACAO_QUENTE.fase_atividade)}</p>
+                            <div className="space-y-1 text-sm">
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span className="font-medium">OM Detentora:</span>
+                                    <span className="font-semibold text-foreground">{organizacao} (UG: {ug})</span>
+                                </div>
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span className="font-medium">Efetivo / Dias:</span>
+                                    <span className="font-semibold text-foreground">{currentOMConsolidatedData.RACAO_QUENTE.efetivo} militares / {currentOMConsolidatedData.RACAO_QUENTE.dias_operacao} dias</span>
+                                </div>
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span className="font-medium">Fase da Atividade:</span>
+                                    <span className="font-semibold text-foreground">{formatFasesParaTexto(currentOMConsolidatedData.RACAO_QUENTE.fase_atividade)}</span>
+                                </div>
+                                
+                                <div className="pt-2 border-t mt-2">
+                                    <div className="flex justify-between text-xs">
+                                        <span className="text-muted-foreground">QS (Quantitativo de Subsistência):</span>
+                                        <span className="font-medium text-blue-600">
+                                            {formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_qs || 0)} (Destino: {currentOMConsolidatedData.RACAO_QUENTE.om_qs} / {currentOMConsolidatedData.RACAO_QUENTE.ug_qs})
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-xs">
+                                        <span className="text-muted-foreground">QR (Quantitativo de Reforço):</span>
+                                        <span className="font-medium text-green-600">
+                                            {formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_qr || 0)} (Destino: {organizacao} / {ug})
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </Card>
                     )}
