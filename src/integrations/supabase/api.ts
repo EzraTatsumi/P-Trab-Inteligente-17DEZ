@@ -1,6 +1,5 @@
 import { toast } from "sonner";
 import { supabase } from "./client"; // Importar o cliente Supabase
-import { RefLPC } from "@/types/refLPC";
 
 // Interface para a resposta consolidada da Edge Function
 interface EdgeFunctionResponse {
@@ -48,33 +47,5 @@ export async function fetchFuelPrice(fuelType: 'diesel' | 'gasolina'): Promise<{
         toast.error(`Falha ao consultar preço da ${fuelType}. Detalhes: ${errorMessage}`);
     }
     throw error;
-  }
-}
-
-/**
- * Fetches the latest RefLPC record associated with a specific PTrab ID.
- * @param pTrabId The ID of the PTrab.
- * @returns The RefLPC data or undefined if not found.
- */
-export async function getRefLPC(pTrabId: string): Promise<RefLPC | undefined> {
-  try {
-    const { data, error } = await supabase
-      .from('p_trab_ref_lpc')
-      .select('*')
-      .eq('p_trab_id', pTrabId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) throw error;
-
-    if (data) {
-      return data as RefLPC;
-    }
-    return undefined;
-  } catch (error) {
-    console.error("Erro ao buscar RefLPC:", error);
-    // Não exibe toast aqui, pois a ausência de RefLPC é um estado normal.
-    return undefined;
   }
 }
