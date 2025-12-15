@@ -237,11 +237,15 @@ const DiretrizesCusteioPage = () => {
 
       const years = data ? data.map(d => d.ano_referencia) : [];
       
-      const uniqueYears = Array.from(new Set([...years, currentYear])).sort((a, b) => b - a);
+      // Garante que o ano atual (calendário) e o ano padrão (se existir) estejam na lista
+      const uniqueYears = Array.from(new Set([...years, currentYear, defaultYear || 0])).filter(y => y > 0).sort((a, b) => b - a);
       setAvailableYears(uniqueYears);
 
+      // Se o ano selecionado não estiver mais disponível, ou se for o primeiro carregamento, 
+      // tenta selecionar o ano padrão, ou o mais recente.
       if (!uniqueYears.includes(selectedYear)) {
-        setSelectedYear(uniqueYears.length > 0 ? uniqueYears[0] : currentYear);
+        const yearToSelect = defaultYear || (uniqueYears.length > 0 ? uniqueYears[0] : currentYear);
+        setSelectedYear(yearToSelect);
       }
 
     } catch (error: any) {
@@ -1204,7 +1208,7 @@ const DiretrizesCusteioPage = () => {
                   <SelectContent>
                     {availableYears.map((year) => (
                       <SelectItem key={year} value={year.toString()}>
-                        {year} {year === currentYear && "(Atual)"}
+                        {year} {year === defaultYear && "(Padrão)"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1215,6 +1219,9 @@ const DiretrizesCusteioPage = () => {
                   <span className="font-semibold text-primary ml-1">
                     {defaultYear ? defaultYear : 'Não definido (usando o mais recente)'}
                   </span>
+                  {defaultYear && defaultYear !== selectedYear && (
+                    <span className="text-xs text-gray-500 ml-2">(Selecione este ano para editar o padrão)</span>
+                  )}
                 </p>
               </div>
 
