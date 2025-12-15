@@ -1502,19 +1502,19 @@ export default function ClasseIForm() {
                                     <div className="font-bold text-blue-600 text-right">Total: {formatCurrency(RACAO_QUENTE_DATA.total_qs || 0)}</div>
                                     
                                     <div className="text-muted-foreground pl-2">Complemento de Etapa</div>
-                                    <div className="text-foreground text-right flex flex-col items-end">
-                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.complemento_qs || 0)}</span>
+                                    <div className="text-foreground text-right flex justify-between items-center">
                                         <span className="text-[10px] text-muted-foreground/80">
                                             {formatFormula(RACAO_QUENTE_DATA.efetivo, RACAO_QUENTE_DATA.dias_operacao, RACAO_QUENTE_DATA.nr_ref_int || 0, RACAO_QUENTE_DATA.valor_qs || 0, 0, 'complemento')}
                                         </span>
+                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.complemento_qs || 0)}</span>
                                     </div>
                                     
                                     <div className="text-muted-foreground pl-2">Etapa a Solicitar</div>
-                                    <div className="text-foreground text-right flex flex-col items-end">
-                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.etapa_qs || 0)}</span>
+                                    <div className="text-foreground text-right flex justify-between items-center">
                                         <span className="text-[10px] text-muted-foreground/80">
                                             {formatFormula(RACAO_QUENTE_DATA.efetivo, RACAO_QUENTE_DATA.dias_operacao, RACAO_QUENTE_DATA.nr_ref_int || 0, RACAO_QUENTE_DATA.valor_qs || 0, diasEtapaSolicitada, 'etapa')}
                                         </span>
+                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.etapa_qs || 0)}</span>
                                     </div>
                                 </div>
                                 
@@ -1526,38 +1526,38 @@ export default function ClasseIForm() {
                                     <div className="font-bold text-green-600 text-right">Total: {formatCurrency(RACAO_QUENTE_DATA.total_qr || 0)}</div>
                                     
                                     <div className="text-muted-foreground pl-2">Complemento de Etapa</div>
-                                    <div className="text-foreground text-right flex flex-col items-end">
-                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.complemento_qr || 0)}</span>
+                                    <div className="text-foreground text-right flex justify-between items-center">
                                         <span className="text-[10px] text-muted-foreground/80">
                                             {formatFormula(RACAO_QUENTE_DATA.efetivo, RACAO_QUENTE_DATA.dias_operacao, RACAO_QUENTE_DATA.nr_ref_int || 0, RACAO_QUENTE_DATA.valor_qr || 0, 0, 'complemento')}
                                         </span>
+                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.complemento_qr || 0)}</span>
                                     </div>
                                     
                                     <div className="text-muted-foreground pl-2">Etapa a Solicitar</div>
-                                    <div className="text-foreground text-right flex flex-col items-end">
-                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.etapa_qr || 0)}</span>
+                                    <div className="text-foreground text-right flex justify-between items-center">
                                         <span className="text-[10px] text-muted-foreground/80">
                                             {formatFormula(RACAO_QUENTE_DATA.efetivo, RACAO_QUENTE_DATA.dias_operacao, RACAO_QUENTE_DATA.nr_ref_int || 0, RACAO_QUENTE_DATA.valor_qr || 0, diasEtapaSolicitada, 'etapa')}
                                         </span>
+                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.etapa_qr || 0)}</span>
                                     </div>
                                 </div>
                                 
                                 <div className="h-px bg-border my-2" />
                                 
-                                {/* Linha de Destinos e ND (Mantida) */}
+                                {/* Linha de Destinos e ND (Invertida para QS/QR) */}
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-2 text-xs">
                                     {/* Linha 1: Destinos */}
                                     <div className="font-medium text-muted-foreground">OM Destino Recurso</div>
                                     <div className="flex justify-between">
-                                        <span className="font-medium text-green-600">{organizacao} ({ug})</span>
                                         <span className="font-medium text-blue-600">{RACAO_QUENTE_DATA.om_qs} ({RACAO_QUENTE_DATA.ug_qs})</span>
+                                        <span className="font-medium text-green-600">{organizacao} ({ug})</span>
                                     </div>
                                     
                                     {/* Linha 2: ND e Valores */}
                                     <div className="font-medium text-muted-foreground">ND 33.90.30 (Material)</div>
                                     <div className="flex justify-between">
-                                        <span className="font-medium text-green-600">QR: {formatCurrency(RACAO_QUENTE_DATA.total_qr || 0)}</span>
                                         <span className="font-medium text-blue-600">QS: {formatCurrency(RACAO_QUENTE_DATA.total_qs || 0)}</span>
+                                        <span className="font-medium text-green-600">QR: {formatCurrency(RACAO_QUENTE_DATA.total_qr || 0)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1578,7 +1578,7 @@ export default function ClasseIForm() {
                             </div>
                             
                             <div className="space-y-1 text-sm text-muted-foreground">
-                                <p>OM: {organizacao} (UG: {ug})</p>
+                                <p>OM: {organizacao} ({ug})</p>
                                 <p>Efetivo: {currentOMConsolidatedData.RACAO_OPERACIONAL.efetivo} militares</p>
                                 <p>Dias de Atividade: {currentOMConsolidatedData.RACAO_OPERACIONAL.dias_operacao} dias</p>
                                 <p>R2: {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.quantidade_r2 || 0)} un. | R3: {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.quantidade_r3 || 0)} un.</p>
