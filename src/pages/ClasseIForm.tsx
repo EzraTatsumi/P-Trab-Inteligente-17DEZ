@@ -1464,18 +1464,20 @@ export default function ClasseIForm() {
                                     <span className="font-semibold text-foreground">{formatFasesParaTexto(currentOMConsolidatedData.RACAO_QUENTE.fase_atividade)}</span>
                                 </div>
                                 
-                                <div className="pt-2 border-t mt-2">
-                                    <div className="flex justify-between text-xs">
-                                        <span className="text-muted-foreground">QS (Quantitativo de Subsistência):</span>
-                                        <span className="font-medium text-blue-600">
-                                            {formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_qs || 0)} (Destino: {currentOMConsolidatedData.RACAO_QUENTE.om_qs} / {currentOMConsolidatedData.RACAO_QUENTE.ug_qs})
-                                        </span>
+                                {/* NOVO FORMATO DE EXIBIÇÃO DE RECURSOS */}
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-2 border-t mt-2 text-xs">
+                                    {/* Linha 1: Destinos */}
+                                    <div className="font-medium text-muted-foreground">OM Destino Recurso</div>
+                                    <div className="flex justify-between">
+                                        <span className="font-medium text-green-600">QR: {organizacao} (UG: {ug})</span>
+                                        <span className="font-medium text-blue-600">QS: {currentOMConsolidatedData.RACAO_QUENTE.om_qs} (UG: {currentOMConsolidatedData.RACAO_QUENTE.ug_qs})</span>
                                     </div>
-                                    <div className="flex justify-between text-xs">
-                                        <span className="text-muted-foreground">QR (Quantitativo de Reforço):</span>
-                                        <span className="font-medium text-green-600">
-                                            {formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_qr || 0)} (Destino: {organizacao} / {ug})
-                                        </span>
+                                    
+                                    {/* Linha 2: ND e Valores */}
+                                    <div className="font-medium text-muted-foreground">ND 33.90.30 (Material)</div>
+                                    <div className="flex justify-between">
+                                        <span className="font-medium text-green-600">{formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_qr || 0)}</span>
+                                        <span className="font-medium text-blue-600">{formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_qs || 0)}</span>
                                     </div>
                                 </div>
                             </div>
