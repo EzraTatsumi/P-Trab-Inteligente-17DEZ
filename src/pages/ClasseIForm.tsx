@@ -166,7 +166,7 @@ const formatFasesParaTexto = (faseCSV: string | undefined | null): string => {
   // 3 ou mais fases: "Fase1, Fase2 e Fase3"
   const ultimaFase = fases[fases.length - 1];
   const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFase}`;
+  return `${demaisFases} e ${ultimaFases}`;
 };
 
 // Nova função para gerar a memória de cálculo formatada para Ração Quente
@@ -201,8 +201,8 @@ Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de di
 
 Total QS: ${formatCurrency(calculos.totalQS)}.`;
 
-  // Memória QR (Quantitativo de Rancho) - Para a OM de Destino (organizacao/ug)
-  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Rancho Pronto) destinados à complementação de alimentação de ${E} militares do ${organizacao}, durante ${D} dias de ${faseFormatada}.
+  // Memória QR (Quantitativo de Reforço) - Para a OM de Destino (organizacao/ug)
+  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Quantitativo de Reforço) destinados à complementação de alimentação de ${E} militares do ${organizacao}, durante ${D} dias de ${faseFormatada}.
 OM de Destino: ${organizacao} (UG: ${ug})
 
 Cálculo:
@@ -1115,7 +1115,7 @@ export default function ClasseIForm() {
                               <span className="font-semibold text-blue-600">{formatCurrency(calculosRacaoQuente.totalQS)}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
-                              <span className="text-muted-foreground">Total QR (Rancho Pronto)</span>
+                              <span className="text-muted-foreground">Total QR (Quantitativo de Reforço)</span>
                               <span className="font-semibold text-green-600">{formatCurrency(calculosRacaoQuente.totalQR)}</span>
                             </div>
                             <div className="h-px bg-border my-2" />
@@ -1453,7 +1453,7 @@ export default function ClasseIForm() {
 
                                 {/* Bloco QR */}
                                 <div className="space-y-2">
-                                  <h5 className="font-bold text-sm text-green-600">QR - Quantitativo de Rancho (OM: {registro.organizacao})</h5>
+                                  <h5 className="font-bold text-sm text-green-600">QR - Quantitativo de Reforço (OM: {registro.organizacao})</h5>
                                   <Card className="p-4 bg-background rounded-lg border">
                                     <Textarea
                                       value={memoriaQRFinal}
