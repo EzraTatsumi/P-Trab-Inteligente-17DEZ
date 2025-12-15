@@ -1408,15 +1408,6 @@ export default function ClasseIForm() {
                 <div className="flex justify-end gap-2">
                   <Button
                     type="button"
-                    variant="outline"
-                    onClick={resetFormFields}
-                    className="gap-2"
-                  >
-                    <XCircle className="h-4 w-4" />
-                    Limpar Configuração
-                  </Button>
-                  <Button
-                    type="button"
                     onClick={handleSaveCategoryConfig}
                     className="gap-2"
                     disabled={loading || !organizacao || diasOperacao <= 0 || efetivo <= 0 || (!displayFases)}
@@ -1761,7 +1752,7 @@ export default function ClasseIForm() {
               </div>
             )}
           
-          </div> {/* <-- FECHAMENTO CORRETO DO DIV space-y-6 */}
+          </div>
         </Card>
       </div>
     </div>
