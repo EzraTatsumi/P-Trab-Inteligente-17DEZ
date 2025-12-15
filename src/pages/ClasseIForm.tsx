@@ -1084,10 +1084,47 @@ export default function ClasseIForm() {
                           </div>
                         </div>
                         
-                        {/* Valores da Diretriz (Apenas exibição) - REMOVIDO */}
+                        {/* Valores da Diretriz (Apenas exibição) */}
+                        <div className="grid md:grid-cols-2 gap-4 pt-2">
+                            <div className="space-y-2">
+                                <Label>Valor QS (Diretriz {diretrizAno || 'Atual'})</Label>
+                                <Input
+                                    value={formatCurrency(valorQS)}
+                                    readOnly
+                                    disabled
+                                    className="font-semibold text-blue-600 disabled:opacity-100"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Valor QR (Diretriz {diretrizAno || 'Atual'})</Label>
+                                <Input
+                                    value={formatCurrency(valorQR)}
+                                    readOnly
+                                    disabled
+                                    className="font-semibold text-green-600 disabled:opacity-100"
+                                />
+                            </div>
+                        </div>
                         
-                        {/* Preview dos Cálculos Ração Quente - REMOVIDO */}
-                        
+                        {/* Preview dos Cálculos Ração Quente */}
+                        {calculosRacaoQuente && (
+                          <div className="space-y-4 mt-6 p-4 bg-background rounded-lg border">
+                            <h5 className="font-semibold text-sm">Previsão de Custo (Ração Quente)</h5>
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">Total QS (Subsistência)</span>
+                              <span className="font-semibold text-blue-600">{formatCurrency(calculosRacaoQuente.totalQS)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">Total QR (Rancho Pronto)</span>
+                              <span className="font-semibold text-green-600">{formatCurrency(calculosRacaoQuente.totalQR)}</span>
+                            </div>
+                            <div className="h-px bg-border my-2" />
+                            <div className="flex justify-between items-center text-lg">
+                              <span className="font-bold">Total Ração Quente</span>
+                              <span className="font-bold text-primary">{formatCurrency(calculosRacaoQuente.totalQS + calculosRacaoQuente.totalQR)}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </TabsContent>
                     
