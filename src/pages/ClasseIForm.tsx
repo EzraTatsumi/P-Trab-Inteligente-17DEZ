@@ -950,136 +950,138 @@ export default function ClasseIForm() {
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização e Atividade</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-muted/30 rounded-lg">
+              <div className="space-y-6 p-4 bg-muted/30 rounded-lg">
                 
-                {/* Linha 1: OM Destino (QR/R Op), UG Destino (QR/R Op), OM Destino (QS) */}
-                
-                {/* OM de Destino (QR / Ração Operacional) */}
-                <div className="space-y-2">
-                  <Label htmlFor="om">OM de Destino (QR / Ração Operacional) *</Label>
-                  <OmSelector
-                    selectedOmId={selectedOmId}
-                    onChange={handleOMChange}
-                    placeholder="Selecione uma OM de Destino..."
-                  />
-                </div>
+                {/* Linha 1: OM Destino (QR / Ração Operacional) e UG Destino */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="om">OM de Destino (QR / Ração Operacional) *</Label>
+                    <OmSelector
+                      selectedOmId={selectedOmId}
+                      onChange={handleOMChange}
+                      placeholder="Selecione uma OM de Destino..."
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="ug">UG de Destino</Label>
-                  <Input
-                    id="ug"
-                    value={ug}
-                    readOnly
-                    disabled={true}
-                    className="disabled:opacity-60"
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="ug">UG de Destino</Label>
+                    <Input
+                      id="ug"
+                      value={ug}
+                      readOnly
+                      disabled={true}
+                      className="disabled:opacity-60"
+                    />
+                  </div>
                 </div>
                 
-                {/* OM que receberá o QS (RM) */}
-                <div className="space-y-2">
-                  <Label htmlFor="omQS">OM de Destino (QS) *</Label>
-                  <RmSelector
-                    value={omQS}
-                    onChange={handleRMQSChange}
-                    placeholder="Selecione a RM de destino do QS..."
-                    disabled={!organizacao}
-                  />
-                </div>
+                {/* Linha 2: OM de Destino (QS) e UG de Destino (QS) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="omQS">OM de Destino (QS) *</Label>
+                    <RmSelector
+                      value={omQS}
+                      onChange={handleRMQSChange}
+                      placeholder="Selecione a RM de destino do QS..."
+                      disabled={!organizacao}
+                    />
+                  </div>
 
-                {/* Linha 2: UG Destino (QS), Dias de Atividade, Efetivo de Militares */}
-                
-                <div className="space-y-2">
-                  <Label htmlFor="ugQS">UG de Destino (QS)</Label>
-                  <Input
-                    id="ugQS"
-                    value={ugQS}
-                    readOnly
-                    disabled={true}
-                    className="disabled:opacity-60"
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="ugQS">UG de Destino (QS)</Label>
+                    <Input
+                      id="ugQS"
+                      value={ugQS}
+                      readOnly
+                      disabled={true}
+                      className="disabled:opacity-60"
+                    />
+                  </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="diasOperacao">Dias de Atividade *</Label>
-                  <Input
-                    id="diasOperacao"
-                    type="number"
-                    min="1"
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    value={diasOperacao === 0 ? "" : diasOperacao.toString()}
-                    onChange={(e) => setDiasOperacao(Number(e.target.value))}
-                    placeholder="Ex: 30"
-                    onKeyDown={handleEnterToNextField}
-                    disabled={!organizacao}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="efetivo">Efetivo de Militares *</Label>
-                  <Input
-                    id="efetivo"
-                    type="number"
-                    min="1"
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    value={efetivo === 0 ? "" : efetivo.toString()}
-                    onChange={(e) => setEfetivo(Number(e.target.value))}
-                    placeholder="Ex: 246"
-                    onKeyDown={handleEnterToNextField}
-                    disabled={!organizacao}
-                  />
-                </div>
-                
-                {/* Linha 3: Fase da Atividade (3 colunas) */}
-                <div className="space-y-2 md:col-span-3">
-                  <Label htmlFor="faseAtividade">Fase da Atividade *</Label>
-                  <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        type="button"
-                        className="w-full justify-between"
-                        disabled={!organizacao}
-                      >
-                        <span className="truncate">
-                          {displayFases || "Selecione a(s) fase(s)..."}
-                        </span>
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0" align="start">
-                      <Command>
-                        <CommandGroup>
-                          {FASES_PADRAO.map((fase) => (
-                            <CommandItem
-                              key={fase}
-                              value={fase}
-                              onSelect={() => handleFaseChange(fase, !fasesAtividade.includes(fase))}
-                              className="flex items-center justify-between cursor-pointer"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <Checkbox
-                                  checked={fasesAtividade.includes(fase)}
-                                  onCheckedChange={(checked) => handleFaseChange(fase, !!checked)}
-                                />
-                                <Label>{fase}</Label>
-                              </div>
-                              {fasesAtividade.includes(fase) && <Check className="ml-auto h-4 w-4" />}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                        <div className="p-2 border-t">
-                          <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade (Opcional)</Label>
-                          <Input
-                            value={customFaseAtividade}
-                            onChange={(e) => setCustomFaseAtividade(e.target.value)}
-                            placeholder="Ex: Patrulhamento"
-                            onKeyDown={handleEnterToNextField}
-                          />
-                        </div>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                {/* Linha 3: Efetivo, Dias de Atividade, Fase da Atividade */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="efetivo">Efetivo de Militares *</Label>
+                    <Input
+                      id="efetivo"
+                      type="number"
+                      min="1"
+                      className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      value={efetivo === 0 ? "" : efetivo.toString()}
+                      onChange={(e) => setEfetivo(Number(e.target.value))}
+                      placeholder="Ex: 246"
+                      onKeyDown={handleEnterToNextField}
+                      disabled={!organizacao}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="diasOperacao">Dias de Atividade *</Label>
+                    <Input
+                      id="diasOperacao"
+                      type="number"
+                      min="1"
+                      className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      value={diasOperacao === 0 ? "" : diasOperacao.toString()}
+                      onChange={(e) => setDiasOperacao(Number(e.target.value))}
+                      placeholder="Ex: 30"
+                      onKeyDown={handleEnterToNextField}
+                      disabled={!organizacao}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="faseAtividade">Fase da Atividade *</Label>
+                    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          type="button"
+                          className="w-full justify-between"
+                          disabled={!organizacao}
+                        >
+                          <span className="truncate">
+                            {displayFases || "Selecione a(s) fase(s)..."}
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[300px] p-0" align="start">
+                        <Command>
+                          <CommandGroup>
+                            {FASES_PADRAO.map((fase) => (
+                              <CommandItem
+                                key={fase}
+                                value={fase}
+                                onSelect={() => handleFaseChange(fase, !fasesAtividade.includes(fase))}
+                                className="flex items-center justify-between cursor-pointer"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox
+                                    checked={fasesAtividade.includes(fase)}
+                                    onCheckedChange={(checked) => handleFaseChange(fase, !!checked)}
+                                  />
+                                  <Label>{fase}</Label>
+                                </div>
+                                {fasesAtividade.includes(fase) && <Check className="ml-auto h-4 w-4" />}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                          <div className="p-2 border-t">
+                            <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade (Opcional)</Label>
+                            <Input
+                              value={customFaseAtividade}
+                              onChange={(e) => setCustomFaseAtividade(e.target.value)}
+                              placeholder="Ex: Patrulhamento"
+                              onKeyDown={handleEnterToNextField}
+                            />
+                          </div>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
               </div>
             </div>
