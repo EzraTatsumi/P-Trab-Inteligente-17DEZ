@@ -49,6 +49,14 @@ src/data/classeVIIIData.ts
 src/data/classeIIIData.ts
 src/assets/
 
+# Excluir páginas de formulário de Classes finalizadas
+src/pages/ClasseIIIForm.tsx
+src/pages/ClasseVForm.tsx
+src/pages/ClasseVIForm.tsx
+src/pages/ClasseVIIForm.tsx
+src/pages/ClasseVIIIForm.tsx
+src/pages/ClasseIXForm.tsx
+
 # Excluir componentes da Landing Page
 src/pages/Index.tsx
 src/components/Hero.tsx
