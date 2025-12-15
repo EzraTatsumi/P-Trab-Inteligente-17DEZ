@@ -831,9 +831,6 @@ const DiretrizesCusteioPage = () => {
     }
   };
   
-  // NOVO ESTADO PARA RASTREAR O INPUT FOCADO NA LISTA DINÂMICA
-  const [focusedInput, setFocusedInput] = useState<{ index: number, field: string, rawDigits: string } | null>(null);
-  
   // --- Funções de Gerenciamento da Classe II, V, VI, VII e VIII ---
   const handleAddClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, categoria: DiretrizClasseIIForm['categoria']) => {
     setConfig(prev => [
