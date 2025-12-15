@@ -582,11 +582,11 @@ const DiretrizesCusteioPage = () => {
           };
         });
         
-      // Inserção individual para maior robustez
-      for (const item of classeIXItemsParaSalvar) {
+      // MUDANÇA AQUI: Inserção em lote para maior eficiência e atomicidade
+      if (classeIXItemsParaSalvar.length > 0) {
           const { error: c9Error } = await supabase
             .from("diretrizes_classe_ix")
-            .insert([item]);
+            .insert(classeIXItemsParaSalvar); // Batch insert
           if (c9Error) throw c9Error;
       }
 
