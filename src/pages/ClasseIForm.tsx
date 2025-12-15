@@ -1424,7 +1424,7 @@ export default function ClasseIForm() {
               <div className="space-y-4 border-b pb-4 pt-4">
                 <h3 className="text-lg font-semibold">3. Itens Adicionados para {organizacao}</h3>
                 
-                <Card className="p-4 bg-primary/5 border-primary/20">
+                <Card className="p-4 bg-secondary/10 border-secondary">
                     <div className="flex items-center justify-between mb-3 border-b pb-2">
                         <h4 className="font-bold text-base text-primary">
                             {organizacao} (UG: {ug})
@@ -1441,7 +1441,7 @@ export default function ClasseIForm() {
                                     <Utensils className="h-4 w-4" />
                                     Ração Quente (QS/QR)
                                 </span>
-                                <span className="text-right font-semibold">
+                                <span className="text-right font-semibold text-foreground">
                                     {formatCurrency(currentOMConsolidatedData.RACAO_QUENTE.total_geral)}
                                 </span>
                             </div>
@@ -1453,13 +1453,20 @@ export default function ClasseIForm() {
                                     <Package className="h-4 w-4" />
                                     Ração Operacional (R2/R3)
                                 </span>
-                                <span className="text-right font-semibold">
+                                <span className="text-right font-semibold text-foreground">
                                     {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.total_unidades)} un.
                                 </span>
                             </div>
                         )}
                     </div>
                 </Card>
+                
+                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
+                  <span className="font-bold text-base text-primary">VALOR TOTAL DA OM</span>
+                  <span className="font-extrabold text-xl text-primary">
+                    {formatCurrency(totalMonetarioConsolidado)}
+                  </span>
+                </div>
                 
                 <div className="flex justify-end gap-3 pt-4">
                   <Button
