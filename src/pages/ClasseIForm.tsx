@@ -759,7 +759,8 @@ export default function ClasseIForm() {
     // 1. Processar Ração Quente
     if (currentOMConsolidatedData.RACAO_QUENTE) {
         const r = currentOMConsolidatedData.RACAO_QUENTE;
-        const existingMemoria = registros.find(reg => reg.id === r.id);
+        // Encontrar o registro existente no DB para preservar memórias customizadas
+        const existingMemoria = registros.find(reg => reg.organizacao === currentOmName && reg.ug === currentOmUg && reg.categoria === 'RACAO_QUENTE');
         
         recordsToSave.push({
             p_trab_id: ptrabId,
@@ -796,7 +797,8 @@ export default function ClasseIForm() {
     // 2. Processar Ração Operacional
     if (currentOMConsolidatedData.RACAO_OPERACIONAL) {
         const r = currentOMConsolidatedData.RACAO_OPERACIONAL;
-        const existingMemoria = registros.find(reg => reg.id === r.id);
+        // Encontrar o registro existente no DB para preservar memórias customizadas
+        const existingMemoria = registros.find(reg => reg.organizacao === currentOmName && reg.ug === currentOmUg && reg.categoria === 'RACAO_OPERACIONAL');
         
         recordsToSave.push({
             p_trab_id: ptrabId,
@@ -833,13 +835,16 @@ export default function ClasseIForm() {
         
         // 4. Inserir/Atualizar registros
         for (const record of recordsToSave) {
-            if (record.id) {
+            // Tenta encontrar o ID existente no DB para saber se é UPDATE ou INSERT
+            const existingDbRecord = registros.find(r => r.organizacao === record.organizacao && r.ug === record.ug && r.categoria === record.categoria);
+            
+            if (existingDbRecord) {
                 // Update
                 const { id, ...updateData } = record;
                 const { error: updateError } = await supabase
                     .from("classe_i_registros")
                     .update(updateData)
-                    .eq("id", id);
+                    .eq("id", existingDbRecord.id);
                 if (updateError) throw updateError;
             } else {
                 // Insert
@@ -883,6 +888,7 @@ export default function ClasseIForm() {
       setRegistros(registros.filter((r) => r.id !== id));
       toast.success("Registro removido com sucesso!");
       
+      // Se o registro removido era o que estava sendo editado, reseta o formulário
       if (editingRegistroId === id) {
           resetFormFields();
       }
@@ -1460,8 +1466,8 @@ export default function ClasseIForm() {
                 
                 <div className="flex justify-end gap-3 pt-4">
                   <Button
-                    variant="outline"
                     type="button"
+                    variant="outline"
                     onClick={resetFormFields}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
