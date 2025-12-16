@@ -544,7 +544,7 @@ export const PTrabCostSummary = ({
         <div className="w-full space-y-1 text-sm px-6 pt-3">
             <div className="flex justify-between text-orange-600 cursor-pointer" onClick={handleSummaryClick}>
               <span className="font-semibold text-sm">Aba Logística</span>
-              <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
+              <span className="font-bold text-sm mr-6">{formatCurrency(totals.totalLogisticoGeral)}</span>
             </div>
             <div className="flex justify-between text-blue-600 cursor-pointer" onClick={handleSummaryClick}>
               <span className="font-semibold text-sm">Aba Operacional</span>
@@ -605,7 +605,7 @@ export const PTrabCostSummary = ({
                         <Package className="h-3 w-3" />
                         Logística
                     </div>
-                    <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
+                    <span className="font-bold text-sm mr-6">{formatCurrency(totals.totalLogisticoGeral)}</span>
                   </div>
                   
                   {/* Classe I - Subsistência */}
