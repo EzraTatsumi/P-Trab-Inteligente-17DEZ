@@ -186,9 +186,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     const baseFontStyle = { name: 'Arial', size: 8 };
     const headerFontStyle = { name: 'Arial', size: 9, bold: true };
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
-    const corAzul = 'FFB4C7E7';
-    const corLaranja = 'FFF8CBAD';
-    const corSubtotal = 'FFD3D3D3';
+    const corAzul = 'FFB4C7E7'; // Azul claro
+    const corLaranja = 'FFF8CBAD'; // Laranja claro
+    const corSubtotal = 'FFD3D3D3'; // Cinza claro (Usado para cabeçalhos A, B, I)
     const corTotalOM = 'FFE8E8E8';
     // -------------------------------------------
 
@@ -311,14 +311,22 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         hdr2.getCell(col).style = headerStyle;
       });
       
+      // Apply blue fill to Natureza de Despesa (C, D, E)
       hdr1.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      hdr1.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       hdr2.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
       hdr2.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
       hdr2.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      
+      // Apply orange fill to Combustível (F, G, H)
+      hdr1.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       hdr2.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       hdr2.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       hdr2.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      
+      // Apply gray fill to Despesas, OM, Detalhamento (A, B, I)
+      hdr1.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+      hdr1.getCell('B').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+      hdr1.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
       
       currentRow = headerRow2 + 1;
 
@@ -338,7 +346,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             ...grupo.linhasQS,
             ...grupo.linhasQR,
             ...grupo.linhasClasseII,
-            ...grupo.linhasLubrificante,
+            ...grupo.linhasLubrificante, // Classe III Lubrificante
             ...grupo.linhasClasseV,
             ...grupo.linhasClasseVI,
             ...grupo.linhasClasseVII,
@@ -669,6 +677,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         left: { style: 'thin' as const },
         right: { style: 'thin' as const }
       };
+      gndLabelRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
       
       currentRow++;
       
@@ -682,6 +691,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         bottom: { style: 'thick' as const },
         right: { style: 'thin' as const }
       };
+      gndValueRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
       
       currentRow++;
       
@@ -1024,14 +1034,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     {/* Primeira subdivisão: GND - 3 */}
                     <tr style={{ backgroundColor: 'white' }}>
                       <td colSpan={7} style={{ border: 'none' }}></td>
-                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderTop: '1px solid #000', borderRight: '1px solid #000' }}>GND - 3</td>
+                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderTop: '1px solid #000', borderRight: '1px solid #000', backgroundColor: '#B4C7E7' }}>GND - 3</td>
                       <td style={{ border: 'none' }}></td>
                     </tr>
                     
                     {/* Segunda subdivisão: Valor Total */}
                     <tr style={{ backgroundColor: 'white' }}>
                       <td colSpan={7} style={{ border: 'none' }}></td>
-                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: '3px solid #000', borderRight: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
+                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: '3px solid #000', borderRight: '1px solid #000', backgroundColor: '#B4C7E7' }}>{formatCurrency(valorTotalSolicitado)}</td>
                       <td style={{ border: 'none' }}></td>
                     </tr>
                   </>
