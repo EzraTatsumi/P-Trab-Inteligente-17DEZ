@@ -186,10 +186,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     const baseFontStyle = { name: 'Arial', size: 8 };
     const headerFontStyle = { name: 'Arial', size: 9, bold: true };
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
-    const corAzul = 'FFB4C7E7';
-    const corLaranja = 'FFF8CBAD';
-    const corSubtotal = 'FFD3D3D3';
-    const corTotalOM = 'FFE8E8E8';
+    
+    // Cores padronizadas para o Excel (ARGB)
+    const corAzul = 'FFB4C7E7'; // Natureza de Despesa (33.90.30/39/Total)
+    const corLaranja = 'FFF8CBAD'; // Combustível (Litros/Preço Unitário/Preço Total)
+    const corSubtotal = 'FFD3D3D3'; // SOMA POR ND E GP DE DESPESA (Fundo cinza)
+    const corTotalOM = 'FFE8E8E8'; // VALOR TOTAL DO OM (Fundo cinza muito claro)
     // -------------------------------------------
 
     try {
@@ -311,6 +313,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         hdr2.getCell(col).style = headerStyle;
       });
       
+      // Aplica cores de fundo nos cabeçalhos
       hdr1.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
       hdr1.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       hdr2.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
@@ -396,7 +399,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             
           } else if ('tipo_equipamento' in linha.registro) { // Classe III Lubrificante
             const registro = linha.registro as ClasseIIIRegistro;
-            const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
+            // const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
             
             let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
             despesasValue = despesasLubValue;
@@ -408,12 +411,27 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           
           row.getCell('A').value = despesasValue;
           row.getCell('B').value = omValue;
+          
+          // Colunas Natureza de Despesa (Azul)
           row.getCell('C').value = valorC > 0 ? valorC : '';
           row.getCell('C').numFmt = 'R$ #,##0.00';
+          row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+          
           row.getCell('D').value = valorD > 0 ? valorD : '';
           row.getCell('D').numFmt = 'R$ #,##0.00';
+          row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+          
           row.getCell('E').value = valorE > 0 ? valorE : '';
           row.getCell('E').numFmt = 'R$ #,##0.00';
+          row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+          
+          // Colunas Combustível (Laranja) - Vazias para ND
+          row.getCell('F').value = '';
+          row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+          row.getCell('G').value = '';
+          row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+          row.getCell('H').value = '';
+          row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
           
           row.getCell('I').value = detalhamentoValue;
           row.getCell('I').font = { name: 'Arial', size: 6.5 };
@@ -429,6 +447,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           row.getCell('C').alignment = dataCurrencyStyle;
           row.getCell('D').alignment = dataCurrencyStyle;
           row.getCell('E').alignment = dataCurrencyStyle;
+          row.getCell('F').alignment = centerTopAlignment;
+          row.getCell('G').alignment = rightTopAlignment;
+          row.getCell('H').alignment = rightTopAlignment;
           row.getCell('I').alignment = dataTextStyle;
           
           currentRow++;
@@ -461,18 +482,26 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
             row.getCell('B').value = `${nomeRM}\n(${rmUg})`;
             
-            // Colunas azuis (C, D, E) devem ser vazias/zero para Classe III Combustível
+            // Colunas azuis (C, D, E) - Vazias para Combustível
             row.getCell('C').value = ''; 
+            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
             row.getCell('D').value = ''; 
+            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
             row.getCell('E').value = ''; 
+            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
             
             // Colunas Laranjas (F, G, H) permanecem preenchidas
             row.getCell('F').value = Math.round(registro.total_litros);
             row.getCell('F').numFmt = '#,##0 "L"';
+            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+            
             row.getCell('G').value = registro.preco_litro;
             row.getCell('G').numFmt = 'R$ #,##0.00';
+            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+            
             row.getCell('H').value = registro.valor_total;
             row.getCell('H').numFmt = 'R$ #,##0.00';
+            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
             
             const detalhamentoCombustivel = registro.detalhamento_customizado || registro.detalhamento || '';
             
@@ -507,47 +536,43 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         subtotalRow.getCell('A').font = { name: 'Arial', size: 8, bold: true };
         
         // Cor de fundo para a linha de subtotal
-        const corSubtotal = 'FFD3D3D3'; // Light Gray
         
         subtotalRow.getCell('C').value = totaisOM.total_33_90_30;
         subtotalRow.getCell('C').numFmt = 'R$ #,##0.00';
         subtotalRow.getCell('C').font = { bold: true };
         subtotalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-        subtotalRow.getCell('C').style = { ...subtotalRow.getCell('C').style, alignment: rightMiddleAlignment };
+        subtotalRow.getCell('C').style = { ...subtotalRow.getCell('C').style, alignment: rightMiddleAlignment, border: cellBorder };
         
         subtotalRow.getCell('D').value = totaisOM.total_33_90_39;
         subtotalRow.getCell('D').numFmt = 'R$ #,##0.00';
         subtotalRow.getCell('D').font = { bold: true };
         subtotalRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-        subtotalRow.getCell('D').style = { ...subtotalRow.getCell('D').style, alignment: rightMiddleAlignment };
+        subtotalRow.getCell('D').style = { ...subtotalRow.getCell('D').style, alignment: rightMiddleAlignment, border: cellBorder };
 
         subtotalRow.getCell('E').value = totaisOM.total_parte_azul;
         subtotalRow.getCell('E').numFmt = 'R$ #,##0.00';
         subtotalRow.getCell('E').font = { bold: true };
         subtotalRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-        subtotalRow.getCell('E').style = { ...subtotalRow.getCell('E').style, alignment: rightMiddleAlignment };
+        subtotalRow.getCell('E').style = { ...subtotalRow.getCell('E').style, alignment: rightMiddleAlignment, border: cellBorder };
         
-        if (nomeOM === nomeRM && totaisOM.totalDieselLitros > 0) {
-          subtotalRow.getCell('F').value = `${formatNumber(totaisOM.totalDieselLitros)} L OD`;
-          subtotalRow.getCell('F').font = { bold: true };
-          subtotalRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-          subtotalRow.getCell('F').style = { ...subtotalRow.getCell('F').style, alignment: centerMiddleAlignment };
-        }
-        if (nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0) {
-          subtotalRow.getCell('G').value = `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS`;
-          subtotalRow.getCell('G').font = { bold: true };
-          subtotalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-          subtotalRow.getCell('G').style = { ...subtotalRow.getCell('G').style, alignment: centerMiddleAlignment };
-        }
-        if (nomeOM === nomeRM && totaisOM.total_combustivel > 0) {
-          subtotalRow.getCell('H').value = totaisOM.total_combustivel;
-          subtotalRow.getCell('H').numFmt = 'R$ #,##0.00';
-          subtotalRow.getCell('H').font = { bold: true };
-          subtotalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-          subtotalRow.getCell('H').style = { ...subtotalRow.getCell('H').style, alignment: rightMiddleAlignment };
-        }
+        // Colunas F, G, H (Combustível)
+        subtotalRow.getCell('F').value = nomeOM === nomeRM && totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
+        subtotalRow.getCell('F').font = { bold: true };
+        subtotalRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+        subtotalRow.getCell('F').style = { ...subtotalRow.getCell('F').style, alignment: centerMiddleAlignment, border: cellBorder };
         
-        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+        subtotalRow.getCell('G').value = nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
+        subtotalRow.getCell('G').font = { bold: true };
+        subtotalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+        subtotalRow.getCell('G').style = { ...subtotalRow.getCell('G').style, alignment: centerMiddleAlignment, border: cellBorder };
+        
+        subtotalRow.getCell('H').value = totaisOM.total_combustivel > 0 ? totaisOM.total_combustivel : '';
+        subtotalRow.getCell('H').numFmt = 'R$ #,##0.00';
+        subtotalRow.getCell('H').font = { bold: true };
+        subtotalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+        subtotalRow.getCell('H').style = { ...subtotalRow.getCell('H').style, alignment: rightMiddleAlignment, border: cellBorder };
+        
+        ['A', 'B', 'I'].forEach(col => {
             subtotalRow.getCell(col).border = cellBorder;
             // Aplica cor de fundo cinza claro para as células não coloridas (A, B, I)
             if (!subtotalRow.getCell(col).fill) {
@@ -563,15 +588,13 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         totalOMRow.getCell('A').alignment = rightMiddleAlignment;
         totalOMRow.getCell('A').font = { name: 'Arial', size: 8, bold: true };
         
-        const corTotalOM = 'FFE8E8E8'; // Very Light Gray
-        
         totalOMRow.getCell('E').value = totaisOM.total_gnd3;
         totalOMRow.getCell('E').numFmt = 'R$ #,##0.00';
         totalOMRow.getCell('E').font = { bold: true };
         totalOMRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
-        totalOMRow.getCell('E').style = { ...totalOMRow.getCell('E').style, alignment: rightMiddleAlignment };
+        totalOMRow.getCell('E').style = { ...totalOMRow.getCell('E').style, alignment: rightMiddleAlignment, border: cellBorder };
         
-        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+        ['A', 'B', 'C', 'D', 'F', 'G', 'H', 'I'].forEach(col => {
             totalOMRow.getCell(col).border = cellBorder;
             if (!totalOMRow.getCell(col).fill) {
                 totalOMRow.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
@@ -602,44 +625,41 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       somaRow.getCell('C').numFmt = 'R$ #,##0.00';
       somaRow.getCell('C').font = { bold: true };
       somaRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      somaRow.getCell('C').style = { ...somaRow.getCell('C').style, alignment: rightMiddleAlignment };
+      somaRow.getCell('C').style = { ...somaRow.getCell('C').style, alignment: rightMiddleAlignment, border: cellBorder };
       
       somaRow.getCell('D').value = totalGeral_33_90_39;
       somaRow.getCell('D').numFmt = 'R$ #,##0.00';
       somaRow.getCell('D').font = { bold: true };
       somaRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      somaRow.getCell('D').style = { ...somaRow.getCell('D').style, alignment: rightMiddleAlignment };
+      somaRow.getCell('D').style = { ...somaRow.getCell('D').style, alignment: rightMiddleAlignment, border: cellBorder };
       
       somaRow.getCell('E').value = totalGeral_GND3_ND;
       somaRow.getCell('E').numFmt = 'R$ #,##0.00';
       somaRow.getCell('E').font = { bold: true };
       somaRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      somaRow.getCell('E').style = { ...somaRow.getCell('E').style, alignment: rightMiddleAlignment };
+      somaRow.getCell('E').style = { ...somaRow.getCell('E').style, alignment: rightMiddleAlignment, border: cellBorder };
       
-      if (totalDiesel > 0) {
-        somaRow.getCell('F').value = `${formatNumber(totalDiesel)} L OD`;
-        somaRow.getCell('F').font = { bold: true };
-        somaRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-        somaRow.getCell('F').style = { ...somaRow.getCell('F').style, alignment: centerMiddleAlignment };
-      }
+      somaRow.getCell('F').value = totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : '';
+      somaRow.getCell('F').font = { bold: true };
+      somaRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      somaRow.getCell('F').style = { ...somaRow.getCell('F').style, alignment: centerMiddleAlignment, border: cellBorder };
       
-      if (totalGasolina > 0) {
-        somaRow.getCell('G').value = `${formatNumber(totalGasolina)} L GAS`;
-        somaRow.getCell('G').font = { bold: true };
-        somaRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-        somaRow.getCell('G').style = { ...somaRow.getCell('G').style, alignment: centerMiddleAlignment };
-      }
+      somaRow.getCell('G').value = totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : '';
+      somaRow.getCell('G').font = { bold: true };
+      somaRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      somaRow.getCell('G').style = { ...somaRow.getCell('G').style, alignment: centerMiddleAlignment, border: cellBorder };
       
-      if (totalValorCombustivelFinal > 0) {
-        somaRow.getCell('H').value = totalValorCombustivelFinal;
-        somaRow.getCell('H').numFmt = 'R$ #,##0.00';
-        somaRow.getCell('H').font = { bold: true };
-        somaRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-        somaRow.getCell('H').style = { ...somaRow.getCell('H').style, alignment: rightMiddleAlignment };
-      }
+      somaRow.getCell('H').value = totalValorCombustivelFinal > 0 ? totalValorCombustivelFinal : '';
+      somaRow.getCell('H').numFmt = 'R$ #,##0.00';
+      somaRow.getCell('H').font = { bold: true };
+      somaRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      somaRow.getCell('H').style = { ...somaRow.getCell('H').style, alignment: rightMiddleAlignment, border: cellBorder };
       
-      ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].forEach(col => {
+      ['A', 'B', 'I'].forEach(col => {
         somaRow.getCell(col).border = cellBorder;
+        if (!somaRow.getCell(col).fill) {
+            somaRow.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+        }
       });
       
       currentRow++;
@@ -690,6 +710,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       const localRow = worksheet.getRow(currentRow);
       localRow.getCell('A').value = `${ptrabData.local_om || 'Local'}, ${new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
       localRow.getCell('A').font = { name: 'Arial', size: 10 };
+      worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
       currentRow++;
@@ -697,11 +718,13 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       const cmtRow = worksheet.getRow(currentRow);
       cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
+      worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
       const cargoRow = worksheet.getRow(currentRow);
       cargoRow.getCell('A').value = `Comandante da ${ptrabData.nome_om_extenso || ptrabData.nome_om}`;
       cargoRow.getCell('A').font = { name: 'Arial', size: 9 };
+      worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -864,7 +887,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         
                     } else if (isLubrificante) { // Classe III Lubrificante
                         const registro = linha.registro as ClasseIIIRegistro;
-                        const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
+                        // const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
                         
                         let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
                         rowData.despesasValue = despesasLubValue;
@@ -882,12 +905,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         <td className="col-om">
                           {rowData.omValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
                         </td>
-                        <td className="col-valor-natureza">{rowData.valorC > 0 ? formatCurrency(rowData.valorC) : ''}</td>
-                        <td className="col-valor-natureza">{rowData.valorD > 0 ? formatCurrency(rowData.valorD) : ''}</td>
-                        <td className="col-valor-natureza">{rowData.valorE > 0 ? formatCurrency(rowData.valorE) : ''}</td>
-                        <td className="col-combustivel-data-filled"></td>
-                        <td className="col-combustivel-data-filled"></td>
-                        <td className="col-combustivel-data-filled"></td>
+                        <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorC > 0 ? formatCurrency(rowData.valorC) : ''}</td>
+                        <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorD > 0 ? formatCurrency(rowData.valorD) : ''}</td>
+                        <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorE > 0 ? formatCurrency(rowData.valorE) : ''}</td>
+                        <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}></td>
+                        <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}></td>
+                        <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}></td>
                         <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
                           <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
                             {rowData.detalhamentoValue}
@@ -929,12 +952,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                           <div>{nomeRM}</div>
                           <div>({gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || gruposPorOM[nomeRM]?.linhasQR[0]?.registro.ug || 'UG'})</div>
                         </td>
-                        <td className="col-valor-natureza"></td> {/* 33.90.30 (Vazio) */}
-                        <td className="col-valor-natureza"></td> {/* 33.90.39 (Vazio) */}
-                        <td className="col-valor-natureza"></td> {/* TOTAL (Vazio) */}
-                        <td className="col-combustivel-data-filled">{formatNumber(registro.total_litros)} L</td>
-                        <td className="col-combustivel-data-filled">{formatCurrency(registro.preco_litro)}</td>
-                        <td className="col-combustivel-data-filled">{formatCurrency(registro.valor_total)}</td>
+                        <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* 33.90.30 (Vazio) */}
+                        <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* 33.90.39 (Vazio) */}
+                        <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* TOTAL (Vazio) */}
+                        <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{formatNumber(registro.total_litros)} L</td>
+                        <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{formatCurrency(registro.preco_litro)}</td>
+                        <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{formatCurrency(registro.valor_total)}</td>
                         <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
                           <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
                             {registro.detalhamento_customizado || registro.detalhamento || ''}
@@ -948,21 +971,21 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   <tr key={`subtotal-${omIndex}`} className="subtotal-row">
                     <td colSpan={2} className="text-right font-bold">SOMA POR ND E GP DE DESPESA</td>
                     {/* Parte Azul (Natureza de Despesa) */}
-                    <td className="text-center font-bold">{formatCurrency(totaisOM.total_33_90_30)}</td>
-                    <td className="text-center font-bold">{formatCurrency(totaisOM.total_33_90_39)}</td>
-                    <td className="text-center font-bold">{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
+                    <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_30)}</td>
+                    <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_39)}</td>
+                    <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
                     {/* Parte Laranja (Combustivel) */}
-                    <td className="text-center font-bold border border-black">
+                    <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
                       {nomeOM === nomeRM && totaisOM.totalDieselLitros > 0 
                         ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
                         : ''}
                     </td>
-                    <td className="text-center font-bold border border-black">
+                    <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
                       {nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0 
                         ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` 
                         : ''}
                     </td>
-                    <td className="text-center font-bold border border-black">
+                    <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
                       {nomeOM === nomeRM && totaisOM.total_combustivel > 0 
                         ? formatCurrency(totaisOM.total_combustivel) 
                         : ''}
@@ -975,7 +998,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     <td colSpan={4} className="text-right font-bold">
                       VALOR TOTAL DO {nomeOM}
                     </td>
-                    <td className="text-center font-bold">{formatCurrency(totaisOM.total_gnd3)}</td>
+                    <td className="text-center font-bold" style={{ backgroundColor: '#E8E8E8' }}>{formatCurrency(totaisOM.total_gnd3)}</td>
                     <td colSpan={3}></td>
                     <td></td>
                   </tr>
