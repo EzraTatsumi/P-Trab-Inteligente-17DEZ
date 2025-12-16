@@ -189,7 +189,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     const baseFontStyle = { name: 'Arial', size: 8 };
     const headerFontStyle = { name: 'Arial', size: 9, bold: true };
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
-    const corTotal = 'FFE8E8E8'; // Cinza claro (E8E8E8)
+    const corTotalCinza = 'FFE8E8E8'; // Cinza claro (E8E8E8)
+    const corTotalAzul = 'FFB4C7E7'; // Azul claro
     // -------------------------------------------
 
     try {
@@ -302,26 +303,29 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       
       // --- Linha Total ---
       const totalRow = worksheet.getRow(currentRow);
+      
+      // Células A e B (TOTAL) - Cinza
       totalRow.getCell('A').value = 'TOTAL';
       worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
       totalRow.getCell('A').alignment = centerMiddleAlignment;
       totalRow.getCell('A').font = { name: 'Arial', size: 9, bold: true };
-      totalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotal } };
+      totalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalCinza } };
+      totalRow.getCell('A').border = cellBorder;
+      totalRow.getCell('B').border = cellBorder; // B precisa da borda mesmo mesclada
       
+      // Célula C (QUANTIDADE) - Azul
       totalRow.getCell('C').value = totalRacoesGeral;
       totalRow.getCell('C').numFmt = '#,##0';
       totalRow.getCell('C').font = { name: 'Arial', size: 9, bold: true };
       totalRow.getCell('C').alignment = centerMiddleAlignment;
-      totalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotal } };
+      totalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalAzul } };
+      totalRow.getCell('C').border = cellBorder;
       
+      // Célula D (DETALHAMENTO) - Branco (padrão)
       totalRow.getCell('D').value = '-';
       totalRow.getCell('D').alignment = centerMiddleAlignment;
       totalRow.getCell('D').font = { name: 'Arial', size: 9, bold: true };
-      totalRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotal } };
-      
-      ['A', 'B', 'C', 'D'].forEach(col => {
-        totalRow.getCell(col).border = cellBorder;
-      });
+      totalRow.getCell('D').border = cellBorder;
       
       currentRow++;
       currentRow++;
@@ -441,9 +445,9 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
                   ))}
                   
                   <tr className="total-row-op">
-                    <td colSpan={2} className="text-right font-bold total-cell-op">TOTAL</td>
-                    <td className="text-center font-bold total-cell-op">{formatNumber(totalRacoesGeral)}</td>
-                    <td className="total-cell-op"></td>
+                    <td colSpan={2} className="text-right font-bold total-cell-cinza">TOTAL</td>
+                    <td className="text-center font-bold total-cell-azul">{formatNumber(totalRacoesGeral)}</td>
+                    <td className="total-cell-branco"></td>
                   </tr>
                 </tbody>
               </table>
@@ -490,11 +494,23 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         .col-quantidade-op { width: 10%; text-align: center; }
         .col-detalhamento-op { width: 55%; text-align: left; }
         
-        .total-row-op .total-cell-op { 
-            background-color: #E8E8E8 !important; /* Cinza claro */
-            color: #000000; /* Preto */
+        /* Estilos da linha de total */
+        .total-row-op td {
             font-weight: bold; 
             border-top: 2px solid #000; 
+            color: #000000;
+        }
+        
+        .total-cell-cinza { 
+            background-color: #E8E8E8 !important; /* Cinza claro */
+        }
+        
+        .total-cell-azul { 
+            background-color: #B4C7E7 !important; /* Azul claro */
+        }
+        
+        .total-cell-branco {
+            background-color: white !important; /* Branco */
         }
         
         /* Reset de estilos da tabela principal para evitar conflitos */
