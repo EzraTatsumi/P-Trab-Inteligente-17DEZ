@@ -1185,6 +1185,18 @@ export default function ClasseIForm() {
     }
   };
 
+  // NOVO MEMO: Agrupa os registros por OM de Destino
+  const registrosAgrupadosPorOM = useMemo(() => {
+    return registros.reduce((acc, registro) => {
+        const key = `${registro.organizacao} (${registro.ug})`;
+        if (!acc[key]) {
+            acc[key] = [];
+        }
+        acc[key].push(registro);
+        return acc;
+    }, {} as Record<string, ClasseIRegistro[]>);
+  }, [registros]);
+
   const totalGeralQS = registros.filter(r => r.categoria === 'RACAO_QUENTE').reduce((sum, r) => sum + r.calculos.totalQS, 0);
   const totalGeralQR = registros.filter(r => r.categoria === 'RACAO_QUENTE').reduce((sum, r) => sum + r.calculos.totalQR, 0);
   const totalGeral = totalGeralQS + totalGeralQR;
@@ -1709,127 +1721,156 @@ export default function ClasseIForm() {
             )}
 
 
-            {/* 4. Tabela de Registros (Antiga Seção 3) */}
+            {/* 4. Registros Salvos (OMs Cadastradas) - NOVO FORMATO */}
             {registros.length > 0 && (
               <div className="space-y-4 mt-8">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-accent" />
-                    Registros Cadastrados
-                  </h2>
-                  <Badge variant="secondary" className="text-sm">
-                    {registros.length} {registros.length === 1 ? 'registro' : 'registros'}
-                  </Badge>
-                </div>
-
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full table-fixed">
-                      <thead className="bg-muted">
-                        <tr>
-                          <th className="text-left p-3 font-semibold text-sm w-[15%]">OM Destino</th>
-                          <th className="text-center p-3 font-semibold text-sm w-[10%]">UG</th>
-                          <th className="text-center p-3 font-semibold text-sm w-[15%]">Categoria</th>
-                          <th className="text-center p-3 font-semibold text-sm w-[8%]">Efetivo</th>
-                          <th className="text-center p-3 font-semibold text-sm w-[8%]">Dias</th>
-                          <th className="text-right p-3 font-semibold text-sm w-[12%]">Total QS/R2</th>
-                          <th className="text-right p-3 font-semibold text-sm w-[12%]">Total QR/R3</th>
-                          <th className="text-right p-3 font-semibold text-sm w-[12%]">Total Geral</th>
-                          <th className="text-center p-3 font-semibold text-sm w-[8%]">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {registros.map((registro) => {
-                          const isRacaoQuente = registro.categoria === 'RACAO_QUENTE';
-                          const totalQS_R2 = isRacaoQuente ? registro.calculos.totalQS : (registro.quantidadeR2 || 0);
-                          const totalQR_R3 = isRacaoQuente ? registro.calculos.totalQR : (registro.quantidadeR3 || 0);
-                          const totalGeralRegistro = isRacaoQuente ? (registro.calculos.totalQS + registro.calculos.totalQR) : (totalQS_R2 + totalQR_R3);
-                          
-                          return (
-                            <tr key={registro.id} className="border-t hover:bg-muted/50">
-                              <td className="p-3 text-sm">{registro.organizacao}</td>
-                              <td className="p-3 text-sm text-center">{registro.ug}</td>
-                              <td className="p-3 text-sm text-center">
-                                <Badge variant="outline" className={cn(
-                                    isRacaoQuente ? "bg-primary/10 text-primary" : "bg-secondary/10 text-secondary"
-                                )}>
-                                    {isRacaoQuente ? 'Ração Quente (R1)' : 'Ração Operacional (R2/R3)'}
-                                </Badge>
-                              </td>
-                              <td className="p-3 text-sm text-center">{registro.efetivo}</td>
-                              <td className="p-3 text-sm text-center">{registro.diasOperacao}</td>
-                              <td className="p-3 px-4 text-sm text-right font-medium whitespace-nowrap">
-                                {isRacaoQuente ? formatCurrency(totalQS_R2) : `${formatNumber(totalQS_R2)} un.`}
-                              </td>
-                              <td className="p-3 px-4 text-sm text-right font-medium whitespace-nowrap">
-                                {isRacaoQuente ? formatCurrency(totalQR_R3) : `${formatNumber(totalQR_R3)} un.`}
-                              </td>
-                              <td className="p-3 px-4 text-sm text-right font-bold whitespace-nowrap">
-                                {isRacaoQuente ? formatCurrency(totalGeralRegistro) : `${formatNumber(totalGeralRegistro)} un.`}
-                              </td>
-                              <td className="p-3 text-center">
-                                <div className="flex gap-1 justify-center">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleEditRegistro(registro)}
-                                    disabled={loading}
-                                    className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleRemover(registro.id)}
-                                    disabled={loading}
-                                    className="h-8 w-8 text-destructive hover:text-destructive/10"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-accent" />
+                  OMs Cadastradas
+                </h2>
+                
+                {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+                    const omName = omKey.split(' (')[0];
+                    const ug = omKey.split(' (')[1].replace(')', '');
+                    
+                    const racaoQuente = omRegistros.find(r => r.categoria === 'RACAO_QUENTE');
+                    const racaoOperacional = omRegistros.find(r => r.categoria === 'RACAO_OPERACIONAL');
+                    
+                    const totalMonetario = (racaoQuente?.calculos.totalQS || 0) + (racaoQuente?.calculos.totalQR || 0);
+                    const totalUnidades = (racaoOperacional?.quantidadeR2 || 0) + (racaoOperacional?.quantidadeR3 || 0);
+                    
+                    const efetivo = racaoQuente?.efetivo || racaoOperacional?.efetivo || 0;
+                    const diasOperacao = racaoQuente?.diasOperacao || racaoOperacional?.diasOperacao || 0;
+                    const faseAtividade = racaoQuente?.faseAtividade || racaoOperacional?.faseAtividade;
+                    
+                    return (
+                        <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                            <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                <h3 className="font-bold text-lg text-primary">
+                                    {omName} (UG: {ug})
+                                </h3>
+                                <div className="flex flex-col items-end">
+                                    {totalMonetario > 0 && (
+                                        <span className="font-extrabold text-xl text-primary">
+                                            {formatCurrency(totalMonetario)}
+                                        </span>
+                                    )}
+                                    {totalUnidades > 0 && (
+                                        <span className="font-extrabold text-lg text-secondary">
+                                            {formatNumber(totalUnidades)} un. (R2/R3)
+                                        </span>
+                                    )}
                                 </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot className="bg-muted/50 border-t-2">
-                        <tr>
-                          <td colSpan={5} className="p-3 text-right text-sm font-semibold">
-                            TOTAL GERAL (Ração Quente):
-                          </td>
-                          <td className="p-3 px-4 text-sm text-right font-bold text-blue-600 whitespace-nowrap">
-                            {formatCurrency(totalGeralQS)}
-                          </td>
-                          <td className="p-3 px-4 text-sm text-right font-bold text-green-600 whitespace-nowrap">
-                            {formatCurrency(totalGeralQR)}
-                          </td>
-                          <td className="p-3 px-4 text-sm text-right font-extrabold text-primary text-base whitespace-nowrap">
-                            {formatCurrency(totalGeral)}
-                          </td>
-                          <td className="p-3"></td>
-                        </tr>
-                        <tr>
-                          <td colSpan={5} className="p-3 text-right text-sm font-semibold">
-                            TOTAL GERAL (Ração Operacional):
-                          </td>
-                          <td colSpan={3} className="p-3 px-4 text-sm text-right font-extrabold text-secondary text-base whitespace-nowrap">
-                            {formatNumber(totalRacoesOperacionaisGeral)} un.
-                          </td>
-                          <td className="p-3"></td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                {/* Detalhes Globais */}
+                                <div className="flex justify-between text-xs text-muted-foreground">
+                                    <span>Efetivo: {efetivo} | Dias: {diasOperacao} | Fases: {formatFasesParaTexto(faseAtividade)}</span>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleEditRegistro(racaoQuente || racaoOperacional!)}
+                                        disabled={loading}
+                                        className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                                    >
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                
+                                {/* Detalhes Ração Quente */}
+                                {racaoQuente && (
+                                    <Card className="p-3 bg-background border">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex flex-col">
+                                                <h4 className="font-semibold text-sm text-blue-600 flex items-center gap-1">
+                                                    <Utensils className="h-3 w-3" /> Ração Quente (QS/QR)
+                                                </h4>
+                                                <p className="text-xs text-muted-foreground">
+                                                    QS (RM: {racaoQuente.omQS}) | QR (OM: {racaoQuente.organizacao})
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-col items-end">
+                                                <span className="font-bold text-sm text-primary/80">
+                                                    {formatCurrency(totalMonetario)}
+                                                </span>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleRemover(racaoQuente.id)}
+                                                    disabled={loading}
+                                                    className="h-6 px-2 text-destructive hover:bg-destructive/10 text-xs"
+                                                >
+                                                    <Trash2 className="h-3 w-3 mr-1" />
+                                                    Remover R1
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                )}
+                                
+                                {/* Detalhes Ração Operacional */}
+                                {racaoOperacional && (
+                                    <Card className="p-3 bg-background border">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex flex-col">
+                                                <h4 className="font-semibold text-sm text-secondary flex items-center gap-1">
+                                                    <Package className="h-3 w-3" /> Ração Operacional (R2/R3)
+                                                </h4>
+                                                <p className="text-xs text-muted-foreground">
+                                                    R2: {formatNumber(racaoOperacional.quantidadeR2 || 0)} un. | R3: {formatNumber(racaoOperacional.quantidadeR3 || 0)} un.
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-col items-end">
+                                                <span className="font-bold text-sm text-secondary/80">
+                                                    {formatNumber(totalUnidades)} un.
+                                                </span>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleRemover(racaoOperacional.id)}
+                                                    disabled={loading}
+                                                    className="h-6 px-2 text-destructive hover:bg-destructive/10 text-xs"
+                                                >
+                                                    <Trash2 className="h-3 w-3 mr-1" />
+                                                    Remover R2/R3
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                )}
+                            </div>
+                        </Card>
+                    );
+                })}
+                
+                {/* Totais Gerais (Mantidos no final) */}
+                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
+                  <span className="font-bold text-base text-primary">TOTAL GERAL (Monetário)</span>
+                  <span className="font-extrabold text-xl text-primary">
+                    {formatCurrency(totalGeral)}
+                  </span>
                 </div>
+                {totalRacoesOperacionaisGeral > 0 && (
+                    <div className="flex justify-between items-center p-3 bg-secondary/10 rounded-lg border border-secondary/20">
+                      <span className="font-bold text-base text-secondary">TOTAL GERAL (Rações Operacionais)</span>
+                      <span className="font-extrabold text-xl text-secondary">
+                        {formatNumber(totalRacoesOperacionaisGeral)} un.
+                      </span>
+                    </div>
+                )}
+              </div>
+            )}
 
-                {/* Detalhamento das Memórias de Cálculo (Antiga Seção 4) */}
-                <div className="space-y-4 mt-6">
-                  <h3 className="text-xl font-bold flex items-center gap-2">
+
+            {/* 5. Memórias de Cálculo Detalhadas (Antiga Seção 4) */}
+            {registros.length > 0 && (
+              <div className="space-y-4 mt-6">
+                <h3 className="text-xl font-bold flex items-center gap-2">
                     📋 Memórias de Cálculo Detalhadas
-                  </h3>
+                </h3>
                   
-                  {registros.map((registro) => {
+                {registros.map((registro) => {
                     const isRacaoQuente = registro.categoria === 'RACAO_QUENTE';
                     const isEditing = editingMemoriaId === registro.id;
                     const hasCustomMemoria = isRacaoQuente && !!(registro.memoriaQSCustomizada || registro.memoriaQRCustomizada);
