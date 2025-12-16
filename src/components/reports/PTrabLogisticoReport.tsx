@@ -328,15 +328,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       const headerCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 
       // Linha 1 do Cabeçalho (hdr1)
-      // Aplicar cor e borda explicitamente em todas as células, mesmo as mescladas
       headerCols.forEach(col => {
           const cell = hdr1.getCell(col);
-          cell.border = cellBorder; // Garante borda simples
+          cell.border = cellBorder;
           if (col === 'A' || col === 'B' || col === 'I') {
               cell.fill = headerFillGray;
-          } else if (col === 'C') { // C, D, E mescladas
+          } else if (col === 'C') {
               cell.fill = headerFillAzul;
-          } else if (col === 'F') { // F, G, H mescladas
+          } else if (col === 'F') {
               cell.fill = headerFillLaranja;
           }
       });
@@ -344,7 +343,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       // Linha 2 do Cabeçalho (hdr2)
       headerCols.forEach(col => {
           const cell = hdr2.getCell(col);
-          cell.border = cellBorder; // Garante borda simples
+          cell.border = cellBorder;
           if (col === 'A' || col === 'B' || col === 'I') {
               cell.fill = headerFillGray;
           } else if (col === 'C' || col === 'D' || col === 'E') {
@@ -539,7 +538,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             row.getCell('I').value = detalhamentoCombustivel;
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
             
-            // GARANTIA DE BORDA SIMPLES PARA LINHAS DE DADOS
             ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
               row.getCell(col).border = cellBorder;
               row.getCell(col).font = baseFontStyle;
@@ -626,7 +624,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         totalOMRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
         totalOMRow.getCell('E').style = { ...totalOMRow.getCell('E').style, alignment: centerMiddleAlignment, border: cellBorder };
         
-        // GARANTIA DE BORDA SIMPLES PARA LINHA TOTAL OM
         ['A', 'B', 'C', 'D', 'F', 'G', 'H', 'I'].forEach(col => {
             totalOMRow.getCell(col).border = cellBorder;
             if (!totalOMRow.getCell(col).fill) {
@@ -740,9 +737,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       
       currentRow++;
       
+      // --- RODAPÉ CENTRALIZADO ---
       const localRow = worksheet.getRow(currentRow);
       localRow.getCell('A').value = `${ptrabData.local_om || 'Local'}, ${new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
       localRow.getCell('A').font = { name: 'Arial', size: 10 };
+      localRow.getCell('A').alignment = centerMiddleAlignment; // Centraliza
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
@@ -751,13 +750,16 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       const cmtRow = worksheet.getRow(currentRow);
       cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
+      cmtRow.getCell('A').alignment = centerMiddleAlignment; // Centraliza
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
       const cargoRow = worksheet.getRow(currentRow);
       cargoRow.getCell('A').value = `Comandante da ${ptrabData.nome_om_extenso || ptrabData.nome_om}`;
       cargoRow.getCell('A').font = { name: 'Arial', size: 9 };
+      cargoRow.getCell('A').alignment = centerMiddleAlignment; // Centraliza
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
+      // --- FIM RODAPÉ CENTRALIZADO ---
       
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
