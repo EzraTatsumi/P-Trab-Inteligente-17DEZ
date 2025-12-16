@@ -179,7 +179,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     // NOVOS ALINHAMENTOS PARA DADOS (Verticalmente Centralizado)
     const dataLeftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true };
     const dataCenterMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
-    const dataRightMiddleAlignment = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
+    // Alterado para CenterMiddleAlignment para C, D, E e H
+    const dataCenterMonetaryAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true }; 
     
     const cellBorder = {
       top: { style: 'thin' as const },
@@ -448,12 +449,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           // Aplica alinhamentos específicos para dados
           row.getCell('A').alignment = dataLeftMiddleAlignment; // Esquerda, Meio
           row.getCell('B').alignment = dataCenterMiddleAlignment; // Centro, Meio
-          row.getCell('C').alignment = dataRightMiddleAlignment; // Direita, Meio
-          row.getCell('D').alignment = dataRightMiddleAlignment; // Direita, Meio
-          row.getCell('E').alignment = dataRightMiddleAlignment; // Direita, Meio
-          row.getCell('F').alignment = dataCenterMiddleAlignment; // Centro, Meio
-          row.getCell('G').alignment = dataCenterMiddleAlignment; // Centro, Meio
-          row.getCell('H').alignment = dataRightMiddleAlignment; // Direita, Meio
+          row.getCell('C').alignment = dataCenterMonetaryAlignment; // Centro, Meio (ND 30)
+          row.getCell('D').alignment = dataCenterMonetaryAlignment; // Centro, Meio (ND 39)
+          row.getCell('E').alignment = dataCenterMonetaryAlignment; // Centro, Meio (Total ND)
+          row.getCell('F').alignment = dataCenterMiddleAlignment; // Centro, Meio (Litros)
+          row.getCell('G').alignment = dataCenterMiddleAlignment; // Centro, Meio (Preço Unitário)
+          row.getCell('H').alignment = dataCenterMonetaryAlignment; // Centro, Meio (Preço Total)
           row.getCell('I').alignment = dataTextStyle; // Detalhamento (Esquerda, Topo)
           
           currentRow++;
@@ -520,12 +521,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             // Aplica alinhamentos específicos para dados de Combustível
             row.getCell('A').alignment = dataLeftMiddleAlignment; // Esquerda, Meio
             row.getCell('B').alignment = dataCenterMiddleAlignment; // Centro, Meio
-            row.getCell('C').alignment = dataCenterMiddleAlignment; // Centro, Meio
-            row.getCell('D').alignment = dataCenterMiddleAlignment; // Centro, Meio
-            row.getCell('E').alignment = dataCenterMiddleAlignment; // Centro, Meio
-            row.getCell('F').alignment = dataCenterMiddleAlignment; // Centro, Meio
-            row.getCell('G').alignment = dataCenterMiddleAlignment; // Centro, Meio
-            row.getCell('H').alignment = dataRightMiddleAlignment; // Direita, Meio
+            row.getCell('C').alignment = dataCenterMonetaryAlignment; // Centro, Meio (ND 30)
+            row.getCell('D').alignment = dataCenterMonetaryAlignment; // Centro, Meio (ND 39)
+            row.getCell('E').alignment = dataCenterMonetaryAlignment; // Centro, Meio (Total ND)
+            row.getCell('F').alignment = dataCenterMiddleAlignment; // Centro, Meio (Litros)
+            row.getCell('G').alignment = dataCenterMiddleAlignment; // Centro, Meio (Preço Unitário)
+            row.getCell('H').alignment = dataCenterMonetaryAlignment; // Centro, Meio (Preço Total)
             row.getCell('I').alignment = dataTextStyle; // Detalhamento (Esquerda, Topo)
             
             currentRow++;
@@ -545,19 +546,19 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         subtotalRow.getCell('C').numFmt = 'R$ #,##0.00';
         subtotalRow.getCell('C').font = { bold: true };
         subtotalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-        subtotalRow.getCell('C').style = { ...subtotalRow.getCell('C').style, alignment: rightMiddleAlignment, border: cellBorder };
+        subtotalRow.getCell('C').style = { ...subtotalRow.getCell('C').style, alignment: centerMiddleAlignment, border: cellBorder };
         
         subtotalRow.getCell('D').value = totaisOM.total_33_90_39;
         subtotalRow.getCell('D').numFmt = 'R$ #,##0.00';
         subtotalRow.getCell('D').font = { bold: true };
         subtotalRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-        subtotalRow.getCell('D').style = { ...subtotalRow.getCell('D').style, alignment: rightMiddleAlignment, border: cellBorder };
+        subtotalRow.getCell('D').style = { ...subtotalRow.getCell('D').style, alignment: centerMiddleAlignment, border: cellBorder };
 
         subtotalRow.getCell('E').value = totaisOM.total_parte_azul;
         subtotalRow.getCell('E').numFmt = 'R$ #,##0.00';
         subtotalRow.getCell('E').font = { bold: true };
         subtotalRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-        subtotalRow.getCell('E').style = { ...subtotalRow.getCell('E').style, alignment: rightMiddleAlignment, border: cellBorder };
+        subtotalRow.getCell('E').style = { ...subtotalRow.getCell('E').style, alignment: centerMiddleAlignment, border: cellBorder };
         
         // Colunas F, G, H (Combustível)
         subtotalRow.getCell('F').value = nomeOM === nomeRM && totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
@@ -574,7 +575,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         subtotalRow.getCell('H').numFmt = 'R$ #,##0.00';
         subtotalRow.getCell('H').font = { bold: true };
         subtotalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-        subtotalRow.getCell('H').style = { ...subtotalRow.getCell('H').style, alignment: rightMiddleAlignment, border: cellBorder };
+        subtotalRow.getCell('H').style = { ...subtotalRow.getCell('H').style, alignment: centerMiddleAlignment, border: cellBorder };
         
         ['A', 'B', 'I'].forEach(col => {
             subtotalRow.getCell(col).border = cellBorder;
@@ -596,7 +597,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         totalOMRow.getCell('E').numFmt = 'R$ #,##0.00';
         totalOMRow.getCell('E').font = { bold: true };
         totalOMRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
-        totalOMRow.getCell('E').style = { ...totalOMRow.getCell('E').style, alignment: rightMiddleAlignment, border: cellBorder };
+        totalOMRow.getCell('E').style = { ...totalOMRow.getCell('E').style, alignment: centerMiddleAlignment, border: cellBorder };
         
         ['A', 'B', 'C', 'D', 'F', 'G', 'H', 'I'].forEach(col => {
             totalOMRow.getCell(col).border = cellBorder;
@@ -629,19 +630,19 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       somaRow.getCell('C').numFmt = 'R$ #,##0.00';
       somaRow.getCell('C').font = { bold: true };
       somaRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      somaRow.getCell('C').style = { ...somaRow.getCell('C').style, alignment: rightMiddleAlignment, border: cellBorder };
+      somaRow.getCell('C').style = { ...somaRow.getCell('C').style, alignment: centerMiddleAlignment, border: cellBorder };
       
       somaRow.getCell('D').value = totalGeral_33_90_39;
       somaRow.getCell('D').numFmt = 'R$ #,##0.00';
       somaRow.getCell('D').font = { bold: true };
       somaRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      somaRow.getCell('D').style = { ...somaRow.getCell('D').style, alignment: rightMiddleAlignment, border: cellBorder };
+      somaRow.getCell('D').style = { ...somaRow.getCell('D').style, alignment: centerMiddleAlignment, border: cellBorder };
       
       somaRow.getCell('E').value = totalGeral_GND3_ND;
       somaRow.getCell('E').numFmt = 'R$ #,##0.00';
       somaRow.getCell('E').font = { bold: true };
       somaRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      somaRow.getCell('E').style = { ...somaRow.getCell('E').style, alignment: rightMiddleAlignment, border: cellBorder };
+      somaRow.getCell('E').style = { ...somaRow.getCell('E').style, alignment: centerMiddleAlignment, border: cellBorder };
       
       somaRow.getCell('F').value = totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : '';
       somaRow.getCell('F').font = { bold: true };
@@ -657,7 +658,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       somaRow.getCell('H').numFmt = 'R$ #,##0.00';
       somaRow.getCell('H').font = { bold: true };
       somaRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-      somaRow.getCell('H').style = { ...somaRow.getCell('H').style, alignment: rightMiddleAlignment, border: cellBorder };
+      somaRow.getCell('H').style = { ...somaRow.getCell('H').style, alignment: centerMiddleAlignment, border: cellBorder };
       
       ['A', 'B', 'I'].forEach(col => {
         somaRow.getCell(col).border = cellBorder;
