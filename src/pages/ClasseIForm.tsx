@@ -830,7 +830,7 @@ export default function ClasseIForm() {
             quantidade_r3: 0,
             memoria_calculo_qs_customizada: memoriaQSCustomizada,
             memoria_calculo_qr_customizada: memoriaQRCustomizada,
-            id: r.id, // ID será usado para UPDATE se existir, ou ignorado para INSERT
+            id: r.id, // ID será usado para UPDATE se existir, ou undefined para INSERT
         });
     }
     
@@ -862,18 +862,30 @@ export default function ClasseIForm() {
             complemento_qs: 0, etapa_qs: 0, total_qs: 0, complemento_qr: 0, etapa_qr: 0, total_qr: 0, total_geral: 0,
             memoria_calculo_qs_customizada: memoriaQSCustomizada,
             memoria_calculo_qr_customizada: memoriaQRCustomizada,
-            id: r.id, // ID será usado para UPDATE se existir, ou ignorado para INSERT
+            id: r.id, // ID será usado para UPDATE se existir, ou undefined para INSERT
         });
     }
     
     try {
-        // 3. Inserir/Atualizar registros (Upsert)
-        // Se o ID estiver presente, ele atualiza. Se não, ele insere um novo.
-        const { error: upsertError } = await supabase
-            .from("classe_i_registros")
-            .upsert(recordsToSave, { onConflict: 'id' });
-            
-        if (upsertError) throw upsertError;
+        // 3. Perform INSERT or UPDATE based on the presence of ID
+        for (const record of recordsToSave) {
+            const { id, ...dataToSave } = record; // Destructure ID and get the rest of the data
+
+            if (id) {
+                // UPDATE existing record
+                const { error: updateError } = await supabase
+                    .from("classe_i_registros")
+                    .update(dataToSave) // Update using data without the ID field
+                    .eq("id", id);
+                if (updateError) throw updateError;
+            } else {
+                // INSERT new record (ID is omitted, so DB default is used)
+                const { error: insertError } = await supabase
+                    .from("classe_i_registros")
+                    .insert([dataToSave]); // Insert using data without the ID field
+                if (insertError) throw insertError;
+            }
+        }
         
         toast.success(`Registro de Classe I para ${organizacao} salvo com sucesso!`);
         await updatePTrabStatusIfAberto(ptrabId);
