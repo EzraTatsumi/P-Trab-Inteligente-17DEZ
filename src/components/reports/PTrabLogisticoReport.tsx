@@ -311,6 +311,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         border: cellBorder
       };
       
+      // Aplica estilo base
       ['A', 'B', 'C', 'F', 'I'].forEach(col => {
         hdr1.getCell(col).style = headerStyle;
       });
@@ -319,12 +320,22 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         hdr2.getCell(col).style = headerStyle;
       });
       
-      // Aplica cores de fundo nos cabeçalhos
+      // 1. Aplica cores de fundo e fonte para A, B, I (Cinza Claro)
+      const headerFillGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } }; // FFE8E8E8
+      
+      ['A', 'B', 'I'].forEach(col => {
+        hdr1.getCell(col).fill = headerFillGray;
+        hdr2.getCell(col).fill = headerFillGray;
+      });
+      
+      // 2. Aplica cores de fundo para C, D, E (Azul)
       hdr1.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      hdr1.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       hdr2.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
       hdr2.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
       hdr2.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      
+      // 3. Aplica cores de fundo para F, G, H (Laranja)
+      hdr1.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       hdr2.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       hdr2.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       hdr2.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
