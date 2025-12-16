@@ -615,11 +615,7 @@ export const PTrabCostSummary = ({
                           </div>
                           <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
                             {formatCurrency(totals.totalClasseI)}
-                            {totals.totalRacoesOperacionaisGeral > 0 && (
-                                <span className="text-[9px] text-secondary font-bold ml-1">
-                                    (+{formatNumber(totals.totalRacoesOperacionaisGeral)} un. Rç Op)
-                                </span>
-                            )}
+                            {/* REMOVIDO: Span 619 */}
                           </span>
                         </div>
                       </AccordionTrigger>
@@ -648,13 +644,11 @@ export const PTrabCostSummary = ({
                           {/* Detalhe 3: Ração Operacional */}
                           {totals.totalRacoesOperacionaisGeral > 0 && (
                             <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                                <span className="w-1/2 text-left font-semibold text-secondary">Ração Operacional (R2/R3)</span>
+                                <span className="w-1/2 text-left font-semibold text-muted-foreground">Ração Operacional (R2/R3)</span>
                                 <span className="w-1/4 text-right font-medium">
                                     {formatNumber(totals.totalRacoesOperacionaisGeral)} un.
                                 </span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatCurrency(0)}
-                                </span>
+                                {/* REMOVIDO: Span 655 */}
                             </div>
                           )}
                         </div>
