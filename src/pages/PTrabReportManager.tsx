@@ -40,6 +40,7 @@ export interface PTrabData {
   status: string;
   nome_cmt_om?: string;
   local_om?: string;
+  updated_at: string; // NOVO: Data de última atualização
 }
 
 export interface ClasseIRegistro {
@@ -408,7 +409,7 @@ const PTrabReportManager = () => {
     try {
       const { data: ptrab, error: ptrabError } = await supabase
         .from('p_trab')
-        .select('*')
+        .select('*, updated_at') // Incluir updated_at
         .eq('id', ptrabId)
         .single();
 
@@ -449,7 +450,7 @@ const PTrabReportManager = () => {
         ...(classeIXData || []).map(r => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria })),
       ];
 
-      setPtrabData(ptrab);
+      setPtrabData(ptrab as PTrabData); // Casting para incluir updated_at
       setRegistrosClasseI((classeIData || []).map(r => ({
           ...r,
           categoria: (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL',

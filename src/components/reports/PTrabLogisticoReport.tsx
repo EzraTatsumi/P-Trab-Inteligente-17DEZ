@@ -92,6 +92,13 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   const valorTotalSolicitado = totalGeral_GND3_ND + totalValorCombustivel;
   
   const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
+  
+  // NOVO: Função para gerar o nome do arquivo
+  const generateFileName = (reportType: 'PDF' | 'Excel') => {
+    const dataAtz = new Date(ptrabData.updated_at).toLocaleDateString('pt-BR');
+    const nomeBase = `P Trab Nr ${ptrabData.numero_ptrab} (Aba Log) - ${ptrabData.nome_operacao} - ${ptrabData.nome_om} - Atz ${dataAtz}`;
+    return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
+  };
 
   const handlePrint = () => {
     window.print();
@@ -145,7 +152,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         position += pageHeight;
       }
 
-      const fileName = `PTrab_Logistico_${ptrabData?.numero_ptrab}.pdf`;
+      const fileName = generateFileName('PDF');
       pdf.save(fileName);
 
       toast({
@@ -772,12 +779,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       // --- FIM RODAPÉ CENTRALIZADO ---
       
+      const fileName = generateFileName('Excel');
+      
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `PTrab_Logistico_${ptrabData.numero_ptrab}.xlsx`;
+      link.download = fileName;
       link.click();
       window.URL.revokeObjectURL(url);
       

@@ -96,6 +96,13 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
   }, [registrosClasseI]);
   
   const totalRacoesGeral = racaoOperacionalConsolidada.reduce((sum, r) => sum + r.total_unidades, 0);
+  
+  // NOVO: Função para gerar o nome do arquivo
+  const generateFileName = (reportType: 'PDF' | 'Excel') => {
+    const dataAtz = new Date(ptrabData.updated_at).toLocaleDateString('pt-BR');
+    const nomeBase = `P Trab Nr ${ptrabData.numero_ptrab} (Racao Op) - ${ptrabData.nome_operacao} - ${ptrabData.nome_om} - Atz ${dataAtz}`;
+    return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
+  };
 
   const handlePrint = () => {
     window.print();
@@ -149,7 +156,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         position += pageHeight;
       }
 
-      const fileName = `PTrab_Racao_Op_${ptrabData?.numero_ptrab}.pdf`;
+      const fileName = generateFileName('PDF');
       pdf.save(fileName);
 
       toast({
@@ -350,12 +357,14 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       cargoRow.getCell('A').font = { name: 'Arial', size: 9 };
       worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
       
+      const fileName = generateFileName('Excel');
+      
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `PTrab_Racao_Op_${ptrabData.numero_ptrab}.xlsx`;
+      link.download = fileName;
       link.click();
       window.URL.revokeObjectURL(url);
       
