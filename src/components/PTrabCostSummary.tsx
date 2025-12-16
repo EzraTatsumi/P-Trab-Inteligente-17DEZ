@@ -599,9 +599,13 @@ export const PTrabCostSummary = ({
                 
                 {/* Aba Logística */}
                 <div className="space-y-3 border-l-4 border-orange-500 pl-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-orange-600 mb-2">
-                    <Package className="h-3 w-3" />
-                    Logística ({formatCurrency(totals.totalLogisticoGeral)})
+                  {/* Div 602 Modificado */}
+                  <div className="flex items-center justify-between text-xs font-semibold text-orange-600 mb-2">
+                    <div className="flex items-center gap-2">
+                        <Package className="h-3 w-3" />
+                        Logística
+                    </div>
+                    <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
                   </div>
                   
                   {/* Classe I - Subsistência */}
@@ -615,7 +619,6 @@ export const PTrabCostSummary = ({
                           </div>
                           <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
                             {formatCurrency(totals.totalClasseI)}
-                            {/* REMOVIDO: Span 619 */}
                           </span>
                         </div>
                       </AccordionTrigger>
@@ -644,11 +647,10 @@ export const PTrabCostSummary = ({
                           {/* Detalhe 3: Ração Operacional */}
                           {totals.totalRacoesOperacionaisGeral > 0 && (
                             <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                                <span className="w-1/2 text-left font-semibold text-muted-foreground">Ração Operacional (R2/R3)</span>
+                                <span className="w-1/2 text-left text-muted-foreground">Ração Operacional (R2/R3)</span>
                                 <span className="w-1/4 text-right font-medium">
                                     {formatNumber(totals.totalRacoesOperacionaisGeral)} un.
                                 </span>
-                                {/* REMOVIDO: Span 655 */}
                             </div>
                           )}
                         </div>
