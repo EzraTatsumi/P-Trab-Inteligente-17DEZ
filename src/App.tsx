@@ -9,8 +9,8 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import PTrabManager from "./pages/PTrabManager";
 import PTrabForm from "./pages/PTrabForm";
-import PTrabPrint from "./pages/PTrabPrint";
-import ClasseIForm from "./pages/ClasseIForm";
+import PTrabReportManager from "./pages/PTrabReportManager"; // Importar o novo nome
+import ClasseIForm from "./pages/ClasseIForm"; // Importar ClasseIForm
 import ClasseIIForm from "./pages/ClasseIIForm"; // Importar ClasseIIForm
 import ClasseVForm from "./pages/ClasseVForm"; // Importar ClasseVForm
 import ClasseIIIForm from "./pages/ClasseIIIForm";
@@ -40,7 +40,7 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/ptrab" element={<PTrabManager />} />
               <Route path="/ptrab/form" element={<PTrabForm />} />
-              <Route path="/ptrab/print" element={<PTrabPrint />} />
+              <Route path="/ptrab/print" element={<PTrabReportManager />} /> {/* Rota atualizada */}
               <Route path="/ptrab/classe-i" element={<ClasseIForm />} />
               <Route path="/ptrab/classe-ii" element={<ClasseIIForm />} />
               <Route path="/ptrab/classe-v" element={<ClasseVForm />} />

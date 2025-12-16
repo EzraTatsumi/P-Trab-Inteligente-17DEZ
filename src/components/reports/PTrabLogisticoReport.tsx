@@ -1,12 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Printer, Download, FileSpreadsheet } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import React, { useCallback, useRef, useMemo } from "react";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
+import { useToast } from "@/hooks/use-toast";
+import { formatCurrency, formatNumber } from "@/lib/formatUtils";
+import { FileSpreadsheet, Printer, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,719 +16,90 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils"; // Importar formatCurrency e formatNumber
+import {
+  PTrabData,
+  ClasseIRegistro,
+  ClasseIIRegistro,
+  ClasseIIIRegistro,
+  GrupoOM,
+  CLASSE_V_CATEGORIES,
+  CLASSE_VI_CATEGORIES,
+  CLASSE_VII_CATEGORIES,
+  CLASSE_VIII_CATEGORIES,
+  CLASSE_IX_CATEGORIES,
+  calculateDays,
+  formatDate,
+  formatFasesParaTexto,
+  getClasseIILabel,
+  generateClasseIMemoriaCalculo,
+  generateClasseIIMemoriaCalculo,
+  generateClasseIXMemoriaCalculo,
+  calculateItemTotalClasseIX,
+} from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
 
-interface PTrabData {
-  id: string;
-  numero_ptrab: string;
-  comando_militar_area: string;
-  nome_om: string;
-  nome_om_extenso?: string;
-  nome_operacao: string;
-  periodo_inicio: string;
-  periodo_fim: string;
-  efetivo_empregado: string;
-  acoes: string;
-  status: string;
-  nome_cmt_om?: string;
-  local_om?: string;
-}
-
-interface ClasseIRegistro {
-  id: string;
-  organizacao: string;
-  ug: string;
-  om_qs: string;
-  ug_qs: string;
-  efetivo: number;
-  dias_operacao: number;
-  nr_ref_int: number;
-  valor_qs: number;
-  valor_qr: number;
-  complemento_qs: number;
-  etapa_qs: number;
-  total_qs: number;
-  total_qr: number;
-  total_geral: number;
-  memoria_calculo_qs_customizada?: string | null;
-  memoria_calculo_qr_customizada?: string | null;
-  fase_atividade?: string | null;
-  categoria: 'RACAO_QUENTE' | 'RACAO_OPERACIONAL'; // Adicionado categoria
-  quantidade_r2: number;
-  quantidade_r3: number;
-}
-
-interface ItemClasseII {
-  item: string;
-  quantidade: number;
-  valor_mnt_dia: number;
-  categoria: string;
-  memoria_customizada?: string | null;
-}
-
-interface ItemClasseIX {
-  item: string;
-  quantidade: number;
-  valor_mnt_dia: number;
-  valor_acionamento_mensal: number;
-  categoria: string;
-}
-
-interface ClasseIIRegistro {
-  id: string;
-  organizacao: string; // OM de Destino do Recurso (ND 30/39)
-  ug: string; // UG de Destino do Recurso (ND 30/39)
-  dias_operacao: number;
-  categoria: string;
-  itens_equipamentos: ItemClasseII[]; // Tipo corrigido
-  valor_total: number;
-  detalhamento: string;
-  detalhamento_customizado?: string | null;
-  fase_atividade?: string | null;
-  valor_nd_30: number; // NOVO
-  valor_nd_39: number; // NOVO
-  // Campos específicos para Classe VIII (Remonta)
-  animal_tipo?: 'Equino' | 'Canino';
-  quantidade_animais?: number;
-  // Campos específicos para Classe IX
-  itens_motomecanizacao?: ItemClasseIX[];
-}
-
-interface ClasseIIIRegistro {
-  id: string;
-  tipo_equipamento: string;
-  organizacao: string;
-  ug: string;
-  quantidade: number;
-  potencia_hp?: number;
-  horas_dia?: number;
-  dias_operacao: number;
-  consumo_hora?: number;
-  consumo_km_litro?: number;
-  km_dia?: number;
-  tipo_combustivel: string;
-  preco_litro: number;
-  tipo_equipamento_detalhe?: string;
-  total_litros: number;
-  valor_total: number;
-  detalhamento?: string;
-  detalhamento_customizado?: string | null;
-}
-
-// --- NOVAS INTERFACES PARA AGRUPAMENTO ---
-interface LinhaTabela {
-  registro: ClasseIRegistro;
-  tipo: 'QS' | 'QR';
-}
-
-interface LinhaClasseII { // Representa um registro completo de Classe II (uma categoria)
-  registro: ClasseIIRegistro;
-}
-
-interface LinhaLubrificante {
-  registro: ClasseIIIRegistro;
-}
-
-interface GrupoOM {
-  linhasQS: LinhaTabela[];
-  linhasQR: LinhaTabela[];
-  linhasClasseII: LinhaClasseII[]; // Only Classe II
-  linhasClasseV: LinhaClasseII[];
-  linhasClasseVI: LinhaClasseII[];
-  linhasClasseVII: LinhaClasseII[];
-  linhasClasseVIII: LinhaClasseII[];
-  linhasClasseIX: LinhaClasseII[]; // NOVO
-  linhasLubrificante: LinhaLubrificante[];
-}
-// --- FIM NOVAS INTERFACES ---
-
-// Categorias que representam as Classes
-const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
-const CLASSE_VI_CATEGORIES = ["Embarcação", "Equipamento de Engenharia"];
-const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
-const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
-const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
-
-// =================================================================
-// FUNÇÕES AUXILIARES (MOVIDAS PARA O ESCOPO DO MÓDULO)
-// =================================================================
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('pt-BR');
-};
-
-const calculateDays = (inicio: string, fim: string) => {
-  const start = new Date(inicio);
-  const end = new Date(fim);
-  const diff = end.getTime() - start.getTime();
-  return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
-};
-
-// Função para formatar fases
-const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
-  if (!faseCSV) return 'operação';
-  
-  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
-  
-  if (fases.length === 0) return 'operação';
-  if (fases.length === 1) return fases[0];
-  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
-  
-  const ultimaFase = fases[fases.length - 1];
-  const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFase}`;
-};
-
-// Função auxiliar para determinar o rótulo da Classe II/V/VI/VII/VIII/IX
-const getClasseIILabel = (categoria: string): string => {
-    if (CLASSE_V_CATEGORIES.includes(categoria)) {
-        return 'CLASSE V - ARMAMENTO';
-    }
-    if (CLASSE_VI_CATEGORIES.includes(categoria)) {
-        return 'CLASSE VI - MATERIAL DE ENGENHARIA';
-    }
-    if (CLASSE_VII_CATEGORIES.includes(categoria)) {
-        return 'CLASSE VII - COMUNICAÇÕES E INFORMÁTICA';
-    }
-    if (CLASSE_VIII_CATEGORIES.includes(categoria)) {
-        return 'CLASSE VIII - SAÚDE E REMONTA/VETERINÁRIA';
-    }
-    if (CLASSE_IX_CATEGORIES.includes(categoria)) {
-        return 'CLASSE IX - MOTOMECANIZAÇÃO';
-    }
-    return 'CLASSE II - MATERIAL DE INTENDÊNCIA';
-};
-
-// Função de cálculo principal para Classe IX (SEM MARGEM)
-const calculateItemTotalClasseIX = (item: ItemClasseIX, diasOperacao: number): { base: number, acionamento: number, total: number } => {
-    const nrVtr = item.quantidade;
-    const valorDia = item.valor_mnt_dia;
-    const valorMensal = item.valor_acionamento_mensal;
-    
-    if (nrVtr <= 0 || diasOperacao <= 0) {
-        return { base: 0, acionamento: 0, total: 0 };
-    }
-    
-    const custoBase = nrVtr * valorDia * diasOperacao;
-    const nrMeses = Math.ceil(diasOperacao / 30);
-    const custoAcionamento = nrVtr * valorMensal * nrMeses;
-    
-    const total = custoBase + custoAcionamento;
-    
-    return { base: custoBase, acionamento: custoAcionamento, total };
-};
-
-// NOVO: Gera a memória de cálculo detalhada para Classe IX (SEM MARGEM)
-const generateClasseIXMemoriaCalculo = (registro: ClasseIIRegistro): string => {
-    if (registro.detalhamento_customizado) {
-      return registro.detalhamento_customizado;
-    }
-    
-    const itens = (registro.itens_motomecanizacao || []) as ItemClasseIX[];
-    const diasOperacao = registro.dias_operacao;
-    const organizacao = registro.organizacao;
-    const ug = registro.ug;
-    const faseAtividade = registro.fase_atividade;
-    const valorND30 = registro.valor_nd_30;
-    const valorND39 = registro.valor_nd_39;
-    
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const valorTotalFinal = valorND30 + valorND39;
-
-    let totalItens = 0;
-
-    const gruposPorCategoria = itens.reduce((acc, item) => {
-        const categoria = item.categoria;
-        const { base, acionamento, total } = calculateItemTotalClasseIX(item, diasOperacao);
-        
-        if (!acc[categoria]) {
-            acc[categoria] = {
-                totalValorBase: 0,
-                totalValorAcionamento: 0,
-                totalQuantidade: 0,
-                detalhes: [],
-            };
-        }
-        
-        acc[categoria].totalValorBase += base;
-        acc[categoria].totalValorAcionamento += acionamento;
-        acc[categoria].totalQuantidade += item.quantidade;
-        totalItens += item.quantidade;
-        
-        const nrMeses = Math.ceil(diasOperacao / 30);
-
-        acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} (Base: ${formatCurrency(base)}, Acionamento: ${formatCurrency(acionamento)} em ${nrMeses} meses) = ${formatCurrency(total)}.`
-        );
-        
-        return acc;
-    }, {} as Record<string, { totalValorBase: number, totalValorAcionamento: number, totalQuantidade: number, detalhes: string[] }>);
-
-    let detalhamentoItens = "";
-    
-    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        const totalCategoria = grupo.totalValorBase + grupo.totalValorAcionamento;
-
-        detalhamentoItens += `\n--- ${getClasseIILabel(categoria).toUpperCase()} (${grupo.totalQuantidade} VTR) ---\n`;
-        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(totalCategoria)}\n`;
-        detalhamentoItens += `Detalhes:\n`;
-        detalhamentoItens += grupo.detalhes.join('\n');
-        detalhamentoItens += `\n`;
-    });
-    
-    detalhamentoItens = detalhamentoItens.trim();
-
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe IX (Motomecanização) para ${totalItens} viaturas, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
-Recurso destinado à OM proprietária: ${organizacao} (UG: ${ug})
-
-Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
-
-Fórmula Base: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
-
-${detalhamentoItens}
-
-Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
-};
-
-// Função para gerar memória automática de Classe I
-const generateClasseIMemoriaCalculo = (registro: ClasseIRegistro): { qs: string, qr: string } => {
-    const { 
-      organizacao, ug, om_qs, ug_qs, efetivo, dias_operacao, nr_ref_int, 
-      valor_qs, valor_qr, complemento_qs, etapa_qs, total_qs, 
-      complemento_qr, etapa_qr, total_qr, fase_atividade 
-    } = registro;
-    
-    // Calcular dias de etapa solicitada
-    const diasRestantesNoCiclo = dias_operacao % 30;
-    const ciclosCompletos = Math.floor(dias_operacao / 30);
-    
-    let diasEtapaSolicitada = 0;
-    if (diasRestantesNoCiclo <= 22 && dias_operacao >= 30) {
-      diasEtapaSolicitada = ciclosCompletos * 8;
-    } else if (diasRestantesNoCiclo > 22) {
-      diasEtapaSolicitada = (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
-    } else {
-      diasEtapaSolicitada = 0;
-    }
-    
-    const faseFormatada = formatFasesParaTexto(fase_atividade);
-    
-    // Memória QS
-    const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${efetivo} militares do ${organizacao}, durante ${dias_operacao} dias de ${faseFormatada}.
-OM Fornecedora: ${om_qs} (UG: ${ug_qs})
-
-Cálculo:
-- Valor da Etapa (QS): ${formatCurrency(valor_qs)}.
-- Nr Refeições Intermediárias: ${nr_ref_int}.
-
-Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
-
-- [${efetivo} militares do ${organizacao} x ${nr_ref_int} Ref Int x (${formatCurrency(valor_qs)}/3) x ${dias_operacao} dias de atividade] = ${formatCurrency(complemento_qs)}.
-- [${efetivo} militares do ${organizacao} x ${formatCurrency(valor_qs)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(etapa_qs)}.
-
-Total QS: ${formatCurrency(total_qs)}.`;
-
-    // Memória QR
-    const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Rancho Pronto) destinados à complementação de alimentação de ${efetivo} militares do ${organizacao}, durante ${dias_operacao} dias de ${faseFormatada}.
-OM de Destino: ${organizacao} (UG: ${ug})
-
-Cálculo:
-- Valor da Etapa (QR): ${formatCurrency(valor_qr)}.
-- Nr Refeições Intermediárias: ${nr_ref_int}.
-
-Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
-
-- [${efetivo} militares do ${organizacao} x ${nr_ref_int} Ref Int x (${formatCurrency(valor_qr)}/3) x ${dias_operacao} dias de atividade] = ${formatCurrency(complemento_qr)}.
-- [${efetivo} militares do ${organizacao} x ${formatCurrency(valor_qr)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(etapa_qr)}.
-
-Total QR: ${formatCurrency(total_qr)}.`;
-
-    return { qs: memoriaQS, qr: memoriaQR };
+interface PTrabLogisticoReportProps {
+  ptrabData: PTrabData;
+  registrosClasseI: ClasseIRegistro[];
+  registrosClasseII: ClasseIIRegistro[];
+  registrosClasseIII: ClasseIIIRegistro[];
+  nomeRM: string;
+  omsOrdenadas: string[];
+  gruposPorOM: Record<string, GrupoOM>;
+  calcularTotaisPorOM: (grupo: GrupoOM, nomeOM: string) => {
+    total_33_90_30: number;
+    total_33_90_39: number;
+    total_parte_azul: number;
+    total_combustivel: number;
+    total_gnd3: number;
+    totalDieselLitros: number;
+    totalGasolinaLitros: number;
+    valorDiesel: number;
+    valorGasolina: number;
   };
+  onExportSuccess: () => void;
+  showCompleteStatusDialog: boolean;
+  setShowCompleteStatusDialog: (show: boolean) => void;
+  handleConfirmCompleteStatus: () => void;
+  handleCancelCompleteStatus: () => void;
+}
 
-// Função para gerar memória automática de Classe II/V/VI/VII/VIII/IX
-const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro): string => {
-    if (registro.detalhamento_customizado) {
-      return registro.detalhamento_customizado;
-    }
-    
-    // Se for Classe IX, usa a função específica
-    if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-        return generateClasseIXMemoriaCalculo(registro);
-    }
-    
-    // Caso contrário, usa o detalhamento salvo (gerado no formulário)
-    return registro.detalhamento;
-};
-
-// =================================================================
-// FIM FUNÇÕES AUXILIARES
-// =================================================================
-
-const PTrabPrint = () => {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
+  ptrabData,
+  registrosClasseI,
+  registrosClasseII,
+  registrosClasseIII,
+  nomeRM,
+  omsOrdenadas,
+  gruposPorOM,
+  calcularTotaisPorOM,
+  onExportSuccess,
+  showCompleteStatusDialog,
+  setShowCompleteStatusDialog,
+  handleConfirmCompleteStatus,
+  handleCancelCompleteStatus,
+}) => {
   const { toast } = useToast();
-  const ptrabId = searchParams.get('ptrabId');
-  const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
-  const [registrosClasseI, setRegistrosClasseI] = useState<ClasseIRegistro[]>([]);
-  const [registrosClasseII, setRegistrosClasseII] = useState<ClasseIIRegistro[]>([]);
-  const [registrosClasseIII, setRegistrosClasseIII] = useState<ClasseIIIRegistro[]>([]);
-  const [loading, setLoading] = useState(true);
+  const contentRef = useRef<HTMLDivElement>(null);
+  
+  const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR' && r.tipo_equipamento !== 'LUBRIFICANTE_EMBARCACAO' && r.tipo_equipamento !== 'LUBRIFICANTE_CONSOLIDADO';
 
-  // Estado para o AlertDialog de status "completo"
-  const [showCompleteStatusDialog, setShowCompleteStatusDialog] = useState(false);
-
-  useEffect(() => {
-    const loadData = async () => {
-      if (!ptrabId) {
-        toast({
-          title: "Erro",
-          description: "P Trab não selecionado",
-          variant: "destructive",
-        });
-        navigate('/ptrab');
-        return;
-      }
-
-      const { data: ptrab, error: ptrabError } = await supabase
-        .from('p_trab')
-        .select('*')
-        .eq('id', ptrabId)
-        .single();
-
-      if (ptrabError || !ptrab) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar o P Trab",
-          variant: "destructive",
-        });
-        navigate('/ptrab');
-        return;
-      }
-
-      const { data: classeIData, error: classeIError } = await supabase
-        .from('classe_i_registros')
-        .select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3')
-        .eq('p_trab_id', ptrabId);
-
-      if (classeIError) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os registros de Classe I",
-          variant: "destructive",
-        });
-      }
-      
-      // Busca Classe II, V, VI, VII, VIII e IX de suas respectivas tabelas
-      const [
-        { data: classeIIData, error: classeIIError },
-        { data: classeVData, error: classeVError },
-        { data: classeVIData, error: classeVIError },
-        { data: classeVIIData, error: classeVIIError },
-        { data: classeVIIISaudeData, error: classeVIIISaudeError },
-        { data: classeVIIIRemontaData, error: classeVIIIRemontaError },
-        { data: classeIXData, error: classeIXError }, // NOVO: Classe IX
-      ] = await Promise.all([
-        supabase
-          .from('classe_ii_registros')
-          .select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39')
-          .eq('p_trab_id', ptrabId),
-        supabase
-          .from('classe_v_registros')
-          .select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39')
-          .eq('p_trab_id', ptrabId),
-        supabase
-          .from('classe_vi_registros')
-          .select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39')
-          .eq('p_trab_id', ptrabId),
-        supabase
-          .from('classe_vii_registros')
-          .select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39')
-          .eq('p_trab_id', ptrabId),
-        supabase
-          .from('classe_viii_saude_registros')
-          .select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39')
-          .eq('p_trab_id', ptrabId),
-        supabase
-          .from('classe_viii_remonta_registros')
-          .select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais') // REMOVED 'categoria'
-          .eq('p_trab_id', ptrabId),
-        supabase
-          .from('classe_ix_registros') // NOVO: Tabela Classe IX
-          .select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39')
-          .eq('p_trab_id', ptrabId),
-      ]);
-
-      if (classeIIError) { console.error("Erro ao carregar Classe II:", classeIIError); }
-      if (classeVError) { console.error("Erro ao carregar Classe V:", classeVError); }
-      if (classeVIError) { console.error("Erro ao carregar Classe VI:", classeVIError); }
-      if (classeVIIError) { console.error("Erro ao carregar Classe VII:", classeVIIError); }
-      if (classeVIIISaudeError) { console.error("Erro ao carregar Classe VIII Saúde:", classeVIIISaudeError); }
-      if (classeVIIIRemontaError) { console.error("Erro ao carregar Classe VIII Remonta:", classeVIIIRemontaError); }
-      if (classeIXError) { console.error("Erro ao carregar Classe IX:", classeIXError); }
-
-
-      const allClasseItems = [
-        ...(classeIIData || []),
-        ...(classeVData || []),
-        ...(classeVIData || []),
-        ...(classeVIIData || []),
-        // Saúde records
-        ...(classeVIIISaudeData || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde' })),
-        // Remonta records
-        ...(classeVIIIRemontaData || []).map(r => ({ 
-            ...r, 
-            itens_equipamentos: r.itens_remonta, 
-            categoria: 'Remonta/Veterinária',
-            animal_tipo: r.animal_tipo, // Pass animal_tipo through
-            quantidade_animais: r.quantidade_animais, // Pass quantity through
-        })),
-        // Classe IX records
-        ...(classeIXData || []).map(r => ({ 
-            ...r, 
-            itens_equipamentos: r.itens_motomecanizacao, // Mapeia para itens_equipamentos para unificação
-            categoria: r.categoria,
-        })),
-      ];
-
-      const { data: classeIIIData, error: classeIIIError } = await supabase
-        .from('classe_iii_registros')
-        .select('*, detalhamento_customizado')
-        .eq('p_trab_id', ptrabId);
-
-      if (classeIIIError) {
-        console.error("Erro ao carregar Classe III:", classeIIIError);
-      }
-
-      setPtrabData(ptrab);
-      // FILTRO APLICADO AQUI: Apenas Ração Quente é incluída na tabela principal
-      setRegistrosClasseI((classeIData || []).map(r => ({
-          ...r,
-          categoria: (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL',
-          quantidade_r2: r.quantidade_r2 || 0,
-          quantidade_r3: r.quantidade_r3 || 0,
-      })) as ClasseIRegistro[]);
-      setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
-      setRegistrosClasseIII(classeIIIData || []);
-      setLoading(false);
-    };
-
-    loadData();
-  }, [ptrabId, navigate, toast]);
+  // 1. Recalcular Totais Gerais (para HTML/PDF)
+  const totalGeral_33_90_30 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_30, 0), [gruposPorOM, calcularTotaisPorOM]);
+  const totalGeral_33_90_39 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_39, 0), [gruposPorOM, calcularTotaisPorOM]);
+  const totalValorCombustivel = useMemo(() => registrosClasseIII.filter(isCombustivel).reduce((acc, reg) => acc + reg.valor_total, 0), [registrosClasseIII]);
+  
+  const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39;
+  const valorTotalSolicitado = totalGeral_GND3_ND + totalValorCombustivel;
+  
+  const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
 
   const handlePrint = () => {
     window.print();
   };
 
-  const handleExportSuccess = () => {
-    // MUDANÇA: Verifica se o status é 'em_andamento' ou 'aprovado'
-    if (ptrabData && (ptrabData.status === 'em_andamento' || ptrabData.status === 'aprovado')) {
-      setShowCompleteStatusDialog(true);
-    } else {
-      navigate('/ptrab'); // Redireciona se o status já for arquivado ou aberto/minuta
-    }
-  };
-
-  const handleConfirmCompleteStatus = async () => {
-    if (!ptrabData) return;
-
-    try {
-      // MUDANÇA: Altera o status para "arquivado"
-      const { error } = await supabase
-        .from("p_trab")
-        .update({ status: "arquivado" })
-        .eq("id", ptrabData.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Status atualizado!",
-        description: `O status do P Trab ${ptrabData.numero_ptrab} foi alterado para "Arquivado".`,
-        duration: 3000,
-      });
-      navigate('/ptrab');
-    } catch (error) {
-      console.error("Erro ao atualizar status para arquivado:", error);
-      toast({
-        title: "Erro ao atualizar status",
-        description: "Não foi possível alterar o status do P Trab.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    } finally {
-      setShowCompleteStatusDialog(false);
-    }
-  };
-
-  const handleCancelCompleteStatus = () => {
-    setShowCompleteStatusDialog(false);
-    navigate('/ptrab'); // Redireciona mesmo se não mudar o status
-  };
-
-  // --- LÓGICA DE AGRUPAMENTO E CÁLCULO ---
-  const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO' || r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
-  const isCombustivel = (r: ClasseIIIRegistro) => !isLubrificante(r);
-
-  const gruposPorOM: Record<string, GrupoOM> = {};
-
-  const initializeGroup = (name: string) => {
-      if (!gruposPorOM[name]) {
-          gruposPorOM[name] = { 
-              linhasQS: [], 
-              linhasQR: [], 
-              linhasClasseII: [], 
-              linhasClasseV: [],
-              linhasClasseVI: [],
-              linhasClasseVII: [],
-              linhasClasseVIII: [],
-              linhasClasseIX: [], // NOVO
-              linhasLubrificante: [] 
-          };
-      }
-  };
-
-  // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
-  registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
-      // QS goes to OM fornecedora (om_qs)
-      initializeGroup(registro.om_qs);
-      gruposPorOM[registro.om_qs].linhasQS.push({ registro, tipo: 'QS' });
-
-      // QR goes to OM de destino (organizacao)
-      initializeGroup(registro.organizacao);
-      gruposPorOM[registro.organizacao].linhasQR.push({ registro, tipo: 'QR' });
-  });
-  
-  // 2. Processar Classe II/V/VI/VII/VIII/IX (AGORA POR REGISTRO/CATEGORIA)
-  registrosClasseII.forEach((registro) => {
-      // Classe II/V/VI/VII/VIII/IX goes to OM de destino do recurso (organizacao)
-      initializeGroup(registro.organizacao);
-      
-      const omGroup = gruposPorOM[registro.organizacao];
-      
-      if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-          omGroup.linhasClasseV.push({ registro });
-      } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
-          omGroup.linhasClasseVI.push({ registro });
-      } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
-          omGroup.linhasClasseVII.push({ registro });
-      } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
-          omGroup.linhasClasseVIII.push({ registro });
-      } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) { // NOVO
-          omGroup.linhasClasseIX.push({ registro });
-      } else {
-          // Assume Classe II
-          omGroup.linhasClasseII.push({ registro });
-      }
-  });
-
-  // 3. Processar Classe III Lubrificante
-  registrosClasseIII.forEach((registro) => {
-      if (isLubrificante(registro)) {
-          // Lubrificante goes to OM de destino (organizacao)
-          initializeGroup(registro.organizacao);
-          gruposPorOM[registro.organizacao].linhasLubrificante.push({ registro });
-      }
-  });
-
-  // 4. Ordenar as OMs
-  const omsOrdenadas = Object.keys(gruposPorOM).sort((a, b) => {
-      const aTemRM = a.includes('RM') || a.includes('R M');
-      const bTemRM = b.includes('RM') || b.includes('R M');
-      
-      if (aTemRM && !bTemRM) return -1;
-      if (!aTemRM && bTemRM) return 1;
-      return a.localeCompare(b);
-  });
-
-  // 5. Identificar a RM (primeira OM que contém "RM")
-  const nomeRM = omsOrdenadas.find(om => om.includes('RM') || om.includes('R M')) || ptrabData?.nome_om;
-
-  // 6. Função de Cálculo de Totais por OM
-  const calcularTotaisPorOM = (grupo: GrupoOM, nomeOM: string) => {
-    const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.total_qs, 0);
-    const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + linha.registro.total_qr, 0);
-    
-    // Total Classe II/V/VI/VII/VIII/IX (ND 30 + ND 39)
-    const totalClasseII_ND30 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
-    const totalClasseII_ND39 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
-    
-    const totalClasseV_ND30 = grupo.linhasClasseV.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
-    const totalClasseV_ND39 = grupo.linhasClasseV.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
-    
-    const totalClasseVI_ND30 = grupo.linhasClasseVI.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
-    const totalClasseVI_ND39 = grupo.linhasClasseVI.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
-    
-    const totalClasseVII_ND30 = grupo.linhasClasseVII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
-    const totalClasseVII_ND39 = grupo.linhasClasseVII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
-    
-    const totalClasseVIII_ND30 = grupo.linhasClasseVIII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
-    const totalClasseVIII_ND39 = grupo.linhasClasseVIII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
-    
-    const totalClasseIX_ND30 = grupo.linhasClasseIX.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0); // NOVO
-    const totalClasseIX_ND39 = grupo.linhasClasseIX.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0); // NOVO
-    
-    // Total Lubrificante (ND 30)
-    const totalLubrificante = grupo.linhasLubrificante.reduce((acc, linha) => acc + linha.registro.valor_total, 0);
-    
-    // Total ND 30 (Coluna C) = Classe I + Classes (ND 30) + Lubrificante
-    const total_33_90_30 = totalQS + totalQR + 
-                           totalClasseII_ND30 + totalClasseV_ND30 + totalClasseVI_ND30 + totalClasseVII_ND30 + totalClasseVIII_ND30 + totalClasseIX_ND30 +
-                           totalLubrificante; 
-    
-    // Total ND 39 (Coluna D) = Classes (ND 39)
-    const total_33_90_39 = totalClasseII_ND39 + totalClasseV_ND39 + totalClasseVI_ND39 + totalClasseVII_ND39 + totalClasseVIII_ND39 + totalClasseIX_ND39;
-    
-    // Coluna E (TOTAL ND) = Coluna C + Coluna D
-    const total_parte_azul = total_33_90_30 + total_33_90_39;
-    
-    // Total Combustível (Laranja) - Apenas se for a RM
-    const classeIIIDestaOM = (nomeOM === nomeRM) 
-      ? registrosClasseIII.filter(isCombustivel)
-      : [];
-    
-    const valorDiesel = classeIIIDestaOM
-      .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
-      .reduce((acc, reg) => acc + reg.valor_total, 0);
-    const valorGasolina = classeIIIDestaOM
-      .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
-      .reduce((acc, reg) => acc + reg.valor_total, 0);
-    
-    const totalCombustivel = valorDiesel + valorGasolina; // Valor total da Classe III Combustível (ND 39)
-    
-    // Total GND 3 (Valor Total Solicitado) = Total Parte Azul + Total Combustível (Laranja)
-    const total_gnd3 = total_parte_azul + totalCombustivel; 
-    
-    const totalDieselLitros = classeIIIDestaOM
-      .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
-      .reduce((acc, reg) => acc + reg.total_litros, 0);
-    const totalGasolinaLitros = classeIIIDestaOM
-      .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
-      .reduce((acc, reg) => acc + reg.total_litros, 0);
-
-    return {
-      total_33_90_30, // Classe I + Classes (ND 30) + Lubrificante
-      total_33_90_39, // Classes (ND 39)
-      total_parte_azul, // Total ND (C+D)
-      total_combustivel: totalCombustivel, // Valor total da Classe III Combustível (Laranja)
-      total_gnd3, // Valor Total Solicitado (GND 3)
-      totalDieselLitros,
-      totalGasolinaLitros,
-      valorDiesel,
-      valorGasolina,
-    };
-  };
-  // --- FIM LÓGICA DE AGRUPAMENTO E CÁLCULO ---
-
-
   const exportPDF = useCallback(async () => {
-    const element = document.querySelector('.ptrab-print-container');
-    if (!element) {
-      console.error("Element .ptrab-print-container not found.");
-      return;
-    }
+    const element = contentRef.current;
+    if (!element) return;
 
     try {
       const header = document.querySelector('.print\\:hidden');
@@ -740,16 +110,6 @@ const PTrabPrint = () => {
         useCORS: true,
         logging: true,
       });
-
-      if (!canvas) {
-        console.error("html2canvas failed to generate canvas.");
-        toast({
-          title: "Erro ao gerar PDF",
-          description: "Não foi possível renderizar o conteúdo para PDF.",
-          variant: "destructive",
-        });
-        return;
-      }
 
       const imgData = canvas.toDataURL('image/png');
       
@@ -785,7 +145,7 @@ const PTrabPrint = () => {
         position += pageHeight;
       }
 
-      const fileName = `PTrab_${ptrabData?.numero_ptrab}_${ptrabData?.nome_operacao}.pdf`;
+      const fileName = `PTrab_Logistico_${ptrabData?.numero_ptrab}.pdf`;
       pdf.save(fileName);
 
       toast({
@@ -795,7 +155,7 @@ const PTrabPrint = () => {
       });
 
       if (header) header.classList.remove('hidden');
-      handleExportSuccess(); // Chamar a função de sucesso após a exportação
+      onExportSuccess();
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
       toast({
@@ -804,25 +164,17 @@ const PTrabPrint = () => {
         variant: "destructive",
       });
     }
-  }, [ptrabData, toast, handleExportSuccess]);
+  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII]);
 
   const exportExcel = useCallback(async () => {
     if (!ptrabData) return;
 
-    // 1. Recalcular Totais Gerais (para Excel)
-    const totalGeral_33_90_30 = Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_30, 0);
-    const totalGeral_33_90_39 = Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_39, 0);
-    const totalValorCombustivel = registrosClasseIII.filter(isCombustivel).reduce((acc, reg) => acc + reg.valor_total, 0);
-    
-    const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39;
-    const valorTotalSolicitado = totalGeral_GND3_ND + totalValorCombustivel;
-    
     // --- Definição de Estilos e Alinhamentos ---
+    const centerMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
+    const rightMiddleAlignment = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
     const leftTopAlignment = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
     const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
     const rightTopAlignment = { horizontal: 'right' as const, vertical: 'top' as const, wrapText: true };
-    const centerMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
-    const rightMiddleAlignment = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
     
     const cellBorder = {
       top: { style: 'thin' as const },
@@ -834,11 +186,15 @@ const PTrabPrint = () => {
     const baseFontStyle = { name: 'Arial', size: 8 };
     const headerFontStyle = { name: 'Arial', size: 9, bold: true };
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
+    const corAzul = 'FFB4C7E7';
+    const corLaranja = 'FFF8CBAD';
+    const corSubtotal = 'FFD3D3D3';
+    const corTotalOM = 'FFE8E8E8';
     // -------------------------------------------
 
     try {
       const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('P Trab');
+      const worksheet = workbook.addWorksheet('P Trab Logístico');
       
       worksheet.columns = [
         { width: 35 }, // A - DESPESAS
@@ -955,10 +311,6 @@ const PTrabPrint = () => {
         hdr2.getCell(col).style = headerStyle;
       });
       
-      // Cores padronizadas
-      const corAzul = 'FFB4C7E7'; // Natureza de Despesa
-      const corLaranja = 'FFF8CBAD'; // Combustível
-      
       hdr1.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
       hdr1.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       hdr2.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
@@ -973,7 +325,6 @@ const PTrabPrint = () => {
       // Reusable alignment styles for data
       const dataCurrencyStyle = { horizontal: 'right' as const, vertical: 'top' as const, wrapText: true };
       const dataTextStyle = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
-      const dataCenterStyle = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
       
       omsOrdenadas.forEach((nomeOM) => {
         const grupo = gruposPorOM[nomeOM];
@@ -987,12 +338,12 @@ const PTrabPrint = () => {
             ...grupo.linhasQS,
             ...grupo.linhasQR,
             ...grupo.linhasClasseII,
-            ...grupo.linhasLubrificante, // Classe III Lubrificante
+            ...grupo.linhasLubrificante,
             ...grupo.linhasClasseV,
             ...grupo.linhasClasseVI,
             ...grupo.linhasClasseVII,
             ...grupo.linhasClasseVIII,
-            ...grupo.linhasClasseIX, // NOVO
+            ...grupo.linhasClasseIX,
         ];
         
         linhasDespesaOrdenadas.forEach((linha) => {
@@ -1038,20 +389,16 @@ const PTrabPrint = () => {
             valorE = registro.valor_nd_30 + registro.valor_nd_39;
             
             if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                detalhamentoValue = generateClasseIXMemoriaCalculo(registro); // NOVO
+                detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
             } else {
                 detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
             }
             
           } else if ('tipo_equipamento' in linha.registro) { // Classe III Lubrificante
             const registro = linha.registro as ClasseIIIRegistro;
-            const isOmDifferent = registro.organizacao !== nomeOM;
             const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
             
             let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
-            if (isOmDifferent) {
-              despesasLubValue += `\n${registro.organizacao}`;
-            }
             despesasValue = despesasLubValue;
             omValue = `${registro.organizacao}\n(${registro.ug})`;
             valorC = registro.valor_total;
@@ -1361,7 +708,7 @@ const PTrabPrint = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `PTrab_${ptrabData.numero_ptrab}_${ptrabData.nome_operacao}.xlsx`;
+      link.download = `PTrab_Logistico_${ptrabData.numero_ptrab}.xlsx`;
       link.click();
       window.URL.revokeObjectURL(url);
       
@@ -1369,7 +716,7 @@ const PTrabPrint = () => {
         title: "Excel gerado com sucesso!",
         description: `Arquivo exportado com formatação completa.`,
       });
-      handleExportSuccess(); // Chamar a função de sucesso após a exportação
+      onExportSuccess();
     } catch (error) {
       console.error('Erro ao gerar Excel:', error);
       toast({
@@ -1378,64 +725,31 @@ const PTrabPrint = () => {
         variant: "destructive",
       });
     }
-  }, [ptrabData, registrosClasseI, registrosClasseII, registrosClasseIII, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, toast, handleExportSuccess]);
-      
-  // Se estiver carregando, exibe uma mensagem de carregamento.
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando dados para impressão...</p>
-      </div>
-    );
-  }
-
-  if (!ptrabData) return null;
-
-  // 1. Recalcular Totais Gerais (para HTML/PDF)
-  const totalGeral_33_90_30 = Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_30, 0);
-  const totalGeral_33_90_39 = Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_39, 0);
-  const totalValorCombustivel = registrosClasseIII.filter(isCombustivel).reduce((acc, reg) => acc + reg.valor_total, 0);
-  
-  // O total geral agora inclui os novos placeholders
-  const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39; // Soma das colunas azuis (C+D)
-  
-  // O valor total solicitado é a soma de todos os itens (Classe I + Classe II/V/VI/VII/VIII/IX + Classe III)
-  const valorTotalSolicitado = totalGeral_33_90_30 + totalGeral_33_90_39 + totalValorCombustivel;
-  
-  const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
+  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="print:hidden sticky top-0 z-50 bg-background border-b border-border/50 shadow-sm">
-        <div className="container max-w-7xl mx-auto py-4 px-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate('/ptrab')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Button>
-          <div className="flex gap-2">
-            <Button onClick={exportPDF} variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Exportar PDF
-            </Button>
-            <Button onClick={exportExcel} variant="outline">
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              Exportar Excel
-            </Button>
-            <Button onClick={handlePrint} variant="default">
-              <Printer className="mr-2 h-4 w-4" />
-              Imprimir
-            </Button>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div className="flex justify-end gap-2 print:hidden">
+        <Button onClick={exportPDF} variant="outline">
+          <Download className="mr-2 h-4 w-4" />
+          Exportar PDF
+        </Button>
+        <Button onClick={exportExcel} variant="outline">
+          <FileSpreadsheet className="mr-2 h-4 w-4" />
+          Exportar Excel
+        </Button>
+        <Button onClick={handlePrint} variant="default">
+          <Printer className="mr-2 h-4 w-4" />
+          Imprimir
+        </Button>
       </div>
 
-      <div className="ptrab-print-container">
+      <div className="ptrab-print-container" ref={contentRef}>
         <div className="ptrab-header">
           <p className="text-[11pt] font-bold uppercase">Ministério da Defesa</p>
           <p className="text-[11pt] font-bold uppercase">Exército Brasileiro</p>
           <p className="text-[11pt] font-bold uppercase">{ptrabData.comando_militar_area}</p>
           <p className="text-[11pt] font-bold uppercase">{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
-          {/* Linha em branco removida aqui */}
           <p className="text-[11pt] font-bold uppercase">
             Plano de Trabalho Logístico de Solicitação de Recursos Orçamentários e Financeiros Operação {ptrabData.nome_operacao}
           </p>
@@ -1543,20 +857,16 @@ const PTrabPrint = () => {
                         rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
                         
                         if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                            rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro); // NOVO
+                            rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
                         } else {
                             rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
                         }
                         
                     } else if (isLubrificante) { // Classe III Lubrificante
                         const registro = linha.registro as ClasseIIIRegistro;
-                        const isOmDifferent = registro.organizacao !== nomeOM;
                         const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
                         
                         let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
-                        if (isOmDifferent) {
-                          despesasLubValue += `\n${registro.organizacao}`;
-                        }
                         rowData.despesasValue = despesasLubValue;
                         rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
                         rowData.valorC = registro.valor_total;
@@ -1731,7 +1041,7 @@ const PTrabPrint = () => {
             </table>
           </div>
         ) : (
-          <p className="text-center text-muted-foreground py-8">Nenhum registro cadastrado.</p>
+          <p className="text-center text-muted-foreground py-8">Nenhum registro logístico cadastrado.</p>
         )}
 
         <div className="ptrab-footer">
@@ -1806,4 +1116,4 @@ const PTrabPrint = () => {
   );
 };
 
-export default PTrabPrint;
+export default PTrabLogisticoReport;
