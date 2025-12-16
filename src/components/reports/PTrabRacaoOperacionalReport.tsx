@@ -441,9 +441,9 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
                   ))}
                   
                   <tr className="total-row-op">
-                    <td colSpan={2} className="text-right font-bold">TOTAL</td>
-                    <td className="text-center font-bold">{formatNumber(totalRacoesGeral)}</td>
-                    <td></td>
+                    <td colSpan={2} className="text-right font-bold total-cell-op">TOTAL</td>
+                    <td className="text-center font-bold total-cell-op">{formatNumber(totalRacoesGeral)}</td>
+                    <td className="total-cell-op"></td>
                   </tr>
                 </tbody>
               </table>
@@ -490,7 +490,11 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         .col-quantidade-op { width: 10%; text-align: center; }
         .col-detalhamento-op { width: 55%; text-align: left; }
         
-        .total-row-op td { background-color: #B4C7E7 !important; font-weight: bold; border-top: 2px solid #000; }
+        .total-row-op .total-cell-op { 
+            background-color: #B4C7E7 !important; 
+            font-weight: bold; 
+            border-top: 2px solid #000; 
+        }
         
         /* Reset de estilos da tabela principal para evitar conflitos */
         .ptrab-table th { background-color: #E8E8E8; }
