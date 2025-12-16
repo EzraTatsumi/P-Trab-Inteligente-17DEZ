@@ -600,12 +600,15 @@ export const PTrabCostSummary = ({
                 {/* Aba Logística */}
                 <div className="space-y-3 border-l-4 border-orange-500 pl-3">
                   {/* Div 602 Modificado */}
-                  <div className="flex items-center justify-between text-xs font-semibold text-orange-600 mb-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex justify-between items-center text-xs font-semibold text-orange-600 mb-2 border-b pb-1 border-border/50">
+                    <div className="flex items-center gap-2 text-foreground">
                         <Package className="h-3 w-3" />
                         Logística
                     </div>
-                    <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
+                    {/* Ajustado para usar valueClasses e alinhamento à direita, como os totais das classes */}
+                    <span className={cn(valueClasses, "text-sm font-bold text-orange-600 mr-6")}>
+                        {formatCurrency(totals.totalLogisticoGeral)}
+                    </span>
                   </div>
                   
                   {/* Classe I - Subsistência */}
