@@ -1072,7 +1072,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         .ptrab-info { margin-bottom: 0.3rem; font-size: 10pt; line-height: 1.3; }
           .info-item { margin-bottom: 0.15rem; }
         .ptrab-table-wrapper { margin-top: 0.2rem; margin-bottom: 2rem; overflow-x: auto; }
-        .ptrab-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 2px solid #000; line-height: 1.1; }
+        .ptrab-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 2px solid #000; line-height: 1.1; table-layout: fixed; }
         .ptrab-table th, .ptrab-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; }
         .ptrab-table thead th { background-color: #E8E8E8; font-weight: bold; text-align: center; font-size: 9pt; }
         .col-despesas { width: 14%; text-align: left; }
@@ -1085,7 +1085,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         .col-combustivel-data { background-color: #FFF; text-align: center; width: 6%; }
         .col-valor-natureza { background-color: #B4C7E7 !important; text-align: center; padding: 6px 8px; }
         .col-combustivel-data-filled { background-color: #F8CBAD !important; text-align: center; padding: 6px 8px; }
-        .col-detalhamento { width: 28%; text-align: left; }
+        .col-detalhamento { width: 35%; text-align: left; }
         .detalhamento-cell { font-size: 6.5pt; line-height: 1.2; }
         .total-row { background-color: #FFFF99; font-weight: bold; }
         .subtotal-row { background-color: #D3D3D3; font-weight: bold; border-top: 2px solid #000; }
