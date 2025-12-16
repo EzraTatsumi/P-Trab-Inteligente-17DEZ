@@ -218,6 +218,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       
       let currentRow = 1;
       
+      // Função auxiliar corrigida para aceitar apenas 3 argumentos (texto, mergeCols, font)
       const addHeaderRow = (text: string, mergeCols: string = 'A:D', font = titleFontStyle) => {
         const row = worksheet.getRow(currentRow);
         row.getCell(1).value = text;
