@@ -640,17 +640,32 @@ export default function ClasseIForm() {
       const defaultOmQS = omData.rm_vinculacao;
       const defaultUgQS = omData.codug_rm_vinculacao;
       
+      // 1. Reset all input fields to default for NEW configuration
+      setDiasOperacao(0);
+      setEfetivo(0);
+      setNrRefInt(1);
+      setQuantidadeR2(0);
+      setQuantidadeR3(0);
+      setEditingRegistroId(null); // Crucial: Ensure we are not in edit mode
+      setFasesAtividade(["Execução"]);
+      setCustomFaseAtividade("");
+      setSelectedTab('RACAO_QUENTE');
+      
+      // Always set QS defaults based on the selected OM's RM
       setOmQS(defaultOmQS);
       setUgQS(defaultUgQS);
       
-      // Tenta carregar dados existentes para esta OM
+      // 2. Load existing data into consolidation state for preview/warning
       const existingR1 = registros.find(r => r.organizacao === omData.nome_om && r.ug === omData.codug_om && r.categoria === 'RACAO_QUENTE');
       const existingR2 = registros.find(r => r.organizacao === omData.nome_om && r.ug === omData.codug_om && r.categoria === 'RACAO_OPERACIONAL');
       
       const newConsolidatedData: typeof currentOMConsolidatedData = {};
       
       if (existingR1) {
-          const calc = calculateClasseICalculations(existingR1.efetivo, existingR1.diasOperacao, existingR1.nrRefInt || 1, existingR1.valorQS || valorQS, existingR1.valorQR || valorQR);
+          const currentValorQS = existingR1.valorQS || valorQS;
+          const currentValorQR = existingR1.valorQR || valorQR;
+          const calc = calculateClasseICalculations(existingR1.efetivo, existingR1.diasOperacao, existingR1.nrRefInt || 1, currentValorQS, currentValorQR);
+          
           newConsolidatedData.RACAO_QUENTE = {
               id: existingR1.id,
               categoria: 'RACAO_QUENTE',
@@ -662,8 +677,8 @@ export default function ClasseIForm() {
               om_qs: existingR1.omQS,
               ug_qs: existingR1.ugQS,
               nr_ref_int: existingR1.nrRefInt,
-              valor_qs: existingR1.valorQS,
-              valor_qr: existingR1.valorQR,
+              valor_qs: currentValorQS,
+              valor_qr: currentValorQR,
               complemento_qs: existingR1.calculos.complementoQS,
               etapa_qs: existingR1.calculos.etapaQS,
               total_qs: existingR1.calculos.totalQS,
@@ -686,59 +701,16 @@ export default function ClasseIForm() {
               fase_atividade: existingR2.faseAtividade || "",
               quantidade_r2: existingR2.quantidadeR2,
               quantidade_r3: existingR2.quantidadeR3,
-              total_geral: 0, // Ração Operacional não tem custo monetário
+              total_geral: 0,
               total_unidades: (existingR2.quantidadeR2 || 0) + (existingR2.quantidadeR3 || 0),
           };
       }
       
       setCurrentOMConsolidatedData(newConsolidatedData);
-
-      // Preenche campos globais e da aba ativa para edição
-      if (existingR1 || existingR2) {
-          const primaryRecord = existingR1 || existingR2;
-          setDiasOperacao(primaryRecord!.diasOperacao);
-          setEfetivo(primaryRecord!.efetivo || 0);
-          
-          const fasesSalvas = (primaryRecord!.faseAtividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
-          setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
-          setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
-          
-          if (existingR1) {
-              setOmQS(existingR1.omQS || defaultOmQS);
-              setUgQS(existingR1.ugQS || defaultUgQS);
-              setNrRefInt(existingR1.nrRefInt || 1);
-              setValorQS(existingR1.valorQS || valorQS);
-              setValorQR(existingR1.valorQR || valorQR);
-          } else {
-              setOmQS(defaultOmQS);
-              setUgQS(defaultUgQS);
-              setNrRefInt(1);
-          }
-          
-          if (existingR2) {
-              setQuantidadeR2(existingR2.quantidadeR2 || 0);
-              setQuantidadeR3(existingR2.quantidadeR3 || 0);
-          } else {
-              setQuantidadeR2(0);
-              setQuantidadeR3(0);
-          }
-          
-          setEditingRegistroId(existingR1?.id || existingR2?.id || null);
-          setSelectedTab(existingR1 ? 'RACAO_QUENTE' : 'RACAO_OPERACIONAL');
-          
-      } else {
-          setDiasOperacao(0);
-          setEfetivo(0);
-          setNrRefInt(1);
-          setQuantidadeR2(0);
-          setQuantidadeR3(0);
-          setEditingRegistroId(null);
-          setFasesAtividade(["Execução"]);
-          setCustomFaseAtividade("");
-          setSelectedTab('RACAO_QUENTE');
-          if (diretrizAno) {
-              loadDiretrizes(supabase.auth.getUser().then(res => res.data.user?.id || ''));
-          }
+      
+      // 3. Ensure directive values are loaded if needed (if no existing records were found)
+      if (!existingR1 && !existingR2 && diretrizAno) {
+          loadDiretrizes(supabase.auth.getUser().then(res => res.data.user?.id || ''));
       }
       
     } else {
@@ -1055,6 +1027,11 @@ export default function ClasseIForm() {
         setValorQS(existingR1.valorQS || valorQS);
         setValorQR(existingR1.valorQR || valorQR);
         
+        // Recalcular para consolidação (usando valores salvos)
+        const currentValorQS = existingR1.valorQS || valorQS;
+        const currentValorQR = existingR1.valorQR || valorQR;
+        const calc = calculateClasseICalculations(existingR1.efetivo, existingR1.diasOperacao, existingR1.nrRefInt || 1, currentValorQS, currentValorQR);
+        
         newConsolidatedData.RACAO_QUENTE = {
             id: existingR1.id,
             categoria: 'RACAO_QUENTE',
@@ -1066,8 +1043,8 @@ export default function ClasseIForm() {
             om_qs: existingR1.omQS,
             ug_qs: existingR1.ugQS,
             nr_ref_int: existingR1.nrRefInt,
-            valor_qs: existingR1.valorQS,
-            valor_qr: existingR1.valorQR,
+            valor_qs: currentValorQS,
+            valor_qr: currentValorQR,
             complemento_qs: existingR1.calculos.complementoQS,
             etapa_qs: existingR1.calculos.etapaQS,
             total_qs: existingR1.calculos.totalQS,
@@ -1729,7 +1706,6 @@ export default function ClasseIForm() {
                     <Sparkles className="h-5 w-5 text-accent" />
                     OMs Cadastradas
                   </h2>
-                  {/* REMOVIDO BADGE 1732 */}
                 </div>
 
                 <div className="space-y-4">
@@ -1780,7 +1756,6 @@ export default function ClasseIForm() {
                                                             <h4 className="font-semibold text-base text-foreground">
                                                                 {isRacaoQuente ? 'Ração Quente (R1)' : 'Ração Operacional (R2/R3)'}
                                                             </h4>
-                                                            {/* REMOVIDO BADGE 1785 */}
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">
                                                             Efetivo: {registro.efetivo} | Dias: {registro.diasOperacao} | Fases: {fases}
