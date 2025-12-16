@@ -326,22 +326,32 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       const headerFillLaranja = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } }; // FFF8CBAD
 
       // Linha 1 do Cabeçalho (hdr1)
+      // A, B, I (Cinza)
       hdr1.getCell('A').fill = headerFillGray;
       hdr1.getCell('B').fill = headerFillGray;
-      hdr1.getCell('C').fill = headerFillAzul; // C, D, E mescladas
-      hdr1.getCell('F').fill = headerFillLaranja; // F, G, H mescladas
       hdr1.getCell('I').fill = headerFillGray;
+      
+      // C, D, E (Azul) - Aplicar na célula mesclada 'C'
+      hdr1.getCell('C').fill = headerFillAzul; 
+      
+      // F, G, H (Laranja) - Aplicar na célula mesclada 'F'
+      hdr1.getCell('F').fill = headerFillLaranja; 
 
       // Linha 2 do Cabeçalho (hdr2)
+      // A, B, I (Cinza)
       hdr2.getCell('A').fill = headerFillGray;
       hdr2.getCell('B').fill = headerFillGray;
+      hdr2.getCell('I').fill = headerFillGray;
+      
+      // C, D, E (Azul)
       hdr2.getCell('C').fill = headerFillAzul;
       hdr2.getCell('D').fill = headerFillAzul;
       hdr2.getCell('E').fill = headerFillAzul;
+      
+      // F, G, H (Laranja)
       hdr2.getCell('F').fill = headerFillLaranja;
       hdr2.getCell('G').fill = headerFillLaranja;
       hdr2.getCell('H').fill = headerFillLaranja;
-      hdr2.getCell('I').fill = headerFillGray;
       
       currentRow = headerRow2 + 1;
 
