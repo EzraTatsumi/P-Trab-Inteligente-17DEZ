@@ -1380,9 +1380,9 @@ export default function ClasseIForm() {
                     
                     {/* Ração Operacional (R2/R3) - UPDATED STRUCTURE */}
                     <TabsContent value="RACAO_OPERACIONAL" className="mt-4">
-                      <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
-                        <h4 className="font-semibold text-base">Quantitativo de Ração Operacional</h4>
-                        <p className="text-sm text-muted-foreground pt-2">
+                      <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
+                        <h4 className="font-semibold text-base mb-2">Quantitativo de Ração Operacional</h4>
+                        <p className="text-sm text-muted-foreground">
                           Informe a quantidade total de rações operacionais necessárias para o efetivo e dias de atividade.
                         </p>
                         
@@ -1583,7 +1583,6 @@ export default function ClasseIForm() {
                         <Card className="p-4 bg-secondary/10 border-secondary">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h4 className="font-bold text-base text-primary flex items-center gap-2">
-                                    <Package className="h-4 w-4" />
                                     Ração Operacional (R2/R3)
                                 </h4>
                                 <span className="font-extrabold text-lg text-secondary">
@@ -1591,12 +1590,39 @@ export default function ClasseIForm() {
                                 </span>
                             </div>
                             
-                            <div className="space-y-1 text-sm text-muted-foreground">
-                                <p>OM: {organizacao} ({ug})</p>
-                                <p>Efetivo: {currentOMConsolidatedData.RACAO_OPERACIONAL.efetivo} militares</p>
-                                <p>Dias de Atividade: {currentOMConsolidatedData.RACAO_OPERACIONAL.dias_operacao} dias</p>
-                                <p>R2: {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.quantidade_r2 || 0)} un. | R3: {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.quantidade_r3 || 0)} un.</p>
-                                <p>Fase: {formatFasesParaTexto(currentOMConsolidatedData.RACAO_OPERACIONAL.fase_atividade)}</p>
+                            <div className="space-y-1 text-sm">
+                                {/* Detalhes Globais */}
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                    <div className="font-medium text-muted-foreground">OM de Destino</div>
+                                    <div className="font-semibold text-foreground text-right">
+                                        {organizacao} ({ug})
+                                    </div>
+                                    
+                                    <div className="font-medium text-muted-foreground">Efetivo / Dias</div>
+                                    <div className="font-semibold text-foreground text-right">
+                                        {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.efetivo)} mil. / {currentOMConsolidatedData.RACAO_OPERACIONAL.dias_operacao} dias
+                                    </div>
+                                    
+                                    <div className="font-medium text-muted-foreground">Fase da Atividade</div>
+                                    <div className="font-semibold text-foreground text-right">
+                                        {formatFasesParaTexto(currentOMConsolidatedData.RACAO_OPERACIONAL.fase_atividade)}
+                                    </div>
+                                </div>
+                                
+                                <div className="h-px bg-border my-2" />
+                                
+                                {/* Quantidades R2/R3 */}
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-2 text-xs">
+                                    <div className="font-medium text-muted-foreground">Ração Operacional R2 (24h)</div>
+                                    <div className="font-semibold text-secondary text-right">
+                                        {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.quantidade_r2 || 0)} un.
+                                    </div>
+                                    
+                                    <div className="font-medium text-muted-foreground">Ração Operacional R3 (12h)</div>
+                                    <div className="font-semibold text-secondary text-right">
+                                        {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.quantidade_r3 || 0)} un.
+                                    </div>
+                                </div>
                             </div>
                         </Card>
                     )}
