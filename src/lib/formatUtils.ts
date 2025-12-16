@@ -140,3 +140,14 @@ export const getPreviousWeekRange = (): { start: string, end: string } => {
     end: format(friday, 'yyyy-MM-dd'),
   };
 };
+
+/**
+ * Formats a date string into DDMMMAA format (e.g., 25NOV24).
+ * @param dateString The date string or Date object.
+ * @returns Formatted date string.
+ */
+export const formatDateDDMMMAA = (dateString: string | Date): string => {
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  // Use date-fns format: dd (day), MMM (short month name in Portuguese), yy (short year)
+  return format(date, 'ddMMMyy', { locale: ptBR }).toUpperCase();
+};

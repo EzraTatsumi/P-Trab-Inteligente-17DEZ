@@ -3,7 +3,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
 import { useToast } from "@/hooks/use-toast";
-import { formatNumber } from "@/lib/formatUtils";
+import { formatNumber, formatDateDDMMMAA } from "@/lib/formatUtils";
 import { FileSpreadsheet, Printer, Download, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -99,7 +99,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
   
   // NOVO: Função para gerar o nome do arquivo
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
-    const dataAtz = new Date(ptrabData.updated_at).toLocaleDateString('pt-BR');
+    // Use a nova função de formatação
+    const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
     const nomeBase = `P Trab Nr ${ptrabData.numero_ptrab} (Racao Op) - ${ptrabData.nome_operacao} - ${ptrabData.nome_om} - Atz ${dataAtz}`;
     return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
   };
@@ -261,8 +262,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       addInfoRow('4. AÇÕES REALIZADAS OU A REALIZAR:', ptrabData.acoes || '');
       
       const despesasRow = worksheet.getRow(currentRow);
-      despesasRow.getCell(1).value = '5. DESPESAS OPERACIONAIS REALIZADAS OU A REALIZAR:';
-      despesasRow.getCell(1).font = titleFontStyle;
+      despesasRow.getCell('A').value = '5. DESPESAS OPERACIONAIS REALIZADAS OU A REALIZAR:';
+      despesasRow.getCell('A').font = titleFontStyle;
       currentRow++;
       
       const headerRow = worksheet.getRow(currentRow);
