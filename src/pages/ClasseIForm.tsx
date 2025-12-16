@@ -1598,9 +1598,14 @@ export default function ClasseIForm() {
                                         {organizacao} ({ug})
                                     </div>
                                     
-                                    <div className="font-medium text-muted-foreground">Efetivo / Dias</div>
+                                    <div className="font-medium text-muted-foreground">Efetivo</div>
                                     <div className="font-semibold text-foreground text-right">
-                                        {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.efetivo)} mil. / {currentOMConsolidatedData.RACAO_OPERACIONAL.dias_operacao} dias
+                                        {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.efetivo)} militares
+                                    </div>
+                                    
+                                    <div className="font-medium text-muted-foreground">Dias de Atividade</div>
+                                    <div className="font-semibold text-foreground text-right">
+                                        {currentOMConsolidatedData.RACAO_OPERACIONAL.dias_operacao} dias
                                     </div>
                                     
                                     <div className="font-medium text-muted-foreground">Fase da Atividade</div>
@@ -1628,11 +1633,21 @@ export default function ClasseIForm() {
                     )}
                 </div>
                 
-                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
-                  <span className="font-bold text-base text-primary">VALOR TOTAL DA OM</span>
-                  <span className="font-extrabold text-xl text-primary">
-                    {formatCurrency(totalMonetarioConsolidado)}
-                  </span>
+                <div className="flex flex-col p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-base text-primary">VALOR TOTAL DA OM</span>
+                    <span className="font-extrabold text-xl text-primary">
+                      {formatCurrency(totalMonetarioConsolidado)}
+                    </span>
+                  </div>
+                  {totalUnidadesConsolidado > 0 && (
+                    <div className="flex justify-between items-center text-xs pt-1">
+                      <span className="text-muted-foreground">Total de Rações Operacionais</span>
+                      <span className="font-semibold text-secondary">
+                        {formatNumber(totalUnidadesConsolidado)} un.
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex justify-end gap-3 pt-4">
