@@ -1064,7 +1064,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               {/* ========== TOTAL GERAL ========== */}
               {/* Linha em branco para espaçamento */}
               <tr className="spacing-row">
-                <td colSpan={9} style={{ height: '20px', border: 'none', backgroundColor: 'transparent' }}></td>
+                <td colSpan={9} style={{ height: '20px', border: 'none', backgroundColor: 'transparent', borderLeft: 'none', borderRight: 'none' }}></td>
               </tr>
               
               {(() => {
