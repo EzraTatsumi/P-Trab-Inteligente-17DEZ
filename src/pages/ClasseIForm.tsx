@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Trash2, Pencil, XCircle, Sparkles, Check, ChevronsUpDown, Utensils, Package } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Pencil, XCircle, Sparkles, Check, ChevronsUpDown, Utensils, Package, AlertCircle } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,7 @@ import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TablesInsert } from "@/integrations/supabase/types";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // New types for Classe I categories
 type CategoriaClasseI = 'RACAO_QUENTE' | 'RACAO_OPERACIONAL';
@@ -349,6 +350,13 @@ export default function ClasseIForm() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // Helper to get the current phase string
+  const getCurrentFaseFinalString = useMemo(() => {
+    let fasesFinais = [...fasesAtividade];
+    if (customFaseAtividade.trim()) { fasesFinais = [...fasesFinais, customFaseAtividade.trim()]; }
+    return fasesFinais.filter(f => f).join('; ');
+  }, [fasesAtividade, customFaseAtividade]);
+
   const loadDiretrizes = async (userId: string) => {
     try {
       let anoReferencia: number | null = null;
@@ -524,6 +532,67 @@ export default function ClasseIForm() {
   
   // Calculations for RACAO_OPERACIONAL preview
   const totalRacoesOperacionais = quantidadeR2 + quantidadeR3;
+
+  // NOVO MEMO: Verifica se a configuração consolidada está desatualizada
+  const isConsolidationOutdated = useMemo(() => {
+    if (!currentOMConsolidatedData) return false;
+
+    const currentFaseString = getCurrentFaseFinalString;
+    
+    const checkOutdated = (category: CategoriaClasseI): boolean => {
+        const consolidatedRecord = currentOMConsolidatedData[category];
+        if (!consolidatedRecord) return false; // Only check if a record exists in consolidation
+
+        // 1. Check global fields
+        if (consolidatedRecord.organizacao !== organizacao ||
+            consolidatedRecord.ug !== ug ||
+            consolidatedRecord.dias_operacao !== diasOperacao ||
+            consolidatedRecord.efetivo !== efetivo ||
+            consolidatedRecord.fase_atividade !== currentFaseString
+        ) {
+            return true;
+        }
+
+        if (category === 'RACAO_QUENTE') {
+            // 2. Check Ração Quente specific inputs
+            if (consolidatedRecord.om_qs !== omQS ||
+                consolidatedRecord.ug_qs !== ugQS ||
+                consolidatedRecord.nr_ref_int !== nrRefInt
+            ) {
+                return true;
+            }
+            
+            // 3. Check if calculated totals match saved totals (covers changes in valorQS/valorQR)
+            if (calculosRacaoQuente) {
+                // Use a small tolerance for floating point comparison
+                const tolerance = 0.01;
+                if (Math.abs(calculosRacaoQuente.totalQS - (consolidatedRecord.total_qs || 0)) > tolerance ||
+                    Math.abs(calculosRacaoQuente.totalQR - (consolidatedRecord.total_qr || 0)) > tolerance
+                ) {
+                    return true;
+                }
+            }
+        } else if (category === 'RACAO_OPERACIONAL') {
+            // 2. Check Ração Operacional specific inputs
+            if (consolidatedRecord.quantidade_r2 !== quantidadeR2 ||
+                consolidatedRecord.quantidade_r3 !== quantidadeR3
+            ) {
+                return true;
+            }
+        }
+        
+        return false;
+    };
+
+    // Check both categories if they are present in the consolidated data
+    const isRacaoQuenteOutdated = checkOutdated('RACAO_QUENTE');
+    const isRacaoOperacionalOutdated = checkOutdated('RACAO_OPERACIONAL');
+    
+    return isRacaoQuenteOutdated || isRacaoOperacionalOutdated;
+  }, [
+    currentOMConsolidatedData, organizacao, ug, diasOperacao, efetivo, getCurrentFaseFinalString,
+    omQS, ugQS, nrRefInt, quantidadeR2, quantidadeR3, calculosRacaoQuente
+  ]);
 
   const resetFormFields = () => {
     setSelectedOmId(undefined);
@@ -782,6 +851,11 @@ export default function ClasseIForm() {
     if (!ptrabId) return;
     if (!currentOMConsolidatedData || (!currentOMConsolidatedData.RACAO_QUENTE && !currentOMConsolidatedData.RACAO_OPERACIONAL)) {
         toast.error("Nenhuma configuração de categoria foi salva para esta OM.");
+        return;
+    }
+    
+    if (isConsolidationOutdated) {
+        toast.error("A configuração da OM foi alterada. Clique em 'Salvar Item da Categoria' na(s) aba(s) ativa(s) para atualizar os cálculos antes de salvar os registros.");
         return;
     }
     
@@ -1125,7 +1199,10 @@ export default function ClasseIForm() {
 
   // Dados necessários para formatar a fórmula no card de consolidação
   const RACAO_QUENTE_DATA = currentOMConsolidatedData?.RACAO_QUENTE;
-  const diasEtapaSolicitada = calculosRacaoQuente?.diasEtapaSolicitada || 0;
+  // Use the calculated value for display if RACAO_QUENTE_DATA is present, otherwise use the preview calculation
+  const diasEtapaSolicitada = RACAO_QUENTE_DATA 
+    ? calculateClasseICalculations(RACAO_QUENTE_DATA.efetivo, RACAO_QUENTE_DATA.dias_operacao, RACAO_QUENTE_DATA.nr_ref_int || 1, RACAO_QUENTE_DATA.valor_qs || valorQS, RACAO_QUENTE_DATA.valor_qr || valorQR).diasEtapaSolicitada
+    : calculosRacaoQuente?.diasEtapaSolicitada || 0;
 
 
   return (
@@ -1469,10 +1546,20 @@ export default function ClasseIForm() {
             )}
             
             {/* 3. Itens Adicionados e Consolidação */}
-            {isConfigReady && RACAO_QUENTE_DATA && (
+            {isConfigReady && (
               <div className="space-y-4 border-b pb-4 pt-4">
                 <h3 className="text-lg font-semibold">3. Itens Adicionados</h3>
                 
+                {/* Alerta de Validação Final */}
+                {isConsolidationOutdated && (
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="font-medium">
+                            Atenção: A configuração da OM foi alterada. Clique em "Salvar Item da Categoria" na(s) aba(s) ativa(s) para atualizar os cálculos antes de salvar os registros.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 <div className="space-y-4">
                     {/* Card Ração Quente */}
                     {RACAO_QUENTE_DATA && (
@@ -1613,7 +1700,7 @@ export default function ClasseIForm() {
                   <Button 
                     type="button" 
                     onClick={handleFinalSave} 
-                    disabled={loading || !isConfigReady}
+                    disabled={loading || !isConfigReady || isConsolidationOutdated}
                   >
                     {loading ? "Aguarde..." : (editingRegistroId ? "Atualizar Registros" : "Salvar Registros")}
                   </Button>
