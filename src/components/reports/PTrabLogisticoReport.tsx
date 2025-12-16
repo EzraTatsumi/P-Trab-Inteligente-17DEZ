@@ -399,9 +399,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             valorD = registro.valor_nd_39;
             valorE = registro.valor_nd_30 + registro.valor_nd_39;
             
+            // Atribuição do detalhamento
             if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                 detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
             } else {
+                // Simplificando a chamada para garantir que não haja erro
                 detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
             }
             
@@ -431,12 +433,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           
           // --- APLICAÇÃO DE CORES DE FUNDO NAS CÉLULAS DE DADOS ---
           
-          // Colunas Natureza de Despesa (C, D, E)
+          // Colunas Natureza de Despesa (C, D, E) - AZUL
           ['C', 'D', 'E'].forEach(col => {
             row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
           });
           
-          // Colunas Combustível (F, G, H)
+          // Colunas Combustível (F, G, H) - LARANJA (Apenas para Lubrificante)
           if (isLubrificanteRow) {
             ['F', 'G', 'H'].forEach(col => {
               row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
@@ -899,9 +901,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         rowData.valorD = registro.valor_nd_39;
                         rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
                         
+                        // Atribuição do detalhamento
                         if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                             rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
                         } else {
+                            // Simplificando a chamada para garantir que não haja erro
                             rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
                         }
                         
