@@ -186,11 +186,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     const baseFontStyle = { name: 'Arial', size: 8 };
     const headerFontStyle = { name: 'Arial', size: 9, bold: true };
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
-    const corAzul = 'FFB4C7E7'; // Azul claro (Natureza de Despesa)
-    const corLaranja = 'FFF8CBAD'; // Laranja claro (Combustível)
-    const corSubtotal = 'FFD3D3D3'; // Cinza claro (Cabeçalhos A, B, I)
-    const corTotalOM = 'FFE8E8E8'; // Cinza muito claro (Total OM)
-    const corBranca = 'FFFFFFFF'; // Branco
+    const corAzul = 'FFB4C7E7';
+    const corLaranja = 'FFF8CBAD';
+    const corSubtotal = 'FFD3D3D3';
+    const corTotalOM = 'FFE8E8E8';
     // -------------------------------------------
 
     try {
@@ -312,22 +311,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         hdr2.getCell(col).style = headerStyle;
       });
       
-      // Apply blue fill to Natureza de Despesa (C, D, E)
       hdr1.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      hdr1.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       hdr2.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
       hdr2.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
       hdr2.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      
-      // Apply orange fill to Combustível (F, G, H)
-      hdr1.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       hdr2.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       hdr2.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       hdr2.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-      
-      // Apply gray fill to Despesas, OM, Detalhamento (A, B, I)
-      hdr1.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
-      hdr1.getCell('B').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
-      hdr1.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
       
       currentRow = headerRow2 + 1;
 
@@ -347,7 +338,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             ...grupo.linhasQS,
             ...grupo.linhasQR,
             ...grupo.linhasClasseII,
-            ...grupo.linhasLubrificante, // Classe III Lubrificante
+            ...grupo.linhasLubrificante,
             ...grupo.linhasClasseV,
             ...grupo.linhasClasseVI,
             ...grupo.linhasClasseVII,
@@ -364,8 +355,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           let valorC = 0;
           let valorD = 0;
           let valorE = 0;
-          
-          const isLubrificanteRow = 'tipo_equipamento' in linha.registro;
           
           if ('tipo' in linha) { // Classe I (QS/QR)
             const registro = linha.registro as ClasseIRegistro;
@@ -399,15 +388,13 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             valorD = registro.valor_nd_39;
             valorE = registro.valor_nd_30 + registro.valor_nd_39;
             
-            // Atribuição do detalhamento
             if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                 detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
             } else {
-                // Simplificando a chamada para garantir que não haja erro
                 detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
             }
             
-          } else if (isLubrificanteRow) { // Classe III Lubrificante
+          } else if ('tipo_equipamento' in linha.registro) { // Classe III Lubrificante
             const registro = linha.registro as ClasseIIIRegistro;
             const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
             
@@ -431,26 +418,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           row.getCell('I').value = detalhamentoValue;
           row.getCell('I').font = { name: 'Arial', size: 6.5 };
           
-          // --- APLICAÇÃO DE CORES DE FUNDO NAS CÉLULAS DE DADOS ---
-          
-          // Colunas Natureza de Despesa (C, D, E) - AZUL
-          ['C', 'D', 'E'].forEach(col => {
-            row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-          });
-          
-          // Colunas Combustível (F, G, H) - LARANJA (Apenas para Lubrificante)
-          if (isLubrificanteRow) {
-            ['F', 'G', 'H'].forEach(col => {
-              row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-            });
-          } else {
-            // Garante que as células de Combustível fiquem brancas para outras classes
-            ['F', 'G', 'H'].forEach(col => {
-              row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corBranca } };
-            });
-          }
-          
-          // Aplica bordas e fontes
           ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
             row.getCell(col).border = cellBorder;
             row.getCell(col).font = baseFontStyle;
@@ -512,17 +479,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             row.getCell('I').value = detalhamentoCombustivel;
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
             
-            // --- APLICAÇÃO DE CORES DE FUNDO NAS CÉLULAS DE DADOS (Combustível) ---
-            ['F', 'G', 'H'].forEach(col => {
-              row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-            });
-            
-            // Garante que as células de Natureza de Despesa fiquem brancas
-            ['C', 'D', 'E'].forEach(col => {
-              row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corBranca } };
-            });
-            
-            // Aplica bordas e fontes
             ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
               row.getCell(col).border = cellBorder;
               row.getCell(col).font = baseFontStyle;
@@ -551,6 +507,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         subtotalRow.getCell('A').font = { name: 'Arial', size: 8, bold: true };
         
         // Cor de fundo para a linha de subtotal
+        const corSubtotal = 'FFD3D3D3'; // Light Gray
         
         subtotalRow.getCell('C').value = totaisOM.total_33_90_30;
         subtotalRow.getCell('C').numFmt = 'R$ #,##0.00';
@@ -712,7 +669,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         left: { style: 'thin' as const },
         right: { style: 'thin' as const }
       };
-      gndLabelRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
       
       currentRow++;
       
@@ -726,7 +682,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         bottom: { style: 'thick' as const },
         right: { style: 'thin' as const }
       };
-      gndValueRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
       
       currentRow++;
       
@@ -858,7 +813,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   ...linhasDespesaOrdenadas.map((linha) => {
                     const isClasseI = 'tipo' in linha;
                     const isClasseII_IX = 'categoria' in linha.registro;
-                    const isLubrificanteRow = 'tipo_equipamento' in linha.registro;
+                    const isLubrificante = 'tipo_equipamento' in linha.registro;
                     
                     const rowData = {
                         despesasValue: '',
@@ -901,15 +856,13 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         rowData.valorD = registro.valor_nd_39;
                         rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
                         
-                        // Atribuição do detalhamento
                         if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                             rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
                         } else {
-                            // Simplificando a chamada para garantir que não haja erro
                             rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
                         }
                         
-                    } else if (isLubrificanteRow) { // Classe III Lubrificante
+                    } else if (isLubrificante) { // Classe III Lubrificante
                         const registro = linha.registro as ClasseIIIRegistro;
                         const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
                         
@@ -921,54 +874,27 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
                     }
                     
-                    const row = worksheet.getRow(currentRow);
-                    
-                    row.getCell('A').value = rowData.despesasValue;
-                    row.getCell('B').value = rowData.omValue;
-                    row.getCell('C').value = rowData.valorC > 0 ? rowData.valorC : '';
-                    row.getCell('C').numFmt = 'R$ #,##0.00';
-                    row.getCell('D').value = rowData.valorD > 0 ? rowData.valorD : '';
-                    row.getCell('D').numFmt = 'R$ #,##0.00';
-                    row.getCell('E').value = rowData.valorE > 0 ? rowData.valorE : '';
-                    row.getCell('E').numFmt = 'R$ #,##0.00';
-                    
-                    row.getCell('I').value = rowData.detalhamentoValue;
-                    row.getCell('I').font = { name: 'Arial', size: 6.5 };
-                    
-                    // --- APLICAÇÃO DE CORES DE FUNDO NAS CÉLULAS DE DADOS ---
-                    
-                    // Colunas Natureza de Despesa (C, D, E) - AZUL
-                    ['C', 'D', 'E'].forEach(col => {
-                      row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-                    });
-                    
-                    // Colunas Combustível (F, G, H) - LARANJA (Apenas para Lubrificante)
-                    if (isLubrificanteRow) {
-                      ['F', 'G', 'H'].forEach(col => {
-                        row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-                      });
-                    } else {
-                      // Garante que as células de Combustível fiquem brancas para outras classes
-                      ['F', 'G', 'H'].forEach(col => {
-                        row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corBranca } };
-                      });
-                    }
-                    
-                    // Aplica bordas e fontes
-                    ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
-                      row.getCell(col).border = cellBorder;
-                      row.getCell(col).font = baseFontStyle;
-                    });
-                    
-                    // Aplica alinhamentos específicos para dados
-                    row.getCell('A').alignment = dataTextStyle;
-                    row.getCell('B').alignment = centerTopAlignment;
-                    row.getCell('C').alignment = dataCurrencyStyle;
-                    row.getCell('D').alignment = dataCurrencyStyle;
-                    row.getCell('E').alignment = dataCurrencyStyle;
-                    row.getCell('I').alignment = dataTextStyle;
-                    
-                    currentRow++;
+                    return (
+                      <tr key={isClasseI ? `${linha.registro.id}-${linha.tipo}` : isLubrificante ? `lub-${linha.registro.id}` : `classe-ii-${linha.registro.id}`}>
+                        <td className="col-despesas">
+                          {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
+                        </td>
+                        <td className="col-om">
+                          {rowData.omValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
+                        </td>
+                        <td className="col-valor-natureza">{rowData.valorC > 0 ? formatCurrency(rowData.valorC) : ''}</td>
+                        <td className="col-valor-natureza">{rowData.valorD > 0 ? formatCurrency(rowData.valorD) : ''}</td>
+                        <td className="col-valor-natureza">{rowData.valorE > 0 ? formatCurrency(rowData.valorE) : ''}</td>
+                        <td className="col-combustivel-data-filled"></td>
+                        <td className="col-combustivel-data-filled"></td>
+                        <td className="col-combustivel-data-filled"></td>
+                        <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
+                          <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                            {rowData.detalhamentoValue}
+                          </pre>
+                        </td>
+                      </tr>
+                    );
                   }),
                   
                   // 2. Linhas Combustível (APENAS na RM) - Classe III Combustível
@@ -982,67 +908,40 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         default: return tipo;
                       }
                     };
-                    
+
                     const getTipoCombustivelLabel = (tipo: string) => {
-                      if (tipo === 'DIESEL' || tipo === 'OD') return 'ÓLEO DIESEL';
-                      if (tipo === 'GASOLINA' || tipo === 'GAS') return 'GASOLINA';
+                      if (tipo === 'DIESEL' || tipo === 'OD') {
+                        return 'ÓLEO DIESEL';
+                      } else if (tipo === 'GASOLINA' || tipo === 'GAS') {
+                        return 'GASOLINA';
+                      }
                       return tipo;
                     };
-                    
-                    const row = worksheet.getRow(currentRow);
-                    
-                    // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
-                    const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug_qs || '';
-                    
-                    row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
-                    row.getCell('B').value = `${nomeRM}\n(${rmUg})`;
-                    
-                    // Colunas azuis (C, D, E) devem ser vazias/zero para Classe III Combustível
-                    row.getCell('C').value = ''; 
-                    row.getCell('D').value = ''; 
-                    row.getCell('E').value = ''; 
-                    
-                    // Colunas Laranjas (F, G, H) permanecem preenchidas
-                    row.getCell('F').value = Math.round(registro.total_litros);
-                    row.getCell('F').numFmt = '#,##0 "L"';
-                    row.getCell('G').value = registro.preco_litro;
-                    row.getCell('G').numFmt = 'R$ #,##0.00';
-                    row.getCell('H').value = registro.valor_total;
-                    row.getCell('H').numFmt = 'R$ #,##0.00';
-                    
-                    const detalhamentoCombustivel = registro.detalhamento_customizado || registro.detalhamento || '';
-                    
-                    row.getCell('I').value = detalhamentoCombustivel;
-                    row.getCell('I').font = { name: 'Arial', size: 6.5 };
-                    
-                    // --- APLICAÇÃO DE CORES DE FUNDO NAS CÉLULAS DE DADOS (Combustível) ---
-                    ['F', 'G', 'H'].forEach(col => {
-                      row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-                    });
-                    
-                    // Garante que as células de Natureza de Despesa fiquem brancas
-                    ['C', 'D', 'E'].forEach(col => {
-                      row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corBranca } };
-                    });
-                    
-                    // Aplica bordas e fontes
-                    ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
-                      row.getCell(col).border = cellBorder;
-                      row.getCell(col).font = baseFontStyle;
-                    });
-                    
-                    // Aplica alinhamentos específicos para dados de Combustível
-                    row.getCell('A').alignment = dataTextStyle;
-                    row.getCell('B').alignment = centerTopAlignment;
-                    row.getCell('C').alignment = centerTopAlignment;
-                    row.getCell('D').alignment = centerTopAlignment;
-                    row.getCell('E').alignment = centerTopAlignment;
-                    row.getCell('F').alignment = centerTopAlignment;
-                    row.getCell('G').alignment = rightTopAlignment;
-                    row.getCell('H').alignment = rightTopAlignment;
-                    row.getCell('I').alignment = dataTextStyle;
-                    
-                    currentRow++;
+
+                    return (
+                      <tr key={`classe-iii-${registro.id}`}>
+                        <td className="col-despesas">
+                          <div>CLASSE III - {getTipoCombustivelLabel(registro.tipo_combustivel)}</div>
+                          <div>{getTipoEquipamentoLabel(registro.tipo_equipamento)}</div>
+                          <div>{registro.organizacao}</div>
+                        </td>
+                        <td className="col-om">
+                          <div>{nomeRM}</div>
+                          <div>({gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || gruposPorOM[nomeRM]?.linhasQR[0]?.registro.ug || 'UG'})</div>
+                        </td>
+                        <td className="col-valor-natureza"></td> {/* 33.90.30 (Vazio) */}
+                        <td className="col-valor-natureza"></td> {/* 33.90.39 (Vazio) */}
+                        <td className="col-valor-natureza"></td> {/* TOTAL (Vazio) */}
+                        <td className="col-combustivel-data-filled">{formatNumber(registro.total_litros)} L</td>
+                        <td className="col-combustivel-data-filled">{formatCurrency(registro.preco_litro)}</td>
+                        <td className="col-combustivel-data-filled">{formatCurrency(registro.valor_total)}</td>
+                        <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
+                          <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                            {registro.detalhamento_customizado || registro.detalhamento || ''}
+                          </pre>
+                        </td>
+                      </tr>
+                    );
                   }) : []),
                   
                   // Subtotal da OM
@@ -1125,14 +1024,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     {/* Primeira subdivisão: GND - 3 */}
                     <tr style={{ backgroundColor: 'white' }}>
                       <td colSpan={7} style={{ border: 'none' }}></td>
-                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderTop: '1px solid #000', borderRight: '1px solid #000', backgroundColor: '#B4C7E7' }}>GND - 3</td>
+                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderTop: '1px solid #000', borderRight: '1px solid #000' }}>GND - 3</td>
                       <td style={{ border: 'none' }}></td>
                     </tr>
                     
                     {/* Segunda subdivisão: Valor Total */}
                     <tr style={{ backgroundColor: 'white' }}>
                       <td colSpan={7} style={{ border: 'none' }}></td>
-                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: '3px solid #000', borderRight: '1px solid #000', backgroundColor: '#B4C7E7' }}>{formatCurrency(valorTotalSolicitado)}</td>
+                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: '3px solid #000', borderRight: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
                       <td style={{ border: 'none' }}></td>
                     </tr>
                   </>

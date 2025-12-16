@@ -308,34 +308,6 @@ export const generateClasseIMemoriaCalculo = (registro: ClasseIRegistro): { qs: 
     
     const faseFormatada = formatFasesParaTexto(fase_atividade);
     
-    // Função auxiliar para formatar a fórmula de cálculo (copiada de ClasseIForm.tsx)
-    const formatFormula = (
-        efetivo: number,
-        diasOperacao: number,
-        nrRefInt: number,
-        valorEtapa: number,
-        diasEtapaSolicitada: number,
-        tipo: 'complemento' | 'etapa',
-        valorFinal: number
-    ): string => {
-        const E = efetivo;
-        const D = diasOperacao;
-        const R = nrRefInt;
-        const V = valorEtapa;
-        const DES = diasEtapaSolicitada;
-        
-        let formulaString = "";
-        
-        if (tipo === 'complemento') {
-            const minR = Math.min(R, 3);
-            formulaString = `${formatNumber(E)} mil. x ${formatNumber(minR)} ref. int. x (${formatCurrency(V)} / 3) x ${formatNumber(D)} dias`;
-        } else {
-            formulaString = `${formatNumber(E)} mil. x ${formatCurrency(V)} x ${formatNumber(DES)} dias`;
-        }
-        
-        return `${formulaString} = ${formatCurrency(valorFinal)}`;
-    };
-    
     // Memória QS
     const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${efetivo} militares do ${organizacao}, durante ${dias_operacao} dias de ${faseFormatada}.
 OM Fornecedora: ${om_qs} (UG: ${ug_qs})
@@ -346,8 +318,8 @@ Cálculo:
 
 Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
 
-- Complemento: ${formatFormula(efetivo, dias_operacao, nr_ref_int, valor_qs, diasEtapaSolicitada, 'complemento', complemento_qs)}.
-- Etapa a Solicitar: ${formatFormula(efetivo, dias_operacao, nr_ref_int, valor_qs, diasEtapaSolicitada, 'etapa', etapa_qs)}.
+- [${efetivo} militares do ${organizacao} x ${nr_ref_int} Ref Int x (${formatCurrency(valor_qs)}/3) x ${dias_operacao} dias de atividade] = ${formatCurrency(complemento_qs)}.
+- [${efetivo} militares do ${organizacao} x ${formatCurrency(valor_qs)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(etapa_qs)}.
 
 Total QS: ${formatCurrency(total_qs)}.`;
 
@@ -361,8 +333,8 @@ Cálculo:
 
 Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
 
-- Complemento: ${formatFormula(efetivo, dias_operacao, nr_ref_int, valor_qr, diasEtapaSolicitada, 'complemento', complemento_qr)}.
-- Etapa a Solicitar: ${formatFormula(efetivo, dias_operacao, nr_ref_int, valor_qr, diasEtapaSolicitada, 'etapa', etapa_qr)}.
+- [${efetivo} militares do ${organizacao} x ${nr_ref_int} Ref Int x (${formatCurrency(valor_qr)}/3) x ${dias_operacao} dias de atividade] = ${formatCurrency(complemento_qr)}.
+- [${efetivo} militares do ${organizacao} x ${formatCurrency(valor_qr)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(etapa_qr)}.
 
 Total QR: ${formatCurrency(total_qr)}.`;
 
@@ -378,7 +350,6 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro): stri
         return generateClasseIXMemoriaCalculo(registro);
     }
     
-    // Se não for customizado e não for Classe IX, retorna o detalhamento automático
     return registro.detalhamento;
 };
 
