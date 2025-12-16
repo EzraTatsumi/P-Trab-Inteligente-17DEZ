@@ -311,7 +311,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         border: cellBorder
       };
       
-      // Aplica estilo base
+      // Aplica estilo base (fonte, alinhamento, borda)
       ['A', 'B', 'C', 'F', 'I'].forEach(col => {
         hdr1.getCell(col).style = headerStyle;
       });
@@ -320,25 +320,28 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         hdr2.getCell(col).style = headerStyle;
       });
       
-      // 1. Aplica cores de fundo e fonte para A, B, I (Cinza Claro)
+      // --- APLICAÇÃO DAS CORES DE FUNDO CORRIGIDAS ---
       const headerFillGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } }; // FFE8E8E8
-      
-      ['A', 'B', 'I'].forEach(col => {
-        hdr1.getCell(col).fill = headerFillGray;
-        hdr2.getCell(col).fill = headerFillGray;
-      });
-      
-      // 2. Aplica cores de fundo para C, D, E (Azul)
-      hdr1.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      hdr2.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      hdr2.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      hdr2.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      
-      // 3. Aplica cores de fundo para F, G, H (Laranja)
-      hdr1.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-      hdr2.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-      hdr2.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-      hdr2.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      const headerFillAzul = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } }; // FFB4C7E7
+      const headerFillLaranja = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } }; // FFF8CBAD
+
+      // Linha 1 do Cabeçalho (hdr1)
+      hdr1.getCell('A').fill = headerFillGray;
+      hdr1.getCell('B').fill = headerFillGray;
+      hdr1.getCell('C').fill = headerFillAzul; // C, D, E mescladas
+      hdr1.getCell('F').fill = headerFillLaranja; // F, G, H mescladas
+      hdr1.getCell('I').fill = headerFillGray;
+
+      // Linha 2 do Cabeçalho (hdr2)
+      hdr2.getCell('A').fill = headerFillGray;
+      hdr2.getCell('B').fill = headerFillGray;
+      hdr2.getCell('C').fill = headerFillAzul;
+      hdr2.getCell('D').fill = headerFillAzul;
+      hdr2.getCell('E').fill = headerFillAzul;
+      hdr2.getCell('F').fill = headerFillLaranja;
+      hdr2.getCell('G').fill = headerFillLaranja;
+      hdr2.getCell('H').fill = headerFillLaranja;
+      hdr2.getCell('I').fill = headerFillGray;
       
       currentRow = headerRow2 + 1;
 
