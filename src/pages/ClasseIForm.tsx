@@ -241,7 +241,7 @@ Total QR: ${formatCurrency(calculos.totalQR)}.`;
   return { qs: memoriaQS, qr: memoriaQR };
 };
 
-// Nova função para gerar a memória de cálculo formatada para Ração Operacional
+// NOVO: Função para gerar a memória de cálculo formatada para Ração Operacional (Versão Detalhada)
 const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro): string => {
     if (registro.categoria !== 'RACAO_OPERACIONAL') {
         return "Memória não aplicável para Ração Quente.";
@@ -256,14 +256,13 @@ const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro): stri
     const totalRacoes = R2 + R3;
     const faseFormatada = formatFasesParaTexto(faseAtividade);
 
-    return `33.90.30 - Aquisição de Ração Operacional (R2/R3) para ${E} militares do ${organizacao}, durante ${D} dias de ${faseFormatada}.
+    return `33.90.30 – ração operacional para atender ${E} militares, por até ${D} dias, para ser utilizada na Operação de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de tarefas, descentralizadas, afastadas da(s) base(s) de apoio logístico.
 OM de Destino: ${organizacao} (UG: ${ug})
 
-Cálculo:
-- Ração Operacional R2 (24h): ${R2} unidades.
-- Ração Operacional R3 (12h): ${R3} unidades.
+Quantitativo R2 (24h): ${formatNumber(R2)} un.
+Quantitativo R3 (12h): ${formatNumber(R3)} un.
 
-Total de Rções Operacionais: ${totalRacoes} unidades.
+Total de Rções Operacionais: ${formatNumber(totalRacoes)} unidades.
 (Nota: O valor monetário desta solicitação é considerado R$ 0,00 para fins de cálculo logístico interno, conforme diretriz atual, mas o quantitativo é registrado.)`;
 };
 
@@ -1793,24 +1792,27 @@ export default function ClasseIForm() {
 
 
             {/* 5. Memórias de Cálculos Detalhadas */}
-            {registros.filter(r => r.categoria === 'RACAO_QUENTE').length > 0 && (
+            {registros.length > 0 && (
               <div className="space-y-4 mt-6">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   📋 Memórias de Cálculo Detalhadas
                 </h3>
                   
-                  {registros.filter(r => r.categoria === 'RACAO_QUENTE').map((registro) => {
+                  {registros.map((registro) => {
                     const isRacaoQuente = registro.categoria === 'RACAO_QUENTE';
                     const isEditing = editingMemoriaId === registro.id;
                     const hasCustomMemoria = isRacaoQuente && !!(registro.memoriaQSCustomizada || registro.memoriaQRCustomizada);
                     
                     let memoriaQSFinal = "";
                     let memoriaQRFinal = "";
+                    let memoriaOpFinal = "";
                     
                     if (isRacaoQuente) {
                         const { qs, qr } = generateRacaoQuenteMemoriaCalculo(registro);
                         memoriaQSFinal = isEditing ? memoriaQSEdit : (registro.memoriaQSCustomizada || qs);
                         memoriaQRFinal = isEditing ? memoriaQREdit : (registro.memoriaQRCustomizada || qr);
+                    } else {
+                        memoriaOpFinal = generateRacaoOperacionalMemoriaCalculo(registro);
                     }
                     
                     return (
@@ -1931,7 +1933,7 @@ export default function ClasseIForm() {
                               <h5 className="font-bold text-sm text-secondary">Ração Operacional (R2/R3)</h5>
                               <Card className="p-4 bg-background rounded-lg border">
                                 <Textarea
-                                  value={generateRacaoOperacionalMemoriaCalculo(registro)}
+                                  value={memoriaOpFinal}
                                   readOnly
                                   rows={8}
                                   className="font-mono text-xs whitespace-pre-wrap text-foreground"
@@ -1942,35 +1944,6 @@ export default function ClasseIForm() {
                       </Card>
                     );
                   })}
-                  
-                  {/* Adicionando a exibição das memórias de Ração Operacional separadamente, se houver */}
-                  {registros.filter(r => r.categoria === 'RACAO_OPERACIONAL').map((registro) => (
-                      <Card key={registro.id} className="p-6 bg-muted/30">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-lg font-semibold text-foreground">
-                              {registro.organizacao} (UG: {registro.ug})
-                            </h4>
-                            <Badge variant="default" className="bg-secondary text-secondary-foreground">
-                                Ração Operacional (R2/R3)
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="h-px bg-border my-4" /> 
-                        
-                        <div className="space-y-2">
-                          <h5 className="font-bold text-sm text-secondary">Ração Operacional (R2/R3)</h5>
-                          <Card className="p-4 bg-background rounded-lg border">
-                            <Textarea
-                              value={generateRacaoOperacionalMemoriaCalculo(registro)}
-                              readOnly
-                              rows={8}
-                              className="font-mono text-xs whitespace-pre-wrap text-foreground"
-                            />
-                          </Card>
-                        </div>
-                      </Card>
-                  ))}
               </div>
             )}
           

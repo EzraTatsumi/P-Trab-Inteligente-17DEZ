@@ -46,8 +46,12 @@ const generateRacaoOpMemoriaCalculo = (linha: RacaoOpLinha): string => {
     // Para manter a fidelidade ao formato, vamos usar os dados do registro.
     
     return `33.90.30 – ração operacional para atender ${efetivo} militares, por até ${dias_operacao} dias, para ser utilizada na Operação de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de tarefas, descentralizadas, afastadas da(s) base(s) de apoio logístico.
+OM de Destino: ${om} (UG: ${ug})
+
 Quantitativo R2 (24h): ${formatNumber(r2_quantidade)} un.
-Quantitativo R3 (12h): ${formatNumber(r3_quantidade)} un.`;
+Quantitativo R3 (12h): ${formatNumber(r3_quantidade)} un.
+
+Total de Rções Operacionais: ${formatNumber(totalRacoes)} unidades.`;
 };
 
 
@@ -466,7 +470,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
             <p className="text-center text-muted-foreground py-8">Nenhum registro de Ração Operacional cadastrado.</p>
           )}
 
-        <div className="ptrab-footer">
+        <div className="ptrab-footer print-avoid-break">
           <p className="text-[10pt]">{ptrabData.local_om || 'Local'}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
           <div className="signature-block">
             <p className="text-[10pt] font-bold">{ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'}</p>
@@ -492,6 +496,12 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
           /* FORÇA BORDAS FINAS NA IMPRESSÃO */
           .ptrab-table { border: 0.25pt solid #000 !important; }
           .ptrab-table th, .ptrab-table td { border: 0.25pt solid #000 !important; }
+          
+          /* NOVO: Evita quebra de página antes do rodapé */
+          .print-avoid-break {
+            page-break-before: avoid !important;
+            page-break-inside: avoid !important;
+          }
         }
         .ptrab-print-container { max-width: 100%; margin: 0 auto; padding: 2rem 1rem; font-family: Arial, sans-serif; }
         .ptrab-header { text-align: center; margin-bottom: 1.5rem; line-height: 1.4; }

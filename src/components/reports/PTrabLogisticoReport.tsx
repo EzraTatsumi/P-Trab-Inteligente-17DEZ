@@ -1123,7 +1123,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           <p className="text-center text-muted-foreground py-8">Nenhum registro logístico cadastrado.</p>
         )}
 
-        <div className="ptrab-footer">
+        <div className="ptrab-footer print-avoid-break">
           <p className="text-[10pt]">{ptrabData.local_om || 'Local'}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
           <div className="signature-block">
             <p className="text-[10pt] font-bold">{ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'}</p>
@@ -1149,6 +1149,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           /* FORÇA BORDAS FINAS NA IMPRESSÃO */
           .ptrab-table { border: 0.25pt solid #000 !important; }
           .ptrab-table th, .ptrab-table td { border: 0.25pt solid #000 !important; }
+          
+          /* NOVO: Evita quebra de página antes do rodapé */
+          .print-avoid-break {
+            page-break-before: avoid !important;
+            page-break-inside: avoid !important;
+          }
         }
         .ptrab-print-container { max-width: 100%; margin: 0 auto; padding: 2rem 1rem; font-family: Arial, sans-serif; }
         .ptrab-header { text-align: center; margin-bottom: 1.5rem; line-height: 1.4; }
