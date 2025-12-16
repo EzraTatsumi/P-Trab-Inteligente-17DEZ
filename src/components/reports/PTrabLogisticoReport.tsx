@@ -291,6 +291,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       hdr1.getCell('F').value = 'COMBUSTÍVEL';
       hdr1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG';
       
+      // Mesclagens
       worksheet.mergeCells(`A${headerRow1}:A${headerRow2}`);
       worksheet.mergeCells(`B${headerRow1}:B${headerRow2}`);
       worksheet.mergeCells(`C${headerRow1}:E${headerRow1}`);
@@ -311,46 +312,50 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         border: cellBorder
       };
       
-      // Aplica estilo base (fonte, alinhamento, borda)
-      ['A', 'B', 'C', 'F', 'I'].forEach(col => {
-        hdr1.getCell(col).style = headerStyle;
-      });
+      // --- APLICAÇÃO DE ESTILOS E CORES EXPLÍCITAS ANTES DA MESCLAGEM ---
       
-      ['C', 'D', 'E', 'F', 'G', 'H'].forEach(col => {
-        hdr2.getCell(col).style = headerStyle;
-      });
-      
-      // --- APLICAÇÃO DAS CORES DE FUNDO CORRIGIDAS E GARANTIA DE BORDAS THIN ---
-      const headerFillGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } }; // FFE8E8E8
-      const headerFillAzul = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } }; // FFB4C7E7
-      const headerFillLaranja = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } }; // FFF8CBAD
-      
-      const headerCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
-
       // Linha 1 do Cabeçalho (hdr1)
-      headerCols.forEach(col => {
+      // A, B, I (Cinza)
+      ['A', 'B', 'I'].forEach(col => {
           const cell = hdr1.getCell(col);
-          cell.border = cellBorder;
-          if (col === 'A' || col === 'B' || col === 'I') {
-              cell.fill = headerFillGray;
-          } else if (col === 'C') {
-              cell.fill = headerFillAzul;
-          } else if (col === 'F') {
-              cell.fill = headerFillLaranja;
-          }
+          cell.style = headerStyle;
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
       });
-
+      
+      // C, D, E (Azul) - Aplicar cor em todas as células antes da mesclagem C:E
+      ['C', 'D', 'E'].forEach(col => {
+          const cell = hdr1.getCell(col);
+          cell.style = headerStyle;
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      });
+      
+      // F, G, H (Laranja) - Aplicar cor em todas as células antes da mesclagem F:H
+      ['F', 'G', 'H'].forEach(col => {
+          const cell = hdr1.getCell(col);
+          cell.style = headerStyle;
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      });
+      
       // Linha 2 do Cabeçalho (hdr2)
-      headerCols.forEach(col => {
+      // A, B, I (Cinza) - Células mescladas, mas garantimos o estilo
+      ['A', 'B', 'I'].forEach(col => {
           const cell = hdr2.getCell(col);
-          cell.border = cellBorder;
-          if (col === 'A' || col === 'B' || col === 'I') {
-              cell.fill = headerFillGray;
-          } else if (col === 'C' || col === 'D' || col === 'E') {
-              cell.fill = headerFillAzul;
-          } else if (col === 'F' || col === 'G' || col === 'H') {
-              cell.fill = headerFillLaranja;
-          }
+          cell.style = headerStyle;
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+      });
+      
+      // C, D, E (Azul)
+      ['C', 'D', 'E'].forEach(col => {
+          const cell = hdr2.getCell(col);
+          cell.style = headerStyle;
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      });
+      
+      // F, G, H (Laranja)
+      ['F', 'G', 'H'].forEach(col => {
+          const cell = hdr2.getCell(col);
+          cell.style = headerStyle;
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       });
       
       currentRow = headerRow2 + 1;
