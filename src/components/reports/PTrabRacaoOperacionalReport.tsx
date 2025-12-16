@@ -189,8 +189,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     const baseFontStyle = { name: 'Arial', size: 8 };
     const headerFontStyle = { name: 'Arial', size: 9, bold: true };
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
-    const corTotal = 'FFB4C7E7'; // Azul claro (Originalmente usado no Excel)
-    const corTotalWeb = '#E8E8E8'; // Cinza claro (Cor do TH)
+    const corTotal = 'FFB4C7E7'; // Azul claro
     // -------------------------------------------
 
     try {
@@ -307,18 +306,18 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
       totalRow.getCell('A').alignment = centerMiddleAlignment;
       totalRow.getCell('A').font = { name: 'Arial', size: 9, bold: true };
-      totalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotal } }; // Mantendo o azul claro no Excel
+      totalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotal } };
       
       totalRow.getCell('C').value = totalRacoesGeral;
       totalRow.getCell('C').numFmt = '#,##0';
       totalRow.getCell('C').font = { name: 'Arial', size: 9, bold: true };
       totalRow.getCell('C').alignment = centerMiddleAlignment;
-      totalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotal } }; // Mantendo o azul claro no Excel
+      totalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotal } };
       
       totalRow.getCell('D').value = '-';
       totalRow.getCell('D').alignment = centerMiddleAlignment;
       totalRow.getCell('D').font = { name: 'Arial', size: 9, bold: true };
-      totalRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotal } }; // Mantendo o azul claro no Excel
+      totalRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotal } };
       
       ['A', 'B', 'C', 'D'].forEach(col => {
         totalRow.getCell(col).border = cellBorder;
@@ -492,7 +491,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         .col-detalhamento-op { width: 55%; text-align: left; }
         
         .total-row-op .total-cell-op { 
-            background-color: #E8E8E8 !important; /* Alterado para cinza claro */
+            background-color: #B4C7E7 !important; 
             font-weight: bold; 
             border-top: 2px solid #000; 
         }
