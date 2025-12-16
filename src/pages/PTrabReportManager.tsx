@@ -365,13 +365,13 @@ type ReportType =
   'hora_voo' | 
   'dor';
 
-const REPORT_OPTIONS: { value: ReportType, label: string, icon: React.FC<any> }[] = [
-  { value: 'logistico', label: 'P Trab Logístico (Monetário)', icon: Package },
-  { value: 'racao_operacional', label: 'P Trab Cl I - Ração Operacional (Quantitativo)', icon: Utensils },
-  { value: 'operacional', label: 'P Trab Operacional (Placeholder)', icon: Briefcase },
-  { value: 'material_permanente', label: 'P Trab Material Permanente (Placeholder)', icon: HardHat },
-  { value: 'hora_voo', label: 'P Trab Hora de Voo (Placeholder)', icon: Plane },
-  { value: 'dor', label: 'DOR (Placeholder)', icon: ClipboardList },
+const REPORT_OPTIONS: { value: ReportType, label: string, icon: React.FC<any>, iconClass: string }[] = [
+  { value: 'logistico', label: 'P Trab Logístico', icon: Package, iconClass: 'text-orange-500' },
+  { value: 'racao_operacional', label: 'P Trab Cl I - Ração Operacional', icon: Utensils, iconClass: 'text-orange-500' },
+  { value: 'operacional', label: 'P Trab Operacional', icon: Briefcase, iconClass: 'text-blue-500' },
+  { value: 'material_permanente', label: 'P Trab Material Permanente', icon: HardHat, iconClass: 'text-green-500' },
+  { value: 'hora_voo', label: 'P Trab Hora de Voo', icon: Plane, iconClass: 'text-purple-500' },
+  { value: 'dor', label: 'DOR', icon: ClipboardList, iconClass: 'text-gray-500' },
 ];
 
 // =================================================================
@@ -723,14 +723,14 @@ const PTrabReportManager = () => {
               <span className="text-sm font-medium">Relatório:</span>
             </div>
             <Select value={selectedReport} onValueChange={(value) => setSelectedReport(value as ReportType)}>
-              <SelectTrigger className="w-[280px]">
+              <SelectTrigger className="w-[320px]">
                 <SelectValue placeholder="Selecione o Relatório" />
               </SelectTrigger>
               <SelectContent>
                 {REPORT_OPTIONS.map(option => (
                   <SelectItem key={option.value} value={option.value}>
                     <div className="flex items-center gap-2">
-                      <option.icon className="h-4 w-4" />
+                      <option.icon className={`h-4 w-4 ${option.iconClass}`} />
                       {option.label}
                     </div>
                   </SelectItem>
