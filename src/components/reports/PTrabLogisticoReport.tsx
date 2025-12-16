@@ -176,6 +176,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
     const rightTopAlignment = { horizontal: 'right' as const, vertical: 'top' as const, wrapText: true };
     
+    // NOVOS ALINHAMENTOS PARA DADOS (Verticalmente Centralizado)
+    const dataLeftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true };
+    const dataCenterMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
+    const dataRightMiddleAlignment = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
+    
     const cellBorder = {
       top: { style: 'thin' as const },
       left: { style: 'thin' as const },
@@ -326,7 +331,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow = headerRow2 + 1;
 
       // Reusable alignment styles for data
-      const dataCurrencyStyle = { horizontal: 'right' as const, vertical: 'top' as const, wrapText: true };
       const dataTextStyle = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
       
       omsOrdenadas.forEach((nomeOM) => {
@@ -442,15 +446,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           });
           
           // Aplica alinhamentos específicos para dados
-          row.getCell('A').alignment = dataTextStyle;
-          row.getCell('B').alignment = centerTopAlignment;
-          row.getCell('C').alignment = dataCurrencyStyle;
-          row.getCell('D').alignment = dataCurrencyStyle;
-          row.getCell('E').alignment = dataCurrencyStyle;
-          row.getCell('F').alignment = centerTopAlignment;
-          row.getCell('G').alignment = rightTopAlignment;
-          row.getCell('H').alignment = rightTopAlignment;
-          row.getCell('I').alignment = dataTextStyle;
+          row.getCell('A').alignment = dataLeftMiddleAlignment; // Esquerda, Meio
+          row.getCell('B').alignment = dataCenterMiddleAlignment; // Centro, Meio
+          row.getCell('C').alignment = dataRightMiddleAlignment; // Direita, Meio
+          row.getCell('D').alignment = dataRightMiddleAlignment; // Direita, Meio
+          row.getCell('E').alignment = dataRightMiddleAlignment; // Direita, Meio
+          row.getCell('F').alignment = dataCenterMiddleAlignment; // Centro, Meio
+          row.getCell('G').alignment = dataCenterMiddleAlignment; // Centro, Meio
+          row.getCell('H').alignment = dataRightMiddleAlignment; // Direita, Meio
+          row.getCell('I').alignment = dataTextStyle; // Detalhamento (Esquerda, Topo)
           
           currentRow++;
         });
@@ -514,15 +518,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             });
             
             // Aplica alinhamentos específicos para dados de Combustível
-            row.getCell('A').alignment = dataTextStyle;
-            row.getCell('B').alignment = centerTopAlignment;
-            row.getCell('C').alignment = centerTopAlignment;
-            row.getCell('D').alignment = centerTopAlignment;
-            row.getCell('E').alignment = centerTopAlignment;
-            row.getCell('F').alignment = centerTopAlignment;
-            row.getCell('G').alignment = rightTopAlignment;
-            row.getCell('H').alignment = rightTopAlignment;
-            row.getCell('I').alignment = dataTextStyle;
+            row.getCell('A').alignment = dataLeftMiddleAlignment; // Esquerda, Meio
+            row.getCell('B').alignment = dataCenterMiddleAlignment; // Centro, Meio
+            row.getCell('C').alignment = dataCenterMiddleAlignment; // Centro, Meio
+            row.getCell('D').alignment = dataCenterMiddleAlignment; // Centro, Meio
+            row.getCell('E').alignment = dataCenterMiddleAlignment; // Centro, Meio
+            row.getCell('F').alignment = dataCenterMiddleAlignment; // Centro, Meio
+            row.getCell('G').alignment = dataRightMiddleAlignment; // Direita, Meio
+            row.getCell('H').alignment = dataRightMiddleAlignment; // Direita, Meio
+            row.getCell('I').alignment = dataTextStyle; // Detalhamento (Esquerda, Topo)
             
             currentRow++;
           });
