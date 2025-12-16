@@ -1729,9 +1729,7 @@ export default function ClasseIForm() {
                     <Sparkles className="h-5 w-5 text-accent" />
                     OMs Cadastradas
                   </h2>
-                  <Badge variant="secondary" className="text-sm">
-                    {Object.keys(registrosAgrupadosPorOM).length} {Object.keys(registrosAgrupadosPorOM).length === 1 ? 'OM' : 'OMs'}
-                  </Badge>
+                  {/* REMOVIDO BADGE 1732 */}
                 </div>
 
                 <div className="space-y-4">
@@ -1782,11 +1780,7 @@ export default function ClasseIForm() {
                                                             <h4 className="font-semibold text-base text-foreground">
                                                                 {isRacaoQuente ? 'Ração Quente (R1)' : 'Ração Operacional (R2/R3)'}
                                                             </h4>
-                                                            <Badge variant="outline" className={cn(
-                                                                isRacaoQuente ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
-                                                            )}>
-                                                                {isRacaoQuente ? 'Monetário' : 'Quantitativo'}
-                                                            </Badge>
+                                                            {/* REMOVIDO BADGE 1785 */}
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">
                                                             Efetivo: {registro.efetivo} | Dias: {registro.diasOperacao} | Fases: {fases}
@@ -1819,7 +1813,7 @@ export default function ClasseIForm() {
                                                 
                                                 {/* Detalhes da Alocação (QS/QR ou R2/R3) */}
                                                 {isRacaoQuente ? (
-                                                    <div className="pt-2 border-t mt-2 grid grid-cols-2 gap-x-4 text-xs">
+                                                    <div className="pt-2 border-t mt-2 space-y-1 text-xs">
                                                         <div className="flex justify-between">
                                                             <span className="text-muted-foreground">QS ({registro.omQS}):</span>
                                                             <span className="font-medium text-blue-600">{formatCurrency(registro.calculos.totalQS)}</span>
@@ -1830,7 +1824,7 @@ export default function ClasseIForm() {
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="pt-2 border-t mt-2 grid grid-cols-2 gap-x-4 text-xs">
+                                                    <div className="pt-2 border-t mt-2 space-y-1 text-xs">
                                                         <div className="flex justify-between">
                                                             <span className="text-muted-foreground">R2 (24h):</span>
                                                             <span className="font-medium text-secondary">{formatNumber(registro.quantidadeR2 || 0)} un.</span>
