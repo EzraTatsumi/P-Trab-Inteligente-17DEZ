@@ -1507,17 +1507,17 @@ export default function ClasseIForm() {
                                     <div className="font-bold text-blue-600">QS (Subsistência)</div>
                                     <div className="font-bold text-blue-600 text-right">Total: {formatCurrency(RACAO_QUENTE_DATA.total_qs || 0)}</div>
                                     
-                                    <div className="text-muted-foreground pl-2">Complemento de Etapa</div>
-                                    <div className="text-foreground text-right col-span-2 flex justify-between items-center">
-                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.complemento_qs || 0)}</span>
+                                    {/* Complemento de Etapa (QS) */}
+                                    <div className="col-span-2 flex justify-between items-center">
+                                        <span className="text-muted-foreground pl-2">Complemento de Etapa</span>
                                         <span className="text-[10px] text-muted-foreground/80">
                                             {formatFormula(RACAO_QUENTE_DATA.efetivo, RACAO_QUENTE_DATA.dias_operacao, RACAO_QUENTE_DATA.nr_ref_int || 0, RACAO_QUENTE_DATA.valor_qs || 0, 0, 'complemento', RACAO_QUENTE_DATA.complemento_qs || 0)}
                                         </span>
                                     </div>
                                     
-                                    <div className="text-muted-foreground pl-2">Etapa a Solicitar</div>
-                                    <div className="text-foreground text-right col-span-2 flex justify-between items-center">
-                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.etapa_qs || 0)}</span>
+                                    {/* Etapa a Solicitar (QS) */}
+                                    <div className="col-span-2 flex justify-between items-center">
+                                        <span className="text-muted-foreground pl-2">Etapa a Solicitar</span>
                                         <span className="text-[10px] text-muted-foreground/80">
                                             {formatFormula(RACAO_QUENTE_DATA.efetivo, RACAO_QUENTE_DATA.dias_operacao, RACAO_QUENTE_DATA.nr_ref_int || 0, RACAO_QUENTE_DATA.valor_qs || 0, diasEtapaSolicitada, 'etapa', RACAO_QUENTE_DATA.etapa_qs || 0)}
                                         </span>
@@ -1531,17 +1531,17 @@ export default function ClasseIForm() {
                                     <div className="font-bold text-green-600">QR (Reforço)</div>
                                     <div className="font-bold text-green-600 text-right">Total: {formatCurrency(RACAO_QUENTE_DATA.total_qr || 0)}</div>
                                     
-                                    <div className="text-muted-foreground pl-2">Complemento de Etapa</div>
-                                    <div className="text-foreground text-right col-span-2 flex justify-between items-center">
-                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.complemento_qr || 0)}</span>
+                                    {/* Complemento de Etapa (QR) */}
+                                    <div className="col-span-2 flex justify-between items-center">
+                                        <span className="text-muted-foreground pl-2">Complemento de Etapa</span>
                                         <span className="text-[10px] text-muted-foreground/80">
                                             {formatFormula(RACAO_QUENTE_DATA.efetivo, RACAO_QUENTE_DATA.dias_operacao, RACAO_QUENTE_DATA.nr_ref_int || 0, RACAO_QUENTE_DATA.valor_qr || 0, 0, 'complemento', RACAO_QUENTE_DATA.complemento_qr || 0)}
                                         </span>
                                     </div>
                                     
-                                    <div className="text-muted-foreground pl-2">Etapa a Solicitar</div>
-                                    <div className="text-foreground text-right col-span-2 flex justify-between items-center">
-                                        <span className="font-semibold">{formatCurrency(RACAO_QUENTE_DATA.etapa_qr || 0)}</span>
+                                    {/* Etapa a Solicitar (QR) */}
+                                    <div className="col-span-2 flex justify-between items-center">
+                                        <span className="text-muted-foreground pl-2">Etapa a Solicitar</span>
                                         <span className="text-[10px] text-muted-foreground/80">
                                             {formatFormula(RACAO_QUENTE_DATA.efetivo, RACAO_QUENTE_DATA.dias_operacao, RACAO_QUENTE_DATA.nr_ref_int || 0, RACAO_QUENTE_DATA.valor_qr || 0, diasEtapaSolicitada, 'etapa', RACAO_QUENTE_DATA.etapa_qr || 0)}
                                         </span>
