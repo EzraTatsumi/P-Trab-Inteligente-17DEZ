@@ -46,7 +46,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // 1. Fetch Classe I totals (33.90.30)
   const { data: classeIData, error: classeIError } = await supabase
     .from('classe_i_registros')
-    .select('total_qs, total_qr, complemento_qs, etapa_qs, complemento_qr, etapa_qr, efetivo, dias_operacao, nr_ref_int')
+    .select('total_qs, total_qr, complemento_qs, etapa_qs, complemento_qr, etapa_qr, efetivo, dias_operacao, nr_ref_int, quantidade_r2, quantidade_r3')
     .eq('p_trab_id', ptrabId);
 
   if (classeIError) throw classeIError;
@@ -56,6 +56,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   let totalEtapaSolicitadaValor = 0;
   let totalDiasEtapaSolicitada = 0;
   let totalRefeicoesIntermediarias = 0;
+  let totalRacoesOperacionaisGeral = 0; // NOVO: Inicializa o total de Rações Operacionais
 
   (classeIData || []).forEach(record => {
     totalClasseI += record.total_qs + record.total_qr;
@@ -66,6 +67,9 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalDiasEtapaSolicitada += diasEtapaSolicitada;
     
     totalRefeicoesIntermediarias += record.efetivo * record.nr_ref_int * record.dias_operacao;
+    
+    // NOVO: Soma as rações operacionais
+    totalRacoesOperacionaisGeral += (record.quantidade_r2 || 0) + (record.quantidade_r3 || 0);
   });
   
   // 2. Fetch Classe II/V/VI/VII/VIII/IX records from their respective tables
@@ -393,6 +397,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalCombustivel,
     totalMaterialPermanente,
     totalAviacaoExercito,
+    totalRacoesOperacionaisGeral, // NOVO: Retorna o total de rações operacionais
   };
 };
 
@@ -462,6 +467,7 @@ export const PTrabCostSummary = ({
       totalCombustivel: 0,
       totalMaterialPermanente: 0,
       totalAviacaoExercito: 0,
+      totalRacoesOperacionaisGeral: 0, // NOVO: Adiciona ao initialData
     },
   });
   
@@ -609,6 +615,11 @@ export const PTrabCostSummary = ({
                           </div>
                           <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
                             {formatCurrency(totals.totalClasseI)}
+                            {totals.totalRacoesOperacionaisGeral > 0 && (
+                                <span className="text-[9px] text-secondary font-bold ml-1">
+                                    (+{formatNumber(totals.totalRacoesOperacionaisGeral)} un. Rç Op)
+                                </span>
+                            )}
                           </span>
                         </div>
                       </AccordionTrigger>
@@ -634,6 +645,18 @@ export const PTrabCostSummary = ({
                               {formatCurrency(totals.totalEtapaSolicitadaValor)}
                             </span>
                           </div>
+                          {/* Detalhe 3: Ração Operacional */}
+                          {totals.totalRacoesOperacionaisGeral > 0 && (
+                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                <span className="w-1/2 text-left font-semibold text-secondary">Ração Operacional (R2/R3)</span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatNumber(totals.totalRacoesOperacionaisGeral)} un.
+                                </span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatCurrency(0)}
+                                </span>
+                            </div>
+                          )}
                         </div>
                       </AccordionContent>
                     </AccordionItem>
