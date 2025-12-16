@@ -651,7 +651,7 @@ export const PTrabCostSummary = ({
                                 <span className="w-1/4 text-right font-medium">
                                     {formatNumber(totals.totalRacoesOperacionaisGeral)} un.
                                 </span>
-                                <span className="w-1/4 text-right font-medium">
+                                <span className="w-1/4 text-right font-medium text-background">
                                     {formatCurrency(0)}
                                 </span>
                             </div>
@@ -1057,8 +1057,8 @@ export const PTrabCostSummary = ({
                 </h4>
                 <span className={cn("font-bold text-lg", saldoGND4 >= 0 ? "text-green-600" : "text-destructive")}>
                     {formatCurrency(saldoGND4)}
-                </span
-            ></div>
+                </span>
+            </div>
             <Button 
                 onClick={onOpenCreditDialog} 
                 variant="outline" 
