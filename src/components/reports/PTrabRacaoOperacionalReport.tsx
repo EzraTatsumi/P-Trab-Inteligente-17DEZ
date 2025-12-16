@@ -187,7 +187,6 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
 
     // --- Definição de Estilos e Alinhamentos ---
     const centerMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
-    const rightMiddleAlignment = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
     const leftTopAlignment = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
     const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
     
@@ -201,8 +200,10 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     const baseFontStyle = { name: 'Arial', size: 8 };
     const headerFontStyle = { name: 'Arial', size: 9, bold: true };
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
+    
+    // Cores ARGB corrigidas
     const corTotalCinza = 'FFE8E8E8'; // Cinza claro (E8E8E8)
-    const corTotalAzul = 'FFB4C7E7'; // Azul claro
+    const corTotalAzul = 'FFB4C7E7'; // Azul claro (B4C7E7)
     // -------------------------------------------
 
     try {
