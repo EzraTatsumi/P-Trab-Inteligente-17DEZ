@@ -651,9 +651,7 @@ export const PTrabCostSummary = ({
                                 <span className="w-1/4 text-right font-medium">
                                     {formatNumber(totals.totalRacoesOperacionaisGeral)} un.
                                 </span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatCurrency(0)}
-                                </span>
+                                {/* Removido o span de valor monetário (R$ 0,00) */}
                             </div>
                           )}
                         </div>
