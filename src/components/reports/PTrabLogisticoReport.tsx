@@ -1145,6 +1145,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           .ptrab-table thead tr { page-break-inside: avoid; page-break-after: auto; }
           .ptrab-table tbody tr { page-break-inside: avoid; break-inside: avoid; }
           .ptrab-table tr { page-break-inside: avoid; break-inside: avoid; }
+          
+          /* FORÇA BORDAS FINAS NA IMPRESSÃO */
+          .ptrab-table { border: 0.25pt solid #000 !important; }
+          .ptrab-table th, .ptrab-table td { border: 0.25pt solid #000 !important; }
         }
         .ptrab-print-container { max-width: 100%; margin: 0 auto; padding: 2rem 1rem; font-family: Arial, sans-serif; }
         .ptrab-header { text-align: center; margin-bottom: 1.5rem; line-height: 1.4; }
