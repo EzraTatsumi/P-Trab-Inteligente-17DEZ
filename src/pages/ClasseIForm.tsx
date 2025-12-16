@@ -81,7 +81,7 @@ const calculateClasseICalculations = (
   
   if (diasRestantesNoCiclo <= 22 && D >= 30) {
     diasEtapaSolicitada = ciclosCompletos * 8;
-  } else if (diasRestantesNo Ciclo > 22) {
+  } else if (diasRestantesNoCiclo > 22) {
     diasEtapaSolicitada = (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
   } else {
     diasEtapaSolicitada = 0;
