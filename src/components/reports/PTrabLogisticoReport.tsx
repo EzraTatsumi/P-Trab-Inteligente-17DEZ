@@ -320,38 +320,39 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         hdr2.getCell(col).style = headerStyle;
       });
       
-      // --- APLICAÇÃO DAS CORES DE FUNDO CORRIGIDAS ---
+      // --- APLICAÇÃO DAS CORES DE FUNDO CORRIGIDAS E GARANTIA DE BORDAS THIN ---
       const headerFillGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } }; // FFE8E8E8
       const headerFillAzul = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } }; // FFB4C7E7
       const headerFillLaranja = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } }; // FFF8CBAD
+      
+      const headerCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 
       // Linha 1 do Cabeçalho (hdr1)
-      // A, B, I (Cinza)
-      hdr1.getCell('A').fill = headerFillGray;
-      hdr1.getCell('B').fill = headerFillGray;
-      hdr1.getCell('I').fill = headerFillGray;
-      
-      // C, D, E (Azul) - Aplicar na célula mesclada 'C'
-      hdr1.getCell('C').fill = headerFillAzul; 
-      
-      // F, G, H (Laranja) - Aplicar na célula mesclada 'F'
-      hdr1.getCell('F').fill = headerFillLaranja; 
+      // Aplicar cor e borda explicitamente em todas as células, mesmo as mescladas
+      headerCols.forEach(col => {
+          const cell = hdr1.getCell(col);
+          cell.border = cellBorder; // Garante borda simples
+          if (col === 'A' || col === 'B' || col === 'I') {
+              cell.fill = headerFillGray;
+          } else if (col === 'C') { // C, D, E mescladas
+              cell.fill = headerFillAzul;
+          } else if (col === 'F') { // F, G, H mescladas
+              cell.fill = headerFillLaranja;
+          }
+      });
 
       // Linha 2 do Cabeçalho (hdr2)
-      // A, B, I (Cinza)
-      hdr2.getCell('A').fill = headerFillGray;
-      hdr2.getCell('B').fill = headerFillGray;
-      hdr2.getCell('I').fill = headerFillGray;
-      
-      // C, D, E (Azul)
-      hdr2.getCell('C').fill = headerFillAzul;
-      hdr2.getCell('D').fill = headerFillAzul;
-      hdr2.getCell('E').fill = headerFillAzul;
-      
-      // F, G, H (Laranja)
-      hdr2.getCell('F').fill = headerFillLaranja;
-      hdr2.getCell('G').fill = headerFillLaranja;
-      hdr2.getCell('H').fill = headerFillLaranja;
+      headerCols.forEach(col => {
+          const cell = hdr2.getCell(col);
+          cell.border = cellBorder; // Garante borda simples
+          if (col === 'A' || col === 'B' || col === 'I') {
+              cell.fill = headerFillGray;
+          } else if (col === 'C' || col === 'D' || col === 'E') {
+              cell.fill = headerFillAzul;
+          } else if (col === 'F' || col === 'G' || col === 'H') {
+              cell.fill = headerFillLaranja;
+          }
+      });
       
       currentRow = headerRow2 + 1;
 
@@ -465,6 +466,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           row.getCell('I').value = detalhamentoValue;
           row.getCell('I').font = { name: 'Arial', size: 6.5 };
           
+          // GARANTIA DE BORDA SIMPLES PARA LINHAS DE DADOS
           ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
             row.getCell(col).border = cellBorder;
             row.getCell(col).font = baseFontStyle;
@@ -537,6 +539,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             row.getCell('I').value = detalhamentoCombustivel;
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
             
+            // GARANTIA DE BORDA SIMPLES PARA LINHAS DE DADOS
             ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
               row.getCell(col).border = cellBorder;
               row.getCell(col).font = baseFontStyle;
@@ -623,6 +626,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         totalOMRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
         totalOMRow.getCell('E').style = { ...totalOMRow.getCell('E').style, alignment: centerMiddleAlignment, border: cellBorder };
         
+        // GARANTIA DE BORDA SIMPLES PARA LINHA TOTAL OM
         ['A', 'B', 'C', 'D', 'F', 'G', 'H', 'I'].forEach(col => {
             totalOMRow.getCell(col).border = cellBorder;
             if (!totalOMRow.getCell(col).fill) {
