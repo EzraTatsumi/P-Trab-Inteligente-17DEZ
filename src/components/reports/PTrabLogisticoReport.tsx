@@ -190,7 +190,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     };
     
     const baseFontStyle = { name: 'Arial', size: 8 };
-    const headerFontStyle = { name: 'Arial', size: 9, bold: true };
+    const headerFontStyle = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF000000' } }; // Cor da fonte preta
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
     
     // Cores padronizadas para o Excel (ARGB)
@@ -326,11 +326,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           cell.border = cellBorder;
           if (col === 'A' || col === 'B' || col === 'I') {
               cell.fill = headerFillGray;
-              // Reforçando a cor da fonte para preto (já é o padrão do headerFontStyle, mas garantindo)
-              cell.font = { ...headerFontStyle, color: { argb: 'FF000000' } }; 
-          } else if (col === 'C') {
+          } else if (col === 'C' || col === 'D' || col === 'E') {
               cell.fill = headerFillAzul;
-          } else if (col === 'F') {
+              cell.font = headerFontStyle; // Garante letra preta
+          } else if (col === 'F' || col === 'G' || col === 'H') {
               cell.fill = headerFillLaranja;
           }
       });
@@ -342,10 +341,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           cell.border = cellBorder;
           if (col === 'A' || col === 'B' || col === 'I') {
               cell.fill = headerFillGray;
-              // Reforçando a cor da fonte para preto
-              cell.font = { ...headerFontStyle, color: { argb: 'FF000000' } }; 
           } else if (col === 'C' || col === 'D' || col === 'E') {
               cell.fill = headerFillAzul;
+              cell.font = headerFontStyle; // Garante letra preta
           } else if (col === 'F' || col === 'G' || col === 'H') {
               cell.fill = headerFillLaranja;
           }
