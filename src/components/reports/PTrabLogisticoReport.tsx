@@ -727,9 +727,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       gndValueRow.getCell('H').numFmt = 'R$ #,##0.00';
       gndValueRow.getCell('H').font = { bold: true };
       gndValueRow.getCell('H').alignment = centerMiddleAlignment;
+      // CORREÇÃO AQUI: Borda inferior fina
       gndValueRow.getCell('H').border = {
         left: { style: 'thin' as const },
-        bottom: { style: 'thick' as const },
+        bottom: { style: 'thin' as const }, // Alterado de 'thick' para 'thin'
         right: { style: 'thin' as const }
       };
       
@@ -1089,7 +1090,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     {/* Segunda subdivisão: Valor Total */}
                     <tr style={{ backgroundColor: 'white' }}>
                       <td colSpan={7} style={{ border: 'none' }}></td>
-                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: '3px solid #000', borderRight: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
+                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: { style: 'thin' as const }, borderRight: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
                       <td style={{ border: 'none' }}></td>
                     </tr>
                   </>
