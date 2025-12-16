@@ -333,6 +333,8 @@ export default function ClasseIForm() {
   const [editingRegistroId, setEditingRegistroId] = useState<string | null>(null);
   
   // NOVO ESTADO: Consolidação dos dados da OM atual (R1 e R2/R3)
+  // Este estado só deve ser preenchido ao salvar a configuração (handleSaveCategoryConfig)
+  // ou ao clicar em editar (handleEditRegistro).
   const [currentOMConsolidatedData, setCurrentOMConsolidatedData] = useState<{
     RACAO_QUENTE?: PendingRecord;
     RACAO_OPERACIONAL?: PendingRecord;
@@ -547,6 +549,7 @@ export default function ClasseIForm() {
 
   // NOVO MEMO: Verifica se a configuração consolidada está desatualizada
   const isConsolidationOutdated = useMemo(() => {
+    // Esta verificação só é relevante se houver dados consolidados (ou seja, se o usuário salvou ou está editando)
     if (!currentOMConsolidatedData) return false;
 
     const currentFaseString = getCurrentFaseFinalString;
@@ -633,25 +636,19 @@ export default function ClasseIForm() {
 
   const handleOMChange = async (omData: OMData | undefined) => {
     if (omData) {
-      // 1. Set OM/UG and RM defaults
+      // 1. Reset ALL input fields and consolidation state (NEW RECORD MODE)
+      resetFormFields();
+      
+      // 2. Set OM/UG and RM defaults
       setSelectedOmId(omData.id);
       setOrganizacao(omData.nome_om);
       setUg(omData.codug_om);
       setOmQS(omData.rm_vinculacao);
       setUgQS(omData.codug_rm_vinculacao);
       
-      // 2. Reset ALL input fields to default for NEW configuration
-      setDiasOperacao(0);
-      setEfetivo(0);
-      setNrRefInt(1);
-      setQuantidadeR2(0);
-      setQuantidadeR3(0);
-      setEditingRegistroId(null); // Crucial: Ensure we are not in edit mode
-      setFasesAtividade(["Execução"]);
-      setCustomFaseAtividade("");
-      setSelectedTab('RACAO_QUENTE');
-      
       // 3. Load existing data into consolidation state for preview/warning (Seção 3)
+      // NOTE: We load existing data here ONLY to show the user what is already saved for this OM,
+      // but we do NOT use this data to pre-fill the input fields (Seção 1/2).
       const existingR1 = registros.find(r => r.organizacao === omData.nome_om && r.ug === omData.codug_om && r.categoria === 'RACAO_QUENTE');
       const existingR2 = registros.find(r => r.organizacao === omData.nome_om && r.ug === omData.codug_om && r.categoria === 'RACAO_OPERACIONAL');
       
@@ -702,7 +699,12 @@ export default function ClasseIForm() {
           };
       }
       
-      setCurrentOMConsolidatedData(newConsolidatedData);
+      // Se houver dados existentes, carregamos para a consolidação.
+      if (existingR1 || existingR2) {
+          setCurrentOMConsolidatedData(newConsolidatedData);
+      } else {
+          setCurrentOMConsolidatedData(null);
+      }
       
       // 4. Ensure directive values are loaded if needed
       if (diretrizAno) {
@@ -766,11 +768,16 @@ export default function ClasseIForm() {
             return;
         }
         
-        // Se estiver em modo de edição, usa o ID existente
-        const existingId = currentOMConsolidatedData?.RACAO_QUENTE?.id;
+        // Tenta encontrar o ID existente no DB para esta categoria
+        const existingDbRecord = registros.find(r => r.organizacao === organizacao && r.ug === ug && r.categoria === 'RACAO_QUENTE');
+        
+        // Se estiver em modo de edição, usa o ID do registro que está sendo editado.
+        // Se for um novo registro, mas já existe um no DB, o ID do DB é usado para UPDATE.
+        // Se for um novo registro e não existe no DB, o ID é undefined (INSERT).
+        const recordId = editingRegistroId || existingDbRecord?.id;
         
         newRecord = {
-            id: editingRegistroId && existingId ? existingId : undefined, // Usa ID apenas se estiver em modo de edição
+            id: recordId,
             categoria: 'RACAO_QUENTE',
             organizacao: organizacao,
             ug: ug,
@@ -800,11 +807,14 @@ export default function ClasseIForm() {
         
         const totalUnidades = quantidadeR2 + quantidadeR3;
         
-        // Se estiver em modo de edição, usa o ID existente
-        const existingId = currentOMConsolidatedData?.RACAO_OPERACIONAL?.id;
+        // Tenta encontrar o ID existente no DB para esta categoria
+        const existingDbRecord = registros.find(r => r.organizacao === organizacao && r.ug === ug && r.categoria === 'RACAO_OPERACIONAL');
+        
+        // Se estiver em modo de edição, usa o ID do registro que está sendo editado.
+        const recordId = editingRegistroId || existingDbRecord?.id;
         
         newRecord = {
-            id: editingRegistroId && existingId ? existingId : undefined, // Usa ID apenas se estiver em modo de edição
+            id: recordId,
             categoria: 'RACAO_OPERACIONAL',
             organizacao: organizacao,
             ug: ug,
@@ -820,12 +830,12 @@ export default function ClasseIForm() {
     
     if (newRecord) {
         // Ao salvar a configuração da categoria, atualizamos o estado de consolidação
-        // e resetamos o modo de edição, pois a configuração atual é a nova base.
+        // e definimos o ID do registro que está sendo editado (para o botão Salvar Final).
         setCurrentOMConsolidatedData(prev => ({
             ...prev,
             [selectedTab]: newRecord,
         }));
-        setEditingRegistroId(newRecord.id || null); // Mantém o ID se for uma edição, ou null se for novo
+        setEditingRegistroId(newRecord.id || null); // Mantém o ID se for uma edição/update, ou null se for novo
         toast.success(`Configuração de ${selectedTab === 'RACAO_QUENTE' ? 'Ração Quente' : 'Ração Operacional'} salva temporariamente.`);
     }
   };
@@ -1025,7 +1035,7 @@ export default function ClasseIForm() {
         setValorQS(existingR1.valorQS || valorQS);
         setValorQR(existingR1.valorQR || valorQR);
         
-        // Preencher o estado de consolidação com os dados do DB
+        // Recalcular para consolidação (usando valores salvos)
         const currentValorQS = existingR1.valorQS || valorQS;
         const currentValorQR = existingR1.valorQR || valorQR;
         const calc = calculateClasseICalculations(existingR1.efetivo, existingR1.diasOperacao, existingR1.nrRefInt || 1, currentValorQS, currentValorQR);
@@ -1177,6 +1187,7 @@ export default function ClasseIForm() {
 
   const displayFases = [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
   
+  // isConfigReady agora depende apenas se currentOMConsolidatedData foi preenchido (pelo save ou edit)
   const isConfigReady = currentOMConsolidatedData && (currentOMConsolidatedData.RACAO_QUENTE || currentOMConsolidatedData.RACAO_OPERACIONAL);
   const totalMonetarioConsolidado = (currentOMConsolidatedData?.RACAO_QUENTE?.total_geral || 0);
   const totalUnidadesConsolidado = (currentOMConsolidatedData?.RACAO_OPERACIONAL?.total_unidades || 0);
