@@ -189,7 +189,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     const baseFontStyle = { name: 'Arial', size: 8 };
     const headerFontStyle = { name: 'Arial', size: 9, bold: true };
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
-    const corTotal = 'FFB4C7E7'; // Azul claro
+    const corTotal = 'FFE8E8E8'; // Cinza claro (E8E8E8)
     // -------------------------------------------
 
     try {
@@ -491,7 +491,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         .col-detalhamento-op { width: 55%; text-align: left; }
         
         .total-row-op .total-cell-op { 
-            background-color: #B4C7E7 !important; 
+            background-color: #E8E8E8 !important; /* Cinza claro */
+            color: #000000; /* Preto */
             font-weight: bold; 
             border-top: 2px solid #000; 
         }
