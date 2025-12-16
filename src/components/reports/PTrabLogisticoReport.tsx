@@ -312,50 +312,43 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         border: cellBorder
       };
       
-      // --- APLICAÇÃO DE ESTILOS E CORES EXPLÍCITAS ANTES DA MESCLAGEM ---
+      // --- APLICAÇÃO DE ESTILOS E CORES EXPLÍCITAS ---
+      const headerFillGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } }; // FFE8E8E8
+      const headerFillAzul = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } }; // FFB4C7E7
+      const headerFillLaranja = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } }; // FFF8CBAD
       
+      const headerCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+
       // Linha 1 do Cabeçalho (hdr1)
-      // A, B, I (Cinza)
-      ['A', 'B', 'I'].forEach(col => {
+      headerCols.forEach(col => {
           const cell = hdr1.getCell(col);
           cell.style = headerStyle;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+          cell.border = cellBorder;
+          if (col === 'A' || col === 'B' || col === 'I') {
+              cell.fill = headerFillGray;
+              // Reforçando a cor da fonte para preto (já é o padrão do headerFontStyle, mas garantindo)
+              cell.font = { ...headerFontStyle, color: { argb: 'FF000000' } }; 
+          } else if (col === 'C') {
+              cell.fill = headerFillAzul;
+          } else if (col === 'F') {
+              cell.fill = headerFillLaranja;
+          }
       });
-      
-      // C, D, E (Azul) - Aplicar cor em todas as células antes da mesclagem C:E
-      ['C', 'D', 'E'].forEach(col => {
-          const cell = hdr1.getCell(col);
-          cell.style = headerStyle;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      });
-      
-      // F, G, H (Laranja) - Aplicar cor em todas as células antes da mesclagem F:H
-      ['F', 'G', 'H'].forEach(col => {
-          const cell = hdr1.getCell(col);
-          cell.style = headerStyle;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-      });
-      
+
       // Linha 2 do Cabeçalho (hdr2)
-      // A, B, I (Cinza) - Células mescladas, mas garantimos o estilo
-      ['A', 'B', 'I'].forEach(col => {
+      headerCols.forEach(col => {
           const cell = hdr2.getCell(col);
           cell.style = headerStyle;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
-      });
-      
-      // C, D, E (Azul)
-      ['C', 'D', 'E'].forEach(col => {
-          const cell = hdr2.getCell(col);
-          cell.style = headerStyle;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-      });
-      
-      // F, G, H (Laranja)
-      ['F', 'G', 'H'].forEach(col => {
-          const cell = hdr2.getCell(col);
-          cell.style = headerStyle;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+          cell.border = cellBorder;
+          if (col === 'A' || col === 'B' || col === 'I') {
+              cell.fill = headerFillGray;
+              // Reforçando a cor da fonte para preto
+              cell.font = { ...headerFontStyle, color: { argb: 'FF000000' } }; 
+          } else if (col === 'C' || col === 'D' || col === 'E') {
+              cell.fill = headerFillAzul;
+          } else if (col === 'F' || col === 'G' || col === 'H') {
+              cell.fill = headerFillLaranja;
+          }
       });
       
       currentRow = headerRow2 + 1;
