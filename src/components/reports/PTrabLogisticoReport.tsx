@@ -524,7 +524,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             row.getCell('D').alignment = dataCenterMiddleAlignment; // Centro, Meio
             row.getCell('E').alignment = dataCenterMiddleAlignment; // Centro, Meio
             row.getCell('F').alignment = dataCenterMiddleAlignment; // Centro, Meio
-            row.getCell('G').alignment = dataRightMiddleAlignment; // Direita, Meio
+            row.getCell('G').alignment = dataCenterMiddleAlignment; // Centro, Meio
             row.getCell('H').alignment = dataRightMiddleAlignment; // Direita, Meio
             row.getCell('I').alignment = dataTextStyle; // Detalhamento (Esquerda, Topo)
             
