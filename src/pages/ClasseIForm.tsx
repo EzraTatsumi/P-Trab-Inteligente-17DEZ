@@ -1593,19 +1593,9 @@ export default function ClasseIForm() {
                             <div className="space-y-1 text-sm">
                                 {/* Detalhes Globais */}
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                                    <div className="font-medium text-muted-foreground">OM de Destino</div>
+                                    <div className="font-medium text-muted-foreground">Efetivo / Dias</div>
                                     <div className="font-semibold text-foreground text-right">
-                                        {organizacao} ({ug})
-                                    </div>
-                                    
-                                    <div className="font-medium text-muted-foreground">Efetivo</div>
-                                    <div className="font-semibold text-foreground text-right">
-                                        {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.efetivo)} militares
-                                    </div>
-                                    
-                                    <div className="font-medium text-muted-foreground">Dias de Atividade</div>
-                                    <div className="font-semibold text-foreground text-right">
-                                        {currentOMConsolidatedData.RACAO_OPERACIONAL.dias_operacao} dias
+                                        {formatNumber(currentOMConsolidatedData.RACAO_OPERACIONAL.efetivo)} mil. / {currentOMConsolidatedData.RACAO_OPERACIONAL.dias_operacao} dias
                                     </div>
                                     
                                     <div className="font-medium text-muted-foreground">Fase da Atividade</div>
