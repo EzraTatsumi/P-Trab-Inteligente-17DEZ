@@ -81,7 +81,7 @@ const calculateClasseICalculations = (
   
   if (diasRestantesNoCiclo <= 22 && D >= 30) {
     diasEtapaSolicitada = ciclosCompletos * 8;
-  } else if (diasRestantesNoCiclo > 22) {
+  } else if (diasRestantesNo Ciclo > 22) {
     diasEtapaSolicitada = (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
   } else {
     diasEtapaSolicitada = 0;
@@ -858,8 +858,12 @@ export default function ClasseIForm() {
             categoria: r.categoria,
             quantidade_r2: r.quantidade_r2,
             quantidade_r3: r.quantidade_r3,
-            // Campos de Ração Quente zerados/nulos
-            om_qs: null, ug_qs: null, nr_ref_int: null, valor_qs: null, valor_qr: null,
+            // Campos de Ração Quente zerados/placeholders (necessário pois são NOT NULL no DB)
+            om_qs: "", 
+            ug_qs: "", 
+            nr_ref_int: 0, 
+            valor_qs: 0, 
+            valor_qr: 0,
             complemento_qs: 0, etapa_qs: 0, total_qs: 0, complemento_qr: 0, etapa_qr: 0, total_qr: 0, total_geral: 0,
             memoria_calculo_qs_customizada: memoriaQSCustomizada,
             memoria_calculo_qr_customizada: memoriaQRCustomizada,
