@@ -626,19 +626,20 @@ export default function ClasseIForm() {
     setSelectedTab('RACAO_QUENTE');
     setCurrentOMConsolidatedData(null); // Reset consolidated data
     
-    if (diretrizAno) {
-        loadDiretrizes(supabase.auth.getUser().then(res => res.data.user?.id || ''));
-    } else {
-        setValorQS(9.0);
-        setValorQR(6.0);
-    }
+    // Removendo a chamada desnecessária a loadDiretrizes aqui
+    // if (diretrizAno) {
+    //     loadDiretrizes(supabase.auth.getUser().then(res => res.data.user?.id || ''));
+    // } else {
+    //     setValorQS(9.0);
+    //     setValorQR(6.0);
+    // }
   };
 
   const handleOMChange = async (omData: OMData | undefined) => {
+    // 1. Reset ALL input fields and consolidation state
+    resetFormFields();
+    
     if (omData) {
-      // 1. Reset ALL input fields and consolidation state (NEW RECORD MODE)
-      resetFormFields();
-      
       // 2. Set OM/UG and RM defaults
       setSelectedOmId(omData.id);
       setOrganizacao(omData.nome_om);
@@ -647,8 +648,6 @@ export default function ClasseIForm() {
       setUgQS(omData.codug_rm_vinculacao);
       
       // 3. Load existing data into consolidation state for preview/warning (Seção 3)
-      // NOTE: We load existing data here ONLY to show the user what is already saved for this OM,
-      // but we do NOT use this data to pre-fill the input fields (Seção 1/2).
       const existingR1 = registros.find(r => r.organizacao === omData.nome_om && r.ug === omData.codug_om && r.categoria === 'RACAO_QUENTE');
       const existingR2 = registros.find(r => r.organizacao === omData.nome_om && r.ug === omData.codug_om && r.categoria === 'RACAO_OPERACIONAL');
       
@@ -708,11 +707,13 @@ export default function ClasseIForm() {
       
       // 4. Ensure directive values are loaded if needed
       if (diretrizAno) {
-          loadDiretrizes(supabase.auth.getUser().then(res => res.data.user?.id || ''));
+          // Recarrega diretrizes para garantir que valorQS/QR estejam atualizados
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) await loadDiretrizes(user.id);
       }
       
     } else {
-      resetFormFields();
+      // Se a OM for deselecionada, o resetFormFields já limpa tudo.
     }
   };
 
@@ -774,7 +775,7 @@ export default function ClasseIForm() {
         // Se estiver em modo de edição, usa o ID do registro que está sendo editado.
         // Se for um novo registro, mas já existe um no DB, o ID do DB é usado para UPDATE.
         // Se for um novo registro e não existe no DB, o ID é undefined (INSERT).
-        const recordId = editingRegistroId || existingDbRecord?.id;
+        const recordId = existingDbRecord?.id; // Não usamos editingRegistroId aqui, pois ele é o ID do registro que iniciou a edição, mas queremos o ID do registro da categoria atual.
         
         newRecord = {
             id: recordId,
@@ -811,7 +812,7 @@ export default function ClasseIForm() {
         const existingDbRecord = registros.find(r => r.organizacao === organizacao && r.ug === ug && r.categoria === 'RACAO_OPERACIONAL');
         
         // Se estiver em modo de edição, usa o ID do registro que está sendo editado.
-        const recordId = editingRegistroId || existingDbRecord?.id;
+        const recordId = existingDbRecord?.id;
         
         newRecord = {
             id: recordId,
@@ -835,7 +836,12 @@ export default function ClasseIForm() {
             ...prev,
             [selectedTab]: newRecord,
         }));
-        setEditingRegistroId(newRecord.id || null); // Mantém o ID se for uma edição/update, ou null se for novo
+        // O editingRegistroId é usado apenas para controlar o estado de edição/atualização do formulário principal.
+        // Se houver um ID em qualquer uma das categorias, consideramos que estamos em modo de edição.
+        const existingR1Id = currentOMConsolidatedData?.RACAO_QUENTE?.id;
+        const existingR2Id = currentOMConsolidatedData?.RACAO_OPERACIONAL?.id;
+        setEditingRegistroId(existingR1Id || existingR2Id || newRecord.id || null);
+        
         toast.success(`Configuração de ${selectedTab === 'RACAO_QUENTE' ? 'Ração Quente' : 'Ração Operacional'} salva temporariamente.`);
     }
   };
