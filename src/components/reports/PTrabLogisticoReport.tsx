@@ -186,10 +186,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     const baseFontStyle = { name: 'Arial', size: 8 };
     const headerFontStyle = { name: 'Arial', size: 9, bold: true };
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
-    const corAzul = 'FFB4C7E7'; // Azul claro
-    const corLaranja = 'FFF8CBAD'; // Laranja claro
-    const corSubtotal = 'FFD3D3D3'; // Cinza claro (Usado para cabeçalhos A, B, I)
-    const corTotalOM = 'FFE8E8E8';
+    const corAzul = 'FFB4C7E7'; // Azul claro (Natureza de Despesa)
+    const corLaranja = 'FFF8CBAD'; // Laranja claro (Combustível)
+    const corSubtotal = 'FFD3D3D3'; // Cinza claro (Cabeçalhos A, B, I)
+    const corTotalOM = 'FFE8E8E8'; // Cinza muito claro (Total OM)
     // -------------------------------------------
 
     try {
@@ -426,6 +426,26 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           row.getCell('I').value = detalhamentoValue;
           row.getCell('I').font = { name: 'Arial', size: 6.5 };
           
+          // --- APLICAÇÃO DE CORES DE FUNDO NAS CÉLULAS DE DADOS ---
+          
+          // Colunas Natureza de Despesa (Azul)
+          ['C', 'D', 'E'].forEach(col => {
+            row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+          });
+          
+          // Colunas Combustível (Laranja) - Apenas para Lubrificante (Classe III)
+          if (isLubrificante) {
+            ['F', 'G', 'H'].forEach(col => {
+              row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+            });
+          } else {
+            // Garante que as células de Combustível fiquem brancas (sem cor) para outras classes
+            ['F', 'G', 'H'].forEach(col => {
+              row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+            });
+          }
+          
+          // Aplica bordas e fontes
           ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
             row.getCell(col).border = cellBorder;
             row.getCell(col).font = baseFontStyle;
@@ -487,6 +507,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             row.getCell('I').value = detalhamentoCombustivel;
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
             
+            // --- APLICAÇÃO DE CORES DE FUNDO NAS CÉLULAS DE DADOS (Combustível) ---
+            ['F', 'G', 'H'].forEach(col => {
+              row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+            });
+            
+            // Garante que as células de Natureza de Despesa fiquem brancas
+            ['C', 'D', 'E'].forEach(col => {
+              row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+            });
+            
+            // Aplica bordas e fontes
             ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
               row.getCell(col).border = cellBorder;
               row.getCell(col).font = baseFontStyle;
@@ -515,7 +546,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         subtotalRow.getCell('A').font = { name: 'Arial', size: 8, bold: true };
         
         // Cor de fundo para a linha de subtotal
-        const corSubtotal = 'FFD3D3D3'; // Light Gray
         
         subtotalRow.getCell('C').value = totaisOM.total_33_90_30;
         subtotalRow.getCell('C').numFmt = 'R$ #,##0.00';
