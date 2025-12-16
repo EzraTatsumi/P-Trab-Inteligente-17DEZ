@@ -332,9 +332,7 @@ export default function ClasseIForm() {
   const [selectedTab, setSelectedTab] = useState<CategoriaClasseI>('RACAO_QUENTE');
   const [editingRegistroId, setEditingRegistroId] = useState<string | null>(null);
   
-  // NOVO ESTADO: Consolidação dos dados da OM atual (R1 e R2/R3)
-  // Este estado só deve ser preenchido ao salvar a configuração (handleSaveCategoryConfig)
-  // ou ao clicar em editar (handleEditRegistro).
+  // NOVO ESTADO: Consolidação dos dados do registro atual em edição/criação
   const [currentOMConsolidatedData, setCurrentOMConsolidatedData] = useState<{
     RACAO_QUENTE?: PendingRecord;
     RACAO_OPERACIONAL?: PendingRecord;
@@ -639,68 +637,8 @@ export default function ClasseIForm() {
       setOmQS(omData.rm_vinculacao);
       setUgQS(omData.codug_rm_vinculacao);
       
-      // 3. Load existing data into consolidation state for preview/warning (Seção 3)
-      const existingR1 = registros.find(r => r.organizacao === omData.nome_om && r.ug === omData.codug_om && r.categoria === 'RACAO_QUENTE');
-      const existingR2 = registros.find(r => r.organizacao === omData.nome_om && r.ug === omData.codug_om && r.categoria === 'RACAO_OPERACIONAL');
-      
-      const newConsolidatedData: typeof currentOMConsolidatedData = {};
-      
-      if (existingR1) {
-          const currentValorQS = existingR1.valorQS || valorQS;
-          const currentValorQR = existingR1.valorQR || valorQR;
-          const calc = calculateClasseICalculations(existingR1.efetivo, existingR1.diasOperacao, existingR1.nrRefInt || 1, currentValorQS, currentValorQR);
-          
-          newConsolidatedData.RACAO_QUENTE = {
-              // IMPORTANTE: Não passamos o ID aqui. O ID só é passado no modo de edição (handleEditRegistro).
-              // Isso garante que, ao salvar, o sistema tente um INSERT (se não houver conflito) ou um UPDATE
-              // se o registro for encontrado pelo par (organizacao, ug, categoria).
-              // No entanto, para evitar o UPDATE indesejado, vamos garantir que o ID só seja usado no handleFinalSave
-              // SE o editingRegistroId estiver setado.
-              id: existingR1.id, // Mantemos o ID aqui para que o handleFinalSave possa fazer o upsert correto.
-              categoria: 'RACAO_QUENTE',
-              organizacao: existingR1.organizacao,
-              ug: existingR1.ug,
-              dias_operacao: existingR1.diasOperacao,
-              efetivo: existingR1.efetivo || 0,
-              fase_atividade: existingR1.faseAtividade || "",
-              om_qs: existingR1.omQS,
-              ug_qs: existingR1.ugQS,
-              nr_ref_int: existingR1.nrRefInt,
-              valor_qs: currentValorQS,
-              valor_qr: currentValorQR,
-              complemento_qs: existingR1.calculos.complementoQS,
-              etapa_qs: existingR1.calculos.etapaQS,
-              total_qs: existingR1.calculos.totalQS,
-              complemento_qr: existingR1.calculos.complementoQR,
-              etapa_qr: existingR1.calculos.etapaQR,
-              total_qr: existingR1.calculos.totalQR,
-              total_geral: existingR1.calculos.totalQS + existingR1.calculos.totalQR,
-              total_unidades: 0,
-          };
-      }
-      
-      if (existingR2) {
-          newConsolidatedData.RACAO_OPERACIONAL = {
-              id: existingR2.id,
-              categoria: 'RACAO_OPERACIONAL',
-              organizacao: existingR2.organizacao,
-              ug: existingR2.ug,
-              dias_operacao: existingR2.diasOperacao,
-              efetivo: existingR2.efetivo || 0,
-              fase_atividade: existingR2.faseAtividade || "",
-              quantidade_r2: existingR2.quantidadeR2,
-              quantidade_r3: existingR2.quantidadeR3,
-              total_geral: 0,
-              total_unidades: (existingR2.quantidadeR2 || 0) + (existingR2.quantidadeR3 || 0),
-          };
-      }
-      
-      // Se houver dados existentes, carregamos para a consolidação.
-      if (existingR1 || existingR2) {
-          setCurrentOMConsolidatedData(newConsolidatedData);
-      } else {
-          setCurrentOMConsolidatedData(null);
-      }
+      // 3. NUNCA CARREGAR DADOS EXISTENTES PARA currentOMConsolidatedData AQUI.
+      // A Seção 3 só deve ser preenchida após o usuário clicar em 'Salvar Item da Categoria'.
       
       // 4. Ensure directive values are loaded if needed
       if (diretrizAno) {
@@ -766,14 +704,11 @@ export default function ClasseIForm() {
             return;
         }
         
-        // Tenta encontrar o ID existente no DB para esta categoria
-        const existingDbRecord = registros.find(r => r.organizacao === organizacao && r.ug === ug && r.categoria === 'RACAO_QUENTE');
-        
-        // Se houver um registro existente, usamos o ID para que o handleFinalSave possa fazer o UPDATE.
-        const recordId = existingDbRecord?.id; 
+        // Se estiver editando, usa o ID do registro que está sendo editado. Caso contrário, ID é undefined (novo registro).
+        const recordId = editingRegistroId; 
         
         newRecord = {
-            id: recordId,
+            id: recordId || undefined, // Se for edição, usa o ID. Se for novo, é undefined.
             categoria: 'RACAO_QUENTE',
             organizacao: organizacao,
             ug: ug,
@@ -803,14 +738,11 @@ export default function ClasseIForm() {
         
         const totalUnidades = quantidadeR2 + quantidadeR3;
         
-        // Tenta encontrar o ID existente no DB para esta categoria
-        const existingDbRecord = registros.find(r => r.organizacao === organizacao && r.ug === ug && r.categoria === 'RACAO_OPERACIONAL');
-        
-        // Se houver um registro existente, usamos o ID para que o handleFinalSave possa fazer o UPDATE.
-        const recordId = existingDbRecord?.id;
+        // Se estiver editando, usa o ID do registro que está sendo editado. Caso contrário, ID é undefined (novo registro).
+        const recordId = editingRegistroId;
         
         newRecord = {
-            id: recordId,
+            id: recordId || undefined,
             categoria: 'RACAO_OPERACIONAL',
             organizacao: organizacao,
             ug: ug,
@@ -831,11 +763,15 @@ export default function ClasseIForm() {
             [selectedTab]: newRecord,
         }));
         
-        // O editingRegistroId é usado apenas para controlar o rótulo do botão "Salvar Registros"
-        // e o fluxo de deleção/upsert no handleFinalSave.
-        const existingR1Id = currentOMConsolidatedData?.RACAO_QUENTE?.id || newRecord.id;
-        const existingR2Id = currentOMConsolidatedData?.RACAO_OPERACIONAL?.id || newRecord.id;
-        setEditingRegistroId(existingR1Id || existingR2Id || null);
+        // Se for um novo registro, definimos o editingRegistroId para o ID temporário do PendingRecord
+        // para que o botão "Salvar Registros" mostre "Salvar Registros" (se for novo) ou "Atualizar Registros" (se for edição).
+        // No entanto, como estamos permitindo múltiplos registros, o editingRegistroId só deve ser setado
+        // se o usuário estiver realmente editando (via handleEditRegistro).
+        // Se for um novo lançamento, o editingRegistroId deve ser null.
+        if (!editingRegistroId) {
+            // Se for um novo lançamento, garantimos que o ID não seja setado aqui,
+            // mas o currentOMConsolidatedData é preenchido.
+        }
         
         toast.success(`Configuração de ${selectedTab === 'RACAO_QUENTE' ? 'Ração Quente' : 'Ração Operacional'} salva temporariamente.`);
     }
@@ -848,8 +784,6 @@ export default function ClasseIForm() {
         return;
     }
     
-    // A verificação isConsolidationOutdated agora é crucial, pois ela compara o que está no formulário
-    // (que foi salvo em currentOMConsolidatedData) com o que está sendo exibido.
     if (isConsolidationOutdated) {
         toast.error("A configuração da OM foi alterada. Clique em 'Salvar Item da Categoria' na(s) aba(s) ativa(s) para atualizar os cálculos antes de salvar os registros.");
         return;
@@ -858,16 +792,19 @@ export default function ClasseIForm() {
     setLoading(true);
     
     const recordsToSave: TablesInsert<'classe_i_registros'>[] = [];
-    const recordsToDelete: string[] = [];
-    
-    const currentOmName = organizacao;
-    const currentOmUg = ug;
     
     // 1. Processar Ração Quente
     if (currentOMConsolidatedData.RACAO_QUENTE) {
         const r = currentOMConsolidatedData.RACAO_QUENTE;
-        // Encontrar o registro existente no DB para preservar memórias customizadas
-        const existingMemoria = registros.find(reg => reg.organizacao === currentOmName && reg.ug === currentOmUg && reg.categoria === 'RACAO_QUENTE');
+        
+        // Se estiver editando, buscamos a memória customizada do registro original
+        let memoriaQSCustomizada = null;
+        let memoriaQRCustomizada = null;
+        if (r.id) {
+            const existingMemoria = registros.find(reg => reg.id === r.id);
+            memoriaQSCustomizada = existingMemoria?.memoriaQSCustomizada || null;
+            memoriaQRCustomizada = existingMemoria?.memoriaQRCustomizada || null;
+        }
         
         recordsToSave.push({
             p_trab_id: ptrabId,
@@ -891,22 +828,24 @@ export default function ClasseIForm() {
             total_geral: r.total_geral,
             quantidade_r2: 0,
             quantidade_r3: 0,
-            // Preservar memórias customizadas
-            memoria_calculo_qs_customizada: existingMemoria?.memoriaQSCustomizada || null,
-            memoria_calculo_qr_customizada: existingMemoria?.memoriaQRCustomizada || null,
-            id: r.id, // Passa o ID para o upsert
+            memoria_calculo_qs_customizada: memoriaQSCustomizada,
+            memoria_calculo_qr_customizada: memoriaQRCustomizada,
+            id: r.id, // ID será usado para UPDATE se existir, ou ignorado para INSERT
         });
-    } else {
-        // Se não há Ração Quente configurada, mas existia no DB, marcamos para deletar
-        const existingR1 = registros.find(r => r.organizacao === currentOmName && r.ug === currentOmUg && r.categoria === 'RACAO_QUENTE');
-        if (existingR1) recordsToDelete.push(existingR1.id);
     }
     
     // 2. Processar Ração Operacional
     if (currentOMConsolidatedData.RACAO_OPERACIONAL) {
         const r = currentOMConsolidatedData.RACAO_OPERACIONAL;
-        // Encontrar o registro existente no DB para preservar memórias customizadas
-        const existingMemoria = registros.find(reg => reg.organizacao === currentOmName && reg.ug === currentOmUg && reg.categoria === 'RACAO_OPERACIONAL');
+        
+        // Se estiver editando, buscamos a memória customizada do registro original
+        let memoriaQSCustomizada = null;
+        let memoriaQRCustomizada = null;
+        if (r.id) {
+            const existingMemoria = registros.find(reg => reg.id === r.id);
+            memoriaQSCustomizada = existingMemoria?.memoriaQSCustomizada || null;
+            memoriaQRCustomizada = existingMemoria?.memoriaQRCustomizada || null;
+        }
         
         recordsToSave.push({
             p_trab_id: ptrabId,
@@ -921,37 +860,22 @@ export default function ClasseIForm() {
             // Campos de Ração Quente zerados/nulos
             om_qs: null, ug_qs: null, nr_ref_int: null, valor_qs: null, valor_qr: null,
             complemento_qs: 0, etapa_qs: 0, total_qs: 0, complemento_qr: 0, etapa_qr: 0, total_qr: 0, total_geral: 0,
-            // Preservar memórias customizadas (embora não sejam usadas para R2/R3)
-            memoria_calculo_qs_customizada: existingMemoria?.memoriaQSCustomizada || null,
-            memoria_calculo_qr_customizada: existingMemoria?.memoriaQRCustomizada || null,
-            id: r.id, // Passa o ID para o upsert
+            memoria_calculo_qs_customizada: memoriaQSCustomizada,
+            memoria_calculo_qr_customizada: memoriaQRCustomizada,
+            id: r.id, // ID será usado para UPDATE se existir, ou ignorado para INSERT
         });
-    } else {
-        // Se não há Ração Operacional configurada, mas existia no DB, marcamos para deletar
-        const existingR2 = registros.find(r => r.organizacao === currentOmName && r.ug === currentOmUg && r.categoria === 'RACAO_OPERACIONAL');
-        if (existingR2) recordsToDelete.push(existingR2.id);
     }
     
     try {
-        // 3. Deletar registros antigos que não foram reconfigurados
-        if (recordsToDelete.length > 0) {
-            const { error: deleteError } = await supabase
-                .from("classe_i_registros")
-                .delete()
-                .in("id", recordsToDelete);
-            if (deleteError) throw deleteError;
-        }
-        
-        // 4. Inserir/Atualizar registros (Upsert)
-        // Usamos upsert (insert com onConflict) para garantir que, se o registro existir (pelo ID), ele seja atualizado.
-        // Se o ID for nulo (novo registro), ele insere.
+        // 3. Inserir/Atualizar registros (Upsert)
+        // Se o ID estiver presente, ele atualiza. Se não, ele insere um novo.
         const { error: upsertError } = await supabase
             .from("classe_i_registros")
             .upsert(recordsToSave, { onConflict: 'id' });
             
         if (upsertError) throw upsertError;
         
-        toast.success(`Registros de Classe I para ${organizacao} salvos com sucesso!`);
+        toast.success(`Registro de Classe I para ${organizacao} salvo com sucesso!`);
         await updatePTrabStatusIfAberto(ptrabId);
         resetFormFields();
         loadRegistros(ptrabId);
@@ -1010,79 +934,68 @@ export default function ClasseIForm() {
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
 
-    // 3. Encontrar todos os registros da OM no DB (para preencher o formulário de edição)
-    const allRecordsForOM = registros.filter(r => r.organizacao === registro.organizacao && r.ug === registro.ug);
-    
-    const existingR1 = allRecordsForOM.find(r => r.categoria === 'RACAO_QUENTE');
-    const existingR2 = allRecordsForOM.find(r => r.categoria === 'RACAO_OPERACIONAL');
-    
+    // 3. Preencher Ração Quente/Operacional (se for o caso)
     const newConsolidatedData: typeof currentOMConsolidatedData = {};
     
-    // 4. Preencher Ração Quente (se existir)
-    if (existingR1) {
-        setOmQS(existingR1.omQS || "");
-        setUgQS(existingR1.ugQS || "");
-        setNrRefInt(existingR1.nrRefInt || 1);
-        setValorQS(existingR1.valorQS || valorQS);
-        setValorQR(existingR1.valorQR || valorQR);
+    if (registro.categoria === 'RACAO_QUENTE') {
+        setOmQS(registro.omQS || "");
+        setUgQS(registro.ugQS || "");
+        setNrRefInt(registro.nrRefInt || 1);
+        setValorQS(registro.valorQS || valorQS);
+        setValorQR(registro.valorQR || valorQR);
         
-        // Recalcular para consolidação (usando valores salvos)
-        const currentValorQS = existingR1.valorQS || valorQS;
-        const currentValorQR = existingR1.valorQR || valorQR;
-        const calc = calculateClasseICalculations(existingR1.efetivo, existingR1.diasOperacao, existingR1.nrRefInt || 1, currentValorQS, currentValorQR);
+        const currentValorQS = registro.valorQS || valorQS;
+        const currentValorQR = registro.valorQR || valorQR;
+        const calc = calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 1, currentValorQS, currentValorQR);
         
         newConsolidatedData.RACAO_QUENTE = {
-            id: existingR1.id,
+            id: registro.id,
             categoria: 'RACAO_QUENTE',
-            organizacao: existingR1.organizacao,
-            ug: existingR1.ug,
-            dias_operacao: existingR1.diasOperacao,
-            efetivo: existingR1.efetivo || 0,
-            fase_atividade: existingR1.faseAtividade || "",
-            om_qs: existingR1.omQS,
-            ug_qs: existingR1.ugQS,
-            nr_ref_int: existingR1.nrRefInt,
+            organizacao: registro.organizacao,
+            ug: registro.ug,
+            dias_operacao: registro.diasOperacao,
+            efetivo: registro.efetivo || 0,
+            fase_atividade: registro.faseAtividade || "",
+            om_qs: registro.omQS,
+            ug_qs: registro.ugQS,
+            nr_ref_int: registro.nrRefInt,
             valor_qs: currentValorQS,
             valor_qr: currentValorQR,
-            complemento_qs: existingR1.calculos.complementoQS,
-            etapa_qs: existingR1.calculos.etapaQS,
-            total_qs: existingR1.calculos.totalQS,
-            complemento_qr: existingR1.calculos.complementoQR,
-            etapa_qr: existingR1.calculos.etapaQR,
-            total_qr: existingR1.calculos.totalQR,
-            total_geral: existingR1.calculos.totalQS + existingR1.calculos.totalQR,
+            complemento_qs: registro.calculos.complementoQS,
+            etapa_qs: registro.calculos.etapaQS,
+            total_qs: registro.calculos.totalQS,
+            complemento_qr: registro.calculos.complementoQR,
+            etapa_qr: registro.calculos.etapaQR,
+            total_qr: registro.calculos.totalQR,
+            total_geral: registro.calculos.totalQS + registro.calculos.totalQR,
             total_unidades: 0,
         };
-    }
-    
-    // 5. Preencher Ração Operacional (se existir)
-    if (existingR2) {
-        setQuantidadeR2(existingR2.quantidadeR2 || 0);
-        setQuantidadeR3(existingR2.quantidadeR3 || 0);
+    } else if (registro.categoria === 'RACAO_OPERACIONAL') {
+        setQuantidadeR2(registro.quantidadeR2 || 0);
+        setQuantidadeR3(registro.quantidadeR3 || 0);
         
         newConsolidatedData.RACAO_OPERACIONAL = {
-            id: existingR2.id,
+            id: registro.id,
             categoria: 'RACAO_OPERACIONAL',
-            organizacao: existingR2.organizacao,
-            ug: existingR2.ug,
-            dias_operacao: existingR2.diasOperacao,
-            efetivo: existingR2.efetivo || 0,
-            fase_atividade: existingR2.faseAtividade || "",
-            quantidade_r2: existingR2.quantidadeR2,
-            quantidade_r3: existingR2.quantidadeR3,
+            organizacao: registro.organizacao,
+            ug: registro.ug,
+            dias_operacao: registro.diasOperacao,
+            efetivo: registro.efetivo || 0,
+            fase_atividade: registro.faseAtividade || "",
+            quantidade_r2: registro.quantidadeR2,
+            quantidade_r3: registro.quantidadeR3,
             total_geral: 0,
-            total_unidades: (existingR2.quantidadeR2 || 0) + (existingR2.quantidadeR3 || 0),
+            total_unidades: (registro.quantidadeR2 || 0) + (registro.quantidadeR3 || 0),
         };
     }
     
     setCurrentOMConsolidatedData(newConsolidatedData);
 
-    // 6. Setando o ID do registro que está sendo editado (para o botão Salvar)
-    // Usamos o ID do registro clicado para definir o estado de edição.
+    // 4. Setando o ID do registro que está sendo editado (para o botão Salvar)
     setEditingRegistroId(registro.id);
     setSelectedTab(registro.categoria);
 
-    // 7. Find OM ID for OmSelector
+    // 5. Find OM ID for OmSelector
     try {
       const { data: omData, error: omError } = await supabase
         .from('organizacoes_militares')
@@ -1446,7 +1359,7 @@ export default function ClasseIForm() {
                             disabled={loading || !organizacao || diasOperacao <= 0 || efetivo <= 0 || (!displayFases)}
                           >
                             <Check className="h-4 w-4" />
-                            Salvar Item da Categoria
+                            {editingRegistroId ? "Atualizar Item da Categoria" : "Salvar Item da Categoria"}
                           </Button>
                         </div>
                       </div>
@@ -1522,7 +1435,7 @@ export default function ClasseIForm() {
                             disabled={loading || !organizacao || diasOperacao <= 0 || efetivo <= 0 || (!displayFases)}
                           >
                             <Check className="h-4 w-4" />
-                            Salvar Item da Categoria
+                            {editingRegistroId ? "Atualizar Item da Categoria" : "Salvar Item da Categoria"}
                           </Button>
                         </div>
                       </div>
@@ -1689,7 +1602,7 @@ export default function ClasseIForm() {
                     onClick={handleFinalSave} 
                     disabled={loading || !isConfigReady || isConsolidationOutdated}
                   >
-                    {loading ? "Aguarde..." : (editingRegistroId ? "Atualizar Registros" : "Salvar Registros")}
+                    {loading ? "Aguarde..." : (editingRegistroId ? "Atualizar Registro" : "Salvar Novo Registro")}
                   </Button>
                 </div>
               </div>
@@ -1702,7 +1615,7 @@ export default function ClasseIForm() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-accent" />
-                    OMs Cadastradas
+                    Registros Cadastrados
                   </h2>
                 </div>
 
@@ -1754,9 +1667,12 @@ export default function ClasseIForm() {
                                                             <h4 className="font-semibold text-base text-foreground">
                                                                 {isRacaoQuente ? 'Ração Quente (R1)' : 'Ração Operacional (R2/R3)'}
                                                             </h4>
+                                                            <Badge variant="outline" className="text-xs">
+                                                                {fases}
+                                                            </Badge>
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">
-                                                            Efetivo: {registro.efetivo} | Dias: {registro.diasOperacao} | Fases: {fases}
+                                                            Efetivo: {registro.efetivo} | Dias: {registro.diasOperacao}
                                                         </p>
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -1821,7 +1737,7 @@ export default function ClasseIForm() {
 
 
             {/* 5. Memórias de Cálculos Detalhadas */}
-            {registros.length > 0 && (
+            {registros.filter(r => r.categoria === 'RACAO_QUENTE').length > 0 && (
               <div className="space-y-4 mt-6">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   📋 Memórias de Cálculo Detalhadas
