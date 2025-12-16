@@ -1,4 +1,7 @@
 import React, { useCallback, useRef, useMemo } from "react";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import ExcelJS from 'exceljs';
 import { useToast } from "@/hooks/use-toast";
 import { formatNumber } from "@/lib/formatUtils";
 import { FileSpreadsheet, Printer, Download, Utensils } from "lucide-react";
@@ -18,6 +21,36 @@ interface PTrabRacaoOperacionalReportProps {
   onExportSuccess: () => void;
 }
 
+// Interface para a linha consolidada de Ração Operacional
+interface RacaoOpLinha {
+    om: string;
+    ug: string;
+    r2_quantidade: number;
+    r3_quantidade: number;
+    total_unidades: number;
+    fase_atividade: string;
+    efetivo: number;
+    dias_operacao: number;
+}
+
+// Função para gerar a memória de cálculo detalhada para Ração Operacional
+const generateRacaoOpMemoriaCalculo = (linha: RacaoOpLinha): string => {
+    const { om, ug, r2_quantidade, r3_quantidade, efetivo, dias_operacao, fase_atividade } = linha;
+    const totalRacoes = r2_quantidade + r3_quantidade;
+    const faseFormatada = formatFasesParaTexto(fase_atividade);
+
+    // O detalhamento deve ser genérico, pois o usuário não insere a memória customizada aqui.
+    // Usamos o formato do exemplo: 33.90.30 – ração operacional para atender [efetivo] militares, por até [dias] dias...
+    
+    // Nota: O modelo fornecido usa 12 dias como exemplo, mas o cálculo real deve usar os dias de operação do registro.
+    // Para manter a fidelidade ao formato, vamos usar os dados do registro.
+    
+    return `33.90.30 – ração operacional para atender ${efetivo} militares, por até ${dias_operacao} dias, para ser utilizada na Operação de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de tarefas, descentralizadas, afastadas da(s) base(s) de apoio logístico.
+Quantitativo R2 (24h): ${formatNumber(r2_quantidade)} un.
+Quantitativo R3 (12h): ${formatNumber(r3_quantidade)} un.`;
+};
+
+
 const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = ({
   ptrabData,
   registrosClasseI,
@@ -28,11 +61,41 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
   
   const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
   
-  const racaoOperacionalRegistros = useMemo(() => {
-    return registrosClasseI.filter(r => r.categoria === 'RACAO_OPERACIONAL' && ((r.quantidade_r2 || 0) > 0 || (r.quantidade_r3 || 0) > 0));
+  const racaoOperacionalConsolidada = useMemo(() => {
+    const registros = registrosClasseI.filter(r => r.categoria === 'RACAO_OPERACIONAL' && ((r.quantidade_r2 || 0) > 0 || (r.quantidade_r3 || 0) > 0));
+    
+    // Agrupar por OM de destino (organizacao/ug)
+    const grupos: Record<string, RacaoOpLinha> = {};
+    
+    registros.forEach(r => {
+        const key = `${r.organizacao}-${r.ug}`;
+        
+        if (!grupos[key]) {
+            grupos[key] = {
+                om: r.organizacao,
+                ug: r.ug,
+                r2_quantidade: 0,
+                r3_quantidade: 0,
+                total_unidades: 0,
+                fase_atividade: r.fase_atividade || 'operação',
+                efetivo: r.efetivo || 0,
+                dias_operacao: r.dias_operacao,
+            };
+        }
+        
+        // Consolida as quantidades (embora o formulário atual só permita um registro por OM/Categoria,
+        // esta lógica garante que se houver mais de um, eles sejam somados)
+        grupos[key].r2_quantidade += (r.quantidade_r2 || 0);
+        grupos[key].r3_quantidade += (r.quantidade_r3 || 0);
+        grupos[key].total_unidades += (r.quantidade_r2 || 0) + (r.quantidade_r3 || 0);
+        
+        // Nota: Mantemos os dados de efetivo/dias/fase do último registro, assumindo que são consistentes por OM.
+    });
+    
+    return Object.values(grupos).sort((a, b) => a.om.localeCompare(b.om));
   }, [registrosClasseI]);
   
-  const totalRacoes = racaoOperacionalRegistros.reduce((sum, r) => sum + (r.quantidade_r2 || 0) + (r.quantidade_r3 || 0), 0);
+  const totalRacoesGeral = racaoOperacionalConsolidada.reduce((sum, r) => sum + r.total_unidades, 0);
 
   const handlePrint = () => {
     window.print();
@@ -55,7 +118,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       const imgData = canvas.toDataURL('image/png');
       
       const pdf = new jsPDF({
-        orientation: 'portrait', // Portrait para este relatório
+        orientation: 'landscape', // Usar landscape para acomodar a tabela
         unit: 'mm',
         format: 'a4',
       });
@@ -110,59 +173,179 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
   const exportExcel = useCallback(async () => {
     if (!ptrabData) return;
 
+    // --- Definição de Estilos e Alinhamentos ---
+    const centerMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
+    const rightMiddleAlignment = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
+    const leftTopAlignment = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
+    const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
+    
+    const cellBorder = {
+      top: { style: 'thin' as const },
+      left: { style: 'thin' as const },
+      bottom: { style: 'thin' as const },
+      right: { style: 'thin' as const }
+    };
+    
+    const baseFontStyle = { name: 'Arial', size: 8 };
+    const headerFontStyle = { name: 'Arial', size: 9, bold: true };
+    const titleFontStyle = { name: 'Arial', size: 11, bold: true };
+    const corTotal = 'FFB4C7E7'; // Azul claro
+    // -------------------------------------------
+
     try {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Ração Operacional');
       
       worksheet.columns = [
-        { width: 30 }, // A - OM
-        { width: 15 }, // B - UG
-        { width: 15 }, // C - Efetivo
-        { width: 15 }, // D - Dias
-        { width: 20 }, // E - Fase
-        { width: 15 }, // F - R2 (24h)
-        { width: 15 }, // G - R3 (12h)
-        { width: 15 }, // H - Total Unidades
+        { width: 35 }, // A - DESPESAS CLASSE I
+        { width: 20 }, // B - OM (UGE) CODUG
+        { width: 15 }, // C - QUANTIDADE
+        { width: 70 }, // D - DETALHAMENTO
       ];
       
-      worksheet.mergeCells('A1:H1');
-      worksheet.getCell('A1').value = `RELATÓRIO DE RAÇÃO OPERACIONAL - P TRAB ${ptrabData.numero_ptrab}`;
-      worksheet.getCell('A1').font = { name: 'Arial', size: 12, bold: true };
-      worksheet.getCell('A1').alignment = { horizontal: 'center' };
+      let currentRow = 1;
       
-      const headerRow = worksheet.getRow(3);
-      headerRow.values = ['OM de Destino', 'UG', 'Efetivo', 'Dias', 'Fase da Atividade', 'R2 (24h)', 'R3 (12h)', 'Total Unidades'];
-      headerRow.font = { name: 'Arial', size: 10, bold: true };
-      headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
-      
-      let currentRow = 4;
-      
-      racaoOperacionalRegistros.forEach(r => {
+      const addHeaderRow = (text: string, mergeCols: string = 'A:D', font = titleFontStyle) => {
         const row = worksheet.getRow(currentRow);
-        row.getCell('A').value = r.organizacao;
-        row.getCell('B').value = r.ug;
-        row.getCell('C').value = r.efetivo;
-        row.getCell('D').value = r.dias_operacao;
-        row.getCell('E').value = formatFasesParaTexto(r.fase_atividade);
-        row.getCell('F').value = r.quantidade_r2;
-        row.getCell('G').value = r.quantidade_r3;
-        row.getCell('H').value = (r.quantidade_r2 || 0) + (r.quantidade_r3 || 0);
+        row.getCell(1).value = text;
+        row.getCell(1).font = font;
+        row.getCell(1).alignment = centerMiddleAlignment;
+        worksheet.mergeCells(mergeCols);
+        currentRow++;
+      };
+      
+      addHeaderRow('MINISTÉRIO DA DEFESA');
+      addHeaderRow('EXÉRCITO BRASILEIRO');
+      addHeaderRow(ptrabData.comando_militar_area.toUpperCase());
+      addHeaderRow((ptrabData.nome_om_extenso || ptrabData.nome_om).toUpperCase());
+      
+      const fullTitleRow = worksheet.getRow(currentRow);
+      fullTitleRow.getCell(1).value = `PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO ${ptrabData.nome_operacao.toUpperCase()}`;
+      fullTitleRow.getCell(1).font = titleFontStyle;
+      fullTitleRow.getCell(1).alignment = centerMiddleAlignment;
+      worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+      currentRow++;
+
+      addHeaderRow('PLANO DE TRABALHO LOGÍSTICO - Ração Operacional', 'A:D', { ...titleFontStyle, underline: true });
+      
+      currentRow++;
+      
+      const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
+      
+      const addInfoRow = (label: string, value: string) => {
+        const row = worksheet.getRow(currentRow);
         
-        row.font = { name: 'Arial', size: 9 };
-        row.alignment = { horizontal: 'center', vertical: 'middle' };
-        row.getCell('A').alignment = { horizontal: 'left', vertical: 'middle' };
+        row.getCell(1).value = {
+          richText: [
+            { text: label, font: titleFontStyle },
+            { text: ` ${value}`, font: { name: 'Arial', size: 11, bold: false } }
+          ]
+        };
+        
+        row.getCell(1).alignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true };
+        worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+        currentRow++;
+      };
+      
+      addInfoRow('1. NOME DA OPERAÇÃO:', ptrabData.nome_operacao);
+      addInfoRow('2. PERÍODO:', `de ${formatDate(ptrabData.periodo_inicio)} a ${formatDate(ptrabData.periodo_fim)} - Nr Dias: ${diasOperacao}`);
+      addInfoRow('3. EFETIVO EMPREGADO:', `${ptrabData.efetivo_empregado} militares`);
+      addInfoRow('4. AÇÕES REALIZADAS OU A REALIZAR:', ptrabData.acoes || '');
+      
+      const despesasRow = worksheet.getRow(currentRow);
+      despesasRow.getCell(1).value = '5. DESPESAS OPERACIONAIS REALIZADAS OU A REALIZAR:';
+      despesasRow.getCell(1).font = titleFontStyle;
+      currentRow++;
+      
+      const headerRow = worksheet.getRow(currentRow);
+      headerRow.getCell('A').value = 'DESPESAS CLASSE I (SUBSISTÊNCIA)';
+      headerRow.getCell('B').value = 'OM (UGE)\nCODUG';
+      headerRow.getCell('C').value = 'QUANTIDADE';
+      headerRow.getCell('D').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG';
+      
+      headerRow.getCell('A').style = { font: headerFontStyle, alignment: centerMiddleAlignment, border: cellBorder };
+      headerRow.getCell('B').style = { font: headerFontStyle, alignment: centerMiddleAlignment, border: cellBorder };
+      headerRow.getCell('C').style = { font: headerFontStyle, alignment: centerMiddleAlignment, border: cellBorder };
+      headerRow.getCell('D').style = { font: headerFontStyle, alignment: centerMiddleAlignment, border: cellBorder };
+      
+      currentRow++;
+      
+      // --- Linhas de Dados ---
+      racaoOperacionalConsolidada.forEach((linha) => {
+        const row = worksheet.getRow(currentRow);
+        
+        // A - DESPESAS CLASSE I
+        row.getCell('A').value = `Ração Operacional de Combate (R2/R3)`;
+        row.getCell('A').alignment = leftTopAlignment;
+        
+        // B - OM (UGE) CODUG
+        row.getCell('B').value = `${linha.om}\n(${linha.ug})`;
+        row.getCell('B').alignment = centerTopAlignment;
+        
+        // C - QUANTIDADE
+        row.getCell('C').value = linha.total_unidades;
+        row.getCell('C').numFmt = '#,##0';
+        row.getCell('C').alignment = centerTopAlignment;
+        
+        // D - DETALHAMENTO
+        row.getCell('D').value = generateRacaoOpMemoriaCalculo(linha);
+        row.getCell('D').font = { name: 'Arial', size: 6.5 };
+        row.getCell('D').alignment = leftTopAlignment;
+        
+        ['A', 'B', 'C', 'D'].forEach(col => {
+          row.getCell(col).border = cellBorder;
+          row.getCell(col).font = baseFontStyle;
+        });
         
         currentRow++;
       });
       
-      const totalRow = worksheet.getRow(currentRow + 1);
-      totalRow.getCell('G').value = 'TOTAL GERAL:';
-      totalRow.getCell('G').font = { name: 'Arial', size: 10, bold: true };
-      totalRow.getCell('G').alignment = { horizontal: 'right' };
-      totalRow.getCell('H').value = totalRacoes;
-      totalRow.getCell('H').font = { name: 'Arial', size: 10, bold: true };
-      totalRow.getCell('H').alignment = { horizontal: 'center' };
-
+      // --- Linha Total ---
+      const totalRow = worksheet.getRow(currentRow);
+      totalRow.getCell('A').value = 'TOTAL';
+      worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
+      totalRow.getCell('A').alignment = centerMiddleAlignment;
+      totalRow.getCell('A').font = { name: 'Arial', size: 9, bold: true };
+      totalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotal } };
+      
+      totalRow.getCell('C').value = totalRacoesGeral;
+      totalRow.getCell('C').numFmt = '#,##0';
+      totalRow.getCell('C').font = { name: 'Arial', size: 9, bold: true };
+      totalRow.getCell('C').alignment = centerMiddleAlignment;
+      totalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotal } };
+      
+      totalRow.getCell('D').value = '-';
+      totalRow.getCell('D').alignment = centerMiddleAlignment;
+      totalRow.getCell('D').font = { name: 'Arial', size: 9, bold: true };
+      totalRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotal } };
+      
+      ['A', 'B', 'C', 'D'].forEach(col => {
+        totalRow.getCell(col).border = cellBorder;
+      });
+      
+      currentRow++;
+      currentRow++;
+      
+      // --- Rodapé ---
+      const localRow = worksheet.getRow(currentRow);
+      localRow.getCell('A').value = `${ptrabData.local_om || 'Local'}, ${new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+      localRow.getCell('A').font = { name: 'Arial', size: 10 };
+      worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+      currentRow++;
+      
+      currentRow++;
+      
+      const cmtRow = worksheet.getRow(currentRow);
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
+      cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
+      worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+      currentRow++;
+      
+      const cargoRow = worksheet.getRow(currentRow);
+      cargoRow.getCell('A').value = `Comandante da ${ptrabData.nome_om_extenso || ptrabData.nome_om}`;
+      cargoRow.getCell('A').font = { name: 'Arial', size: 9 };
+      worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+      
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
@@ -185,7 +368,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         variant: "destructive",
       });
     }
-  }, [ptrabData, racaoOperacionalRegistros, totalRacoes, onExportSuccess, toast]);
+  }, [ptrabData, racaoOperacionalConsolidada, totalRacoesGeral, onExportSuccess, toast]);
 
 
   return (
@@ -205,64 +388,62 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         </Button>
       </div>
 
-      <Card className="p-6 print:p-0 print:border-none print:shadow-none" ref={contentRef}>
-        <CardHeader className="print:p-0 print:mb-4">
-          <CardTitle className="flex items-center gap-2 text-xl print:text-lg print:font-bold">
-            <Utensils className="h-5 w-5 text-secondary print:hidden" />
-            Relatório de Ração Operacional (R2/R3)
-          </CardTitle>
-          <p className="text-sm text-muted-foreground print:text-[10pt] print:text-black">
-            P Trab: {ptrabData.numero_ptrab} - {ptrabData.nome_operacao} | Período: {formatDate(ptrabData.periodo_inicio)} a {formatDate(ptrabData.periodo_fim)} ({diasOperacao} dias)
+      <div className="ptrab-print-container" ref={contentRef}>
+        <div className="ptrab-header">
+          <p className="text-[11pt] font-bold uppercase">Ministério da Defesa</p>
+          <p className="text-[11pt] font-bold uppercase">Exército Brasileiro</p>
+          <p className="text-[11pt] font-bold uppercase">{ptrabData.comando_militar_area}</p>
+          <p className="text-[11pt] font-bold uppercase">{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
+          <p className="text-[11pt] font-bold uppercase">
+            PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO {ptrabData.nome_operacao}
           </p>
-        </CardHeader>
-        <CardContent className="pt-4 print:p-0">
-          {racaoOperacionalRegistros.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border border-gray-300 print:border-black print:text-[8pt] print:w-full">
+          <p className="text-[11pt] font-bold uppercase underline">PLANO DE TRABALHO LOGÍSTICO - Ração Operacional</p>
+        </div>
+
+        <div className="ptrab-info">
+          <p className="info-item"><span className="font-bold">1. NOME DA OPERAÇÃO:</span> {ptrabData.nome_operacao}</p>
+          <p className="info-item"><span className="font-bold">2. PERÍODO:</span> de {formatDate(ptrabData.periodo_inicio)} a {formatDate(ptrabData.periodo_fim)} - Nr Dias: {diasOperacao}</p>
+          <p className="info-item"><span className="font-bold">3. EFETIVO EMPREGADO:</span> {ptrabData.efetivo_empregado} militares do Exército Brasileiro</p>
+          <p className="info-item"><span className="font-bold">4. AÇÕES REALIZADAS OU A REALIZAR:</span> {ptrabData.acoes}</p>
+          <p className="info-item font-bold">5. DESPESAS OPERACIONAIS REALIZADAS OU A REALIZAR:</p>
+        </div>
+
+        {racaoOperacionalConsolidada.length > 0 ? (
+            <div className="ptrab-table-wrapper">
+              <table className="ptrab-table">
                 <thead>
-                  <tr className="bg-gray-100 print:bg-gray-200">
-                    <th className="p-2 border border-gray-300 print:border-black text-left">OM de Destino (UG)</th>
-                    <th className="p-2 border border-gray-300 print:border-black text-center">Efetivo</th>
-                    <th className="p-2 border border-gray-300 print:border-black text-center">Dias</th>
-                    <th className="p-2 border border-gray-300 print:border-black text-left">Fase da Atividade</th>
-                    <th className="p-2 border border-gray-300 print:border-black text-center">R2 (24h)</th>
-                    <th className="p-2 border border-gray-300 print:border-black text-center">R3 (12h)</th>
-                    <th className="p-2 border border-gray-300 print:border-black text-center font-bold">Total Unidades</th>
+                  <tr>
+                    <th className="col-despesas-op">DESPESAS CLASSE I (SUBSISTÊNCIA)</th>
+                    <th className="col-om-op">OM (UGE)<br/>CODUG</th>
+                    <th className="col-quantidade-op">QUANTIDADE</th>
+                    <th className="col-detalhamento-op">DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/>OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {racaoOperacionalRegistros.map((r) => (
-                    <tr key={r.id} className="even:bg-gray-50 print:even:bg-gray-100">
-                      <td className="p-2 border border-gray-300 print:border-black">
-                        {r.organizacao} ({r.ug})
+                  {racaoOperacionalConsolidada.map((linha, index) => (
+                    <tr key={index}>
+                      <td className="col-despesas-op">
+                        Ração Operacional de Combate (R2/R3)
                       </td>
-                      <td className="p-2 border border-gray-300 print:border-black text-center">
-                        {formatNumber(r.efetivo || 0)}
+                      <td className="col-om-op">
+                        <div>{linha.om}</div>
+                        <div>({linha.ug})</div>
                       </td>
-                      <td className="p-2 border border-gray-300 print:border-black text-center">
-                        {r.dias_operacao}
+                      <td className="col-quantidade-op">
+                        {formatNumber(linha.total_unidades)}
                       </td>
-                      <td className="p-2 border border-gray-300 print:border-black">
-                        {formatFasesParaTexto(r.fase_atividade)}
-                      </td>
-                      <td className="p-2 border border-gray-300 print:border-black text-center">
-                        {formatNumber(r.quantidade_r2 || 0)}
-                      </td>
-                      <td className="p-2 border border-gray-300 print:border-black text-center">
-                        {formatNumber(r.quantidade_r3 || 0)}
-                      </td>
-                      <td className="p-2 border border-gray-300 print:border-black text-center font-bold">
-                        {formatNumber((r.quantidade_r2 || 0) + (r.quantidade_r3 || 0))}
+                      <td className="col-detalhamento-op" style={{ fontSize: '6.5pt' }}>
+                        <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                          {generateRacaoOpMemoriaCalculo(linha)}
+                        </pre>
                       </td>
                     </tr>
                   ))}
-                  <tr className="bg-gray-200 print:bg-gray-300 font-bold">
-                    <td colSpan={6} className="p-2 border border-gray-300 print:border-black text-right">
-                      TOTAL GERAL DE RAÇÕES OPERACIONAIS:
-                    </td>
-                    <td className="p-2 border border-gray-300 print:border-black text-center">
-                      {formatNumber(totalRacoes)}
-                    </td>
+                  
+                  <tr className="total-row-op">
+                    <td colSpan={2} className="text-right font-bold">TOTAL</td>
+                    <td className="text-center font-bold">{formatNumber(totalRacoesGeral)}</td>
+                    <td></td>
                   </tr>
                 </tbody>
               </table>
@@ -270,8 +451,54 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
           ) : (
             <p className="text-center text-muted-foreground py-8">Nenhum registro de Ração Operacional cadastrado.</p>
           )}
-        </CardContent>
-      </Card>
+
+        <div className="ptrab-footer">
+          <p className="text-[10pt]">{ptrabData.local_om || 'Local'}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <div className="signature-block">
+            <p className="text-[10pt] font-bold">{ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'}</p>
+            <p className="text-[9pt]">Comandante da {ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @page {
+          size: A4 landscape;
+          margin: 0.5cm;
+        }
+        @media print {
+          @page { size: landscape; margin: 0.5cm; }
+          body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
+          .ptrab-print-container { padding: 0 !important; margin: 0 !important; }
+          .ptrab-table thead { display: table-row-group; break-inside: avoid; break-after: auto; }
+          .ptrab-table thead tr { page-break-inside: avoid; page-break-after: auto; }
+          .ptrab-table tbody tr { page-break-inside: avoid; break-inside: avoid; }
+          .ptrab-table tr { page-break-inside: avoid; break-inside: avoid; }
+        }
+        .ptrab-print-container { max-width: 100%; margin: 0 auto; padding: 2rem 1rem; font-family: Arial, sans-serif; }
+        .ptrab-header { text-align: center; margin-bottom: 1.5rem; line-height: 1.4; }
+        .ptrab-info { margin-bottom: 0.3rem; font-size: 10pt; line-height: 1.3; }
+          .info-item { margin-bottom: 0.15rem; }
+        .ptrab-table-wrapper { margin-top: 0.2rem; margin-bottom: 2rem; overflow-x: auto; }
+        .ptrab-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 2px solid #000; line-height: 1.1; }
+        .ptrab-table th, .ptrab-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; }
+        .ptrab-table thead th { background-color: #E8E8E8; font-weight: bold; text-align: center; font-size: 9pt; }
+        
+        /* Estilos específicos para Ração Operacional */
+        .col-despesas-op { width: 20%; text-align: left; }
+        .col-om-op { width: 15%; text-align: center; }
+        .col-quantidade-op { width: 10%; text-align: center; }
+        .col-detalhamento-op { width: 55%; text-align: left; }
+        
+        .total-row-op td { background-color: #B4C7E7 !important; font-weight: bold; border-top: 2px solid #000; }
+        
+        /* Reset de estilos da tabela principal para evitar conflitos */
+        .ptrab-table th { background-color: #E8E8E8; }
+        .ptrab-table td { background-color: white; }
+        
+        .ptrab-footer { margin-top: 3rem; text-align: center; }
+        .signature-block { margin-top: 4rem; }
+      `}</style>
     </div>
   );
 };
