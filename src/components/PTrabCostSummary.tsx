@@ -46,7 +46,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // 1. Fetch Classe I totals (33.90.30)
   const { data: classeIData, error: classeIError } = await supabase
     .from('classe_i_registros')
-    .select('total_qs, total_qr, complemento_qs, etapa_qs, complemento_qr, etapa_qr, efetivo, dias_operacao, nr_ref_int, quantidade_r2, quantidade_r3')
+    .select('total_qs, total_qr, complemento_qs, etapa_qs, complemento_qr, etapa_qr, efetivo, dias_operacao, nr_ref_int, quantidade_r2, quantidade_r3, categoria')
     .eq('p_trab_id', ptrabId);
 
   if (classeIError) throw classeIError;
@@ -56,20 +56,21 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   let totalEtapaSolicitadaValor = 0;
   let totalDiasEtapaSolicitada = 0;
   let totalRefeicoesIntermediarias = 0;
-  let totalRacoesOperacionaisGeral = 0; // NOVO: Inicializa o total de Rações Operacionais
+  let totalRacoesOperacionaisGeral = 0;
 
   (classeIData || []).forEach(record => {
-    totalClasseI += record.total_qs + record.total_qr;
-    totalComplemento += record.complemento_qs + record.complemento_qr;
-    totalEtapaSolicitadaValor += record.etapa_qs + record.etapa_qr;
-    
-    const diasEtapaSolicitada = calculateDiasEtapaSolicitada(record.dias_operacao);
-    totalDiasEtapaSolicitada += diasEtapaSolicitada;
-    
-    totalRefeicoesIntermediarias += record.efetivo * record.nr_ref_int * record.dias_operacao;
-    
-    // NOVO: Soma as rações operacionais
-    totalRacoesOperacionaisGeral += (record.quantidade_r2 || 0) + (record.quantidade_r3 || 0);
+    if (record.categoria === 'RACAO_QUENTE') {
+        totalClasseI += record.total_qs + record.total_qr;
+        totalComplemento += record.complemento_qs + record.complemento_qr;
+        totalEtapaSolicitadaValor += record.etapa_qs + record.etapa_qr;
+        
+        const diasEtapaSolicitada = calculateDiasEtapaSolicitada(record.dias_operacao);
+        totalDiasEtapaSolicitada += diasEtapaSolicitada;
+        
+        totalRefeicoesIntermediarias += (record.efetivo || 0) * (record.nr_ref_int || 0) * record.dias_operacao;
+    } else if (record.categoria === 'RACAO_OPERACIONAL') {
+        totalRacoesOperacionaisGeral += (record.quantidade_r2 || 0) + (record.quantidade_r3 || 0);
+    }
   });
   
   // 2. Fetch Classe II/V/VI/VII/VIII/IX records from their respective tables

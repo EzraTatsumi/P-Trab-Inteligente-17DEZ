@@ -49,13 +49,14 @@ interface ClasseIRegistro {
   complemento_qs: number;
   etapa_qs: number;
   total_qs: number;
-  complemento_qr: number;
-  etapa_qr: number;
   total_qr: number;
   total_geral: number;
   memoria_calculo_qs_customizada?: string | null;
   memoria_calculo_qr_customizada?: string | null;
   fase_atividade?: string | null;
+  categoria: 'RACAO_QUENTE' | 'RACAO_OPERACIONAL'; // Adicionado categoria
+  quantidade_r2: number;
+  quantidade_r3: number;
 }
 
 interface ItemClasseII {
@@ -411,7 +412,7 @@ const PTrabPrint = () => {
 
       const { data: classeIData, error: classeIError } = await supabase
         .from('classe_i_registros')
-        .select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, fase_atividade')
+        .select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3')
         .eq('p_trab_id', ptrabId);
 
       if (classeIError) {
@@ -504,7 +505,13 @@ const PTrabPrint = () => {
       }
 
       setPtrabData(ptrab);
-      setRegistrosClasseI(classeIData || []);
+      // FILTRO APLICADO AQUI: Apenas Ração Quente é incluída na tabela principal
+      setRegistrosClasseI((classeIData || []).map(r => ({
+          ...r,
+          categoria: (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL',
+          quantidade_r2: r.quantidade_r2 || 0,
+          quantidade_r3: r.quantidade_r3 || 0,
+      })) as ClasseIRegistro[]);
       setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
       setRegistrosClasseIII(classeIIIData || []);
       setLoading(false);
@@ -584,8 +591,8 @@ const PTrabPrint = () => {
       }
   };
 
-  // 1. Processar Classe I
-  registrosClasseI.forEach((registro) => {
+  // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
+  registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
       // QS goes to OM fornecedora (om_qs)
       initializeGroup(registro.om_qs);
       gruposPorOM[registro.om_qs].linhasQS.push({ registro, tipo: 'QS' });
