@@ -318,14 +318,18 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       // --- Linha Total ---
       const totalRow = worksheet.getRow(currentRow);
       
-      // Células A e B (TOTAL) - Cinza
-      totalRow.getCell('A').value = 'TOTAL';
+      // Mescla A e B
       worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
+      
+      // Célula A (Mesclada A:B) - TOTAL - Cinza
+      totalRow.getCell('A').value = 'TOTAL';
       totalRow.getCell('A').alignment = centerMiddleAlignment;
       totalRow.getCell('A').font = { name: 'Arial', size: 9, bold: true };
       totalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalCinza } };
       totalRow.getCell('A').border = cellBorder;
-      totalRow.getCell('B').border = cellBorder; // B precisa da borda mesmo mesclada
+      
+      // Célula B (Mesclada A:B) - Precisa de borda, mas é coberta pela mesclagem.
+      // Garantimos que a célula B tenha borda para o caso de desmesclagem, mas a mesclagem já define a borda externa.
       
       // Célula C (QUANTIDADE) - Azul
       totalRow.getCell('C').value = totalRacoesGeral;
