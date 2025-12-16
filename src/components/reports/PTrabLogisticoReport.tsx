@@ -695,18 +695,33 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow++;
       
       const valorTotalRow = worksheet.getRow(currentRow);
+      
+      // 1. Mesclar A a F
+      worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
+      
+      // 2. Aplicar cor cinza claro (corTotalOM) a toda a linha
+      ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+          valorTotalRow.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+      });
+      
+      // 3. Configurar célula G (VALOR TOTAL)
       valorTotalRow.getCell('G').value = 'VALOR TOTAL';
       valorTotalRow.getCell('G').font = { bold: true };
       valorTotalRow.getCell('G').alignment = centerMiddleAlignment;
+      valorTotalRow.getCell('G').border = cellBorder;
       
+      // 4. Configurar célula H (Valor)
       valorTotalRow.getCell('H').value = valorTotalSolicitado;
       valorTotalRow.getCell('H').numFmt = 'R$ #,##0.00';
       valorTotalRow.getCell('H').font = { bold: true };
       valorTotalRow.getCell('H').alignment = centerMiddleAlignment;
+      valorTotalRow.getCell('H').border = cellBorder;
       
-      ['G', 'H'].forEach(col => {
-        valorTotalRow.getCell(col).border = cellBorder;
-      });
+      // 5. Configurar célula I (Borda fina)
+      valorTotalRow.getCell('I').border = cellBorder;
+      
+      // 6. Configurar célula A (Mesclada A:F)
+      valorTotalRow.getCell('A').border = cellBorder;
       
       currentRow++;
       
@@ -727,10 +742,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       gndValueRow.getCell('H').numFmt = 'R$ #,##0.00';
       gndValueRow.getCell('H').font = { bold: true };
       gndValueRow.getCell('H').alignment = centerMiddleAlignment;
-      // CORREÇÃO AQUI: Borda inferior fina
       gndValueRow.getCell('H').border = {
         left: { style: 'thin' as const },
-        bottom: { style: 'thin' as const }, // Alterado de 'thick' para 'thin'
+        bottom: { style: 'thin' as const }, // Borda fina
         right: { style: 'thin' as const }
       };
       
@@ -1073,10 +1087,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
 
                     {/* Linha 2: Valor Total */}
                     <tr className="total-geral-final-row">
-                      <td colSpan={6}></td>
-                      <td className="text-center font-bold" style={{ whiteSpace: 'nowrap' }}>VALOR TOTAL</td>
-                      <td className="text-center font-bold">{formatCurrency(valorTotalSolicitado)}</td>
-                      <td style={{ backgroundColor: 'white' }}></td>
+                      <td colSpan={6} style={{ backgroundColor: '#E8E8E8', border: '1px solid #000', borderRight: 'none' }}></td>
+                      <td className="text-center font-bold" style={{ whiteSpace: 'nowrap', backgroundColor: '#E8E8E8', border: '1px solid #000' }}>VALOR TOTAL</td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
+                      <td style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}></td>
                     </tr>
                     
                     {/* Linha 3: GND - 3 (dividida em 2 subdivisões) */}
@@ -1090,7 +1104,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     {/* Segunda subdivisão: Valor Total */}
                     <tr style={{ backgroundColor: 'white' }}>
                       <td colSpan={7} style={{ border: 'none' }}></td>
-                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: { style: 'thin' as const }, borderRight: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
+                      <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: '1px solid #000', borderRight: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
                       <td style={{ border: 'none' }}></td>
                     </tr>
                   </>
