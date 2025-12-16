@@ -633,14 +633,14 @@ export default function ClasseIForm() {
 
   const handleOMChange = async (omData: OMData | undefined) => {
     if (omData) {
+      // 1. Set OM/UG and RM defaults
       setSelectedOmId(omData.id);
       setOrganizacao(omData.nome_om);
       setUg(omData.codug_om);
+      setOmQS(omData.rm_vinculacao);
+      setUgQS(omData.codug_rm_vinculacao);
       
-      const defaultOmQS = omData.rm_vinculacao;
-      const defaultUgQS = omData.codug_rm_vinculacao;
-      
-      // 1. Reset ALL input fields to default for NEW configuration
+      // 2. Reset ALL input fields to default for NEW configuration
       setDiasOperacao(0);
       setEfetivo(0);
       setNrRefInt(1);
@@ -651,11 +651,7 @@ export default function ClasseIForm() {
       setCustomFaseAtividade("");
       setSelectedTab('RACAO_QUENTE');
       
-      // Always set QS defaults based on the selected OM's RM
-      setOmQS(defaultOmQS);
-      setUgQS(defaultUgQS);
-      
-      // 2. Load existing data into consolidation state for preview/warning
+      // 3. Load existing data into consolidation state for preview/warning (Seção 3)
       const existingR1 = registros.find(r => r.organizacao === omData.nome_om && r.ug === omData.codug_om && r.categoria === 'RACAO_QUENTE');
       const existingR2 = registros.find(r => r.organizacao === omData.nome_om && r.ug === omData.codug_om && r.categoria === 'RACAO_OPERACIONAL');
       
@@ -708,7 +704,7 @@ export default function ClasseIForm() {
       
       setCurrentOMConsolidatedData(newConsolidatedData);
       
-      // 3. Ensure directive values are loaded if needed
+      // 4. Ensure directive values are loaded if needed
       if (diretrizAno) {
           loadDiretrizes(supabase.auth.getUser().then(res => res.data.user?.id || ''));
       }
@@ -823,10 +819,13 @@ export default function ClasseIForm() {
     }
     
     if (newRecord) {
+        // Ao salvar a configuração da categoria, atualizamos o estado de consolidação
+        // e resetamos o modo de edição, pois a configuração atual é a nova base.
         setCurrentOMConsolidatedData(prev => ({
             ...prev,
             [selectedTab]: newRecord,
         }));
+        setEditingRegistroId(newRecord.id || null); // Mantém o ID se for uma edição, ou null se for novo
         toast.success(`Configuração de ${selectedTab === 'RACAO_QUENTE' ? 'Ração Quente' : 'Ração Operacional'} salva temporariamente.`);
     }
   };
@@ -838,6 +837,8 @@ export default function ClasseIForm() {
         return;
     }
     
+    // A verificação isConsolidationOutdated agora é crucial, pois ela compara o que está no formulário
+    // (que foi salvo em currentOMConsolidatedData) com o que está sendo exibido.
     if (isConsolidationOutdated) {
         toast.error("A configuração da OM foi alterada. Clique em 'Salvar Item da Categoria' na(s) aba(s) ativa(s) para atualizar os cálculos antes de salvar os registros.");
         return;
@@ -882,6 +883,7 @@ export default function ClasseIForm() {
             // Preservar memórias customizadas
             memoria_calculo_qs_customizada: existingMemoria?.memoriaQSCustomizada || null,
             memoria_calculo_qr_customizada: existingMemoria?.memoriaQRCustomizada || null,
+            id: r.id, // Passa o ID para o upsert
         });
     } else {
         // Se não há Ração Quente configurada, mas existia no DB, marcamos para deletar
@@ -911,6 +913,7 @@ export default function ClasseIForm() {
             // Preservar memórias customizadas (embora não sejam usadas para R2/R3)
             memoria_calculo_qs_customizada: existingMemoria?.memoriaQSCustomizada || null,
             memoria_calculo_qr_customizada: existingMemoria?.memoriaQRCustomizada || null,
+            id: r.id, // Passa o ID para o upsert
         });
     } else {
         // Se não há Ração Operacional configurada, mas existia no DB, marcamos para deletar
@@ -928,10 +931,10 @@ export default function ClasseIForm() {
             if (deleteError) throw deleteError;
         }
         
-        // 4. Inserir/Atualizar registros
+        // 4. Inserir/Atualizar registros (Upsert)
         for (const record of recordsToSave) {
-            // Se o registro tem um ID, é uma atualização
             if (record.id) {
+                // Update
                 const { id, ...updateData } = record;
                 const { error: updateError } = await supabase
                     .from("classe_i_registros")
@@ -939,7 +942,7 @@ export default function ClasseIForm() {
                     .eq("id", record.id);
                 if (updateError) throw updateError;
             } else {
-                // Se não tem ID, é uma inserção (novo registro)
+                // Insert (Novo registro)
                 const { error: insertError } = await supabase
                     .from("classe_i_registros")
                     .insert([record]);
@@ -993,12 +996,10 @@ export default function ClasseIForm() {
   };
 
   const handleEditRegistro = async (registro: ClasseIRegistro) => {
-    // Ao editar um registro, carregamos TODOS os registros daquela OM para o estado de consolidação
+    // 1. Resetar o formulário para garantir que não haja lixo de um lançamento anterior
+    resetFormFields();
     
-    setEditingRegistroId(registro.id);
-    setSelectedTab(registro.categoria);
-    
-    // 1. Set Global Fields (usando o registro clicado como base)
+    // 2. Set Global Fields (usando o registro clicado como base)
     setOrganizacao(registro.organizacao);
     setUg(registro.ug);
     setEfetivo(registro.efetivo || 0);
@@ -1008,7 +1009,7 @@ export default function ClasseIForm() {
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
 
-    // 2. Encontrar todos os registros da OM no DB
+    // 3. Encontrar todos os registros da OM no DB (para preencher o formulário de edição)
     const allRecordsForOM = registros.filter(r => r.organizacao === registro.organizacao && r.ug === registro.ug);
     
     const existingR1 = allRecordsForOM.find(r => r.categoria === 'RACAO_QUENTE');
@@ -1016,7 +1017,7 @@ export default function ClasseIForm() {
     
     const newConsolidatedData: typeof currentOMConsolidatedData = {};
     
-    // 3. Preencher Ração Quente (se existir)
+    // 4. Preencher Ração Quente (se existir)
     if (existingR1) {
         setOmQS(existingR1.omQS || "");
         setUgQS(existingR1.ugQS || "");
@@ -1024,7 +1025,7 @@ export default function ClasseIForm() {
         setValorQS(existingR1.valorQS || valorQS);
         setValorQR(existingR1.valorQR || valorQR);
         
-        // Recalcular para consolidação (usando valores salvos)
+        // Preencher o estado de consolidação com os dados do DB
         const currentValorQS = existingR1.valorQS || valorQS;
         const currentValorQR = existingR1.valorQR || valorQR;
         const calc = calculateClasseICalculations(existingR1.efetivo, existingR1.diasOperacao, existingR1.nrRefInt || 1, currentValorQS, currentValorQR);
@@ -1051,13 +1052,9 @@ export default function ClasseIForm() {
             total_geral: existingR1.calculos.totalQS + existingR1.calculos.totalQR,
             total_unidades: 0,
         };
-    } else {
-        setOmQS("");
-        setUgQS("");
-        setNrRefInt(1);
     }
     
-    // 4. Preencher Ração Operacional (se existir)
+    // 5. Preencher Ração Operacional (se existir)
     if (existingR2) {
         setQuantidadeR2(existingR2.quantidadeR2 || 0);
         setQuantidadeR3(existingR2.quantidadeR3 || 0);
@@ -1075,14 +1072,15 @@ export default function ClasseIForm() {
             total_geral: 0,
             total_unidades: (existingR2.quantidadeR2 || 0) + (existingR2.quantidadeR3 || 0),
         };
-    } else {
-        setQuantidadeR2(0);
-        setQuantidadeR3(0);
     }
     
     setCurrentOMConsolidatedData(newConsolidatedData);
 
-    // 5. Find OM ID for OmSelector
+    // 6. Setando o ID do registro que está sendo editado (para o botão Salvar)
+    setEditingRegistroId(registro.id);
+    setSelectedTab(registro.categoria);
+
+    // 7. Find OM ID for OmSelector
     try {
       const { data: omData, error: omError } = await supabase
         .from('organizacoes_militares')
