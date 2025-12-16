@@ -157,6 +157,25 @@ export const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('pt-BR');
 };
 
+const MONTH_ABBREVIATIONS = [
+  'JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN',
+  'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'
+];
+
+/**
+ * Formats a date string into the military standard DDMMMAA (e.g., 16DEZ25).
+ */
+export const formatDateMilitary = (dateString: string): string => {
+  const date = new Date(dateString);
+  const day = date.getDate().toString().padStart(2, '0');
+  const monthIndex = date.getMonth();
+  const year = date.getFullYear().toString().slice(-2);
+  
+  const monthAbbreviation = MONTH_ABBREVIATIONS[monthIndex];
+  
+  return `${day}${monthAbbreviation}${year}`;
+};
+
 export const calculateDays = (inicio: string, fim: string) => {
   const start = new Date(inicio);
   const end = new Date(fim);

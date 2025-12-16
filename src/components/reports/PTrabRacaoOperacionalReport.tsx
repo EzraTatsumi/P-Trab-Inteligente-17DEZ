@@ -13,6 +13,7 @@ import {
   calculateDays,
   formatDate,
   formatFasesParaTexto,
+  formatDateMilitary, // IMPORTADO
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
 
 interface PTrabRacaoOperacionalReportProps {
@@ -99,7 +100,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
   
   // NOVO: Função para gerar o nome do arquivo
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
-    const dataAtz = new Date(ptrabData.updated_at).toLocaleDateString('pt-BR');
+    const dataAtz = formatDateMilitary(ptrabData.updated_at);
     const nomeBase = `P Trab Nr ${ptrabData.numero_ptrab} (Racao Op) - ${ptrabData.nome_operacao} - ${ptrabData.nome_om} - Atz ${dataAtz}`;
     return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
   };
