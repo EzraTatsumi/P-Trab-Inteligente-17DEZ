@@ -640,7 +640,7 @@ export default function ClasseIForm() {
       const defaultOmQS = omData.rm_vinculacao;
       const defaultUgQS = omData.codug_rm_vinculacao;
       
-      // 1. Reset all input fields to default for NEW configuration
+      // 1. Reset ALL input fields to default for NEW configuration
       setDiasOperacao(0);
       setEfetivo(0);
       setNrRefInt(1);
@@ -708,8 +708,8 @@ export default function ClasseIForm() {
       
       setCurrentOMConsolidatedData(newConsolidatedData);
       
-      // 3. Ensure directive values are loaded if needed (if no existing records were found)
-      if (!existingR1 && !existingR2 && diretrizAno) {
+      // 3. Ensure directive values are loaded if needed
+      if (diretrizAno) {
           loadDiretrizes(supabase.auth.getUser().then(res => res.data.user?.id || ''));
       }
       
@@ -770,11 +770,11 @@ export default function ClasseIForm() {
             return;
         }
         
-        // Tenta encontrar o ID existente no DB para esta categoria
-        const existingDbRecord = registros.find(r => r.organizacao === organizacao && r.ug === ug && r.categoria === 'RACAO_QUENTE');
+        // Se estiver em modo de edição, usa o ID existente
+        const existingId = currentOMConsolidatedData?.RACAO_QUENTE?.id;
         
         newRecord = {
-            id: existingDbRecord?.id, // Usa o ID do DB se existir
+            id: editingRegistroId && existingId ? existingId : undefined, // Usa ID apenas se estiver em modo de edição
             categoria: 'RACAO_QUENTE',
             organizacao: organizacao,
             ug: ug,
@@ -804,11 +804,11 @@ export default function ClasseIForm() {
         
         const totalUnidades = quantidadeR2 + quantidadeR3;
         
-        // Tenta encontrar o ID existente no DB para esta categoria
-        const existingDbRecord = registros.find(r => r.organizacao === organizacao && r.ug === ug && r.categoria === 'RACAO_OPERACIONAL');
+        // Se estiver em modo de edição, usa o ID existente
+        const existingId = currentOMConsolidatedData?.RACAO_OPERACIONAL?.id;
         
         newRecord = {
-            id: existingDbRecord?.id, // Usa o ID do DB se existir
+            id: editingRegistroId && existingId ? existingId : undefined, // Usa ID apenas se estiver em modo de edição
             categoria: 'RACAO_OPERACIONAL',
             organizacao: organizacao,
             ug: ug,
@@ -930,19 +930,16 @@ export default function ClasseIForm() {
         
         // 4. Inserir/Atualizar registros
         for (const record of recordsToSave) {
-            // Tenta encontrar o ID existente no DB para saber se é UPDATE ou INSERT
-            const existingDbRecord = registros.find(r => r.organizacao === record.organizacao && r.ug === record.ug && r.categoria === record.categoria);
-            
-            if (existingDbRecord) {
-                // Update
+            // Se o registro tem um ID, é uma atualização
+            if (record.id) {
                 const { id, ...updateData } = record;
                 const { error: updateError } = await supabase
                     .from("classe_i_registros")
                     .update(updateData)
-                    .eq("id", existingDbRecord.id);
+                    .eq("id", record.id);
                 if (updateError) throw updateError;
             } else {
-                // Insert
+                // Se não tem ID, é uma inserção (novo registro)
                 const { error: insertError } = await supabase
                     .from("classe_i_registros")
                     .insert([record]);
