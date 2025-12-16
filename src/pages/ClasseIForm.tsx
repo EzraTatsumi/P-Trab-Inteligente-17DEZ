@@ -33,6 +33,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TablesInsert } from "@/integrations/supabase/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // ADDED
 
 // New types for Classe I categories
 type CategoriaClasseI = 'RACAO_QUENTE' | 'RACAO_OPERACIONAL';
@@ -1377,68 +1378,76 @@ export default function ClasseIForm() {
                       </div>
                     </TabsContent>
                     
-                    {/* Ração Operacional (R2/R3) */}
+                    {/* Ração Operacional (R2/R3) - UPDATED STRUCTURE */}
                     <TabsContent value="RACAO_OPERACIONAL" className="mt-4">
-                      <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
+                      <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
                         <h4 className="font-semibold text-base">Quantitativo de Ração Operacional</h4>
                         <p className="text-sm text-muted-foreground pt-2">
                           Informe a quantidade total de rações operacionais necessárias para o efetivo e dias de atividade.
                         </p>
                         
-                        <div className="grid md:grid-cols-2 gap-4 pt-2">
-                          <div className="space-y-2">
-                            <Label htmlFor="quantidadeR2">Ração Operacional R2 (24h)</Label>
-                            <Input
-                              id="quantidadeR2"
-                              type="number"
-                              min="0"
-                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={quantidadeR2 === 0 ? "" : quantidadeR2.toString()}
-                              onChange={(e) => setQuantidadeR2(Number(e.target.value))}
-                              placeholder="0"
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="quantidadeR3">Ração Operacional R3 (12h)</Label>
-                            <Input
-                              id="quantidadeR3"
-                              type="number"
-                              min="0"
-                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={quantidadeR3 === 0 ? "" : quantidadeR3.toString()}
-                              onChange={(e) => setQuantidadeR3(Number(e.target.value))}
-                              placeholder="0"
-                              onKeyDown={handleEnterToNextField}
-                            />
-                          </div>
+                        <div className="max-h-[400px] overflow-y-auto rounded-md border">
+                          <Table className="w-full">
+                            <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                              <TableRow>
+                                <TableHead className="w-[70%]">Item</TableHead>
+                                <TableHead className="w-[30%] text-center">Quantidade</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {/* Ração R2 */}
+                              <TableRow className="h-12">
+                                <TableCell className="font-medium text-sm py-1">
+                                  Ração Operacional R2 (24h)
+                                </TableCell>
+                                <TableCell className="py-1">
+                                  <Input
+                                    id="quantidadeR2"
+                                    type="number"
+                                    min="0"
+                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
+                                    value={quantidadeR2 === 0 ? "" : quantidadeR2.toString()}
+                                    onChange={(e) => setQuantidadeR2(Number(e.target.value))}
+                                    placeholder="0"
+                                    onKeyDown={handleEnterToNextField}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                              {/* Ração R3 */}
+                              <TableRow className="h-12">
+                                <TableCell className="font-medium text-sm py-1">
+                                  Ração Operacional R3 (12h)
+                                </TableCell>
+                                <TableCell className="py-1">
+                                  <Input
+                                    id="quantidadeR3"
+                                    type="number"
+                                    min="0"
+                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
+                                    value={quantidadeR3 === 0 ? "" : quantidadeR3.toString()}
+                                    onChange={(e) => setQuantidadeR3(Number(e.target.value))}
+                                    placeholder="0"
+                                    onKeyDown={handleEnterToNextField}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        {/* Total line, similar to Classe II form */}
+                        <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
+                          <span className="font-bold text-sm">TOTAL DE RAÇÕES OPERACIONAIS</span>
+                          <span className="font-extrabold text-lg text-secondary">
+                            {formatNumber(totalRacoesOperacionais)} un.
+                          </span>
                         </div>
                         
-                        {/* Preview Ração Operacional */}
-                        {(quantidadeR2 > 0 || quantidadeR3 > 0) && (
-                          <div className="space-y-1 mt-6 p-4 bg-background rounded-lg border">
-                            <h5 className="font-semibold text-sm">Resumo (Ração Operacional)</h5>
-                            <div className="flex justify-between items-center text-sm">
-                              <span className="text-muted-foreground">Total de Unidades R2</span>
-                              <span className="font-semibold">{formatNumber(quantidadeR2)}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                              <span className="text-muted-foreground">Total de Unidades R3</span>
-                              <span className="font-semibold">{formatNumber(quantidadeR3)}</span>
-                            </div>
-                            <div className="h-px bg-border my-2" />
-                            <div className="flex justify-between items-center text-lg">
-                              <span className="font-bold">Total de Rções Operacionais</span>
-                              <span className="font-bold text-secondary">{formatNumber(totalRacoesOperacionais)} un.</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              * Nota: O valor monetário desta solicitação é considerado R$ 0,00 para fins de cálculo logístico interno.
-                            </p>
-                          </div>
-                        )}
+                        <p className="text-xs text-muted-foreground mt-2">
+                          * Nota: O valor monetário desta solicitação é considerado R$ 0,00 para fins de cálculo logístico interno.
+                        </p>
                         
-                        {/* Botão Salvar Configuração da Categoria - MOVIDO AQUI */}
+                        {/* Botão Salvar Configuração da Categoria */}
                         <div className="flex justify-end gap-2 pt-4">
                           <Button
                             type="button"
