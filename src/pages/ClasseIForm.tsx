@@ -625,14 +625,6 @@ export default function ClasseIForm() {
     setCustomFaseAtividade("");
     setSelectedTab('RACAO_QUENTE');
     setCurrentOMConsolidatedData(null); // Reset consolidated data
-    
-    // Removendo a chamada desnecessária a loadDiretrizes aqui
-    // if (diretrizAno) {
-    //     loadDiretrizes(supabase.auth.getUser().then(res => res.data.user?.id || ''));
-    // } else {
-    //     setValorQS(9.0);
-    //     setValorQR(6.0);
-    // }
   };
 
   const handleOMChange = async (omData: OMData | undefined) => {
@@ -640,7 +632,7 @@ export default function ClasseIForm() {
     resetFormFields();
     
     if (omData) {
-      // 2. Set OM/UG and RM defaults
+      // 2. Set OM/UG and RM defaults (Inputs da Seção 1/2)
       setSelectedOmId(omData.id);
       setOrganizacao(omData.nome_om);
       setUg(omData.codug_om);
@@ -659,7 +651,12 @@ export default function ClasseIForm() {
           const calc = calculateClasseICalculations(existingR1.efetivo, existingR1.diasOperacao, existingR1.nrRefInt || 1, currentValorQS, currentValorQR);
           
           newConsolidatedData.RACAO_QUENTE = {
-              id: existingR1.id,
+              // IMPORTANTE: Não passamos o ID aqui. O ID só é passado no modo de edição (handleEditRegistro).
+              // Isso garante que, ao salvar, o sistema tente um INSERT (se não houver conflito) ou um UPDATE
+              // se o registro for encontrado pelo par (organizacao, ug, categoria).
+              // No entanto, para evitar o UPDATE indesejado, vamos garantir que o ID só seja usado no handleFinalSave
+              // SE o editingRegistroId estiver setado.
+              id: existingR1.id, // Mantemos o ID aqui para que o handleFinalSave possa fazer o upsert correto.
               categoria: 'RACAO_QUENTE',
               organizacao: existingR1.organizacao,
               ug: existingR1.ug,
@@ -772,10 +769,8 @@ export default function ClasseIForm() {
         // Tenta encontrar o ID existente no DB para esta categoria
         const existingDbRecord = registros.find(r => r.organizacao === organizacao && r.ug === ug && r.categoria === 'RACAO_QUENTE');
         
-        // Se estiver em modo de edição, usa o ID do registro que está sendo editado.
-        // Se for um novo registro, mas já existe um no DB, o ID do DB é usado para UPDATE.
-        // Se for um novo registro e não existe no DB, o ID é undefined (INSERT).
-        const recordId = existingDbRecord?.id; // Não usamos editingRegistroId aqui, pois ele é o ID do registro que iniciou a edição, mas queremos o ID do registro da categoria atual.
+        // Se houver um registro existente, usamos o ID para que o handleFinalSave possa fazer o UPDATE.
+        const recordId = existingDbRecord?.id; 
         
         newRecord = {
             id: recordId,
@@ -811,7 +806,7 @@ export default function ClasseIForm() {
         // Tenta encontrar o ID existente no DB para esta categoria
         const existingDbRecord = registros.find(r => r.organizacao === organizacao && r.ug === ug && r.categoria === 'RACAO_OPERACIONAL');
         
-        // Se estiver em modo de edição, usa o ID do registro que está sendo editado.
+        // Se houver um registro existente, usamos o ID para que o handleFinalSave possa fazer o UPDATE.
         const recordId = existingDbRecord?.id;
         
         newRecord = {
@@ -831,16 +826,16 @@ export default function ClasseIForm() {
     
     if (newRecord) {
         // Ao salvar a configuração da categoria, atualizamos o estado de consolidação
-        // e definimos o ID do registro que está sendo editado (para o botão Salvar Final).
         setCurrentOMConsolidatedData(prev => ({
             ...prev,
             [selectedTab]: newRecord,
         }));
-        // O editingRegistroId é usado apenas para controlar o estado de edição/atualização do formulário principal.
-        // Se houver um ID em qualquer uma das categorias, consideramos que estamos em modo de edição.
-        const existingR1Id = currentOMConsolidatedData?.RACAO_QUENTE?.id;
-        const existingR2Id = currentOMConsolidatedData?.RACAO_OPERACIONAL?.id;
-        setEditingRegistroId(existingR1Id || existingR2Id || newRecord.id || null);
+        
+        // O editingRegistroId é usado apenas para controlar o rótulo do botão "Salvar Registros"
+        // e o fluxo de deleção/upsert no handleFinalSave.
+        const existingR1Id = currentOMConsolidatedData?.RACAO_QUENTE?.id || newRecord.id;
+        const existingR2Id = currentOMConsolidatedData?.RACAO_OPERACIONAL?.id || newRecord.id;
+        setEditingRegistroId(existingR1Id || existingR2Id || null);
         
         toast.success(`Configuração de ${selectedTab === 'RACAO_QUENTE' ? 'Ração Quente' : 'Ração Operacional'} salva temporariamente.`);
     }
@@ -948,23 +943,13 @@ export default function ClasseIForm() {
         }
         
         // 4. Inserir/Atualizar registros (Upsert)
-        for (const record of recordsToSave) {
-            if (record.id) {
-                // Update
-                const { id, ...updateData } = record;
-                const { error: updateError } = await supabase
-                    .from("classe_i_registros")
-                    .update(updateData)
-                    .eq("id", record.id);
-                if (updateError) throw updateError;
-            } else {
-                // Insert (Novo registro)
-                const { error: insertError } = await supabase
-                    .from("classe_i_registros")
-                    .insert([record]);
-                if (insertError) throw insertError;
-            }
-        }
+        // Usamos upsert (insert com onConflict) para garantir que, se o registro existir (pelo ID), ele seja atualizado.
+        // Se o ID for nulo (novo registro), ele insere.
+        const { error: upsertError } = await supabase
+            .from("classe_i_registros")
+            .upsert(recordsToSave, { onConflict: 'id' });
+            
+        if (upsertError) throw upsertError;
         
         toast.success(`Registros de Classe I para ${organizacao} salvos com sucesso!`);
         await updatePTrabStatusIfAberto(ptrabId);
@@ -1093,6 +1078,7 @@ export default function ClasseIForm() {
     setCurrentOMConsolidatedData(newConsolidatedData);
 
     // 6. Setando o ID do registro que está sendo editado (para o botão Salvar)
+    // Usamos o ID do registro clicado para definir o estado de edição.
     setEditingRegistroId(registro.id);
     setSelectedTab(registro.categoria);
 
