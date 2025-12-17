@@ -79,7 +79,7 @@ const AIChatDrawer = () => {
     <Drawer.Root open={open} onOpenChange={setOpen} shouldScaleBackground>
       <Drawer.Trigger asChild>
         <Button 
-          size="lg" 
+          size="icon" 
           className="fixed bottom-6 right-6 z-50 rounded-full shadow-xl h-14 w-14 bg-primary/50 hover:bg-primary transition-all"
           aria-label="Abrir Chat com IA"
         >
