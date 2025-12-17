@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label"; // Adicionado Label
-import { ArrowLeft, Download, Upload, Lock, AlertCircle, Check, FileText } from "lucide-react";
+import { ArrowLeft, Download, Upload, Lock, AlertCircle, Check, FileText, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { toast } from "sonner";
@@ -98,6 +98,7 @@ const PTrabExportImportPage = () => {
   
   // Novo estado para a lista de OMs do usuário
   const [userOms, setUserOms] = useState<OMData[]>([]);
+  const [loadingOms, setLoadingOms] = useState(true); // NOVO: Estado de carregamento das OMs
 
 
   useEffect(() => {
@@ -147,6 +148,7 @@ const PTrabExportImportPage = () => {
   };
 
   const loadUserOms = async (currentUserId: string) => {
+    setLoadingOms(true); // Inicia o carregamento
     try {
       const { data, error } = await supabase
         .from('organizacoes_militares')
@@ -160,6 +162,8 @@ const PTrabExportImportPage = () => {
     } catch (error) {
       console.error("Erro ao carregar OMs do usuário:", error);
       toast.error("Erro ao carregar OMs do usuário.");
+    } finally {
+      setLoadingOms(false); // Finaliza o carregamento
     }
   };
 
@@ -349,6 +353,11 @@ const PTrabExportImportPage = () => {
     }
     
     // Verifica se o usuário tem OMs cadastradas antes de prosseguir
+    if (loadingOms) {
+        toast.info("Aguarde o carregamento das Organizações Militares...");
+        return;
+    }
+    
     if (userOms.length === 0) {
         toast.error("Nenhuma OM cadastrada para o usuário. Cadastre uma OM antes de importar.");
         return;
@@ -758,10 +767,14 @@ const PTrabExportImportPage = () => {
                     </p>
                     <Button 
                         onClick={handleAnalysisReady} 
-                        disabled={loading || summary.type === 'full_backup'} 
+                        disabled={loading || summary.type === 'full_backup' || loadingOms} // Desabilita se estiver carregando OMs
                         className="w-full bg-destructive hover:bg-destructive/90"
                     >
-                        {loading ? "Preparando Importação..." : "Continuar Importação (Opções)"}
+                        {loadingOms ? (
+                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando OMs...</>
+                        ) : (
+                            loading ? "Preparando Importação..." : "Continuar Importação (Opções)"
+                        )}
                     </Button>
                 </div>
               )}
