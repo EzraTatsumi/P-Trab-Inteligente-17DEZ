@@ -59,7 +59,19 @@ const generateExportFileName = (pTrabData: Tables<'p_trab'>): string => {
     const dataAtz = formatDateDDMMMAA(pTrabData.updated_at);
     // Substitui barras por hífens para segurança no nome do arquivo
     const numeroPTrab = pTrabData.numero_ptrab.replace(/\//g, '-'); 
-    const nomeBase = `P Trab Nr ${numeroPTrab} - ${pTrabData.nome_operacao} - ${pTrabData.nome_om} - Atz ${dataAtz}`;
+    
+    // Verifica se o P Trab está aprovado (numerado oficialmente)
+    const isApproved = pTrabData.status === 'aprovado' && !pTrabData.numero_ptrab.startsWith('Minuta');
+    
+    let nomeBase = `P Trab Nr ${numeroPTrab} - ${pTrabData.nome_operacao}`;
+    
+    // Se NÃO estiver aprovado, inclui a sigla da OM
+    if (!isApproved) {
+        nomeBase += ` - ${pTrabData.nome_om}`;
+    }
+    
+    nomeBase += ` - Atz ${dataAtz}`;
+    
     return `${nomeBase}.json`;
 };
 

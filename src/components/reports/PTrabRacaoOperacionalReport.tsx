@@ -103,9 +103,21 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
   
   // NOVO: Função para gerar o nome do arquivo
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
-    // Use a nova função de formatação
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
-    const nomeBase = `P Trab Nr ${ptrabData.numero_ptrab} (Racao Op) - ${ptrabData.nome_operacao} - ${ptrabData.nome_om} - Atz ${dataAtz}`;
+    const numeroPTrab = ptrabData.numero_ptrab.replace(/\//g, '-'); 
+    
+    // Verifica se o P Trab está aprovado (numerado oficialmente)
+    const isApproved = ptrabData.status === 'aprovado' && !ptrabData.numero_ptrab.startsWith('Minuta');
+    
+    let nomeBase = `P Trab Nr ${numeroPTrab} - ${ptrabData.nome_operacao}`;
+    
+    // Se NÃO estiver aprovado, inclui a sigla da OM
+    if (!isApproved) {
+        nomeBase += ` - ${ptrabData.nome_om}`;
+    }
+    
+    nomeBase += ` - Atz ${dataAtz}`;
+    
     return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
   };
 
