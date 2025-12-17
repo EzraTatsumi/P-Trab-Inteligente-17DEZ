@@ -23,6 +23,7 @@ import VisualizacaoConfigPage from "./pages/VisualizacaoConfigPage";
 import OmConfigPage from "./pages/OmConfigPage";
 import OmBulkUploadPage from "./pages/OmBulkUploadPage";
 import PTrabExportImportPage from "./pages/PTrabExportImportPage";
+import UserProfilePage from "./pages/UserProfilePage"; // NOVO: Importar UserProfilePage
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="/config/om" element={<OmConfigPage />} />
               <Route path="/config/om/bulk-upload" element={<OmBulkUploadPage />} />
               <Route path="/config/ptrab-export-import" element={<PTrabExportImportPage />} />
+              <Route path="/config/profile" element={<UserProfilePage />} /> {/* NOVO: Rota para Perfil */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </SessionContextProvider>

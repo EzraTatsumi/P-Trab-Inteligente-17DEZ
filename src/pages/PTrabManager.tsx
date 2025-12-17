@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -51,7 +51,7 @@ import { CreditPromptDialog } from "@/components/CreditPromptDialog"; // Importa
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
   origem: 'original' | 'importado' | 'consolidado';
-  rotulo_versao: string | null; // ADDED rotulo_versao
+  rotulo_versao: string | null;
 };
 
 interface PTrab extends PTrabDB {
@@ -131,13 +131,13 @@ const PTrabManager = () => {
   const getOriginBadge = (origem: PTrabDB['origem']) => {
     switch (origem) {
         case 'importado':
-            return { label: 'Importado', className: 'bg-purple-500 text-white' };
+            return { label: 'Importado', className: 'bg-purple-500 text-white hover:bg-purple-600' };
         case 'consolidado':
-            return { label: 'Consolidado', className: 'bg-teal-500 text-white' };
+            return { label: 'Consolidado', className: 'bg-teal-500 text-white hover:bg-teal-600' };
         case 'original':
         default:
             // Corrigido para Azul Escuro (blue-600) com letra branca
-            return { label: 'Original', className: 'bg-blue-600 text-white' }; 
+            return { label: 'Original', className: 'bg-blue-600 text-white hover:bg-blue-700' }; 
     }
   };
 
@@ -1404,6 +1404,13 @@ const PTrabManager = () => {
               >
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                
+                {/* NOVO ITEM: Editar Perfil do Usuário */}
+                <DropdownMenuItem onClick={() => navigate("/config/profile")}>
+                  <User className="mr-2 h-4 w-4" />
+                  Editar Perfil do Usuário
+                </DropdownMenuItem>
+                
                 <DropdownMenuItem onClick={() => navigate("/config/diretrizes")}>
                   Diretriz de Custeio
                 </DropdownMenuItem>
@@ -1747,7 +1754,7 @@ const PTrabManager = () => {
             <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
               Cancelar
             </AlertDialogCancel>
-          </AlertDialogFooter>
+          </DialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
