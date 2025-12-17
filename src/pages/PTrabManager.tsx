@@ -1217,10 +1217,15 @@ const PTrabManager = () => {
         // Usar o primeiro PTrab como base para o cabeçalho
         const basePTrab = selectedPTrabsData[0];
         
+        // NOVO: Destruturar e omitir campos que devem ser gerados pelo DB
+        const { 
+            id, created_at, updated_at, share_token, 
+            ...restOfBasePTrab 
+        } = basePTrab;
+        
         // 2. Criar o novo PTrab consolidado (Minuta)
         const newPTrabData: TablesInsert<'p_trab'> = {
-            ...basePTrab,
-            id: undefined, // Deixa o DB gerar o ID
+            ...restOfBasePTrab, // Usar o restante dos campos
             user_id: user.id,
             numero_ptrab: finalMinutaNumber,
             nome_operacao: `CONSOLIDADO - ${basePTrab.nome_operacao}`, // Nome da operação consolidada
@@ -1228,9 +1233,7 @@ const PTrabManager = () => {
             origem: 'consolidado',
             comentario: `Consolidação dos P Trabs: ${selectedPTrabsData.map(p => p.numero_ptrab).join(', ')}`,
             rotulo_versao: null,
-            share_token: undefined, // Deixa o DB gerar o token
-            created_at: undefined,
-            updated_at: undefined,
+            // id, created_at, updated_at, share_token são omitidos, permitindo que o DB gere os valores
         };
 
         const { data: newPTrab, error: insertError } = await supabase
