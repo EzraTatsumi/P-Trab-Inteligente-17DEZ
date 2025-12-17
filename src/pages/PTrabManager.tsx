@@ -130,8 +130,8 @@ const PTrabManager = () => {
   const fetchUserName = useCallback(async (userId: string) => {
     const { data, error } = await supabase
         .from('profiles')
-        // MUDANÇA: Buscar apenas last_name (Nome de Guerra)
-        .select('last_name') 
+        // MUDANÇA: Buscar last_name e raw_user_meta_data para posto_graduacao
+        .select('last_name, raw_user_meta_data') 
         .eq('id', userId)
         .single();
 
@@ -141,9 +141,16 @@ const PTrabManager = () => {
     }
     
     if (data) {
-        // MUDANÇA: Retornar apenas o last_name
-        const name = data.last_name || '';
-        return name.length > 0 ? name : null;
+        const nomeGuerra = data.last_name || '';
+        const postoGraduacao = (data.raw_user_meta_data as any)?.posto_graduacao || '';
+        
+        if (postoGraduacao && nomeGuerra) {
+            return `${postoGraduacao} ${nomeGuerra}`;
+        }
+        
+        if (nomeGuerra) {
+            return nomeGuerra;
+        }
     }
     return null;
   }, []);
