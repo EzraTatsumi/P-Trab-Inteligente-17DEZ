@@ -397,6 +397,7 @@ const PTrabExportImportPage = () => {
         // 2. Usar a primeira OM do usuário como OM de destino (se houver)
         const defaultOm = userOms[0];
         if (!defaultOm) {
+            // Lança um erro claro se não houver OMs cadastradas
             throw new Error("Nenhuma OM cadastrada para o usuário. Cadastre uma OM antes de importar.");
         }
         
@@ -417,7 +418,12 @@ const PTrabExportImportPage = () => {
         
     } catch (error: any) {
         console.error("Erro ao criar novo número e importar:", error);
-        toast.error(error.message || "Erro ao importar como Minuta.");
+        // Se o erro for a falta de OM, exibe a mensagem específica
+        if (error.message.includes("Nenhuma OM cadastrada")) {
+            toast.error(error.message);
+        } else {
+            toast.error("Erro ao importar como Minuta.");
+        }
         setLoading(false);
     }
   };
