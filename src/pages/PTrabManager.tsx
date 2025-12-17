@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -117,6 +117,75 @@ const PTrabManager = () => {
 
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
+
+  // =================================================================
+  // FUNÇÕES AUXILIARES (Para resolver o erro de referência)
+  // =================================================================
+  
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  };
+
+  const getOriginBadge = (origem: PTrabDB['origem']) => {
+    switch (origem) {
+        case 'importado':
+            return { label: 'Importado', className: 'bg-purple-500 text-white' };
+        case 'consolidado':
+            return { label: 'Consolidado', className: 'bg-teal-500 text-white' };
+        case 'original':
+        default:
+            return { label: 'Original', className: 'bg-gray-400 text-white' };
+    }
+  };
+
+  const handleSelectPTrab = (ptrab: PTrab) => {
+      navigate(`/ptrab/form?ptrabId=${ptrab.id}`);
+  };
+
+  const handleNavigateToPrintOrExport = (ptrabId: string) => {
+      navigate(`/ptrab/print?ptrabId=${ptrabId}`);
+  };
+
+  const handleConfirmConsolidation = (selectedPTrabs: string[], consolidatedNumber: string) => {
+      // Placeholder for consolidation logic
+      console.log("Consolidação confirmada:", selectedPTrabs, consolidatedNumber);
+      toast.info("Funcionalidade de Consolidação em desenvolvimento.");
+      setShowConsolidationDialog(false);
+  };
+  
+  const handlePromptConfirm = () => {
+      // Placeholder for credit prompt confirm
+      setShowCreditPrompt(false);
+      navigate(`/ptrab/form?ptrabId=${ptrabToFill?.id}&openCredit=true`);
+  };
+
+  const handlePromptCancel = () => {
+      // Placeholder for credit prompt cancel
+      setShowCreditPrompt(false);
+  };
+
+  // Lógica de Consolidação
+  const consolidationTooltipText = "Selecione múltiplos P Trabs para consolidar seus custos em um novo P Trab.";
+
+  const isConsolidationDisabled = useMemo(() => {
+      // Consolidação requer pelo menos 2 PTrabs que não estejam arquivados
+      const availablePTrabs = pTrabs.filter(p => p.status !== 'arquivado');
+      return availablePTrabs.length < 2;
+  }, [pTrabs]);
+
+  const getConsolidationDisabledMessage = () => {
+      const availablePTrabs = pTrabs.filter(p => p.status !== 'arquivado');
+      if (availablePTrabs.length === 0) {
+          return "Crie pelo menos dois P Trabs para iniciar a consolidação.";
+      }
+      return "É necessário ter pelo menos dois P Trabs ativos para consolidar.";
+  };
+  
+  // =================================================================
+  // FIM FUNÇÕES AUXILIARES
+  // =================================================================
 
   // Função de reset do formulário (usando useCallback para evitar recriação desnecessária)
   const resetForm = useCallback(() => {
