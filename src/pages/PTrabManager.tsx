@@ -136,8 +136,8 @@ const PTrabManager = () => {
             return { label: 'Consolidado', className: 'bg-teal-500 text-white' };
         case 'original':
         default:
-            // Corrigido para Azul Claro (sky-400) com letra branca, conforme solicitado
-            return { label: 'Original', className: 'bg-sky-400 text-white' }; 
+            // Corrigido para Azul Escuro (blue-600) com letra branca
+            return { label: 'Original', className: 'bg-blue-600 text-white' }; 
     }
   };
 
