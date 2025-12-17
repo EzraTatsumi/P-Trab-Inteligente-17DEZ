@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { sanitizeAuthError } from "@/lib/errorUtils";
 import { z } from "zod";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface SignupDialogProps {
   open: boolean;
@@ -28,9 +29,21 @@ interface SignupDialogProps {
 // Schema de validação para o cadastro
 const signupSchema = z.object({
   email: z.string().email("E-mail inválido."),
-  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres."),
-  first_name: z.string().min(2, "Nome é obrigatório."),
-  last_name: z.string().min(2, "Sobrenome é obrigatório."),
+  nome_completo: z.string().min(5, "Nome completo é obrigatório."),
+  nome_guerra: z.string().min(2, "Nome de Guerra é obrigatório."),
+  sigla_om: z.string().min(2, "Sigla da OM é obrigatória."),
+  funcao_om: z.string().min(2, "Função na OM é obrigatória."),
+  telefone: z.string().regex(/^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/, "Telefone inválido (Ex: (99) 99999-9999).").optional().or(z.literal('')),
+  password: z.string()
+    .min(8, "A senha deve ter no mínimo 8 caracteres.")
+    .regex(/[A-Z]/, "A senha deve conter pelo menos uma letra maiúscula.")
+    .regex(/[a-z]/, "A senha deve conter pelo menos uma letra minúscula.")
+    .regex(/[0-9]/, "A senha deve conter pelo menos um número.")
+    .regex(/[^a-zA-Z0-9]/, "A senha deve conter pelo menos um caractere especial."),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "As senhas não coincidem.",
+  path: ["confirmPassword"],
 });
 
 export const SignupDialog: React.FC<SignupDialogProps> = ({
@@ -41,30 +54,48 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
   const [form, setForm] = useState({
     email: "",
     password: "",
-    first_name: "",
-    last_name: "",
+    confirmPassword: "",
+    nome_completo: "",
+    nome_guerra: "",
+    sigla_om: "",
+    funcao_om: "",
+    telefone: "",
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string | undefined>>({});
   const { handleEnterToNextField } = useFormNavigation();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    // Limpa o erro de validação ao digitar
+    setValidationErrors(prev => ({ ...prev, [e.target.name]: undefined }));
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setValidationErrors({});
 
     try {
       const validationResult = signupSchema.safeParse(form);
       if (!validationResult.success) {
+        const errors = validationResult.error.flatten().fieldErrors;
+        const fieldErrors: Record<string, string | undefined> = {};
+        
+        // Mapeia os erros para o estado de validação
+        Object.keys(errors).forEach(key => {
+            fieldErrors[key] = errors[key]?.[0];
+        });
+        setValidationErrors(fieldErrors);
+        
+        // Exibe o primeiro erro como toast
         toast.error(validationResult.error.errors[0].message);
         setLoading(false);
         return;
       }
 
-      const { email, password, first_name, last_name } = validationResult.data;
+      const { email, password, nome_completo, nome_guerra, sigla_om, funcao_om, telefone } = validationResult.data;
 
       const { error } = await supabase.auth.signUp({
         email,
@@ -72,8 +103,14 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         options: {
           emailRedirectTo: `${window.location.origin}/ptrab`,
           data: {
-            first_name,
-            last_name,
+            // Mapeamento para o trigger handle_new_user (first_name/last_name)
+            first_name: nome_completo, 
+            last_name: nome_guerra,
+            
+            // Dados adicionais para o perfil
+            sigla_om,
+            funcao_om,
+            telefone,
           },
         },
       });
@@ -82,7 +119,16 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
 
       // Sucesso no cadastro
       onSignupSuccess(email);
-      setForm({ email: "", password: "", first_name: "", last_name: "" });
+      setForm({ 
+        email: "", 
+        password: "", 
+        confirmPassword: "",
+        nome_completo: "", 
+        nome_guerra: "",
+        sigla_om: "",
+        funcao_om: "",
+        telefone: "",
+      });
       
     } catch (error: any) {
       toast.error(sanitizeAuthError(error));
@@ -93,46 +139,88 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
             Criar Nova Conta
           </DialogTitle>
           <DialogDescription>
-            Preencha seus dados para criar sua conta e começar a usar a plataforma.
+            Preencha seus dados institucionais para criar sua conta.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSignup} className="grid gap-4 py-4">
           
-          <div className="grid grid-cols-2 gap-4">
+          {/* Dados Pessoais e Institucionais */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="first_name">Nome *</Label>
+              <Label htmlFor="nome_completo">Nome Completo *</Label>
               <Input
-                id="first_name"
-                name="first_name"
-                value={form.first_name}
+                id="nome_completo"
+                name="nome_completo"
+                value={form.nome_completo}
                 onChange={handleChange}
-                placeholder="Seu nome"
+                placeholder="Seu nome completo"
                 required
                 onKeyDown={handleEnterToNextField}
               />
+              {validationErrors.nome_completo && <p className="text-xs text-destructive">{validationErrors.nome_completo}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="last_name">Sobrenome *</Label>
+              <Label htmlFor="nome_guerra">Nome de Guerra *</Label>
               <Input
-                id="last_name"
-                name="last_name"
-                value={form.last_name}
+                id="nome_guerra"
+                name="nome_guerra"
+                value={form.nome_guerra}
                 onChange={handleChange}
-                placeholder="Seu sobrenome"
+                placeholder="Seu nome de guerra"
                 required
                 onKeyDown={handleEnterToNextField}
               />
+              {validationErrors.nome_guerra && <p className="text-xs text-destructive">{validationErrors.nome_guerra}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sigla_om">Sigla da OM *</Label>
+              <Input
+                id="sigla_om"
+                name="sigla_om"
+                value={form.sigla_om}
+                onChange={handleChange}
+                placeholder="Ex: 23ª Bda Inf Sl"
+                required
+                onKeyDown={handleEnterToNextField}
+              />
+              {validationErrors.sigla_om && <p className="text-xs text-destructive">{validationErrors.sigla_om}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="funcao_om">Função na OM *</Label>
+              <Input
+                id="funcao_om"
+                name="funcao_om"
+                value={form.funcao_om}
+                onChange={handleChange}
+                placeholder="Ex: S4, Ch Sec Log"
+                required
+                onKeyDown={handleEnterToNextField}
+              />
+              {validationErrors.funcao_om && <p className="text-xs text-destructive">{validationErrors.funcao_om}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="telefone">Telefone (Opcional)</Label>
+              <Input
+                id="telefone"
+                name="telefone"
+                value={form.telefone}
+                onChange={handleChange}
+                placeholder="(99) 99999-9999"
+                onKeyDown={handleEnterToNextField}
+              />
+              {validationErrors.telefone && <p className="text-xs text-destructive">{validationErrors.telefone}</p>}
             </div>
           </div>
-
-          <div className="space-y-2">
+          
+          {/* Email e Senha */}
+          <div className="space-y-2 pt-4">
             <Label htmlFor="email-signup">Email *</Label>
             <Input
               id="email-signup"
@@ -145,37 +233,72 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
               required
               onKeyDown={handleEnterToNextField}
             />
+            {validationErrors.email && <p className="text-xs text-destructive">{validationErrors.email}</p>}
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="password-signup">Senha *</Label>
-            <div className="relative">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="password-signup">Senha *</Label>
+              <div className="relative">
+                <Input
+                  id="password-signup"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  required
+                  minLength={8}
+                  className="pr-10"
+                  onKeyDown={handleEnterToNextField}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onMouseDown={() => setShowPassword(true)}
+                  onMouseUp={() => setShowPassword(false)}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                </Button>
+              </div>
+              {validationErrors.password && <p className="text-xs text-destructive">{validationErrors.password}</p>}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirmar Senha *</Label>
               <Input
-                id="password-signup"
-                name="password"
-                type={showPassword ? "text" : "password"}
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
                 autoComplete="new-password"
-                value={form.password}
+                value={form.confirmPassword}
                 onChange={handleChange}
                 placeholder="••••••••"
                 required
-                minLength={6}
-                className="pr-10"
+                minLength={8}
                 onKeyDown={handleEnterToNextField}
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onMouseDown={() => setShowPassword(true)}
-                onMouseUp={() => setShowPassword(false)}
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-              </Button>
+              {validationErrors.confirmPassword && <p className="text-xs text-destructive">{validationErrors.confirmPassword}</p>}
             </div>
           </div>
+          
+          {/* Critérios de Senha */}
+          <Alert className="mt-2 p-3">
+            <AlertDescription className="text-xs text-muted-foreground">
+              <span className="font-bold text-foreground block mb-1">Critérios de Senha:</span>
+              A senha deve ter no mínimo 8 caracteres e incluir:
+              <ul className="list-disc list-inside ml-2 mt-1 space-y-0.5">
+                <li>Uma letra maiúscula (A-Z)</li>
+                <li>Uma letra minúscula (a-z)</li>
+                <li>Um número (0-9)</li>
+                <li>Um caractere especial (!@#$%^&*)</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
 
           <DialogFooter className="mt-4">
             <Button type="submit" disabled={loading}>
