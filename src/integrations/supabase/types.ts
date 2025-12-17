@@ -39,15 +39,18 @@ export type Database = {
           updated_at: string
           valor_qr: number
           valor_qs: number
+          categoria: string
+          quantidade_r2: number
+          quantidade_r3: number
         }
         Insert: {
-          complemento_qr: number
-          complemento_qs: number
+          complemento_qr?: number
+          complemento_qs?: number
           created_at?: string
           dias_operacao: number
           efetivo: number
-          etapa_qr: number
-          etapa_qs: number
+          etapa_qr?: number
+          etapa_qs?: number
           fase_atividade?: string | null
           id?: string
           memoria_calculo_qr_customizada?: string | null
@@ -57,13 +60,16 @@ export type Database = {
           organizacao: string
           p_trab_id: string
           total_geral: number
-          total_qr: number
-          total_qs: number
+          total_qr?: number
+          total_qs?: number
           ug: string
           ug_qs: string
           updated_at?: string
           valor_qr: number
           valor_qs: number
+          categoria?: string
+          quantidade_r2?: number
+          quantidade_r3?: number
         }
         Update: {
           complemento_qr?: number
@@ -89,10 +95,75 @@ export type Database = {
           updated_at?: string
           valor_qr?: number
           valor_qs?: number
+          categoria?: string
+          quantidade_r2?: number
+          quantidade_r3?: number
         }
         Relationships: [
           {
             foreignKeyName: "classe_i_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classe_ii_registros: {
+        Row: {
+          categoria: string
+          created_at: string
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          dias_operacao: number
+          fase_atividade: string | null
+          id: string
+          itens_equipamentos: Json
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          updated_at: string
+          valor_nd_30: number
+          valor_nd_39: number
+          valor_total: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao: number
+          fase_atividade?: string | null
+          id?: string
+          itens_equipamentos: Json
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          fase_atividade?: string | null
+          id?: string
+          itens_equipamentos?: Json
+          organizacao?: string
+          p_trab_id?: string
+          ug?: string
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classe_ii_registros_p_trab_id_fkey"
             columns: ["p_trab_id"]
             isOneToOne: false
             referencedRelation: "p_trab"
@@ -127,6 +198,8 @@ export type Database = {
           total_litros_sem_margem: number | null
           ug: string
           updated_at: string
+          valor_nd_30: number
+          valor_nd_39: number
           valor_total: number
         }
         Insert: {
@@ -155,6 +228,8 @@ export type Database = {
           total_litros_sem_margem?: number | null
           ug: string
           updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
           valor_total: number
         }
         Update: {
@@ -183,11 +258,388 @@ export type Database = {
           total_litros_sem_margem?: number | null
           ug?: string
           updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
           valor_total?: number
         }
         Relationships: [
           {
             foreignKeyName: "classe_iii_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classe_v_registros: {
+        Row: {
+          categoria: string
+          created_at: string
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          dias_operacao: number
+          fase_atividade: string | null
+          id: string
+          itens_equipamentos: Json
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          updated_at: string
+          valor_nd_30: number
+          valor_nd_39: number
+          valor_total: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao: number
+          fase_atividade?: string | null
+          id?: string
+          itens_equipamentos: Json
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          fase_atividade?: string | null
+          id?: string
+          itens_equipamentos?: Json
+          organizacao?: string
+          p_trab_id?: string
+          ug?: string
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classe_v_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classe_vi_registros: {
+        Row: {
+          categoria: string
+          created_at: string
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          dias_operacao: number
+          fase_atividade: string | null
+          id: string
+          itens_equipamentos: Json
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          updated_at: string
+          valor_nd_30: number
+          valor_nd_39: number
+          valor_total: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao: number
+          fase_atividade?: string | null
+          id?: string
+          itens_equipamentos: Json
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          fase_atividade?: string | null
+          id?: string
+          itens_equipamentos?: Json
+          organizacao?: string
+          p_trab_id?: string
+          ug?: string
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classe_vi_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classe_vii_registros: {
+        Row: {
+          categoria: string
+          created_at: string
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          dias_operacao: number
+          fase_atividade: string | null
+          id: string
+          itens_equipamentos: Json
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          updated_at: string
+          valor_nd_30: number
+          valor_nd_39: number
+          valor_total: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao: number
+          fase_atividade?: string | null
+          id?: string
+          itens_equipamentos: Json
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          fase_atividade?: string | null
+          id?: string
+          itens_equipamentos?: Json
+          organizacao?: string
+          p_trab_id?: string
+          ug?: string
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classe_vii_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classe_viii_remonta_registros: {
+        Row: {
+          animal_tipo: string
+          created_at: string
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          dias_operacao: number
+          fase_atividade: string | null
+          id: string
+          itens_remonta: Json
+          organizacao: string
+          p_trab_id: string
+          quantidade_animais: number
+          ug: string
+          updated_at: string
+          valor_nd_30: number
+          valor_nd_39: number
+          valor_total: number
+        }
+        Insert: {
+          animal_tipo: string
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao: number
+          fase_atividade?: string | null
+          id?: string
+          itens_remonta: Json
+          organizacao: string
+          p_trab_id: string
+          quantidade_animais: number
+          ug: string
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total: number
+        }
+        Update: {
+          animal_tipo?: string
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          fase_atividade?: string | null
+          id?: string
+          itens_remonta?: Json
+          organizacao?: string
+          p_trab_id?: string
+          quantidade_animais?: number
+          ug?: string
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classe_viii_remonta_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classe_viii_saude_registros: {
+        Row: {
+          categoria: string
+          created_at: string
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          dias_operacao: number
+          fase_atividade: string | null
+          id: string
+          itens_saude: Json
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          updated_at: string
+          valor_nd_30: number
+          valor_nd_39: number
+          valor_total: number
+        }
+        Insert: {
+          categoria?: string
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao: number
+          fase_atividade?: string | null
+          id?: string
+          itens_saude: Json
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          fase_atividade?: string | null
+          id?: string
+          itens_saude?: Json
+          organizacao?: string
+          p_trab_id?: string
+          ug?: string
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classe_viii_saude_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classe_ix_registros: {
+        Row: {
+          categoria: string
+          created_at: string
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          dias_operacao: number
+          fase_atividade: string | null
+          id: string
+          itens_motomecanizacao: Json
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          updated_at: string
+          valor_nd_30: number
+          valor_nd_39: number
+          valor_total: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao: number
+          fase_atividade?: string | null
+          id?: string
+          itens_motomecanizacao: Json
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          fase_atividade?: string | null
+          id?: string
+          itens_motomecanizacao?: Json
+          organizacao?: string
+          p_trab_id?: string
+          ug?: string
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classe_ix_registros_p_trab_id_fkey"
             columns: ["p_trab_id"]
             isOneToOne: false
             referencedRelation: "p_trab"
@@ -374,6 +826,9 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string
+          share_token: string
+          shared_with: string[] | null
+          origem: string
         }
         Insert: {
           acoes?: string | null
@@ -397,6 +852,9 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id: string
+          share_token?: string
+          shared_with?: string[] | null
+          origem?: string
         }
         Update: {
           acoes?: string | null
@@ -420,6 +878,9 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+          share_token?: string
+          shared_with?: string[] | null
+          origem?: string
         }
         Relationships: []
       }
@@ -435,6 +896,7 @@ export type Database = {
           preco_diesel: number
           preco_gasolina: number
           updated_at: string
+          source: string
         }
         Insert: {
           ambito: string
@@ -447,6 +909,7 @@ export type Database = {
           preco_diesel: number
           preco_gasolina: number
           updated_at?: string
+          source?: string
         }
         Update: {
           ambito?: string
@@ -459,6 +922,7 @@ export type Database = {
           preco_diesel?: number
           preco_gasolina?: number
           updated_at?: string
+          source?: string
         }
         Relationships: [
           {
@@ -480,6 +944,7 @@ export type Database = {
           id: string
           last_name: string | null
           updated_at: string | null
+          raw_user_meta_data: Json | null
         }
         Insert: {
           avatar_url?: string | null
@@ -490,6 +955,7 @@ export type Database = {
           id: string
           last_name?: string | null
           updated_at?: string | null
+          raw_user_meta_data?: Json | null
         }
         Update: {
           avatar_url?: string | null
@@ -500,6 +966,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           updated_at?: string | null
+          raw_user_meta_data?: Json | null
         }
         Relationships: []
       }

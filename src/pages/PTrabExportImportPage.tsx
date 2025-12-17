@@ -33,6 +33,12 @@ interface ExportData {
     classe_i_registros: Tables<'classe_i_registros'>[];
     classe_ii_registros: Tables<'classe_ii_registros'>[]; // Adicionado Classe II
     classe_iii_registros: Tables<'classe_iii_registros'>[];
+    classe_v_registros: Tables<'classe_v_registros'>[]; // NOVO
+    classe_vi_registros: Tables<'classe_vi_registros'>[]; // NOVO
+    classe_vii_registros: Tables<'classe_vii_registros'>[]; // NOVO
+    classe_viii_saude_registros: Tables<'classe_viii_saude_registros'>[]; // NOVO
+    classe_viii_remonta_registros: Tables<'classe_viii_remonta_registros'>[]; // NOVO
+    classe_ix_registros: Tables<'classe_ix_registros'>[]; // NOVO
     p_trab_ref_lpc: Tables<'p_trab_ref_lpc'> | null;
     // Global tables only included in full backup
     organizacoes_militares?: Tables<'organizacoes_militares'>[];
@@ -178,11 +184,23 @@ const PTrabExportImportPage = () => {
           { data: classeI },
           { data: classeII },
           { data: classeIII },
+          { data: classeV }, // NOVO
+          { data: classeVI }, // NOVO
+          { data: classeVII }, // NOVO
+          { data: classeVIIISaude }, // NOVO
+          { data: classeVIIIRemonta }, // NOVO
+          { data: classeIX }, // NOVO
           { data: refLPC },
         ] = await Promise.all([
           supabase.from('classe_i_registros').select('*').eq('p_trab_id', selectedPTrabId),
           supabase.from('classe_ii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId),
           supabase.from('classe_iii_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_v_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId), // NOVO
+          supabase.from('classe_vi_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId), // NOVO
+          supabase.from('classe_vii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId), // NOVO
+          supabase.from('classe_viii_saude_registros').select('*, itens_saude, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId), // NOVO
+          supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId), // NOVO
+          supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId), // NOVO
           supabase.from('p_trab_ref_lpc').select('*').eq('p_trab_id', selectedPTrabId).maybeSingle(),
         ]);
 
@@ -191,6 +209,12 @@ const PTrabExportImportPage = () => {
           classe_i_registros: classeI || [],
           classe_ii_registros: classeII || [],
           classe_iii_registros: classeIII || [],
+          classe_v_registros: classeV || [], // NOVO
+          classe_vi_registros: classeVI || [], // NOVO
+          classe_vii_registros: classeVII || [], // NOVO
+          classe_viii_saude_registros: classeVIIISaude || [], // NOVO
+          classe_viii_remonta_registros: classeVIIIRemonta || [], // NOVO
+          classe_ix_registros: classeIX || [], // NOVO
           p_trab_ref_lpc: refLPC || null,
         };
         fileName = generateExportFileName(pTrab);
@@ -203,6 +227,12 @@ const PTrabExportImportPage = () => {
           { data: classeI },
           { data: classeII },
           { data: classeIII },
+          { data: classeV }, // NOVO
+          { data: classeVI }, // NOVO
+          { data: classeVII }, // NOVO
+          { data: classeVIIISaude }, // NOVO
+          { data: classeVIIIRemonta }, // NOVO
+          { data: classeIX }, // NOVO
           { data: refLPC },
           { data: omsData },
           { data: diretrizesCusteio },
@@ -212,6 +242,12 @@ const PTrabExportImportPage = () => {
           supabase.from('classe_i_registros').select('*'),
           supabase.from('classe_ii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39'),
           supabase.from('classe_iii_registros').select('*'),
+          supabase.from('classe_v_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39'), // NOVO
+          supabase.from('classe_vi_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39'), // NOVO
+          supabase.from('classe_vii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39'), // NOVO
+          supabase.from('classe_viii_saude_registros').select('*, itens_saude, valor_nd_30, valor_nd_39'), // NOVO
+          supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, valor_nd_30, valor_nd_39'), // NOVO
+          supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, valor_nd_30, valor_nd_39'), // NOVO
           supabase.from('p_trab_ref_lpc').select('*'),
           supabase.from('organizacoes_militares').select('*').eq('user_id', currentUserId),
           supabase.from('diretrizes_custeio').select('*').eq('user_id', currentUserId),
@@ -223,6 +259,12 @@ const PTrabExportImportPage = () => {
           classe_i_registros: classeI || [],
           classe_ii_registros: classeII || [],
           classe_iii_registros: classeIII || [],
+          classe_v_registros: classeV || [], // NOVO
+          classe_vi_registros: classeVI || [], // NOVO
+          classe_vii_registros: classeVII || [], // NOVO
+          classe_viii_saude_registros: classeVIIISaude || [], // NOVO
+          classe_viii_remonta_registros: classeVIIIRemonta || [], // NOVO
+          classe_ix_registros: classeIX || [], // NOVO
           p_trab_ref_lpc: refLPC || null,
           organizacoes_militares: omsData || [],
           diretrizes_custeio: diretrizesCusteio || [],
@@ -617,7 +659,25 @@ const PTrabExportImportPage = () => {
     // 3. Classe III
     await insertFilteredRecords('classe_iii_registros', 'p_trab_id');
     
-    // 4. LPC
+    // 4. Classe V
+    await insertFilteredRecords('classe_v_registros', 'p_trab_id');
+    
+    // 5. Classe VI
+    await insertFilteredRecords('classe_vi_registros', 'p_trab_id');
+    
+    // 6. Classe VII
+    await insertFilteredRecords('classe_vii_registros', 'p_trab_id');
+    
+    // 7. Classe VIII Saúde
+    await insertFilteredRecords('classe_viii_saude_registros', 'p_trab_id');
+    
+    // 8. Classe VIII Remonta
+    await insertFilteredRecords('classe_viii_remonta_registros', 'p_trab_id');
+    
+    // 9. Classe IX
+    await insertFilteredRecords('classe_ix_registros', 'p_trab_id');
+    
+    // 10. LPC
     if (data.data.p_trab_ref_lpc && (data.data.p_trab_ref_lpc as Tables<'p_trab_ref_lpc'>).p_trab_id === originalPTrabId) {
         const { id, created_at, updated_at, ...restOfRefLPC } = data.data.p_trab_ref_lpc as Tables<'p_trab_ref_lpc'>;
         const newRefLPC = { ...restOfRefLPC, p_trab_id: newPTrabId };
@@ -627,14 +687,6 @@ const PTrabExportImportPage = () => {
             throw new Error("Falha ao importar LPC.");
         }
     }
-    
-    // 5. Classes V, VI, VII, VIII, IX (usando o mesmo padrão de filtro)
-    await insertFilteredRecords('classe_v_registros', 'p_trab_id');
-    await insertFilteredRecords('classe_vi_registros', 'p_trab_id');
-    await insertFilteredRecords('classe_vii_registros', 'p_trab_id');
-    await insertFilteredRecords('classe_viii_saude_registros', 'p_trab_id');
-    await insertFilteredRecords('classe_viii_remonta_registros', 'p_trab_id');
-    await insertFilteredRecords('classe_ix_registros', 'p_trab_id');
   };
 
 
