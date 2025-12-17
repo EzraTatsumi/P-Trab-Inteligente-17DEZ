@@ -16,6 +16,16 @@ export const formatNumber = (value: number, decimals: number = 0): string => {
 };
 
 /**
+ * Formats a date string into DD/MM/YYYY format.
+ * @param dateString The date string or Date object.
+ * @returns Formatted date string.
+ */
+export const formatDate = (dateString: string | Date): string => {
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  return format(date, 'dd/MM/yyyy');
+};
+
+/**
  * Parses a string input (allowing comma as decimal separator) into a number.
  * Handles optional thousand separators (dots) by removing them.
  */
