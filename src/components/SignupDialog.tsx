@@ -42,8 +42,8 @@ const signupSchema = z.object({
   nome_guerra: z.string().min(2, "Nome de Guerra é obrigatório."),
   sigla_om: z.string().min(2, "Sigla da OM é obrigatória."),
   funcao_om: z.string().min(2, "Função na OM é obrigatória."),
-  // A validação de telefone é feita pelo InputMask, mas mantemos a regex para garantir o formato final
-  telefone: z.string().regex(/^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/, "Telefone inválido (Ex: (99) 99999-9999).").optional().or(z.literal('')),
+  // Nova validação para o formato (99) 999999999 (11 dígitos)
+  telefone: z.string().regex(/^\(?\d{2}\)?\s?\d{9}$/, "Telefone inválido (Ex: (99) 999999999).").optional().or(z.literal('')),
   password: z.string()
     .min(8, "A senha deve ter no mínimo 8 caracteres.")
     .regex(/[A-Z]/, "A senha deve conter pelo menos uma letra maiúscula.")
@@ -163,10 +163,8 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     }
   };
   
-  // Lógica para máscara de telefone dinâmica
-  const phoneMask = form.telefone.replace(/\D/g, '').length > 10 
-    ? "(99) 99999-9999" 
-    : "(99) 9999-9999";
+  // Máscara de telefone fixa
+  const phoneMask = "(99) 999999999";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -269,7 +267,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                     {...inputProps}
                     id="telefone"
                     name="telefone"
-                    placeholder="(99) 9999-9999 ou (99) 99999-9999"
+                    placeholder="(99) 999999999"
                     onKeyDown={handleEnterToNextField}
                   />
                 )}
