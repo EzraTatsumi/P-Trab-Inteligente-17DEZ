@@ -720,7 +720,7 @@ const PTrabManager = () => {
     }
     
     // Verifica se o número sugerido (ou customizado) já existe
-    const isDuplicate = isPTrabNumberDuplicate(newNumber, existingPTrabNumbers);
+    const isDuplicate = isPTrabNumberDuplicate(newNumber, existingPTrabs);
     if (isDuplicate) {
       toast.error("O número sugerido já existe. Tente novamente ou use outro número.");
       return;
@@ -1641,7 +1641,7 @@ const PTrabManager = () => {
                         
                         {/* 1. Aba Logística (Valor) */}
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Logística:</span>
+                          <span className="text-muted-foreground">Log:</span>
                           <span className="text-orange-600 font-medium">
                             {formatCurrency(ptrab.totalLogistica || 0)}
                           </span>
@@ -1649,7 +1649,7 @@ const PTrabManager = () => {
                         
                         {/* 2. Aba Operacional (Valor) */}
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Operacional:</span>
+                          <span className="text-muted-foreground">Op:</span>
                           <span className="text-blue-600 font-medium">
                             {formatCurrency(ptrab.totalOperacional || 0)}
                           </span>
@@ -1657,7 +1657,7 @@ const PTrabManager = () => {
                         
                         {/* 3. Aba Material Permanente (Valor) */}
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Mat. Permanente:</span>
+                          <span className="text-muted-foreground">Mat Perm:</span>
                           <span className="text-green-600 font-medium">
                             {formatCurrency(ptrab.totalMaterialPermanente || 0)}
                           </span>
@@ -1668,7 +1668,7 @@ const PTrabManager = () => {
                           <>
                             <div className="w-full h-px bg-muted-foreground/30 my-1" />
                             <div className="flex justify-between font-bold text-sm text-foreground">
-                              <span>Total Geral:</span>
+                              <span>Total:</span>
                               <span>{formatCurrency(totalGeral)}</span>
                             </div>
                           </>
@@ -1679,7 +1679,7 @@ const PTrabManager = () => {
                         
                         {/* 5. Quantidade de Ração Op */}
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Ração Op (R2/R3):</span>
+                          <span className="text-muted-foreground">Rç Op:</span>
                           <span className="font-medium">
                             {ptrab.quantidadeRacaoOp !== undefined ? `${ptrab.quantidadeRacaoOp} Unid.` : 'N/A'}
                           </span>
@@ -1687,7 +1687,7 @@ const PTrabManager = () => {
                         
                         {/* 6. Quantidade de Horas de Voo */}
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Horas de Voo:</span>
+                          <span className="text-muted-foreground">HV:</span>
                           <span className="font-medium">
                             {ptrab.quantidadeHorasVoo !== undefined ? `${ptrab.quantidadeHorasVoo} h` : 'N/A'}
                           </span>
