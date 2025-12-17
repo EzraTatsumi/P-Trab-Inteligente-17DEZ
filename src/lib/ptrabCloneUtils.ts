@@ -11,21 +11,22 @@ type PTrabRow = Tables<'p_trab'>;
  * @returns Um objeto pronto para inserção no Supabase.
  */
 export const preparePTrabForCloning = (ptrab: PTrabRow, userId: string) => {
+  // Usamos destructuring para remover explicitamente todos os campos que não devem ser copiados
   const { 
     id, 
     created_at, 
     updated_at, 
-    share_token, // Omitido para que o DB gere um novo UUID
-    shared_with, // Limpo
-    origem, // Redefinido
-    status, // Redefinido
-    // Excluir campos calculados que não existem no DB, mas podem ser anexados ao objeto
+    share_token, // ESTE CAMPO DEVE SER EXCLUÍDO PARA QUE O DB GERE UM NOVO UUID
+    shared_with, 
+    origem, 
+    status, 
+    // Campos que podem estar anexados ao objeto mas não são colunas do DB
     totalLogistica,
     totalOperacional,
     totalMaterialPermanente,
     totalAviacaoExercito,
     ...dataToClone 
-  } = ptrab as any; // Usamos 'any' para permitir a desestruturação de campos não-DB
+  } = ptrab as any; 
 
   return {
     ...dataToClone,
