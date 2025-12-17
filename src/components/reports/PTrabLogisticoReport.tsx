@@ -61,6 +61,7 @@ interface PTrabLogisticoReportProps {
   setShowCompleteStatusDialog: (show: boolean) => void;
   handleConfirmCompleteStatus: () => void;
   handleCancelCompleteStatus: () => void;
+  fileSuffix: string; // NOVO PROP
 }
 
 const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
@@ -77,6 +78,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   setShowCompleteStatusDialog,
   handleConfirmCompleteStatus,
   handleCancelCompleteStatus,
+  fileSuffix, // NOVO PROP
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -117,8 +119,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     // 2. Adicionar o nome da operação
     nomeBase += ` - ${ptrabData.nome_operacao}`;
     
-    // 3. Adicionar a data de atualização
-    nomeBase += ` - Atz ${dataAtz}`;
+    // 3. Adicionar a data de atualização e o sufixo da aba
+    nomeBase += ` - Atz ${dataAtz} - ${fileSuffix}`;
     
     return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
   };
@@ -172,7 +174,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, onExportSuccess, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM]);
+  }, [ptrabData, onExportSuccess, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix]);
 
   // NOVO: Função para abrir o diálogo de impressão do navegador
   const handlePrint = () => {
@@ -811,7 +813,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM]);
+  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix]);
 
   return (
     <div className="space-y-6">

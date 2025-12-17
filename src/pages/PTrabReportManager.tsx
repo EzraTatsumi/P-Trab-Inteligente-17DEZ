@@ -355,24 +355,32 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro): stri
 };
 
 // =================================================================
-// DEFINIÇÃO DOS RELATÓRIOS
+// DEFINIÇÃO DOS RELATÓRIOS E RÓTULOS
 // =================================================================
 
 type ReportType = 
   'logistico' | 
-  'operacional' | 
   'racao_operacional' | 
+  'operacional' | 
   'material_permanente' | 
   'hora_voo' | 
   'dor';
 
-const REPORT_OPTIONS: { value: ReportType, label: string, icon: React.FC<any>, iconClass: string }[] = [
-  { value: 'logistico', label: 'P Trab Logístico', icon: Package, iconClass: 'text-orange-500' },
-  { value: 'racao_operacional', label: 'P Trab Cl I - Ração Operacional', icon: Utensils, iconClass: 'text-orange-500' },
-  { value: 'operacional', label: 'P Trab Operacional', icon: Briefcase, iconClass: 'text-blue-500' },
-  { value: 'material_permanente', label: 'P Trab Material Permanente', icon: HardHat, iconClass: 'text-green-500' },
-  { value: 'hora_voo', label: 'P Trab Hora de Voo', icon: Plane, iconClass: 'text-purple-500' },
-  { value: 'dor', label: 'DOR', icon: ClipboardList, iconClass: 'text-gray-500' },
+interface ReportOption {
+    value: ReportType;
+    label: string;
+    icon: React.FC<any>;
+    iconClass: string;
+    fileSuffix: string; // NOVO CAMPO
+}
+
+const REPORT_OPTIONS: ReportOption[] = [
+  { value: 'logistico', label: 'P Trab Logístico', icon: Package, iconClass: 'text-orange-500', fileSuffix: 'Aba Log' },
+  { value: 'racao_operacional', label: 'P Trab Cl I - Ração Operacional', icon: Utensils, iconClass: 'text-orange-500', fileSuffix: 'Aba Rç Op' },
+  { value: 'operacional', label: 'P Trab Operacional', icon: Briefcase, iconClass: 'text-blue-500', fileSuffix: 'Aba Op' },
+  { value: 'material_permanente', label: 'P Trab Material Permanente', icon: HardHat, iconClass: 'text-green-500', fileSuffix: 'Aba Mat Perm' },
+  { value: 'hora_voo', label: 'P Trab Hora de Voo', icon: Plane, iconClass: 'text-purple-500', fileSuffix: 'Aba HV' },
+  { value: 'dor', label: 'DOR', icon: ClipboardList, iconClass: 'text-gray-500', fileSuffix: 'Aba DOR' },
 ];
 
 // =================================================================
@@ -396,6 +404,8 @@ const PTrabReportManager = () => {
 
   const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO' || r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
   const isCombustivel = (r: ClasseIIIRegistro) => !isLubrificante(r);
+  
+  const currentReportOption = useMemo(() => REPORT_OPTIONS.find(r => r.value === selectedReport)!, [selectedReport]);
 
   const loadData = useCallback(async () => {
     if (!ptrabId) {
@@ -655,6 +665,9 @@ const PTrabReportManager = () => {
   const renderReport = () => {
     if (!ptrabData) return null;
 
+    // Passa o fileSuffix para o componente filho
+    const fileSuffix = currentReportOption.fileSuffix;
+
     switch (selectedReport) {
       case 'logistico':
         return (
@@ -672,6 +685,7 @@ const PTrabReportManager = () => {
             setShowCompleteStatusDialog={setShowCompleteStatusDialog}
             handleConfirmCompleteStatus={handleConfirmCompleteStatus}
             handleCancelCompleteStatus={handleCancelCompleteStatus}
+            fileSuffix={fileSuffix} // NOVO PROP
           />
         );
       case 'racao_operacional':
@@ -680,6 +694,7 @@ const PTrabReportManager = () => {
             ptrabData={ptrabData}
             registrosClasseI={registrosClasseI}
             onExportSuccess={handleExportSuccess}
+            fileSuffix={fileSuffix} // NOVO PROP
           />
         );
       case 'operacional':
@@ -689,7 +704,7 @@ const PTrabReportManager = () => {
         return (
           <div className="text-center py-12">
             <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold">Relatório {REPORT_OPTIONS.find(r => r.value === selectedReport)?.label}</h3>
+            <h3 className="text-xl font-semibold">Relatório {currentReportOption.label}</h3>
             <p className="text-muted-foreground mt-2">
               Este relatório ainda não está implementado.
             </p>

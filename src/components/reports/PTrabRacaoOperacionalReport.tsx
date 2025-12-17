@@ -19,6 +19,7 @@ interface PTrabRacaoOperacionalReportProps {
   ptrabData: PTrabData;
   registrosClasseI: ClasseIRegistro[];
   onExportSuccess: () => void;
+  fileSuffix: string; // NOVO PROP
 }
 
 // Interface para a linha consolidada de Ração Operacional
@@ -54,6 +55,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
   ptrabData,
   registrosClasseI,
   onExportSuccess,
+  fileSuffix, // NOVO PROP
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -118,8 +120,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     // 2. Adicionar o nome da operação
     nomeBase += ` - ${ptrabData.nome_operacao}`;
     
-    // 3. Adicionar a data de atualização
-    nomeBase += ` - Atz ${dataAtz}`;
+    // 3. Adicionar a data de atualização e o sufixo da aba
+    nomeBase += ` - Atz ${dataAtz} - ${fileSuffix}`;
     
     return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
   };
@@ -173,7 +175,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         variant: "destructive",
       });
     });
-  }, [ptrabData, racaoOperacionalConsolidada, onExportSuccess, toast]);
+  }, [ptrabData, racaoOperacionalConsolidada, onExportSuccess, toast, fileSuffix]);
 
   // Função para Imprimir (Abre a caixa de diálogo de impressão)
   const handlePrint = useCallback(() => {
@@ -194,7 +196,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     // --- Definição de Estilos e Alinhamentos ---
     const centerMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
     const leftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true };
-    const leftTopAlignment = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true }; // NOVO: Para a coluna D
+    const leftTopAlignment = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
+    const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
     
     const cellBorder = {
       top: { style: 'thin' as const },
@@ -394,7 +397,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       description: "O relatório de Ração Operacional foi salvo com sucesso.",
       duration: 3000,
     });
-  }, [racaoOperacionalConsolidada, ptrabData, diasOperacao, onExportSuccess, toast]);
+  }, [racaoOperacionalConsolidada, ptrabData, diasOperacao, onExportSuccess, toast, fileSuffix]);
 
 
   if (racaoOperacionalConsolidada.length === 0) {
