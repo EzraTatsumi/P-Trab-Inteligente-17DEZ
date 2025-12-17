@@ -108,7 +108,9 @@ const Login = () => {
         <CardHeader className="text-center">
           <CardTitle>Acesso à Plataforma</CardTitle>
           <CardDescription>
-            Entre com seu e-mail e senha para gerenciar seus Planos de Trabalho
+            Entre com seu e-mail e senha
+            <br />
+            para gerenciar seus Planos de Trabalho
           </CardDescription>
         </CardHeader>
         <CardContent>
