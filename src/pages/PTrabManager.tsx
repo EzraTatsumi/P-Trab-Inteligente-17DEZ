@@ -40,6 +40,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatCurrency } from "@/lib/formatUtils";
 import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate, generateApprovalPTrabNumber, generateUniqueMinutaNumber } from "@/lib/ptrabNumberUtils";
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
+import { ConsolidationNumberDialog } from "@/components/ConsolidationNumberDialog"; // NOVO IMPORT
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { HelpDialog } from "@/components/HelpDialog";
@@ -54,6 +55,12 @@ type PTrabDB = Tables<'p_trab'> & {
   origem: 'original' | 'importado' | 'consolidado';
   rotulo_versao: string | null;
 };
+
+export interface SimplePTrab {
+  id: string;
+  numero_ptrab: string;
+  nome_operacao: string;
+}
 
 interface PTrab extends PTrabDB {
   totalLogistica?: number;
@@ -109,6 +116,9 @@ const PTrabManager = () => {
 
   // NOVO ESTADO: Diálogo de Consolidação
   const [showConsolidationDialog, setShowConsolidationDialog] = useState(false);
+  const [selectedPTrabsToConsolidate, setSelectedPTrabsToConsolidate] = useState<string[]>([]);
+  const [showConsolidationNumberDialog, setShowConsolidationNumberDialog] = useState(false);
+  const [suggestedConsolidationNumber, setSuggestedConsolidationNumber] = useState<string>("");
   
   // NOVO ESTADO: Diálogo de Aprovação/Numeração
   const [showApproveDialog, setShowApproveDialog] = useState(false);
@@ -124,7 +134,7 @@ const PTrabManager = () => {
   const yearSuffix = `/${currentYear}`;
 
   // =================================================================
-  // FUNÇÕES AUXILIARES (Para resolver o erro de referência)
+  // FUNÇÕES AUXILIARES (Exportadas para uso nos relatórios)
   // =================================================================
   
   // MUDANÇA: A função agora recebe os metadados do usuário (userMetadata)
@@ -189,24 +199,6 @@ const PTrabManager = () => {
       navigate(`/ptrab/print?ptrabId=${ptrabId}`);
   };
 
-  const handleConfirmConsolidation = (selectedPTrabs: string[], consolidatedNumber: string) => {
-      // Placeholder for consolidation logic
-      console.log("Consolidação confirmada:", selectedPTrabs, consolidatedNumber);
-      toast.info("Funcionalidade de Consolidação em desenvolvimento.");
-      setShowConsolidationDialog(false);
-  };
-  
-  const handlePromptConfirm = () => {
-      // Placeholder for credit prompt confirm
-      setShowCreditPrompt(false);
-      navigate(`/ptrab/form?ptrabId=${ptrabToFill?.id}&openCredit=true`);
-  };
-
-  const handlePromptCancel = () => {
-      // Placeholder for credit prompt cancel
-      setShowCreditPrompt(false);
-  };
-
   // Lógica de Consolidação
   const consolidationTooltipText = "Selecione múltiplos P Trabs para consolidar seus custos em um novo P Trab.";
 
@@ -222,6 +214,17 @@ const PTrabManager = () => {
           return "Crie pelo menos dois P Trabs para iniciar a consolidação.";
       }
       return "É necessário ter pelo menos dois P Trabs ativos para consolidar.";
+  };
+  
+  const handlePromptConfirm = () => {
+      // Placeholder for credit prompt confirm
+      setShowCreditPrompt(false);
+      navigate(`/ptrab/form?ptrabId=${ptrabToFill?.id}&openCredit=true`);
+  };
+
+  const handlePromptCancel = () => {
+      // Placeholder for credit prompt cancel
+      setShowCreditPrompt(false);
   };
   
   // =================================================================
@@ -1177,6 +1180,140 @@ const PTrabManager = () => {
   const isFinalStatus = (ptrab: PTrab) => {
     return ptrab.status === 'aprovado' || ptrab.status === 'arquivado';
   };
+  
+  // =================================================================
+  // LÓGICA DE CONSOLIDAÇÃO (NOVA IMPLEMENTAÇÃO)
+  // =================================================================
+  
+  const handleOpenConsolidationNumberDialog = (selectedPTrabs: string[]) => {
+    if (selectedPTrabs.length < 2) {
+        toast.error("Selecione pelo menos dois P Trabs para consolidar.");
+        return;
+    }
+    setSelectedPTrabsToConsolidate(selectedPTrabs);
+    const newMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
+    setSuggestedConsolidationNumber(newMinutaNumber);
+    setShowConsolidationDialog(false); // Fecha o diálogo de seleção
+    setShowConsolidationNumberDialog(true); // Abre o diálogo de numeração
+  };
+
+  const handleConfirmConsolidation = async (finalMinutaNumber: string) => {
+    if (selectedPTrabsToConsolidate.length < 2 || !user?.id) return;
+
+    setLoading(true);
+    setShowConsolidationNumberDialog(false);
+
+    try {
+        // 1. Obter os dados completos dos PTrabs selecionados
+        const { data: selectedPTrabsData, error: fetchError } = await supabase
+            .from('p_trab')
+            .select('*')
+            .in('id', selectedPTrabsToConsolidate);
+
+        if (fetchError || !selectedPTrabsData || selectedPTrabsData.length === 0) {
+            throw new Error("Falha ao carregar dados dos P Trabs selecionados.");
+        }
+        
+        // Usar o primeiro PTrab como base para o cabeçalho
+        const basePTrab = selectedPTrabsData[0];
+        
+        // 2. Criar o novo PTrab consolidado (Minuta)
+        const newPTrabData: TablesInsert<'p_trab'> = {
+            ...basePTrab,
+            id: undefined, // Deixa o DB gerar o ID
+            user_id: user.id,
+            numero_ptrab: finalMinutaNumber,
+            nome_operacao: `CONSOLIDADO - ${basePTrab.nome_operacao}`, // Nome da operação consolidada
+            status: 'aberto',
+            origem: 'consolidado',
+            comentario: `Consolidação dos P Trabs: ${selectedPTrabsData.map(p => p.numero_ptrab).join(', ')}`,
+            rotulo_versao: null,
+            share_token: undefined, // Deixa o DB gerar o token
+            created_at: undefined,
+            updated_at: undefined,
+        };
+
+        const { data: newPTrab, error: insertError } = await supabase
+            .from("p_trab")
+            .insert([newPTrabData])
+            .select('id')
+            .single();
+            
+        if (insertError || !newPTrab) throw insertError;
+        
+        const newPTrabId = newPTrab.id;
+        
+        // 3. Clonar e Consolidar Registros de TODAS as Classes
+        const tablesToConsolidate: (keyof Tables)[] = [
+            'classe_i_registros', 'classe_ii_registros', 'classe_iii_registros', 
+            'classe_v_registros', 'classe_vi_registros', 'classe_vii_registros', 
+            'classe_viii_saude_registros', 'classe_viii_remonta_registros', 'classe_ix_registros'
+        ];
+        
+        for (const tableName of tablesToConsolidate) {
+            // Buscar todos os registros da tabela para todos os PTrabs selecionados
+            const { data: records, error: recordsError } = await supabase
+                .from(tableName)
+                .select('*')
+                .in('p_trab_id', selectedPTrabsToConsolidate);
+                
+            if (recordsError) {
+                console.error(`Erro ao buscar registros de ${tableName} para consolidação:`, recordsError);
+                toast.warning(`Aviso: Falha ao consolidar registros de ${tableName}.`);
+                continue;
+            }
+            
+            if (records && records.length > 0) {
+                const newRecords = records.map(record => {
+                    const { id, created_at, updated_at, ...restOfRecord } = record;
+                    
+                    // Ajusta o p_trab_id para o novo PTrab consolidado
+                    const newRecord: TablesInsert<typeof tableName> = {
+                        ...restOfRecord,
+                        p_trab_id: newPTrabId,
+                        // Garante que campos JSONB sejam copiados corretamente (se existirem)
+                        ...(record.itens_equipamentos ? { itens_equipamentos: JSON.parse(JSON.stringify(record.itens_equipamentos)) } : {}),
+                        ...(record.itens_saude ? { itens_saude: JSON.parse(JSON.stringify(record.itens_saude)) } : {}),
+                        ...(record.itens_remonta ? { itens_remonta: JSON.parse(JSON.stringify(record.itens_remonta)) } : {}),
+                        ...(record.itens_motomecanizacao ? { itens_motomecanizacao: JSON.parse(JSON.stringify(record.itens_motomecanizacao)) } : {}),
+                    } as TablesInsert<typeof tableName>;
+                    
+                    return newRecord;
+                });
+                
+                const { error: insertRecordsError } = await supabase
+                    .from(tableName)
+                    .insert(newRecords);
+                    
+                if (insertRecordsError) {
+                    console.error(`Erro ao inserir registros consolidados de ${tableName}:`, insertRecordsError);
+                    toast.warning(`Aviso: Falha ao inserir registros consolidados de ${tableName}.`);
+                }
+            }
+        }
+        
+        // 4. Limpar créditos (opcional, mas recomendado para novo PTrab)
+        await updateUserCredits(user.id, 0, 0);
+
+        toast.success(`Consolidação concluída! Novo P Trab ${finalMinutaNumber} criado.`);
+        loadPTrabs();
+        
+    } catch (error: any) {
+        console.error("Erro na consolidação:", error);
+        toast.error(sanitizeError(error));
+    } finally {
+        setLoading(false);
+        setSelectedPTrabsToConsolidate([]);
+    }
+  };
+  
+  // PTrabs disponíveis para o ConsolidationNumberDialog
+  const simplePTrabsToConsolidate = useMemo(() => {
+    return pTrabs
+        .filter(p => selectedPTrabsToConsolidate.includes(p.id))
+        .map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }));
+  }, [pTrabs, selectedPTrabsToConsolidate]);
+
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1950,12 +2087,23 @@ const PTrabManager = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo de Consolidação */}
+      {/* Diálogo de Consolidação (Seleção) */}
       <PTrabConsolidationDialog
         open={showConsolidationDialog}
         onOpenChange={setShowConsolidationDialog}
-        pTrabsList={pTrabs.map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))}
+        pTrabsList={pTrabs.filter(p => p.status !== 'arquivado').map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))}
         existingPTrabNumbers={existingPTrabNumbers}
+        onConfirm={handleOpenConsolidationNumberDialog} // MUDANÇA: Abre o diálogo de numeração
+        loading={loading}
+      />
+      
+      {/* Diálogo de Numeração de Consolidação (NOVO) */}
+      <ConsolidationNumberDialog
+        open={showConsolidationNumberDialog}
+        onOpenChange={setShowConsolidationNumberDialog}
+        suggestedNumber={suggestedConsolidationNumber}
+        existingNumbers={existingPTrabNumbers}
+        selectedPTrabs={simplePTrabsToConsolidate}
         onConfirm={handleConfirmConsolidation}
         loading={loading}
       />
