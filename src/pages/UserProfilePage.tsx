@@ -83,7 +83,9 @@ const fetchProfile = async (userId: string): Promise<ProfileData> => {
     posto_graduacao: metaData?.posto_graduacao || '',
     sigla_om: metaData?.sigla_om || '',
     funcao_om: metaData?.funcao_om || '',
-    telefone: metaData?.telefone || '',
+    // O telefone é salvo como string de dígitos no DB, mas o InputMask espera a string formatada ou a string de dígitos.
+    // Vamos retornar a string de dígitos para o estado.
+    telefone: metaData?.telefone || '', 
     default_diretriz_year: data.default_diretriz_year,
   };
 };
@@ -116,7 +118,6 @@ const UserProfilePage = () => {
   });
   
   const [loading, setLoading] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showPassword1, setShowPassword1] = useState(false);
   const [showPassword2, setShowPassword2] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<Record<string, string | undefined>>({});
@@ -133,10 +134,11 @@ const UserProfilePage = () => {
     enabled: !!userId,
   });
 
+  // Efeito para preencher o formulário quando os dados do perfil são carregados
   useEffect(() => {
-    if (profileData && isInitialLoad) {
+    if (profileData) {
       // Adicionado log para verificar o preenchimento
-      console.log("Setting initial form data:", profileData);
+      console.log("Setting form data from profileData:", profileData);
       
       setForm({
         first_name: profileData.first_name,
@@ -144,12 +146,12 @@ const UserProfilePage = () => {
         posto_graduacao: profileData.posto_graduacao,
         sigla_om: profileData.sigla_om,
         funcao_om: profileData.funcao_om,
-        telefone: profileData.telefone,
+        // O telefone é a string de dígitos (sem máscara)
+        telefone: profileData.telefone, 
         default_diretriz_year: profileData.default_diretriz_year,
       });
-      setIsInitialLoad(false);
     }
-  }, [profileData, isInitialLoad]);
+  }, [profileData]); // Depende apenas de profileData
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -250,7 +252,8 @@ const UserProfilePage = () => {
           posto_graduacao: form.posto_graduacao,
           sigla_om: form.sigla_om,
           funcao_om: form.funcao_om,
-          telefone: form.telefone.replace(/\D/g, ''), // Salva o telefone sem máscara
+          // Salva o telefone sem máscara (apenas dígitos)
+          telefone: form.telefone.replace(/\D/g, ''), 
         }
       });
       
@@ -374,7 +377,7 @@ const UserProfilePage = () => {
                     <Label htmlFor="telefone">Telefone</Label>
                     <InputMask
                       mask={phoneMask}
-                      // FIX: Garante que o valor do telefone seja formatado com a máscara
+                      // FIX: O valor do InputMask deve ser o valor do estado (string de dígitos)
                       value={form.telefone}
                       onChange={handleChange}
                       maskChar={null}
