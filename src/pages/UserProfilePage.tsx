@@ -14,7 +14,6 @@ import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useSession } from "@/components/SessionContextProvider";
 import { useMilitaryOrganizations, MilitaryOrganization } from "@/hooks/useMilitaryOrganizations";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import InputMask from 'react-input-mask';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -337,7 +336,7 @@ const UserProfilePage = () => {
     );
   }
   
-  const phoneMask = "(99) 999999999";
+  // Removido phoneMask
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -420,27 +419,15 @@ const UserProfilePage = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="telefone">Telefone</Label>
-                    <InputMask
-                      mask={phoneMask}
-                      // O valor do InputMask deve ser a string de dígitos (sem máscara)
+                    <Input
+                      id="telefone"
+                      name="telefone"
+                      type="text"
                       value={form.telefone}
-                      onChange={(e) => {
-                        // Atualiza o estado com a string de dígitos limpa
-                        const rawDigits = e.target.value.replace(/\D/g, '');
-                        setForm(prev => ({ ...prev, telefone: rawDigits }));
-                      }}
-                      maskChar={null}
-                    >
-                      {(inputProps: any) => (
-                        <Input
-                          {...inputProps}
-                          id="telefone"
-                          name="telefone"
-                          placeholder="(99) 999999999"
-                          onKeyDown={handleEnterToNextField}
-                        />
-                      )}
-                    </InputMask>
+                      onChange={handleChange}
+                      placeholder="Ex: 99999999999"
+                      onKeyDown={handleEnterToNextField}
+                    />
                   </div>
                 </div>
               </div>
