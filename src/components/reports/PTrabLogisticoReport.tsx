@@ -110,7 +110,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
   };
 
-  const handlePrint = useCallback(() => {
+  // RENOMEADO: Função que era handlePrint, agora é exportPDF
+  const exportPDF = useCallback(() => {
     if (!contentRef.current) return;
 
     toast({
@@ -159,6 +160,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       });
     });
   }, [ptrabData, onExportSuccess, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM]);
+
+  // NOVO: Função para abrir o diálogo de impressão do navegador
+  const handlePrint = () => {
+    window.print();
+  };
 
   const exportExcel = useCallback(async () => {
     if (!ptrabData) return;
