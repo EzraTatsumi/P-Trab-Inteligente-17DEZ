@@ -40,7 +40,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatCurrency } from "@/lib/formatUtils";
 import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate, generateApprovalPTrabNumber, generateUniqueMinutaNumber } from "@/lib/ptrabNumberUtils";
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
-import { ConsolidationNumberDialog } from "@/components/ConsolidationNumberDialog"; // NOVO IMPORT
+import { ConsolidationNumberDialog } from "@/components/ConsolidationNumberDialog";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { HelpDialog } from "@/components/HelpDialog";
@@ -49,6 +49,7 @@ import { updateUserCredits, fetchUserCredits } from "@/lib/creditUtils";
 import { cn } from "@/lib/utils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 import { useSession } from "@/components/SessionContextProvider";
+import AIChatDrawer from "@/components/AIChatDrawer"; // NOVO IMPORT
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -119,11 +120,6 @@ const PTrabManager = () => {
   const [selectedPTrabsToConsolidate, setSelectedPTrabsToConsolidate] = useState<string[]>([]);
   const [showConsolidationNumberDialog, setShowConsolidationNumberDialog] = useState(false);
   const [suggestedConsolidationNumber, setSuggestedConsolidationNumber] = useState<string>("");
-  
-  // NOVO ESTADO: Diálogo de Aprovação/Numeração
-  const [showApproveDialog, setShowApproveDialog] = useState(false);
-  const [ptrabToApprove, setPtrabToApprove] = useState<PTrab | null>(null);
-  const [suggestedApproveNumber, setSuggestedApproveNumber] = useState<string>("");
   
   // NOVO ESTADO: Controle do Prompt de Crédito
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
@@ -2137,6 +2133,9 @@ const PTrabManager = () => {
         onConfirm={handlePromptConfirm}
         onCancel={handlePromptCancel}
       />
+      
+      {/* NOVO: Drawer de Chat com IA */}
+      <AIChatDrawer />
     </div>
   );
 };
