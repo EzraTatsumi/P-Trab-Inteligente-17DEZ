@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,14 +8,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowLeft, User, Loader2, Check } from "lucide-react";
-import { sanitizeError } from "@/lib/errorUtils";
+import { ArrowLeft, User, Loader2, Check, Eye, EyeOff, X } from "lucide-react";
+import { sanitizeError, sanitizeAuthError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useSession } from "@/components/SessionContextProvider";
 import { useMilitaryOrganizations, MilitaryOrganization } from "@/hooks/useMilitaryOrganizations";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import InputMask from 'react-input-mask';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 interface ProfileData {
   id: string;
@@ -26,6 +29,29 @@ interface ProfileData {
   telefone: string;
   default_diretriz_year: number | null;
 }
+
+// Schema de validação para a senha (reutilizado do SignupDialog)
+const passwordSchema = z.object({
+  password: z.string()
+    .min(8, "A senha deve ter no mínimo 8 caracteres.")
+    .regex(/[A-Z]/, "A senha deve conter pelo menos uma letra maiúscula.")
+    .regex(/[a-z]/, "A senha deve conter pelo menos uma letra minúscula.")
+    .regex(/[0-9]/, "A senha deve conter pelo menos um número.")
+    .regex(/[^a-zA-Z0-9]/, "A senha deve conter pelo menos um caractere especial.")
+    .optional()
+    .or(z.literal('')),
+  confirmPassword: z.string().optional().or(z.literal('')),
+}).refine((data) => {
+    // Se a nova senha for preenchida, a confirmação deve ser igual
+    if (data.password && data.password.length > 0) {
+        return data.password === data.confirmPassword;
+    }
+    // Se a nova senha não for preenchida, a confirmação também deve estar vazia
+    return !data.confirmPassword || data.confirmPassword.length === 0;
+}, {
+  message: "As senhas não coincidem.",
+  path: ["confirmPassword"],
+});
 
 const fetchProfile = async (userId: string): Promise<ProfileData> => {
   const { data, error } = await supabase
@@ -49,24 +75,15 @@ const fetchProfile = async (userId: string): Promise<ProfileData> => {
   };
 };
 
-const fetchAvailableYears = async (userId: string): Promise<number[]> => {
-    const { data, error } = await supabase
-        .from("diretrizes_custeio")
-        .select("ano_referencia")
-        .eq("user_id", userId)
-        .order("ano_referencia", { ascending: false });
+// Removida a função fetchAvailableYears, pois a seção de ano padrão foi removida.
 
-    if (error) {
-        console.error("Error fetching available years:", error);
-        return [];
-    }
-    
-    const years = data ? data.map(d => d.ano_referencia) : [];
-    const currentYear = new Date().getFullYear();
-    const uniqueYears = Array.from(new Set([...years, currentYear])).filter(y => y > 0).sort((a, b) => b - a);
-    return uniqueYears;
-};
-
+interface PasswordCriteria {
+  minLength: boolean;
+  uppercase: boolean;
+  lowercase: boolean;
+  number: boolean;
+  specialChar: boolean;
+}
 
 const UserProfilePage = () => {
   const navigate = useNavigate();
@@ -79,10 +96,18 @@ const UserProfilePage = () => {
     sigla_om: "",
     funcao_om: "",
     telefone: "",
-    default_diretriz_year: null,
+    default_diretriz_year: null, // Mantido no estado, mas não usado na UI
   });
+  const [passwordForm, setPasswordForm] = useState({
+    newPassword: "",
+    confirmNewPassword: "",
+  });
+  
   const [loading, setLoading] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [showPassword1, setShowPassword1] = useState(false);
+  const [showPassword2, setShowPassword2] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string | undefined>>({});
   
   const { handleEnterToNextField } = useFormNavigation();
   const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
@@ -93,13 +118,6 @@ const UserProfilePage = () => {
   const { data: profileData, isLoading: isLoadingProfile } = useQuery({
     queryKey: ['userProfile', userId],
     queryFn: () => fetchProfile(userId!),
-    enabled: !!userId,
-  });
-  
-  // Query para buscar anos disponíveis
-  const { data: availableYears = [], isLoading: isLoadingYears } = useQuery({
-    queryKey: ['availableYears', userId],
-    queryFn: () => fetchAvailableYears(userId!),
     enabled: !!userId,
   });
 
@@ -122,23 +140,82 @@ const UserProfilePage = () => {
     setForm({ ...form, [name]: value });
   };
   
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordForm(prev => ({ ...prev, [name]: value }));
+    setPasswordErrors(prev => ({ ...prev, [name]: undefined }));
+  };
+  
   const handleSelectChange = (name: keyof Omit<ProfileData, 'id'>, value: string) => {
     if (name === 'default_diretriz_year') {
-        // Se o valor for 'null_year', define como null. Caso contrário, converte para Number.
         const yearValue = value === 'null_year' ? null : Number(value);
         setForm(prev => ({ ...prev, default_diretriz_year: yearValue }));
     } else {
         setForm(prev => ({ ...prev, [name]: value }));
     }
   };
+  
+  const checkPasswordCriteria = (password: string): PasswordCriteria => ({
+    minLength: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+    specialChar: /[^a-zA-Z0-9]/.test(password),
+  });
+
+  const passwordCriteria = useMemo(() => checkPasswordCriteria(passwordForm.newPassword), [passwordForm.newPassword]);
+  
+  const criteriaList = useMemo(() => [
+    { label: 'Mínimo de 8 caracteres', met: passwordCriteria.minLength },
+    { label: 'Uma letra maiúscula (A-Z)', met: passwordCriteria.uppercase },
+    { label: 'Uma letra minúscula (a-z)', met: passwordCriteria.lowercase },
+    { label: 'Um número (0-9)', met: passwordCriteria.number },
+    { label: 'Um caractere especial (!@#$%^&*)', met: passwordCriteria.specialChar },
+  ], [passwordCriteria]);
+
+  const renderCriteriaItem = (label: string, met: boolean) => (
+    <li className={cn(
+      "flex items-center gap-2 transition-colors", 
+      met ? "text-green-600" : "text-destructive"
+    )}>
+      {met ? <Check className="h-3 w-3 shrink-0" /> : <X className="h-3 w-3 shrink-0" />}
+      {label}
+    </li>
+  );
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId) return;
 
     setLoading(true);
+    setPasswordErrors({});
+
     try {
-      // 1. Atualizar a tabela 'profiles'
+      // 1. Validação de Senha (se preenchida)
+      const isPasswordChangeRequested = passwordForm.newPassword.length > 0 || passwordForm.confirmNewPassword.length > 0;
+      
+      if (isPasswordChangeRequested) {
+        const validationResult = passwordSchema.safeParse({
+            password: passwordForm.newPassword,
+            confirmPassword: passwordForm.confirmNewPassword,
+        });
+        
+        if (!validationResult.success) {
+            const errors = validationResult.error.flatten().fieldErrors;
+            const fieldErrors: Record<string, string | undefined> = {};
+            
+            Object.keys(errors).forEach(key => {
+                fieldErrors[key] = errors[key]?.[0];
+            });
+            setPasswordErrors(fieldErrors);
+            
+            toast.error(validationResult.error.errors[0].message);
+            setLoading(false);
+            return;
+        }
+      }
+      
+      // 2. Atualizar a tabela 'profiles'
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -151,8 +228,8 @@ const UserProfilePage = () => {
 
       if (profileError) throw profileError;
       
-      // 2. Atualizar os metadados do usuário (para sigla_om, funcao_om, telefone)
-      const { error: userError } = await supabase.auth.updateUser({
+      // 3. Atualizar os metadados do usuário (para sigla_om, funcao_om, telefone)
+      const { error: userMetaError } = await supabase.auth.updateUser({
         data: {
           sigla_om: form.sigla_om,
           funcao_om: form.funcao_om,
@@ -160,20 +237,33 @@ const UserProfilePage = () => {
         }
       });
       
-      if (userError) throw userError;
+      if (userMetaError) throw userMetaError;
+      
+      // 4. Atualizar a senha (se solicitada)
+      if (passwordForm.newPassword.length > 0) {
+        const { error: passwordUpdateError } = await supabase.auth.updateUser({
+            password: passwordForm.newPassword
+        });
+        
+        if (passwordUpdateError) {
+            // Trata erros específicos de senha (ex: senha fraca)
+            throw new Error(sanitizeAuthError(passwordUpdateError));
+        }
+      }
 
       toast.success("Perfil atualizado com sucesso!");
       queryClient.invalidateQueries({ queryKey: ['userProfile', userId] });
+      setPasswordForm({ newPassword: "", confirmNewPassword: "" }); // Limpa campos de senha
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao salvar perfil:", error);
-      toast.error(sanitizeError(error));
+      toast.error(error.message || sanitizeError(error));
     } finally {
       setLoading(false);
     }
   };
 
-  if (loadingSession || isLoadingProfile || isLoadingOms || isLoadingYears) {
+  if (loadingSession || isLoadingProfile || isLoadingOms) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -302,39 +392,85 @@ const UserProfilePage = () => {
                 </div>
               </div>
               
-              {/* Seção 3: Configurações Padrão */}
+              {/* Seção 3: Alterar Senha */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Configurações Padrão</h3>
+                <h3 className="text-lg font-semibold">Alterar Senha (Opcional)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="default_diretriz_year">Ano Padrão da Diretriz de Custeio</Label>
-                    <Select
-                      // Se for null, usa 'null_year' para o Select, senão usa o ano como string
-                      value={form.default_diretriz_year?.toString() || 'null_year'}
-                      onValueChange={(value) => handleSelectChange("default_diretriz_year", value)}
-                      disabled={isLoadingYears}
-                    >
-                      <SelectTrigger id="default_diretriz_year">
-                        <SelectValue placeholder="Usar o ano mais recente" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {/* MUDANÇA: Usar 'null_year' como valor para a opção de deseleção */}
-                        <SelectItem value="null_year">Usar o ano mais recente</SelectItem>
-                        {availableYears.map((year) => (
-                          <SelectItem key={year} value={year.toString()}>
-                            {year}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                        Define qual ano de diretriz será carregado por padrão ao criar um novo P Trab.
-                    </p>
+                    <Label htmlFor="newPassword">Nova Senha</Label>
+                    <div className="relative">
+                      <Input
+                        id="newPassword"
+                        name="newPassword"
+                        type={showPassword1 ? "text" : "password"}
+                        autoComplete="new-password"
+                        value={passwordForm.newPassword}
+                        onChange={handlePasswordChange}
+                        placeholder="••••••••"
+                        minLength={8}
+                        className="pr-10"
+                        onKeyDown={handleEnterToNextField}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onMouseDown={() => setShowPassword1(true)}
+                        onMouseUp={() => setShowPassword1(false)}
+                        tabIndex={-1}
+                      >
+                        {showPassword1 ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                      </Button>
+                    </div>
+                    {passwordErrors.password && <p className="text-xs text-destructive">{passwordErrors.password}</p>}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmNewPassword">Confirmar Nova Senha</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirmNewPassword"
+                        name="confirmNewPassword"
+                        type={showPassword2 ? "text" : "password"}
+                        autoComplete="new-password"
+                        value={passwordForm.confirmNewPassword}
+                        onChange={handlePasswordChange}
+                        placeholder="••••••••"
+                        minLength={8}
+                        className="pr-10"
+                        onKeyDown={handleEnterToNextField}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onMouseDown={() => setShowPassword2(true)}
+                        onMouseUp={() => setShowPassword2(false)}
+                        tabIndex={-1}
+                      >
+                        {showPassword2 ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                      </Button>
+                    </div>
+                    {passwordErrors.confirmPassword && <p className="text-xs text-destructive">{passwordErrors.confirmPassword}</p>}
                   </div>
                 </div>
+                
+                {/* Critérios de Senha (Apenas se a nova senha estiver sendo digitada) */}
+                {passwordForm.newPassword.length > 0 && (
+                    <Alert className="mt-2 p-3">
+                        <AlertDescription className="text-xs text-muted-foreground">
+                            <span className="font-bold text-foreground block mb-1">Critérios de Nova Senha:</span>
+                            <ul className="grid grid-cols-2 gap-x-4 gap-y-1 ml-2 mt-1">
+                                {criteriaList.map(item => renderCriteriaItem(item.label, item.met))}
+                            </ul>
+                        </AlertDescription>
+                    </Alert>
+                )}
               </div>
 
-              <div className="flex justify-end pt-4">
+              <div className="flex justify-end pt-4 gap-3">
                 <Button type="submit" disabled={loading}>
                   {loading ? (
                     <>
@@ -347,6 +483,9 @@ const UserProfilePage = () => {
                       Salvar Alterações
                     </>
                   )}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => navigate("/ptrab")}>
+                    Cancelar
                 </Button>
               </div>
             </form>
