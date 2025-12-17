@@ -12,13 +12,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Eye, EyeOff } from "lucide-react";
+import { UserPlus, Eye, EyeOff, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sanitizeAuthError } from "@/lib/errorUtils";
 import { z } from "zod";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import InputMask from 'react-input-mask';
+import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface SignupDialogProps {
   open: boolean;
@@ -33,6 +42,7 @@ const signupSchema = z.object({
   nome_guerra: z.string().min(2, "Nome de Guerra é obrigatório."),
   sigla_om: z.string().min(2, "Sigla da OM é obrigatória."),
   funcao_om: z.string().min(2, "Função na OM é obrigatória."),
+  // A validação de telefone é feita pelo InputMask, mas mantemos a regex para garantir o formato final
   telefone: z.string().regex(/^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/, "Telefone inválido (Ex: (99) 99999-9999).").optional().or(z.literal('')),
   password: z.string()
     .min(8, "A senha deve ter no mínimo 8 caracteres.")
@@ -65,11 +75,18 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string | undefined>>({});
   const { handleEnterToNextField } = useFormNavigation();
+  
+  const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     // Limpa o erro de validação ao digitar
     setValidationErrors(prev => ({ ...prev, [e.target.name]: undefined }));
+  };
+  
+  const handleSelectChange = (name: string, value: string) => {
+    setForm({ ...form, [name]: value });
+    setValidationErrors(prev => ({ ...prev, [name]: undefined }));
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -78,7 +95,16 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     setValidationErrors({});
 
     try {
-      const validationResult = signupSchema.safeParse(form);
+      // Remove caracteres não numéricos do telefone antes da validação, se houver
+      const rawForm = {
+        ...form,
+        telefone: form.telefone.replace(/\D/g, ''),
+      };
+      
+      // Se o telefone estiver vazio, garante que ele passe na validação opcional
+      const finalForm = rawForm.telefone.length === 0 ? { ...rawForm, telefone: '' } : rawForm;
+
+      const validationResult = signupSchema.safeParse(finalForm);
       if (!validationResult.success) {
         const errors = validationResult.error.flatten().fieldErrors;
         const fieldErrors: Record<string, string | undefined> = {};
@@ -179,19 +205,35 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
               />
               {validationErrors.nome_guerra && <p className="text-xs text-destructive">{validationErrors.nome_guerra}</p>}
             </div>
+            
+            {/* Campo Sigla da OM (Select) */}
             <div className="space-y-2">
               <Label htmlFor="sigla_om">Sigla da OM *</Label>
-              <Input
-                id="sigla_om"
-                name="sigla_om"
+              <Select
                 value={form.sigla_om}
-                onChange={handleChange}
-                placeholder="Ex: 23ª Bda Inf Sl"
-                required
-                onKeyDown={handleEnterToNextField}
-              />
+                onValueChange={(value) => handleSelectChange("sigla_om", value)}
+                disabled={isLoadingOms}
+              >
+                <SelectTrigger id="sigla_om">
+                  {isLoadingOms ? (
+                    <div className="flex items-center text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando OMs...
+                    </div>
+                  ) : (
+                    <SelectValue placeholder="Selecione a OM" />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  {oms?.map((om) => (
+                    <SelectItem key={om.id} value={om.nome_om}>
+                      {om.nome_om}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {validationErrors.sigla_om && <p className="text-xs text-destructive">{validationErrors.sigla_om}</p>}
             </div>
+            
             <div className="space-y-2">
               <Label htmlFor="funcao_om">Função na OM *</Label>
               <Input
@@ -205,16 +247,26 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
               />
               {validationErrors.funcao_om && <p className="text-xs text-destructive">{validationErrors.funcao_om}</p>}
             </div>
+            
+            {/* Campo Telefone (InputMask) */}
             <div className="space-y-2">
               <Label htmlFor="telefone">Telefone (Opcional)</Label>
-              <Input
-                id="telefone"
-                name="telefone"
+              <InputMask
+                mask="(99) 99999-9999"
                 value={form.telefone}
                 onChange={handleChange}
-                placeholder="(99) 99999-9999"
-                onKeyDown={handleEnterToNextField}
-              />
+                maskChar={null}
+              >
+                {(inputProps: any) => (
+                  <Input
+                    {...inputProps}
+                    id="telefone"
+                    name="telefone"
+                    placeholder="(99) 99999-9999"
+                    onKeyDown={handleEnterToNextField}
+                  />
+                )}
+              </InputMask>
               {validationErrors.telefone && <p className="text-xs text-destructive">{validationErrors.telefone}</p>}
             </div>
           </div>
@@ -301,7 +353,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
           </Alert>
 
           <DialogFooter className="mt-4">
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || isLoadingOms}>
               {loading ? "Cadastrando..." : "Criar Conta"}
             </Button>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
