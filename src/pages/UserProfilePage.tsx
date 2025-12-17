@@ -563,50 +563,45 @@ const UserProfilePage = () => {
                 )}
               </div>
 
-              <div className="flex justify-end pt-4 gap-3">
-                <Button type="submit" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="mr-2 h-4 w-4" />
-                      Salvar Alterações
-                    </>
-                  )}
+              {/* Rodapé do Formulário: Excluir | Salvar | Cancelar */}
+              <div className="flex justify-between pt-4">
+                {/* Botão de Exclusão (Lado Esquerdo) */}
+                <Button 
+                  type="button" 
+                  variant="destructive" 
+                  onClick={() => setShowDeleteDialog(true)}
+                  disabled={loading}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Excluir Minha Conta
                 </Button>
-                <Button type="button" variant="outline" onClick={() => navigate("/ptrab")}>
-                    Cancelar
-                </Button>
+                
+                {/* Botões de Ação (Lado Direito) */}
+                <div className="flex gap-3">
+                  <Button type="submit" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        Salvar Alterações
+                      </>
+                    )}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => navigate("/ptrab")}>
+                      Cancelar
+                  </Button>
+                </div>
               </div>
             </form>
           </CardContent>
         </Card>
         
-        {/* Seção de Exclusão de Conta */}
-        <Card className="border-destructive/50 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-lg text-destructive flex items-center gap-2">
-              <Trash2 className="h-5 w-5" />
-              Excluir Perfil
-            </CardTitle>
-            <CardDescription className="text-destructive/80">
-              Esta ação é irreversível e resultará na exclusão de todos os seus dados, incluindo Planos de Trabalho e configurações.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              type="button" 
-              variant="destructive" 
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={loading}
-            >
-              Excluir Minha Conta
-            </Button>
-          </CardContent>
-        </Card>
+        {/* REMOVIDA A SEÇÃO DE EXCLUSÃO SEPARADA */}
       </div>
       
       {/* Diálogo de Confirmação de Exclusão */}
