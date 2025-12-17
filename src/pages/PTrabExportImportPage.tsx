@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Download, Upload, Lock, AlertCircle, Check, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, Upload, Lock, AlertCircle, Check, FileText, Loader2, ChevronsUpDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ import { generateUniqueMinutaNumber, isPTrabNumberDuplicate } from "@/lib/ptrabN
 import { formatDateDDMMMAA } from "@/lib/formatUtils"; // Importar utilitário de formatação de data
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MinutaNumberDialog } from "@/components/MinutaNumberDialog"; // NOVO IMPORT
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // NOVO IMPORT
 
 // Define the structure of the exported data
 interface ExportData {
@@ -100,6 +101,7 @@ const PTrabExportImportPage = () => {
   const [exportPassword, setExportPassword] = useState("");
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [exportType, setExportType] = useState<'single' | 'full'>('single');
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false); // Estado para controlar o Popover
   
   // Import States
   const [fileToImport, setFileToImport] = useState<File | null>(null);
@@ -184,23 +186,23 @@ const PTrabExportImportPage = () => {
           { data: classeI },
           { data: classeII },
           { data: classeIII },
-          { data: classeV }, // NOVO
-          { data: classeVI }, // NOVO
-          { data: classeVII }, // NOVO
-          { data: classeVIIISaude }, // NOVO
-          { data: classeVIIIRemonta }, // NOVO
-          { data: classeIX }, // NOVO
+          { data: classeV },
+          { data: classeVI },
+          { data: classeVII },
+          { data: classeVIIISaude },
+          { data: classeVIIIRemonta },
+          { data: classeIX },
           { data: refLPC },
         ] = await Promise.all([
           supabase.from('classe_i_registros').select('*').eq('p_trab_id', selectedPTrabId),
           supabase.from('classe_ii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId),
           supabase.from('classe_iii_registros').select('*').eq('p_trab_id', selectedPTrabId),
-          supabase.from('classe_v_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId), // NOVO
-          supabase.from('classe_vi_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId), // NOVO
-          supabase.from('classe_vii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId), // NOVO
-          supabase.from('classe_viii_saude_registros').select('*, itens_saude, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId), // NOVO
-          supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId), // NOVO
-          supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId), // NOVO
+          supabase.from('classe_v_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_vi_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_vii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_viii_saude_registros').select('*, itens_saude, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId),
           supabase.from('p_trab_ref_lpc').select('*').eq('p_trab_id', selectedPTrabId).maybeSingle(),
         ]);
 
@@ -209,12 +211,12 @@ const PTrabExportImportPage = () => {
           classe_i_registros: classeI || [],
           classe_ii_registros: classeII || [],
           classe_iii_registros: classeIII || [],
-          classe_v_registros: classeV || [], // NOVO
-          classe_vi_registros: classeVI || [], // NOVO
-          classe_vii_registros: classeVII || [], // NOVO
-          classe_viii_saude_registros: classeVIIISaude || [], // NOVO
-          classe_viii_remonta_registros: classeVIIIRemonta || [], // NOVO
-          classe_ix_registros: classeIX || [], // NOVO
+          classe_v_registros: classeV || [],
+          classe_vi_registros: classeVI || [],
+          classe_vii_registros: classeVII || [],
+          classe_viii_saude_registros: classeVIIISaude || [],
+          classe_viii_remonta_registros: classeVIIIRemonta || [],
+          classe_ix_registros: classeIX || [],
           p_trab_ref_lpc: refLPC || null,
         };
         fileName = generateExportFileName(pTrab);
@@ -227,12 +229,12 @@ const PTrabExportImportPage = () => {
           { data: classeI },
           { data: classeII },
           { data: classeIII },
-          { data: classeV }, // NOVO
-          { data: classeVI }, // NOVO
-          { data: classeVII }, // NOVO
-          { data: classeVIIISaude }, // NOVO
-          { data: classeVIIIRemonta }, // NOVO
-          { data: classeIX }, // NOVO
+          { data: classeV },
+          { data: classeVI },
+          { data: classeVII },
+          { data: classeVIIISaude },
+          { data: classeVIIIRemonta },
+          { data: classeIX },
           { data: refLPC },
           { data: omsData },
           { data: diretrizesCusteio },
@@ -242,12 +244,12 @@ const PTrabExportImportPage = () => {
           supabase.from('classe_i_registros').select('*'),
           supabase.from('classe_ii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39'),
           supabase.from('classe_iii_registros').select('*'),
-          supabase.from('classe_v_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39'), // NOVO
-          supabase.from('classe_vi_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39'), // NOVO
-          supabase.from('classe_vii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39'), // NOVO
-          supabase.from('classe_viii_saude_registros').select('*, itens_saude, valor_nd_30, valor_nd_39'), // NOVO
-          supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, valor_nd_30, valor_nd_39'), // NOVO
-          supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, valor_nd_30, valor_nd_39'), // NOVO
+          supabase.from('classe_v_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39'),
+          supabase.from('classe_vi_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39'),
+          supabase.from('classe_vii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39'),
+          supabase.from('classe_viii_saude_registros').select('*, itens_saude, valor_nd_30, valor_nd_39'),
+          supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, valor_nd_30, valor_nd_39'),
+          supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, valor_nd_30, valor_nd_39'),
           supabase.from('p_trab_ref_lpc').select('*'),
           supabase.from('organizacoes_militares').select('*').eq('user_id', currentUserId),
           supabase.from('diretrizes_custeio').select('*').eq('user_id', currentUserId),
@@ -259,12 +261,12 @@ const PTrabExportImportPage = () => {
           classe_i_registros: classeI || [],
           classe_ii_registros: classeII || [],
           classe_iii_registros: classeIII || [],
-          classe_v_registros: classeV || [], // NOVO
-          classe_vi_registros: classeVI || [], // NOVO
-          classe_vii_registros: classeVII || [], // NOVO
-          classe_viii_saude_registros: classeVIIISaude || [], // NOVO
-          classe_viii_remonta_registros: classeVIIIRemonta || [], // NOVO
-          classe_ix_registros: classeIX || [], // NOVO
+          classe_v_registros: classeV || [],
+          classe_vi_registros: classeVI || [],
+          classe_vii_registros: classeVII || [],
+          classe_viii_saude_registros: classeVIIISaude || [],
+          classe_viii_remonta_registros: classeVIIIRemonta || [],
+          classe_ix_registros: classeIX || [],
           p_trab_ref_lpc: refLPC || null,
           organizacoes_militares: omsData || [],
           diretrizes_custeio: diretrizesCusteio || [],
@@ -746,21 +748,24 @@ const PTrabExportImportPage = () => {
               {exportType === 'single' && (
                 <div className="space-y-2">
                   <Label>Selecione o P Trab</Label>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between">
+                  <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={isPopoverOpen}
+                        className="w-full justify-between"
+                      >
                         {selectedPTrab ? (
                           <span className="truncate">{selectedPTrab.numero_ptrab} - {selectedPTrab.nome_operacao}</span>
                         ) : (
                           <span className="text-muted-foreground">Selecione um P Trab...</span>
                         )}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
-                    </DialogTrigger>
-                    <DialogContent className="p-0 max-w-lg">
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0">
                       <Command>
-                        <DialogHeader className="p-4 pb-0">
-                          <DialogTitle>Selecione o P Trab</DialogTitle>
-                        </DialogHeader>
                         <CommandInput placeholder="Buscar P Trab..." />
                         <CommandList className="max-h-[300px]">
                           <CommandEmpty>Nenhum P Trab encontrado.</CommandEmpty>
@@ -771,9 +776,7 @@ const PTrabExportImportPage = () => {
                                 value={`${ptrab.numero_ptrab} ${ptrab.nome_operacao}`}
                                 onSelect={() => {
                                   setSelectedPTrabId(ptrab.id);
-                                  // Fecha o diálogo de seleção
-                                  const closeButton = document.querySelector('[data-state="open"] [aria-label="Close"]');
-                                  if (closeButton) (closeButton as HTMLElement).click();
+                                  setIsPopoverOpen(false);
                                 }}
                               >
                                 <Check
@@ -791,8 +794,8 @@ const PTrabExportImportPage = () => {
                           </CommandGroup>
                         </CommandList>
                       </Command>
-                    </DialogContent>
-                  </Dialog>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
               
