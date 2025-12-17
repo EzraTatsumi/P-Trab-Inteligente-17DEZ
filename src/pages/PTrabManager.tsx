@@ -94,7 +94,7 @@ const PTrabManager = () => {
   // Ref para controlar quais PTrabs já foram oferecidos para arquivamento na sessão atual
   const promptedForArchive = useRef(new Set<string>());
 
-  // Novos estados para o AlertDialog de reativação
+  // Novos estados para o diálogo de reativação
   const [showReactivateStatusDialog, setShowReactivateStatusDialog] = useState(false);
   const [ptrabToReactivateId, setPtrabToReactivateId] = useState<string | null>(null);
   const [ptrabToReactivateName, setPtrabToReactivateName] = useState<string | null>(null);
@@ -109,6 +109,11 @@ const PTrabManager = () => {
   
   // NOVO: ID do PTrab original a ser clonado (usado no handleSubmit)
   const [originalPTrabIdToClone, setOriginalPTrabIdToClone] = useState<string | null>(null);
+
+  // ESTADOS PARA APROVAÇÃO E NUMERAÇÃO
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [ptrabToApprove, setPtrabToApprove] = useState<PTrab | null>(null);
+  const [suggestedApproveNumber, setSuggestedApproveNumber] = useState<string>("");
 
   // Estados para o diálogo de comentário
   const [showComentarioDialog, setShowComentarioDialog] = useState(false);
