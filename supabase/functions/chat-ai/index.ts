@@ -20,25 +20,23 @@ serve(async (req) => {
   }
 
   try {
-    // 1. Autenticação (Opcional, mas recomendado para limitar o uso)
-    // const authHeader = req.headers.get('Authorization');
-    // if (!authHeader) {
-    //   return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
-    // }
-
-    // 2. Obter a chave de API do segredo
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    // 1. Obter a chave de API do segredo (Usando o nome do segredo fornecido no contexto)
+    const OPENAI_API_KEY = Deno.env.get("Chat IA P Trab Inteligente");
     if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY not set in environment secrets.");
+      // Se a chave não estiver configurada, retorna um erro específico
+      return new Response(
+        JSON.stringify({ error: "Erro de Configuração: A chave 'Chat IA P Trab Inteligente' não está definida nos segredos da Edge Function." }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // 3. Obter a mensagem do usuário
+    // 2. Obter a mensagem do usuário
     const { message } = await req.json();
     if (!message) {
       return new Response(JSON.stringify({ error: 'Missing message parameter' }), { status: 400, headers: corsHeaders });
     }
 
-    // 4. Chamar a API do LLM
+    // 3. Chamar a API do LLM
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
       headers: {
@@ -59,6 +57,7 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("OpenAI API Error:", errorText);
+      // Retorna um erro mais detalhado da API do OpenAI
       throw new Error(`OpenAI API returned status ${response.status}: ${errorText}`);
     }
 
