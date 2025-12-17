@@ -418,18 +418,18 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
   return (
     <div className="space-y-4">
       {/* Botões de Exportação/Impressão padronizados */}
-      <div className="flex justify-end gap-3 print:hidden">
-        <Button onClick={handlePrint} variant="outline" className="gap-2">
-          <Printer className="h-4 w-4" />
-          Imprimir
-        </Button>
-        <Button onClick={handleExportPdf} variant="secondary" className="gap-2">
-          <Download className="h-4 w-4" />
+      <div className="flex justify-end gap-2 print:hidden">
+        <Button onClick={handleExportPdf} variant="outline">
+          <Download className="mr-2 h-4 w-4" />
           Exportar PDF
         </Button>
-        <Button onClick={exportExcel} className="gap-2">
-          <FileSpreadsheet className="h-4 w-4" />
+        <Button onClick={exportExcel} variant="outline">
+          <FileSpreadsheet className="mr-2 h-4 w-4" />
           Exportar Excel
+        </Button>
+        <Button onClick={handlePrint} variant="default">
+          <Printer className="mr-2 h-4 w-4" />
+          Imprimir
         </Button>
       </div>
 
