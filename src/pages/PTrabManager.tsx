@@ -210,6 +210,7 @@ const PTrabManager = () => {
       const pTrabsWithTotals: PTrab[] = await Promise.all(
         (typedPTrabsData || []).map(async (ptrab) => {
           let totalOperacionalCalculado = 0;
+          let totalLogisticaCalculado = 0;
 
           // 1. Fetch Classe I totals (33.90.30)
           const { data: classeIData, error: classeIError } = await supabase
@@ -223,19 +224,60 @@ const PTrabManager = () => {
             totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
           }
           
-          // 2. Fetch Classe II totals (33.90.30)
+          // 2. Fetch Classes II, V, VI, VII, VIII, IX totals (33.90.30 + 33.90.39)
           const { data: classeIIData, error: classeIIError } = await supabase
             .from('classe_ii_registros')
             .select('valor_total')
             .eq('p_trab_id', ptrab.id);
+            
+          const { data: classeVData, error: classeVError } = await supabase
+            .from('classe_v_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+            
+          const { data: classeVIData, error: classeVIError } = await supabase
+            .from('classe_vi_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+            
+          const { data: classeVIIData, error: classeVIIError } = await supabase
+            .from('classe_vii_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+            
+          const { data: classeVIIISaudeData, error: classeVIIISaudeError } = await supabase
+            .from('classe_viii_saude_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+            
+          const { data: classeVIIIRemontaData, error: classeVIIIRemontaError } = await supabase
+            .from('classe_viii_remonta_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+            
+          const { data: classeIXData, error: classeIXError } = await supabase
+            .from('classe_ix_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
 
-          let totalClasseII = 0;
+          let totalClassesDiversas = 0;
           if (classeIIError) console.error("Erro ao carregar Classe II para PTrab", ptrab.numero_ptrab, classeIIError);
-          else {
-            totalClasseII = (classeIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
-          }
+          else totalClassesDiversas += (classeIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          if (classeVError) console.error("Erro ao carregar Classe V para PTrab", ptrab.numero_ptrab, classeVError);
+          else totalClassesDiversas += (classeVData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          if (classeVIError) console.error("Erro ao carregar Classe VI para PTrab", ptrab.numero_ptrab, classeVIError);
+          else totalClassesDiversas += (classeVIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          if (classeVIIError) console.error("Erro ao carregar Classe VII para PTrab", ptrab.numero_ptrab, classeVIIError);
+          else totalClassesDiversas += (classeVIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          if (classeVIIISaudeError) console.error("Erro ao carregar Classe VIII Saúde para PTrab", ptrab.numero_ptrab, classeVIIISaudeError);
+          else totalClassesDiversas += (classeVIIISaudeData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          if (classeVIIIRemontaError) console.error("Erro ao carregar Classe VIII Remonta para PTrab", ptrab.numero_ptrab, classeVIIIRemontaError);
+          else totalClassesDiversas += (classeVIIIRemontaData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          if (classeIXError) console.error("Erro ao carregar Classe IX para PTrab", ptrab.numero_ptrab, classeIXError);
+          else totalClassesDiversas += (classeIXData || []).reduce((sum, record) => sum + record.valor_total, 0);
 
-          // 3. Fetch Classe III totals (Combustível)
+
+          // 3. Fetch Classe III totals (Combustível e Lubrificante)
           const { data: classeIIIData, error: classeIIIError } = await supabase
             .from('classe_iii_registros')
             .select('valor_total')
@@ -247,7 +289,8 @@ const PTrabManager = () => {
             totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
           }
 
-          const totalLogisticaCalculado = totalClasseI + totalClasseII + totalClasseIII;
+          // SOMA TOTAL DA ABA LOGÍSTICA
+          totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII;
 
           return {
             ...ptrab,
@@ -786,7 +829,7 @@ const PTrabManager = () => {
         
         const newPTrabId = newPTrab.id;
         
-        // 3. Clona os registros relacionados (Classes I, II, III e LPC)
+        // 3. Clona os registros relacionados (Classes I, II, III, LPC)
         await cloneRelatedRecords(ptrabToClone.id, newPTrabId);
         
         // 4. ZERAR CRÉDITOS DISPONÍVEIS
