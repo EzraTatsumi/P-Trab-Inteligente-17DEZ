@@ -382,7 +382,7 @@ const PTrabExportImportPage = () => {
     }
   };
 
-  // NOVO HANDLER: Cria um novo número de Minuta e importa diretamente
+  // NOVO HANDLER: Cria um novo número de Minuta e importa diretamente (Chamado pelo ImportConflictDialog)
   const handleCreateNewNumberAndImport = () => {
     if (!importDataPreview || importDataPreview.type !== 'single_ptrab' || !userId) {
         toast.error("Erro: Dados de importação inválidos.");
@@ -400,7 +400,9 @@ const PTrabExportImportPage = () => {
         
         // 2. Usar a primeira OM do usuário como OM de destino (se houver)
         const defaultOm = userOms[0];
-        // A verificação de userOms.length > 0 já foi feita em handleAnalysisReady
+        if (!defaultOm) {
+            throw new Error("Nenhuma OM cadastrada para o usuário. Cadastre uma OM antes de importar.");
+        }
         
         // 3. Preparar os dados finais para importação (Minuta, status aberto, OM do usuário)
         const finalPTrabData: Tables<'p_trab'> = {
@@ -794,7 +796,11 @@ const PTrabExportImportPage = () => {
           onOpenChange={setIsConflictDialogOpen}
           ptrabNumber={(importDataPreview.data.p_trab as Tables<'p_trab'>).numero_ptrab}
           onOverwrite={handleOverwrite}
-          onCreateNew={handleCreateNewNumberAndImport} // CHAMA A NOVA FUNÇÃO
+          onCreateNew={() => {
+            // Ao criar novo número, abrimos o diálogo de opções para que o usuário selecione a OM
+            setIsConflictDialogOpen(false);
+            setIsImportOptionsDialogOpen(true);
+          }}
         />
       )}
 
