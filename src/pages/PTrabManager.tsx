@@ -1492,286 +1492,296 @@ const PTrabManager = () => {
             <CardTitle>Planos de Trabalho Cadastrados</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-center border-b border-border">Número</TableHead>
-                  <TableHead className="text-center border-b border-border">Operação</TableHead>
-                  <TableHead className="text-center border-b border-border">Período</TableHead>
-                  <TableHead className="text-center border-b border-border">Status</TableHead>
-                  <TableHead className="text-center border-b border-border">Valor P Trab</TableHead>
-                  <TableHead className="text-center border-b border-border w-[50px]"></TableHead>
-                  <TableHead className="text-center border-b border-border">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pTrabs.map((ptrab) => {
-                  const originBadge = getOriginBadge(ptrab.origem);
-                  const isMinuta = ptrab.numero_ptrab.startsWith("Minuta");
-                  const isNumbered = !needsNumbering(ptrab);
-                  const isEditable = ptrab.status !== 'aprovado' && ptrab.status !== 'arquivado'; // MUDANÇA: Editável se não for aprovado/arquivado
-                  const isApprovedOrArchived = isFinalStatus(ptrab); // NOVO: Verifica se está em status final
-                  
-                  const totalGeral = (ptrab.totalLogistica || 0) + (ptrab.totalOperacional || 0) + (ptrab.totalMaterialPermanente || 0);
-                  
-                  return (
-                  <TableRow key={ptrab.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex flex-col items-center">
-                        {/* Lógica de exibição do número: Se for Minuta arquivada, mostra apenas MINUTA */}
-                        {ptrab.status === 'arquivado' && isMinuta ? (
-                          <span className="text-gray-500 font-bold">MINUTA</span>
-                        ) : ptrab.status === 'aprovado' || ptrab.status === 'arquivado' ? (
-                          <span>{ptrab.numero_ptrab}</span>
-                        ) : (
-                          <span className="text-red-500 font-bold">
-                            {isMinuta ? "MINUTA" : "PENDENTE"}
-                          </span>
-                        )}
-                        <Badge 
-                          variant="outline" 
-                          className={`mt-1 text-xs font-semibold ${originBadge.className}`}
-                        >
-                          {originBadge.label}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col items-start">
-                        <span>{ptrab.nome_operacao}</span>
-                        {/* NOVO RÓTULO DE VERSÃO - AGORA VISÍVEL */}
-                        {ptrab.rotulo_versao && ( // Check rotulo_versao
-                          <Badge variant="secondary" className="mt-1 text-xs bg-secondary text-secondary-foreground">
-                            <GitBranch className="h-3 w-3 mr-1" />
-                            {ptrab.rotulo_versao}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex flex-col items-center">
-                        <span className="block">
-                          {new Date(ptrab.periodo_inicio).toLocaleDateString('pt-BR')}
-                        </span>
-                        <span className="block font-bold text-sm">-</span>
-                        <span className="block">
-                          {new Date(ptrab.periodo_fim).toLocaleDateString('pt-BR')}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {calculateDays(ptrab.periodo_inicio, ptrab.periodo_fim)} dias
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col items-center">
-                        {/* MUDANÇA: Substituído Select por Badge estático */}
-                        <Badge 
-                          className={cn(
-                            "w-[140px] h-7 text-xs flex items-center justify-center",
-                            statusConfig[ptrab.status as keyof typeof statusConfig]?.className || 'bg-background'
-                          )}
-                        >
-                          {statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}
-                        </Badge>
-                        <div className="text-xs text-muted-foreground mt-1 flex flex-col items-center">
-                          <span className="block">Última alteração:</span>
-                          <span className="block">{formatDateTime(ptrab.updated_at)}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-left w-[200px]">
-                      <div className="flex flex-col text-xs space-y-1">
-                        
-                        {/* 1. Aba Logística (Valor) */}
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Log:</span>
-                          <span className="text-orange-600 font-medium">
-                            {formatCurrency(ptrab.totalLogistica || 0)}
-                          </span>
-                        </div>
-                        
-                        {/* 2. Aba Operacional (Valor) */}
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Op:</span>
-                          <span className="text-blue-600 font-medium">
-                            {formatCurrency(ptrab.totalOperacional || 0)}
-                          </span>
-                        </div>
-                        
-                        {/* 3. Aba Material Permanente (Valor) */}
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Mat Perm:</span>
-                          <span className="text-green-600 font-medium">
-                            {formatCurrency(ptrab.totalMaterialPermanente || 0)}
-                          </span>
-                        </div>
-                        
-                        {/* Separador e Total Geral */}
-                        {(totalGeral > 0) && (
-                          <>
-                            <div className="w-full h-px bg-muted-foreground/30 my-1" />
-                            <div className="flex justify-between font-bold text-sm text-foreground">
-                              <span>Total:</span>
-                              <span>{formatCurrency(totalGeral)}</span>
-                            </div>
-                          </>
-                        )}
-                        
-                        {/* Separador para Quantidades */}
-                        <div className="w-full h-px bg-muted-foreground/30 my-1" />
-                        
-                        {/* 5. Quantidade de Ração Op */}
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Rç Op:</span>
-                          <span className="font-medium">
-                            {ptrab.quantidadeRacaoOp !== undefined ? `${ptrab.quantidadeRacaoOp} Unid.` : 'N/A'}
-                          </span>
-                        </div>
-                        
-                        {/* 6. Quantidade de Horas de Voo */}
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">HV:</span>
-                          <span className="font-medium">
-                            {ptrab.quantidadeHorasVoo !== undefined ? `${ptrab.quantidadeHorasVoo} h` : 'N/A'}
-                          </span>
-                        </div>
-                        
-                        {/* Caso não haja nenhum valor */}
-                        {(totalGeral === 0 && ptrab.quantidadeRacaoOp === 0 && ptrab.quantidadeHorasVoo === 0) && (
-                          <span className="text-muted-foreground text-center">N/A</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleOpenComentario(ptrab)}
-                            >
-                              <MessageSquare 
-                                className={`h-5 w-5 transition-all ${
-                                  ptrab.comentario && ptrab.status !== 'arquivado'
-                                    ? "text-green-600 fill-green-600" 
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{ptrab.comentario && ptrab.status !== 'arquivado' ? "Editar comentário" : "Adicionar comentário"}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        
-                        {/* Botão Aprovar: Aparece SEMPRE se precisar de numeração OU se estiver em status final */}
-                        {(needsNumbering(ptrab) || isApprovedOrArchived) && (
-                          <Button
-                            onClick={() => handleOpenApproveDialog(ptrab)}
-                            size="sm"
-                            className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                            disabled={loading || isApprovedOrArchived} // Desabilita se estiver em status final
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                            Aprovar
-                          </Button>
-                        )}
-
-                        {/* Botão Preencher: Aparece SEMPRE, mas desabilitado se não for editável */}
-                        <Button
-                          onClick={() => handleSelectPTrab(ptrab)}
-                          size="sm"
-                          className="flex items-center gap-2"
-                          disabled={!isEditable}
-                        >
-                          <FileText className="h-4 w-4" />
-                          Preencher
-                        </Button>
-                        
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleNavigateToPrintOrExport(ptrab.id)}
-                            >
-                              <Printer className="mr-2 h-4 w-4" />
-                              Visualizar Impressão
-                            </DropdownMenuItem>
-                            
-                            {/* Ação 2: Editar P Trab (Sempre visível, desabilitado se aprovado ou arquivado) */}
-                            <DropdownMenuItem 
-                              onClick={() => isEditable && handleEdit(ptrab)}
-                              disabled={!isEditable}
-                              className={!isEditable ? "opacity-50 cursor-not-allowed" : ""}
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Editar P Trab
-                            </DropdownMenuItem>
-                            
-                            {/* Ação 3: Clonar P Trab (Desabilitado se arquivado) */}
-                            <DropdownMenuItem 
-                              onClick={() => ptrab.status !== 'arquivado' && handleOpenCloneOptions(ptrab)}
-                              disabled={ptrab.status === 'arquivado'}
-                              className={ptrab.status === 'arquivado' ? "opacity-50 cursor-not-allowed" : ""}
-                            >
-                              <Copy className="mr-2 h-4 w-4" />
-                              Clonar P Trab
-                            </DropdownMenuItem>
-                            
-                            {/* NOVO: Arquivar (Disponível se NÃO estiver arquivado) */}
-                            {ptrab.status !== 'arquivado' && (
-                              <DropdownMenuItem 
-                                onClick={() => handleArchive(ptrab.id, `${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`)}
-                              >
-                                <Archive className="mr-2 h-4 w-4" />
-                                Arquivar
-                              </DropdownMenuItem>
-                            )}
-                            
-                            {/* Ação 5: Reativar (Disponível APENAS se estiver arquivado) */}
-                            {ptrab.status === 'arquivado' && (
-                                <DropdownMenuItem 
-                                    onClick={() => {
-                                        setPtrabToReactivateId(ptrab.id);
-                                        setPtrabToReactivateName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
-                                        setShowReactivateStatusDialog(true);
-                                    }}
-                                >
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Reativar
-                                </DropdownMenuItem>
-                            )}
-                            
-                            <DropdownMenuSeparator />
-                            
-                            {/* Ação 6: Excluir (Sempre disponível) */}
-                            <DropdownMenuItem 
-                              onClick={() => handleDelete(ptrab.id)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
+            {pTrabs.length === 0 && !loading ? (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold">Nenhum Plano de Trabalho Registrado</h3>
+                <p className="text-muted-foreground mt-2">
+                  Clique em "Novo P Trab" para começar a configurar seu primeiro Plano de Trabalho.
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-center border-b border-border">Número</TableHead>
+                    <TableHead className="text-center border-b border-border">Operação</TableHead>
+                    <TableHead className="text-center border-b border-border">Período</TableHead>
+                    <TableHead className="text-center border-b border-border">Status</TableHead>
+                    <TableHead className="text-center border-b border-border">Valor P Trab</TableHead>
+                    <TableHead className="text-center border-b border-border w-[50px]"></TableHead>
+                    <TableHead className="text-center border-b border-border">Ações</TableHead>
                   </TableRow>
-                );})}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {pTrabs.map((ptrab) => {
+                    const originBadge = getOriginBadge(ptrab.origem);
+                    const isMinuta = ptrab.numero_ptrab.startsWith("Minuta");
+                    const isNumbered = !needsNumbering(ptrab);
+                    const isEditable = ptrab.status !== 'aprovado' && ptrab.status !== 'arquivado'; // MUDANÇA: Editável se não for aprovado/arquivado
+                    const isApprovedOrArchived = isFinalStatus(ptrab); // NOVO: Verifica se está em status final
+                    
+                    const totalGeral = (ptrab.totalLogistica || 0) + (ptrab.totalOperacional || 0) + (ptrab.totalMaterialPermanente || 0);
+                    
+                    return (
+                    <TableRow key={ptrab.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col items-center">
+                          {/* Lógica de exibição do número: Se for Minuta arquivada, mostra apenas MINUTA */}
+                          {ptrab.status === 'arquivado' && isMinuta ? (
+                            <span className="text-gray-500 font-bold">MINUTA</span>
+                          ) : ptrab.status === 'aprovado' || ptrab.status === 'arquivado' ? (
+                            <span>{ptrab.numero_ptrab}</span>
+                          ) : (
+                            <span className="text-red-500 font-bold">
+                              {isMinuta ? "MINUTA" : "PENDENTE"}
+                            </span>
+                          )}
+                          <Badge 
+                            variant="outline" 
+                            className={`mt-1 text-xs font-semibold ${originBadge.className}`}
+                          >
+                            {originBadge.label}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col items-start">
+                          <span>{ptrab.nome_operacao}</span>
+                          {/* NOVO RÓTULO DE VERSÃO - AGORA VISÍVEL */}
+                          {ptrab.rotulo_versao && ( // Check rotulo_versao
+                            <Badge variant="secondary" className="mt-1 text-xs bg-secondary text-secondary-foreground">
+                              <GitBranch className="h-3 w-3 mr-1" />
+                              {ptrab.rotulo_versao}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="block">
+                            {new Date(ptrab.periodo_inicio).toLocaleDateString('pt-BR')}
+                          </span>
+                          <span className="block font-bold text-sm">-</span>
+                          <span className="block">
+                            {new Date(ptrab.periodo_fim).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {calculateDays(ptrab.periodo_inicio, ptrab.periodo_fim)} dias
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col items-center">
+                          {/* MUDANÇA: Substituído Select por Badge estático */}
+                          <Badge 
+                            className={cn(
+                              "w-[140px] h-7 text-xs flex items-center justify-center",
+                              statusConfig[ptrab.status as keyof typeof statusConfig]?.className || 'bg-background'
+                            )}
+                          >
+                            {statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}
+                          </Badge>
+                          <div className="text-xs text-muted-foreground mt-1 flex flex-col items-center">
+                            <span className="block">Última alteração:</span>
+                            <span className="block">{formatDateTime(ptrab.updated_at)}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-left w-[200px]">
+                        <div className="flex flex-col text-xs space-y-1">
+                          
+                          {/* 1. Aba Logística (Valor) */}
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Log:</span>
+                            <span className="text-orange-600 font-medium">
+                              {formatCurrency(ptrab.totalLogistica || 0)}
+                            </span>
+                          </div>
+                          
+                          {/* 2. Aba Operacional (Valor) */}
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Op:</span>
+                            <span className="text-blue-600 font-medium">
+                              {formatCurrency(ptrab.totalOperacional || 0)}
+                            </span>
+                          </div>
+                          
+                          {/* 3. Aba Material Permanente (Valor) */}
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Mat Perm:</span>
+                            <span className="text-green-600 font-medium">
+                              {formatCurrency(ptrab.totalMaterialPermanente || 0)}
+                            </span>
+                          </div>
+                          
+                          {/* Separador e Total Geral */}
+                          {(totalGeral > 0) && (
+                            <>
+                              <div className="w-full h-px bg-muted-foreground/30 my-1" />
+                              <div className="flex justify-between font-bold text-sm text-foreground">
+                                <span>Total:</span>
+                                <span>{formatCurrency(totalGeral)}</span>
+                              </div>
+                            </>
+                          )}
+                          
+                          {/* Separador para Quantidades */}
+                          <div className="w-full h-px bg-muted-foreground/30 my-1" />
+                          
+                          {/* 5. Quantidade de Ração Op */}
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Rç Op:</span>
+                            <span className="font-medium">
+                              {ptrab.quantidadeRacaoOp !== undefined ? `${ptrab.quantidadeRacaoOp} Unid.` : 'N/A'}
+                            </span>
+                          </div>
+                          
+                          {/* 6. Quantidade de Horas de Voo */}
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">HV:</span>
+                            <span className="font-medium">
+                              {ptrab.quantidadeHorasVoo !== undefined ? `${ptrab.quantidadeHorasVoo} h` : 'N/A'}
+                            </span>
+                          </div>
+                          
+                          {/* Caso não haja nenhum valor */}
+                          {(totalGeral === 0 && ptrab.quantidadeRacaoOp === 0 && ptrab.quantidadeHorasVoo === 0) && (
+                            <span className="text-muted-foreground text-center">N/A</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleOpenComentario(ptrab)}
+                              >
+                                <MessageSquare 
+                                  className={`h-5 w-5 transition-all ${
+                                    ptrab.comentario && ptrab.status !== 'arquivado'
+                                      ? "text-green-600 fill-green-600" 
+                                      : "text-gray-300"
+                                  }`}
+                                />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{ptrab.comentario && ptrab.status !== 'arquivado' ? "Editar comentário" : "Adicionar comentário"}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          
+                          {/* Botão Aprovar: Aparece SEMPRE se precisar de numeração OU se estiver em status final */}
+                          {(needsNumbering(ptrab) || isApprovedOrArchived) && (
+                            <Button
+                              onClick={() => handleOpenApproveDialog(ptrab)}
+                              size="sm"
+                              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                              disabled={loading || isApprovedOrArchived} // Desabilita se estiver em status final
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                              Aprovar
+                            </Button>
+                          )}
+
+                          {/* Botão Preencher: Aparece SEMPRE, mas desabilitado se não for editável */}
+                          <Button
+                            onClick={() => handleSelectPTrab(ptrab)}
+                            size="sm"
+                            className="flex items-center gap-2"
+                            disabled={!isEditable}
+                          >
+                            <FileText className="h-4 w-4" />
+                            Preencher
+                          </Button>
+                          
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleNavigateToPrintOrExport(ptrab.id)}
+                              >
+                                <Printer className="mr-2 h-4 w-4" />
+                                Visualizar Impressão
+                              </DropdownMenuItem>
+                              
+                              {/* Ação 2: Editar P Trab (Sempre visível, desabilitado se aprovado ou arquivado) */}
+                              <DropdownMenuItem 
+                                onClick={() => isEditable && handleEdit(ptrab)}
+                                disabled={!isEditable}
+                                className={!isEditable ? "opacity-50 cursor-not-allowed" : ""}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Editar P Trab
+                              </DropdownMenuItem>
+                              
+                              {/* Ação 3: Clonar P Trab (Desabilitado se arquivado) */}
+                              <DropdownMenuItem 
+                                onClick={() => ptrab.status !== 'arquivado' && handleOpenCloneOptions(ptrab)}
+                                disabled={ptrab.status === 'arquivado'}
+                                className={ptrab.status === 'arquivado' ? "opacity-50 cursor-not-allowed" : ""}
+                              >
+                                <Copy className="mr-2 h-4 w-4" />
+                                Clonar P Trab
+                              </DropdownMenuItem>
+                              
+                              {/* NOVO: Arquivar (Disponível se NÃO estiver arquivado) */}
+                              {ptrab.status !== 'arquivado' && (
+                                <DropdownMenuItem 
+                                  onClick={() => handleArchive(ptrab.id, `${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`)}
+                                >
+                                  <Archive className="mr-2 h-4 w-4" />
+                                  Arquivar
+                                </DropdownMenuItem>
+                              )}
+                              
+                              {/* Ação 5: Reativar (Disponível APENAS se estiver arquivado) */}
+                              {ptrab.status === 'arquivado' && (
+                                  <DropdownMenuItem 
+                                      onClick={() => {
+                                          setPtrabToReactivateId(ptrab.id);
+                                          setPtrabToReactivateName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
+                                          setShowReactivateStatusDialog(true);
+                                      }}
+                                  >
+                                      <RefreshCw className="mr-2 h-4 w-4" />
+                                      Reativar
+                                  </DropdownMenuItem>
+                              )}
+                              
+                              <DropdownMenuSeparator />
+                              
+                              {/* Ação 6: Excluir (Sempre disponível) */}
+                              <DropdownMenuItem 
+                                onClick={() => handleDelete(ptrab.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );})}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
