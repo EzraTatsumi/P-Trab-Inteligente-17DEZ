@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Eye, EyeOff, Loader2 } from "lucide-react";
+import { UserPlus, Eye, EyeOff, Loader2, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sanitizeAuthError } from "@/lib/errorUtils";
@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 interface SignupDialogProps {
   open: boolean;
@@ -56,6 +57,14 @@ const signupSchema = z.object({
   path: ["confirmPassword"],
 });
 
+interface PasswordCriteria {
+  minLength: boolean;
+  uppercase: boolean;
+  lowercase: boolean;
+  number: boolean;
+  specialChar: boolean;
+}
+
 export const SignupDialog: React.FC<SignupDialogProps> = ({
   open,
   onOpenChange,
@@ -72,18 +81,39 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     telefone: "",
   });
   const [loading, setLoading] = useState(false);
-  // Renomeando e adicionando estado para visualização de senhas
   const [showPassword1, setShowPassword1] = useState(false);
   const [showPassword2, setShowPassword2] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string | undefined>>({});
+  const [passwordCriteria, setPasswordCriteria] = useState<PasswordCriteria>({
+    minLength: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    specialChar: false,
+  });
+  
   const { handleEnterToNextField } = useFormNavigation();
   
   const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
 
+  const checkPasswordCriteria = (password: string) => {
+    setPasswordCriteria({
+      minLength: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /[0-9]/.test(password),
+      specialChar: /[^a-zA-Z0-9]/.test(password),
+    });
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-    // Limpa o erro de validação ao digitar
-    setValidationErrors(prev => ({ ...prev, [e.target.name]: undefined }));
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+    setValidationErrors(prev => ({ ...prev, [name]: undefined }));
+    
+    if (name === 'password') {
+      checkPasswordCriteria(value);
+    }
   };
   
   const handleSelectChange = (name: string, value: string) => {
@@ -167,6 +197,21 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
   
   // Máscara de telefone fixa
   const phoneMask = "(99) 999999999";
+  
+  const criteriaList = useMemo(() => [
+    { key: 'minLength', label: 'Mínimo de 8 caracteres', met: passwordCriteria.minLength },
+    { key: 'uppercase', label: 'Uma letra maiúscula (A-Z)', met: passwordCriteria.uppercase },
+    { key: 'lowercase', label: 'Uma letra minúscula (a-z)', met: passwordCriteria.lowercase },
+    { key: 'number', label: 'Um número (0-9)', met: passwordCriteria.number },
+    { key: 'specialChar', label: 'Um caractere especial (!@#$%^&*)', met: passwordCriteria.specialChar },
+  ], [passwordCriteria]);
+
+  const renderCriteriaItem = (label: string, met: boolean) => (
+    <li className={cn("flex items-center gap-2 transition-colors", met ? "text-green-600" : "text-muted-foreground")}>
+      {met ? <Check className="h-3 w-3 shrink-0" /> : <X className="h-3 w-3 shrink-0" />}
+      {label}
+    </li>
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -364,12 +409,12 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
           <Alert className="mt-2 p-3">
             <AlertDescription className="text-xs text-muted-foreground">
               <span className="font-bold text-foreground block mb-1">Critérios de Senha:</span>
-              A senha deve ter no mínimo 8 caracteres e incluir:
-              <ul className="list-disc list-inside ml-2 mt-1 space-y-0.5">
-                <li>Uma letra maiúscula (A-Z)</li>
-                <li>Uma letra minúscula (a-z)</li>
-                <li>Um número (0-9)</li>
-                <li>Um caractere especial (!@#$%^&*)</li>
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-1 ml-2 mt-1">
+                {renderCriteriaItem(criteriaList[0].label, criteriaList[0].met)}
+                {renderCriteriaItem(criteriaList[1].label, criteriaList[1].met)}
+                {renderCriteriaItem(criteriaList[2].label, criteriaList[2].met)}
+                {renderCriteriaItem(criteriaList[3].label, criteriaList[3].met)}
+                {renderCriteriaItem(criteriaList[4].label, criteriaList[4].met)}
               </ul>
             </AlertDescription>
           </Alert>
