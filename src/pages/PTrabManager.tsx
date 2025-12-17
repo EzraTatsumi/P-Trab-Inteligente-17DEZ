@@ -142,6 +142,7 @@ const PTrabManager = () => {
     
     if (data) {
         const nomeGuerra = data.last_name || '';
+        // raw_user_meta_data é um JSONB, acessamos a propriedade posto_graduacao
         const postoGraduacao = (data.raw_user_meta_data as any)?.posto_graduacao || '';
         
         if (postoGraduacao && nomeGuerra) {
@@ -152,7 +153,8 @@ const PTrabManager = () => {
             return nomeGuerra;
         }
     }
-    return null;
+    // Retorna null se não houver nome de guerra ou posto/graduação
+    return null; 
   }, []);
 
   const formatDateTime = (dateString: string) => {
@@ -449,12 +451,8 @@ const PTrabManager = () => {
     // ADDED: Fetch user name on load
     if (user?.id) {
         fetchUserName(user.id).then(name => {
-            if (name) {
-                setUserName(name);
-            } else if (user.email) {
-                // Se não tiver nome de guerra, usa o email
-                setUserName(user.email);
-            }
+            // Se o nome for encontrado, usa ele. Caso contrário, define como string vazia.
+            setUserName(name || ""); 
         });
     }
   }, [loadPTrabs, user, fetchUserName]);
@@ -1187,11 +1185,13 @@ const PTrabManager = () => {
 
           <div className="flex items-center gap-4">
             
-            {/* NOVO: Exibição explícita do usuário logado (Ajustado para Nome de Guerra e estilo) */}
+            {/* NOVO: Exibição explícita do usuário logado (Ajustado para Posto/Grad e Nome de Guerra) */}
             <div className="flex items-center gap-2 px-4 h-10 rounded-md bg-muted/50 border border-border">
               <User className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium text-foreground">
-                {userName || user?.email || 'Carregando...'}
+                {/* Se userName estiver preenchido (Posto/Grad NomeGuerra), usa ele. 
+                    Caso contrário, se o usuário estiver carregado, mostra 'Perfil Incompleto'. */}
+                {userName || (user ? 'Perfil Incompleto' : 'Carregando...')}
               </span>
             </div>
             
