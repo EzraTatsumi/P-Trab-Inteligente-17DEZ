@@ -71,15 +71,20 @@ const fetchProfile = async (userId: string): Promise<ProfileData> => {
 
   const metaData = data.raw_user_meta_data as any;
   
+  // Adicionado log para depuração
+  console.log("Fetched Profile Data:", data);
+  console.log("Extracted Metadata:", metaData);
+
   return {
     id: data.id,
     first_name: data.first_name || '',
     last_name: data.last_name || '',
+    // Garantir que os valores sejam strings, mesmo que sejam null/undefined no DB
     posto_graduacao: metaData?.posto_graduacao || '',
-    default_diretriz_year: data.default_diretriz_year,
     sigla_om: metaData?.sigla_om || '',
     funcao_om: metaData?.funcao_om || '',
     telefone: metaData?.telefone || '',
+    default_diretriz_year: data.default_diretriz_year,
   };
 };
 
@@ -130,6 +135,9 @@ const UserProfilePage = () => {
 
   useEffect(() => {
     if (profileData && isInitialLoad) {
+      // Adicionado log para verificar o preenchimento
+      console.log("Setting initial form data:", profileData);
+      
       setForm({
         first_name: profileData.first_name,
         last_name: profileData.last_name,
@@ -366,6 +374,7 @@ const UserProfilePage = () => {
                     <Label htmlFor="telefone">Telefone</Label>
                     <InputMask
                       mask={phoneMask}
+                      // FIX: Garante que o valor do telefone seja formatado com a máscara
                       value={form.telefone}
                       onChange={handleChange}
                       maskChar={null}
