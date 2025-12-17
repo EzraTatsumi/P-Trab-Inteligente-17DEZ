@@ -836,9 +836,10 @@ const PTrabManager = () => {
       setShowCloneOptionsDialog(false);
       
       // 1. Prepara o formulário com os dados do original e o novo número de minuta
-      // MUDANÇA AQUI: Extrair campos da OM para limpá-los
+      // MUDANÇA AQUI: Excluir todos os campos calculados do frontend
       const { 
         id, created_at, updated_at, totalLogistica, totalOperacional, 
+        totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo, // <-- CAMPOS CALCULADOS EXCLUÍDOS
         rotulo_versao, nome_om, nome_om_extenso, codug_om, rm_vinculacao, codug_rm_vinculacao,
         share_token, // Adicionado share_token para que o DB gere um novo
         ...restOfPTrab 
@@ -886,8 +887,13 @@ const PTrabManager = () => {
     setLoading(true);
 
     try {
-        // 2. Cria o novo P Trab com os dados do original, novo número de minuta
-        const { id, created_at, updated_at, totalLogistica, totalOperacional, rotulo_versao, share_token, ...restOfPTrab } = ptrabToClone; // Adicionado share_token
+        // MUDANÇA AQUI: Excluir todos os campos calculados do frontend
+        const { 
+            id, created_at, updated_at, totalLogistica, totalOperacional, 
+            totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo, // <-- CAMPOS CALCULADOS EXCLUÍDOS
+            rotulo_versao, share_token, 
+            ...restOfPTrab 
+        } = ptrabToClone;
         
         const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
             ...restOfPTrab,
