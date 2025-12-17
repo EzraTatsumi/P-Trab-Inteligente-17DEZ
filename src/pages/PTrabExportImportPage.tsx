@@ -754,7 +754,7 @@ const PTrabExportImportPage = () => {
               {importSummary && (
                 <Alert variant="default">
                   <FileText className="h-4 w-4" />
-                  <AlertTitle>Arquivo Carregado</Alertulo>
+                  <AlertTitle>Arquivo Carregado</AlertTitle>
                   <AlertDescription className="text-sm">
                     {importSummary.details}
                   </AlertDescription>
