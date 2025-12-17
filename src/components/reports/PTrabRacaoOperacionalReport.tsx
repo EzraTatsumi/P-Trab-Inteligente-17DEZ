@@ -305,7 +305,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         const row = worksheet.getRow(currentRow);
         
         // A: DESPESAS
-        row.getCell('A').value = `Ração Operacional de Combate (R${linha.r2_quantidade > 0 ? '2' : '3'})`;
+        row.getCell('A').value = `Ração Operacional de Combate`; // Simplificado
         row.getCell('A').alignment = leftTopAlignment;
         
         // B: OM (UGE) CODUG
@@ -469,8 +469,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
               {racaoOperacionalConsolidada.map((linha, index) => (
                 <tr key={index}>
                   <td className="col-despesas-op">
-                    {linha.r2_quantidade > 0 && <div>Ração Operacional de Combate (R2)</div>}
-                    {linha.r3_quantidade > 0 && <div>Ração Operacional de Combate (R3)</div>}
+                    Ração Operacional de Combate
                   </td>
                   <td className="col-om-op">
                     <div>{linha.om}</div>
