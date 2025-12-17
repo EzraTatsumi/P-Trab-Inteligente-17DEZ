@@ -277,7 +277,9 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                 onValueChange={(value) => handleSelectChange("posto_graduacao", value)}
               >
                 <SelectTrigger id="posto_graduacao" className="justify-start">
-                  <SelectValue placeholder="Selecione o Posto/Graduação" />
+                  <SelectValue placeholder="Seu Posto/Grad">
+                    {form.posto_graduacao || "Seu Posto/Grad"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {MILITARY_RANKS.map((rank) => (
