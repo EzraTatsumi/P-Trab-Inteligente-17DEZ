@@ -536,7 +536,10 @@ const PTrabExportImportPage = () => {
     }
     
     // 3. Importar P Trabs (com lógica de conflito simplificada: se o número já existe, ele é ignorado)
-    const pTrabsToInsert = (p_trab as Tables<'p_trab'>[]).map(p => ({ ...p, user_id: currentUserId, id: undefined }));
+    const pTrabsToInsert = (p_trab as Tables<'p_trab'>[]).map(p => {
+        const { id, share_token, ...rest } = p; // FIX: Exclui id e share_token
+        return { ...rest, user_id: currentUserId };
+    });
     
     for (const ptrab of pTrabsToInsert) {
         const isDuplicate = isPTrabNumberDuplicate(ptrab.numero_ptrab, existingPTrabNumbers);
@@ -566,7 +569,8 @@ const PTrabExportImportPage = () => {
     const importedPTrab = data.data.p_trab as Tables<'p_trab'>;
     
     // 1. Preparar dados do PTrab
-    const { id: originalId, created_at, updated_at, ...restOfPTrab } = importedPTrab;
+    // FIX: Exclui id e share_token
+    const { id: originalId, created_at, updated_at, share_token, ...restOfPTrab } = importedPTrab; 
     
     const ptrabDataToSave: TablesInsert<'p_trab'> | TablesUpdate<'p_trab'> = {
         ...restOfPTrab,
