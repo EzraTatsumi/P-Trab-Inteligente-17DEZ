@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogTrigger,
   DialogFooter,
   DialogClose,
@@ -1754,7 +1754,7 @@ const PTrabManager = () => {
             <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
               Cancelar
             </AlertDialogCancel>
-          </DialogFooter>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
