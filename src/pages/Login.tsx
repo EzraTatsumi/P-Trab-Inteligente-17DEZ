@@ -11,9 +11,10 @@ import { loginSchema } from "@/lib/validationSchemas";
 import { Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { EmailVerificationDialog } from "@/components/EmailVerificationDialog";
-import { SignupDialog } from "@/components/SignupDialog"; // Importar o novo diálogo de cadastro
-import { Alert, AlertDescription } from "@/components/ui/alert"; // Importar Alert
-import { Checkbox } from "@/components/ui/checkbox"; // Importar Checkbox
+import { SignupDialog } from "@/components/SignupDialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog"; // Importar o novo diálogo
 
 const Login = () => {
   const navigate = useNavigate();
@@ -23,6 +24,9 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showEmailVerificationDialog, setShowEmailVerificationDialog] = useState(false);
   const [showSignupDialog, setShowSignupDialog] = useState(false); 
+  
+  // NOVO ESTADO: Diálogo de recuperação de senha
+  const [showForgotPasswordDialog, setShowForgotPasswordDialog] = useState(false);
   
   // NOVO ESTADO: Mensagem de erro de login no formulário
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -187,15 +191,25 @@ const Login = () => {
             </div>
           </form>
           
-          {/* Opção de Criar Conta */}
-          <div className="mt-2 text-center">
+          {/* Opções Adicionais (Criar Conta e Recuperar Senha) */}
+          <div className="mt-2 flex flex-col items-center space-y-1">
             <Button 
               variant="link" 
-              className="text-sm text-primary hover:text-primary-light"
+              className="text-sm text-primary hover:text-primary-light h-auto p-0"
               onClick={() => setShowSignupDialog(true)}
               disabled={loading}
             >
               Não tem conta? Crie uma agora!
+            </Button>
+            
+            {/* Botão de Recuperar Senha */}
+            <Button 
+              variant="link" 
+              className="text-sm text-muted-foreground hover:text-primary-light h-auto p-0"
+              onClick={() => setShowForgotPasswordDialog(true)}
+              disabled={loading}
+            >
+              Esqueceu sua senha?
             </Button>
           </div>
           
@@ -212,6 +226,12 @@ const Login = () => {
         open={showSignupDialog}
         onOpenChange={setShowSignupDialog}
         onSignupSuccess={handleSignupSuccess}
+      />
+      
+      {/* Diálogo de Recuperação de Senha */}
+      <ForgotPasswordDialog
+        open={showForgotPasswordDialog}
+        onOpenChange={setShowForgotPasswordDialog}
       />
     </div>
   );
