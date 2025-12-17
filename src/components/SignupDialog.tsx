@@ -173,7 +173,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             first_name: nome_completo, 
             last_name: nome_guerra,
             
-            // Dados adicionais para o perfil
+            // Dados adicionais para o perfil (AGORA TODOS OS CAMPOS SÃO PASSADOS)
             posto_graduacao,
             sigla_om,
             funcao_om,
