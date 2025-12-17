@@ -13,6 +13,7 @@ import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { EmailVerificationDialog } from "@/components/EmailVerificationDialog";
 import { SignupDialog } from "@/components/SignupDialog"; // Importar o novo diálogo de cadastro
 import { Alert, AlertDescription } from "@/components/ui/alert"; // Importar Alert
+import { Checkbox } from "@/components/ui/checkbox"; // Importar Checkbox
 
 const Login = () => {
   const navigate = useNavigate();
@@ -28,6 +29,9 @@ const Login = () => {
   
   // Estado para rastrear tentativas de login falhas para o fluxo de sugestão de cadastro
   const [loginAttempts, setLoginAttempts] = useState(0); 
+  
+  // NOVO ESTADO: Lembrar de mim
+  const [rememberMe, setRememberMe] = useState(true);
   
   const { handleEnterToNextField } = useFormNavigation();
 
@@ -161,6 +165,18 @@ const Login = () => {
             <Button type="submit" className="w-full" disabled={loading} variant="default">
               {loading ? "Aguarde..." : "Entrar"}
             </Button>
+            
+            {/* Checkbox Lembrar de Mim */}
+            <div className="flex items-center space-x-2 pt-2">
+              <Checkbox 
+                id="remember-me" 
+                checked={rememberMe} 
+                onCheckedChange={(checked) => setRememberMe(!!checked)} 
+              />
+              <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer">
+                Lembrar de mim
+              </Label>
+            </div>
           </form>
           
           {/* Opção de Criar Conta */}
