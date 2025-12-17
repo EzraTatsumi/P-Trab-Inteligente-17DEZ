@@ -19,8 +19,13 @@ export const preparePTrabForCloning = (ptrab: PTrabRow, userId: string) => {
     shared_with, // Limpo
     origem, // Redefinido
     status, // Redefinido
+    // Excluir campos calculados que não existem no DB, mas podem ser anexados ao objeto
+    totalLogistica,
+    totalOperacional,
+    totalMaterialPermanente,
+    totalAviacaoExercito,
     ...dataToClone 
-  } = ptrab;
+  } = ptrab as any; // Usamos 'any' para permitir a desestruturação de campos não-DB
 
   return {
     ...dataToClone,
