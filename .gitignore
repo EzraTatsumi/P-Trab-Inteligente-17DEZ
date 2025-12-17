@@ -57,16 +57,6 @@ src/pages/ClasseVIIForm.tsx
 src/pages/ClasseVIIIForm.tsx
 src/pages/ClasseIXForm.tsx
 
-# Excluir componentes da Landing Page
-src/pages/Index.tsx
-src/components/Hero.tsx
-src/components/Features.tsx
-src/components/Benefits.tsx
-src/components/Process.tsx
-src/components/Stakeholders.tsx
-src/components/Footer.tsx
-src/components/ScrollIndicatorButton.tsx
-
 # Excluir páginas de configuração secundária
 src/pages/OmConfigPage.tsx
 src/pages/OmBulkUploadPage.tsx
@@ -102,7 +92,7 @@ src/components/MarkdownAccordion.tsx
 src/components/MarkdownViewer.tsx
 src/components/HelpDialog.tsx
 src/components/YearManagementDialog.tsx
-src/components/RefLPCFormSection.tsx
+# src/components/RefLPCFormSection.tsx
 src/components/ClasseIIIRegistryForm.tsx
 src/hooks/useFormNavigation.ts
 src/hooks/use-mobile.tsx

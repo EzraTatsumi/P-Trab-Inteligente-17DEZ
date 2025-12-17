@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { RefLPC, RefLPCForm, RefLPCSource } from "@/types/refLPC";
-import { getPreviousWeekRange, formatNumberForInput, parseInputToNumber, formatInputWithThousands } from "@/lib/formatUtils";
+import { getPreviousWeekRange, formatNumberForInput, parseInputToNumber, formatInputWithThousands, formatDateDDMMMAA } from "@/lib/formatUtils";
 import { fetchFuelPrice } from "@/integrations/supabase/api";
 
 interface RefLPCFormSectionProps {
@@ -213,6 +213,9 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
   const sourceText = displaySource === 'API' ? 'API Externa' : 'Manual';
   const sourceColor = displaySource === 'API' ? 'text-green-700' : 'text-blue-700';
   const sourceBg = displaySource === 'API' ? 'bg-green-100' : 'bg-blue-100';
+  
+  // NOVO: Lógica para exibir a data de atualização
+  const lastUpdateDate = refLPC?.updated_at ? formatDateDDMMMAA(refLPC.updated_at) : null;
 
 
   return (
@@ -235,14 +238,21 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
             </CardTitle>
           </div>
           {/* O botão de seta continua ativo */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setIsLPCFormExpanded(!isLPCFormExpanded)}
-            disabled={loading}
-          >
-            {isLPCFormExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </Button>
+          <div className="flex items-center gap-4">
+            {lastUpdateDate && (
+                <span className="text-xs text-muted-foreground">
+                    Última Atz: {lastUpdateDate}
+                </span>
+            )}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setIsLPCFormExpanded(!isLPCFormExpanded)}
+              disabled={loading}
+            >
+              {isLPCFormExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       {isLPCFormExpanded && (
