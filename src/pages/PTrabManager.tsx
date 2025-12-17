@@ -57,6 +57,9 @@ type PTrabDB = Tables<'p_trab'> & {
 interface PTrab extends PTrabDB {
   totalLogistica?: number;
   totalOperacional?: number;
+  totalMaterialPermanente?: number; // NOVO
+  quantidadeRacaoOp?: number; // NOVO
+  quantidadeHorasVoo?: number; // NOVO
 }
 
 const PTrabManager = () => {
@@ -211,17 +214,22 @@ const PTrabManager = () => {
         (typedPTrabsData || []).map(async (ptrab) => {
           let totalOperacionalCalculado = 0;
           let totalLogisticaCalculado = 0;
+          let totalMaterialPermanenteCalculado = 0; // NOVO
+          let quantidadeRacaoOpCalculada = 0; // NOVO
+          let quantidadeHorasVooCalculada = 0; // NOVO (Inicialmente 0)
 
           // 1. Fetch Classe I totals (33.90.30)
           const { data: classeIData, error: classeIError } = await supabase
             .from('classe_i_registros')
-            .select('total_qs, total_qr')
+            .select('total_qs, total_qr, quantidade_r2, quantidade_r3') // Incluindo quantidades de ração
             .eq('p_trab_id', ptrab.id);
 
           let totalClasseI = 0;
           if (classeIError) console.error("Erro ao carregar Classe I para PTrab", ptrab.numero_ptrab, classeIError);
           else {
             totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
+            // Soma das quantidades de Ração Op (R2 + R3)
+            quantidadeRacaoOpCalculada = (classeIData || []).reduce((sum, record) => sum + (record.quantidade_r2 || 0) + (record.quantidade_r3 || 0), 0);
           }
           
           // 2. Fetch Classes II, V, VI, VII, VIII, IX totals (33.90.30 + 33.90.39)
@@ -296,6 +304,9 @@ const PTrabManager = () => {
             ...ptrab,
             totalLogistica: totalLogisticaCalculado,
             totalOperacional: totalOperacionalCalculado,
+            totalMaterialPermanente: totalMaterialPermanenteCalculado, // Inicializado como 0
+            quantidadeRacaoOp: quantidadeRacaoOpCalculada, // Valor real da Classe I
+            quantidadeHorasVoo: quantidadeHorasVooCalculada, // Inicializado como 0
           } as PTrab;
         })
       );
@@ -1565,6 +1576,8 @@ const PTrabManager = () => {
                   const isEditable = ptrab.status !== 'aprovado' && ptrab.status !== 'arquivado'; // MUDANÇA: Editável se não for aprovado/arquivado
                   const isApprovedOrArchived = isFinalStatus(ptrab); // NOVO: Verifica se está em status final
                   
+                  const totalGeral = (ptrab.totalLogistica || 0) + (ptrab.totalOperacional || 0) + (ptrab.totalMaterialPermanente || 0);
+                  
                   return (
                   <TableRow key={ptrab.id}>
                     <TableCell className="font-medium">
@@ -1623,32 +1636,66 @@ const PTrabManager = () => {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex flex-col items-center text-xs">
-                        {/* P Trab Logístico (Classe I + Classe II + Classe III) - AGORA EM LARANJA */}
-                        {ptrab.totalLogistica !== undefined && (
+                    <TableCell className="text-left w-[200px]">
+                      <div className="flex flex-col text-xs space-y-1">
+                        
+                        {/* 1. Aba Logística (Valor) */}
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Logística:</span>
                           <span className="text-orange-600 font-medium">
-                            {formatCurrency(ptrab.totalLogistica)}
+                            {formatCurrency(ptrab.totalLogistica || 0)}
                           </span>
-                        )}
-                        {/* P Trab Operacional (atualmente 0) - AGORA EM AZUL */}
-                        {ptrab.totalOperacional !== undefined && (
+                        </div>
+                        
+                        {/* 2. Aba Operacional (Valor) */}
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Operacional:</span>
                           <span className="text-blue-600 font-medium">
-                            {formatCurrency(ptrab.totalOperacional)}
+                            {formatCurrency(ptrab.totalOperacional || 0)}
                           </span>
-                        )}
+                        </div>
+                        
+                        {/* 3. Aba Material Permanente (Valor) */}
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Mat. Permanente:</span>
+                          <span className="text-green-600 font-medium">
+                            {formatCurrency(ptrab.totalMaterialPermanente || 0)}
+                          </span>
+                        </div>
+                        
                         {/* Separador e Total Geral */}
-                        {((ptrab.totalLogistica || 0) > 0 || (ptrab.totalOperacional || 0) > 0) && (
+                        {(totalGeral > 0) && (
                           <>
                             <div className="w-full h-px bg-muted-foreground/30 my-1" />
-                            <span className="font-bold text-sm text-foreground">
-                              {formatCurrency((ptrab.totalLogistica || 0) + (ptrab.totalOperacional || 0))}
-                            </span>
+                            <div className="flex justify-between font-bold text-sm text-foreground">
+                              <span>Total Geral:</span>
+                              <span>{formatCurrency(totalGeral)}</span>
+                            </div>
                           </>
                         )}
+                        
+                        {/* Separador para Quantidades */}
+                        <div className="w-full h-px bg-muted-foreground/30 my-1" />
+                        
+                        {/* 5. Quantidade de Ração Op */}
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Ração Op (R2/R3):</span>
+                          <span className="font-medium">
+                            {ptrab.quantidadeRacaoOp !== undefined ? `${ptrab.quantidadeRacaoOp} Unid.` : 'N/A'}
+                          </span>
+                        </div>
+                        
+                        {/* 6. Quantidade de Horas de Voo */}
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Horas de Voo:</span>
+                          <span className="font-medium">
+                            {ptrab.quantidadeHorasVoo !== undefined ? `${ptrab.quantidadeHorasVoo} h` : 'N/A'}
+                          </span>
+                        </div>
+                        
                         {/* Caso não haja nenhum valor */}
-                        {((ptrab.totalLogistica || 0) === 0 && (ptrab.totalOperacional || 0) === 0) && (
-                          <span className="text-muted-foreground">N/A</span>
+                        {(totalGeral === 0 && ptrab.quantidadeRacaoOp === 0 && ptrab.quantidadeHorasVoo === 0) && (
+                          <span className="text-muted-foreground text-center">N/A</span>
                         )}
                       </div>
                     </TableCell>
