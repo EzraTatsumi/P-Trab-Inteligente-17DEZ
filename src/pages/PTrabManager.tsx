@@ -1514,8 +1514,9 @@ const PTrabManager = () => {
                         >
                           {statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}
                         </Badge>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Última alteração: {formatDateTime(ptrab.updated_at)}
+                        <div className="text-xs text-muted-foreground mt-1 flex flex-col items-center">
+                          <span className="block">Última alteração:</span>
+                          <span className="block">{formatDateTime(ptrab.updated_at)}</span>
                         </div>
                       </div>
                     </TableCell>
