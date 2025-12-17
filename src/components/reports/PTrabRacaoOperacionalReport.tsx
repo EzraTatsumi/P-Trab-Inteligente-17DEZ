@@ -193,8 +193,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
 
     // --- Definição de Estilos e Alinhamentos ---
     const centerMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
-    const leftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true }; // NOVO
-    const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
+    const leftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true };
+    const leftTopAlignment = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true }; // NOVO: Para a coluna D
     
     const cellBorder = {
       top: { style: 'thin' as const },
@@ -306,11 +306,11 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         
         // A: DESPESAS
         row.getCell('A').value = `Ração Operacional de Combate`; // Simplificado
-        row.getCell('A').alignment = leftMiddleAlignment; // ALTERADO: Esquerda, Meio
+        row.getCell('A').alignment = leftMiddleAlignment;
         
         // B: OM (UGE) CODUG
         row.getCell('B').value = `${linha.om}\n(${linha.ug})`;
-        row.getCell('B').alignment = centerMiddleAlignment; // ALTERADO: Centro, Meio
+        row.getCell('B').alignment = centerMiddleAlignment;
         
         // C: QUANTIDADE (Total R2 + R3)
         row.getCell('C').value = linha.total_unidades;
@@ -318,7 +318,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         
         // D: DETALHAMENTO
         row.getCell('D').value = generateRacaoOpMemoriaCalculo(linha);
-        row.getCell('D').alignment = centerTopAlignment;
+        row.getCell('D').alignment = leftTopAlignment; // ALTERADO: Esquerda, Topo
         row.getCell('D').font = { name: 'Arial', size: 6.5 };
         
         ['A', 'B', 'C', 'D'].forEach(col => {
