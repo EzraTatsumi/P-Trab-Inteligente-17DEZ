@@ -348,6 +348,12 @@ const PTrabExportImportPage = () => {
         return;
     }
     
+    // Verifica se o usuário tem OMs cadastradas antes de prosseguir
+    if (userOms.length === 0) {
+        toast.error("Nenhuma OM cadastrada para o usuário. Cadastre uma OM antes de importar.");
+        return;
+    }
+    
     const importedPTrab = importDataPreview.data.p_trab as Tables<'p_trab'>;
     const importedNumber = importedPTrab.numero_ptrab;
     
@@ -355,15 +361,13 @@ const PTrabExportImportPage = () => {
     const isOfficialNumber = importedNumber && !isMinuta;
     const existingPTrab = pTrabsList.find(p => p.numero_ptrab === importedNumber);
 
-    if (isMinuta) {
-        // Se for Minuta, importa diretamente como nova Minuta
-        handleCreateNewNumberAndImport();
-    } else if (isOfficialNumber && existingPTrab) {
+    if (isOfficialNumber && existingPTrab) {
         // Conflito detectado para um número oficial
         setPtrabToOverwriteId(existingPTrab.id);
         setIsConflictDialogOpen(true);
     } else {
-        // Sem conflito, ou é um número oficial que não existe (vai para o diálogo de opções para nova numeração)
+        // Se for Minuta OU número oficial sem conflito, abre o diálogo de opções
+        // para que o usuário selecione a OM de destino e confirme a numeração.
         setIsImportOptionsDialogOpen(true);
     }
   };
@@ -396,10 +400,7 @@ const PTrabExportImportPage = () => {
         
         // 2. Usar a primeira OM do usuário como OM de destino (se houver)
         const defaultOm = userOms[0];
-        if (!defaultOm) {
-            // Lança um erro claro se não houver OMs cadastradas
-            throw new Error("Nenhuma OM cadastrada para o usuário. Cadastre uma OM antes de importar.");
-        }
+        // A verificação de userOms.length > 0 já foi feita em handleAnalysisReady
         
         // 3. Preparar os dados finais para importação (Minuta, status aberto, OM do usuário)
         const finalPTrabData: Tables<'p_trab'> = {
@@ -418,12 +419,7 @@ const PTrabExportImportPage = () => {
         
     } catch (error: any) {
         console.error("Erro ao criar novo número e importar:", error);
-        // Se o erro for a falta de OM, exibe a mensagem específica
-        if (error.message.includes("Nenhuma OM cadastrada")) {
-            toast.error(error.message);
-        } else {
-            toast.error("Erro ao importar como Minuta.");
-        }
+        toast.error(error.message || "Erro ao importar como Minuta.");
         setLoading(false);
     }
   };
