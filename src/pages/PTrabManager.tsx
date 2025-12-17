@@ -821,7 +821,7 @@ const PTrabManager = () => {
     const omSigla = ptrab.nome_om;
     
     // 2. Gerar o número no novo padrão N/YYYY/OM_SIGLA
-    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSigla);
+    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabs, omSigla);
     
     setPtrabToApprove(ptrab);
     setSuggestedApproveNumber(suggestedNumber);
@@ -1622,15 +1622,14 @@ const PTrabManager = () => {
                           </div>
                           
                           {/* Separador e Total Geral */}
-                          {(totalGeral > 0) && (
-                            <>
-                              <div className="w-full h-px bg-muted-foreground/30 my-1" />
-                              <div className="flex justify-between font-bold text-sm text-foreground">
-                                <span>Total:</span>
-                                <span>{formatCurrency(totalGeral)}</span>
-                              </div>
-                            </>
-                          )}
+                          {/* Removida a condição (totalGeral > 0) para garantir que o total 0,00 seja exibido */}
+                          <>
+                            <div className="w-full h-px bg-muted-foreground/30 my-1" />
+                            <div className="flex justify-between font-bold text-sm text-foreground">
+                              <span>Total:</span>
+                              <span>{formatCurrency(totalGeral)}</span>
+                            </div>
+                          </>
                           
                           {/* Separador para Quantidades */}
                           <div className="w-full h-px bg-muted-foreground/30 my-1" />
@@ -1639,7 +1638,8 @@ const PTrabManager = () => {
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Rç Op:</span>
                             <span className="font-medium">
-                              {ptrab.quantidadeRacaoOp !== undefined ? `${ptrab.quantidadeRacaoOp} Unid.` : 'N/A'}
+                              {/* Exibe 0 Unid. se for 0 ou undefined */}
+                              {`${ptrab.quantidadeRacaoOp || 0} Unid.`}
                             </span>
                           </div>
                           
@@ -1647,14 +1647,12 @@ const PTrabManager = () => {
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">HV:</span>
                             <span className="font-medium">
-                              {ptrab.quantidadeHorasVoo !== undefined ? `${ptrab.quantidadeHorasVoo} h` : 'N/A'}
+                              {/* Exibe 0 h se for 0 ou undefined */}
+                              {`${ptrab.quantidadeHorasVoo || 0} h`}
                             </span>
                           </div>
                           
-                          {/* Caso não haja nenhum valor */}
-                          {(totalGeral === 0 && ptrab.quantidadeRacaoOp === 0 && ptrab.quantidadeHorasVoo === 0) && (
-                            <span className="text-muted-foreground text-center">N/A</span>
-                          )}
+                          {/* Caso não haja nenhum valor - REMOVIDO */}
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
