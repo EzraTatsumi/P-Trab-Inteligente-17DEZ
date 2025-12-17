@@ -162,6 +162,11 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
       setLoading(false);
     }
   };
+  
+  // Lógica para máscara de telefone dinâmica
+  const phoneMask = form.telefone.replace(/\D/g, '').length > 10 
+    ? "(99) 99999-9999" 
+    : "(99) 9999-9999";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -220,7 +225,9 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando OMs...
                     </div>
                   ) : (
-                    <SelectValue placeholder="Selecione a OM" />
+                    <SelectValue placeholder="Selecione a OM">
+                      {form.sigla_om || "Selecione a OM"}
+                    </SelectValue>
                   )}
                 </SelectTrigger>
                 <SelectContent>
@@ -252,7 +259,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             <div className="space-y-2">
               <Label htmlFor="telefone">Telefone (Opcional)</Label>
               <InputMask
-                mask="(99) 99999-9999"
+                mask={phoneMask}
                 value={form.telefone}
                 onChange={handleChange}
                 maskChar={null}
@@ -262,7 +269,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                     {...inputProps}
                     id="telefone"
                     name="telefone"
-                    placeholder="(99) 99999-9999"
+                    placeholder="(99) 9999-9999 ou (99) 99999-9999"
                     onKeyDown={handleEnterToNextField}
                   />
                 )}
