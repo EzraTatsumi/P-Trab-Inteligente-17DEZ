@@ -190,6 +190,14 @@ const PTrabManager = () => {
             return { label: 'Original', className: 'bg-blue-600 text-white hover:bg-blue-700' }; 
     }
   };
+  
+  // NOVO: Função para limpar o prefixo "CONSOLIDADO - "
+  const cleanOperationName = (name: string, origem: PTrabDB['origem']) => {
+    if (origem === 'consolidado' && name.startsWith('CONSOLIDADO - ')) {
+        return name.replace('CONSOLIDADO - ', '');
+    }
+    return name;
+  };
 
   const handleSelectPTrab = (ptrab: PTrab) => {
       navigate(`/ptrab/form?ptrabId=${ptrab.id}`);
@@ -1228,7 +1236,8 @@ const PTrabManager = () => {
             ...restOfBasePTrab, // Usar o restante dos campos
             user_id: user.id,
             numero_ptrab: finalMinutaNumber,
-            nome_operacao: `CONSOLIDADO - ${basePTrab.nome_operacao}`, // Nome da operação consolidada
+            // MUDANÇA AQUI: Remove o prefixo "CONSOLIDADO - "
+            nome_operacao: basePTrab.nome_operacao, 
             status: 'aberto',
             origem: 'consolidado',
             comentario: `Consolidação dos P Trabs: ${selectedPTrabsData.map(p => p.numero_ptrab).join(', ')}`,
@@ -1669,6 +1678,9 @@ const PTrabManager = () => {
                     
                     const totalGeral = (ptrab.totalLogistica || 0) + (ptrab.totalOperacional || 0) + (ptrab.totalMaterialPermanente || 0);
                     
+                    // MUDANÇA AQUI: Limpa o nome da operação se for consolidado
+                    const displayOperationName = cleanOperationName(ptrab.nome_operacao, ptrab.origem);
+                    
                     return (
                     <TableRow key={ptrab.id}>
                       <TableCell className="font-medium">
@@ -1693,7 +1705,7 @@ const PTrabManager = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col items-start">
-                          <span>{ptrab.nome_operacao}</span>
+                          <span>{displayOperationName}</span>
                           {/* NOVO RÓTULO DE VERSÃO - AGORA VISÍVEL */}
                           {ptrab.rotulo_versao && ( // Check rotulo_versao
                             <Badge variant="secondary" className="mt-1 text-xs bg-secondary text-secondary-foreground">
