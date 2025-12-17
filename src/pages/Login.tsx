@@ -8,10 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { sanitizeAuthError } from "@/lib/errorUtils";
 import { loginSchema } from "@/lib/validationSchemas";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { EmailVerificationDialog } from "@/components/EmailVerificationDialog";
 import { SignupDialog } from "@/components/SignupDialog"; // Importar o novo diálogo de cadastro
+import { Alert, AlertDescription } from "@/components/ui/alert"; // Importar Alert
 
 const Login = () => {
   const navigate = useNavigate();
@@ -20,7 +21,10 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showEmailVerificationDialog, setShowEmailVerificationDialog] = useState(false);
-  const [showSignupDialog, setShowSignupDialog] = useState(false); // Novo estado para o diálogo de cadastro
+  const [showSignupDialog, setShowSignupDialog] = useState(false); 
+  
+  // NOVO ESTADO: Mensagem de erro de login no formulário
+  const [loginError, setLoginError] = useState<string | null>(null);
   
   // Estado para rastrear tentativas de login falhas para o fluxo de sugestão de cadastro
   const [loginAttempts, setLoginAttempts] = useState(0); 
@@ -30,11 +34,12 @@ const Login = () => {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setLoginError(null); // Limpa o erro anterior
 
     try {
       const validationResult = loginSchema.safeParse({ email, password });
       if (!validationResult.success) {
-        toast.error(validationResult.error.errors[0].message);
+        setLoginError(validationResult.error.errors[0].message);
         setLoading(false);
         return;
       }
@@ -48,16 +53,21 @@ const Login = () => {
         // Incrementa a contagem de tentativas falhas
         setLoginAttempts(prev => prev + 1);
         
-        // Lógica de erro inteligente
-        if (error.message === "Invalid login credentials" && loginAttempts >= 1) {
-          toast.warning("Credenciais inválidas. Se você não tem uma conta, por favor, crie uma.");
-          // Sugere abrir o diálogo de cadastro após a segunda tentativa falha
-          if (loginAttempts >= 2) {
-            setShowSignupDialog(true);
+        const sanitizedMessage = sanitizeAuthError(error);
+        
+        // Lógica de erro inteligente: Se for credencial inválida e já tentou 3 vezes, sugere cadastro
+        if (error.message === "Invalid login credentials") {
+          if (loginAttempts >= 2) { // 3ª tentativa (0, 1, 2)
+            setLoginError("Credenciais inválidas. Se você não tem uma conta, por favor, crie uma.");
+            setShowSignupDialog(true); // Abre o diálogo de sugestão
+          } else {
+            setLoginError("Email ou senha incorretos. Tente novamente.");
           }
           return;
         }
         
+        // Para outros erros (e-mail não confirmado, etc.)
+        setLoginError(sanitizedMessage);
         throw error;
       }
       
@@ -66,8 +76,8 @@ const Login = () => {
       // O SessionContextProvider agora lida com o redirecionamento e o toast de sucesso
       
     } catch (error: any) {
-      // Se for um erro genérico (não de credenciais inválidas), exibe a mensagem sanitizada
-      if (error.message !== "Invalid login credentials") {
+      // Se o erro não foi tratado acima (ex: erro de rede), exibe o toast genérico
+      if (!loginError) {
         toast.error(sanitizeAuthError(error));
       }
     } finally {
@@ -137,6 +147,17 @@ const Login = () => {
                 </Button>
               </div>
             </div>
+            
+            {/* NOVO: Exibição da mensagem de erro */}
+            {loginError && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-sm font-medium">
+                  {loginError}
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <Button type="submit" className="w-full" disabled={loading} variant="default">
               {loading ? "Aguarde..." : "Entrar"}
             </Button>
