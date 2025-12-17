@@ -242,7 +242,7 @@ const PTrabManager = () => {
       status: "aberto",
       origem: 'original',
       comentario: "", // Adicionado
-      rotulo_versao: null, // ADDED
+      rotulo_versao: null, // Adicionado
     });
   }, [existingPTrabNumbers]);
 
@@ -264,7 +264,7 @@ const PTrabManager = () => {
     status: "aberto",
     origem: 'original' as 'original' | 'importado' | 'consolidado',
     comentario: "", // Adicionado
-    rotulo_versao: null as string | null, // ADDED
+    rotulo_versao: null as string | null, // Adicionado
   });
 
   const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
@@ -289,7 +289,7 @@ const PTrabManager = () => {
     try {
       const { data: pTrabsData, error: pTrabsError } = await supabase
         .from("p_trab")
-        .select("*, comentario, origem, rotulo_versao") // ADDED rotulo_versao
+        .select("*, comentario, origem, rotulo_versao") // Incluir rotulo_versao
         .order("created_at", { ascending: false });
 
       if (pTrabsError) throw pTrabsError;
@@ -787,7 +787,7 @@ const PTrabManager = () => {
       status: ptrab.status,
       origem: ptrab.origem,
       comentario: ptrab.comentario || "", // Comentário continua sendo editável
-      rotulo_versao: ptrab.rotulo_versao || null, // ADDED
+      rotulo_versao: ptrab.rotulo_versao || null, // Adicionado
     });
     setDialogOpen(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1453,7 +1453,6 @@ const PTrabManager = () => {
                 
                 {/* NOVO ITEM: Editar Perfil do Usuário */}
                 <DropdownMenuItem onClick={() => navigate("/config/profile")}>
-                  <User className="mr-2 h-4 w-4" />
                   Editar Perfil do Usuário
                 </DropdownMenuItem>
                 
