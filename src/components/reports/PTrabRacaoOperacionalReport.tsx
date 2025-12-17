@@ -321,26 +321,26 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       // 1. Mescla A e B
       worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
       
-      // 2. Aplica estilos e bordas a todas as células envolvidas na mesclagem e nas células adjacentes
-      const totalCells = ['A', 'B', 'C', 'D'];
-      totalCells.forEach(col => {
-          const cell = totalRow.getCell(col);
-          cell.border = cellBorder;
-          cell.font = { name: 'Arial', size: 9, bold: true };
-          cell.alignment = centerMiddleAlignment;
-      });
-      
-      // Célula A (Mesclada A:B) - TOTAL - Cinza
+      // 2. Configura a célula mesclada (A)
       totalRow.getCell('A').value = 'TOTAL';
+      totalRow.getCell('A').alignment = centerMiddleAlignment;
+      totalRow.getCell('A').font = { name: 'Arial', size: 9, bold: true };
       totalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalCinza } };
+      totalRow.getCell('A').border = cellBorder;
       
-      // Célula C (QUANTIDADE) - Azul
+      // 3. Configura a célula C (QUANTIDADE TOTAL)
       totalRow.getCell('C').value = totalRacoesGeral;
       totalRow.getCell('C').numFmt = '#,##0';
+      totalRow.getCell('C').font = { name: 'Arial', size: 9, bold: true };
+      totalRow.getCell('C').alignment = centerMiddleAlignment;
       totalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalAzul } };
+      totalRow.getCell('C').border = cellBorder;
       
-      // Célula D (DETALHAMENTO) - Branco (padrão)
+      // 4. Configura a célula D (DETALHAMENTO)
       totalRow.getCell('D').value = '-';
+      totalRow.getCell('D').alignment = centerMiddleAlignment;
+      totalRow.getCell('D').font = { name: 'Arial', size: 9, bold: true };
+      totalRow.getCell('D').border = cellBorder;
       
       currentRow++;
       currentRow++;
@@ -351,6 +351,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       localRow.getCell('A').font = { name: 'Arial', size: 10 };
       localRow.getCell('A').alignment = centerMiddleAlignment; // Centraliza
       worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+      // Reforça a borda da célula mesclada A
+      localRow.getCell('A').border = cellBorder; 
       currentRow++;
       
       currentRow++;
@@ -360,6 +362,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment; // Centraliza
       worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+      // Reforça a borda da célula mesclada A
+      cmtRow.getCell('A').border = cellBorder;
       currentRow++;
       
       const cargoRow = worksheet.getRow(currentRow);
@@ -367,6 +371,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       cargoRow.getCell('A').font = { name: 'Arial', size: 9 };
       cargoRow.getCell('A').alignment = centerMiddleAlignment; // Centraliza
       worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+      // Reforça a borda da célula mesclada A
+      cargoRow.getCell('A').border = cellBorder;
       
       const fileName = generateFileName('Excel');
       
