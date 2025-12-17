@@ -47,6 +47,7 @@ import { CloneVariationDialog } from "@/components/CloneVariationDialog";
 import { updateUserCredits, fetchUserCredits } from "@/lib/creditUtils";
 import { cn } from "@/lib/utils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog"; // Importar CreditPromptDialog
+import { useSession } from "@/components/SessionContextProvider"; // ADDED: Import useSession
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -70,6 +71,10 @@ const PTrabManager = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
+  
+  // ADDED: User state
+  const { user } = useSession();
+  const [userName, setUserName] = useState<string>("");
   
   // Estado para controlar a abertura do DropdownMenu de configurações
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
@@ -122,6 +127,25 @@ const PTrabManager = () => {
   // FUNÇÕES AUXILIARES (Para resolver o erro de referência)
   // =================================================================
   
+  const fetchUserName = useCallback(async (userId: string) => {
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', userId)
+        .single();
+
+    if (error) {
+        console.error("Error fetching user profile:", error);
+        return null;
+    }
+    
+    if (data) {
+        const name = `${data.first_name || ''} ${data.last_name || ''}`.trim();
+        return name.length > 0 ? name : null;
+    }
+    return null;
+  }, []);
+
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
         day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -412,7 +436,18 @@ const PTrabManager = () => {
   useEffect(() => {
     checkAuth();
     loadPTrabs();
-  }, [loadPTrabs]);
+    
+    // ADDED: Fetch user name on load
+    if (user?.id) {
+        fetchUserName(user.id).then(name => {
+            if (name) {
+                setUserName(name);
+            } else if (user.email) {
+                setUserName(user.email);
+            }
+        });
+    }
+  }, [loadPTrabs, user, fetchUserName]);
 
   // Efeito para atualizar o número sugerido no diálogo de clonagem
   useEffect(() => {
@@ -1141,6 +1176,21 @@ const PTrabManager = () => {
           </div>
 
           <div className="flex items-center gap-4">
+            
+            {/* NOVO: Tooltip do Usuário Logado */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <User className="h-5 w-5 text-muted-foreground" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="font-medium">Usuário Logado:</p>
+                  <p>{userName || user?.email || 'Carregando...'}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             
             {/* BOTÃO NOVO P TRAB */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
