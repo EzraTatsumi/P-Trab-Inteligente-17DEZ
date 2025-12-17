@@ -122,9 +122,11 @@ const UserProfilePage = () => {
     setForm({ ...form, [name]: value });
   };
   
-  const handleSelectChange = (name: keyof ProfileData, value: string | number | null) => {
+  const handleSelectChange = (name: keyof Omit<ProfileData, 'id'>, value: string) => {
     if (name === 'default_diretriz_year') {
-        setForm(prev => ({ ...prev, default_diretriz_year: value ? Number(value) : null }));
+        // Se o valor for 'null_year', define como null. Caso contrário, converte para Number.
+        const yearValue = value === 'null_year' ? null : Number(value);
+        setForm(prev => ({ ...prev, default_diretriz_year: yearValue }));
     } else {
         setForm(prev => ({ ...prev, [name]: value }));
     }
@@ -307,7 +309,8 @@ const UserProfilePage = () => {
                   <div className="space-y-2">
                     <Label htmlFor="default_diretriz_year">Ano Padrão da Diretriz de Custeio</Label>
                     <Select
-                      value={form.default_diretriz_year?.toString() || ''}
+                      // Se for null, usa 'null_year' para o Select, senão usa o ano como string
+                      value={form.default_diretriz_year?.toString() || 'null_year'}
                       onValueChange={(value) => handleSelectChange("default_diretriz_year", value)}
                       disabled={isLoadingYears}
                     >
@@ -315,7 +318,8 @@ const UserProfilePage = () => {
                         <SelectValue placeholder="Usar o ano mais recente" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Usar o ano mais recente</SelectItem>
+                        {/* MUDANÇA: Usar 'null_year' como valor para a opção de deseleção */}
+                        <SelectItem value="null_year">Usar o ano mais recente</SelectItem>
                         {availableYears.map((year) => (
                           <SelectItem key={year} value={year.toString()}>
                             {year}
