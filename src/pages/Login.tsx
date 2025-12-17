@@ -5,22 +5,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { sanitizeAuthError } from "@/lib/errorUtils";
 import { loginSchema } from "@/lib/validationSchemas";
 import { Eye, EyeOff } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { EmailVerificationDialog } from "@/components/EmailVerificationDialog"; // Importar o novo diálogo
+import { EmailVerificationDialog } from "@/components/EmailVerificationDialog";
+import { SignupDialog } from "@/components/SignupDialog"; // Importar o novo diálogo de cadastro
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<"login" | "signup">("login");
   const [showPassword, setShowPassword] = useState(false);
-  const [showEmailVerificationDialog, setShowEmailVerificationDialog] = useState(false); // Novo estado para o diálogo
+  const [showEmailVerificationDialog, setShowEmailVerificationDialog] = useState(false);
+  const [showSignupDialog, setShowSignupDialog] = useState(false); // Novo estado para o diálogo de cadastro
+  
+  // Estado para rastrear tentativas de login falhas para o fluxo de sugestão de cadastro
+  const [loginAttempts, setLoginAttempts] = useState(0); 
+  
   const { handleEnterToNextField } = useFormNavigation();
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -35,39 +39,47 @@ const Login = () => {
         return;
       }
 
-      if (selectedTab === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/ptrab`
-          }
-        });
-        if (error) throw error;
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        // Incrementa a contagem de tentativas falhas
+        setLoginAttempts(prev => prev + 1);
         
-        // Em vez de um toast, abre o diálogo de verificação
-        setShowEmailVerificationDialog(true);
-        setSelectedTab("login"); // Sugere que o usuário volte para a aba de login após a verificação
-      } else { // Login tab
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) {
-          if (error.message === "Invalid login credentials") {
-            toast.error("Email ou senha incorretos. Se você não tem uma conta, por favor, crie uma.");
-            setSelectedTab("signup");
-            return;
+        // Lógica de erro inteligente
+        if (error.message === "Invalid login credentials" && loginAttempts >= 1) {
+          toast.warning("Credenciais inválidas. Se você não tem uma conta, por favor, crie uma.");
+          // Sugere abrir o diálogo de cadastro após a segunda tentativa falha
+          if (loginAttempts >= 2) {
+            setShowSignupDialog(true);
           }
-          throw error;
+          return;
         }
-        // O SessionContextProvider agora lida com o redirecionamento e o toast de sucesso
+        
+        throw error;
       }
+      
+      // Se o login for bem-sucedido, reseta as tentativas
+      setLoginAttempts(0);
+      // O SessionContextProvider agora lida com o redirecionamento e o toast de sucesso
+      
     } catch (error: any) {
-      toast.error(sanitizeAuthError(error));
+      // Se for um erro genérico (não de credenciais inválidas), exibe a mensagem sanitizada
+      if (error.message !== "Invalid login credentials") {
+        toast.error(sanitizeAuthError(error));
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSignupSuccess = (newEmail: string) => {
+    setEmail(newEmail); // Preenche o email no formulário de login
+    setPassword(""); // Limpa a senha
+    setShowSignupDialog(false);
+    setShowEmailVerificationDialog(true);
   };
 
   return (
@@ -76,118 +88,72 @@ const Login = () => {
         <CardHeader className="text-center">
           <CardTitle>Acesso à Plataforma</CardTitle>
           <CardDescription>
-            Entre ou crie sua conta para gerenciar seus Planos de Trabalho
+            Entre com seu e-mail e senha para gerenciar seus Planos de Trabalho
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as "login" | "signup")} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="signup">Criar Conta</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="login">
-              <form onSubmit={handleAuth} autoComplete="on" className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email-login">Email</Label>
-                  <Input
-                    id="email-login"
-                    name="email"
-                    type="email"
-                    autoComplete="username"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="seu@email.com"
-                    required
-                    onKeyDown={handleEnterToNextField}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password-login">Senha</Label>
-                  <div className="relative">
-                    <Input
-                      id="password-login"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                      minLength={6}
-                      className="pr-10"
-                      onKeyDown={handleEnterToNextField}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onMouseDown={() => setShowPassword(true)}
-                      onMouseUp={() => setShowPassword(false)}
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-                    </Button>
-                  </div>
-                </div>
-                <Button type="submit" className="w-full" disabled={loading} variant="default">
-                  {loading ? "Aguarde..." : "Entrar"}
+          {/* Formulário de Login Único */}
+          <form onSubmit={handleAuth} autoComplete="on" className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email-login">Email</Label>
+              <Input
+                id="email-login"
+                name="email"
+                type="email"
+                autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
+                required
+                onKeyDown={handleEnterToNextField}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password-login">Senha</Label>
+              <div className="relative">
+                <Input
+                  id="password-login"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  className="pr-10"
+                  onKeyDown={handleEnterToNextField}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onMouseDown={() => setShowPassword(true)}
+                  onMouseUp={() => setShowPassword(false)}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
                 </Button>
-              </form>
-            </TabsContent>
-
-            <TabsContent value="signup">
-              <form onSubmit={handleAuth} autoComplete="on" className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email-signup">Email</Label>
-                  <Input
-                    id="email-signup"
-                    name="email"
-                    type="email"
-                    autoComplete="username"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="seu@email.com"
-                    required
-                    onKeyDown={handleEnterToNextField}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password-signup">Senha</Label>
-                  <div className="relative">
-                    <Input
-                      id="password-signup"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="new-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                      minLength={6}
-                      className="pr-10"
-                      onKeyDown={handleEnterToNextField}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onMouseDown={() => setShowPassword(true)}
-                      onMouseUp={() => setShowPassword(false)}
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-                    </Button>
-                  </div>
-                </div>
-                <Button type="submit" className="w-full" disabled={loading} variant="secondary">
-                  {loading ? "Aguarde..." : "Criar Conta"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+              </div>
+            </div>
+            <Button type="submit" className="w-full" disabled={loading} variant="default">
+              {loading ? "Aguarde..." : "Entrar"}
+            </Button>
+          </form>
+          
+          {/* Opção de Criar Conta */}
+          <div className="mt-4 text-center">
+            <Button 
+              variant="link" 
+              className="text-sm text-primary hover:text-primary-light"
+              onClick={() => setShowSignupDialog(true)}
+              disabled={loading}
+            >
+              Não tem conta? Crie uma agora!
+            </Button>
+          </div>
+          
         </CardContent>
       </Card>
 
@@ -195,6 +161,12 @@ const Login = () => {
         open={showEmailVerificationDialog}
         onOpenChange={setShowEmailVerificationDialog}
         email={email}
+      />
+      
+      <SignupDialog
+        open={showSignupDialog}
+        onOpenChange={setShowSignupDialog}
+        onSignupSuccess={handleSignupSuccess}
       />
     </div>
   );
