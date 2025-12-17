@@ -72,7 +72,9 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     telefone: "",
   });
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  // Renomeando e adicionando estado para visualização de senhas
+  const [showPassword1, setShowPassword1] = useState(false);
+  const [showPassword2, setShowPassword2] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string | undefined>>({});
   const { handleEnterToNextField } = useFormNavigation();
   
@@ -300,7 +302,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                 <Input
                   id="password-signup"
                   name="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword1 ? "text" : "password"}
                   autoComplete="new-password"
                   value={form.password}
                   onChange={handleChange}
@@ -315,11 +317,11 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                   variant="ghost"
                   size="icon"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onMouseDown={() => setShowPassword(true)}
-                  onMouseUp={() => setShowPassword(false)}
+                  onMouseDown={() => setShowPassword1(true)}
+                  onMouseUp={() => setShowPassword1(false)}
                   tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                  {showPassword1 ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
                 </Button>
               </div>
               {validationErrors.password && <p className="text-xs text-destructive">{validationErrors.password}</p>}
@@ -327,18 +329,32 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirmar Senha *</Label>
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                placeholder="••••••••"
-                required
-                minLength={8}
-                onKeyDown={handleEnterToNextField}
-              />
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showPassword2 ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  required
+                  minLength={8}
+                  className="pr-10"
+                  onKeyDown={handleEnterToNextField}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onMouseDown={() => setShowPassword2(true)}
+                  onMouseUp={() => setShowPassword2(false)}
+                  tabIndex={-1}
+                >
+                  {showPassword2 ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                </Button>
+              </div>
               {validationErrors.confirmPassword && <p className="text-xs text-destructive">{validationErrors.confirmPassword}</p>}
             </div>
           </div>
