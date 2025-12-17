@@ -207,7 +207,10 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
   ], [passwordCriteria]);
 
   const renderCriteriaItem = (label: string, met: boolean) => (
-    <li className={cn("flex items-center gap-2 transition-colors", met ? "text-green-600" : "text-muted-foreground")}>
+    <li className={cn(
+      "flex items-center gap-2 transition-colors", 
+      met ? "text-green-600" : "text-destructive" // Alterado para text-destructive
+    )}>
       {met ? <Check className="h-3 w-3 shrink-0" /> : <X className="h-3 w-3 shrink-0" />}
       {label}
     </li>
@@ -410,11 +413,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             <AlertDescription className="text-xs text-muted-foreground">
               <span className="font-bold text-foreground block mb-1">Critérios de Senha:</span>
               <ul className="grid grid-cols-2 gap-x-4 gap-y-1 ml-2 mt-1">
-                {renderCriteriaItem(criteriaList[0].label, criteriaList[0].met)}
-                {renderCriteriaItem(criteriaList[1].label, criteriaList[1].met)}
-                {renderCriteriaItem(criteriaList[2].label, criteriaList[2].met)}
-                {renderCriteriaItem(criteriaList[3].label, criteriaList[3].met)}
-                {renderCriteriaItem(criteriaList[4].label, criteriaList[4].met)}
+                {criteriaList.map(item => renderCriteriaItem(item.label, item.met))}
               </ul>
             </AlertDescription>
           </Alert>
