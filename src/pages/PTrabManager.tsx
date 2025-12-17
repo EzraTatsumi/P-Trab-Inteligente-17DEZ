@@ -1464,9 +1464,9 @@ const PTrabManager = () => {
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 
-                {/* NOVO ITEM: Editar Perfil do Usuário */}
+                {/* NOVO ITEM: Perfil do Usuário */}
                 <DropdownMenuItem onClick={() => navigate("/config/profile")}>
-                  Editar Perfil do Usuário
+                  Perfil do Usuário
                 </DropdownMenuItem>
                 
                 <DropdownMenuItem onClick={() => navigate("/config/diretrizes")}>
