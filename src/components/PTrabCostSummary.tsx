@@ -337,7 +337,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     .reduce((sum, record) => sum + record.total_litros, 0);
 
   // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
-  const totalLogistica = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX + totalCombustivel + totalLubrificanteValor;
+  const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX + totalCombustivel + totalLubrificanteValor;
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
@@ -347,7 +347,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const totalOperacional = 0;
 
   return {
-    totalLogistica,
+    totalLogisticoGeral,
     totalOperacional,
     totalClasseI,
     totalClasseII,
@@ -421,7 +421,7 @@ export const PTrabCostSummary = ({
     enabled: !!ptrabId,
     refetchInterval: 10000,
     initialData: {
-      totalLogistica: 0,
+      totalLogisticoGeral: 0,
       totalOperacional: 0,
       totalMaterialPermanente: 0,
       totalAviacaoExercito: 0,
@@ -516,9 +516,9 @@ export const PTrabCostSummary = ({
   
   const totals = data!;
   
-  const totalGeralFinal = totals.totalLogistica + totals.totalOperacional + totals.totalMaterialPermanente + totals.totalAviacaoExercito;
+  const totalGeralFinal = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalMaterialPermanente + totals.totalAviacaoExercito;
 
-  const saldoGND3 = creditGND3 - (totals.totalLogistica + totals.totalOperacional + totals.totalAviacaoExercito);
+  const saldoGND3 = creditGND3 - (totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito);
   const saldoGND4 = creditGND4 - totals.totalMaterialPermanente;
 
   const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
@@ -545,7 +545,7 @@ export const PTrabCostSummary = ({
         <div className="w-full space-y-1 text-sm px-6 pt-3">
             <div className="flex justify-between text-orange-600 cursor-pointer" onClick={handleSummaryClick}>
               <span className="font-semibold text-sm">Aba Logística</span>
-              <span className="font-bold text-sm">{formatCurrency(totals.totalLogistica)}</span>
+              <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
             </div>
             <div className="flex justify-between text-blue-600 cursor-pointer" onClick={handleSummaryClick}>
               <span className="font-semibold text-sm">Aba Operacional</span>
@@ -606,7 +606,7 @@ export const PTrabCostSummary = ({
                         <Package className="h-3 w-3" />
                         Logística
                     </div>
-                    <span className="font-bold text-sm">{formatCurrency(totals.totalLogistica)}</span>
+                    <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
                   </div>
                   
                   {/* Classe I - Subsistência */}
