@@ -170,7 +170,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl"> {/* Alterado para max-w-3xl */}
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
@@ -180,11 +180,11 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             Preencha seus dados institucionais para criar sua conta.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSignup} className="grid gap-4 py-4">
+        <form onSubmit={handleSignup} className="grid gap-4 py-3">
           
           {/* Dados Pessoais e Institucionais */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
               <Label htmlFor="nome_completo">Nome Completo *</Label>
               <Input
                 id="nome_completo"
@@ -197,7 +197,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
               />
               {validationErrors.nome_completo && <p className="text-xs text-destructive">{validationErrors.nome_completo}</p>}
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label htmlFor="nome_guerra">Nome de Guerra *</Label>
               <Input
                 id="nome_guerra"
@@ -212,7 +212,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             </div>
             
             {/* Campo Sigla da OM (Select) */}
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label htmlFor="sigla_om">Sigla da OM *</Label>
               <Select
                 value={form.sigla_om}
@@ -241,7 +241,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
               {validationErrors.sigla_om && <p className="text-xs text-destructive">{validationErrors.sigla_om}</p>}
             </div>
             
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label htmlFor="funcao_om">Função na OM *</Label>
               <Input
                 id="funcao_om"
@@ -256,7 +256,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             </div>
             
             {/* Campo Telefone (InputMask) */}
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label htmlFor="telefone">Telefone (Opcional)</Label>
               <InputMask
                 mask={phoneMask}
@@ -279,7 +279,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
           </div>
           
           {/* Email e Senha */}
-          <div className="space-y-2 pt-4">
+          <div className="space-y-2 pt-3">
             <Label htmlFor="email-signup">Email *</Label>
             <Input
               id="email-signup"
@@ -295,8 +295,8 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             {validationErrors.email && <p className="text-xs text-destructive">{validationErrors.email}</p>}
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
               <Label htmlFor="password-signup">Senha *</Label>
               <div className="relative">
                 <Input
@@ -327,7 +327,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
               {validationErrors.password && <p className="text-xs text-destructive">{validationErrors.password}</p>}
             </div>
             
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label htmlFor="confirmPassword">Confirmar Senha *</Label>
               <div className="relative">
                 <Input
