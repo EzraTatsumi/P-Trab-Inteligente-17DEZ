@@ -41,6 +41,7 @@ const PTrabForm = () => {
   
   // NOVOS ESTADOS PARA CRÉDITO E DIÁLOGO
   const [showCreditDialog, setShowCreditDialog] = useState(false);
+  const [hasPromptedForCredit, setHasPromptedForCredit] = useState(false); // NOVO: Flag para evitar repetição
 
   const classesLogistica = [
     { id: "classe-i", name: "Classe I - Subsistência" },
@@ -131,16 +132,27 @@ const PTrabForm = () => {
       });
       setLoadingPTrab(false);
       
-      const shouldOpenCreditDialog = searchParams.get('openCredit') === 'true';
-      if (shouldOpenCreditDialog) {
-        setShowCreditDialog(true);
-        searchParams.delete('openCredit');
-        navigate(`?${searchParams.toString()}`, { replace: true });
-      }
+      // REMOVIDO: Lógica de abertura via searchParams 'openCredit=true'
     };
 
     loadPTrab();
   }, [ptrabId, navigate, searchParams]);
+  
+  // NOVO: Efeito para abrir o diálogo de crédito automaticamente
+  useEffect(() => {
+    // Verifica se todos os dados necessários foram carregados e se o prompt ainda não foi exibido
+    if (!loadingSession && !loadingPTrab && !isLoadingCredits && ptrabData && credits && !hasPromptedForCredit) {
+      const isPTrabOpen = ptrabData.status === 'aberto';
+      // Verifica se ambos os créditos são zero
+      const hasZeroCredits = credits.credit_gnd3 === 0 && credits.credit_gnd4 === 0;
+
+      if (isPTrabOpen && hasZeroCredits) {
+        setShowCreditDialog(true);
+        setHasPromptedForCredit(true); // Marca como já solicitado
+      }
+    }
+  }, [loadingSession, loadingPTrab, isLoadingCredits, ptrabData, credits, hasPromptedForCredit]);
+
 
   // Calculate costs based on query data
   const calculatedGND3 = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito;
