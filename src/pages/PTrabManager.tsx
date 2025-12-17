@@ -1327,15 +1327,7 @@ const PTrabManager = () => {
   }, [pTrabs, selectedPTrabsToConsolidate]);
 
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 md:p-8">
-        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-        <h2 className="text-xl font-semibold text-foreground">Carregando Planos de Trabalho...</h2>
-        <p className="text-muted-foreground mt-2">Isso pode levar alguns instantes, pois estamos calculando os totais de todas as classes.</p>
-      </div>
-    );
-  }
+  // REMOVIDO: O bloco if (loading) de tela cheia foi removido daqui.
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1657,7 +1649,13 @@ const PTrabManager = () => {
             <CardTitle>Planos de Trabalho Cadastrados</CardTitle>
           </CardHeader>
           <CardContent>
-            {pTrabs.length === 0 && !loading ? (
+            {loading ? (
+              <div className="text-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-2 mx-auto" />
+                <h3 className="text-lg font-semibold text-foreground">Carregando P Trabs...</h3>
+                <p className="text-sm text-muted-foreground mt-1">Calculando totais de classes.</p>
+              </div>
+            ) : pTrabs.length === 0 ? (
               <div className="text-center py-12">
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-xl font-semibold">Nenhum Plano de Trabalho Registrado</h3>
