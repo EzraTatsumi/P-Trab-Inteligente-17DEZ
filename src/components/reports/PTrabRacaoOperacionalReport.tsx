@@ -104,13 +104,26 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
   // NOVO: Função para gerar o nome do arquivo
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
+    // Substitui barras por hífens para segurança no nome do arquivo
     const numeroPTrab = ptrabData.numero_ptrab.replace(/\//g, '-'); 
     
-    // 1. Usar a sigla da OM diretamente
-    const omSigla = ptrabData.nome_om;
+    const isMinuta = ptrabData.numero_ptrab.startsWith("Minuta");
+    const currentYear = new Date(ptrabData.periodo_inicio).getFullYear();
     
-    // 2. Construir o nome base no formato: P Trab Nr [NUMERO] - [OM_SIGLA] - [NOME_OPERACAO] - Atz [DATA]
-    let nomeBase = `P Trab Nr ${numeroPTrab} - ${omSigla} - ${ptrabData.nome_operacao}`;
+    // 1. Construir o nome base
+    let nomeBase = `P Trab Nr ${numeroPTrab}`;
+    
+    if (isMinuta) {
+        // Se for Minuta, adiciona o ano e a sigla da OM
+        nomeBase += ` - ${currentYear} - ${ptrabData.nome_om}`;
+    } else {
+        // Se for Aprovado, o número já contém o ano e a sigla da OM (ex: 1-2025-23ª Bda Inf Sl)
+        // Apenas adiciona a sigla da OM para clareza, mas sem o separador extra
+        // Ex: P Trab Nr 1-2025-23ª Bda Inf Sl - Op MARAJOARA...
+    }
+    
+    // 2. Adicionar o nome da operação
+    nomeBase += ` - ${ptrabData.nome_operacao}`;
     
     // 3. Adicionar a data de atualização
     nomeBase += ` - Atz ${dataAtz}`;

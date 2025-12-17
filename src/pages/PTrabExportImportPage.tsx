@@ -60,11 +60,23 @@ const generateExportFileName = (pTrabData: Tables<'p_trab'>): string => {
     // Substitui barras por hífens para segurança no nome do arquivo
     const numeroPTrab = pTrabData.numero_ptrab.replace(/\//g, '-'); 
     
-    // 1. Usar a sigla da OM diretamente
-    const omSigla = pTrabData.nome_om;
+    const isMinuta = pTrabData.numero_ptrab.startsWith("Minuta");
+    const currentYear = new Date(pTrabData.periodo_inicio).getFullYear();
     
-    // 2. Construir o nome base no formato: P Trab Nr [NUMERO] - [OM_SIGLA] - [NOME_OPERACAO] - Atz [DATA]
-    let nomeBase = `P Trab Nr ${numeroPTrab} - ${omSigla} - ${pTrabData.nome_operacao}`;
+    // 1. Construir o nome base
+    let nomeBase = `P Trab Nr ${numeroPTrab}`;
+    
+    if (isMinuta) {
+        // Se for Minuta, adiciona o ano e a sigla da OM
+        nomeBase += ` - ${currentYear} - ${pTrabData.nome_om}`;
+    } else {
+        // Se for Aprovado, o número já contém o ano e a sigla da OM (ex: 1-2025-23ª Bda Inf Sl)
+        // Apenas adiciona a sigla da OM para clareza, mas sem o separador extra
+        // Ex: P Trab Nr 1-2025-23ª Bda Inf Sl - Op MARAJOARA...
+    }
+    
+    // 2. Adicionar o nome da operação
+    nomeBase += ` - ${pTrabData.nome_operacao}`;
     
     // 3. Adicionar a data de atualização
     nomeBase += ` - Atz ${dataAtz}`;
@@ -214,7 +226,24 @@ const PTrabExportImportPage = () => {
           diretrizes_custeio: diretrizesCusteio || [],
           diretrizes_equipamentos_classe_iii: diretrizesEquipamentos || [],
         };
-        fileName = `PTrab_Backup_Completo_${formatDateDDMMMAA(new Date().toISOString())}.json`;
+        
+        // Cria um PTrab temporário para usar a função de nome de arquivo
+        const tempPTrab: Tables<'p_trab'> = {
+            id: 'backup',
+            numero_ptrab: 'Backup Completo',
+            nome_om: 'USER',
+            nome_operacao: 'Configurações',
+            periodo_inicio: new Date().toISOString().split('T')[0],
+            periodo_fim: new Date().toISOString().split('T')[0],
+            efetivo_empregado: 'N/A',
+            comando_militar_area: 'N/A',
+            status: 'arquivado',
+            user_id: currentUserId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        } as Tables<'p_trab'>;
+        
+        fileName = `PTrab_Backup_Completo_${formatDateDDMMMAA(tempPTrab.updated_at)}.json`;
         exportTypeFinal = 'full_backup';
 
       } else {
