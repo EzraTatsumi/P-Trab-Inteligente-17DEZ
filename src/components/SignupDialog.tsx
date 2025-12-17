@@ -182,8 +182,8 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         </DialogHeader>
         <form onSubmit={handleSignup} className="grid gap-4 py-3">
           
-          {/* Dados Pessoais e Institucionais */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Dados Pessoais, Institucionais e Email (3 colunas em desktop) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label htmlFor="nome_completo">Nome Completo *</Label>
               <Input
@@ -276,26 +276,27 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
               </InputMask>
               {validationErrors.telefone && <p className="text-xs text-destructive">{validationErrors.telefone}</p>}
             </div>
+            
+            {/* Email (Movido para cá) */}
+            <div className="space-y-1">
+              <Label htmlFor="email-signup">Email *</Label>
+              <Input
+                id="email-signup"
+                name="email"
+                type="email"
+                autoComplete="username"
+                value={form.email}
+                onChange={handleChange}
+                placeholder="seu@email.com"
+                required
+                onKeyDown={handleEnterToNextField}
+              />
+              {validationErrors.email && <p className="text-xs text-destructive">{validationErrors.email}</p>}
+            </div>
           </div>
           
-          {/* Email e Senha */}
-          <div className="space-y-2 pt-3">
-            <Label htmlFor="email-signup">Email *</Label>
-            <Input
-              id="email-signup"
-              name="email"
-              type="email"
-              autoComplete="username"
-              value={form.email}
-              onChange={handleChange}
-              placeholder="seu@email.com"
-              required
-              onKeyDown={handleEnterToNextField}
-            />
-            {validationErrors.email && <p className="text-xs text-destructive">{validationErrors.email}</p>}
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Senha */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3">
             <div className="space-y-1">
               <Label htmlFor="password-signup">Senha *</Label>
               <div className="relative">
