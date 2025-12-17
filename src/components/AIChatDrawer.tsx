@@ -80,7 +80,7 @@ const AIChatDrawer = () => {
       <Drawer.Trigger asChild>
         <Button 
           size="lg" 
-          className="fixed bottom-6 right-6 z-50 rounded-full shadow-xl h-14 w-14 bg-primary/80 hover:bg-primary transition-all"
+          className="fixed bottom-6 right-6 z-50 rounded-full shadow-xl h-14 w-14 bg-primary/50 hover:bg-primary transition-all"
           aria-label="Abrir Chat com IA"
         >
           <MessageSquare className="h-6 w-6" />
