@@ -318,32 +318,29 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       // --- Linha Total ---
       const totalRow = worksheet.getRow(currentRow);
       
-      // Mescla A e B
+      // 1. Mescla A e B
       worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
+      
+      // 2. Aplica estilos e bordas a todas as células envolvidas na mesclagem e nas células adjacentes
+      const totalCells = ['A', 'B', 'C', 'D'];
+      totalCells.forEach(col => {
+          const cell = totalRow.getCell(col);
+          cell.border = cellBorder;
+          cell.font = { name: 'Arial', size: 9, bold: true };
+          cell.alignment = centerMiddleAlignment;
+      });
       
       // Célula A (Mesclada A:B) - TOTAL - Cinza
       totalRow.getCell('A').value = 'TOTAL';
-      totalRow.getCell('A').alignment = centerMiddleAlignment;
-      totalRow.getCell('A').font = { name: 'Arial', size: 9, bold: true };
       totalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalCinza } };
-      totalRow.getCell('A').border = cellBorder;
-      
-      // Célula B (Mesclada A:B) - Precisa de borda, mas é coberta pela mesclagem.
-      // Garantimos que a célula B tenha borda para o caso de desmesclagem, mas a mesclagem já define a borda externa.
       
       // Célula C (QUANTIDADE) - Azul
       totalRow.getCell('C').value = totalRacoesGeral;
       totalRow.getCell('C').numFmt = '#,##0';
-      totalRow.getCell('C').font = { name: 'Arial', size: 9, bold: true };
-      totalRow.getCell('C').alignment = centerMiddleAlignment;
       totalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalAzul } };
-      totalRow.getCell('C').border = cellBorder;
       
       // Célula D (DETALHAMENTO) - Branco (padrão)
       totalRow.getCell('D').value = '-';
-      totalRow.getCell('D').alignment = centerMiddleAlignment;
-      totalRow.getCell('D').font = { name: 'Arial', size: 9, bold: true };
-      totalRow.getCell('D').border = cellBorder;
       
       currentRow++;
       currentRow++;
