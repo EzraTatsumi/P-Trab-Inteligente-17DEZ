@@ -713,9 +713,9 @@ const PTrabReportManager = () => {
     <div className="min-h-screen bg-background">
       <div className="print:hidden sticky top-0 z-50 bg-background border-b border-border/50 shadow-sm">
         <div className="container max-w-7xl mx-auto py-4 px-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate('/ptrab/form?ptrabId=' + ptrabId)}>
+          <Button variant="ghost" onClick={() => navigate('/ptrab')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar para o Formulário
+            Voltar para Gerenciamento
           </Button>
           
           <div className="flex items-center gap-4">
