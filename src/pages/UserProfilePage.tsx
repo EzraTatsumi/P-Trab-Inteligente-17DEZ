@@ -70,7 +70,16 @@ const passwordSchema = z.object({
   path: ["confirmPassword"],
 });
 
+interface PasswordCriteria {
+  minLength: boolean;
+  uppercase: boolean;
+  lowercase: boolean;
+  number: boolean;
+  specialChar: boolean;
+}
+
 const fetchProfile = async (userId: string): Promise<ProfileData> => {
+  // MUDANÇA: Selecionar raw_user_meta_data para obter posto_graduacao, sigla_om, funcao_om e telefone
   const { data, error } = await supabase
     .from('profiles')
     .select('id, first_name, last_name, default_diretriz_year, raw_user_meta_data')
@@ -89,24 +98,15 @@ const fetchProfile = async (userId: string): Promise<ProfileData> => {
     id: data.id,
     first_name: data.first_name || '',
     last_name: data.last_name || '',
-    // Garantir que os valores sejam strings, mesmo que sejam null/undefined no DB
+    // CORREÇÃO: Acessar os campos diretamente do metaData
     posto_graduacao: metaData?.posto_graduacao || '',
     sigla_om: metaData?.sigla_om || '',
     funcao_om: metaData?.funcao_om || '',
-    // O telefone é salvo como string de dígitos no DB, mas o InputMask espera a string formatada ou a string de dígitos.
-    // Vamos retornar a string de dígitos para o estado.
+    // O telefone é salvo como string de dígitos no DB
     telefone: metaData?.telefone || '', 
     default_diretriz_year: data.default_diretriz_year,
   };
 };
-
-interface PasswordCriteria {
-  minLength: boolean;
-  uppercase: boolean;
-  lowercase: boolean;
-  number: boolean;
-  specialChar: boolean;
-}
 
 const UserProfilePage = () => {
   const navigate = useNavigate();
