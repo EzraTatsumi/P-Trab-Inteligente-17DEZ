@@ -114,7 +114,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   const exportPDF = useCallback(() => {
     if (!contentRef.current) return;
 
-    toast({
+    const pdfToast = toast({
       title: "Gerando PDF...",
       description: "Aguarde enquanto o relatório é processado.",
     });
@@ -144,7 +144,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
 
       pdf.save(generateFileName('PDF'));
       onExportSuccess();
-      toast.dismiss();
+      pdfToast.dismiss(); // Usa o dismiss do objeto retornado
       toast({
         title: "PDF Exportado!",
         description: "O P Trab Logístico foi salvo com sucesso.",
@@ -152,7 +152,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       });
     }).catch(error => {
       console.error("Erro ao gerar PDF:", error);
-      toast.dismiss();
+      pdfToast.dismiss(); // Usa o dismiss do objeto retornado
       toast({
         title: "Erro na Exportação",
         description: "Não foi possível gerar o PDF. Tente novamente.",
