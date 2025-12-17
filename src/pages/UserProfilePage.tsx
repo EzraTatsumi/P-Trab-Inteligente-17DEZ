@@ -422,9 +422,13 @@ const UserProfilePage = () => {
                     <Label htmlFor="telefone">Telefone</Label>
                     <InputMask
                       mask={phoneMask}
-                      // FIX: O valor do InputMask deve ser o valor do estado (string de dígitos)
+                      // O valor do InputMask deve ser a string de dígitos (sem máscara)
                       value={form.telefone}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        // Atualiza o estado com a string de dígitos limpa
+                        const rawDigits = e.target.value.replace(/\D/g, '');
+                        setForm(prev => ({ ...prev, telefone: rawDigits }));
+                      }}
                       maskChar={null}
                     >
                       {(inputProps: any) => (
