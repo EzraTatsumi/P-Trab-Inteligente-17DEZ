@@ -287,6 +287,19 @@ const PTrabExportImportPage = () => {
             user_id: currentUserId,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            // Adicionar campos obrigatórios que podem estar faltando no tipo Tables<'p_trab'>
+            codug_om: null,
+            codug_rm_vinculacao: null,
+            nome_om_extenso: null,
+            nome_cmt_om: null,
+            local_om: null,
+            acoes: null,
+            rm_vinculacao: null,
+            rotulo_versao: null,
+            comentario: null,
+            share_token: 'temp',
+            shared_with: null,
+            origem: 'original',
         } as Tables<'p_trab'>;
         
         fileName = `PTrab_Backup_Completo_${formatDateDDMMMAA(tempPTrab.updated_at)}.json`;
@@ -572,11 +585,37 @@ const PTrabExportImportPage = () => {
     // FIX: Exclui id e share_token
     const { id: originalId, created_at, updated_at, share_token, ...restOfPTrab } = importedPTrab; 
     
+    // Determine the status for the new record
+    let newStatus: string;
+    
+    if (overwriteId) {
+        // If overwriting, use the status from the imported file
+        newStatus = importedPTrab.status;
+    } else {
+        // If inserting a new record:
+        const isMinuta = importedPTrab.numero_ptrab.startsWith("Minuta");
+        
+        if (isMinuta) {
+            // If it's a Minuta (either original or newly generated Minuta-N), start as 'aberto'
+            newStatus = 'aberto';
+        } else {
+            // If it has an official number:
+            // If the imported status is 'aprovado' or 'arquivado', set it to 'aprovado' 
+            // (treating it as finalized but allowing local re-archiving).
+            if (importedPTrab.status === 'aprovado' || importedPTrab.status === 'arquivado') {
+                newStatus = 'aprovado';
+            } else {
+                // Otherwise, use the imported status (e.g., 'aberto', 'em_andamento')
+                newStatus = importedPTrab.status;
+            }
+        }
+    }
+    
     const ptrabDataToSave: TablesInsert<'p_trab'> | TablesUpdate<'p_trab'> = {
         ...restOfPTrab,
         user_id: currentUserId,
-        origem: overwriteId ? importedPTrab.origem : 'importado', // Mantém a origem se for overwrite
-        status: overwriteId ? importedPTrab.status : 'aberto', // Novo importado começa como 'aberto'
+        origem: overwriteId ? importedPTrab.origem : 'importado',
+        status: newStatus, // Use the determined status
     };
     
     let finalPTrabId: string;
