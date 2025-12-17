@@ -46,8 +46,8 @@ import { HelpDialog } from "@/components/HelpDialog";
 import { CloneVariationDialog } from "@/components/CloneVariationDialog";
 import { updateUserCredits, fetchUserCredits } from "@/lib/creditUtils";
 import { cn } from "@/lib/utils";
-import { CreditPromptDialog } from "@/components/CreditPromptDialog"; // Importar CreditPromptDialog
-import { useSession } from "@/components/SessionContextProvider"; // ADDED: Import useSession
+import { CreditPromptDialog } from "@/components/CreditPromptDialog";
+import { useSession } from "@/components/SessionContextProvider";
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -58,9 +58,9 @@ type PTrabDB = Tables<'p_trab'> & {
 interface PTrab extends PTrabDB {
   totalLogistica?: number;
   totalOperacional?: number;
-  totalMaterialPermanente?: number; // NOVO
-  quantidadeRacaoOp?: number; // NOVO
-  quantidadeHorasVoo?: number; // NOVO
+  totalMaterialPermanente?: number;
+  quantidadeRacaoOp?: number;
+  quantidadeHorasVoo?: number;
 }
 
 const PTrabManager = () => {
@@ -1177,20 +1177,13 @@ const PTrabManager = () => {
 
           <div className="flex items-center gap-4">
             
-            {/* NOVO: Tooltip do Usuário Logado */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <User className="h-5 w-5 text-muted-foreground" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="font-medium">Usuário Logado:</p>
-                  <p>{userName || user?.email || 'Carregando...'}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* NOVO: Exibição explícita do usuário logado */}
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-border">
+              <User className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">
+                {userName || user?.email || 'Carregando...'}
+              </span>
+            </div>
             
             {/* BOTÃO NOVO P TRAB */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
