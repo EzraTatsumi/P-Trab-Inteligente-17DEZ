@@ -124,7 +124,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
   };
 
-  const handlePrint = useCallback(() => {
+  // Função para exportar PDF (Download)
+  const handleExportPdf = useCallback(() => {
     if (!contentRef.current) return;
 
     const pdfToast = toast({
@@ -132,7 +133,6 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       description: "Aguarde enquanto o relatório é processado.",
     });
 
-    // Força a renderização de todos os elementos antes de capturar
     html2canvas(contentRef.current, {
       scale: 2,
       useCORS: true,
@@ -174,6 +174,13 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       });
     });
   }, [ptrabData, racaoOperacionalConsolidada, onExportSuccess, toast]);
+
+  // Função para Imprimir (Abre a caixa de diálogo de impressão)
+  const handlePrint = useCallback(() => {
+    window.print();
+    onExportSuccess();
+  }, [onExportSuccess]);
+
 
   const exportExcel = useCallback(async () => {
     if (racaoOperacionalConsolidada.length === 0) {
@@ -410,14 +417,19 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
 
   return (
     <div className="space-y-4">
+      {/* Botões de Exportação/Impressão padronizados */}
       <div className="flex justify-end gap-3 print:hidden">
-        <Button onClick={exportExcel} variant="secondary" className="gap-2">
+        <Button onClick={handlePrint} variant="outline" className="gap-2">
+          <Printer className="h-4 w-4" />
+          Imprimir
+        </Button>
+        <Button onClick={handleExportPdf} variant="secondary" className="gap-2">
+          <Download className="h-4 w-4" />
+          Exportar PDF
+        </Button>
+        <Button onClick={exportExcel} className="gap-2">
           <FileSpreadsheet className="h-4 w-4" />
           Exportar Excel
-        </Button>
-        <Button onClick={handlePrint} className="gap-2">
-          <Printer className="h-4 w-4" />
-          Imprimir / Exportar PDF
         </Button>
       </div>
 
