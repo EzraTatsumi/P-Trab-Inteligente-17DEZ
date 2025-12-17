@@ -48,9 +48,15 @@ const Login = () => {
         return;
       }
 
+      // Implementação da lógica do "Lembrar de mim"
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {
+          // Se rememberMe for true, a sessão é persistida (padrão Supabase).
+          // Se for false, a sessão é de curta duração (session cookie).
+          shouldCreateSession: rememberMe, 
+        }
       });
       
       if (error) {
