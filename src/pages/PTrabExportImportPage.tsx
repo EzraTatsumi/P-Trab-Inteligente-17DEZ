@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label"; // Adicionado Label
+import { Label } from "@/components/ui/label";
 import { ArrowLeft, Download, Upload, Lock, AlertCircle, Check, FileText, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
@@ -722,7 +722,13 @@ const PTrabExportImportPage = () => {
                                 onSelect={() => {
                                   setSelectedPTrabId(ptrab.id);
                                   // Fecha o diálogo de seleção
-                                  document.getElementById('radix-:R1p6:')?.click(); 
+                                  // O ID do radix é gerado dinamicamente, mas o onSelect deve fechar o Dialog
+                                  // Usamos o onOpenChange do Dialog pai para fechar, mas aqui precisamos de um truque
+                                  // para fechar o Dialog interno (o Command Dialog).
+                                  // Como o Command está dentro de um DialogContent, o onSelect não fecha o Dialog pai.
+                                  // Vamos usar um truque simples:
+                                  const closeButton = document.querySelector('[data-state="open"] [aria-label="Close"]');
+                                  if (closeButton) (closeButton as HTMLElement).click();
                                 }}
                               >
                                 <Check
