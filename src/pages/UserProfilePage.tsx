@@ -78,32 +78,47 @@ interface PasswordCriteria {
 }
 
 const fetchProfile = async (userId: string): Promise<ProfileData> => {
-  // MUDANÇA: Selecionar raw_user_meta_data para obter posto_graduacao, sigla_om, funcao_om e telefone
-  const { data, error } = await supabase
+  // 1. Buscar dados da tabela profiles (incluindo raw_user_meta_data)
+  const { data: profileData, error: profileError } = await supabase
     .from('profiles')
     .select('id, first_name, last_name, default_diretriz_year, raw_user_meta_data')
     .eq('id', userId)
     .single();
 
-  if (error) throw error;
+  if (profileError) throw profileError;
 
-  const metaData = data.raw_user_meta_data as any;
+  // 2. Buscar o objeto user completo para obter os metadados mais recentes
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
   
-  // Adicionado log para depuração
-  console.log("Fetched Profile Data:", data);
-  console.log("Extracted Metadata:", metaData);
-
+  if (authError || !authUser) {
+      // Se não conseguir o usuário autenticado, usa apenas o que veio da tabela profiles
+      const metaData = profileData.raw_user_meta_data as any;
+      return {
+          id: profileData.id,
+          first_name: profileData.first_name || '',
+          last_name: profileData.last_name || '',
+          posto_graduacao: metaData?.posto_graduacao || '',
+          sigla_om: metaData?.sigla_om || '',
+          funcao_om: metaData?.funcao_om || '',
+          telefone: metaData?.telefone || '', 
+          default_diretriz_year: profileData.default_diretriz_year,
+      };
+  }
+  
+  // 3. Consolidar metadados: Usar metadados do authUser (mais recentes)
+  const authMetaData = authUser.user_metadata as any;
+  
+  // 4. Retornar dados consolidados
   return {
-    id: data.id,
-    first_name: data.first_name || '',
-    last_name: data.last_name || '',
-    // CORREÇÃO: Acessar os campos diretamente do metaData
-    posto_graduacao: metaData?.posto_graduacao || '',
-    sigla_om: metaData?.sigla_om || '',
-    funcao_om: metaData?.funcao_om || '',
-    // O telefone é salvo como string de dígitos no DB
-    telefone: metaData?.telefone || '', 
-    default_diretriz_year: data.default_diretriz_year,
+    id: profileData.id,
+    first_name: profileData.first_name || '',
+    last_name: profileData.last_name || '',
+    // Usar metadados do authUser para campos institucionais
+    posto_graduacao: authMetaData?.posto_graduacao || '',
+    sigla_om: authMetaData?.sigla_om || '',
+    funcao_om: authMetaData?.funcao_om || '',
+    telefone: authMetaData?.telefone || '', 
+    default_diretriz_year: profileData.default_diretriz_year,
   };
 };
 
