@@ -1,10 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
-// Importa o cliente Supabase para interagir com o banco de dados (se necessário)
-// import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-
-// URL da API do OpenAI (ou outro LLM)
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+// URL da API do Gemini (Google AI)
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,9 +18,8 @@ serve(async (req) => {
 
   try {
     // 1. Obter a chave de API do segredo (Usando o nome do segredo fornecido no contexto)
-    const OPENAI_API_KEY = Deno.env.get("Chat IA P Trab Inteligente");
-    if (!OPENAI_API_KEY) {
-      // Se a chave não estiver configurada, retorna um erro específico
+    const GEMINI_API_KEY = Deno.env.get("Chat IA P Trab Inteligente");
+    if (!GEMINI_API_KEY) {
       return new Response(
         JSON.stringify({ error: "Erro de Configuração: A chave 'Chat IA P Trab Inteligente' não está definida nos segredos da Edge Function." }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -36,33 +32,41 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing message parameter' }), { status: 400, headers: corsHeaders });
     }
 
-    // 3. Chamar a API do LLM
-    const response = await fetch(OPENAI_API_URL, {
+    // 3. Preparar o payload para o Gemini API
+    const payload = {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: `${SYSTEM_PROMPT}\n\nUsuário: ${message}` }
+          ]
+        }
+      ],
+      config: {
+        temperature: 0.7,
+        maxOutputTokens: 500,
+      }
+    };
+
+    // 4. Chamar a API do Gemini
+    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo", // Modelo de sua escolha
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: message },
-        ],
-        temperature: 0.7,
-        max_tokens: 500,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("OpenAI API Error:", errorText);
-      // Retorna um erro mais detalhado da API do OpenAI
-      throw new Error(`OpenAI API returned status ${response.status}: ${errorText}`);
+      console.error("Gemini API Error:", errorText);
+      throw new Error(`Gemini API returned status ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
+    
+    // 5. Extrair a resposta do formato Gemini
+    const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Não foi possível obter uma resposta da IA.";
 
     return new Response(
       JSON.stringify({ response: aiResponse }),
