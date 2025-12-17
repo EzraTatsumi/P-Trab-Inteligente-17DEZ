@@ -20,6 +20,7 @@ import { OMData } from "@/lib/omUtils"; // Importar OMData
 import { ImportConflictDialog } from "@/components/ImportConflictDialog"; // NOVO IMPORT
 import { generateUniqueMinutaNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils"; // Importar utilitários de numeração
 import { formatDateDDMMMAA } from "@/lib/formatUtils"; // Importar utilitário de formatação de data
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Define the structure of the exported data
 interface ExportData {
@@ -161,6 +162,7 @@ const PTrabExportImportPage = () => {
       let exportData: ExportData['data'];
       let fileName: string;
       let exportTypeFinal: ExportData['type'];
+      const currentUserId = await userId;
 
       if (exportType === 'single' && selectedPTrabId) {
         // Exportar P Trab Único
@@ -206,14 +208,14 @@ const PTrabExportImportPage = () => {
           { data: diretrizesCusteio },
           { data: diretrizesEquipamentos },
         ] = await Promise.all([
-          supabase.from('p_trab').select('*, updated_at'),
+          supabase.from('p_trab').select('*, updated_at').eq('user_id', currentUserId),
           supabase.from('classe_i_registros').select('*'),
           supabase.from('classe_ii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39'),
           supabase.from('classe_iii_registros').select('*'),
           supabase.from('p_trab_ref_lpc').select('*'),
-          supabase.from('organizacoes_militares').select('*'),
-          supabase.from('diretrizes_custeio').select('*'),
-          supabase.from('diretrizes_equipamentos_classe_iii').select('*'),
+          supabase.from('organizacoes_militares').select('*').eq('user_id', currentUserId),
+          supabase.from('diretrizes_custeio').select('*').eq('user_id', currentUserId),
+          supabase.from('diretrizes_equipamentos_classe_iii').select('*').eq('user_id', currentUserId),
         ]);
 
         exportData = {
@@ -253,7 +255,7 @@ const PTrabExportImportPage = () => {
       const finalExportObject: ExportData = {
         version: "1.0",
         timestamp: new Date().toISOString(),
-        userId: await userId as string,
+        userId: currentUserId as string,
         type: exportTypeFinal,
         data: exportData,
       };
@@ -333,7 +335,7 @@ const PTrabExportImportPage = () => {
         // Backup Completo: Não precisa de opções, vai direto para a importação
         setImportSummary({
           type: 'full_backup',
-          details: `Backup Completo de ${importedData.data.p_trab.length} P Trabs e configurações globais.`,
+          details: `Backup Completo de ${(importedData.data.p_trab as Tables<'p_trab'>[]).length} P Trabs e configurações globais.`,
         });
         await handleFinalImport(importedData);
         
