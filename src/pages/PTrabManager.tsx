@@ -821,7 +821,7 @@ const PTrabManager = () => {
     const omSigla = ptrab.nome_om;
     
     // 2. Gerar o número no novo padrão N/YYYY/OM_SIGLA
-    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabs, omSigla);
+    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSigla); // CORRIGIDO: Usando existingPTrabNumbers
     
     setPtrabToApprove(ptrab);
     setSuggestedApproveNumber(suggestedNumber);
@@ -839,7 +839,7 @@ const PTrabManager = () => {
     }
     
     // Verifica se o número sugerido (ou customizado) já existe
-    const isDuplicate = isPTrabNumberDuplicate(newNumber, existingPTrabs);
+    const isDuplicate = isPTrabNumberDuplicate(newNumber, existingPTrabNumbers); // CORRIGIDO: Usando existingPTrabNumbers
     if (isDuplicate) {
       toast.error("O número sugerido já existe. Tente novamente ou use outro número.");
       return;
