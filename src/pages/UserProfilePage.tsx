@@ -338,7 +338,7 @@ const UserProfilePage = () => {
                       value={form.posto_graduacao}
                       onValueChange={(value) => handleSelectChange("posto_graduacao", value)}
                     >
-                      <SelectTrigger id="posto_graduacao">
+                      <SelectTrigger id="posto_graduacao" className="justify-start">
                         <SelectValue placeholder="Selecione o Posto/Graduação" />
                       </SelectTrigger>
                       <SelectContent>
@@ -393,7 +393,7 @@ const UserProfilePage = () => {
                       onValueChange={(value) => handleSelectChange("sigla_om", value)}
                       disabled={isLoadingOms}
                     >
-                      <SelectTrigger id="sigla_om">
+                      <SelectTrigger id="sigla_om" className="justify-start">
                         <SelectValue placeholder="Selecione a OM">
                           {form.sigla_om || "Selecione a OM"}
                         </SelectValue>

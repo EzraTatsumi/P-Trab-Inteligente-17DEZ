@@ -276,7 +276,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                 value={form.posto_graduacao}
                 onValueChange={(value) => handleSelectChange("posto_graduacao", value)}
               >
-                <SelectTrigger id="posto_graduacao">
+                <SelectTrigger id="posto_graduacao" className="justify-start">
                   <SelectValue placeholder="Selecione o Posto/Graduação" />
                 </SelectTrigger>
                 <SelectContent>
@@ -298,7 +298,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                 onValueChange={(value) => handleSelectChange("sigla_om", value)}
                 disabled={isLoadingOms}
               >
-                <SelectTrigger id="sigla_om">
+                <SelectTrigger id="sigla_om" className="justify-start">
                   {isLoadingOms ? (
                     <div className="flex items-center text-muted-foreground">
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando OMs...
