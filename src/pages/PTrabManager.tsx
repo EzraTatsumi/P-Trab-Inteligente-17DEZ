@@ -48,6 +48,7 @@ import { updateUserCredits, fetchUserCredits } from "@/lib/creditUtils";
 import { cn } from "@/lib/utils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 import { useSession } from "@/components/SessionContextProvider";
+import { useQuery } from "@tanstack/react-query"; // Importar useQuery
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -110,11 +111,6 @@ const PTrabManager = () => {
   // NOVO ESTADO: Diálogo de Consolidação
   const [showConsolidationDialog, setShowConsolidationDialog] = useState(false);
   
-  // NOVO ESTADO: Diálogo de Aprovação/Numeração
-  const [showApproveDialog, setShowApproveDialog] = useState(false);
-  const [ptrabToApprove, setPtrabToApprove] = useState<PTrab | null>(null);
-  const [suggestedApproveNumber, setSuggestedApproveNumber] = useState<string>("");
-  
   // NOVO ESTADO: Controle do Prompt de Crédito
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
   const [ptrabToFill, setPtrabToFill] = useState<PTrab | null>(null);
@@ -122,6 +118,14 @@ const PTrabManager = () => {
 
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
+  
+  // --- Lógica de Busca de Créditos (TanStack Query) ---
+  const { data: credits, isLoading: isLoadingCredits } = useQuery({
+    queryKey: ['userCredits', user?.id],
+    queryFn: () => fetchUserCredits(user!.id),
+    enabled: !!user?.id,
+    initialData: { credit_gnd3: 0, credit_gnd4: 0 },
+  });
 
   // =================================================================
   // FUNÇÕES AUXILIARES (Para resolver o erro de referência)
@@ -182,6 +186,17 @@ const PTrabManager = () => {
   };
 
   const handleSelectPTrab = (ptrab: PTrab) => {
+      // NOVO: Lógica para abrir o prompt de crédito se o status for 'aberto' E os créditos estiverem zerados
+      const isCreditZero = (credits.credit_gnd3 || 0) === 0 && (credits.credit_gnd4 || 0) === 0;
+      
+      if (ptrab.status === 'aberto' && isCreditZero && !hasBeenPrompted.current.has(ptrab.id)) {
+          setPtrabToFill(ptrab);
+          setShowCreditPrompt(true);
+          hasBeenPrompted.current.add(ptrab.id); // Marca como perguntado
+          return;
+      }
+      
+      // Se não atender à condição ou já tiver sido perguntado, navega diretamente
       navigate(`/ptrab/form?ptrabId=${ptrab.id}`);
   };
 
@@ -197,14 +212,15 @@ const PTrabManager = () => {
   };
   
   const handlePromptConfirm = () => {
-      // Placeholder for credit prompt confirm
+      // Confirmação do prompt de crédito: Navega para o formulário com o diálogo de crédito aberto
       setShowCreditPrompt(false);
       navigate(`/ptrab/form?ptrabId=${ptrabToFill?.id}&openCredit=true`);
   };
 
   const handlePromptCancel = () => {
-      // Placeholder for credit prompt cancel
+      // Cancelamento do prompt de crédito: Navega diretamente para o formulário
       setShowCreditPrompt(false);
+      navigate(`/ptrab/form?ptrabId=${ptrabToFill?.id}`);
   };
 
   // Lógica de Consolidação
