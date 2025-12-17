@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient, useQueries } from "@tanstack/react-query"; // Importando useQueries
+import { useQuery, useQueryClient, useQueries, useMutation } from "@tanstack/react-query"; // Adicionado useMutation
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -135,8 +135,8 @@ const PTrabManager = () => {
   const saldoGND3 = credits.credit_gnd3 - totalGND3Consolidado;
   const saldoGND4 = credits.credit_gnd4 - totalGND4Consolidado;
   
-  // --- Lógica de Mutação para Salvar Créditos ---
-  const saveCreditsMutation = useQueryClient().getMutationCache().find({ mutationKey: ['updateUserCredits'] }) || useQueryClient().getMutationCache().build({
+  // --- Lógica de Mutação para Salvar Créditos (Usando useMutation) ---
+  const saveCreditsMutation = useMutation({
     mutationKey: ['updateUserCredits'],
     mutationFn: ({ gnd3, gnd4 }: { gnd3: number, gnd4: number }) => 
       updateUserCredits(user!.id, gnd3, gnd4),
