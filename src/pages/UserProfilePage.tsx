@@ -601,31 +601,29 @@ const UserProfilePage = () => {
           </CardContent>
         </Card>
         
-        {/* REMOVIDA A SEÇÃO DE EXCLUSÃO SEPARADA */}
+        {/* Diálogo de Confirmação de Exclusão */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-destructive flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Confirmação de Exclusão
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Você tem certeza que deseja excluir permanentemente sua conta? Todos os seus Planos de Trabalho, diretrizes e dados de perfil serão perdidos.
+                <br/><br/>
+                **Atenção:** Devido a restrições de segurança, a exclusão final deve ser confirmada pelo administrador do sistema. Ao confirmar, você será desconectado.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={handleDeleteAccount} disabled={loading} className="bg-destructive hover:bg-destructive/90">
+                {loading ? "Excluindo..." : "Sim, Excluir Permanentemente"}
+              </AlertDialogAction>
+              <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-      
-      {/* Diálogo de Confirmação de Exclusão */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              Confirmação de Exclusão
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Você tem certeza que deseja excluir permanentemente sua conta? Todos os seus Planos de Trabalho, diretrizes e dados de perfil serão perdidos.
-              <br/><br/>
-              **Atenção:** Devido a restrições de segurança, a exclusão final deve ser confirmada pelo administrador do sistema. Ao confirmar, você será desconectado.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteAccount} disabled={loading} className="bg-destructive hover:bg-destructive/90">
-              {loading ? "Excluindo..." : "Sim, Excluir Permanentemente"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };
