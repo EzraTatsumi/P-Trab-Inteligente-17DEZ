@@ -173,7 +173,7 @@ const Login = () => {
             </Button>
             
             {/* Checkbox Lembrar de Mim */}
-            <div className="flex items-center space-x-2 pt-2">
+            <div className="flex items-center space-x-2 pt-1">
               <Checkbox 
                 id="remember-me" 
                 checked={rememberMe} 
@@ -186,7 +186,7 @@ const Login = () => {
           </form>
           
           {/* Opção de Criar Conta */}
-          <div className="mt-4 text-center">
+          <div className="mt-2 text-center">
             <Button 
               variant="link" 
               className="text-sm text-primary hover:text-primary-light"
