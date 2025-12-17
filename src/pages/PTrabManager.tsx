@@ -1490,8 +1490,14 @@ const PTrabManager = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      <div>
-                        {new Date(ptrab.periodo_inicio).toLocaleDateString('pt-BR')} - {new Date(ptrab.periodo_fim).toLocaleDateString('pt-BR')}
+                      <div className="flex flex-col items-center">
+                        <span className="block">
+                          {new Date(ptrab.periodo_inicio).toLocaleDateString('pt-BR')}
+                        </span>
+                        <span className="block font-bold text-sm">-</span>
+                        <span className="block">
+                          {new Date(ptrab.periodo_fim).toLocaleDateString('pt-BR')}
+                        </span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
                         {calculateDays(ptrab.periodo_inicio, ptrab.periodo_fim)} dias
