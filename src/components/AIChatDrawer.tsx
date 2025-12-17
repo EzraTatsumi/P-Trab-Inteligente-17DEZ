@@ -130,13 +130,13 @@ const AIChatDrawer = () => {
                 >
                   <div
                     className={cn(
-                      "max-w-[80%] p-3 rounded-lg shadow-sm text-sm",
+                      "max-w-[80%] p-3 rounded-lg shadow-sm text-sm markdown-content",
                       msg.sender === 'user'
                         ? 'bg-primary text-primary-foreground rounded-br-none'
                         : 'bg-muted text-foreground rounded-tl-none border'
                     )}
                   >
-                    <ReactMarkdown className="markdown-content">
+                    <ReactMarkdown>
                         {msg.text}
                     </ReactMarkdown>
                   </div>
