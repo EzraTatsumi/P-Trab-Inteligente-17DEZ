@@ -717,6 +717,7 @@ const PTrabManager = () => {
       const { 
         id, created_at, updated_at, totalLogistica, totalOperacional, 
         rotulo_versao, nome_om, nome_om_extenso, codug_om, rm_vinculacao, codug_rm_vinculacao,
+        share_token, // Adicionado share_token para que o DB gere um novo
         ...restOfPTrab 
       } = ptrabToClone;
       
@@ -763,7 +764,7 @@ const PTrabManager = () => {
 
     try {
         // 2. Cria o novo P Trab com os dados do original, novo número de minuta
-        const { id, created_at, updated_at, totalLogistica, totalOperacional, rotulo_versao, ...restOfPTrab } = ptrabToClone;
+        const { id, created_at, updated_at, totalLogistica, totalOperacional, rotulo_versao, share_token, ...restOfPTrab } = ptrabToClone; // Adicionado share_token
         
         const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
             ...restOfPTrab,
@@ -1057,7 +1058,7 @@ const PTrabManager = () => {
         if (!templatePTrab) throw new Error("P Trab template não encontrado.");
 
         // FIX: Explicitly exclude calculated fields and IDs
-        const { id, created_at, updated_at, totalLogistica, totalOperacional, rotulo_versao, ...restOfPTrab } = templatePTrab;
+        const { id, created_at, updated_at, totalLogistica, totalOperacional, rotulo_versao, share_token, ...restOfPTrab } = templatePTrab;
         
         const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
           ...restOfPTrab,
