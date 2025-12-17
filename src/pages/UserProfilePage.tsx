@@ -440,7 +440,7 @@ const UserProfilePage = () => {
                       type="text"
                       value={form.telefone}
                       onChange={handleChange}
-                      placeholder="Ex: 99999999999"
+                      placeholder="Ex: (99) 99999-9999"
                       onKeyDown={handleEnterToNextField}
                     />
                   </div>
