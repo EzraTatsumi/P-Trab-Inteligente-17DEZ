@@ -299,33 +299,29 @@ const UserProfilePage = () => {
     setLoading(true);
 
     try {
-      // A exclusão do usuário no auth.users deve ser feita por uma Edge Function
-      // ou pelo Service Role Key no backend, pois o RLS impede a exclusão
-      // de um usuário por ele mesmo usando o client side.
-      // No entanto, como estamos em um ambiente de desenvolvimento/prototipagem,
-      // e o Supabase Client SDK permite a exclusão do próprio usuário (se a política
-      // de RLS permitir, o que não é o caso aqui), vamos simular a exclusão
-      // e forçar o logout, informando que a exclusão deve ser confirmada.
-      
-      // Nota: Em produção, esta chamada falharia por RLS.
-      // Para fins de prototipagem, vamos usar o signOut e informar o usuário.
-      
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error("Erro ao fazer logout após exclusão:", error);
+      // 1. Invocar a Edge Function para exclusão do usuário (requer Service Role Key)
+      const { error: invokeError } = await supabase.functions.invoke('delete-user');
+
+      if (invokeError) {
+        console.error("Erro ao invocar Edge Function de exclusão:", invokeError);
+        throw new Error(invokeError.message || "Falha na exclusão do usuário.");
       }
       
-      // Como não podemos excluir o usuário diretamente do cliente,
-      // informamos que a exclusão foi solicitada e fazemos o logout.
-      toast.success("Sua conta foi desconectada. Para a exclusão completa, entre em contato com o administrador do sistema.");
+      // 2. Se a Edge Function for bem-sucedida, forçamos o logout local
+      const { error: signOutError } = await supabase.auth.signOut();
       
-      // Redireciona para a página inicial
+      if (signOutError) {
+        console.error("Erro ao fazer logout após exclusão:", signOutError);
+      }
+      
+      toast.success("Sua conta e todos os dados relacionados foram excluídos permanentemente.");
+      
+      // 3. Redireciona para a página inicial
       navigate("/");
       
     } catch (error: any) {
       console.error("Erro ao excluir conta:", error);
-      toast.error("Erro ao tentar excluir a conta. Tente novamente.");
+      toast.error(error.message || "Erro ao tentar excluir a conta. Tente novamente.");
     } finally {
       setLoading(false);
       setShowDeleteDialog(false);
@@ -612,7 +608,7 @@ const UserProfilePage = () => {
               <AlertDialogDescription>
                 Você tem certeza que deseja excluir permanentemente sua conta? Todos os seus Planos de Trabalho, diretrizes e dados de perfil serão perdidos.
                 <br/><br/>
-                **Atenção:** Devido a restrições de segurança, a exclusão final deve ser confirmada pelo administrador do sistema. Ao confirmar, você será desconectado.
+                **Atenção:** Esta ação é irreversível.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
