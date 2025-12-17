@@ -66,7 +66,8 @@ export const generateVariationPTrabNumber = (originalPTrabNumber: string, existi
  */
 export const generateApprovalPTrabNumber = (existingNumbers: string[], omSigla: string): string => {
   const currentYearStr = String(currentYear);
-  const omSuffix = omSigla.toUpperCase(); // Usa a sigla como está, apenas em maiúsculas
+  // Mantém a caixa da sigla da OM como está no banco de dados
+  const omSuffix = omSigla; 
   
   // 1. Find the largest base number for the current year, regardless of OM Sigla
   // We look for numbers matching the pattern N/YYYY/OM_SIGLA or N/YYYY
