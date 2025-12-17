@@ -127,32 +127,37 @@ const PTrabManager = () => {
   // FUNÇÕES AUXILIARES (Para resolver o erro de referência)
   // =================================================================
   
-  const fetchUserName = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
+  // MUDANÇA: A função agora recebe os metadados do usuário (userMetadata)
+  const fetchUserName = useCallback(async (userId: string, userMetadata: any) => {
+    // 1. Buscar last_name (Nome de Guerra) na tabela profiles
+    const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        // MUDANÇA: Buscar last_name e raw_user_meta_data para posto_graduacao
-        .select('last_name, raw_user_meta_data') 
+        .select('last_name') 
         .eq('id', userId)
         .single();
 
-    if (error) {
-        console.error("Error fetching user profile:", error);
-        return null;
+    if (profileError) {
+        console.error("Error fetching user profile:", profileError);
+        // Continua mesmo com erro, pois podemos ter dados nos metadados
     }
     
-    if (data) {
-        const nomeGuerra = data.last_name || '';
-        // raw_user_meta_data é um JSONB, acessamos a propriedade posto_graduacao
-        const postoGraduacao = (data.raw_user_meta_data as any)?.posto_graduacao || '';
-        
-        if (postoGraduacao && nomeGuerra) {
-            return `${postoGraduacao} ${nomeGuerra}`;
-        }
-        
-        if (nomeGuerra) {
-            return nomeGuerra;
-        }
+    const nomeGuerra = profileData?.last_name || '';
+    
+    // 2. Buscar posto_graduacao nos metadados do usuário
+    const postoGraduacao = userMetadata?.posto_graduacao || '';
+    
+    if (postoGraduacao && nomeGuerra) {
+        return `${postoGraduacao} ${nomeGuerra}`;
     }
+    
+    if (nomeGuerra) {
+        return nomeGuerra;
+    }
+    
+    if (postoGraduacao) {
+        return postoGraduacao;
+    }
+
     // Retorna null se não houver nome de guerra ou posto/graduação
     return null; 
   }, []);
@@ -450,7 +455,8 @@ const PTrabManager = () => {
     
     // ADDED: Fetch user name on load
     if (user?.id) {
-        fetchUserName(user.id).then(name => {
+        // MUDANÇA: Passando user.user_metadata para a função
+        fetchUserName(user.id, user.user_metadata).then(name => {
             // Se o nome for encontrado, usa ele. Caso contrário, define como string vazia.
             setUserName(name || ""); 
         });
