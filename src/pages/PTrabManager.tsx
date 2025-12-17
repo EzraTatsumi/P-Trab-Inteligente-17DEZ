@@ -862,7 +862,57 @@ const PTrabManager = () => {
 
   // Função para clonar os registros relacionados (Chamada APENAS no handleSubmit para novos PTrabs clonados)
   const cloneRelatedRecords = async (originalPTrabId: string, newPTrabId: string) => {
-    // 1. Clone Classe I records
+    
+    // Helper function for cloning generic class records
+    const cloneClassRecords = async (tableName: keyof Tables, jsonbField: string, numericFields: string[]) => {
+        const { data: originalRecords, error: fetchError } = await supabase
+            .from(tableName)
+            .select(`*, ${jsonbField}`)
+            .eq("p_trab_id", originalPTrabId);
+
+        if (fetchError) {
+            console.error(`Erro ao carregar registros da ${tableName}:`, fetchError);
+            return 0;
+        }
+
+        const newRecords = (originalRecords || []).map(record => {
+            const { id, created_at, updated_at, ...restOfRecord } = record;
+            
+            const newRecord: Record<string, any> = {
+                ...restOfRecord,
+                p_trab_id: newPTrabId,
+                [jsonbField]: record[jsonbField] ? JSON.parse(JSON.stringify(record[jsonbField])) : null,
+            };
+            
+            // Ensure numeric fields are present and default to 0 if null/undefined
+            numericFields.forEach(field => {
+                if (newRecord[field] === null || newRecord[field] === undefined) {
+                    newRecord[field] = 0;
+                }
+            });
+            
+            return newRecord;
+        });
+
+        if (newRecords.length > 0) {
+            const { error: insertError } = await supabase
+                .from(tableName)
+                .insert(newRecords as TablesInsert<typeof tableName>[]);
+            if (insertError) {
+                console.error(`ERRO DE INSERÇÃO ${tableName}:`, insertError);
+                toast.error(`Erro ao clonar registros da ${tableName}: ${sanitizeError(insertError)}`);
+            }
+        }
+        return newRecords.length;
+    };
+
+    // 1. Clone Classe I records (Ração Quente/Operacional)
+    const classeINumericFields = [
+        'complemento_qr', 'complemento_qs', 'dias_operacao', 'efetivo', 'etapa_qr', 'etapa_qs', 
+        'nr_ref_int', 'total_geral', 'total_qr', 'total_qs', 'valor_qr', 'valor_qs', 
+        'quantidade_r2', 'quantidade_r3'
+    ];
+    
     const { data: originalClasseIRecords, error: fetchClasseIError } = await supabase
       .from("classe_i_registros")
       .select("*")
@@ -872,30 +922,26 @@ const PTrabManager = () => {
       console.error("Erro ao carregar registros da Classe I:", fetchClasseIError);
     } else {
       const newClasseIRecords = (originalClasseIRecords || []).map(record => {
-        const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
-        return {
-          ...restOfRecord,
-          p_trab_id: newPTrabId,
-          // Garantir que campos numéricos NOT NULL sejam números
-          complemento_qr: record.complemento_qr ?? 0,
-          complemento_qs: record.complemento_qs ?? 0,
-          dias_operacao: record.dias_operacao ?? 0,
-          efetivo: record.efetivo ?? 0,
-          etapa_qr: record.etapa_qr ?? 0,
-          etapa_qs: record.etapa_qs ?? 0,
-          nr_ref_int: record.nr_ref_int ?? 0,
-          total_geral: record.total_geral ?? 0,
-          total_qr: record.total_qr ?? 0,
-          total_qs: record.total_qs ?? 0,
-          valor_qr: record.valor_qr ?? 0,
-          valor_qs: record.valor_qs ?? 0,
+        const { id, created_at, updated_at, ...restOfRecord } = record;
+        
+        const newRecord: Record<string, any> = {
+            ...restOfRecord,
+            p_trab_id: newPTrabId,
         };
+        
+        classeINumericFields.forEach(field => {
+            if (newRecord[field] === null || newRecord[field] === undefined) {
+                newRecord[field] = 0;
+            }
+        });
+        
+        return newRecord;
       });
 
       if (newClasseIRecords.length > 0) {
         const { error: insertClasseIError } = await supabase
           .from("classe_i_registros")
-          .insert(newClasseIRecords);
+          .insert(newClasseIRecords as TablesInsert<'classe_i_registros'>[]);
         if (insertClasseIError) {
           console.error("ERRO DE INSERÇÃO CLASSE I:", insertClasseIError);
           toast.error(`Erro ao clonar registros da Classe I: ${sanitizeError(insertClasseIError)}`);
@@ -903,38 +949,17 @@ const PTrabManager = () => {
       }
     }
     
+    const genericNumericFields = ['dias_operacao', 'valor_total', 'valor_nd_30', 'valor_nd_39'];
+
     // 2. Clone Classe II records
-    const { data: originalClasseIIRecords, error: fetchClasseIIError } = await supabase
-      .from("classe_ii_registros")
-      .select("*, itens_equipamentos")
-      .eq("p_trab_id", originalPTrabId);
+    await cloneClassRecords('classe_ii_registros', 'itens_equipamentos', genericNumericFields);
 
-    if (fetchClasseIIError) {
-      console.error("Erro ao carregar registros da Classe II:", fetchClasseIIError);
-    } else {
-      const newClasseIIRecords = (originalClasseIIRecords || []).map(record => {
-        const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
-        return {
-          ...restOfRecord,
-          p_trab_id: newPTrabId,
-          itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null,
-          dias_operacao: record.dias_operacao ?? 0,
-          valor_total: record.valor_total ?? 0,
-        };
-      });
-
-      if (newClasseIIRecords.length > 0) {
-        const { error: insertClasseIIError } = await supabase
-          .from("classe_ii_registros")
-          .insert(newClasseIIRecords);
-        if (insertClasseIIError) {
-          console.error("ERRO DE INSERÇÃO CLASSE II:", insertClasseIIError);
-          toast.error(`Erro ao clonar registros da Classe II: ${sanitizeError(insertClasseIIError)}`);
-        }
-      }
-    }
-
-    // 3. Clone Classe III records
+    // 3. Clone Classe III records (needs specific handling due to many nullable fields)
+    const classeIIINumericFields = [
+        'dias_operacao', 'preco_litro', 'quantidade', 'total_litros', 'valor_total', 
+        'consumo_lubrificante_litro', 'preco_lubrificante', 'valor_nd_30', 'valor_nd_39'
+    ];
+    
     const { data: originalClasseIIIRecords, error: fetchClasseIIIError } = await supabase
       .from("classe_iii_registros")
       .select("*")
@@ -944,33 +969,53 @@ const PTrabManager = () => {
       console.error("Erro ao carregar registros da Classe III:", fetchClasseIIIError);
     } else {
       const newClasseIIIRecords = (originalClasseIIIRecords || []).map(record => {
-        const { id, created_at, updated_at, ...restOfRecord } = record; // REMOVE ID
-        return {
-          ...restOfRecord,
-          p_trab_id: newPTrabId,
-          itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null,
-          dias_operacao: record.dias_operacao ?? 0,
-          preco_litro: record.preco_litro ?? 0,
-          quantidade: record.quantidade ?? 0,
-          total_litros: record.total_litros ?? 0,
-          valor_total: record.valor_total ?? 0,
-          consumo_lubrificante_litro: record.consumo_lubrificante_litro ?? 0,
-          preco_lubrificante: record.preco_lubrificante ?? 0,
+        const { id, created_at, updated_at, ...restOfRecord } = record;
+        
+        const newRecord: Record<string, any> = {
+            ...restOfRecord,
+            p_trab_id: newPTrabId,
+            itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null,
         };
+        
+        classeIIINumericFields.forEach(field => {
+            if (newRecord[field] === null || newRecord[field] === undefined) {
+                newRecord[field] = 0;
+            }
+        });
+        
+        return newRecord;
       });
 
       if (newClasseIIIRecords.length > 0) {
         const { error: insertClasseIIIError } = await supabase
           .from("classe_iii_registros")
-          .insert(newClasseIIIRecords);
+          .insert(newClasseIIIRecords as TablesInsert<'classe_iii_registros'>[]);
         if (insertClasseIIIError) {
           console.error("ERRO DE INSERÇÃO CLASSE III:", insertClasseIIIError);
           toast.error(`Erro ao clonar registros da Classe III: ${sanitizeError(insertClasseIIIError)}`);
         }
       }
     }
+    
+    // 4. Clone Classe V records
+    await cloneClassRecords('classe_v_registros', 'itens_equipamentos', genericNumericFields);
 
-    // 4. Clone p_trab_ref_lpc record (if exists)
+    // 5. Clone Classe VI records
+    await cloneClassRecords('classe_vi_registros', 'itens_equipamentos', genericNumericFields);
+
+    // 6. Clone Classe VII records
+    await cloneClassRecords('classe_vii_registros', 'itens_equipamentos', genericNumericFields);
+
+    // 7. Clone Classe VIII Saúde records
+    await cloneClassRecords('classe_viii_saude_registros', 'itens_saude', genericNumericFields);
+
+    // 8. Clone Classe VIII Remonta records
+    await cloneClassRecords('classe_viii_remonta_registros', 'itens_remonta', [...genericNumericFields, 'quantidade_animais']);
+
+    // 9. Clone Classe IX records
+    await cloneClassRecords('classe_ix_registros', 'itens_motomecanizacao', genericNumericFields);
+
+    // 10. Clone p_trab_ref_lpc record (if exists)
     const { data: originalRefLPC, error: fetchRefLPCError } = await supabase
       .from("p_trab_ref_lpc")
       .select("*")
@@ -980,265 +1025,21 @@ const PTrabManager = () => {
     if (fetchRefLPCError) {
       console.error("Erro ao carregar referência LPC:", fetchRefLPCError);
     } else if (originalRefLPC) {
-      const { id, created_at, updated_at, ...restOfRefLPC } = originalRefLPC; // REMOVE ID
+      const { id, created_at, updated_at, ...restOfRefLPC } = originalRefLPC;
       const newRefLPCData = {
         ...restOfRefLPC,
         p_trab_id: newPTrabId,
+        preco_diesel: restOfRefLPC.preco_diesel ?? 0,
+        preco_gasolina: restOfRefLPC.preco_gasolina ?? 0,
       };
       const { error: insertRefLPCError } = await supabase
         .from("p_trab_ref_lpc")
-        .insert([newRefLPCData]);
+        .insert([newRefLPCData as TablesInsert<'p_trab_ref_lpc'>]);
       if (insertRefLPCError) {
         console.error("ERRO DE INSERÇÃO REF LPC:", insertRefLPCError);
         toast.error(`Erro ao clonar referência LPC: ${sanitizeError(insertRefLPCError)}`);
       }
     }
-  };
-
-  // --- NOVO FLUXO DE PROMPT DE CRÉDITO ---
-  const handleSelectPTrab = async (ptrab: PTrab) => {
-    if (ptrab.status === 'aprovado' || ptrab.status === 'arquivado') {
-      navigate(`/ptrab/form?ptrabId=${ptrab.id}`);
-      return;
-    }
-    
-    // Se o status for 'aberto' e ainda não perguntamos sobre este PTrab
-    if (ptrab.status === 'aberto' && !hasBeenPrompted.current.has(ptrab.id)) {
-      setPtrabToFill(ptrab);
-      setShowCreditPrompt(true);
-    } else {
-      // Se o status for 'em_andamento' ou já perguntamos, navega diretamente
-      navigate(`/ptrab/form?ptrabId=${ptrab.id}`);
-    }
-  };
-  
-  const handlePromptConfirm = () => {
-    if (!ptrabToFill) return;
-    
-    // Marca como perguntado
-    hasBeenPrompted.current.add(ptrabToFill.id);
-    setShowCreditPrompt(false);
-    
-    // Navega para o formulário e adiciona o parâmetro para abrir o diálogo de crédito
-    navigate(`/ptrab/form?ptrabId=${ptrabToFill.id}&openCredit=true`);
-  };
-  
-  const handlePromptCancel = async () => {
-    if (!ptrabToFill) return;
-    
-    // Marca como perguntado
-    hasBeenPrompted.current.add(ptrabToFill.id);
-    setShowCreditPrompt(false);
-    
-    // MUDANÇA DE STATUS: Se o usuário cancelou o prompt, o PTrab passa para 'em_andamento'
-    // para que não perguntemos novamente.
-    try {
-        await supabase
-            .from("p_trab")
-            .update({ status: 'em_andamento' })
-            .eq("id", ptrabToFill.id);
-        
-        // Não precisa de toast, apenas recarrega a lista para refletir a mudança
-        loadPTrabs();
-    } catch (error) {
-        console.error("Erro ao atualizar status para 'em_andamento':", error);
-    }
-    
-    // Navega para o formulário
-    navigate(`/ptrab/form?ptrabId=${ptrabToFill.id}`);
-  };
-  // --- FIM NOVO FLUXO DE PROMPT DE CRÉDITO ---
-
-  // Nova função para navegar para a página de impressão/exportação
-  const handleNavigateToPrintOrExport = (ptrabId: string) => {
-    // Agora, esta função apenas navega para a página de visualização de impressão
-    navigate(`/ptrab/print?ptrabId=${ptrabId}`);
-  };
-
-  const formatDateTime = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  // Função para determinar a cor e o texto do Badge de Origem
-  const getOriginBadge = (origem: PTrab['origem']) => {
-    switch (origem) {
-      case 'importado':
-        return { label: 'IMPORTADO', className: 'bg-purple-100 text-purple-800 border-purple-300' };
-      case 'consolidado':
-        return { label: 'CONSOLIDADO', className: 'bg-orange-100 text-orange-800 border-orange-300' };
-      case 'original':
-      default:
-        return { label: 'ORIGINAL', className: 'bg-blue-100 text-blue-800 border-blue-300' };
-    }
-  };
-
-  // =================================================================
-  // LÓGICA DE CONSOLIDAÇÃO
-  // =================================================================
-
-  const handleConfirmConsolidation = useCallback(async (
-    sourcePTrabIds: string[],
-    targetPTrabId: string | 'new',
-    newPTrabNumber?: string,
-    templatePTrabId?: string
-  ) => {
-    if (!sourcePTrabIds.length) return;
-
-    setLoading(true);
-    setShowConsolidationDialog(false);
-    let finalTargetPTrabId: string;
-    let targetPTrab: PTrab | undefined;
-
-    try {
-      // 1. Determinar ou Criar o P Trab de Destino
-      if (targetPTrabId === 'new') {
-        if (!newPTrabNumber || !templatePTrabId) throw new Error("Dados de criação incompletos.");
-        
-        // Verifica se o número sugerido (ou customizado) já existe
-        const isDuplicate = isPTrabNumberDuplicate(newPTrabNumber, existingPTrabNumbers);
-        if (isDuplicate) {
-          throw new Error("O número sugerido já existe. Tente novamente ou use outro número.");
-        }
-        
-        // Usar o PTrab selecionado como template
-        const templatePTrab = pTrabs.find(p => p.id === templatePTrabId);
-        if (!templatePTrab) throw new Error("P Trab template não encontrado.");
-
-        // FIX: Explicitly exclude calculated fields and IDs
-        const { id, created_at, updated_at, totalLogistica, totalOperacional, rotulo_versao, share_token, ...restOfPTrab } = templatePTrab;
-        
-        const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
-          ...restOfPTrab,
-          numero_ptrab: newPTrabNumber,
-          status: "aberto",
-          user_id: (await supabase.auth.getUser()).data.user?.id!,
-          // REMOVIDO: nome_operacao: `CONSOLIDADO - ${templatePTrab.nome_operacao}`,
-          nome_operacao: templatePTrab.nome_operacao, // Mantém o nome da operação do template
-          origem: 'consolidado',
-          rotulo_versao: templatePTrab.rotulo_versao, // Copia o rótulo da versão do template
-        };
-
-        const { data: newPTrab, error: insertPTrabError } = await supabase
-          .from("p_trab")
-          .insert([newPTrabData as TablesInsert<'p_trab'>]) // Cast to TablesInsert<'p_trab'>
-          .select()
-          .single();
-
-        if (insertPTrabError || !newPTrab) throw insertPTrabError;
-        finalTargetPTrabId = newPTrab.id;
-        targetPTrab = { ...newPTrab, origem: 'consolidado' } as PTrab;
-        toast.success(`Novo P Trab ${newPTrabNumber} criado para consolidação.`);
-      } else {
-        finalTargetPTrabId = targetPTrabId;
-        targetPTrab = pTrabs.find(p => p.id === finalTargetPTrabId);
-        if (!targetPTrab) throw new Error("P Trab de destino existente não encontrado.");
-        
-        // Se o P Trab de destino já existe, atualize a origem para 'consolidado'
-        const { error: updateOriginError } = await supabase
-          .from("p_trab")
-          .update({ origem: 'consolidado' } as TablesUpdate<'p_trab'>)
-          .eq("id", finalTargetPTrabId);
-          
-        if (updateOriginError) console.error("Erro ao atualizar origem para consolidado:", updateOriginError);
-        targetPTrab = { ...targetPTrab, origem: 'consolidado' } as PTrab;
-      }
-
-      // 2. Clonar e Inserir Registros de Classe I, Classe II e Classe III
-      let totalRecordsCloned = 0;
-
-      for (const sourceId of sourcePTrabIds) {
-        // Clonar Classe I
-        const { data: classeIRecords } = await supabase
-          .from("classe_i_registros")
-          .select("*")
-          .eq("p_trab_id", sourceId);
-
-        if (classeIRecords && classeIRecords.length > 0) {
-          const recordsToInsert = classeIRecords.map(record => {
-            const { id, created_at, updated_at, ...rest } = record; // REMOVE ID
-            return { ...rest, p_trab_id: finalTargetPTrabId };
-          });
-          const { error } = await supabase.from("classe_i_registros").insert(recordsToInsert as Tables<'classe_i_registros'>[]);
-          if (error) console.error(`Erro ao clonar Classe I de ${sourceId}:`, error);
-          totalRecordsCloned += recordsToInsert.length;
-        }
-        
-        // Clonar Classe II (NOVO)
-        const { data: classeIIRecords } = await supabase
-          .from("classe_ii_registros")
-          .select("*, itens_equipamentos")
-          .eq("p_trab_id", sourceId);
-
-        if (classeIIRecords && classeIIRecords.length > 0) {
-          const recordsToInsert = classeIIRecords.map(record => {
-            const { id, created_at, updated_at, ...rest } = record; // REMOVE ID
-            return { ...rest, p_trab_id: finalTargetPTrabId, itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null };
-          });
-          const { error } = await supabase.from("classe_ii_registros").insert(recordsToInsert as Tables<'classe_ii_registros'>[]);
-          if (error) console.error(`Erro ao clonar Classe II de ${sourceId}:`, error);
-          totalRecordsCloned += recordsToInsert.length;
-        }
-
-        // Clonar Classe III
-        const { data: classeIIIRecords } = await supabase
-          .from("classe_iii_registros")
-          .select("*, itens_equipamentos")
-          .eq("p_trab_id", sourceId);
-
-        if (classeIIIRecords && classeIIIRecords.length > 0) {
-          const recordsToInsert = classeIIIRecords.map(record => {
-            const { id, created_at, updated_at, ...rest } = record; // REMOVE ID
-            return { ...rest, p_trab_id: finalTargetPTrabId, itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null };
-          });
-          const { error } = await supabase.from("classe_iii_registros").insert(recordsToInsert as Tables<'classe_iii_registros'>[]);
-          if (error) console.error(`Erro ao clonar Classe III de ${sourceId}:`, error);
-          totalRecordsCloned += recordsToInsert.length;
-        }
-      }
-      
-      // 3. Clonar Ref LPC (se existir no primeiro source e não existir no target)
-      const { data: targetRefLPC } = await supabase
-        .from("p_trab_ref_lpc")
-        .select("id")
-        .eq("p_trab_id", finalTargetPTrabId)
-        .maybeSingle();
-
-      if (!targetRefLPC) {
-        const { data: sourceRefLPC } = await supabase
-          .from("p_trab_ref_lpc")
-          .select("*")
-          .eq("p_trab_id", sourcePTrabIds[0])
-          .maybeSingle();
-        
-        if (sourceRefLPC) {
-          const { id, created_at, updated_at, ...rest } = sourceRefLPC; // REMOVE ID
-          const { error } = await supabase.from("p_trab_ref_lpc").insert([{ ...rest, p_trab_id: finalTargetPTrabId }]);
-          if (error) console.error("Erro ao clonar Ref LPC:", error);
-        }
-      }
-
-      toast.success(`Consolidação concluída! ${totalRecordsCloned} registros copiados para ${targetPTrab?.numero_ptrab}.`);
-      loadPTrabs();
-    } catch (error: any) {
-      toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [existingPTrabNumbers, pTrabs, loadPTrabs]);
-
-  const isConsolidationDisabled = pTrabs.length < 2;
-  const consolidationTooltipText = "Consolidar dados de múltiplos P Trabs em um único destino.";
-    
-  // Mensagem detalhada para quando a consolidação está desativada
-  const getConsolidationDisabledMessage = () => {
-    return "É necessário ter pelo menos 2 Planos de Trabalho cadastrados para realizar a consolidação. Cadastre mais P Trabs para habilitar esta função.";
   };
 
   // Função para verificar se o PTrab precisa ser numerado
