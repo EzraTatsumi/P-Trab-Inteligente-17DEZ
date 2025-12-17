@@ -36,11 +36,18 @@ interface SignupDialogProps {
   onSignupSuccess: (email: string) => void;
 }
 
+const MILITARY_RANKS = [
+  "Gen Ex", "Gen Div", "Gen Bda", "Cel", "TC", "Maj", "Cap", 
+  "1º Ten", "2º Ten", "Asp Of", "ST", "1º Sgt", "2º Sgt", 
+  "3º Sgt", "Cb", "Sd"
+] as const;
+
 // Schema de validação para o cadastro
 const signupSchema = z.object({
   email: z.string().email("E-mail inválido."),
   nome_completo: z.string().min(5, "Nome completo é obrigatório."),
   nome_guerra: z.string().min(2, "Nome de Guerra é obrigatório."),
+  posto_graduacao: z.enum(MILITARY_RANKS as [string, ...string[]], { message: "Posto/Graduação é obrigatório." }),
   sigla_om: z.string().min(2, "Sigla da OM é obrigatória."),
   funcao_om: z.string().min(2, "Função na OM é obrigatória."),
   // Nova validação para o formato (99) 999999999 (11 dígitos)
@@ -76,6 +83,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     confirmPassword: "",
     nome_completo: "",
     nome_guerra: "",
+    posto_graduacao: "",
     sigla_om: "",
     funcao_om: "",
     telefone: "",
@@ -153,7 +161,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         return;
       }
 
-      const { email, password, nome_completo, nome_guerra, sigla_om, funcao_om, telefone } = validationResult.data;
+      const { email, password, nome_completo, nome_guerra, posto_graduacao, sigla_om, funcao_om, telefone } = validationResult.data;
 
       const { error } = await supabase.auth.signUp({
         email,
@@ -166,6 +174,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             last_name: nome_guerra,
             
             // Dados adicionais para o perfil
+            posto_graduacao,
             sigla_om,
             funcao_om,
             telefone,
@@ -183,6 +192,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         confirmPassword: "",
         nome_completo: "", 
         nome_guerra: "",
+        posto_graduacao: "",
         sigla_om: "",
         funcao_om: "",
         telefone: "",
@@ -257,6 +267,27 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                 onKeyDown={handleEnterToNextField}
               />
               {validationErrors.nome_guerra && <p className="text-xs text-destructive">{validationErrors.nome_guerra}</p>}
+            </div>
+            
+            {/* NOVO CAMPO: Posto/Graduação */}
+            <div className="space-y-1">
+              <Label htmlFor="posto_graduacao">Posto/Graduação *</Label>
+              <Select
+                value={form.posto_graduacao}
+                onValueChange={(value) => handleSelectChange("posto_graduacao", value)}
+              >
+                <SelectTrigger id="posto_graduacao">
+                  <SelectValue placeholder="Selecione o Posto/Graduação" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MILITARY_RANKS.map((rank) => (
+                    <SelectItem key={rank} value={rank}>
+                      {rank}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {validationErrors.posto_graduacao && <p className="text-xs text-destructive">{validationErrors.posto_graduacao}</p>}
             </div>
             
             {/* Campo Sigla da OM (Select) */}

@@ -24,11 +24,18 @@ interface ProfileData {
   id: string;
   first_name: string;
   last_name: string;
+  posto_graduacao: string;
   sigla_om: string;
   funcao_om: string;
   telefone: string;
   default_diretriz_year: number | null;
 }
+
+const MILITARY_RANKS = [
+  "Gen Ex", "Gen Div", "Gen Bda", "Cel", "TC", "Maj", "Cap", 
+  "1º Ten", "2º Ten", "Asp Of", "ST", "1º Sgt", "2º Sgt", 
+  "3º Sgt", "Cb", "Sd"
+] as const;
 
 // Schema de validação para a senha (reutilizado do SignupDialog)
 const passwordSchema = z.object({
@@ -68,14 +75,13 @@ const fetchProfile = async (userId: string): Promise<ProfileData> => {
     id: data.id,
     first_name: data.first_name || '',
     last_name: data.last_name || '',
+    posto_graduacao: metaData?.posto_graduacao || '',
     default_diretriz_year: data.default_diretriz_year,
     sigla_om: metaData?.sigla_om || '',
     funcao_om: metaData?.funcao_om || '',
     telefone: metaData?.telefone || '',
   };
 };
-
-// Removida a função fetchAvailableYears, pois a seção de ano padrão foi removida.
 
 interface PasswordCriteria {
   minLength: boolean;
@@ -93,6 +99,7 @@ const UserProfilePage = () => {
   const [form, setForm] = useState<Omit<ProfileData, 'id'>>({
     first_name: "",
     last_name: "",
+    posto_graduacao: "",
     sigla_om: "",
     funcao_om: "",
     telefone: "",
@@ -126,6 +133,7 @@ const UserProfilePage = () => {
       setForm({
         first_name: profileData.first_name,
         last_name: profileData.last_name,
+        posto_graduacao: profileData.posto_graduacao,
         sigla_om: profileData.sigla_om,
         funcao_om: profileData.funcao_om,
         telefone: profileData.telefone,
@@ -228,9 +236,10 @@ const UserProfilePage = () => {
 
       if (profileError) throw profileError;
       
-      // 3. Atualizar os metadados do usuário (para sigla_om, funcao_om, telefone)
+      // 3. Atualizar os metadados do usuário (para sigla_om, funcao_om, telefone, posto_graduacao)
       const { error: userMetaError } = await supabase.auth.updateUser({
         data: {
+          posto_graduacao: form.posto_graduacao,
           sigla_om: form.sigla_om,
           funcao_om: form.funcao_om,
           telefone: form.telefone.replace(/\D/g, ''), // Salva o telefone sem máscara
@@ -321,6 +330,27 @@ const UserProfilePage = () => {
                       onKeyDown={handleEnterToNextField}
                     />
                   </div>
+                  
+                  {/* NOVO CAMPO: Posto/Graduação */}
+                  <div className="space-y-2">
+                    <Label htmlFor="posto_graduacao">Posto/Graduação</Label>
+                    <Select
+                      value={form.posto_graduacao}
+                      onValueChange={(value) => handleSelectChange("posto_graduacao", value)}
+                    >
+                      <SelectTrigger id="posto_graduacao">
+                        <SelectValue placeholder="Selecione o Posto/Graduação" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MILITARY_RANKS.map((rank) => (
+                          <SelectItem key={rank} value={rank}>
+                            {rank}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
                   <div className="space-y-2">
                     <Label htmlFor="email">Email (Não Editável)</Label>
                     <Input
