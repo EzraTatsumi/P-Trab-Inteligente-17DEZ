@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useQueries } from "@tanstack/react-query"; // Importando useQueries
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -85,7 +85,8 @@ const PTrabManager = () => {
     staleTime: 1000 * 60 * 5, // 5 minutos de cache
   }));
 
-  const ptrabTotalsResults = useQuery(ptrabQueries);
+  // CORREÇÃO: Usar useQueries para executar múltiplas queries
+  const ptrabTotalsResults = useQueries({ queries: ptrabQueries });
   
   // --- Combinação de PTrabs com Totais ---
   const ptrabsWithTotals = useMemo(() => {
