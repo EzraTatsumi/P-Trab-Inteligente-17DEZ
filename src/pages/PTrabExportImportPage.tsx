@@ -19,6 +19,7 @@ import { ImportPTrabOptionsDialog } from "@/components/ImportPTrabOptionsDialog"
 import { OMData } from "@/lib/omUtils"; // Importar OMData
 import { ImportConflictDialog } from "@/components/ImportConflictDialog"; // NOVO IMPORT
 import { generateUniqueMinutaNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils"; // Importar utilitários de numeração
+import { formatDateDDMMMAA } from "@/lib/formatUtils"; // Importar utilitário de formatação de data
 
 // Define the structure of the exported data
 interface ExportData {
@@ -52,6 +53,16 @@ interface ImportSummary {
     ptrabNumber?: string;
     operationName?: string;
 }
+
+// NOVO: Função para gerar o nome do arquivo de exportação
+const generateExportFileName = (pTrabData: Tables<'p_trab'>): string => {
+    const dataAtz = formatDateDDMMMAA(pTrabData.updated_at);
+    // Substitui barras por hífens para segurança no nome do arquivo
+    const numeroPTrab = pTrabData.numero_ptrab.replace(/\//g, '-'); 
+    const nomeBase = `P Trab Nr ${numeroPTrab} - ${pTrabData.nome_operacao} - ${pTrabData.nome_om} - Atz ${dataAtz}`;
+    return `${nomeBase}.json`;
+};
+
 
 const PTrabExportImportPage = () => {
   const navigate = useNavigate();
@@ -189,7 +200,7 @@ const PTrabExportImportPage = () => {
     // 1. Fetch PTrab principal
     const { data: pTrabData, error: pTrabError } = await supabase
       .from('p_trab')
-      .select('*')
+      .select('*, updated_at') // Seleciona explicitamente updated_at
       .eq('id', ptrabId)
       .eq('user_id', userId!)
       .single();
@@ -236,7 +247,8 @@ const PTrabExportImportPage = () => {
     
     const link = document.createElement('a');
     link.href = url;
-    link.download = `ptrab_${pTrabData.numero_ptrab.replace('/', '-')}_${new Date().toISOString().slice(0, 10)}.json`;
+    // USAR A NOVA FUNÇÃO DE GERAÇÃO DE NOME
+    link.download = generateExportFileName(pTrabData);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -392,14 +404,14 @@ const PTrabExportImportPage = () => {
         const finalPTrabData: Tables<'p_trab'> = {
             ...importedPTrab,
             numero_ptrab: newMinutaNumber,
-            nome_om: defaultOm.nome_om,
+            nome_om: defaultOm.nome_om, // Usar o nome da OM selecionada
             codug_om: defaultOm.codug_om,
             rm_vinculacao: defaultOm.rm_vinculacao,
             codug_rm_vinculacao: defaultOm.codug_rm_vinculacao,
             comando_militar_area: defaultOm.rm_vinculacao, // Usar a RM como CMA (simplificação)
             status: 'aberto', // Forçar status aberto
         };
-        
+
         // 4. Chamar a função de importação final
         handleConfirmSinglePTrabImport(finalPTrabData);
         
