@@ -62,14 +62,14 @@ src/pages/VisualizacaoConfigPage.tsx
 
 # Excluir arquivos de consolidação e numeração
 src/components/PTrabConsolidationDialog.tsx
-src/lib/ptrabNumberUtils.ts
+# src/lib/ptrabNumberUtils.ts
 
-# Excluir arquivos de Importação/Exportação
-src/pages/PTrabExportImportPage.tsx
-src/components/ExportPasswordDialog.tsx
-src/components/ImportPTrabOptionsDialog.tsx
-src/components/ImportConflictDialog.tsx
-src/lib/cryptoUtils.ts
+# Excluir arquivos de Importação/Exportação (REMOVIDOS PARA INCLUSÃO)
+# src/pages/PTrabExportImportPage.tsx
+# src/components/ExportPasswordDialog.tsx
+# src/components/ImportPTrabOptionsDialog.tsx
+# src/components/ImportConflictDialog.tsx
+# src/lib/cryptoUtils.ts
 
 # Excluir arquivos de Gerenciamento, Clonagem e Crédito
 src/components/CloneVariationDialog.tsx
@@ -81,11 +81,11 @@ src/components/MarkdownAccordion.tsx
 src/components/MarkdownViewer.tsx
 src/components/HelpDialog.tsx
 src/components/YearManagementDialog.tsx
-# src/components/RefLPCFormSection.tsx
+src/components/RefLPCFormSection.tsx
 src/components/ClasseIIIRegistryForm.tsx
 src/hooks/useFormNavigation.ts
 src/hooks/use-mobile.tsx
 src/lib/omUtils.ts
-src/lib/ptrabUtils.ts
+# src/lib/ptrabUtils.ts
 src/lib/creditUtils.ts
 src/lib/validationSchemas.ts
