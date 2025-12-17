@@ -15,12 +15,12 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 import { ExportPasswordDialog } from "@/components/ExportPasswordDialog";
 import { encryptData, decryptData } from "@/lib/cryptoUtils"; // Importar utilitários de criptografia
-import { ImportPTrabOptionsDialog } from "@/components/ImportPTrabOptionsDialog"; // Importar novo diálogo
 import { OMData } from "@/lib/omUtils"; // Importar OMData
 import { ImportConflictDialog } from "@/components/ImportConflictDialog"; // NOVO IMPORT
 import { generateUniqueMinutaNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils"; // Importar utilitários de numeração
 import { formatDateDDMMMAA } from "@/lib/formatUtils"; // Importar utilitário de formatação de data
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MinutaNumberDialog } from "@/components/MinutaNumberDialog"; // NOVO IMPORT
 
 // Define the structure of the exported data
 interface ExportData {
@@ -103,11 +103,11 @@ const PTrabExportImportPage = () => {
   const [decryptedData, setDecryptedData] = useState<ExportData | null>(null);
   
   // Conflict/Options States
-  const [showImportOptionsDialog, setShowImportOptionsDialog] = useState(false);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [showMinutaNumberDialog, setShowMinutaNumberDialog] = useState(false); // NOVO
   const [importedPTrab, setImportedPTrab] = useState<Tables<'p_trab'> | null>(null);
   const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
-  const [userOms, setUserOms] = useState<OMData[]>([]);
+  const [userOms, setUserOms] = useState<OMData[]>([]); // Mantido, mas não usado no fluxo simplificado
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { handleEnterToNextField } = useFormNavigation();
@@ -332,7 +332,7 @@ const PTrabExportImportPage = () => {
       setDecryptedData(importedData);
 
       if (importedData.type === 'full_backup') {
-        // Backup Completo: Não precisa de opções, vai direto para a importação
+        // Backup Completo: Vai direto para a importação
         setImportSummary({
           type: 'full_backup',
           details: `Backup Completo de ${(importedData.data.p_trab as Tables<'p_trab'>[]).length} P Trabs e configurações globais.`,
@@ -340,7 +340,7 @@ const PTrabExportImportPage = () => {
         await handleFinalImport(importedData);
         
       } else if (importedData.type === 'single_ptrab') {
-        // P Trab Único: Precisa de análise de conflito e opções
+        // P Trab Único: Precisa de análise de conflito
         const pTrab = importedData.data.p_trab as Tables<'p_trab'>;
         setImportedPTrab(pTrab);
         
@@ -352,16 +352,15 @@ const PTrabExportImportPage = () => {
           omSigla: pTrab.nome_om,
         });
         
-        // 1. Verificar conflito de numeração oficial
-        const isOfficial = pTrab.numero_ptrab && !pTrab.numero_ptrab.startsWith("Minuta");
+        // 1. Verificar conflito de numeração
         const isDuplicate = isPTrabNumberDuplicate(pTrab.numero_ptrab, existingPTrabNumbers);
         
-        if (isOfficial && isDuplicate) {
-            // Conflito de número oficial: Abre diálogo de Sobrescrever/Criar Novo
+        if (isDuplicate) {
+            // Cenário 2: Conflito - Abre diálogo de Sobrescrever/Criar Minuta
             setShowConflictDialog(true);
         } else {
-            // Sem conflito ou é Minuta: Abre diálogo de Opções (OM de destino e numeração)
-            setShowImportOptionsDialog(true);
+            // Cenário 1: Sem conflito - Importa diretamente
+            await handleFinalImport(importedData);
         }
       }
 
@@ -375,12 +374,11 @@ const PTrabExportImportPage = () => {
   
   // --- Conflict Resolution Handlers ---
   
-  // Opção 1: Sobrescrever (Apenas para P Trab Único com conflito oficial)
+  // Opção 1: Sobrescrever (Apenas para P Trab Único com conflito)
   const handleOverwrite = () => {
     if (!decryptedData || !importedPTrab) return;
     
     // Sobrescrever significa que o ID do PTrab existente será usado para o UPDATE.
-    // 1. Encontrar o ID do PTrab existente com o mesmo número
     const existingPTrab = pTrabs.find(p => p.numero_ptrab === importedPTrab.numero_ptrab);
     
     if (!existingPTrab) {
@@ -389,48 +387,48 @@ const PTrabExportImportPage = () => {
         return;
     }
     
-    // 2. Forçar a importação com o ID existente
+    // 1. Forçar a importação com o ID existente
     handleFinalImport(decryptedData, existingPTrab.id);
     setShowConflictDialog(false);
   };
   
-  // Opção 2: Criar Novo (Gera Minuta única e abre o diálogo de opções)
-  const handleCreateNew = () => {
+  // Opção 2: Iniciar Criação de Minuta (Abre o diálogo de numeração)
+  const handleStartCreateNew = () => {
     if (!importedPTrab) return;
     
-    // 1. Gera um novo número de Minuta
+    // 1. Gera um novo número de Minuta sugerido
     const newMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
     
-    // 2. Atualiza o PTrab importado para ser uma Minuta
+    // 2. Abre o diálogo de numeração da minuta
+    setShowConflictDialog(false);
+    setImportedPTrab(prev => prev ? { ...prev, numero_ptrab: newMinutaNumber } : null); // Atualiza o número sugerido no estado
+    setShowMinutaNumberDialog(true);
+  };
+  
+  // Opção 3: Confirmação da Minuta (Chamado pelo MinutaNumberDialog)
+  const handleConfirmMinutaNumber = (finalMinutaNumber: string) => {
+    if (!decryptedData || !importedPTrab) return;
+    
+    // 1. Atualiza o PTrab importado para ser uma Minuta com o número final
     const newPTrabAsMinuta = {
         ...importedPTrab,
-        numero_ptrab: newMinutaNumber,
+        numero_ptrab: finalMinutaNumber,
         status: 'aberto',
         origem: 'importado',
     };
     
-    setImportedPTrab(newPTrabAsMinuta);
-    setShowConflictDialog(false);
-    setShowImportOptionsDialog(true); // Abre o diálogo de opções com a Minuta
-  };
-  
-  // --- Import Options Handler (Single PTrab) ---
-  
-  const handleConfirmImportOptions = (newPTrabData: Tables<'p_trab'>) => {
-    if (!decryptedData) return;
-    
-    // 1. Atualiza o PTrab dentro do objeto de dados descriptografados
+    // 2. Atualiza o PTrab dentro do objeto de dados descriptografados
     const updatedDecryptedData: ExportData = {
         ...decryptedData,
         data: {
             ...decryptedData.data,
-            p_trab: newPTrabData, // O PTrab já está com o novo número e OM de destino
+            p_trab: newPTrabAsMinuta,
         }
     };
     
-    // 2. Inicia a importação final (sem ID de sobrescrita)
+    // 3. Inicia a importação final (sem ID de sobrescrita)
     handleFinalImport(updatedDecryptedData);
-    setShowImportOptionsDialog(false);
+    setShowMinutaNumberDialog(false);
   };
 
 
@@ -722,11 +720,6 @@ const PTrabExportImportPage = () => {
                                 onSelect={() => {
                                   setSelectedPTrabId(ptrab.id);
                                   // Fecha o diálogo de seleção
-                                  // O ID do radix é gerado dinamicamente, mas o onSelect deve fechar o Dialog
-                                  // Usamos o onOpenChange do Dialog pai para fechar, mas aqui precisamos de um truque
-                                  // para fechar o Dialog interno (o Command Dialog).
-                                  // Como o Command está dentro de um DialogContent, o onSelect não fecha o Dialog pai.
-                                  // Vamos usar um truque simples:
                                   const closeButton = document.querySelector('[data-state="open"] [aria-label="Close"]');
                                   if (closeButton) (closeButton as HTMLElement).click();
                                 }}
@@ -832,24 +825,24 @@ const PTrabExportImportPage = () => {
         confirmButtonText="Descriptografar e Analisar"
       />
       
-      {/* Diálogo de Conflito (Apenas para P Trab Único Oficial Duplicado) */}
+      {/* Diálogo de Conflito (Cenário 2) */}
       <ImportConflictDialog
         open={showConflictDialog}
         onOpenChange={setShowConflictDialog}
         ptrabNumber={importedPTrab?.numero_ptrab || ''}
         onOverwrite={handleOverwrite}
-        onCreateNew={handleCreateNew}
+        onStartCreateNew={handleStartCreateNew}
       />
       
-      {/* Diálogo de Opções de Importação (Para Minutas ou P Trabs sem conflito) */}
+      {/* Diálogo de Numeração de Minuta (Após escolher 'Criar Minuta') */}
       {importedPTrab && (
-        <ImportPTrabOptionsDialog
-          open={showImportOptionsDialog}
-          onOpenChange={setShowImportOptionsDialog}
-          importedPTrab={importedPTrab}
-          existingPTrabNumbers={existingPTrabNumbers}
-          userOms={userOms}
-          onConfirmImport={handleConfirmImportOptions}
+        <MinutaNumberDialog
+          open={showMinutaNumberDialog}
+          onOpenChange={setShowMinutaNumberDialog}
+          suggestedNumber={importedPTrab.numero_ptrab} // O número já foi atualizado para a sugestão de minuta em handleStartCreateNew
+          originalNumber={importedPTrab.numero_ptrab}
+          existingNumbers={existingPTrabNumbers}
+          onConfirm={handleConfirmMinutaNumber}
         />
       )}
     </div>

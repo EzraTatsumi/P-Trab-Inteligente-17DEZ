@@ -17,7 +17,8 @@ interface ImportConflictDialogProps {
   onOpenChange: (open: boolean) => void;
   ptrabNumber: string;
   onOverwrite: () => void;
-  onCreateNew: () => void;
+  // MUDANÇA: onStartCreateNew agora apenas inicia o fluxo de criação de minuta
+  onStartCreateNew: () => void; 
 }
 
 export const ImportConflictDialog: React.FC<ImportConflictDialogProps> = ({
@@ -25,7 +26,7 @@ export const ImportConflictDialog: React.FC<ImportConflictDialogProps> = ({
   onOpenChange,
   ptrabNumber,
   onOverwrite,
-  onCreateNew,
+  onStartCreateNew,
 }) => {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -55,11 +56,11 @@ export const ImportConflictDialog: React.FC<ImportConflictDialogProps> = ({
                 </Button>
                 <Button 
                     variant="secondary" 
-                    onClick={onCreateNew}
+                    onClick={onStartCreateNew}
                     className="h-auto py-4 flex flex-col items-center text-center"
                 >
                     <Copy className="h-5 w-5 mb-1" />
-                    <span className="font-bold">Criar Novo Número</span>
+                    <span className="font-bold">Criar Nova Minuta</span>
                     <span className="text-xs font-normal opacity-80">Importa como um novo<br />P Trab (Minuta).</span>
                 </Button>
             </div>
