@@ -130,7 +130,8 @@ const PTrabManager = () => {
   const fetchUserName = useCallback(async (userId: string) => {
     const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name')
+        // MUDANÇA: Buscar apenas last_name (Nome de Guerra)
+        .select('last_name') 
         .eq('id', userId)
         .single();
 
@@ -140,7 +141,8 @@ const PTrabManager = () => {
     }
     
     if (data) {
-        const name = `${data.first_name || ''} ${data.last_name || ''}`.trim();
+        // MUDANÇA: Retornar apenas o last_name
+        const name = data.last_name || '';
         return name.length > 0 ? name : null;
     }
     return null;
@@ -443,6 +445,7 @@ const PTrabManager = () => {
             if (name) {
                 setUserName(name);
             } else if (user.email) {
+                // Se não tiver nome de guerra, usa o email
                 setUserName(user.email);
             }
         });
@@ -1177,8 +1180,8 @@ const PTrabManager = () => {
 
           <div className="flex items-center gap-4">
             
-            {/* NOVO: Exibição explícita do usuário logado */}
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-border">
+            {/* NOVO: Exibição explícita do usuário logado (Ajustado para Nome de Guerra e estilo) */}
+            <div className="flex items-center gap-2 px-4 h-10 rounded-md bg-muted/50 border border-border">
               <User className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium text-foreground">
                 {userName || user?.email || 'Carregando...'}
