@@ -60,16 +60,13 @@ const generateExportFileName = (pTrabData: Tables<'p_trab'>): string => {
     // Substitui barras por hífens para segurança no nome do arquivo
     const numeroPTrab = pTrabData.numero_ptrab.replace(/\//g, '-'); 
     
-    // Verifica se o P Trab está aprovado (numerado oficialmente)
-    const isApproved = pTrabData.status === 'aprovado' && !pTrabData.numero_ptrab.startsWith('Minuta');
+    // 1. Usar a sigla da OM diretamente
+    const omSigla = pTrabData.nome_om;
     
-    let nomeBase = `P Trab Nr ${numeroPTrab} - ${pTrabData.nome_operacao}`;
+    // 2. Construir o nome base no formato: P Trab Nr [NUMERO] - [OM_SIGLA] - [NOME_OPERACAO] - Atz [DATA]
+    let nomeBase = `P Trab Nr ${numeroPTrab} - ${omSigla} - ${pTrabData.nome_operacao}`;
     
-    // Se NÃO estiver aprovado, inclui a sigla da OM
-    if (!isApproved) {
-        nomeBase += ` - ${pTrabData.nome_om}`;
-    }
-    
+    // 3. Adicionar a data de atualização
     nomeBase += ` - Atz ${dataAtz}`;
     
     return `${nomeBase}.json`;
@@ -78,718 +75,701 @@ const generateExportFileName = (pTrabData: Tables<'p_trab'>): string => {
 
 const PTrabExportImportPage = () => {
   const navigate = useNavigate();
-  const { handleEnterToNextField } = useFormNavigation();
   const [loading, setLoading] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importDataPreview, setImportDataPreview] = useState<ExportData | null>(null);
-  
-  // Ref para a seção de resumo da importação
-  const importSummaryRef = useRef<HTMLDivElement>(null);
-
-  // Estados para exportação de P Trab único
-  const [pTrabsList, setPTrabsList] = useState<SimplePTrab[]>([]);
-  const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]); // Lista de números existentes
-  const [isSelectPTrabDialogOpen, setIsSelectPTrabDialogOpen] = useState(false);
+  const [pTrabs, setPTrabs] = useState<SimplePTrab[]>([]);
   const [selectedPTrabId, setSelectedPTrabId] = useState<string | null>(null);
-
-  // Estados para o diálogo de senha de exportação
-  const [isExportPasswordDialogOpen, setIsExportPasswordDialogOpen] = useState(false);
-  const [exportActionType, setExportActionType] = useState<'single' | null>(null); // Removido 'full'
-
-  // Estados para o diálogo de senha de importação
-  const [isImportPasswordDialogOpen, setIsImportPasswordDialogOpen] = useState(false);
-  const [encryptedContent, setEncryptedContent] = useState<string | null>(null);
+  const [exportPassword, setExportPassword] = useState("");
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [exportType, setExportType] = useState<'single' | 'full'>('single');
   
-  // Estados para o diálogo de opções de importação (OM/Numeração)
-  const [isImportOptionsDialogOpen, setIsImportOptionsDialogOpen] = useState(false);
+  // Import States
+  const [fileToImport, setFileToImport] = useState<File | null>(null);
+  const [importPassword, setImportPassword] = useState("");
+  const [showImportPasswordDialog, setShowImportPasswordDialog] = useState(false);
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
+  const [decryptedData, setDecryptedData] = useState<ExportData | null>(null);
   
-  // NOVO ESTADO: Diálogo de Conflito
-  const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
-  const [ptrabToOverwriteId, setPtrabToOverwriteId] = useState<string | null>(null); // ID do PTrab existente a ser sobrescrito
-  
-  // Novo estado para a lista de OMs do usuário
+  // Conflict/Options States
+  const [showImportOptionsDialog, setShowImportOptionsDialog] = useState(false);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [importedPTrab, setImportedPTrab] = useState<Tables<'p_trab'> | null>(null);
+  const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
   const [userOms, setUserOms] = useState<OMData[]>([]);
-  const [loadingOms, setLoadingOms] = useState(true); // NOVO: Estado de carregamento das OMs
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { handleEnterToNextField } = useFormNavigation();
 
+  const userId = useMemo(() => supabase.auth.getUser().then(res => res.data.user?.id), []);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("Você precisa estar logado para acessar esta página.");
-        navigate("/login");
-        return;
-      }
-      setUserId(user.id);
-      loadPTrabsList(user.id);
-      loadExistingPTrabNumbers(user.id);
-      loadUserOms(user.id);
-    };
-    fetchUser();
-  }, [navigate]);
+    loadPTrabsAndOMs();
+  }, []);
 
-  const loadPTrabsList = async (currentUserId: string) => {
+  const loadPTrabsAndOMs = async () => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('p_trab')
-        .select('id, numero_ptrab, nome_operacao')
-        .eq('user_id', currentUserId)
-        .order('numero_ptrab', { ascending: false });
+      const [
+        { data: pTrabsData, error: pTrabsError },
+        { data: omsData, error: omsError }
+      ] = await Promise.all([
+        supabase.from("p_trab").select("id, numero_ptrab, nome_operacao"),
+        supabase.from("organizacoes_militares").select("*").eq('ativo', true),
+      ]);
 
-      if (error) throw error;
-      setPTrabsList(data || []);
-    } catch (error) {
-      console.error("Erro ao carregar lista de P Trabs:", error);
-      toast.error("Erro ao carregar lista de P Trabs.");
-    }
-  };
+      if (pTrabsError) throw pTrabsError;
+      if (omsError) throw omsError;
 
-  const loadExistingPTrabNumbers = async (currentUserId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('p_trab')
-        .select('numero_ptrab')
-        .eq('user_id', currentUserId);
-      
-      if (error) throw error;
-      setExistingPTrabNumbers((data || []).map(p => p.numero_ptrab));
-    } catch (error) {
-      console.error("Erro ao carregar números existentes:", error);
-    }
-  };
+      setPTrabs((pTrabsData || []) as SimplePTrab[]);
+      setExistingPTrabNumbers((pTrabsData || []).map(p => p.numero_ptrab));
+      setUserOms((omsData || []) as OMData[]);
 
-  const loadUserOms = async (currentUserId: string) => {
-    setLoadingOms(true); // Inicia o carregamento
-    try {
-      const { data, error } = await supabase
-        .from('organizacoes_militares')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .eq('ativo', true)
-        .order('nome_om');
-      
-      if (error) throw error;
-      setUserOms((data || []) as OMData[]);
     } catch (error) {
-      console.error("Erro ao carregar OMs do usuário:", error);
-      toast.error("Erro ao carregar OMs do usuário.");
+      console.error("Erro ao carregar dados:", error);
+      toast.error("Erro ao carregar lista de P Trabs ou OMs.");
     } finally {
-      setLoadingOms(false); // Finaliza o carregamento
+      setLoading(false);
     }
   };
 
-  // Função que inicia o processo de exportação única (abre o diálogo de senha)
-  const handleInitiateExportSingle = () => {
-    if (!selectedPTrabId) {
-      toast.error("Selecione um P Trab para exportar.");
-      return;
-    }
-    setExportActionType('single');
-    setIsExportPasswordDialogOpen(true);
-  };
+  // =================================================================
+  // EXPORT LOGIC
+  // =================================================================
 
-  // Função principal de exportação (chamada após a senha ser confirmada)
-  const performExport = async (password: string) => {
+  const handleExport = async (password: string) => {
     if (!userId) {
       toast.error("Usuário não autenticado.");
       return;
     }
     
-    setIsExportPasswordDialogOpen(false);
     setLoading(true);
+    setShowPasswordDialog(false);
+    setExportPassword(password); // Salva a senha para uso
 
     try {
-      if (exportActionType === 'single' && selectedPTrabId) {
-        await exportSinglePTrab(selectedPTrabId, password);
+      let exportData: ExportData['data'];
+      let fileName: string;
+      let exportTypeFinal: ExportData['type'];
+
+      if (exportType === 'single' && selectedPTrabId) {
+        // Exportar P Trab Único
+        const { data: pTrab, error: pTrabError } = await supabase
+          .from('p_trab')
+          .select('*, updated_at') // Seleciona explicitamente updated_at
+          .eq('id', selectedPTrabId)
+          .single();
+        
+        if (pTrabError || !pTrab) throw new Error("P Trab não encontrado.");
+
+        const [
+          { data: classeI },
+          { data: classeII },
+          { data: classeIII },
+          { data: refLPC },
+        ] = await Promise.all([
+          supabase.from('classe_i_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_ii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_iii_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('p_trab_ref_lpc').select('*').eq('p_trab_id', selectedPTrabId).maybeSingle(),
+        ]);
+
+        exportData = {
+          p_trab: pTrab,
+          classe_i_registros: classeI || [],
+          classe_ii_registros: classeII || [],
+          classe_iii_registros: classeIII || [],
+          p_trab_ref_lpc: refLPC || null,
+        };
+        fileName = generateExportFileName(pTrab);
+        exportTypeFinal = 'single_ptrab';
+
+      } else if (exportType === 'full') {
+        // Exportar Backup Completo (inclui dados globais)
+        const [
+          { data: pTrabsData },
+          { data: classeI },
+          { data: classeII },
+          { data: classeIII },
+          { data: refLPC },
+          { data: omsData },
+          { data: diretrizesCusteio },
+          { data: diretrizesEquipamentos },
+        ] = await Promise.all([
+          supabase.from('p_trab').select('*, updated_at'),
+          supabase.from('classe_i_registros').select('*'),
+          supabase.from('classe_ii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39'),
+          supabase.from('classe_iii_registros').select('*'),
+          supabase.from('p_trab_ref_lpc').select('*'),
+          supabase.from('organizacoes_militares').select('*'),
+          supabase.from('diretrizes_custeio').select('*'),
+          supabase.from('diretrizes_equipamentos_classe_iii').select('*'),
+        ]);
+
+        exportData = {
+          p_trab: pTrabsData || [],
+          classe_i_registros: classeI || [],
+          classe_ii_registros: classeII || [],
+          classe_iii_registros: classeIII || [],
+          p_trab_ref_lpc: refLPC || null,
+          organizacoes_militares: omsData || [],
+          diretrizes_custeio: diretrizesCusteio || [],
+          diretrizes_equipamentos_classe_iii: diretrizesEquipamentos || [],
+        };
+        fileName = `PTrab_Backup_Completo_${formatDateDDMMMAA(new Date().toISOString())}.json`;
+        exportTypeFinal = 'full_backup';
+
+      } else {
+        throw new Error("Selecione um P Trab ou o tipo de exportação.");
       }
+
+      const finalExportObject: ExportData = {
+        version: "1.0",
+        timestamp: new Date().toISOString(),
+        userId: await userId as string,
+        type: exportTypeFinal,
+        data: exportData,
+      };
+
+      const encryptedText = encryptData(finalExportObject, password);
+      
+      if (!encryptedText) {
+          throw new Error("Falha na criptografia. Verifique a senha.");
+      }
+
+      const blob = new Blob([encryptedText], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success("Exportação concluída e criptografada!");
+
     } catch (error: any) {
       console.error("Erro na exportação:", error);
-      toast.error(error.message || "Erro desconhecido durante a exportação.");
+      toast.error(error.message || "Erro ao exportar dados.");
     } finally {
       setLoading(false);
-      setExportActionType(null);
+      setExportPassword("");
     }
   };
 
-  const exportSinglePTrab = async (ptrabId: string, password: string) => {
-    // 1. Fetch PTrab principal
-    const { data: pTrabData, error: pTrabError } = await supabase
-      .from('p_trab')
-      .select('*, updated_at') // Seleciona explicitamente updated_at
-      .eq('id', ptrabId)
-      .eq('user_id', userId!)
-      .single();
-
-    if (pTrabError || !pTrabData) throw new Error("P Trab não encontrado ou acesso negado.");
-
-    // 2. Fetch related records
-    const [
-      { data: classeIData, error: classeIError },
-      { data: classeIIData, error: classeIIError }, // Fetch Classe II
-      { data: classeIIIData, error: classeIIIError },
-      { data: refLPCData, error: refLPCError },
-    ] = await Promise.all([
-      supabase.from('classe_i_registros').select('*').eq('p_trab_id', ptrabId),
-      supabase.from('classe_ii_registros').select('*, itens_equipamentos').eq('p_trab_id', ptrabId), // Select itens_equipamentos
-      supabase.from('classe_iii_registros').select('*, itens_equipamentos').eq('p_trab_id', ptrabId),
-      supabase.from('p_trab_ref_lpc').select('*').eq('p_trab_id', ptrabId).maybeSingle(),
-    ]);
-
-    if (classeIError) console.error("Erro ao buscar Classe I:", classeIError);
-    if (classeIIError) console.error("Erro ao buscar Classe II:", classeIIError);
-    if (classeIIIError) console.error("Erro ao buscar Classe III:", classeIIIError);
-    if (refLPCError) console.error("Erro ao buscar Ref LPC:", refLPCError);
-
-    const exportObject: ExportData = {
-      version: "1.0",
-      timestamp: new Date().toISOString(),
-      userId: userId!,
-      type: 'single_ptrab',
-      data: {
-        p_trab: pTrabData,
-        classe_i_registros: classeIData || [],
-        classe_ii_registros: classeIIData || [], // Incluir Classe II
-        classe_iii_registros: classeIIIData || [],
-        p_trab_ref_lpc: refLPCData || null,
-      },
-    };
-
-    // Criptografar o objeto de exportação
-    const encryptedString = encryptData(exportObject, password);
-
-    const blob = new Blob([encryptedString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    // USAR A NOVA FUNÇÃO DE GERAÇÃO DE NOME
-    link.download = generateExportFileName(pTrabData);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast.success(`P Trab ${pTrabData.numero_ptrab} exportado com sucesso!`);
-    setIsSelectPTrabDialogOpen(false);
-    setSelectedPTrabId(null);
-  };
+  // =================================================================
+  // IMPORT LOGIC
+  // =================================================================
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImportFile(file);
-      setImportDataPreview(null);
-      setEncryptedContent(null);
+      setFileToImport(file);
+      setImportSummary({
+        type: 'single_ptrab', // Assume single por padrão, será corrigido após descriptografia
+        details: `Arquivo selecionado: ${file.name}`,
+      });
+    } else {
+      setFileToImport(null);
+      setImportSummary(null);
     }
   };
 
-  const handlePreviewImport = () => {
-    if (!importFile) {
+  const handleStartImport = () => {
+    if (!fileToImport) {
       toast.error("Selecione um arquivo para importar.");
       return;
     }
-
-    setLoading(true);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const content = event.target?.result as string;
-        
-        // Armazena o conteúdo criptografado e abre o diálogo de senha
-        setEncryptedContent(content);
-        setIsImportPasswordDialogOpen(true);
-        
-      } catch (error: any) {
-        console.error("Erro ao ler arquivo:", error);
-        toast.error("Erro ao ler o arquivo. Certifique-se de que é um JSON válido.");
-        setImportFile(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    reader.readAsText(importFile);
+    setShowImportPasswordDialog(true);
   };
 
-  const performDecryptionAndPreview = (password: string) => {
-    if (!encryptedContent || !userId) {
-      toast.error("Conteúdo ou usuário não encontrado.");
-      return;
-    }
+  const handleDecryptAndAnalyze = async (password: string) => {
+    if (!fileToImport) return;
 
-    setIsImportPasswordDialogOpen(false);
     setLoading(true);
+    setShowImportPasswordDialog(false);
+    setImportPassword(password);
 
     try {
-      const decryptedData = decryptData(encryptedContent, password);
-      
-      if (!decryptedData) {
+      const fileContent = await fileToImport.text();
+      const decrypted = decryptData(fileContent, password);
+
+      if (!decrypted) {
         throw new Error("Senha incorreta ou arquivo corrompido.");
       }
 
-      const data = decryptedData as ExportData;
-      
-      if (!data.version || !data.data || !data.userId || !data.type) {
-        throw new Error("Formato de arquivo inválido após descriptografia. Faltam campos essenciais.");
-      }
-      
-      if (data.userId !== userId) {
-          toast.warning("Aviso: O arquivo foi exportado por outro usuário. A importação pode falhar ou sobrescrever dados.");
-      }
+      const importedData = decrypted as ExportData;
+      setDecryptedData(importedData);
 
-      setImportDataPreview(data);
-      toast.success("Arquivo analisado e descriptografado. Revise os dados antes de confirmar a importação.");
-      
-      // Rolar para a seção de resumo após o sucesso
-      setTimeout(() => {
-        importSummaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
+      if (importedData.type === 'full_backup') {
+        // Backup Completo: Não precisa de opções, vai direto para a importação
+        setImportSummary({
+          type: 'full_backup',
+          details: `Backup Completo de ${importedData.data.p_trab.length} P Trabs e configurações globais.`,
+        });
+        await handleFinalImport(importedData);
+        
+      } else if (importedData.type === 'single_ptrab') {
+        // P Trab Único: Precisa de análise de conflito e opções
+        const pTrab = importedData.data.p_trab as Tables<'p_trab'>;
+        setImportedPTrab(pTrab);
+        
+        setImportSummary({
+          type: 'single_ptrab',
+          details: `P Trab: ${pTrab.numero_ptrab} - ${pTrab.nome_operacao}`,
+          ptrabNumber: pTrab.numero_ptrab,
+          operationName: pTrab.nome_operacao,
+          omSigla: pTrab.nome_om,
+        });
+        
+        // 1. Verificar conflito de numeração oficial
+        const isOfficial = pTrab.numero_ptrab && !pTrab.numero_ptrab.startsWith("Minuta");
+        const isDuplicate = isPTrabNumberDuplicate(pTrab.numero_ptrab, existingPTrabNumbers);
+        
+        if (isOfficial && isDuplicate) {
+            // Conflito de número oficial: Abre diálogo de Sobrescrever/Criar Novo
+            setShowConflictDialog(true);
+        } else {
+            // Sem conflito ou é Minuta: Abre diálogo de Opções (OM de destino e numeração)
+            setShowImportOptionsDialog(true);
+        }
+      }
 
     } catch (error: any) {
-      console.error("Erro ao analisar/descriptografar arquivo:", error);
-      toast.error(error.message || "Erro ao descriptografar o arquivo. Verifique a senha.");
-      setImportFile(null);
+      console.error("Erro na importação/descriptografia:", error);
+      toast.error(error.message || "Erro ao importar arquivo. Verifique a senha.");
     } finally {
       setLoading(false);
-      setEncryptedContent(null);
-    }
-  };
-
-  // Função chamada quando a análise está pronta
-  const handleAnalysisReady = () => {
-    if (!importDataPreview || importDataPreview.type === 'full_backup') {
-        // Block full backup import
-        toast.error("Importação de Backup Completo não é mais suportada. Importe um P Trab individual.");
-        setImportDataPreview(null);
-        setImportFile(null);
-        return;
-    }
-    
-    // Verifica se o usuário tem OMs cadastradas antes de prosseguir
-    if (loadingOms) {
-        toast.info("Aguarde o carregamento das Organizações Militares...");
-        return;
-    }
-    
-    if (userOms.length === 0) {
-        toast.error("Nenhuma OM cadastrada para o usuário. Cadastre uma OM antes de importar.");
-        return;
-    }
-    
-    const importedPTrab = importDataPreview.data.p_trab as Tables<'p_trab'>;
-    const importedNumber = importedPTrab.numero_ptrab;
-    
-    const isMinuta = importedNumber && importedNumber.startsWith("Minuta");
-    const isOfficialNumber = importedNumber && !isMinuta;
-    const existingPTrab = pTrabsList.find(p => p.numero_ptrab === importedNumber);
-
-    if (isOfficialNumber && existingPTrab) {
-        // Conflito detectado para um número oficial
-        setPtrabToOverwriteId(existingPTrab.id);
-        setIsConflictDialogOpen(true);
-    } else {
-        // Se for Minuta OU número oficial sem conflito, abre o diálogo de opções
-        // para que o usuário selecione a OM de destino e confirme a numeração.
-        setIsImportOptionsDialogOpen(true);
     }
   };
   
-  // Handlers para resolução de conflito
+  // --- Conflict Resolution Handlers ---
+  
+  // Opção 1: Sobrescrever (Apenas para P Trab Único com conflito oficial)
   const handleOverwrite = () => {
-    setIsConflictDialogOpen(false);
-    if (ptrabToOverwriteId) {
-        performOverwriteImport(ptrabToOverwriteId);
-    } else {
-        toast.error("Erro interno: ID do P Trab a ser sobrescrito não encontrado.");
-    }
-  };
-
-  // NOVO HANDLER: Cria um novo número de Minuta e importa diretamente (Chamado pelo ImportConflictDialog)
-  const handleCreateNewNumberAndImport = () => {
-    if (!importDataPreview || importDataPreview.type !== 'single_ptrab' || !userId) {
-        toast.error("Erro: Dados de importação inválidos.");
+    if (!decryptedData || !importedPTrab) return;
+    
+    // Sobrescrever significa que o ID do PTrab existente será usado para o UPDATE.
+    // 1. Encontrar o ID do PTrab existente com o mesmo número
+    const existingPTrab = pTrabs.find(p => p.numero_ptrab === importedPTrab.numero_ptrab);
+    
+    if (!existingPTrab) {
+        toast.error("Erro interno: P Trab existente não encontrado para sobrescrever.");
+        setShowConflictDialog(false);
         return;
     }
     
-    setIsConflictDialogOpen(false);
-    setLoading(true);
+    // 2. Forçar a importação com o ID existente
+    handleFinalImport(decryptedData, existingPTrab.id);
+    setShowConflictDialog(false);
+  };
+  
+  // Opção 2: Criar Novo (Gera Minuta única e abre o diálogo de opções)
+  const handleCreateNew = () => {
+    if (!importedPTrab) return;
     
-    try {
-        const importedPTrab = importDataPreview.data.p_trab as Tables<'p_trab'>;
-        
-        // 1. Gerar novo número de Minuta
-        const newMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
-        
-        // 2. Usar a primeira OM do usuário como OM de destino (se houver)
-        const defaultOm = userOms[0];
-        if (!defaultOm) {
-            throw new Error("Nenhuma OM cadastrada para o usuário. Cadastre uma OM antes de importar.");
-        }
-        
-        // 3. Preparar os dados finais para importação (Minuta, status aberto, OM do usuário)
-        const finalPTrabData: Tables<'p_trab'> = {
-            ...importedPTrab,
-            numero_ptrab: newMinutaNumber,
-            nome_om: defaultOm.nome_om, // Usar o nome da OM selecionada
-            codug_om: defaultOm.codug_om,
-            rm_vinculacao: defaultOm.rm_vinculacao,
-            codug_rm_vinculacao: defaultOm.codug_rm_vinculacao,
-            comando_militar_area: defaultOm.rm_vinculacao, // Usar a RM como CMA (simplificação)
-            status: 'aberto', // Forçar status aberto
-        };
-
-        // 4. Chamar a função de importação final
-        handleConfirmSinglePTrabImport(finalPTrabData);
-        
-    } catch (error: any) {
-        console.error("Erro ao criar novo número e importar:", error);
-        toast.error(error.message || "Erro ao importar como Minuta.");
-        setLoading(false);
-    }
-  };
-
-  // Função para realizar a sobrescrita (Update)
-  const performOverwriteImport = async (existingPTrabId: string) => {
-    if (!importDataPreview || !userId) return;
-
-    setLoading(true);
-
-    try {
-        const data = importDataPreview.data;
-        const importedPTrab = data.p_trab as Tables<'p_trab'>;
-        
-        // 1. Update existing PTrab header
-        const { id, created_at, updated_at, ...restOfPTrab } = importedPTrab;
-        const updatePTrabData = {
-            ...restOfPTrab,
-            user_id: userId,
-            status: 'aprovado', // Assume que se está sobrescrevendo um número oficial, o status é 'aprovado'
-            origem: 'importado',
-            updated_at: new Date().toISOString(),
-        };
-        
-        const { error: updatePTrabError } = await supabase
-            .from("p_trab")
-            .update(updatePTrabData as TablesUpdate<'p_trab'>)
-            .eq("id", existingPTrabId);
-
-        if (updatePTrabError) throw new Error(`Erro ao atualizar P Trab: ${updatePTrabError.message}`);
-        
-        // 2. Delete all existing dependent records for the existing PTrab
-        const dependentTables: (keyof ExportData['data'])[] = [
-            'p_trab_ref_lpc',
-            'classe_i_registros',
-            'classe_ii_registros',
-            'classe_iii_registros',
-        ];
-        
-        for (const table of dependentTables) {
-            const { error } = await supabase.from(table).delete().eq('p_trab_id', existingPTrabId);
-            if (error) console.error(`Erro ao deletar registros antigos de ${table}:`, error);
-        }
-        
-        // 3. Insert new dependent records from the imported data
-        for (const table of dependentTables) {
-            const records = data[table];
-            if (records) {
-                const recordsArray = Array.isArray(records) ? records : [records].filter(Boolean);
-                
-                if (recordsArray.length > 0) {
-                    const recordsToInsert = recordsArray.map(record => {
-                        const newRecord = { ...record };
-                        delete (newRecord as any).id;
-                        delete (newRecord as any).created_at;
-                        delete (newRecord as any).updated_at;
-                        (newRecord as any).p_trab_id = existingPTrabId; // Use the existing ID
-                        return newRecord;
-                    });
-                    
-                    const { error } = await supabase.from(table).insert(recordsToInsert);
-                    if (error) console.error(`Erro ao inserir registros de ${table}:`, error);
-                }
-            }
-        }
-        
-        toast.success(`P Trab ${importedPTrab.numero_ptrab} sobrescrito e atualizado com sucesso!`);
-        
-        setImportDataPreview(null);
-        setImportFile(null);
-        navigate("/ptrab"); // Redireciona para recarregar os dados
-    } catch (error: any) {
-        console.error("Erro na sobrescrita de P Trab:", error);
-        toast.error(error.message || "Erro desconhecido durante a sobrescrita.");
-    } finally {
-        setLoading(false);
-    }
-  };
-
-
-  // Função chamada pelo ImportPTrabOptionsDialog para iniciar a importação final (INSERT)
-  const handleConfirmSinglePTrabImport = async (finalPTrabData: Tables<'p_trab'>) => {
-    if (!importDataPreview || !userId) return;
-
-    setIsImportOptionsDialogOpen(false);
-    setLoading(true);
-
-    try {
-        const data = importDataPreview.data;
-        
-        // 1. Inserir novo P Trab (usando os dados modificados pelo diálogo)
-        const { id, created_at, updated_at, ...restOfPTrab } = finalPTrabData;
-        
-        // Determine status: if the number is official, set to 'aprovado', otherwise 'aberto' (Minuta)
-        const isOfficialNumber = finalPTrabData.numero_ptrab && !finalPTrabData.numero_ptrab.startsWith("Minuta");
-        
-        const newPTrabData = {
-            ...restOfPTrab,
-            user_id: userId,
-            status: isOfficialNumber ? 'aprovado' : 'aberto', // Set status based on final number
-            origem: 'importado', // MARCAR COMO IMPORTADO
-        };
-        
-        const { data: newPTrab, error: insertPTrabError } = await supabase
-            .from("p_trab")
-            .insert([newPTrabData])
-            .select()
-            .single();
-
-        if (insertPTrabError || !newPTrab) throw new Error(`Erro ao criar novo P Trab: ${insertPTrabError?.message}`);
-        const newPTrabId = newPTrab.id;
-        
-        // 2. Mapear e inserir registros dependentes
-        const dependentTables: (keyof ExportData['data'])[] = [
-            'p_trab_ref_lpc',
-            'classe_i_registros',
-            'classe_ii_registros',
-            'classe_iii_registros',
-        ];
-        
-        for (const table of dependentTables) {
-            const records = data[table];
-            if (records) {
-                const recordsArray = Array.isArray(records) ? records : [records].filter(Boolean);
-                
-                if (recordsArray.length > 0) {
-                    const recordsToInsert = recordsArray.map(record => {
-                        const newRecord = { ...record };
-                        delete (newRecord as any).id;
-                        delete (newRecord as any).created_at;
-                        delete (newRecord as any).updated_at;
-                        (newRecord as any).p_trab_id = newPTrabId;
-                        return newRecord;
-                    });
-                    
-                    const { error } = await supabase.from(table).insert(recordsToInsert);
-                    if (error) console.error(`Erro ao importar registros de ${table}:`, error);
-                }
-            }
-        }
-        
-        toast.success(`P Trab ${newPTrab.numero_ptrab} importado e criado com sucesso!`);
-        
-        setImportDataPreview(null);
-        setImportFile(null);
-        navigate("/ptrab"); // Redireciona para recarregar os dados
-    } catch (error: any) {
-        console.error("Erro na importação de P Trab único:", error);
-        toast.error(error.message || "Erro desconhecido durante a importação. Verifique o console.");
-    } finally {
-        setLoading(false);
-    }
-  };
-
-  const getImportSummary = (data: ExportData): ImportSummary => {
-    const isFull = data.type === 'full_backup';
+    // 1. Gera um novo número de Minuta
+    const newMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
     
-    if (isFull) {
-        const summary = Object.entries(data.data).map(([key, records]) => {
-            const count = Array.isArray(records) ? records.length : (records ? 1 : 0);
-            return `${key}: ${count} registros`;
-        }).join(', ');
-        return {
-            type: 'full_backup',
-            details: `Versão: ${data.version}. Exportado em: ${new Date(data.timestamp).toLocaleDateString()}. Dados: ${summary}`
-        };
+    // 2. Atualiza o PTrab importado para ser uma Minuta
+    const newPTrabAsMinuta = {
+        ...importedPTrab,
+        numero_ptrab: newMinutaNumber,
+        status: 'aberto',
+        origem: 'importado',
+    };
+    
+    setImportedPTrab(newPTrabAsMinuta);
+    setShowConflictDialog(false);
+    setShowImportOptionsDialog(true); // Abre o diálogo de opções com a Minuta
+  };
+  
+  // --- Import Options Handler (Single PTrab) ---
+  
+  const handleConfirmImportOptions = (newPTrabData: Tables<'p_trab'>) => {
+    if (!decryptedData) return;
+    
+    // 1. Atualiza o PTrab dentro do objeto de dados descriptografados
+    const updatedDecryptedData: ExportData = {
+        ...decryptedData,
+        data: {
+            ...decryptedData.data,
+            p_trab: newPTrabData, // O PTrab já está com o novo número e OM de destino
+        }
+    };
+    
+    // 2. Inicia a importação final (sem ID de sobrescrita)
+    handleFinalImport(updatedDecryptedData);
+    setShowImportOptionsDialog(false);
+  };
+
+
+  // --- Final Import Logic ---
+  
+  const handleFinalImport = async (data: ExportData, overwriteId?: string) => {
+    setLoading(true);
+    const currentUserId = await userId;
+    if (!currentUserId) {
+        toast.error("Usuário não autenticado.");
+        setLoading(false);
+        return;
+    }
+
+    try {
+      if (data.type === 'full_backup') {
+        // Lógica de importação de backup completo (substituição de dados globais)
+        await importFullBackup(data, currentUserId);
+        
+      } else if (data.type === 'single_ptrab') {
+        // Lógica de importação de P Trab único
+        await importSinglePTrab(data, currentUserId, overwriteId);
+      }
+
+      toast.success("Importação concluída com sucesso!");
+      await loadPTrabsAndOMs(); // Recarrega a lista de P Trabs e OMs
+      setFileToImport(null);
+      setImportSummary(null);
+      setDecryptedData(null);
+      setImportPassword("");
+      
+    } catch (error: any) {
+      console.error("Erro na importação final:", error);
+      toast.error(error.message || "Erro ao salvar dados no banco.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Helper para importação de backup completo
+  const importFullBackup = async (data: ExportData, currentUserId: string) => {
+    const { p_trab, organizacoes_militares, diretrizes_custeio, diretrizes_equipamentos_classe_iii } = data.data;
+    
+    // 1. Limpar dados existentes (Apenas para tabelas globais do usuário)
+    await supabase.from('organizacoes_militares').delete().eq('user_id', currentUserId);
+    await supabase.from('diretrizes_custeio').delete().eq('user_id', currentUserId);
+    await supabase.from('diretrizes_equipamentos_classe_iii').delete().eq('user_id', currentUserId);
+    
+    // 2. Inserir novos dados globais (ajustando user_id)
+    if (organizacoes_militares && organizacoes_militares.length > 0) {
+        const newOms = organizacoes_militares.map(om => ({ ...om, user_id: currentUserId, id: undefined }));
+        await supabase.from('organizacoes_militares').insert(newOms as TablesInsert<'organizacoes_militares'>[]);
+    }
+    if (diretrizes_custeio && diretrizes_custeio.length > 0) {
+        const newDiretrizes = diretrizes_custeio.map(d => ({ ...d, user_id: currentUserId, id: undefined }));
+        await supabase.from('diretrizes_custeio').insert(newDiretrizes as TablesInsert<'diretrizes_custeio'>[]);
+    }
+    if (diretrizes_equipamentos_classe_iii && diretrizes_equipamentos_classe_iii.length > 0) {
+        const newEquipamentos = diretrizes_equipamentos_classe_iii.map(e => ({ ...e, user_id: currentUserId, id: undefined }));
+        await supabase.from('diretrizes_equipamentos_classe_iii').insert(newEquipamentos as TablesInsert<'diretrizes_equipamentos_classe_iii'>[]);
+    }
+    
+    // 3. Importar P Trabs (com lógica de conflito simplificada: se o número já existe, ele é ignorado)
+    const pTrabsToInsert = (p_trab as Tables<'p_trab'>[]).map(p => ({ ...p, user_id: currentUserId, id: undefined }));
+    
+    for (const ptrab of pTrabsToInsert) {
+        const isDuplicate = isPTrabNumberDuplicate(ptrab.numero_ptrab, existingPTrabNumbers);
+        if (!isDuplicate) {
+            // Insere o PTrab e seus registros relacionados
+            const { data: newPTrab, error: insertPTrabError } = await supabase
+                .from('p_trab')
+                .insert([ptrab as TablesInsert<'p_trab'>])
+                .select('id')
+                .single();
+                
+            if (insertPTrabError || !newPTrab) {
+                console.error(`Erro ao inserir PTrab ${ptrab.numero_ptrab}:`, insertPTrabError);
+                continue;
+            }
+            
+            // Clonar registros relacionados (Classe I, II, III, LPC)
+            await cloneImportedRecords(data, ptrab.id!, newPTrab.id);
+        }
+    }
+    
+    toast.success(`Backup completo importado! ${pTrabsToInsert.length} P Trabs processados.`);
+  };
+  
+  // Helper para importação de P Trab único
+  const importSinglePTrab = async (data: ExportData, currentUserId: string, overwriteId?: string) => {
+    const importedPTrab = data.data.p_trab as Tables<'p_trab'>;
+    
+    // 1. Preparar dados do PTrab
+    const { id: originalId, created_at, updated_at, ...restOfPTrab } = importedPTrab;
+    
+    const ptrabDataToSave: TablesInsert<'p_trab'> | TablesUpdate<'p_trab'> = {
+        ...restOfPTrab,
+        user_id: currentUserId,
+        origem: overwriteId ? importedPTrab.origem : 'importado', // Mantém a origem se for overwrite
+        status: overwriteId ? importedPTrab.status : 'aberto', // Novo importado começa como 'aberto'
+    };
+    
+    let finalPTrabId: string;
+    
+    if (overwriteId) {
+        // UPDATE (Sobrescrever)
+        const { error: updateError } = await supabase
+            .from('p_trab')
+            .update(ptrabDataToSave as TablesUpdate<'p_trab'>)
+            .eq('id', overwriteId);
+        if (updateError) throw updateError;
+        finalPTrabId = overwriteId;
+        
+        // Limpar registros antigos antes de clonar
+        await clearRelatedRecords(finalPTrabId);
+        
     } else {
-        const pTrab = data.data.p_trab as Tables<'p_trab'>;
-        // FIX: Use (array || []).length to safely access length
-        const classeICount = (data.data.classe_i_registros || []).length;
-        const classeIICount = (data.data.classe_ii_registros || []).length;
-        const classeIIICount = (data.data.classe_iii_registros || []).length;
-        const refLPCExists = !!data.data.p_trab_ref_lpc;
-        
-        return {
-            type: 'single_ptrab',
-            omSigla: pTrab.nome_om,
-            ptrabNumber: pTrab.numero_ptrab,
-            operationName: pTrab.nome_operacao,
-            details: `Registros: ${classeICount} Classe I, ${classeIICount} Classe II, ${classeIIICount} Classe III, Ref LPC: ${refLPCExists ? 'Sim' : 'Não'}.`
-        };
+        // INSERT (Novo P Trab)
+        const { data: newPTrab, error: insertError } = await supabase
+            .from('p_trab')
+            .insert([ptrabDataToSave as TablesInsert<'p_trab'>])
+            .select('id')
+            .single();
+            
+        if (insertError || !newPTrab) throw insertError;
+        finalPTrabId = newPTrab.id;
     }
+    
+    // 2. Clonar registros relacionados (Classe I, II, III, LPC)
+    await cloneImportedRecords(data, originalId, finalPTrabId);
+    
+    toast.success(`P Trab ${importedPTrab.numero_ptrab} importado com sucesso!`);
+  };
+  
+  // Helper para limpar registros relacionados (usado em overwrite)
+  const clearRelatedRecords = async (ptrabId: string) => {
+    await supabase.from('classe_i_registros').delete().eq('p_trab_id', ptrabId);
+    await supabase.from('classe_ii_registros').delete().eq('p_trab_id', ptrabId);
+    await supabase.from('classe_iii_registros').delete().eq('p_trab_id', ptrabId);
+    await supabase.from('p_trab_ref_lpc').delete().eq('p_trab_id', ptrabId);
+    // Adicionar outras classes conforme necessário
+    await supabase.from('classe_v_registros').delete().eq('p_trab_id', ptrabId);
+    await supabase.from('classe_vi_registros').delete().eq('p_trab_id', ptrabId);
+    await supabase.from('classe_vii_registros').delete().eq('p_trab_id', ptrabId);
+    await supabase.from('classe_viii_saude_registros').delete().eq('p_trab_id', ptrabId);
+    await supabase.from('classe_viii_remonta_registros').delete().eq('p_trab_id', ptrabId);
+    await supabase.from('classe_ix_registros').delete().eq('p_trab_id', ptrabId);
   };
 
-  const summary = importDataPreview ? getImportSummary(importDataPreview) : null;
+  // Helper para clonar registros importados
+  const cloneImportedRecords = async (data: ExportData, originalPTrabId: string, newPTrabId: string) => {
+    const currentUserId = await userId;
+    
+    // Helper para filtrar e inserir registros de uma tabela
+    const insertFilteredRecords = async (tableName: keyof ExportData['data'], filterKey: string) => {
+        const records = (data.data[tableName] as any[] || []).filter(r => r[filterKey] === originalPTrabId);
+        
+        if (records.length > 0) {
+            const newRecords = records.map(r => {
+                const { id, created_at, updated_at, ...restOfRecord } = r;
+                return { 
+                    ...restOfRecord, 
+                    p_trab_id: newPTrabId,
+                    // Adiciona user_id para tabelas que o requerem (embora as tabelas de registro não precisem, é bom garantir)
+                    ...(tableName === 'organizacoes_militares' || tableName.startsWith('diretrizes') ? { user_id: currentUserId } : {})
+                };
+            });
+            
+            const { error: insertError } = await supabase
+                .from(tableName)
+                .insert(newRecords as TablesInsert<typeof tableName>[]);
+            
+            if (insertError) {
+                console.error(`Erro ao inserir registros de ${tableName}:`, insertError);
+                throw new Error(`Falha ao importar registros de ${tableName}.`);
+            }
+        }
+    };
+    
+    // 1. Classe I
+    await insertFilteredRecords('classe_i_registros', 'p_trab_id');
+    
+    // 2. Classe II
+    await insertFilteredRecords('classe_ii_registros', 'p_trab_id');
+    
+    // 3. Classe III
+    await insertFilteredRecords('classe_iii_registros', 'p_trab_id');
+    
+    // 4. LPC
+    if (data.data.p_trab_ref_lpc && (data.data.p_trab_ref_lpc as Tables<'p_trab_ref_lpc'>).p_trab_id === originalPTrabId) {
+        const { id, created_at, updated_at, ...restOfRefLPC } = data.data.p_trab_ref_lpc as Tables<'p_trab_ref_lpc'>;
+        const newRefLPC = { ...restOfRefLPC, p_trab_id: newPTrabId };
+        const { error: insertError } = await supabase.from('p_trab_ref_lpc').insert([newRefLPC as TablesInsert<'p_trab_ref_lpc'>]);
+        if (insertError) {
+            console.error("Erro ao inserir LPC:", insertError);
+            throw new Error("Falha ao importar LPC.");
+        }
+    }
+    
+    // 5. Classes V, VI, VII, VIII, IX (usando o mesmo padrão de filtro)
+    await insertFilteredRecords('classe_v_registros', 'p_trab_id');
+    await insertFilteredRecords('classe_vi_registros', 'p_trab_id');
+    await insertFilteredRecords('classe_vii_registros', 'p_trab_id');
+    await insertFilteredRecords('classe_viii_saude_registros', 'p_trab_id');
+    await insertFilteredRecords('classe_viii_remonta_registros', 'p_trab_id');
+    await insertFilteredRecords('classe_ix_registros', 'p_trab_id');
+  };
+
+
+  // =================================================================
+  // RENDER
+  // =================================================================
+
+  const selectedPTrab = pTrabs.find(p => p.id === selectedPTrabId);
+  const isExportDisabled = exportType === 'single' && !selectedPTrabId;
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         <Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
+          Voltar para Gerenciamento
         </Button>
 
         <Card>
           <CardHeader>
-            <CardTitle>Exportar / Importar Dados do P Trab</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5 text-primary" />
+              Exportar e Importar P Trabs
+            </CardTitle>
             <CardDescription>
-              Gerencie o backup e a restauração de seus Planos de Trabalho.
+              Faça backup de seus Planos de Trabalho ou importe dados de outros usuários.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-
-            {/* Seção de Exportação (Download) */}
-            <div className="space-y-4 p-4 border rounded-lg">
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            {/* Coluna de Exportação */}
+            <div className="space-y-4 border-r pr-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Upload className="h-5 w-5 text-destructive" /> {/* Ícone de Upload (vermelho) */}
+                <Download className="h-4 w-4" />
                 Exportar Dados
               </h3>
-              <p className="text-sm text-muted-foreground">
-                Exporte um Plano de Trabalho individual. O arquivo será criptografado com a senha fornecida.
-              </p>
               
-              <div className="flex justify-center">
-                <Dialog open={isSelectPTrabDialogOpen} onOpenChange={setIsSelectPTrabDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button 
-                      variant="default"
-                      disabled={loading || pTrabsList.length === 0}
-                      className="max-w-xs w-full bg-green-600 hover:bg-green-700"
-                      onClick={() => setSelectedPTrabId(null)}
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Exportar P Trab
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle>Selecione o P Trab</DialogTitle>
-                      <DialogDescription>
-                        Escolha qual Plano de Trabalho deseja exportar individualmente.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <Command>
-                      <CommandInput placeholder="Buscar P Trab..." />
-                      <CommandList className="max-h-[300px]">
-                        <CommandEmpty>Nenhum P Trab encontrado.</CommandEmpty>
-                        <CommandGroup>
-                          {pTrabsList.map((ptrab) => (
-                            <CommandItem
-                              key={ptrab.id}
-                              value={ptrab.numero_ptrab}
-                              onSelect={() => setSelectedPTrabId(ptrab.id)}
-                              className={cn(
-                                "cursor-pointer",
-                                selectedPTrabId === ptrab.id && "bg-accent text-accent-foreground"
-                              )}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  selectedPTrabId === ptrab.id ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              <div className="flex flex-col">
-                                <span>{ptrab.numero_ptrab}</span>
-                                <span className="text-xs text-muted-foreground">{ptrab.nome_operacao}</span>
-                              </div>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                    <DialogFooter>
-                      <Button 
-                        onClick={handleInitiateExportSingle} 
-                        disabled={!selectedPTrabId || loading}
-                      >
-                        Exportar P Trab
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+              <div className="space-y-2">
+                <Label>Tipo de Exportação</Label>
+                <Select
+                  value={exportType}
+                  onValueChange={(value: 'single' | 'full') => {
+                    setExportType(value);
+                    setSelectedPTrabId(null);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single">P Trab Único</SelectItem>
+                    <SelectItem value="full">Backup Completo (Todos os P Trabs e Configurações)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              {exportType === 'single' && (
+                <div className="space-y-2">
+                  <Label>Selecione o P Trab</Label>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between">
+                        {selectedPTrab ? (
+                          <span className="truncate">{selectedPTrab.numero_ptrab} - {selectedPTrab.nome_operacao}</span>
+                        ) : (
+                          <span className="text-muted-foreground">Selecione um P Trab...</span>
+                        )}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="p-0 max-w-lg">
+                      <Command>
+                        <DialogHeader className="p-4 pb-0">
+                          <DialogTitle>Selecione o P Trab</DialogTitle>
+                        </DialogHeader>
+                        <CommandInput placeholder="Buscar P Trab..." />
+                        <CommandList className="max-h-[300px]">
+                          <CommandEmpty>Nenhum P Trab encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {pTrabs.map((ptrab) => (
+                              <CommandItem
+                                key={ptrab.id}
+                                value={`${ptrab.numero_ptrab} ${ptrab.nome_operacao}`}
+                                onSelect={() => {
+                                  setSelectedPTrabId(ptrab.id);
+                                  // Fecha o diálogo de seleção
+                                  document.getElementById('radix-:R1p6:')?.click(); 
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selectedPTrabId === ptrab.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span>{ptrab.numero_ptrab}</span>
+                                  <span className="text-xs text-muted-foreground">{ptrab.nome_operacao}</span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              )}
+              
+              <Alert variant="default">
+                <Lock className="h-4 w-4" />
+                <AlertTitle>Criptografia Obrigatória</AlertTitle>
+                <AlertDescription>
+                  Todos os dados exportados são criptografados com uma senha de segurança.
+                </AlertDescription>
+              </Alert>
+
+              <Button
+                onClick={() => setShowPasswordDialog(true)}
+                disabled={loading || isExportDisabled}
+                className="w-full gap-2"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                {loading ? "Preparando..." : "Exportar Arquivo"}
+              </Button>
             </div>
 
-            {/* Seção de Importação (Upload) */}
-            <div className="space-y-4 p-4 border rounded-lg">
+            {/* Coluna de Importação */}
+            <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Download className="h-5 w-5 text-green-600" /> {/* Ícone de Download (verde) */}
+                <Upload className="h-4 w-4" />
                 Importar Dados
               </h3>
-              <p className="text-sm text-muted-foreground">
-                Carregue um arquivo JSON criptografado exportado anteriormente.
-              </p>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+              <div className="space-y-2">
+                <Label htmlFor="import-file">Selecione o Arquivo (.json)</Label>
                 <Input
+                  id="import-file"
                   type="file"
                   accept=".json"
                   onChange={handleFileChange}
+                  ref={fileInputRef}
                   disabled={loading}
-                  // Removendo h-10 e py-2 do input principal e ajustando o file selector
-                  className="file:text-primary file:bg-muted file:border-border file:border file:rounded-md file:px-3 file:py-1 file:text-sm file:font-medium file:cursor-pointer hover:file:bg-muted/80"
                 />
-                <Button 
-                    onClick={handlePreviewImport} 
-                    disabled={loading || !importFile || importDataPreview !== null}
-                    variant="secondary"
-                >
-                    {loading ? "Analisando..." : "Analisar Arquivo"}
-                </Button>
               </div>
-
-              {summary && (
-                <div className="space-y-3 p-3 border border-primary/30 rounded-md bg-primary/5" ref={importSummaryRef}>
-                    <div className="flex items-center gap-2 text-sm font-medium text-primary">
-                        <Check className="h-4 w-4" />
-                        <span>Análise Concluída</span>
-                    </div>
-                    
-                    {summary.type === 'single_ptrab' && summary.ptrabNumber && (
-                        <div className="space-y-1">
-                            <p className="text-sm font-bold text-foreground">
-                                P Trab: {summary.ptrabNumber}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                OM: {summary.omSigla} | Operação: {summary.operationName}
-                            </p>
-                        </div>
-                    )}
-                    
-                    {summary.type === 'full_backup' && (
-                        <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription>
-                                Importação de Backup Completo não é mais suportada. Por favor, importe um P Trab individual.
-                            </AlertDescription>
-                        </Alert>
-                    )}
-
-                    <p className="text-xs text-muted-foreground whitespace-pre-wrap">
-                        {summary.details}
-                    </p>
-                    <Button 
-                        onClick={handleAnalysisReady} 
-                        disabled={loading || summary.type === 'full_backup' || loadingOms} // Desabilita se estiver carregando OMs
-                        className="w-full bg-destructive hover:bg-destructive/90"
-                    >
-                        {loadingOms ? (
-                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando OMs...</>
-                        ) : (
-                            loading ? "Preparando Importação..." : "Continuar Importação (Opções)"
-                        )}
-                    </Button>
-                </div>
+              
+              {importSummary && (
+                <Alert variant="default">
+                  <FileText className="h-4 w-4" />
+                  <AlertTitle>Arquivo Carregado</Alertulo>
+                  <AlertDescription className="text-sm">
+                    {importSummary.details}
+                  </AlertDescription>
+                </Alert>
               )}
+
+              <Button
+                onClick={handleStartImport}
+                disabled={loading || !fileToImport}
+                className="w-full gap-2"
+                variant="secondary"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {loading ? "Aguarde..." : "Iniciar Importação"}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -797,47 +777,42 @@ const PTrabExportImportPage = () => {
       
       {/* Diálogo de Senha de Exportação */}
       <ExportPasswordDialog
-        open={isExportPasswordDialogOpen}
-        onOpenChange={setIsExportPasswordDialogOpen}
-        onConfirm={performExport}
-        title={"Senha de Criptografia (P Trab Único)"}
-        description="Esta senha será usada para 'criptografar' o arquivo exportado. Você precisará dela para importar o arquivo futuramente."
-      />
-
-      {/* Diálogo de Senha de Importação */}
-      <ExportPasswordDialog
-        open={isImportPasswordDialogOpen}
-        onOpenChange={setIsImportPasswordDialogOpen}
-        onConfirm={performDecryptionAndPreview}
-        title="Senha de Descriptografia"
-        description="Digite a senha usada para criptografar o arquivo para descriptografar o conteúdo."
-        confirmButtonText="Confirmar Descriptografia" // Ajustado o texto do botão
+        open={showPasswordDialog}
+        onOpenChange={setShowPasswordDialog}
+        onConfirm={handleExport}
+        title="Senha de Criptografia"
+        description="Digite uma senha para criptografar o arquivo de exportação."
+        confirmButtonText="Criptografar e Baixar"
       />
       
-      {/* NOVO: Diálogo de Conflito */}
-      {importDataPreview && importDataPreview.type === 'single_ptrab' && (
-        <ImportConflictDialog
-          open={isConflictDialogOpen}
-          onOpenChange={setIsConflictDialogOpen}
-          ptrabNumber={(importDataPreview.data.p_trab as Tables<'p_trab'>).numero_ptrab}
-          onOverwrite={handleOverwrite}
-          onCreateNew={() => {
-            // Ao criar novo número, abrimos o diálogo de opções para que o usuário selecione a OM
-            setIsConflictDialogOpen(false);
-            setIsImportOptionsDialogOpen(true);
-          }}
-        />
-      )}
-
-      {/* Diálogo de Opções de Importação (OM/Numeração) */}
-      {importDataPreview && importDataPreview.type === 'single_ptrab' && (
+      {/* Diálogo de Senha de Importação */}
+      <ExportPasswordDialog
+        open={showImportPasswordDialog}
+        onOpenChange={setShowImportPasswordDialog}
+        onConfirm={handleDecryptAndAnalyze}
+        title="Senha de Descriptografia"
+        description="Digite a senha usada para criptografar o arquivo importado."
+        confirmButtonText="Descriptografar e Analisar"
+      />
+      
+      {/* Diálogo de Conflito (Apenas para P Trab Único Oficial Duplicado) */}
+      <ImportConflictDialog
+        open={showConflictDialog}
+        onOpenChange={setShowConflictDialog}
+        ptrabNumber={importedPTrab?.numero_ptrab || ''}
+        onOverwrite={handleOverwrite}
+        onCreateNew={handleCreateNew}
+      />
+      
+      {/* Diálogo de Opções de Importação (Para Minutas ou P Trabs sem conflito) */}
+      {importedPTrab && (
         <ImportPTrabOptionsDialog
-          open={isImportOptionsDialogOpen}
-          onOpenChange={setIsImportOptionsDialogOpen}
-          importedPTrab={importDataPreview.data.p_trab as Tables<'p_trab'>}
+          open={showImportOptionsDialog}
+          onOpenChange={setShowImportOptionsDialog}
+          importedPTrab={importedPTrab}
           existingPTrabNumbers={existingPTrabNumbers}
-          userOms={userOms} // Passar a lista de OMs
-          onConfirmImport={handleConfirmSinglePTrabImport}
+          userOms={userOms}
+          onConfirmImport={handleConfirmImportOptions}
         />
       )}
     </div>

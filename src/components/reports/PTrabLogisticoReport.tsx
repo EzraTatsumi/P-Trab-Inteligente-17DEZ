@@ -98,93 +98,67 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
     const numeroPTrab = ptrabData.numero_ptrab.replace(/\//g, '-'); 
     
-    // Verifica se o P Trab está aprovado (numerado oficialmente)
-    const isApproved = ptrabData.status === 'aprovado' && !ptrabData.numero_ptrab.startsWith('Minuta');
+    // 1. Usar a sigla da OM diretamente
+    const omSigla = ptrabData.nome_om;
     
-    let nomeBase = `P Trab Nr ${numeroPTrab} - ${ptrabData.nome_operacao}`;
+    // 2. Construir o nome base no formato: P Trab Nr [NUMERO] - [OM_SIGLA] - [NOME_OPERACAO] - Atz [DATA]
+    let nomeBase = `P Trab Nr ${numeroPTrab} - ${omSigla} - ${ptrabData.nome_operacao}`;
     
-    // Se NÃO estiver aprovado, inclui a sigla da OM
-    if (!isApproved) {
-        nomeBase += ` - ${ptrabData.nome_om}`;
-    }
-    
+    // 3. Adicionar a data de atualização
     nomeBase += ` - Atz ${dataAtz}`;
     
     return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = useCallback(() => {
+    if (!contentRef.current) return;
 
-  const exportPDF = useCallback(async () => {
-    const element = contentRef.current;
-    if (!element) return;
+    toast({
+      title: "Gerando PDF...",
+      description: "Aguarde enquanto o relatório é processado.",
+    });
 
-    try {
-      const header = document.querySelector('.print\\:hidden');
-      if (header) header.classList.add('hidden');
-
-      const canvas = await html2canvas(element as HTMLElement, {
-        scale: 2,
-        useCORS: true,
-        logging: true,
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4',
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = pdfWidth / imgWidth; 
-
-      const scaledImgHeight = imgHeight * ratio;
-
+    html2canvas(contentRef.current, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+    }).then((canvas) => {
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
       let position = 0;
-      const pageHeight = pdfHeight;
 
-      while (position < scaledImgHeight) {
-        if (position > 0) {
-          pdf.addPage();
-        }
-        pdf.addImage(
-          imgData,
-          'PNG',
-          0,
-          -position,
-          pdfWidth,
-          scaledImgHeight
-        );
-        position += pageHeight;
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
       }
 
-      const fileName = generateFileName('PDF');
-      pdf.save(fileName);
-
+      pdf.save(generateFileName('PDF'));
+      onExportSuccess();
+      toast.dismiss();
       toast({
-        title: "PDF gerado com sucesso!",
-        description: `Arquivo ${fileName} foi baixado.`,
+        title: "PDF Exportado!",
+        description: "O P Trab Logístico foi salvo com sucesso.",
         duration: 3000,
       });
-
-      if (header) header.classList.remove('hidden');
-      onExportSuccess();
-    } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
+    }).catch(error => {
+      console.error("Erro ao gerar PDF:", error);
+      toast.dismiss();
       toast({
-        title: "Erro ao gerar PDF",
-        description: "Não foi possível exportar o documento. Verifique o console para detalhes.",
+        title: "Erro na Exportação",
+        description: "Não foi possível gerar o PDF. Tente novamente.",
         variant: "destructive",
       });
-    }
-  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII]);
+    });
+  }, [ptrabData, onExportSuccess, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM]);
 
   const exportExcel = useCallback(async () => {
     if (!ptrabData) return;
