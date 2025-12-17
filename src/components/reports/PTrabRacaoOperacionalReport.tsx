@@ -40,7 +40,13 @@ const generateRacaoOpMemoriaCalculo = (linha: RacaoOpLinha): string => {
     const faseFormatada = formatFasesParaTexto(linha.fase_atividade);
 
     // Formato simplificado e padronizado (ajustado para o modelo)
-    return `33.90.30 – ração operacional para atender ${efetivo} militares, por até ${dias_operacao} dias, para ser utilizada na Operação de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de tarefas, descentralizadas, afastadas da(s) base(s) de apoio logístico.`;
+    return `33.90.30 – ração operacional para atender ${efetivo} militares, por até ${dias_operacao} dias, para ser utilizada na Operação de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de tarefas, descentralizadas, afastadas da(s) base(s) de apoio logístico.
+OM de Destino: ${om} (UG: ${ug})
+
+Quantitativo R2 (24h): ${formatNumber(r2_quantidade)} un.
+Quantitativo R3 (12h): ${formatNumber(r3_quantidade)} un.
+
+Total de Rções Operacionais: ${formatNumber(totalRacoes)} unidades.`;
 };
 
 
@@ -91,10 +97,28 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
   // Função para gerar o nome do arquivo
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
+    // Substitui barras por hífens para segurança no nome do arquivo
     const numeroPTrab = ptrabData.numero_ptrab.replace(/\//g, '-'); 
     
-    let nomeBase = `P Trab Nr ${numeroPTrab} - Racao Operacional`;
+    const isMinuta = ptrabData.numero_ptrab.startsWith("Minuta");
+    const currentYear = new Date(ptrabData.periodo_inicio).getFullYear();
+    
+    // 1. Construir o nome base
+    let nomeBase = `P Trab Nr ${numeroPTrab}`;
+    
+    if (isMinuta) {
+        // Se for Minuta, adiciona o ano e a sigla da OM
+        nomeBase += ` - ${currentYear} - ${ptrabData.nome_om}`;
+    } else {
+        // Se for Aprovado, o número já contém o ano e a sigla da OM (ex: 1-2025-23ª Bda Inf Sl)
+        // Apenas adiciona a sigla da OM para clareza, mas sem o separador extra
+        // Ex: P Trab Nr 1-2025-23ª Bda Inf Sl - Op MARAJOARA...
+    }
+    
+    // 2. Adicionar o nome da operação
     nomeBase += ` - ${ptrabData.nome_operacao}`;
+    
+    // 3. Adicionar a data de atualização
     nomeBase += ` - Atz ${dataAtz}`;
     
     return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
@@ -108,6 +132,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       description: "Aguarde enquanto o relatório é processado.",
     });
 
+    // Força a renderização de todos os elementos antes de capturar
     html2canvas(contentRef.current, {
       scale: 2,
       useCORS: true,
@@ -175,7 +200,9 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     const headerFontStyle = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF000000' } };
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
     const corHeader = 'FFD9D9D9'; // Cinza claro para o cabeçalho da tabela
-    const corTotal = 'FFC6E0B4'; // Verde claro para o total
+    const corTotalA = 'FFD9D9D9'; // Cinza para o total (Célula A+B)
+    const corTotalC = 'FFB4C7E7'; // Azul para a quantidade (Célula C)
+    const corTotalD = 'FFFFFFFF'; // Branco para o detalhamento (Célula D)
     // -------------------------------------------
 
     let currentRow = 1;
@@ -296,20 +323,29 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     
     // Linha de Total
     const totalRow = worksheet.getRow(currentRow);
+    
+    // Célula A+B (Cinza)
     totalRow.getCell('A').value = 'TOTAL';
     worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
     totalRow.getCell('A').alignment = centerMiddleAlignment;
     totalRow.getCell('A').font = headerFontStyle;
+    totalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalA } }; // Cinza
+    totalRow.getCell('A').border = cellBorder;
     
+    // Célula C (Azul)
     totalRow.getCell('C').value = totalRacoesGeral;
     totalRow.getCell('C').alignment = centerMiddleAlignment;
     totalRow.getCell('C').font = headerFontStyle;
+    totalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalC } }; // Azul
+    totalRow.getCell('C').border = cellBorder;
     
-    ['A', 'B', 'C', 'D'].forEach(col => {
-        const cell = totalRow.getCell(col);
-        cell.border = cellBorder;
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotal } };
-    });
+    // Célula D (Branco)
+    totalRow.getCell('D').value = '';
+    totalRow.getCell('D').alignment = centerMiddleAlignment;
+    totalRow.getCell('D').font = headerFontStyle;
+    totalRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalD } }; // Branco
+    totalRow.getCell('D').border = cellBorder;
+
     currentRow++;
     
     currentRow++;
@@ -437,11 +473,39 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
                 </tr>
               ))}
               
-              {/* Linha de Total */}
-              <tr className="total-row-op">
-                <td colSpan={2} className="text-center font-bold">TOTAL</td>
-                <td className="text-center font-bold">{formatNumber(totalRacoesGeral)}</td>
-                <td></td>
+              {/* Linha de Total - Estilos aplicados inline */}
+              <tr>
+                <td 
+                  colSpan={2} 
+                  className="text-center font-bold" 
+                  style={{ 
+                    backgroundColor: '#D9D9D9', // Cinza (corTotalA)
+                    color: '#000', // Preto
+                    border: '1px solid #000',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  TOTAL
+                </td>
+                <td 
+                  className="text-center font-bold" 
+                  style={{ 
+                    backgroundColor: '#B4C7E7', // Azul (corTotalC)
+                    color: '#000', // Preto
+                    border: '1px solid #000',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  {formatNumber(totalRacoesGeral)}
+                </td>
+                <td 
+                  style={{ 
+                    backgroundColor: '#FFFFFF', // Branco (corTotalD)
+                    color: '#000', // Preto
+                    border: '1px solid #000',
+                  }}
+                >
+                </td>
               </tr>
             </tbody>
             </table>
@@ -495,8 +559,6 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         .col-om-op { width: 15%; text-align: center; }
         .col-quantidade-op { width: 10%; text-align: center; }
         .col-detalhamento-op { width: 50%; text-align: left; }
-        
-        .total-row-op { background-color: #C6E0B4; font-weight: bold; }
         
         .ptrab-footer { margin-top: 3rem; text-align: center; }
         .signature-block { margin-top: 4rem; }
