@@ -177,7 +177,7 @@ const PTrabManager = () => {
     // Buscar o perfil para obter o last_name e o raw_user_meta_data (que contém posto_graduacao)
     const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('last_name, raw_user_meta_data') 
+        .select('first_name, last_name, raw_user_meta_data') // Incluindo first_name
         .eq('id', userId)
         .single();
 
@@ -186,7 +186,14 @@ const PTrabManager = () => {
     }
     
     // Usar dados do perfil se disponíveis, senão usar o metadata do auth.user
-    const nomeGuerra = profileData?.last_name || '';
+    const firstName = profileData?.first_name || '';
+    const lastName = profileData?.last_name || '';
+    
+    // Determinar o Nome de Guerra: prioriza last_name, mas usa first_name se last_name estiver vazio
+    let nomeGuerra = lastName;
+    if (!nomeGuerra && firstName) {
+        nomeGuerra = firstName;
+    }
     
     // Acessar posto_graduacao do raw_user_meta_data do perfil (que é JSONB)
     const profileMetadata = profileData?.raw_user_meta_data as { posto_graduacao?: string } | undefined;
