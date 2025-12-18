@@ -52,7 +52,10 @@ O Assistente Dyad é um chatbot de Inteligência Artificial integrado que pode a
 
 ## 4. Configurações
 
-Acessível pelo ícone de engrenagem (Settings).
+Acessível pelo ícone de engrenagem (Settings) na tela de Gerenciamento de Planos de Trabalho. As opções disponíveis são:
+
+### Perfil do Usuário (Página)
+Permite atualizar informações pessoais, como nome de guerra, posto/graduação e OM de vinculação.
 
 ### Diretriz de Custeio (Página)
 Permite configurar os valores e fatores de cálculo utilizados pelo sistema, garantindo a conformidade com as diretrizes do COLOG para o ano de referência.
@@ -73,6 +76,9 @@ Permite gerenciar backups e transferências de dados.
 
 - **Exportar:** Cria um arquivo JSON criptografado (com senha) de um P Trab único ou de um Backup Completo (incluindo todas as configurações e P Trabs).
 - **Importar:** Descriptografa e importa um arquivo. O sistema verifica conflitos de numeração e sugere a criação de uma Minuta se necessário.
+
+### Vincular P Trab (Ação)
+Permite ao usuário colar um link de compartilhamento para solicitar acesso a um P Trab de outro proprietário.
 
 ## 5. Formulários de Classes (PTrabForm)
 
