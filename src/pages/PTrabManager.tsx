@@ -1334,6 +1334,7 @@ const PTrabManager = () => {
             throw new Error("Link de compartilhamento incompleto.");
         }
         
+        // 1. Chama a função RPC para registrar a solicitação
         const { data, error } = await supabase.rpc('request_ptrab_share', {
             p_ptrab_id: ptrabId,
             p_share_token: shareToken,
@@ -1346,28 +1347,13 @@ const PTrabManager = () => {
             throw new Error("P Trab não encontrado ou token inválido.");
         }
         
-        const { data: ptrabData, error: fetchPTrabError } = await supabase
-            .from('p_trab')
-            .select('user_id, nome_om')
-            .eq('id', ptrabId)
-            .single();
-            
-        if (fetchPTrabError || !ptrabData) throw new Error("Falha ao buscar dados do P Trab.");
-        
-        const { data: ownerProfile } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, raw_user_meta_data')
-            .eq('id', ptrabData.user_id)
-            .single();
-            
-        const ownerMetadata = ownerProfile?.raw_user_meta_data as { posto_graduacao?: string } | undefined;
-        const ownerName = ownerProfile?.last_name || ownerProfile?.first_name || 'Usuário';
-        const ownerPostoGrad = ownerMetadata?.posto_graduacao || '';
+        // 2. Simplificação: Apenas confirma que a solicitação foi enviada.
+        // Removemos a busca por dados do P Trab e do perfil do proprietário para evitar erros de RLS.
         
         toast.success(
             "Solicitação Enviada!", 
             {
-                description: `Sua solicitação de acesso foi enviada para ${ownerPostoGrad} ${ownerName} da OM ${ptrabData.nome_om}. Você será notificado quando for aprovada.`,
+                description: `Sua solicitação de acesso foi enviada ao proprietário do P Trab. Você será notificado quando for aprovada.`,
                 duration: 8000,
             }
         );
