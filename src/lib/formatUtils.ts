@@ -41,7 +41,8 @@ export const formatNumberForInput = (num: number, minFractionDigits: number = 2)
 };
 
 /**
- * Cleans a raw string input (allowing comma as decimal separator) and removes thousand separators.
+ * Cleans a raw string input, allowing only digits, dots (for thousands), and one comma (for decimal).
+ * This version is designed to be permissive during typing.
  */
 export const formatInputWithThousands = (value: string | undefined | null): string => {
   // FIX: Ensure value is treated as a string, defaulting to empty string if null or undefined
@@ -149,15 +150,4 @@ export const formatDateDDMMMAA = (dateString: string | Date): string => {
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   // Use date-fns format: dd (day), MMM (short month name in Portuguese), yy (short year)
   return format(date, 'ddMMMyy', { locale: ptBR }).toUpperCase();
-};
-
-/**
- * Formats a date string into DD/MM/YYYY HH:MM format.
- * @param dateString The date string.
- * @returns Formatted date and time string.
- */
-export const formatDateTime = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  });
 };

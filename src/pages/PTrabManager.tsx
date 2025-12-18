@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Link, Share2, Check, Clock } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -37,7 +37,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { formatCurrency, formatDateTime } from "@/lib/formatUtils";
+import { formatCurrency } from "@/lib/formatUtils";
 import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate, generateApprovalPTrabNumber, generateUniqueMinutaNumber } from "@/lib/ptrabNumberUtils";
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
 import { ConsolidationNumberDialog } from "@/components/ConsolidationNumberDialog";
@@ -49,16 +49,12 @@ import { updateUserCredits, fetchUserCredits } from "@/lib/creditUtils";
 import { cn } from "@/lib/utils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 import { useSession } from "@/components/SessionContextProvider";
-import AIChatDrawer from "@/components/AIChatDrawer";
-import { SharePTrabDialog } from "@/components/SharePTrabDialog";
-import { ReceiveShareLinkDialog } from "@/components/ReceiveShareLinkDialog";
-import { ShareRequestsDialog } from "@/components/ShareRequestsDialog"; // NOVO IMPORT
+import AIChatDrawer from "@/components/AIChatDrawer"; // NOVO IMPORT
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
   origem: 'original' | 'importado' | 'consolidado';
   rotulo_versao: string | null;
-  shared_with: string[] | null; // Adicionado shared_with
 };
 
 export interface SimplePTrab {
@@ -134,17 +130,6 @@ const PTrabManager = () => {
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
   const [ptrabToFill, setPtrabToFill] = useState<PTrab | null>(null);
   const hasBeenPrompted = useRef(new Set<string>()); // Armazena IDs dos PTrabs já perguntados
-  
-  // NOVO ESTADO: Diálogo de Compartilhamento
-  const [showShareDialog, setShowShareDialog] = useState(false);
-  const [ptrabToShare, setPtrabToShare] = useState<PTrab | null>(null);
-  
-  // NOVO ESTADO: Diálogo de Recebimento de Link
-  const [showReceiveShareDialog, setShowReceiveShareDialog] = useState(false);
-  
-  // NOVO ESTADO: Diálogo de Gerenciamento de Solicitações
-  const [showShareRequestsDialog, setShowShareRequestsDialog] = useState(false);
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(0); // Contagem de solicitações pendentes
 
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
@@ -188,6 +173,12 @@ const PTrabManager = () => {
     return null; 
   }, []);
 
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  };
+
   const getOriginBadge = (origem: PTrabDB['origem']) => {
     switch (origem) {
         case 'importado':
@@ -215,16 +206,6 @@ const PTrabManager = () => {
 
   const handleNavigateToPrintOrExport = (ptrabId: string) => {
       navigate(`/ptrab/print?ptrabId=${ptrabId}`);
-  };
-  
-  // MUDANÇA: Função para abrir o diálogo de compartilhamento
-  const handleGenerateShareLink = (ptrab: PTrab) => {
-    if (!ptrab.share_token) {
-        toast.error("Token de compartilhamento não encontrado.");
-        return;
-    }
-    setPtrabToShare(ptrab);
-    setShowShareDialog(true);
   };
 
   // Lógica de Consolidação
@@ -330,44 +311,11 @@ const PTrabManager = () => {
     return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
   };
 
-  const fetchPendingRequestsCount = useCallback(async () => {
-    if (!user?.id) return 0;
-    
-    try {
-        // 1. Buscar IDs dos PTrabs que o usuário é proprietário
-        const { data: userPTrabs, error: ptrabError } = await supabase
-            .from('p_trab')
-            .select('id')
-            .eq('user_id', user.id);
-            
-        if (ptrabError) throw ptrabError;
-        
-        const ptrabIds = (userPTrabs || []).map(p => p.id);
-        
-        if (ptrabIds.length === 0) return 0;
-
-        // 2. Contar solicitações pendentes para esses PTrabs
-        const { count, error: countError } = await supabase
-            .from('ptrab_share_requests')
-            .select('id', { count: 'exact', head: true })
-            .in('ptrab_id', ptrabIds)
-            .eq('status', 'pending');
-            
-        if (countError) throw countError;
-        
-        return count || 0;
-        
-    } catch (e) {
-        console.error("Error fetching pending requests count:", e);
-        return 0;
-    }
-  }, [user?.id]);
-
   const loadPTrabs = useCallback(async () => {
     try {
       const { data: pTrabsData, error: pTrabsError } = await supabase
         .from("p_trab")
-        .select("*, comentario, origem, rotulo_versao, share_token, shared_with") // Incluir shared_with
+        .select("*, comentario, origem, rotulo_versao") // Incluir rotulo_versao
         .order("created_at", { ascending: false });
 
       if (pTrabsError) throw pTrabsError;
@@ -524,11 +472,8 @@ const PTrabManager = () => {
             // Se o nome for encontrado, usa ele. Caso contrário, define como string vazia.
             setUserName(name || ""); 
         });
-        
-        // NOVO: Fetch pending requests count
-        fetchPendingRequestsCount().then(count => setPendingRequestsCount(count));
     }
-  }, [loadPTrabs, user, fetchUserName, fetchPendingRequestsCount]);
+  }, [loadPTrabs, user, fetchUserName]);
 
   // Efeito para atualizar o número sugerido no diálogo de clonagem
   useEffect(() => {
@@ -1659,12 +1604,8 @@ const PTrabManager = () => {
 
             <DropdownMenu open={settingsDropdownOpen} onOpenChange={setSettingsDropdownOpen}>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="relative">
+                <Button variant="outline" size="icon">
                   <Settings className="h-4 w-4" />
-                  {/* Badge de Notificação de Solicitações Pendentes */}
-                  {pendingRequestsCount > 0 && (
-                    <span className="absolute top-0 right-0 block h-3 w-3 rounded-full ring-2 ring-background bg-red-500" />
-                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent 
@@ -1673,25 +1614,6 @@ const PTrabManager = () => {
                 onPointerLeave={() => setSettingsDropdownOpen(false)}
               >
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                
-                {/* NOVO ITEM: Gerenciar Solicitações de Compartilhamento */}
-                <DropdownMenuItem onClick={() => setShowShareRequestsDialog(true)} className="relative">
-                  <Clock className="mr-2 h-4 w-4" />
-                  Gerenciar Solicitações
-                  {pendingRequestsCount > 0 && (
-                    <Badge className="ml-auto bg-red-500 text-white text-xs h-5">
-                        {pendingRequestsCount}
-                    </Badge>
-                  )}
-                </DropdownMenuItem>
-                
-                {/* NOVO ITEM: Receber P Trab Compartilhado */}
-                <DropdownMenuItem onClick={() => setShowReceiveShareDialog(true)}>
-                  <Link className="mr-2 h-4 w-4" />
-                  Receber P Trab Compartilhado
-                </DropdownMenuItem>
-                
                 <DropdownMenuSeparator />
                 
                 {/* NOVO ITEM: Perfil do Usuário */}
@@ -1768,10 +1690,6 @@ const PTrabManager = () => {
                     // MUDANÇA AQUI: Limpa o nome da operação se for consolidado
                     const displayOperationName = cleanOperationName(ptrab.nome_operacao, ptrab.origem);
                     
-                    // NOVO: Lógica de Compartilhamento
-                    const isSharedByMe = ptrab.user_id === user?.id && ptrab.shared_with && ptrab.shared_with.length > 0;
-                    const isSharedWithMe = ptrab.user_id !== user?.id;
-                    
                     return (
                     <TableRow key={ptrab.id}>
                       <TableCell className="font-medium">
@@ -1802,20 +1720,6 @@ const PTrabManager = () => {
                             <Badge variant="secondary" className="mt-1 text-xs bg-secondary text-secondary-foreground">
                               <GitBranch className="h-3 w-3 mr-1" />
                               {ptrab.rotulo_versao}
-                            </Badge>
-                          )}
-                          
-                          {/* NOVO: Badge de Compartilhamento (Posição sugerida: abaixo do nome da operação/rótulo) */}
-                          {isSharedWithMe && (
-                            <Badge className="mt-1 text-xs bg-purple-500 text-white hover:bg-purple-600">
-                              <Share2 className="h-3 w-3 mr-1" />
-                              Compartilhado
-                            </Badge>
-                          )}
-                          {isSharedByMe && (
-                            <Badge className="mt-1 text-xs bg-green-500 text-white hover:bg-green-600">
-                              <Check className="h-3 w-3 mr-1" />
-                              Compartilhado (Ativo)
                             </Badge>
                           )}
                         </div>
@@ -2000,16 +1904,6 @@ const PTrabManager = () => {
                                 Clonar P Trab
                               </DropdownMenuItem>
                               
-                              {/* Ação 4: Compartilhar P Trab (Desabilitado se arquivado) */}
-                              <DropdownMenuItem 
-                                onClick={() => ptrab.status !== 'arquivado' && handleGenerateShareLink(ptrab)}
-                                disabled={ptrab.status === 'arquivado'}
-                                className={ptrab.status === 'arquivado' ? "opacity-50 cursor-not-allowed" : ""}
-                              >
-                                <Share2 className="mr-2 h-4 w-4" />
-                                Compartilhar
-                              </DropdownMenuItem>
-                              
                               {/* NOVO: Arquivar (Disponível se NÃO estiver arquivado) */}
                               {ptrab.status !== 'arquivado' && (
                                 <DropdownMenuItem 
@@ -2087,7 +1981,7 @@ const PTrabManager = () => {
             <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
               Cancelar
             </AlertDialogCancel>
-          </DialogFooter>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
@@ -2243,33 +2137,6 @@ const PTrabManager = () => {
         open={showCreditPrompt}
         onConfirm={handlePromptConfirm}
         onCancel={handlePromptCancel}
-      />
-      
-      {/* NOVO: Diálogo de Compartilhamento */}
-      <SharePTrabDialog
-        open={showShareDialog}
-        onOpenChange={setShowShareDialog}
-        ptrab={ptrabToShare ? {
-            id: ptrabToShare.id,
-            numero_ptrab: ptrabToShare.numero_ptrab,
-            nome_operacao: ptrabToShare.nome_operacao,
-            share_token: ptrabToShare.share_token || '',
-            nome_om: ptrabToShare.nome_om,
-        } : null}
-      />
-      
-      {/* NOVO: Diálogo de Recebimento de Link */}
-      <ReceiveShareLinkDialog
-        open={showReceiveShareDialog}
-        onOpenChange={setShowReceiveShareDialog}
-        onSuccess={loadPTrabs} // Recarrega a lista após o sucesso
-      />
-      
-      {/* NOVO: Diálogo de Gerenciamento de Solicitações */}
-      <ShareRequestsDialog
-        open={showShareRequestsDialog}
-        onOpenChange={setShowShareRequestsDialog}
-        onApprovalSuccess={loadPTrabs} // Recarrega a lista após a aprovação
       />
       
       {/* NOVO: Drawer de Chat com IA */}
