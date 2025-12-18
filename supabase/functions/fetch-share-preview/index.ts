@@ -54,28 +54,39 @@ serve(async (req) => {
     }
     
     // 4. Formatar o nome do proprietário
-    // Acessa os dados do JSONB de forma segura
     const metadata = profile?.raw_user_meta_data as { posto_graduacao?: string, nome_om?: string } | undefined;
     
-    const nomeGuerra = profile?.last_name || profile?.first_name || 'Proprietário Desconhecido';
-    const postoGraduacao = metadata?.posto_graduacao || 'Posto/Grad Desconhecido';
-    const nomeOM = metadata?.nome_om || 'OM Desconhecida';
+    // Prioriza last_name (Nome de Guerra), fallback para first_name, fallback final para 'Proprietário'
+    const nomeGuerra = (profile?.last_name?.trim() || profile?.first_name?.trim() || 'Proprietário');
     
-    // Formato completo: Posto/Grad Nome de Guerra (OM)
-    let ownerName = nomeGuerra;
+    // Acessa e limpa os campos militares
+    const postoGraduacao = metadata?.posto_graduacao?.trim();
+    const nomeOM = metadata?.nome_om?.trim();
     
-    // Se o posto/graduação for 'Posto/Grad Desconhecido', não o exibe, apenas o nome de guerra
-    if (postoGraduacao !== 'Posto/Grad Desconhecido') {
-        ownerName = `${postoGraduacao} ${nomeGuerra}`;
+    let ownerNameParts: string[] = [];
+    
+    // 1. Adicionar Posto/Graduação se existir e não for vazio
+    if (postoGraduacao) {
+        ownerNameParts.push(postoGraduacao);
     }
     
-    ownerName = `${ownerName} (${nomeOM})`;
+    // 2. Adicionar Nome de Guerra
+    ownerNameParts.push(nomeGuerra);
+    
+    let ownerName = ownerNameParts.join(' ');
+    
+    // 3. Adicionar OM (se existir, senão usa fallback)
+    if (nomeOM) {
+        ownerName += ` (${nomeOM})`;
+    } else {
+        ownerName += ` (OM Desconhecida)`;
+    }
 
 
     return new Response(
       JSON.stringify({
         ptrabName: `${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`,
-        ownerName: ownerName, // Agora inclui Posto/Grad e OM
+        ownerName: ownerName,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
