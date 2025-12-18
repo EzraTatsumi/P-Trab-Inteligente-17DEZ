@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
-// NOVO: URL da API z.AI (Placeholder - Substitua pela URL real da sua API z.AI)
-const ZAI_API_URL = "https://api.z.ai/v1/chat/completions"; 
+// CORRIGIDO: URL da API z.AI
+const ZAI_API_URL = "https://api.z.ai/api/coding/paas/v4"; 
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,11 +17,11 @@ serve(async (req) => {
   }
 
   try {
-    // 1. Obter a chave de API do segredo (Usando o nome do segredo fornecido no contexto)
-    const ZAI_API_KEY = Deno.env.get("Chat IA P Trab Inteligente");
+    // 1. Obter a chave de API do segredo (CORRIGIDO: Usando o nome do segredo 'Chat AI - zAI')
+    const ZAI_API_KEY = Deno.env.get("Chat AI - zAI");
     if (!ZAI_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "Erro de Configuração: A chave 'Chat IA P Trab Inteligente' não está definida nos segredos da Edge Function." }),
+        JSON.stringify({ error: "Erro de Configuração: A chave 'Chat AI - zAI' não está definida nos segredos da Edge Function." }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
