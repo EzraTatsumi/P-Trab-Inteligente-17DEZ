@@ -2195,7 +2195,7 @@ const PTrabManager = () => {
               Tem certeza que deseja reativar o P Trab "{ptrabToReactivateName}"? Ele retornará ao status de "Aprovado" (se já numerado) ou "Aberto" (se for Minuta), permitindo novas edições.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <DialogFooter>
             <AlertDialogAction onClick={handleConfirmReactivateStatus} disabled={loading}>
               {loading ? "Aguarde..." : "Confirmar Reativação"}
             </AlertDialogAction>
