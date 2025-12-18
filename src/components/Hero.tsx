@@ -76,7 +76,7 @@ export const Hero = ({ onScrollToFeatures }: HeroProps) => {
             <div className="flex flex-col items-center">
               <div className="flex items-baseline gap-1 mb-1">
                 <span className="text-4xl md:text-5xl font-bold text-accent">100</span>
-                <span className="text-2xl font-bold text-accent">%</span>
+                <span className="2xl font-bold text-accent">%</span>
               </div>
               <span className="text-sm text-primary-foreground/70">Conformidade</span>
             </div>
@@ -89,7 +89,7 @@ export const Hero = ({ onScrollToFeatures }: HeroProps) => {
               className="group bg-accent hover:bg-accent-light text-accent-foreground shadow-lg hover:shadow-glow transition-all duration-300"
               asChild
             >
-              <a href="/ptrab">
+              <a href="/login"> {/* ALTERADO: Aponta para /login */}
                 Acessar Plataforma
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </a>
