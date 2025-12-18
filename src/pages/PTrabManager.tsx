@@ -1379,12 +1379,7 @@ const PTrabManager = () => {
         onUpdate={loadPTrabs}
       />
       
-      {/* Diálogo de Prompt de Crédito (Mantido aqui pois usa estado local) */}
-      <CreditPromptDialog
-        open={showCreditPrompt}
-        onConfirm={() => { /* Placeholder */ }}
-        onCancel={() => { /* Placeholder */ }}
-      />
+      {/* REMOVIDO: CreditPromptDialog foi movido para PTrabModals.tsx */}
       
       <AIChatDrawer />
     </div>
