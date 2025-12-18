@@ -39,7 +39,6 @@ interface ManageSharingDialogProps {
   onOpenChange: (open: boolean) => void;
   ptrabId: string;
   ptrabName: string;
-  // Removido sharedWith e requests como props, serão buscados internamente
   onApprove: (requestId: string) => void;
   onReject: (requestId: string) => void;
   onCancelSharing: (ptrabId: string, userIdToRemove: string, userName: string) => void;
@@ -91,21 +90,7 @@ const ManageSharingDialog: React.FC<ManageSharingDialogProps> = ({
 
     setLoadingLocal(true);
     try {
-      // 1. Buscar solicitações e perfis
-      // A consulta de requests já inclui o perfil do solicitante (requester_profile)
-      const { data: requestsData, error: requestsError } = await supabase
-        .from('ptrab_share_requests')
-        .select(`
-            *,
-            requester_profile:requester_id (id, first_name, last_name, raw_user_meta_data)
-        `)
-        .eq('ptrab_id', ptrabId)
-        .order('created_at', { ascending: true });
-        
-      if (requestsError) throw requestsError;
-      setRequests(requestsData as ShareRequest[]);
-      
-      // 2. Buscar lista de shared_with e perfis ativos
+      // 1. Buscar PTrab para obter a lista de IDs compartilhados
       const { data: ptrabData, error: ptrabError } = await supabase
         .from('p_trab')
         .select('shared_with')
@@ -117,36 +102,64 @@ const ManageSharingDialog: React.FC<ManageSharingDialogProps> = ({
       const currentSharedWith = ptrabData.shared_with || [];
       setSharedWithIds(currentSharedWith);
 
-      if (currentSharedWith.length > 0) {
+      // 2. Buscar solicitações (sem nested select de perfil)
+      const { data: requestsData, error: requestsError } = await supabase
+        .from('ptrab_share_requests')
+        .select(`*, requester_id`) // Apenas o ID do solicitante
+        .eq('ptrab_id', ptrabId)
+        .order('created_at', { ascending: true });
+        
+      if (requestsError) throw requestsError;
+      
+      const requesterIds = (requestsData || []).map(r => r.requester_id);
+      const allInvolvedIds = Array.from(new Set([...currentSharedWith, ...requesterIds]));
+      
+      // 3. Buscar perfis de todos os IDs envolvidos (requer a política RLS que criamos)
+      let profilesMap: Record<string, ShareRequest['requester_profile']> = {};
+      
+      if (allInvolvedIds.length > 0) {
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('id, first_name, last_name, raw_user_meta_data')
-          .in('id', currentSharedWith);
+          .in('id', allInvolvedIds);
 
         if (profilesError) throw profilesError;
+        
+        (profiles || []).forEach(p => {
+            profilesMap[p.id] = p as ShareRequest['requester_profile'];
+        });
+      }
+      
+      // 4. Reconstruir a lista de requests com os perfis
+      const requestsWithProfiles: ShareRequest[] = (requestsData || []).map(req => ({
+          ...req,
+          requester_profile: profilesMap[req.requester_id] || null,
+      })) as ShareRequest[];
+      
+      setRequests(requestsWithProfiles);
 
-        const users: SharedUser[] = (profiles || []).map(p => {
-          // Acessar raw_user_meta_data como objeto
-          const metadata = p.raw_user_meta_data as { posto_graduacao?: string, nome_om?: string } | undefined;
-          const name = p.last_name || p.first_name || 'Usuário Desconhecido';
+      // 5. Reconstruir a lista de colaboradores ativos
+      const activeUsers: SharedUser[] = currentSharedWith.map(id => {
+          const profile = profilesMap[id];
+          if (!profile) return { id, name: 'Usuário Desconhecido', om: 'N/A', postoGrad: 'N/A' };
+          
+          const metadata = profile.raw_user_meta_data as { posto_graduacao?: string, nome_om?: string } | undefined;
+          const name = profile.last_name || profile.first_name || 'Usuário Desconhecido';
           const postoGrad = metadata?.posto_graduacao || '';
           const om = metadata?.nome_om || 'OM Desconhecida';
           
           return {
-            id: p.id,
+            id: id,
             name: name,
             om: om,
             postoGrad: postoGrad,
           };
-        });
-        setActiveSharedUsers(users);
-      } else {
-        setActiveSharedUsers([]);
-      }
+      });
+      
+      setActiveSharedUsers(activeUsers);
 
     } catch (e) {
       console.error("Erro ao carregar dados de compartilhamento:", e);
-      // Exibe um toast mais específico para o usuário
       toast.error("Falha ao carregar solicitações ou colaboradores. Verifique as permissões.");
       setRequests([]);
       setActiveSharedUsers([]);
