@@ -65,24 +65,19 @@ const ManageSharingDialog: React.FC<ManageSharingDialogProps> = ({
   const formatRequesterName = (profile: ShareRequest['requester_profile']) => {
     if (!profile) return 'Usuário Desconhecido';
     
-    // Acessar raw_user_meta_data como objeto
-    const metadata = profile.raw_user_meta_data as { posto_graduacao?: string, nome_om?: string, email?: string } | undefined;
+    // Prioriza last_name (Nome de Guerra), fallback para first_name, fallback final para 'Usuário'
     const name = profile.last_name || profile.first_name || 'Usuário';
-    const postoGrad = metadata?.posto_graduacao || '';
-    const om = metadata?.nome_om || '';
     
-    // Se o nome for 'Usuário' e não houver posto/graduação, tenta usar o email do metadata se disponível
-    if (name === 'Usuário' && !postoGrad && metadata?.email) {
-        return metadata.email;
+    // Se o nome for 'Usuário', tenta usar o email do metadata se disponível (apenas para fallback extremo)
+    if (name === 'Usuário') {
+        const metadata = profile.raw_user_meta_data as { email?: string } | undefined;
+        if (metadata?.email) {
+            return metadata.email;
+        }
     }
     
-    // Se houver posto/graduação, usa o formato militar
-    if (postoGrad) {
-        return `${postoGrad} ${name} (${om})`;
-    }
-    
-    // Caso contrário, apenas o nome e a OM
-    return `${name} (${om})`;
+    // Retorna apenas o nome de guerra/primeiro nome
+    return name;
   };
   
   const fetchSharingData = useCallback(async () => {
@@ -138,15 +133,18 @@ const ManageSharingDialog: React.FC<ManageSharingDialogProps> = ({
       
       setRequests(requestsWithProfiles);
 
-      // 5. Reconstruir a lista de colaboradores ativos
+      // 5. Reconstruir a lista de colaboradores ativos (Simplificado para usar apenas o nome)
       const activeUsers: SharedUser[] = currentSharedWith.map(id => {
           const profile = profilesMap[id];
-          if (!profile) return { id, name: 'Usuário Desconhecido', om: 'N/A', postoGrad: 'N/A' };
           
-          const metadata = profile.raw_user_meta_data as { posto_graduacao?: string, nome_om?: string } | undefined;
-          const name = profile.last_name || profile.first_name || 'Usuário Desconhecido';
-          const postoGrad = metadata?.posto_graduacao || '';
-          const om = metadata?.nome_om || 'OM Desconhecida';
+          // Simplificando a extração do nome para corresponder ao formatRequesterName
+          const name = profile?.last_name || profile?.first_name || 'Usuário Desconhecido';
+          
+          // Mantemos os campos om e postoGrad no SharedUser, mas eles não serão exibidos no ManageSharingDialog
+          // Apenas para manter a estrutura do tipo SharedUser, mas preenchendo com N/A
+          const metadata = profile?.raw_user_meta_data as { posto_graduacao?: string, nome_om?: string } | undefined;
+          const postoGrad = metadata?.posto_graduacao || 'N/A';
+          const om = metadata?.nome_om || 'N/A';
           
           return {
             id: id,
@@ -298,13 +296,14 @@ const ManageSharingDialog: React.FC<ManageSharingDialogProps> = ({
                   {activeSharedUsers.map((user) => (
                     <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg bg-card">
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium">{user.postoGrad} {user.name}</span>
-                        <span className="text-xs text-muted-foreground">{user.om}</span>
+                        {/* Exibe apenas o nome de guerra/primeiro nome */}
+                        <span className="text-sm font-medium">{user.name}</span> 
+                        <span className="text-xs text-muted-foreground">Colaborador</span>
                       </div>
                       <Button 
                         size="sm" 
                         variant="destructive" 
-                        onClick={() => handleCancel(ptrabId, user.id, `${user.postoGrad} ${user.name}`)} 
+                        onClick={() => handleCancel(ptrabId, user.id, user.name)} 
                         disabled={isActionDisabled}
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
