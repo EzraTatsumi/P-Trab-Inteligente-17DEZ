@@ -158,6 +158,7 @@ const PTrabManager = () => {
   
   const [showManageSharingDialog, setShowManageSharingDialog] = useState(false);
   const [ptrabToManageSharing, setPtrabToManageSharing] = useState<PTrab | null>(null);
+  const [shareRequests, setShareRequests] = useState<ShareRequest[]>([]);
   
   const [showUnlinkPTrabDialog, setShowUnlinkPTrabDialog] = useState(false);
   const [ptrabToUnlink, setPtrabToUnlink] = useState<PTrab | null>(null);
@@ -174,10 +175,9 @@ const PTrabManager = () => {
   // =================================================================
   
   const fetchUserName = useCallback(async (userId: string, userMetadata: any) => {
-    // Buscar o perfil para obter o last_name e o raw_user_meta_data (que contém posto_graduacao)
     const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('last_name, raw_user_meta_data') 
+        .select('last_name') 
         .eq('id', userId)
         .single();
 
@@ -185,12 +185,8 @@ const PTrabManager = () => {
         console.error("Error fetching user profile:", profileError);
     }
     
-    // Usar dados do perfil se disponíveis, senão usar o metadata do auth.user
     const nomeGuerra = profileData?.last_name || '';
-    
-    // Acessar posto_graduacao do raw_user_meta_data do perfil (que é JSONB)
-    const profileMetadata = profileData?.raw_user_meta_data as { posto_graduacao?: string } | undefined;
-    const postoGraduacao = profileMetadata?.posto_graduacao || userMetadata?.posto_graduacao || '';
+    const postoGraduacao = userMetadata?.posto_graduacao || '';
     
     if (postoGraduacao && nomeGuerra) {
         return `${postoGraduacao} ${nomeGuerra}`;
@@ -561,11 +557,6 @@ const PTrabManager = () => {
   };
 
   const handleArchive = async (ptrabId: string, ptrabName: string) => {
-    const isOwner = pTrabs.find(p => p.id === ptrabId)?.isOwner;
-    if (!isOwner) {
-        toast.error("Apenas o dono do P Trab pode excluí-lo.");
-        return;
-    }
     if (!confirm(`Tem certeza que deseja ARQUIVAR o P Trab "${ptrabName}"? Esta ação irá finalizar o trabalho e restringir edições.`)) return;
 
     setLoading(true);
@@ -918,11 +909,11 @@ const PTrabManager = () => {
     if (cloneType === 'new') {
       setShowCloneOptionsDialog(false);
       
-      // CORREÇÃO: Excluir explicitamente todos os campos calculados e de sistema
       const { 
-        id, created_at, updated_at, user_id, share_token, shared_with,
-        totalLogistica, totalOperacional, totalMaterialPermanente, 
-        quantidadeRacaoOp, quantidadeHorasVoo, isOwner, isShared, hasPendingRequests,
+        id, created_at, updated_at, totalLogistica, totalOperacional, 
+        totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo,
+        rotulo_versao, nome_om, nome_om_extenso, codug_om, rm_vinculacao, codug_rm_vinculacao,
+        share_token,
         ...restOfPTrab 
       } = ptrabToClone;
       
@@ -934,7 +925,6 @@ const PTrabManager = () => {
         comentario: "",
         rotulo_versao: ptrabToClone.rotulo_versao,
         
-        // Reset OM fields because the user needs to select a new OM in the form
         nome_om: "",
         nome_om_extenso: "",
         codug_om: "",
@@ -963,11 +953,10 @@ const PTrabManager = () => {
     setLoading(true);
 
     try {
-        // CORREÇÃO: Excluir explicitamente todos os campos calculados e de sistema
         const { 
-            id, created_at, updated_at, user_id, share_token, shared_with,
-            totalLogistica, totalOperacional, totalMaterialPermanente, 
-            quantidadeRacaoOp, quantidadeHorasVoo, isOwner, isShared, hasPendingRequests,
+            id, created_at, updated_at, totalLogistica, totalOperacional, 
+            totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo,
+            rotulo_versao, share_token, 
             ...restOfPTrab 
         } = ptrabToClone;
         
@@ -1044,7 +1033,6 @@ const PTrabManager = () => {
             const { error: insertError } = await supabase
                 .from(tableName)
                 .insert(newRecords as TablesInsert<typeof tableName>[]);
-            
             if (insertError) {
                 console.error(`ERRO DE INSERÇÃO ${tableName}:`, insertError);
                 toast.error(`Erro ao clonar registros da ${tableName}: ${sanitizeError(insertError)}`);
@@ -1343,7 +1331,6 @@ const PTrabManager = () => {
             throw new Error("Link de compartilhamento incompleto.");
         }
         
-        // 1. Chama a função RPC para registrar a solicitação
         const { data, error } = await supabase.rpc('request_ptrab_share', {
             p_ptrab_id: ptrabId,
             p_share_token: shareToken,
@@ -1356,13 +1343,28 @@ const PTrabManager = () => {
             throw new Error("P Trab não encontrado ou token inválido.");
         }
         
-        // 2. Simplificação: Apenas confirma que a solicitação foi enviada.
-        // Removido: Busca de dados do P Trab e do perfil do proprietário.
+        const { data: ptrabData, error: fetchPTrabError } = await supabase
+            .from('p_trab')
+            .select('user_id, nome_om')
+            .eq('id', ptrabId)
+            .single();
+            
+        if (fetchPTrabError || !ptrabData) throw new Error("Falha ao buscar dados do P Trab.");
+        
+        const { data: ownerProfile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, raw_user_meta_data')
+            .eq('id', ptrabData.user_id)
+            .single();
+            
+        const ownerMetadata = ownerProfile?.raw_user_meta_data as { posto_graduacao?: string } | undefined;
+        const ownerName = ownerProfile?.last_name || ownerProfile?.first_name || 'Usuário';
+        const ownerPostoGrad = ownerMetadata?.posto_graduacao || '';
         
         toast.success(
             "Solicitação Enviada!", 
             {
-                description: `Sua solicitação de acesso foi enviada ao proprietário do P Trab. Você será notificado quando for aprovada.`,
+                description: `Sua solicitação de acesso foi enviada para ${ownerPostoGrad} ${ownerName} da OM ${ptrabData.nome_om}. Você será notificado quando for aprovada.`,
                 duration: 8000,
             }
         );
@@ -1380,10 +1382,29 @@ const PTrabManager = () => {
     if (!ptrab.isOwner) return;
     
     setPtrabToManageSharing(ptrab);
-    // Abre o diálogo imediatamente
-    setShowManageSharingDialog(true); 
-    // A busca de requests e shared users será feita dentro do ManageSharingDialog
-    // para que o estado de loading seja local a ele.
+    setLoading(true);
+    
+    try {
+        const { data: requestsData, error: requestsError } = await supabase
+            .from('ptrab_share_requests')
+            .select(`
+                *,
+                requester_profile:requester_id (id, first_name, last_name, raw_user_meta_data)
+            `)
+            .eq('ptrab_id', ptrab.id)
+            .order('created_at', { ascending: true });
+            
+        if (requestsError) throw requestsError;
+        
+        setShareRequests(requestsData as ShareRequest[]);
+        setShowManageSharingDialog(true);
+        
+    } catch (error: any) {
+        toast.error("Erro ao carregar solicitações de compartilhamento.");
+        console.error(error);
+    } finally {
+        setLoading(false);
+    }
   };
   
   const handleApproveRequest = async (requestId: string) => {
@@ -1399,7 +1420,12 @@ const PTrabManager = () => {
         toast.success("Compartilhamento aprovado com sucesso!");
         
         loadPTrabs();
-        // Não precisa reabrir o diálogo aqui, o ManageSharingDialog deve ter sua própria lógica de atualização interna.
+        if (ptrabToManageSharing) {
+            // Reabre o diálogo para atualizar a lista de solicitações e usuários ativos
+            handleOpenManageSharingDialog(ptrabToManageSharing);
+        } else {
+            setShowManageSharingDialog(false);
+        }
         
     } catch (error: any) {
         toast.error("Erro ao aprovar solicitação.");
@@ -1422,7 +1448,11 @@ const PTrabManager = () => {
         toast.info("Solicitação rejeitada.");
         
         loadPTrabs();
-        // Não precisa reabrir o diálogo aqui, o ManageSharingDialog deve ter sua própria lógica de atualização interna.
+        if (ptrabToManageSharing) {
+            handleOpenManageSharingDialog(ptrabToManageSharing);
+        } else {
+            setShowManageSharingDialog(false);
+        }
         
     } catch (error: any) {
         toast.error("Erro ao rejeitar solicitação.");
@@ -1450,7 +1480,16 @@ const PTrabManager = () => {
         toast.success(`Acesso de ${userName} removido com sucesso.`);
         
         loadPTrabs();
-        // Não precisa reabrir o diálogo aqui, o ManageSharingDialog deve ter sua própria lógica de atualização interna.
+        if (ptrabToManageSharing) {
+            const updatedPTrab = { 
+                ...ptrabToManageSharing, 
+                shared_with: (ptrabToManageSharing.shared_with || []).filter(id => id !== userIdToRemove)
+            } as PTrab;
+            setPtrabToManageSharing(updatedPTrab);
+            handleOpenManageSharingDialog(updatedPTrab);
+        } else {
+            setShowManageSharingDialog(false);
+        }
         
     } catch (error: any) {
         toast.error("Erro ao cancelar compartilhamento.");
@@ -1848,9 +1887,6 @@ const PTrabManager = () => {
                     // NOVO: Condição para desabilitar o compartilhamento
                     const isSharingDisabled = ptrab.status === 'aprovado' || ptrab.status === 'arquivado';
 
-                    // CORREÇÃO: O badge de gerenciamento deve aparecer se for o dono E houver compartilhamento ativo OU solicitações pendentes.
-                    const showManageSharingBadge = isOwnedByCurrentUser && ((ptrab.shared_with?.length || 0) > 0 || ptrab.hasPendingRequests);
-
                     return (
                     <TableRow key={ptrab.id}>
                       <TableCell className="font-medium">
@@ -1908,8 +1944,8 @@ const PTrabManager = () => {
                             {statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}
                           </Badge>
                           
-                          {/* NOVO BADGE DE COMPARTILHAMENTO (DONO) - CORRIGIDO */}
-                          {showManageSharingBadge && (
+                          {/* NOVO BADGE DE COMPARTILHAMENTO (DONO) */}
+                          {isOwnedByCurrentUser && (ptrab.shared_with?.length || 0) > 0 && (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -2194,7 +2230,7 @@ const PTrabManager = () => {
             <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
               Cancelar
             </AlertDialogCancel>
-          </AlertDialogFooter>
+          </DialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
@@ -2383,12 +2419,12 @@ const PTrabManager = () => {
           onOpenChange={setShowManageSharingDialog}
           ptrabId={ptrabToManageSharing.id}
           ptrabName={`${ptrabToManageSharing.numero_ptrab} - ${ptrabToManageSharing.nome_operacao}`}
-          // Não passamos sharedWith e requests diretamente, o componente filho irá buscar
+          sharedWith={ptrabToManageSharing.shared_with}
+          requests={shareRequests}
           onApprove={handleApproveRequest}
           onReject={handleRejectRequest}
           onCancelSharing={handleCancelSharing}
-          // O loading aqui é o loading global do Manager, mas o ManageSharingDialog terá seu próprio loading interno
-          loading={loading} 
+          loading={loading}
         />
       )}
       
