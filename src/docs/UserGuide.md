@@ -16,7 +16,7 @@ Permite combinar os registros de Classe I, II, III, V, VI, VII, VIII e IX de mú
 
 - **Status:** Indica o estado atual (Aberto, Em Andamento, Aprovado, Arquivado).
 - **Preencher (Botão):** Navega para a tela de edição de classes logísticas e operacionais.
-- **Visualizar Impressão (Ação):** Abre a tela de visualização do P Trab no formato oficial, permitindo exportação para PDF e Excel.
+- **Visualizar Impressão (Ação):** Abre a tela de relatórios, onde você pode selecionar o tipo de relatório desejado (Logístico, Ração Operacional, Operacional, Material Permanente, Hora de Voo, DOR). Todos os relatórios podem ser exportados para **PDF** e **Excel** no formato oficial.
 - **Clonar P Trab (Ação):** Cria uma cópia exata do P Trab, incluindo todos os registros de Classes e a Referência LPC, com um novo número de Minuta.
 - **Comentário (Ícone):** Permite adicionar ou editar um comentário interno sobre o P Trab.
 - **Aprovar (Botão):** Disponível para P Trabs em status "Minuta" ou "Em Andamento". Permite atribuir o número oficial no padrão **Número/Ano/Sigla da OM** e alterar o status para "Aprovado".
