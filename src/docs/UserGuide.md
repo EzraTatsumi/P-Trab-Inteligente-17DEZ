@@ -2,7 +2,23 @@
 
 Este guia detalha as funcionalidades de cada tela e elemento da plataforma PTrab Inteligente, ajudando você a gerenciar seus Planos de Trabalho com eficiência.
 
-## 1. Gerenciamento de Planos de Trabalho (PTrabManager)
+## 1. Acesso e Autenticação
+
+### Login
+Para acessar a plataforma, utilize o e-mail e a senha cadastrados.
+
+- **Lembrar de mim:** Mantém sua sessão ativa no dispositivo.
+- **Esqueceu sua senha?:** Abre o diálogo de recuperação de senha, que enviará um link de redefinição para o seu e-mail.
+
+### Criar Conta
+Se você ainda não possui uma conta, clique em "Não tem conta? Crie uma agora!".
+
+- **Registro:** O cadastro requer seu e-mail, senha, posto/graduação, nome de guerra e OM de vinculação.
+- **Confirmação de E-mail:** Após o registro, um link de confirmação será enviado para o seu e-mail. Você só poderá fazer login após confirmar seu endereço.
+
+---
+
+## 2. Gerenciamento de Planos de Trabalho (PTrabManager)
 
 Esta é a tela principal após o login, onde você gerencia todos os seus Planos de Trabalho.
 
@@ -23,7 +39,7 @@ Permite combinar os registros de Classe I, II, III, V, VI, VII, VIII e IX de mú
 - **Arquivar (Ação):** Finaliza o P Trab, alterando o status para "Arquivado" e restringindo edições.
 - **Reativar (Ação):** Disponível para P Trabs arquivados. Retorna o status para "Aprovado" ou "Aberto" (se for Minuta).
 
-## 2. Colaboração e Compartilhamento
+## 3. Colaboração e Compartilhamento
 
 O sistema permite o compartilhamento seguro de P Trabs para edição colaborativa.
 
@@ -42,7 +58,7 @@ Acessível no menu de Configurações. Permite colar o link de compartilhamento 
 ### Desvincular (Ação - Colaborador)
 Remove o seu acesso de edição ao P Trab compartilhado.
 
-## 3. Assistente Dyad (IA)
+## 4. Assistente Dyad (IA)
 
 O Assistente Dyad é um chatbot de Inteligência Artificial integrado que pode ajudar com dúvidas sobre a usabilidade, regras de negócio e funcionalidades da plataforma.
 
@@ -50,7 +66,7 @@ O Assistente Dyad é um chatbot de Inteligência Artificial integrado que pode a
 - **Funcionalidade:** Faça perguntas sobre como usar um formulário, o significado de um campo, ou as regras de cálculo de uma classe específica.
 - **Limpar Chat:** Use o botão "Limpar" dentro do diálogo para apagar o histórico da conversa.
 
-## 4. Configurações
+## 5. Configurações
 
 Acessível pelo ícone de engrenagem (Settings) na tela de Gerenciamento de Planos de Trabalho. As opções disponíveis são:
 
@@ -80,7 +96,7 @@ Permite gerenciar backups e transferências de dados.
 ### Vincular P Trab (Ação)
 Permite ao usuário colar um link de compartilhamento para solicitar acesso a um P Trab de outro proprietário.
 
-## 5. Formulários de Classes (PTrabForm)
+## 6. Formulários de Classes (PTrabForm)
 
 Acessível pelo botão "Preencher" na tela principal.
 
