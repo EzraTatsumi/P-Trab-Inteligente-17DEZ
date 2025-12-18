@@ -934,6 +934,51 @@ export type Database = {
           },
         ]
       }
+      ptrab_share_requests: {
+        Row: {
+          created_at: string
+          id: string
+          ptrab_id: string
+          requester_id: string
+          share_token: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ptrab_id: string
+          requester_id: string
+          share_token: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ptrab_id?: string
+          requester_id?: string
+          share_token?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ptrab_share_requests_ptrab_id_fkey"
+            columns: ["ptrab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ptrab_share_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -975,7 +1020,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      approve_ptrab_share: {
+        Args: {
+          p_request_id: string
+        }
+        Returns: boolean
+      }
+      reject_ptrab_share: {
+        Args: {
+          p_request_id: string
+        }
+        Returns: boolean
+      }
+      request_ptrab_share: {
+        Args: {
+          p_ptrab_id: string
+          p_share_token: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

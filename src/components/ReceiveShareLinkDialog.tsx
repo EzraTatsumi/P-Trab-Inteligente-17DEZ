@@ -81,8 +81,8 @@ export const ReceiveShareLinkDialog: React.FC<ReceiveShareLinkDialogProps> = ({
     }
 
     try {
-      // Chama a função RPC (Remote Procedure Call) no Supabase
-      const { data: success, error } = await supabase.rpc('add_user_to_shared_with', {
+      // MUDANÇA AQUI: Chama a nova função RPC para registrar a solicitação
+      const { data: success, error } = await supabase.rpc('request_ptrab_share', {
         p_ptrab_id: ptrabId,
         p_share_token: token,
         p_user_id: user.id,
@@ -97,7 +97,8 @@ export const ReceiveShareLinkDialog: React.FC<ReceiveShareLinkDialogProps> = ({
       }
 
       setStatus('success');
-      toast.success("Acesso concedido! O P Trab foi adicionado à sua lista.");
+      // MUDANÇA AQUI: Mensagem de sucesso reflete a necessidade de aprovação
+      toast.success("Solicitação enviada! Aguarde a aprovação do proprietário do P Trab.");
       onSuccess();
       
     } catch (e: any) {
@@ -127,7 +128,7 @@ export const ReceiveShareLinkDialog: React.FC<ReceiveShareLinkDialogProps> = ({
             Receber P Trab Compartilhado
           </DialogTitle>
           <DialogDescription>
-            Cole o link de compartilhamento que você recebeu para obter acesso de edição ao Plano de Trabalho.
+            Cole o link de compartilhamento que você recebeu para solicitar acesso de edição ao Plano de Trabalho.
           </DialogDescription>
         </DialogHeader>
         
@@ -152,9 +153,9 @@ export const ReceiveShareLinkDialog: React.FC<ReceiveShareLinkDialogProps> = ({
             />
             
             {status === 'success' && (
-                <Alert className="bg-green-500/10 border-green-500 text-green-700">
-                    <Check className="h-4 w-4" />
-                    <div className="text-sm font-medium">Acesso concedido com sucesso! O P Trab está na sua lista.</div>
+                <Alert className="bg-yellow-500/10 border-yellow-500 text-yellow-700">
+                    <AlertTriangle className="h-4 w-4" />
+                    <div className="text-sm font-medium">Solicitação enviada! Você receberá acesso assim que o proprietário aprovar.</div>
                 </Alert>
             )}
 
@@ -166,7 +167,7 @@ export const ReceiveShareLinkDialog: React.FC<ReceiveShareLinkDialogProps> = ({
                     Processando...
                   </>
                 ) : (
-                  "Receber P Trab"
+                  "Solicitar Acesso"
                 )}
               </Button>
               <Button type="button" variant="outline" onClick={() => handleClose(false)} disabled={loading}>
