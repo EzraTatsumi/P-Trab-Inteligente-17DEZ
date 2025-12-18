@@ -2202,7 +2202,7 @@ const PTrabManager = () => {
             <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
               Cancelar
             </AlertDialogCancel>
-          </DialogFooter>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
