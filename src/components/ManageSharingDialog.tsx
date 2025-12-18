@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Tables } from '@/integrations/supabase/types';
+import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 import { Json } from '@/integrations/supabase/types'; // Importar o tipo Json
 
 // NOVO TIPO: Para gerenciar solicitações
@@ -92,6 +92,7 @@ const ManageSharingDialog: React.FC<ManageSharingDialogProps> = ({
     setLoadingLocal(true);
     try {
       // 1. Buscar solicitações e perfis
+      // A consulta de requests já inclui o perfil do solicitante (requester_profile)
       const { data: requestsData, error: requestsError } = await supabase
         .from('ptrab_share_requests')
         .select(`
@@ -125,6 +126,7 @@ const ManageSharingDialog: React.FC<ManageSharingDialogProps> = ({
         if (profilesError) throw profilesError;
 
         const users: SharedUser[] = (profiles || []).map(p => {
+          // Acessar raw_user_meta_data como objeto
           const metadata = p.raw_user_meta_data as { posto_graduacao?: string, nome_om?: string } | undefined;
           const name = p.last_name || p.first_name || 'Usuário Desconhecido';
           const postoGrad = metadata?.posto_graduacao || '';
@@ -144,7 +146,8 @@ const ManageSharingDialog: React.FC<ManageSharingDialogProps> = ({
 
     } catch (e) {
       console.error("Erro ao carregar dados de compartilhamento:", e);
-      toast.error("Erro ao carregar solicitações de compartilhamento.");
+      // Exibe um toast mais específico para o usuário
+      toast.error("Falha ao carregar solicitações ou colaboradores. Verifique as permissões.");
       setRequests([]);
       setActiveSharedUsers([]);
     } finally {
@@ -160,18 +163,24 @@ const ManageSharingDialog: React.FC<ManageSharingDialogProps> = ({
   
   // Funções de ação que recarregam os dados após a conclusão
   const handleApprove = async (requestId: string) => {
+    setLoadingLocal(true);
     await onApprove(requestId);
-    fetchSharingData(); // Recarrega os dados após a aprovação
+    await fetchSharingData(); // Recarrega os dados após a aprovação
+    setLoadingLocal(false);
   };
   
   const handleReject = async (requestId: string) => {
+    setLoadingLocal(true);
     await onReject(requestId);
-    fetchSharingData(); // Recarrega os dados após a rejeição
+    await fetchSharingData(); // Recarrega os dados após a rejeição
+    setLoadingLocal(false);
   };
   
   const handleCancel = async (ptrabId: string, userIdToRemove: string, userName: string) => {
+    setLoadingLocal(true);
     await onCancelSharing(ptrabId, userIdToRemove, userName);
-    fetchSharingData(); // Recarrega os dados após o cancelamento
+    await fetchSharingData(); // Recarrega os dados após o cancelamento
+    setLoadingLocal(false);
   };
 
   const isActionDisabled = globalLoading || loadingLocal;
