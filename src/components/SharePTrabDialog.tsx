@@ -65,10 +65,12 @@ export const SharePTrabDialog: React.FC<SharePTrabDialogProps> = ({
   const handleEmail = () => {
     const subject = `Convite de Colaboração: P Trab ${ptrab?.numero_ptrab}`;
     const body = shareText;
-    window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+    // Usar 'window.location.href' para garantir que o link seja aberto na mesma janela/aba
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
   
   const handleWhatsApp = () => {
+    // Usar 'window.open' para abrir em uma nova aba/janela
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
   };
 
