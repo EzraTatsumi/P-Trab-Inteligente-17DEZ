@@ -7,10 +7,11 @@ import { useSession } from '@/components/SessionContextProvider';
 import { toast } from 'sonner';
 
 interface FeedbackDialogProps {
+  open: boolean; // Adicionado a prop 'open'
   onOpenChange: (open: boolean) => void;
 }
 
-export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ onOpenChange }) => {
+export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onOpenChange }) => {
   const { user } = useSession();
   const [feedbackText, setFeedbackText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -58,7 +59,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ onOpenChange }) 
   };
 
   return (
-    <Dialog onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
