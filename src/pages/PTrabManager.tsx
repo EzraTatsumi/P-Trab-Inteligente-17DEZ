@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Share2, Link, Users, XCircle } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -49,11 +49,7 @@ import { updateUserCredits, fetchUserCredits } from "@/lib/creditUtils";
 import { cn } from "@/lib/utils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 import { useSession } from "@/components/SessionContextProvider";
-import AIChatDrawer from "@/components/AIChatDrawer";
-import ShareLinkDialog from "@/components/ShareLinkDialog";
-import LinkPTrabDialog from "@/components/LinkPTrabDialog";
-import ManageSharingDialog from "@/components/ManageSharingDialog";
-import UnlinkPTrabDialog from "@/components/UnlinkPTrabDialog";
+import AIChatDrawer from "@/components/AIChatDrawer"; // NOVO IMPORT
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -73,20 +69,6 @@ interface PTrab extends PTrabDB {
   totalMaterialPermanente?: number;
   quantidadeRacaoOp?: number;
   quantidadeHorasVoo?: number;
-  // NOVO: Propriedades de compartilhamento
-  isOwner: boolean;
-  isShared: boolean;
-  hasPendingRequests: boolean;
-}
-
-// NOVO TIPO: Para gerenciar solicitações
-interface ShareRequest extends Tables<'ptrab_share_requests'> {
-  requester_profile: {
-    id: string;
-    first_name: string | null;
-    last_name: string | null;
-    raw_user_meta_data: { posto_graduacao?: string, nome_om?: string } | null;
-  } | null;
 }
 
 const PTrabManager = () => {
@@ -98,6 +80,7 @@ const PTrabManager = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
   
+  // ADDED: User state
   const { user } = useSession();
   const [userName, setUserName] = useState<string>("");
   
@@ -108,6 +91,7 @@ const PTrabManager = () => {
   const [showArchiveStatusDialog, setShowArchiveStatusDialog] = useState(false);
   const [ptrabToArchiveId, setPtrabToArchiveId] = useState<string | null>(null);
   const [ptrabToArchiveName, setPtrabToArchiveName] = useState<string | null>(null);
+  // Ref para controlar quais PTrabs já foram oferecidos para arquivamento na sessão atual
   const promptedForArchive = useRef(new Set<string>());
 
   // Novos estados para o diálogo de reativação
@@ -123,7 +107,8 @@ const PTrabManager = () => {
   const [suggestedCloneNumber, setSuggestedCloneNumber] = useState<string>("");
   const [customCloneNumber, setCustomCloneNumber] = useState<string>("");
   
-  const [originalPTrabIdToClone, setOriginalPTrabIdToClone] = useState(null as string | null);
+  // NOVO: ID do PTrab original a ser clonado (usado no handleSubmit)
+  const [originalPTrabIdToClone, setOriginalPTrabIdToClone] = useState<string | null>(null);
 
   // ESTADOS PARA APROVAÇÃO E NUMERAÇÃO
   const [showApproveDialog, setShowApproveDialog] = useState(false);
@@ -144,37 +129,18 @@ const PTrabManager = () => {
   // NOVO ESTADO: Controle do Prompt de Crédito
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
   const [ptrabToFill, setPtrabToFill] = useState<PTrab | null>(null);
-  const hasBeenPrompted = useRef(new Set<string>());
-
-  // =================================================================
-  // ESTADOS DE COMPARTILHAMENTO (NOVOS)
-  // =================================================================
-  const [showShareLinkDialog, setShowShareLinkDialog] = useState(false);
-  const [ptrabToShare, setPtrabToShare] = useState<PTrab | null>(null);
-  const [shareLink, setShareLink] = useState<string>("");
-  
-  const [showLinkPTrabDialog, setShowLinkPTrabDialog] = useState(false);
-  const [linkPTrabInput, setLinkPTrabInput] = useState("");
-  
-  const [showManageSharingDialog, setShowManageSharingDialog] = useState(false);
-  const [ptrabToManageSharing, setPtrabToManageSharing] = useState<PTrab | null>(null);
-  const [shareRequests, setShareRequests] = useState<ShareRequest[]>([]);
-  
-  const [showUnlinkPTrabDialog, setShowUnlinkPTrabDialog] = useState(false);
-  const [ptrabToUnlink, setPtrabToUnlink] = useState<PTrab | null>(null);
-  
-  // =================================================================
-  // FIM ESTADOS DE COMPARTILHAMENTO
-  // =================================================================
+  const hasBeenPrompted = useRef(new Set<string>()); // Armazena IDs dos PTrabs já perguntados
 
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
 
   // =================================================================
-  // FUNÇÕES AUXILIARES
+  // FUNÇÕES AUXILIARES (Exportadas para uso nos relatórios)
   // =================================================================
   
+  // MUDANÇA: A função agora recebe os metadados do usuário (userMetadata)
   const fetchUserName = useCallback(async (userId: string, userMetadata: any) => {
+    // 1. Buscar last_name (Nome de Guerra) na tabela profiles
     const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('last_name') 
@@ -183,9 +149,12 @@ const PTrabManager = () => {
 
     if (profileError) {
         console.error("Error fetching user profile:", profileError);
+        // Continua mesmo com erro, pois podemos ter dados nos metadados
     }
     
     const nomeGuerra = profileData?.last_name || '';
+    
+    // 2. Buscar posto_graduacao nos metadados do usuário
     const postoGraduacao = userMetadata?.posto_graduacao || '';
     
     if (postoGraduacao && nomeGuerra) {
@@ -200,6 +169,7 @@ const PTrabManager = () => {
         return postoGraduacao;
     }
 
+    // Retorna null se não houver nome de guerra ou posto/graduação
     return null; 
   }, []);
 
@@ -217,10 +187,12 @@ const PTrabManager = () => {
             return { label: 'Consolidado', className: 'bg-teal-500 text-white hover:bg-teal-600' };
         case 'original':
         default:
+            // Corrigido para Azul Escuro (blue-600) com letra branca
             return { label: 'Original', className: 'bg-blue-600 text-white hover:bg-blue-700' }; 
     }
   };
   
+  // NOVO: Função para limpar o prefixo "CONSOLIDADO - "
   const cleanOperationName = (name: string, origem: PTrabDB['origem']) => {
     if (origem === 'consolidado' && name.startsWith('CONSOLIDADO - ')) {
         return name.replace('CONSOLIDADO - ', '');
@@ -236,9 +208,11 @@ const PTrabManager = () => {
       navigate(`/ptrab/print?ptrabId=${ptrabId}`);
   };
 
+  // Lógica de Consolidação
   const consolidationTooltipText = "Selecione múltiplos P Trabs para consolidar seus custos em um novo P Trab.";
 
   const isConsolidationDisabled = useMemo(() => {
+      // Consolidação requer pelo menos 2 PTrabs que não estejam arquivados
       const availablePTrabs = pTrabs.filter(p => p.status !== 'arquivado');
       return availablePTrabs.length < 2;
   }, [pTrabs]);
@@ -252,23 +226,31 @@ const PTrabManager = () => {
   };
   
   const handlePromptConfirm = () => {
+      // Placeholder for credit prompt confirm
       setShowCreditPrompt(false);
       navigate(`/ptrab/form?ptrabId=${ptrabToFill?.id}&openCredit=true`);
   };
 
   const handlePromptCancel = () => {
+      // Placeholder for credit prompt cancel
       setShowCreditPrompt(false);
   };
   
+  // =================================================================
+  // FIM FUNÇÕES AUXILIARES
+  // =================================================================
+
   // Função de reset do formulário (usando useCallback para evitar recriação desnecessária)
   const resetForm = useCallback(() => {
     setEditingId(null);
     setSelectedOmId(undefined);
-    setOriginalPTrabIdToClone(null);
+    setOriginalPTrabIdToClone(null); // Resetar o ID de clonagem
     
+    // Gera um número de minuta único ao iniciar um novo P Trab
     const uniqueMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
     
     setFormData({
+      // Inicializa o número do PTrab como a Minuta única
       numero_ptrab: uniqueMinutaNumber, 
       comando_militar_area: "",
       nome_om: "",
@@ -285,13 +267,13 @@ const PTrabManager = () => {
       local_om: "",
       status: "aberto",
       origem: 'original',
-      comentario: "",
-      rotulo_versao: null,
+      comentario: "", // Adicionado
+      rotulo_versao: null, // Adicionado
     });
   }, [existingPTrabNumbers]);
 
   const [formData, setFormData] = useState({
-    numero_ptrab: "Minuta",
+    numero_ptrab: "Minuta", // Inicializa como 'Minuta'
     comando_militar_area: "",
     nome_om: "",
     nome_om_extenso: "",
@@ -307,8 +289,8 @@ const PTrabManager = () => {
     local_om: "",
     status: "aberto",
     origem: 'original' as 'original' | 'importado' | 'consolidado',
-    comentario: "",
-    rotulo_versao: null as string | null,
+    comentario: "", // Adicionado
+    rotulo_versao: null as string | null, // Adicionado
   });
 
   const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
@@ -330,14 +312,10 @@ const PTrabManager = () => {
   };
 
   const loadPTrabs = useCallback(async () => {
-    if (!user?.id) return;
-    
     try {
-      // A query agora busca PTrabs onde o usuário é o dono OU está na lista shared_with
       const { data: pTrabsData, error: pTrabsError } = await supabase
         .from("p_trab")
-        .select("*, comentario, origem, rotulo_versao, user_id, shared_with, share_token") // Incluir share_token
-        .or(`user_id.eq.${user.id},shared_with.cs.{${user.id}}`)
+        .select("*, comentario, origem, rotulo_versao") // Incluir rotulo_versao
         .order("created_at", { ascending: false });
 
       if (pTrabsError) throw pTrabsError;
@@ -348,46 +326,31 @@ const PTrabManager = () => {
         return;
       }
 
+      // Cast pTrabsData to the expected structure PTrabDB[]
       const typedPTrabsData = pTrabsData as unknown as PTrabDB[];
 
       const numbers = (typedPTrabsData || []).map(p => p.numero_ptrab);
       setExistingPTrabNumbers(numbers);
-      
-      // Buscar solicitações pendentes para os PTrabs do usuário (apenas se for o dono)
-      const ownedPTrabIds = typedPTrabsData.filter(p => p.user_id === user.id).map(p => p.id);
-      let pendingRequests: Tables<'ptrab_share_requests'>[] = [];
-      
-      if (ownedPTrabIds.length > 0) {
-          const { data: requestsData, error: requestsError } = await supabase
-              .from('ptrab_share_requests')
-              .select('ptrab_id')
-              .in('ptrab_id', ownedPTrabIds)
-              .eq('status', 'pending');
-              
-          if (requestsError) console.error("Erro ao carregar solicitações pendentes:", requestsError);
-          else pendingRequests = requestsData || [];
-      }
-      
-      const ptrabsWithPendingRequests = new Set(pendingRequests.map(r => r.ptrab_id));
 
       const pTrabsWithTotals: PTrab[] = await Promise.all(
         (typedPTrabsData || []).map(async (ptrab) => {
           let totalOperacionalCalculado = 0;
           let totalLogisticaCalculado = 0;
-          let totalMaterialPermanenteCalculado = 0;
-          let quantidadeRacaoOpCalculada = 0;
-          let quantidadeHorasVooCalculada = 0;
+          let totalMaterialPermanenteCalculado = 0; // NOVO
+          let quantidadeRacaoOpCalculada = 0; // NOVO
+          let quantidadeHorasVooCalculada = 0; // NOVO (Inicialmente 0)
 
           // 1. Fetch Classe I totals (33.90.30)
           const { data: classeIData, error: classeIError } = await supabase
             .from('classe_i_registros')
-            .select('total_qs, total_qr, quantidade_r2, quantidade_r3')
+            .select('total_qs, total_qr, quantidade_r2, quantidade_r3') // Incluindo quantidades de ração
             .eq('p_trab_id', ptrab.id);
 
           let totalClasseI = 0;
           if (classeIError) console.error("Erro ao carregar Classe I para PTrab", ptrab.numero_ptrab, classeIError);
           else {
             totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
+            // Soma das quantidades de Ração Op (R2 + R3)
             quantidadeRacaoOpCalculada = (classeIData || []).reduce((sum, record) => sum + (record.quantidade_r2 || 0) + (record.quantidade_r3 || 0), 0);
           }
           
@@ -458,34 +421,27 @@ const PTrabManager = () => {
 
           // SOMA TOTAL DA ABA LOGÍSTICA
           totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII;
-          
-          const isOwner = ptrab.user_id === user.id;
-          const isShared = !isOwner && (ptrab.shared_with || []).includes(user.id);
-          
+
           return {
             ...ptrab,
             totalLogistica: totalLogisticaCalculado,
             totalOperacional: totalOperacionalCalculado,
-            totalMaterialPermanente: totalMaterialPermanenteCalculado,
-            quantidadeRacaoOp: quantidadeRacaoOpCalculada,
-            quantidadeHorasVoo: quantidadeHorasVooCalculada,
-            isOwner: isOwner,
-            isShared: isShared,
-            hasPendingRequests: isOwner && ptrabsWithPendingRequests.has(ptrab.id),
+            totalMaterialPermanente: totalMaterialPermanenteCalculado, // Inicializado como 0
+            quantidadeRacaoOp: quantidadeRacaoOpCalculada, // Valor real da Classe I
+            quantidadeHorasVoo: quantidadeHorasVooCalculada, // Inicializado como 0
           } as PTrab;
         })
       );
 
       setPTrabs(pTrabsWithTotals);
 
-      // Lógica para perguntar sobre arquivamento (mantida)
+      // Lógica para perguntar sobre arquivamento
       const tenDaysAgo = new Date();
       tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
 
       for (const ptrab of pTrabsWithTotals) {
         if (
-          ptrab.status === 'aprovado' && 
-          ptrab.isOwner &&
+          ptrab.status === 'aprovado' && // MUDANÇA: De 'completo' para 'aprovado'
           new Date(ptrab.updated_at) < tenDaysAgo &&
           !promptedForArchive.current.has(ptrab.id)
         ) {
@@ -503,30 +459,34 @@ const PTrabManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setPTrabs, setExistingPTrabNumbers, user?.id]);
+  }, [setLoading, setPTrabs, setExistingPTrabNumbers, toast]);
 
   useEffect(() => {
     checkAuth();
     loadPTrabs();
     
+    // ADDED: Fetch user name on load
     if (user?.id) {
+        // MUDANÇA: Passando user.user_metadata para a função
         fetchUserName(user.id, user.user_metadata).then(name => {
+            // Se o nome for encontrado, usa ele. Caso contrário, define como string vazia.
             setUserName(name || ""); 
         });
     }
   }, [loadPTrabs, user, fetchUserName]);
 
-  // Efeito para atualizar o número sugerido no diálogo de clonagem (mantido)
+  // Efeito para atualizar o número sugerido no diálogo de clonagem
   useEffect(() => {
     if (ptrabToClone) {
       let newSuggestedNumber = "";
       
+      // Tanto 'new' quanto 'variation' agora geram um número de Minuta único
       newSuggestedNumber = generateUniqueMinutaNumber(existingPTrabNumbers); 
       
       setSuggestedCloneNumber(newSuggestedNumber);
-      setCustomCloneNumber(newSuggestedNumber);
+      setCustomCloneNumber(newSuggestedNumber); // Inicializa o campo editável com a sugestão
     }
-  }, [ptrabToClone, existingPTrabNumbers]);
+  }, [ptrabToClone, existingPTrabNumbers]); // Removido cloneType da dependência, pois a lógica é a mesma
 
   const handleConfirmArchiveStatus = async () => {
     if (!ptrabToArchiveId) return;
@@ -556,6 +516,7 @@ const PTrabManager = () => {
     setPtrabToArchiveName(null);
   };
 
+  // MUDANÇA: Nova função para arquivar manualmente
   const handleArchive = async (ptrabId: string, ptrabName: string) => {
     if (!confirm(`Tem certeza que deseja ARQUIVAR o P Trab "${ptrabName}"? Esta ação irá finalizar o trabalho e restringir edições.`)) return;
 
@@ -578,6 +539,7 @@ const PTrabManager = () => {
     }
   };
 
+  // MUDANÇA: Nova configuração de status
   const statusConfig = {
     'aberto': { 
       variant: 'default' as const, 
@@ -589,7 +551,7 @@ const PTrabManager = () => {
       label: 'Em Andamento',
       className: 'bg-blue-600 text-white hover:bg-blue-700'
     },
-    'aprovado': { 
+    'aprovado': { // NOVO STATUS
       variant: 'default' as const, 
       label: 'Aprovado',
       className: 'bg-green-600 text-white hover:bg-green-700'
@@ -604,9 +566,10 @@ const PTrabManager = () => {
   const handleConfirmReactivateStatus = async () => {
     if (!ptrabToReactivateId) return;
 
-    setLoading(true);
+    setLoading(true); // Start loading
 
     try {
+      // 1. Fetch PTrab data to check its number
       const { data: ptrab, error: fetchError } = await supabase
         .from("p_trab")
         .select("numero_ptrab")
@@ -615,9 +578,13 @@ const PTrabManager = () => {
 
       if (fetchError || !ptrab) throw new Error("P Trab não encontrado.");
 
+      // Check if the number starts with "Minuta"
       const isMinuta = ptrab.numero_ptrab.startsWith("Minuta");
+      
+      // Determine the new status: 'aberto' if Minuta, 'aprovado' if officially numbered
       const newStatus = isMinuta ? 'aberto' : 'aprovado';
 
+      // 2. Update status
       const { error: updateError } = await supabase
         .from("p_trab")
         .update({ status: newStatus })
@@ -633,7 +600,7 @@ const PTrabManager = () => {
     } catch (error: any) {
       console.error("Erro ao reativar P Trab:", error);
       toast.error(error.message || "Erro ao reativar P Trab.");
-      setLoading(false);
+      setLoading(false); // Ensure loading is stopped on error
     }
   };
 
@@ -656,6 +623,7 @@ const PTrabManager = () => {
     try {
       const { error } = await supabase
         .from('p_trab')
+        // Garante que o comentário seja null se estiver vazio
         .update({ comentario: comentarioText || null }) 
         .eq('id', ptrabComentario.id);
 
@@ -677,6 +645,7 @@ const PTrabManager = () => {
     navigate("/");
   };
 
+  // Removida a lógica de formatação automática do número do P Trab
   const handleNumeroPTrabChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, numero_ptrab: e.target.value }));
   };
@@ -691,12 +660,13 @@ const PTrabManager = () => {
 
       const currentNumber = formData.numero_ptrab.trim();
       
+      // --- VALIDAÇÃO DE CAMPOS OBRIGATÓRIOS ---
       const requiredFields: (keyof typeof formData)[] = [
         'numero_ptrab', 'nome_operacao', 'comando_militar_area', 
         'nome_om_extenso', 'nome_om', 'efetivo_empregado', 
         'periodo_inicio', 'periodo_fim', 'acoes',
-        'local_om',
-        'nome_cmt_om',
+        'local_om', // TORNADO OBRIGATÓRIO
+        'nome_cmt_om', // TORNADO OBRIGATÓRIO
       ];
       
       for (const field of requiredFields) {
@@ -726,7 +696,9 @@ const PTrabManager = () => {
         setLoading(false);
         return;
       }
+      // --- FIM VALIDAÇÃO ---
 
+      // Validação: Se o número não for "Minuta", ele deve ser único (exceto se for o próprio registro em edição)
       if (currentNumber && !currentNumber.startsWith("Minuta")) {
         const isDuplicate = isPTrabNumberDuplicate(currentNumber, existingPTrabNumbers) && 
                            currentNumber !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
@@ -738,21 +710,26 @@ const PTrabManager = () => {
         }
       }
       
+      // Se estiver criando, o numero_ptrab deve ser o valor único gerado pelo resetForm ou o valor customizado.
       const finalNumeroPTrab = currentNumber || generateUniqueMinutaNumber(existingPTrabNumbers);
 
       const ptrabData = {
         ...formData,
         user_id: user.id,
         origem: editingId ? formData.origem : 'original',
+        // Garante que o numero_ptrab seja salvo como o valor final
         numero_ptrab: finalNumeroPTrab, 
+        // MUDANÇA: Status inicial é sempre 'aberto'
         status: editingId ? formData.status : 'aberto',
       };
 
       if (editingId) {
+        // Edição: O ID já está no escopo do editingId, não precisamos nos preocupar com ele aqui.
         const { error } = await supabase.from("p_trab").update(ptrabData).eq("id", editingId);
         if (error) throw error;
         toast.success("P Trab atualizado!");
       } else {
+        // Criação: Removemos o ID do objeto para garantir que o DB gere um novo UUID.
         const { id, ...insertData } = ptrabData as Partial<PTrab> & { id?: string };
         
         const { data: newPTrab, error: insertError } = await supabase
@@ -765,9 +742,12 @@ const PTrabManager = () => {
         
         const newPTrabId = newPTrab.id;
         
+        // --- NOVO FLUXO DE CLONAGEM DE REGISTROS APÓS CRIAÇÃO DO CABEÇALHO ---
         if (originalPTrabIdToClone) {
+            // 1. Clonar registros (Classes I, II, III, LPC)
             await cloneRelatedRecords(originalPTrabIdToClone, newPTrabId);
             
+            // 2. Copiar rotulo_versao do original para o novo PTrab (se existir)
             const { data: originalPTrabData } = await supabase
                 .from("p_trab")
                 .select("rotulo_versao")
@@ -784,6 +764,7 @@ const PTrabManager = () => {
             toast.success("P Trab criado e registros clonados!");
         }
         
+        // ZERAR CRÉDITOS DISPONÍVEIS APÓS A CRIAÇÃO DE UM NOVO P TRAB
         try {
             await updateUserCredits(user.id, 0, 0);
         } catch (creditError) {
@@ -791,10 +772,11 @@ const PTrabManager = () => {
             toast.warning("Aviso: Ocorreu um erro ao zerar os créditos disponíveis. Por favor, verifique manualmente.");
         }
         
+        // Não redireciona, apenas fecha o diálogo e recarrega a lista.
         setDialogOpen(false);
         resetForm();
         loadPTrabs();
-        return;
+        return; // Sai da função para evitar o resetForm e loadPTrabs duplicados abaixo
       }
 
       setDialogOpen(false);
@@ -809,7 +791,7 @@ const PTrabManager = () => {
 
   const handleEdit = (ptrab: PTrab) => {
     setEditingId(ptrab.id);
-    setSelectedOmId(ptrab.codug_om ? 'temp' : undefined);
+    setSelectedOmId(ptrab.codug_om ? 'temp' : undefined); // Placeholder para forçar a seleção da OM
     setFormData({
       numero_ptrab: ptrab.numero_ptrab,
       comando_militar_area: ptrab.comando_militar_area,
@@ -827,18 +809,14 @@ const PTrabManager = () => {
       local_om: ptrab.local_om || "",
       status: ptrab.status,
       origem: ptrab.origem,
-      comentario: ptrab.comentario || "",
-      rotulo_versao: ptrab.rotulo_versao || null,
+      comentario: ptrab.comentario || "", // Comentário continua sendo editável
+      rotulo_versao: ptrab.rotulo_versao || null, // Adicionado
     });
     setDialogOpen(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = async (id: string, isOwner: boolean) => {
-    if (!isOwner) {
-        toast.error("Apenas o dono do P Trab pode excluí-lo.");
-        return;
-    }
+  const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza?")) return;
     try {
       await supabase.from("p_trab").delete().eq("id", id);
@@ -849,15 +827,20 @@ const PTrabManager = () => {
     }
   };
 
+  // Função para abrir o diálogo de aprovação
   const handleOpenApproveDialog = (ptrab: PTrab) => {
+    // 1. A sigla da OM é usada como está (ptrab.nome_om)
     const omSigla = ptrab.nome_om;
-    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSigla);
+    
+    // 2. Gerar o número no novo padrão N/YYYY/OM_SIGLA
+    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSigla); // CORRIGIDO: Usando existingPTrabNumbers
     
     setPtrabToApprove(ptrab);
     setSuggestedApproveNumber(suggestedNumber);
     setShowApproveDialog(true);
   };
 
+  // Função para confirmar a aprovação e numeração
   const handleApproveAndNumber = async () => {
     if (!ptrabToApprove) return;
 
@@ -867,7 +850,8 @@ const PTrabManager = () => {
       return;
     }
     
-    const isDuplicate = isPTrabNumberDuplicate(newNumber, existingPTrabNumbers);
+    // Verifica se o número sugerido (ou customizado) já existe
+    const isDuplicate = isPTrabNumberDuplicate(newNumber, existingPTrabNumbers); // CORRIGIDO: Usando existingPTrabNumbers
     if (isDuplicate) {
       toast.error("O número sugerido já existe. Tente novamente ou use outro número.");
       return;
@@ -879,7 +863,7 @@ const PTrabManager = () => {
         .from("p_trab")
         .update({ 
           numero_ptrab: newNumber,
-          status: 'aprovado',
+          status: 'aprovado', // MUDANÇA: Define o status como 'aprovado' após a numeração
         })
         .eq("id", ptrabToApprove.id);
 
@@ -897,35 +881,41 @@ const PTrabManager = () => {
     }
   };
 
+  // Função para abrir o diálogo de opções de clonagem
   const handleOpenCloneOptions = (ptrab: PTrab) => {
     setPtrabToClone(ptrab);
     setCloneType('new');
+    // O useEffect acima cuidará de definir suggestedCloneNumber e customCloneNumber
     setShowCloneOptionsDialog(true);
   };
 
+  // Função para confirmar a clonagem a partir do diálogo de opções
   const handleConfirmCloneOptions = async () => {
     if (!ptrabToClone) return;
 
     if (cloneType === 'new') {
+      // Fluxo 1: Novo P Trab (Abre o diálogo de edição do cabeçalho)
       setShowCloneOptionsDialog(false);
       
-      // CORREÇÃO: Excluir explicitamente todos os campos calculados e de sistema
+      // 1. Prepara o formulário com os dados do original e o novo número de minuta
+      // MUDANÇA AQUI: Excluir todos os campos calculados do frontend
       const { 
-        id, created_at, updated_at, user_id, share_token, shared_with,
-        totalLogistica, totalOperacional, totalMaterialPermanente, 
-        quantidadeRacaoOp, quantidadeHorasVoo, isOwner, isShared, hasPendingRequests,
+        id, created_at, updated_at, totalLogistica, totalOperacional, 
+        totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo, // <-- CAMPOS CALCULADOS EXCLUÍDOS
+        rotulo_versao, nome_om, nome_om_extenso, codug_om, rm_vinculacao, codug_rm_vinculacao,
+        share_token, // Adicionado share_token para que o DB gere um novo
         ...restOfPTrab 
       } = ptrabToClone;
       
       setFormData({
         ...restOfPTrab,
-        numero_ptrab: suggestedCloneNumber,
+        numero_ptrab: suggestedCloneNumber, // Usa o número de minuta gerado
         status: "aberto",
         origem: ptrabToClone.origem,
-        comentario: "",
-        rotulo_versao: ptrabToClone.rotulo_versao,
+        comentario: "", // Limpa o comentário para um novo P Trab
+        rotulo_versao: ptrabToClone.rotulo_versao, // COPIA o rótulo da versão
         
-        // Reset OM fields because the user needs to select a new OM in the form
+        // NOVO: Limpa campos da OM para forçar a re-seleção/confirmação
         nome_om: "",
         nome_om_extenso: "",
         codug_om: "",
@@ -933,48 +923,53 @@ const PTrabManager = () => {
         codug_rm_vinculacao: "",
       });
       
+      // Limpa o estado de seleção da OM para forçar a seleção no OmSelector
       setSelectedOmId(undefined); 
-      setOriginalPTrabIdToClone(ptrabToClone.id);
+      setOriginalPTrabIdToClone(ptrabToClone.id); // Salva o ID para clonar os registros no submit
       
+      // 2. Abre o diálogo de edição
       setDialogOpen(true);
       
     } else {
+      // Fluxo 2: Variação do Trabalho (abre o diálogo de nome da versão para CAPTURAR O RÓTULO)
       setShowCloneOptionsDialog(false);
       setShowCloneVariationDialog(true);
     }
   };
   
+  // Função para confirmar a clonagem de variação (chamada pelo CloneVariationDialog)
   const handleConfirmCloneVariation = async (versionName: string) => {
     if (!ptrabToClone || !suggestedCloneNumber.trim()) {
       toast.error("Erro: Dados de clonagem incompletos.");
       return;
     }
     
+    // 1. Captura o rótulo e fecha o diálogo de variação
     setShowCloneVariationDialog(false);
     setLoading(true);
 
     try {
-        // CORREÇÃO: Excluir explicitamente todos os campos calculados e de sistema
+        // MUDANÇA AQUI: Excluir todos os campos calculados do frontend
         const { 
-            id, created_at, updated_at, user_id, share_token, shared_with,
-            totalLogistica, totalOperacional, totalMaterialPermanente, 
-            quantidadeRacaoOp, quantidadeHorasVoo, isOwner, isShared, hasPendingRequests,
+            id, created_at, updated_at, totalLogistica, totalOperacional, 
+            totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo, // <-- CAMPOS CALCULADOS EXCLUÍDOS
+            rotulo_versao, share_token, 
             ...restOfPTrab 
         } = ptrabToClone;
         
         const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
             ...restOfPTrab,
-            numero_ptrab: suggestedCloneNumber,
+            numero_ptrab: suggestedCloneNumber, // Usa o número de minuta gerado
             status: "aberto",
             origem: ptrabToClone.origem,
-            comentario: null,
-            rotulo_versao: versionName,
+            comentario: null, // Comentário é limpo
+            rotulo_versao: versionName, // NEW: Salva o rótulo da versão fornecido pelo usuário
             user_id: (await supabase.auth.getUser()).data.user?.id!,
         };
 
         const { data: newPTrab, error: insertError } = await supabase
             .from("p_trab")
-            .insert([newPTrabData as TablesInsert<'p_trab'>])
+            .insert([newPTrabData as TablesInsert<'p_trab'>]) // Cast to TablesInsert<'p_trab'>
             .select()
             .single();
             
@@ -982,8 +977,10 @@ const PTrabManager = () => {
         
         const newPTrabId = newPTrab.id;
         
+        // 3. Clona os registros relacionados (Classes I, II, III, LPC)
         await cloneRelatedRecords(ptrabToClone.id, newPTrabId);
         
+        // 4. ZERAR CRÉDITOS DISPONÍVEIS
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
             await updateUserCredits(user.id, 0, 0);
@@ -1000,8 +997,10 @@ const PTrabManager = () => {
     }
   };
 
+  // Função para clonar os registros relacionados (Chamada APENAS no handleSubmit para novos PTrabs clonados)
   const cloneRelatedRecords = async (originalPTrabId: string, newPTrabId: string) => {
     
+    // Helper function for cloning generic class records
     const cloneClassRecords = async (tableName: keyof Tables, jsonbField: string, numericFields: string[]) => {
         const { data: originalRecords, error: fetchError } = await supabase
             .from(tableName)
@@ -1022,6 +1021,7 @@ const PTrabManager = () => {
                 [jsonbField]: record[jsonbField] ? JSON.parse(JSON.stringify(record[jsonbField])) : null,
             };
             
+            // Ensure numeric fields are present and default to 0 if null/undefined
             numericFields.forEach(field => {
                 if (newRecord[field] === null || newRecord[field] === undefined) {
                     newRecord[field] = 0;
@@ -1035,7 +1035,6 @@ const PTrabManager = () => {
             const { error: insertError } = await supabase
                 .from(tableName)
                 .insert(newRecords as TablesInsert<typeof tableName>[]);
-            
             if (insertError) {
                 console.error(`ERRO DE INSERÇÃO ${tableName}:`, insertError);
                 toast.error(`Erro ao clonar registros da ${tableName}: ${sanitizeError(insertError)}`);
@@ -1044,6 +1043,7 @@ const PTrabManager = () => {
         return newRecords.length;
     };
 
+    // 1. Clone Classe I records (Ração Quente/Operacional)
     const classeINumericFields = [
         'complemento_qr', 'complemento_qs', 'dias_operacao', 'efetivo', 'etapa_qr', 'etapa_qs', 
         'nr_ref_int', 'total_geral', 'total_qr', 'total_qs', 'valor_qr', 'valor_qs', 
@@ -1088,8 +1088,10 @@ const PTrabManager = () => {
     
     const genericNumericFields = ['dias_operacao', 'valor_total', 'valor_nd_30', 'valor_nd_39'];
 
+    // 2. Clone Classe II records
     await cloneClassRecords('classe_ii_registros', 'itens_equipamentos', genericNumericFields);
 
+    // 3. Clone Classe III records (needs specific handling due to many nullable fields)
     const classeIIINumericFields = [
         'dias_operacao', 'preco_litro', 'quantidade', 'total_litros', 'valor_total', 
         'consumo_lubrificante_litro', 'preco_lubrificante', 'valor_nd_30', 'valor_nd_39'
@@ -1132,13 +1134,25 @@ const PTrabManager = () => {
       }
     }
     
+    // 4. Clone Classe V records
     await cloneClassRecords('classe_v_registros', 'itens_equipamentos', genericNumericFields);
+
+    // 5. Clone Classe VI records
     await cloneClassRecords('classe_vi_registros', 'itens_equipamentos', genericNumericFields);
+
+    // 6. Clone Classe VII records
     await cloneClassRecords('classe_vii_registros', 'itens_equipamentos', genericNumericFields);
+
+    // 7. Clone Classe VIII Saúde records
     await cloneClassRecords('classe_viii_saude_registros', 'itens_saude', genericNumericFields);
+
+    // 8. Clone Classe VIII Remonta records
     await cloneClassRecords('classe_viii_remonta_registros', 'itens_remonta', [...genericNumericFields, 'quantidade_animais']);
+
+    // 9. Clone Classe IX records
     await cloneClassRecords('classe_ix_registros', 'itens_motomecanizacao', genericNumericFields);
 
+    // 10. Clone p_trab_ref_lpc record (if exists)
     const { data: originalRefLPC, error: fetchRefLPCError } = await supabase
       .from("p_trab_ref_lpc")
       .select("*")
@@ -1165,13 +1179,20 @@ const PTrabManager = () => {
     }
   };
 
+  // Função para verificar se o PTrab precisa ser numerado
   const needsNumbering = (ptrab: PTrab) => {
+    // Verifica se o numero_ptrab é "Minuta" ou se o status é 'aberto' ou 'em_andamento'
     return ptrab.status === 'aberto' || ptrab.status === 'em_andamento';
   };
   
+  // Função para verificar se o PTrab está em um estado final
   const isFinalStatus = (ptrab: PTrab) => {
     return ptrab.status === 'aprovado' || ptrab.status === 'arquivado';
   };
+  
+  // =================================================================
+  // LÓGICA DE CONSOLIDAÇÃO (NOVA IMPLEMENTAÇÃO)
+  // =================================================================
   
   const handleOpenConsolidationNumberDialog = (selectedPTrabs: string[]) => {
     if (selectedPTrabs.length < 2) {
@@ -1181,8 +1202,8 @@ const PTrabManager = () => {
     setSelectedPTrabsToConsolidate(selectedPTrabs);
     const newMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
     setSuggestedConsolidationNumber(newMinutaNumber);
-    setShowConsolidationDialog(false);
-    setShowConsolidationNumberDialog(true);
+    setShowConsolidationDialog(false); // Fecha o diálogo de seleção
+    setShowConsolidationNumberDialog(true); // Abre o diálogo de numeração
   };
 
   const handleConfirmConsolidation = async (finalMinutaNumber: string) => {
@@ -1192,6 +1213,7 @@ const PTrabManager = () => {
     setShowConsolidationNumberDialog(false);
 
     try {
+        // 1. Obter os dados completos dos PTrabs selecionados
         const { data: selectedPTrabsData, error: fetchError } = await supabase
             .from('p_trab')
             .select('*')
@@ -1201,22 +1223,27 @@ const PTrabManager = () => {
             throw new Error("Falha ao carregar dados dos P Trabs selecionados.");
         }
         
+        // Usar o primeiro PTrab como base para o cabeçalho
         const basePTrab = selectedPTrabsData[0];
         
+        // NOVO: Destruturar e omitir campos que devem ser gerados pelo DB
         const { 
             id, created_at, updated_at, share_token, 
             ...restOfBasePTrab 
         } = basePTrab;
         
+        // 2. Criar o novo PTrab consolidado (Minuta)
         const newPTrabData: TablesInsert<'p_trab'> = {
-            ...restOfBasePTrab,
+            ...restOfBasePTrab, // Usar o restante dos campos
             user_id: user.id,
             numero_ptrab: finalMinutaNumber,
+            // MUDANÇA AQUI: Remove o prefixo "CONSOLIDADO - "
             nome_operacao: basePTrab.nome_operacao, 
             status: 'aberto',
             origem: 'consolidado',
             comentario: `Consolidação dos P Trabs: ${selectedPTrabsData.map(p => p.numero_ptrab).join(', ')}`,
             rotulo_versao: null,
+            // id, created_at, updated_at, share_token são omitidos, permitindo que o DB gere os valores
         };
 
         const { data: newPTrab, error: insertError } = await supabase
@@ -1229,6 +1256,7 @@ const PTrabManager = () => {
         
         const newPTrabId = newPTrab.id;
         
+        // 3. Clonar e Consolidar Registros de TODAS as Classes
         const tablesToConsolidate: (keyof Tables)[] = [
             'classe_i_registros', 'classe_ii_registros', 'classe_iii_registros', 
             'classe_v_registros', 'classe_vi_registros', 'classe_vii_registros', 
@@ -1236,6 +1264,7 @@ const PTrabManager = () => {
         ];
         
         for (const tableName of tablesToConsolidate) {
+            // Buscar todos os registros da tabela para todos os PTrabs selecionados
             const { data: records, error: recordsError } = await supabase
                 .from(tableName)
                 .select('*')
@@ -1251,9 +1280,11 @@ const PTrabManager = () => {
                 const newRecords = records.map(record => {
                     const { id, created_at, updated_at, ...restOfRecord } = record;
                     
+                    // Ajusta o p_trab_id para o novo PTrab consolidado
                     const newRecord: TablesInsert<typeof tableName> = {
                         ...restOfRecord,
                         p_trab_id: newPTrabId,
+                        // Garante que campos JSONB sejam copiados corretamente (se existirem)
                         ...(record.itens_equipamentos ? { itens_equipamentos: JSON.parse(JSON.stringify(record.itens_equipamentos)) } : {}),
                         ...(record.itens_saude ? { itens_saude: JSON.parse(JSON.stringify(record.itens_saude)) } : {}),
                         ...(record.itens_remonta ? { itens_remonta: JSON.parse(JSON.stringify(record.itens_remonta)) } : {}),
@@ -1274,6 +1305,7 @@ const PTrabManager = () => {
             }
         }
         
+        // 4. Limpar créditos (opcional, mas recomendado para novo PTrab)
         await updateUserCredits(user.id, 0, 0);
 
         toast.success(`Consolidação concluída! Novo P Trab ${finalMinutaNumber} criado.`);
@@ -1288,254 +1320,15 @@ const PTrabManager = () => {
     }
   };
   
+  // PTrabs disponíveis para o ConsolidationNumberDialog
   const simplePTrabsToConsolidate = useMemo(() => {
     return pTrabs
         .filter(p => selectedPTrabsToConsolidate.includes(p.id))
         .map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }));
   }, [pTrabs, selectedPTrabsToConsolidate]);
 
-  // =================================================================
-  // LÓGICA DE COMPARTILHAMENTO (NOVAS FUNÇÕES)
-  // =================================================================
-  
-  const handleOpenShareDialog = (ptrab: PTrab) => {
-    if (!ptrab.share_token) {
-        toast.error("Token de compartilhamento não encontrado.");
-        return;
-    }
-    const baseUrl = window.location.origin;
-    // MUDANÇA: Usar a rota /share-ptrab para processar o link
-    const link = `${baseUrl}/share-ptrab?ptrabId=${ptrab.id}&token=${ptrab.share_token}`;
-    
-    setPtrabToShare(ptrab);
-    setShareLink(link);
-    setShowShareLinkDialog(true);
-  };
-  
-  const handleOpenLinkPTrabDialog = () => {
-    setLinkPTrabInput("");
-    setShowLinkPTrabDialog(true);
-  };
-  
-  const handleRequestLink = async () => {
-    if (!linkPTrabInput || !user?.id) {
-        toast.error("Link inválido ou usuário não autenticado.");
-        return;
-    }
-    
-    setLoading(true);
-    
-    try {
-        const url = new URL(linkPTrabInput);
-        const ptrabId = url.searchParams.get('ptrabId'); // CORRIGIDO: Usar 'ptrabId'
-        const shareToken = url.searchParams.get('token');
-        
-        if (!ptrabId || !shareToken) {
-            throw new Error("Link de compartilhamento incompleto.");
-        }
-        
-        const { data, error } = await supabase.rpc('request_ptrab_share', {
-            p_ptrab_id: ptrabId,
-            p_share_token: shareToken,
-            p_user_id: user.id,
-        });
-        
-        if (error) throw error;
-        
-        if (data === false) {
-            throw new Error("P Trab não encontrado ou token inválido.");
-        }
-        
-        const { data: ptrabData, error: fetchPTrabError } = await supabase
-            .from('p_trab')
-            .select('user_id, nome_om')
-            .eq('id', ptrabId)
-            .single();
-            
-        if (fetchPTrabError || !ptrabData) throw new Error("Falha ao buscar dados do P Trab.");
-        
-        const { data: ownerProfile } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, raw_user_meta_data')
-            .eq('id', ptrabData.user_id)
-            .single();
-            
-        const ownerMetadata = ownerProfile?.raw_user_meta_data as { posto_graduacao?: string } | undefined;
-        const ownerName = ownerProfile?.last_name || ownerProfile?.first_name || 'Usuário';
-        const ownerPostoGrad = ownerMetadata?.posto_graduacao || '';
-        
-        toast.success(
-            "Solicitação Enviada!", 
-            {
-                description: `Sua solicitação de acesso foi enviada para ${ownerPostoGrad} ${ownerName} da OM ${ptrabData.nome_om}. Você será notificado quando for aprovada.`,
-                duration: 8000,
-            }
-        );
-        
-        setShowLinkPTrabDialog(false);
-        
-    } catch (error: any) {
-        toast.error("Erro ao solicitar vinculação.", { description: sanitizeError(error) });
-    } finally {
-        setLoading(false);
-    }
-  };
-  
-  const handleOpenManageSharingDialog = async (ptrab: PTrab) => {
-    if (!ptrab.isOwner) return;
-    
-    setPtrabToManageSharing(ptrab);
-    setLoading(true);
-    
-    try {
-        const { data: requestsData, error: requestsError } = await supabase
-            .from('ptrab_share_requests')
-            .select(`
-                *,
-                requester_profile:requester_id (id, first_name, last_name, raw_user_meta_data)
-            `)
-            .eq('ptrab_id', ptrab.id)
-            .order('created_at', { ascending: true });
-            
-        if (requestsError) throw requestsError;
-        
-        setShareRequests(requestsData as ShareRequest[]);
-        setShowManageSharingDialog(true);
-        
-    } catch (error: any) {
-        toast.error("Erro ao carregar solicitações de compartilhamento.");
-        console.error(error);
-    } finally {
-        setLoading(false);
-    }
-  };
-  
-  const handleApproveRequest = async (requestId: string) => {
-    setLoading(true);
-    try {
-        const { data, error } = await supabase.rpc('approve_ptrab_share', {
-            p_request_id: requestId,
-        });
-        
-        if (error) throw error;
-        if (data === false) throw new Error("Falha na aprovação. Verifique se você é o dono.");
-        
-        toast.success("Compartilhamento aprovado com sucesso!");
-        
-        loadPTrabs();
-        if (ptrabToManageSharing) {
-            // Reabre o diálogo para atualizar a lista de solicitações e usuários ativos
-            handleOpenManageSharingDialog(ptrabToManageSharing);
-        } else {
-            setShowManageSharingDialog(false);
-        }
-        
-    } catch (error: any) {
-        toast.error("Erro ao aprovar solicitação.");
-        console.error(error);
-    } finally {
-        setLoading(false);
-    }
-  };
-  
-  const handleRejectRequest = async (requestId: string) => {
-    setLoading(true);
-    try {
-        const { data, error } = await supabase.rpc('reject_ptrab_share', {
-            p_request_id: requestId,
-        });
-        
-        if (error) throw error;
-        if (data === false) throw new Error("Falha na rejeição. Verifique se você é o dono.");
-        
-        toast.info("Solicitação rejeitada.");
-        
-        loadPTrabs();
-        if (ptrabToManageSharing) {
-            handleOpenManageSharingDialog(ptrabToManageSharing);
-        } else {
-            setShowManageSharingDialog(false);
-        }
-        
-    } catch (error: any) {
-        toast.error("Erro ao rejeitar solicitação.");
-        console.error(error);
-    } finally {
-        setLoading(false);
-    }
-  };
-  
-  const handleCancelSharing = async (ptrabId: string, userIdToRemove: string, userName: string) => {
-    if (!confirm(`Tem certeza que deseja remover o acesso de ${userName} a este P Trab?`)) return;
-    
-    setLoading(true);
-    try {
-        const { error } = await supabase
-            .from('p_trab')
-            .update({ 
-                shared_with: (ptrabToManageSharing?.shared_with || []).filter(id => id !== userIdToRemove)
-            })
-            .eq('id', ptrabId)
-            .eq('user_id', user?.id);
-            
-        if (error) throw error;
-        
-        toast.success(`Acesso de ${userName} removido com sucesso.`);
-        
-        loadPTrabs();
-        if (ptrabToManageSharing) {
-            const updatedPTrab = { 
-                ...ptrabToManageSharing, 
-                shared_with: (ptrabToManageSharing.shared_with || []).filter(id => id !== userIdToRemove)
-            } as PTrab;
-            setPtrabToManageSharing(updatedPTrab);
-            handleOpenManageSharingDialog(updatedPTrab);
-        } else {
-            setShowManageSharingDialog(false);
-        }
-        
-    } catch (error: any) {
-        toast.error("Erro ao cancelar compartilhamento.");
-        console.error(error);
-    } finally {
-        setLoading(false);
-    }
-  };
-  
-  const handleOpenUnlinkDialog = (ptrab: PTrab) => {
-    setPtrabToUnlink(ptrab);
-    setShowUnlinkPTrabDialog(true);
-  };
-  
-  const handleConfirmUnlink = async () => {
-    if (!ptrabToUnlink || !user?.id) return;
-    
-    setLoading(true);
-    try {
-        const { error } = await supabase
-            .from('p_trab')
-            .update({ 
-                shared_with: (ptrabToUnlink.shared_with || []).filter(id => id !== user.id)
-            })
-            .eq('id', ptrabToUnlink.id);
-            
-        if (error) throw error;
-        
-        toast.success(`P Trab ${ptrabToUnlink.numero_ptrab} desvinculado com sucesso.`);
-        setShowUnlinkPTrabDialog(false);
-        loadPTrabs();
-        
-    } catch (error: any) {
-        toast.error("Erro ao desvincular P Trab.");
-        console.error(error);
-    } finally {
-        setLoading(false);
-    }
-  };
-  
-  // =================================================================
-  // FIM LÓGICA DE COMPARTILHAMENTO
-  // =================================================================
+
+  // REMOVIDO: O bloco if (loading) de tela cheia foi removido daqui.
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1550,13 +1343,17 @@ const PTrabManager = () => {
 
           <div className="flex items-center gap-4">
             
+            {/* NOVO: Exibição explícita do usuário logado (Ajustado para Posto/Grad e Nome de Guerra) */}
             <div className="flex items-center gap-2 px-4 h-10 rounded-md bg-muted/50 border border-border">
               <User className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium text-foreground">
+                {/* Se userName estiver preenchido (Posto/Grad NomeGuerra), usa ele. 
+                    Caso contrário, se o usuário estiver carregado, mostra 'Perfil Incompleto'. */}
                 {userName || (user ? 'Perfil Incompleto' : 'Carregando...')}
               </span>
             </div>
             
+            {/* BOTÃO NOVO P TRAB */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => { resetForm(); setDialogOpen(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
@@ -1575,6 +1372,7 @@ const PTrabManager = () => {
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* L1L: Número do P Trab (Agora Minuta/Obrigatório) */}
                     <div className="space-y-2">
                       <Label htmlFor="numero_ptrab">Número do P Trab *</Label>
                       <Input
@@ -1585,6 +1383,7 @@ const PTrabManager = () => {
                         maxLength={50}
                         required
                         onKeyDown={handleEnterToNextField}
+                        // NEW: Disable if it's a Minuta number (Minuta-N)
                         disabled={formData.numero_ptrab.startsWith("Minuta") && !editingId}
                         className={formData.numero_ptrab.startsWith("Minuta") && !editingId ? "bg-muted/50 cursor-not-allowed" : ""}
                       />
@@ -1595,6 +1394,7 @@ const PTrabManager = () => {
                         }
                       </p>
                     </div>
+                    {/* L1R: Nome da Operação */}
                     <div className="space-y-2">
                       <Label htmlFor="nome_operacao">Nome da Operação *</Label>
                       <Input
@@ -1606,6 +1406,7 @@ const PTrabManager = () => {
                       />
                     </div>
                     
+                    {/* L2L: Comando Militar de Área */}
                     <div className="space-y-2">
                       <Label htmlFor="comando_militar_area">Comando Militar de Área *</Label>
                       <Input
@@ -1618,6 +1419,7 @@ const PTrabManager = () => {
                         onKeyDown={handleEnterToNextField}
                       />
                     </div>
+                    {/* L2R: Nome da OM (por extenso) */}
                     <div className="space-y-2">
                       <Label htmlFor="nome_om_extenso">Nome da OM (por extenso) *</Label>
                       <Input
@@ -1634,6 +1436,7 @@ const PTrabManager = () => {
                       </p>
                     </div>
 
+                    {/* L3L: Nome da OM (sigla) */}
                     <div className="space-y-2">
                       <Label htmlFor="nome_om">Nome da OM (sigla) *</Label>
                       <OmSelector
@@ -1670,6 +1473,7 @@ const PTrabManager = () => {
                         </p>
                       )}
                     </div>
+                    {/* L3R: Efetivo Empregado */}
                     <div className="space-y-2">
                       <Label htmlFor="efetivo_empregado">Efetivo Empregado *</Label>
                       <Input
@@ -1682,6 +1486,7 @@ const PTrabManager = () => {
                       />
                     </div>
 
+                    {/* L4L: Período Início */}
                     <div className="space-y-2">
                       <Label htmlFor="periodo_inicio">Período Início *</Label>
                       <Input
@@ -1693,6 +1498,7 @@ const PTrabManager = () => {
                         onKeyDown={handleEnterToNextField}
                       />
                     </div>
+                    {/* L4R: Período Fim */}
                     <div className="space-y-2">
                       <Label htmlFor="periodo_fim">Período Fim *</Label>
                       <Input
@@ -1705,6 +1511,7 @@ const PTrabManager = () => {
                       />
                     </div>
                     
+                    {/* L5L: Local da OM */}
                     <div className="space-y-2">
                       <Label htmlFor="local_om">Local da OM *</Label>
                       <Input
@@ -1717,6 +1524,7 @@ const PTrabManager = () => {
                         onKeyDown={handleEnterToNextField}
                       />
                     </div>
+                    {/* L5R: Nome do Comandante da OM */}
                     <div className="space-y-2">
                       <Label htmlFor="nome_cmt_om">Nome do Comandante da OM *</Label>
                       <Input
@@ -1737,10 +1545,11 @@ const PTrabManager = () => {
                       onChange={(e) => setFormData({ ...formData, acoes: e.target.value })}
                       rows={4}
                       maxLength={2000}
-                      required
+                      required // Adicionado required aqui
                       onKeyDown={handleEnterToNextField}
                     />
                   </div>
+                  {/* REMOVIDO: Campo de Comentário */}
                   <DialogFooter>
                     <Button type="submit" disabled={loading}>
                       {loading ? "Aguarde..." : (editingId ? "Atualizar" : "Criar")}
@@ -1753,20 +1562,24 @@ const PTrabManager = () => {
               </DialogContent>
             </Dialog>
             
+            {/* BOTÃO DE CONSOLIDAÇÃO ENVOLVIDO POR TOOLTIP */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
+                  {/* O span é necessário para que o Tooltip funcione em elementos desabilitados */}
                   <span className="inline-block">
                     <Button 
                       onClick={() => {
                         if (!isConsolidationDisabled) {
                           setShowConsolidationDialog(true);
                         } else {
+                          // Dispara o toast ao clicar no botão desativado
                           toast.info(getConsolidationDisabledMessage());
                         }
                       }} 
                       variant="secondary"
                       disabled={isConsolidationDisabled}
+                      // Adiciona style para garantir que o clique seja capturado pelo Button e não pelo span
                       style={isConsolidationDisabled ? { pointerEvents: 'auto' } : {}} 
                     >
                       <ArrowRight className="mr-2 h-4 w-4" />
@@ -1786,6 +1599,7 @@ const PTrabManager = () => {
               </Tooltip>
             </TooltipProvider>
 
+            {/* NOVO BOTÃO DE AJUDA */}
             <HelpDialog />
 
             <DropdownMenu open={settingsDropdownOpen} onOpenChange={setSettingsDropdownOpen}>
@@ -1802,14 +1616,7 @@ const PTrabManager = () => {
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 
-                {/* NOVO ITEM: Vincular P Trab (Ação do Destinatário) */}
-                <DropdownMenuItem onClick={handleOpenLinkPTrabDialog}>
-                  <Link className="mr-2 h-4 w-4" />
-                  Vincular P Trab
-                </DropdownMenuItem>
-                
-                <DropdownMenuSeparator />
-                
+                {/* NOVO ITEM: Perfil do Usuário */}
                 <DropdownMenuItem onClick={() => navigate("/config/profile")}>
                   Perfil do Usuário
                 </DropdownMenuItem>
@@ -1874,26 +1681,20 @@ const PTrabManager = () => {
                   {pTrabs.map((ptrab) => {
                     const originBadge = getOriginBadge(ptrab.origem);
                     const isMinuta = ptrab.numero_ptrab.startsWith("Minuta");
-                    const isEditable = (ptrab.isOwner || ptrab.isShared) && ptrab.status !== 'aprovado' && ptrab.status !== 'arquivado'; 
-                    const isApprovedOrArchived = isFinalStatus(ptrab);
+                    const isNumbered = !needsNumbering(ptrab);
+                    const isEditable = ptrab.status !== 'aprovado' && ptrab.status !== 'arquivado'; // MUDANÇA: Editável se não for aprovado/arquivado
+                    const isApprovedOrArchived = isFinalStatus(ptrab); // NOVO: Verifica se está em status final
                     
                     const totalGeral = (ptrab.totalLogistica || 0) + (ptrab.totalOperacional || 0) + (ptrab.totalMaterialPermanente || 0);
                     
+                    // MUDANÇA AQUI: Limpa o nome da operação se for consolidado
                     const displayOperationName = cleanOperationName(ptrab.nome_operacao, ptrab.origem);
                     
-                    const isSharedWithCurrentUser = ptrab.isShared;
-                    const isOwnedByCurrentUser = ptrab.isOwner;
-                    
-                    // Lógica de desativação para não-proprietários
-                    const isActionDisabledForNonOwner = !isOwnedByCurrentUser;
-                    
-                    // NOVO: Condição para desabilitar o compartilhamento
-                    const isSharingDisabled = ptrab.status === 'aprovado' || ptrab.status === 'arquivado';
-
                     return (
                     <TableRow key={ptrab.id}>
                       <TableCell className="font-medium">
                         <div className="flex flex-col items-center">
+                          {/* Lógica de exibição do número: Se for Minuta arquivada, mostra apenas MINUTA */}
                           {ptrab.status === 'arquivado' && isMinuta ? (
                             <span className="text-gray-500 font-bold">MINUTA</span>
                           ) : ptrab.status === 'aprovado' || ptrab.status === 'arquivado' ? (
@@ -1914,7 +1715,8 @@ const PTrabManager = () => {
                       <TableCell>
                         <div className="flex flex-col items-start">
                           <span>{displayOperationName}</span>
-                          {ptrab.rotulo_versao && (
+                          {/* NOVO RÓTULO DE VERSÃO - AGORA VISÍVEL */}
+                          {ptrab.rotulo_versao && ( // Check rotulo_versao
                             <Badge variant="secondary" className="mt-1 text-xs bg-secondary text-secondary-foreground">
                               <GitBranch className="h-3 w-3 mr-1" />
                               {ptrab.rotulo_versao}
@@ -1938,50 +1740,15 @@ const PTrabManager = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col items-center">
+                          {/* MUDANÇA: Substituído Select por Badge estático */}
                           <Badge 
                             className={cn(
-                              "w-[140px] h-7 text-xs flex items-center justify-center", 
+                              "w-[140px] h-7 text-xs flex items-center justify-center",
                               statusConfig[ptrab.status as keyof typeof statusConfig]?.className || 'bg-background'
                             )}
                           >
                             {statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}
                           </Badge>
-                          
-                          {/* NOVO BADGE DE COMPARTILHAMENTO (DONO) */}
-                          {isOwnedByCurrentUser && (ptrab.shared_with?.length || 0) > 0 && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Badge 
-                                    variant="outline" 
-                                    className="mt-1 text-xs bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer w-[140px] h-7 flex items-center justify-center"
-                                    onClick={() => handleOpenManageSharingDialog(ptrab)}
-                                  >
-                                    <Users className="h-3 w-3 mr-1" />
-                                    Compartilhando
-                                    {ptrab.hasPendingRequests && (
-                                        <span className="ml-1 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                                    )}
-                                  </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  {ptrab.hasPendingRequests ? "Gerenciar (Solicitações Pendentes!)" : "Gerenciar Compartilhamento"}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                          
-                          {/* NOVO BADGE DE COMPARTILHAMENTO (COMPARTILHADO) */}
-                          {isSharedWithCurrentUser && (
-                            <Badge 
-                              variant="outline" 
-                              className="mt-1 text-xs bg-purple-600 text-white hover:bg-purple-700 w-[140px] h-7 flex items-center justify-center"
-                            >
-                              <Share2 className="h-3 w-3 mr-1" />
-                              Compartilhado
-                            </Badge>
-                          )}
-                          
                           <div className="text-xs text-muted-foreground mt-1 flex flex-col items-center">
                             <span className="block">Última alteração:</span>
                             <span className="block">{formatDateTime(ptrab.updated_at)}</span>
@@ -1991,6 +1758,7 @@ const PTrabManager = () => {
                       <TableCell className="text-left w-[200px]">
                         <div className="flex flex-col text-xs space-y-1">
                           
+                          {/* 1. Aba Logística (Valor) */}
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Log:</span>
                             <span className="text-orange-600 font-medium">
@@ -1998,6 +1766,7 @@ const PTrabManager = () => {
                             </span>
                           </div>
                           
+                          {/* 2. Aba Operacional (Valor) */}
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Op:</span>
                             <span className="text-blue-600 font-medium">
@@ -2005,6 +1774,7 @@ const PTrabManager = () => {
                             </span>
                           </div>
                           
+                          {/* 3. Aba Material Permanente (Valor) */}
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Mat Perm:</span>
                             <span className="text-green-600 font-medium">
@@ -2012,6 +1782,8 @@ const PTrabManager = () => {
                             </span>
                           </div>
                           
+                          {/* Separador e Total Geral */}
+                          {/* Removida a condição (totalGeral > 0) para garantir que o total 0,00 seja exibido */}
                           <>
                             <div className="w-full h-px bg-muted-foreground/30 my-1" />
                             <div className="flex justify-between font-bold text-sm text-foreground">
@@ -2020,22 +1792,28 @@ const PTrabManager = () => {
                             </div>
                           </>
                           
+                          {/* Separador para Quantidades */}
                           <div className="w-full h-px bg-muted-foreground/30 my-1" />
                           
+                          {/* 5. Quantidade de Ração Op */}
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Rç Op:</span>
                             <span className="font-medium">
+                              {/* Exibe 0 Unid. se for 0 ou undefined */}
                               {`${ptrab.quantidadeRacaoOp || 0} Unid.`}
                             </span>
                           </div>
                           
+                          {/* 6. Quantidade de Horas de Voo */}
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">HV:</span>
                             <span className="font-medium">
+                              {/* Exibe 0 h se for 0 ou undefined */}
                               {`${ptrab.quantidadeHorasVoo || 0} h`}
                             </span>
                           </div>
                           
+                          {/* Caso não haja nenhum valor - REMOVIDO */}
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
@@ -2072,7 +1850,7 @@ const PTrabManager = () => {
                               onClick={() => handleOpenApproveDialog(ptrab)}
                               size="sm"
                               className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                              disabled={loading || isApprovedOrArchived || isActionDisabledForNonOwner}
+                              disabled={loading || isApprovedOrArchived} // Desabilita se estiver em status final
                             >
                               <CheckCircle className="h-4 w-4" />
                               Aprovar
@@ -2116,29 +1894,6 @@ const PTrabManager = () => {
                                 Editar P Trab
                               </DropdownMenuItem>
                               
-                              {/* NOVO: Ação de Compartilhar (Apenas para o DONO, visível mas desabilitado se finalizado) */}
-                              {isOwnedByCurrentUser && (
-                                <DropdownMenuItem 
-                                  onClick={() => !isSharingDisabled && handleOpenShareDialog(ptrab)}
-                                  disabled={isSharingDisabled}
-                                  className={isSharingDisabled ? "opacity-50 cursor-not-allowed" : ""}
-                                >
-                                  <Share2 className="mr-2 h-4 w-4" />
-                                  Compartilhar
-                                </DropdownMenuItem>
-                              )}
-                              
-                              {/* NOVO: Ação de Desvincular (Apenas para o COMPARTILHADO) */}
-                              {isSharedWithCurrentUser && (
-                                <DropdownMenuItem 
-                                  onClick={() => handleOpenUnlinkDialog(ptrab)}
-                                  className="text-red-600"
-                                >
-                                  <XCircle className="mr-2 h-4 w-4" />
-                                  Desvincular
-                                </DropdownMenuItem>
-                              )}
-                              
                               {/* Ação 3: Clonar P Trab (Desabilitado se arquivado) */}
                               <DropdownMenuItem 
                                 onClick={() => ptrab.status !== 'arquivado' && handleOpenCloneOptions(ptrab)}
@@ -2152,9 +1907,7 @@ const PTrabManager = () => {
                               {/* NOVO: Arquivar (Disponível se NÃO estiver arquivado) */}
                               {ptrab.status !== 'arquivado' && (
                                 <DropdownMenuItem 
-                                  onClick={() => isOwnedByCurrentUser && handleArchive(ptrab.id, `${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`)}
-                                  disabled={isActionDisabledForNonOwner}
-                                  className={isActionDisabledForNonOwner ? "opacity-50 cursor-not-allowed" : ""}
+                                  onClick={() => handleArchive(ptrab.id, `${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`)}
                                 >
                                   <Archive className="mr-2 h-4 w-4" />
                                   Arquivar
@@ -2165,14 +1918,10 @@ const PTrabManager = () => {
                               {ptrab.status === 'arquivado' && (
                                   <DropdownMenuItem 
                                       onClick={() => {
-                                          if (isOwnedByCurrentUser) {
-                                              setPtrabToReactivateId(ptrab.id);
-                                              setPtrabToReactivateName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
-                                              setShowReactivateStatusDialog(true);
-                                          }
+                                          setPtrabToReactivateId(ptrab.id);
+                                          setPtrabToReactivateName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
+                                          setShowReactivateStatusDialog(true);
                                       }}
-                                      disabled={isActionDisabledForNonOwner}
-                                      className={isActionDisabledForNonOwner ? "opacity-50 cursor-not-allowed" : ""}
                                   >
                                       <RefreshCw className="mr-2 h-4 w-4" />
                                       Reativar
@@ -2181,11 +1930,10 @@ const PTrabManager = () => {
                               
                               <DropdownMenuSeparator />
                               
-                              {/* Ação 6: Excluir (Sempre disponível, mas desabilitado para usuários compartilhados) */}
+                              {/* Ação 6: Excluir (Sempre disponível) */}
                               <DropdownMenuItem 
-                                onClick={() => handleDelete(ptrab.id, isOwnedByCurrentUser)}
-                                className={cn("text-red-600", !isOwnedByCurrentUser && "opacity-50 cursor-not-allowed")}
-                                disabled={!isOwnedByCurrentUser}
+                                onClick={() => handleDelete(ptrab.id)}
+                                className="text-red-600"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Excluir
@@ -2237,7 +1985,7 @@ const PTrabManager = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Diálogo de Opções de Clonagem (mantido) */}
+      {/* Diálogo de Opções de Clonagem */}
       <Dialog open={showCloneOptionsDialog} onOpenChange={setShowCloneOptionsDialog}>
         <DialogContent>
           <DialogHeader>
@@ -2283,7 +2031,7 @@ const PTrabManager = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo de Variação do Trabalho (mantido) */}
+      {/* Diálogo de Variação do Trabalho (NOVO) */}
       {ptrabToClone && (
         <CloneVariationDialog
           open={showCloneVariationDialog}
@@ -2294,7 +2042,7 @@ const PTrabManager = () => {
         />
       )}
 
-      {/* Dialog de Comentário (mantido) */}
+      {/* Dialog de Comentário */}
       <Dialog open={showComentarioDialog} onOpenChange={setShowComentarioDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -2324,7 +2072,7 @@ const PTrabManager = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo de Aprovação e Numeração (mantido) */}
+      {/* Diálogo de Aprovação e Numeração */}
       <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
@@ -2363,17 +2111,17 @@ const PTrabManager = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo de Consolidação (Seleção) (mantido) */}
+      {/* Diálogo de Consolidação (Seleção) */}
       <PTrabConsolidationDialog
         open={showConsolidationDialog}
         onOpenChange={setShowConsolidationDialog}
         pTrabsList={pTrabs.filter(p => p.status !== 'arquivado').map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))}
         existingPTrabNumbers={existingPTrabNumbers}
-        onConfirm={handleOpenConsolidationNumberDialog}
+        onConfirm={handleOpenConsolidationNumberDialog} // MUDANÇA: Abre o diálogo de numeração
         loading={loading}
       />
       
-      {/* Diálogo de Numeração de Consolidação (CORRIGIDO) */}
+      {/* Diálogo de Numeração de Consolidação (NOVO) */}
       <ConsolidationNumberDialog
         open={showConsolidationNumberDialog}
         onOpenChange={setShowConsolidationNumberDialog}
@@ -2384,64 +2132,14 @@ const PTrabManager = () => {
         loading={loading}
       />
       
-      {/* Diálogo de Prompt de Crédito (mantido) */}
+      {/* NOVO: Diálogo de Prompt de Crédito */}
       <CreditPromptDialog
         open={showCreditPrompt}
         onConfirm={handlePromptConfirm}
         onCancel={handlePromptCancel}
       />
       
-      {/* ================================================================= */}
-      {/* NOVOS DIÁLOGOS DE COMPARTILHAMENTO */}
-      {/* ================================================================= */}
-      
-      {/* 1. Share Link Dialog (Originador) */}
-      {ptrabToShare && (
-        <ShareLinkDialog
-          open={showShareLinkDialog}
-          onOpenChange={setShowShareLinkDialog}
-          ptrabName={`${ptrabToShare.numero_ptrab} - ${ptrabToShare.nome_operacao}`}
-          shareLink={shareLink}
-        />
-      )}
-      
-      {/* 2. Link PTrab Dialog (Destinatário) */}
-      <LinkPTrabDialog
-        open={showLinkPTrabDialog}
-        onOpenChange={setShowLinkPTrabDialog}
-        linkInput={linkPTrabInput}
-        onLinkInputChange={setLinkPTrabInput}
-        onRequestLink={handleRequestLink}
-        loading={loading}
-      />
-      
-      {/* 3. Manage Sharing Dialog (Originador) */}
-      {ptrabToManageSharing && (
-        <ManageSharingDialog
-          open={showManageSharingDialog}
-          onOpenChange={setShowManageSharingDialog}
-          ptrabId={ptrabToManageSharing.id}
-          ptrabName={`${ptrabToManageSharing.numero_ptrab} - ${ptrabToManageSharing.nome_operacao}`}
-          sharedWith={ptrabToManageSharing.shared_with}
-          requests={shareRequests}
-          onApprove={handleApproveRequest}
-          onReject={handleRejectRequest}
-          onCancelSharing={handleCancelSharing}
-          loading={loading}
-        />
-      )}
-      
-      {/* 4. Unlink PTrab Dialog (Destinatário) */}
-      {ptrabToUnlink && (
-        <UnlinkPTrabDialog
-          open={showUnlinkPTrabDialog}
-          onOpenChange={setShowUnlinkPTrabDialog}
-          ptrabName={`${ptrabToUnlink.numero_ptrab} - ${ptrabToUnlink.nome_operacao}`}
-          onConfirm={handleConfirmUnlink}
-          loading={loading}
-        />
-      )}
-      
+      {/* NOVO: Drawer de Chat com IA */}
       <AIChatDrawer />
     </div>
   );
