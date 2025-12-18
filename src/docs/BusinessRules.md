@@ -47,66 +47,77 @@ O complemento é o valor destinado às refeições intermediárias.
 
 ---
 
-## 2. Classe II - Material de Intendência
+## 2. Classes II, V, VI, VII, VIII (Saúde/Remonta) - Material e Serviço
 
-A Classe II cobre a manutenção de material de intendência (barracas, coletes, etc.). O valor é calculado com base em um valor de manutenção por dia (`Valor Mnt/Dia`) definido na Diretriz de Custeio.
+Estas classes cobrem a manutenção de material e são alocadas entre **ND 33.90.30 (Material)** e **ND 33.90.39 (Serviço)**.
 
-### 2.1. Fórmulas de Cálculo
+### 2.1. Fórmulas de Cálculo (Classes II, V, VI, VII, VIII - Saúde)
+
+O cálculo é baseado em um valor de manutenção por dia (`Valor Mnt/Dia`) definido na Diretriz de Custeio (ou valor unitário para Classe VIII - Saúde).
 
 **Cálculo do Valor Total por Item:**
-- `Valor Item = Quantidade x Valor Mnt/Dia x Dias Operação`
+- `Valor Item = Quantidade x Valor Mnt/Dia x Dias Operação` (Para Classes II, V, VI, VII)
+- `Valor Item = Quantidade x Valor Unitário` (Para Classe VIII - Saúde, se aplicável)
 
 **Cálculo do Valor Total por Categoria:**
 - `Total Categoria = SOMA(Valor Item)` para todos os itens daquela categoria.
 
 ### 2.2. Alocação de Natureza de Despesa (ND)
 
-O valor total da categoria é dividido entre **ND 33.90.30 (Material)** e **ND 33.90.39 (Serviço)**, conforme a alocação manual do usuário.
+O valor total da categoria é dividido conforme a alocação manual do usuário:
 
 - `ND 33.90.39 (Serviço)`: Valor inserido pelo usuário (máximo: `Total Categoria`).
 - `ND 33.90.30 (Material)`: `Total Categoria - ND 33.90.39`.
 
-**Regra de Negócio:** O sistema garante que a soma de ND 30 e ND 39 seja exatamente igual ao `Total Categoria`.
+**Regra de Negócio:** A soma de ND 30 e ND 39 deve ser exatamente igual ao `Total Categoria`.
 
 ---
 
-## 3. Classe III - Combustíveis e Lubrificantes
+## 3. Classe IX - Motomecanização (Manutenção e Acionamento)
 
-A Classe III é dividida em Combustível (para Geradores, Embarcações, Motomecanização, Engenharia) e Lubrificantes. Ambos são alocados na ND **33.90.30** (exceto o valor do combustível, que é alocado na coluna de Combustível do PTrab).
+A Classe IX cobre os custos de manutenção e acionamento de viaturas, alocados entre **ND 33.90.30 (Material)** e **ND 33.90.39 (Serviço)**.
 
-### 3.1. Referência de Preços (LPC)
+### 3.1. Fórmulas de Cálculo
 
-O cálculo depende dos preços unitários de Diesel e Gasolina, que são configurados na seção **Referência LPC** do PTrab.
+O cálculo combina um custo base diário e um custo de acionamento mensal.
 
-### 3.2. Fórmulas de Cálculo de Combustível (ND 33.90.30)
+**Variáveis:**
+- `Nr Vtr`: Quantidade de viaturas.
+- `Dias Operação`: Duração total da atividade.
+- `Valor Mnt/Dia`: Valor de manutenção diária (Diretriz de Custeio).
+- `Valor Acionamento/Mês`: Valor de acionamento mensal (Diretriz de Custeio).
 
-O cálculo é feito por tipo de equipamento (Gerador, Embarcação, etc.) e consolidado por tipo de combustível (Diesel/Gasolina).
+**Cálculo do Custo Base:**
+- `Custo Base = Nr Vtr x Valor Mnt/Dia x Dias Operação`
 
-**Fórmula Base (Consumo por Hora - Geradores, Embarcações, Engenharia):**
-1. `Litros Sem Margem = (Quantidade x Horas/dia x Consumo Fixo (L/h)) x Dias Operação`
+**Cálculo do Custo de Acionamento:**
+- `Nr Meses = CEIL(Dias Operação / 30)`
+- `Custo Acionamento = Nr Vtr x Valor Acionamento/Mês x Nr Meses`
 
-**Fórmula Base (Consumo por Distância - Motomecanização):**
-1. `Litros Sem Margem = (Distância a percorrer x Quantidade x Nr Deslocamentos) ÷ Consumo Fixo (km/L)`
+**Total Categoria:**
+- `Total Categoria = Custo Base + Custo Acionamento`
+
+### 3.2. Alocação de Natureza de Despesa (ND)
+
+Segue a mesma regra das Classes II, V, VI, VII e VIII (Saúde): divisão manual entre ND 30 e ND 39.
+
+---
+
+## 4. Classe III - Combustíveis e Lubrificantes
+
+A Classe III é alocada na ND **33.90.30**. O valor do Combustível é alocado na coluna **COMBUSTÍVEL** do PTrab, e o valor do Lubrificante é alocado na coluna **NATUREZA DE DESPESA (33.90.30)**.
+
+### 4.1. Fórmulas de Cálculo de Combustível (ND 33.90.30 - Coluna Combustível)
 
 **Aplicação da Margem de Segurança:**
 - `Total Litros = Litros Sem Margem x 1.30` (Margem de 30% para segurança/imprevistos).
 
 **Valor Total Combustível:**
 - `Valor Total = Total Litros x Preço Unitário (LPC)`
-- **Alocação:** Coluna **COMBUSTÍVEL** do PTrab (ND 33.90.30).
 
-### 3.3. Fórmulas de Cálculo de Lubrificante (ND 33.90.30)
+### 4.2. Fórmulas de Cálculo de Lubrificante (ND 33.90.30 - Coluna ND)
 
 O cálculo de lubrificante é feito separadamente e alocado na coluna **NATUREZA DE DESPESA (33.90.30)**.
 
-**Lubrificante para Geradores (Consumo por 100h):**
-1. `Total Horas = Quantidade x Horas/dia x Dias Operação`
-2. `Litros Lubrificante = (Total Horas / 100) x Consumo Lubrificante (L/100h)`
-
-**Lubrificante para Embarcações (Consumo por Hora):**
-1. `Total Horas = Quantidade x Horas/dia x Dias Operação`
-2. `Litros Lubrificante = Total Horas x Consumo Lubrificante (L/h)`
-
 **Valor Total Lubrificante:**
 - `Valor Total = Litros Lubrificante x Preço Lubrificante (R$/L)`
-- **Alocação:** Coluna **NATUREZA DE DESPESA (33.90.30)**.

@@ -57,11 +57,17 @@ O cliente é inicializado em `src/integrations/supabase/client.ts` e utiliza var
 
 A segurança é mandatória. Todas as tabelas de dados do usuário (`p_trab`, `classe_i_registros`, `organizacoes_militares`, etc.) possuem **Row Level Security (RLS)** habilitada.
 
-- **Regra Padrão:** Usuários autenticados só podem `SELECT`, `INSERT`, `UPDATE` e `DELETE` em registros onde `auth.uid() = user_id` ou onde há uma relação de chave estrangeira que garante a posse do registro (ex: `p_trab_id` referenciando um `p_trab` que pertence ao `auth.uid()`).
+- **Regra Padrão:** Usuários autenticados só podem `SELECT`, `INSERT`, `UPDATE` e `DELETE` em registros que lhes pertencem ou que foram explicitamente compartilhados.
 
 ### Edge Functions (Deno)
 
-Para lógica de backend mais complexa, como integração com APIs externas ou manipulação de segredos, são utilizadas Supabase Edge Functions (escritas em TypeScript/Deno).
+Para lógica de backend mais complexa, são utilizadas Supabase Edge Functions (escritas em TypeScript/Deno).
+
+- **Casos de Uso:**
+    - **Integração com APIs Externas:** Busca de preços de combustível (LPC) para evitar problemas de CORS e expor chaves de API.
+    - **Lógica de Compartilhamento:** Funções RPC para solicitar, aprovar e remover acesso colaborativo (`add_user_to_shared_with`, `approve_ptrab_share`, etc.).
+    - **Pré-visualização de Compartilhamento:** Função para buscar o nome do P Trab e do proprietário a partir de um token de compartilhamento.
+    - **Assistente de IA:** Função para processar consultas de chat com o modelo Gemini.
 
 ## 5. Convenções de Código
 

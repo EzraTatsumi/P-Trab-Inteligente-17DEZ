@@ -20,6 +20,8 @@ Permite combinar os registros de Classe I, II e III de múltiplos P Trabs de ori
 - **Clonar P Trab (Ação):** Cria uma cópia exata do P Trab, incluindo todos os registros de Classes I, II, III e a Referência LPC, com um novo número sequencial.
 - **Comentário (Ícone):** Permite adicionar ou editar um comentário interno sobre o P Trab.
 - **Numerar (Botão):** Disponível para P Trabs em status "Minuta". Permite atribuir o número oficial no padrão **Número/Ano/Sigla da OM** e alterar o status para "Em Andamento".
+- **Compartilhar (Ação):** Gera um link seguro para convidar outro usuário a colaborar neste P Trab.
+- **Gerenciar Compartilhamento (Ação):** Permite ao proprietário aprovar/rejeitar solicitações de acesso e remover colaboradores ativos.
 
 ## 2. Configurações
 
@@ -31,12 +33,22 @@ Permite configurar os valores e fatores de cálculo utilizados pelo sistema, gar
 - **Classe I:** Define os valores de etapa QS e QR.
 - **Classe II:** Define os valores de manutenção por dia para itens de intendência.
 - **Classe III:** Permite cadastrar e editar equipamentos (Geradores, Viaturas, etc.) e seus consumos padrão.
+- **Classe IX:** Permite cadastrar e editar os valores de manutenção e acionamento para viaturas de Motomecanização.
 
 ### Relação de OM (Página)
 Gerencia a lista de Organizações Militares (OM) e seus respectivos CODUGs.
 
 - **Nova OM (Botão):** Adiciona uma OM manualmente.
 - **Upload em Massa (Botão):** Permite importar uma lista completa de OMs a partir de um arquivo CSV, substituindo os dados existentes.
+
+### Exportar e Importar P Trabs (Página)
+Permite gerenciar backups e transferências de dados.
+
+- **Exportar:** Cria um arquivo JSON criptografado (com senha) de um P Trab único ou de um Backup Completo (incluindo todas as configurações e P Trabs).
+- **Importar:** Descriptografa e importa um arquivo. O sistema verifica conflitos de numeração e sugere a criação de uma Minuta se necessário.
+
+### Vincular P Trab Compartilhado (Diálogo)
+Acessível no menu de configurações. Permite colar um link de compartilhamento recebido para enviar uma solicitação de acesso ao proprietário do P Trab.
 
 ## 3. Formulários de Classes (PTrabForm)
 
@@ -52,6 +64,11 @@ Exibe o custo total calculado para cada aba (Logística, Operacional, etc.) e o 
 - **Classe I - Subsistência:** Abre o formulário para calcular as necessidades de alimentação (QS e QR).
 - **Classe II - Material de Intendência:** Abre o formulário para calcular as necessidades de manutenção de material de intendência.
 - **Classe III - Combustíveis e Lubrificantes:** Abre o formulário para calcular as necessidades de combustível e lubrificante.
+- **Classe V - Armamento:** Abre o formulário para calcular as necessidades de manutenção de armamento.
+- **Classe VI - Material de Engenharia:** Abre o formulário para calcular as necessidades de manutenção de material de engenharia.
+- **Classe VII - Comunicações e Informática:** Abre o formulário para calcular as necessidades de manutenção de material de comunicações e informática.
+- **Classe VIII - Material de Saúde e Remonta/Veterinária:** Abre o formulário para calcular as necessidades de saúde (KPSI/KPT) e remonta (animais).
+- **Classe IX - Material de Motomecanização:** Abre o formulário para calcular os custos de manutenção e acionamento de viaturas.
 
 ## 4. Formulário Classe I - Subsistência
 
@@ -64,22 +81,12 @@ Exibe o custo total calculado para cada aba (Logística, Operacional, etc.) e o 
 ### Memória de Cálculo Detalhada
 Após salvar, o sistema gera automaticamente a memória de cálculo. Você pode usar o botão **Editar Memória** para personalizar o texto, se necessário.
 
-## 5. Formulário Classe II - Material de Intendência
+## 5. Formulário Classe IX - Motomecanização (Exemplo de Nova Classe)
 
-### Configurar Itens por Categoria (Abas)
-Permite selecionar a categoria (Ex: Proteção Balística) e inserir a **Quantidade** de cada item necessário.
+### Configurar Itens por Categoria
+Permite selecionar a categoria (Ex: Vtr Operacional) e inserir a **Quantidade** de viaturas.
 
-### Alocação de Recursos (ND 30/39)
-- **OM de Destino do Recurso:** A OM que receberá o recurso (ND 30/39).
-- **ND 33.90.39 (Serviço):** Campo onde você insere o valor que será alocado para serviços (o restante vai para ND 33.90.30 - Material).
-- **Salvar Itens da Categoria (Botão):** Consolida os itens e a alocação de ND da aba atual no formulário principal.
+### Cálculo
+O sistema calcula o custo total com base no valor de manutenção por dia e no valor de acionamento mensal, conforme as diretrizes.
 
-## 6. Formulário Classe III - Combustíveis e Lubrificantes
-
-### Referência de Preços - Consulta LPC (Seção)
-Deve ser preenchida primeiro. Define o preço do Diesel e da Gasolina para o cálculo.
-
-### Adicionar Equipamentos (Seção)
-Permite selecionar o tipo de equipamento (Gerador, Viatura, etc.) e inserir os dados de consumo (Horas/dia, KM/dia, Quantidade).
-
-- **Consolidação de Custos:** O sistema agrupa automaticamente os itens por tipo de combustível e gera a memória de cálculo com a margem de 30% aplicada.
+- **Alocação de ND:** O valor total é dividido entre ND 33.90.30 (Material) e ND 33.90.39 (Serviço), conforme a alocação manual do usuário.
