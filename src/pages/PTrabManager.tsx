@@ -1931,7 +1931,7 @@ const PTrabManager = () => {
                         <div className="flex flex-col items-center">
                           <Badge 
                             className={cn(
-                              "w-[140px] h-7 text-xs flex items-center justify-center",
+                              "h-7 text-xs flex items-center justify-center", // Removido w-[140px]
                               statusConfig[ptrab.status as keyof typeof statusConfig]?.className || 'bg-background'
                             )}
                           >
@@ -1949,7 +1949,7 @@ const PTrabManager = () => {
                                     onClick={() => handleOpenManageSharingDialog(ptrab)}
                                   >
                                     <Users className="h-3 w-3 mr-1" />
-                                    Compartilhamento Ativo
+                                    Compartilhando {/* Alterado de 'Compartilhamento Ativo' para 'Compartilhando' */}
                                     {ptrab.hasPendingRequests && (
                                         <span className="ml-1 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
                                     )}
