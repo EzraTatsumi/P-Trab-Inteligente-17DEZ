@@ -158,7 +158,6 @@ const PTrabManager = () => {
   
   const [showManageSharingDialog, setShowManageSharingDialog] = useState(false);
   const [ptrabToManageSharing, setPtrabToManageSharing] = useState<PTrab | null>(null);
-  // Removido o estado local de requests, pois será gerenciado no componente filho
   
   const [showUnlinkPTrabDialog, setShowUnlinkPTrabDialog] = useState(false);
   const [ptrabToUnlink, setPtrabToUnlink] = useState<PTrab | null>(null);
@@ -175,9 +174,10 @@ const PTrabManager = () => {
   // =================================================================
   
   const fetchUserName = useCallback(async (userId: string, userMetadata: any) => {
+    // Buscar o perfil para obter o last_name e o raw_user_meta_data (que contém posto_graduacao)
     const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('last_name') 
+        .select('last_name, raw_user_meta_data') 
         .eq('id', userId)
         .single();
 
@@ -185,8 +185,12 @@ const PTrabManager = () => {
         console.error("Error fetching user profile:", profileError);
     }
     
+    // Usar dados do perfil se disponíveis, senão usar o metadata do auth.user
     const nomeGuerra = profileData?.last_name || '';
-    const postoGraduacao = userMetadata?.posto_graduacao || '';
+    
+    // Acessar posto_graduacao do raw_user_meta_data do perfil (que é JSONB)
+    const profileMetadata = profileData?.raw_user_meta_data as { posto_graduacao?: string } | undefined;
+    const postoGraduacao = profileMetadata?.posto_graduacao || userMetadata?.posto_graduacao || '';
     
     if (postoGraduacao && nomeGuerra) {
         return `${postoGraduacao} ${nomeGuerra}`;
