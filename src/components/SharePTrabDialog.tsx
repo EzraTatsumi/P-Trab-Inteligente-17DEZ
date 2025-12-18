@@ -47,7 +47,8 @@ export const SharePTrabDialog: React.FC<SharePTrabDialogProps> = ({
   // 2. Geração do Texto de Compartilhamento
   const shareText = useMemo(() => {
     if (!ptrab) return "";
-    return `Acesso Colaborativo ao P Trab: ${ptrab.numero_ptrab} - ${ptrab.nome_operacao} (${ptrab.nome_om}). Clique no link para aceitar o convite: ${shareUrl}`;
+    // Adiciona quebras de linha (\n) para isolar o link e aumentar a chance de ser reconhecido como hiperlink.
+    return `Acesso Colaborativo ao P Trab: ${ptrab.numero_ptrab} - ${ptrab.nome_operacao} (${ptrab.nome_om}).\n\nClique no link para aceitar o convite:\n${shareUrl}`;
   }, [ptrab, shareUrl]);
 
   // 3. Handlers de Ação
