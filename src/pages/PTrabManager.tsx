@@ -2142,7 +2142,6 @@ const PTrabManager = () => {
                               </DropdownMenuItem>
                               
                               {/* NOVO: Arquivar (Disponível se NÃO estiver arquivado) */}
-                              {/* Visível para todos, mas desabilitado para não-donos */}
                               {ptrab.status !== 'arquivado' && (
                                 <DropdownMenuItem 
                                   onClick={() => isOwnedByCurrentUser && handleArchive(ptrab.id, `${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`)}
@@ -2155,7 +2154,6 @@ const PTrabManager = () => {
                               )}
                               
                               {/* Ação 5: Reativar (Disponível APENAS se estiver arquivado) */}
-                              {/* Visível para todos, mas desabilitado para não-donos */}
                               {ptrab.status === 'arquivado' && (
                                   <DropdownMenuItem 
                                       onClick={() => {
@@ -2367,12 +2365,12 @@ const PTrabManager = () => {
         loading={loading}
       />
       
-      {/* Diálogo de Numeração de Consolidação (mantido) */}
+      {/* Diálogo de Numeração de Consolidação (CORRIGIDO) */}
       <ConsolidationNumberDialog
         open={showConsolidationNumberDialog}
         onOpenChange={setShowConsolidationNumberDialog}
         suggestedNumber={suggestedConsolidationNumber}
-        existingNumbers={existingPTrabs}
+        existingNumbers={existingPTrabNumbers}
         selectedPTrabs={simplePTrabsToConsolidate}
         onConfirm={handleConfirmConsolidation}
         loading={loading}
