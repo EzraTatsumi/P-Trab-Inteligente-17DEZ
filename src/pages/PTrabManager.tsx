@@ -37,7 +37,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { formatCurrency } from "@/lib/formatUtils";
+import { formatCurrency, formatDateTime } from "@/lib/formatUtils";
 import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate, generateApprovalPTrabNumber, generateUniqueMinutaNumber } from "@/lib/ptrabNumberUtils";
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
 import { ConsolidationNumberDialog } from "@/components/ConsolidationNumberDialog";
@@ -187,12 +187,6 @@ const PTrabManager = () => {
     // Retorna null se não houver nome de guerra ou posto/graduação
     return null; 
   }, []);
-
-  export const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
-  };
 
   const getOriginBadge = (origem: PTrabDB['origem']) => {
     switch (origem) {
@@ -2093,7 +2087,7 @@ const PTrabManager = () => {
             <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
               Cancelar
             </AlertDialogCancel>
-          </AlertDialogFooter>
+          </DialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 

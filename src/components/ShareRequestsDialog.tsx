@@ -15,7 +15,7 @@ import { Tables } from '@/integrations/supabase/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { formatDateTime } from '@/pages/PTrabManager'; // Reutilizando formatDateTime
+import { formatDateTime } from '@/lib/formatUtils'; // CORRIGIDO: Importando de formatUtils
 
 // Tipo de dados consolidado para a solicitação
 interface ShareRequestData extends Tables<'ptrab_share_requests'> {
@@ -187,8 +187,8 @@ export const ShareRequestsDialog: React.FC<ShareRequestsDialogProps> = ({
                           disabled={isProcessing}
                           className="bg-green-600 hover:bg-green-700"
                         >
-                          {isProcessing && action === 'approve' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                          {isProcessing && action === 'approve' ? 'Aprovando...' : 'Aprovar'}
+                          {isProcessing && processingId === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                          {isProcessing && processingId === req.id ? 'Aprovando...' : 'Aprovar'}
                         </Button>
                         <Button
                           size="sm"
@@ -196,8 +196,8 @@ export const ShareRequestsDialog: React.FC<ShareRequestsDialogProps> = ({
                           onClick={() => handleAction(req.id, 'reject')}
                           disabled={isProcessing}
                         >
-                          {isProcessing && action === 'reject' ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                          {isProcessing && action === 'reject' ? 'Rejeitando...' : 'Rejeitar'}
+                          {isProcessing && processingId === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                          {isProcessing && processingId === req.id ? 'Rejeitando...' : 'Rejeitar'}
                         </Button>
                       </div>
                     </div>
