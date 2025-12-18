@@ -105,6 +105,39 @@ Exibe o custo total calculado para cada aba (Logística, Operacional, etc.) e o 
 
 - **Informar Crédito (Botão):** Abre um diálogo para inserir os valores de crédito orçamentário disponíveis para GND 3 e GND 4.
 
+### Fluxo de Lançamento de Necessidades (5 Passos)
+
+Todos os formulários de classes logísticas (I, II, III, V, VI, VII, VIII, IX) seguem um fluxo de trabalho padronizado para garantir a rastreabilidade e a conformidade.
+
+#### 6.1. Dados da Organização
+Nesta seção, você define a OM (Organização Militar) que está solicitando o recurso e a OM que irá fornecer o material (se aplicável, como na Classe I).
+
+- **OM Solicitante:** A OM detentora do P Trab.
+- **OM Fornecedora (Classe I):** A OM (geralmente RM) que fornecerá a alimentação (QS).
+- **Dias de Operação e Fase:** Define o período e a fase da atividade para o cálculo.
+
+#### 6.2. Configurar Itens por Categoria e Alocação de Recursos
+Esta é a seção central para o cálculo das necessidades.
+
+- **Seleção de Itens:** Você seleciona os itens de material ou equipamento necessários (ex: Ração Quente, Fuzil, Gerador, Viatura).
+- **Cálculo Automático:** O sistema aplica as fórmulas de cálculo (baseadas nas Diretrizes de Custeio) para determinar o **Valor Total** da necessidade.
+- **Alocação ND 30 / ND 39 (Classes II, V, VI, VII, VIII, IX):** O Valor Total é dividido manualmente entre a Natureza de Despesa 33.90.30 (Material) e 33.90.39 (Serviço). A soma deve ser igual ao Valor Total calculado.
+- **Particularidade Classe III (Combustível):**
+    - **Consulta LPC:** Permite buscar o preço do litro de combustível (Diesel/Gasolina) em tempo real via API externa (ANP) ou inserir manualmente.
+    - **Lubrificantes:** O cálculo de lubrificante é feito separadamente, com base no consumo por litro de combustível e no preço do lubrificante.
+
+#### 6.3. Itens Adicionados
+Exibe uma lista de todos os registros de necessidades que foram salvos para o P Trab na classe atual. Você pode editar ou excluir registros nesta lista.
+
+#### 6.4. OMs Cadastradas
+Exibe a lista de Organizações Militares cadastradas no sistema, facilitando a consulta de CODUGs e RMs.
+
+#### 6.5. Memórias de Cálculo Detalhadas
+Após salvar um registro, o sistema gera automaticamente a memória de cálculo completa, detalhando a fórmula utilizada, os valores de entrada e o resultado final.
+
+- **Customização:** Você pode optar por substituir a memória de cálculo automática por um detalhamento customizado, se necessário.
+- **Conformidade:** Este detalhamento é crucial para a rastreabilidade e auditoria do P Trab.
+
 ### Abas de Classes (Logística)
 
 - **Classe I - Subsistência:** Abre o formulário para calcular as necessidades de alimentação (QS e QR).
