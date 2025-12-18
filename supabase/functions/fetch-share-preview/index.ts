@@ -45,7 +45,7 @@ serve(async (req) => {
     // 3. Buscar o perfil do proprietário (user_id)
     const { data: profile, error: profileError } = await supabaseServiceRole
       .from('profiles')
-      .select('first_name, last_name, raw_user_meta_data')
+      .select('first_name, last_name') // Simplificado: Apenas last_name e first_name
       .eq('id', ptrab.user_id)
       .single();
       
@@ -53,35 +53,11 @@ serve(async (req) => {
         console.warn(`Profile not found for user ID: ${ptrab.user_id}`);
     }
     
-    // 4. Formatar o nome do proprietário
-    const metadata = profile?.raw_user_meta_data as { posto_graduacao?: string, nome_om?: string } | undefined;
-    
-    // Prioriza last_name (Nome de Guerra), fallback para first_name, fallback final para 'Proprietário'
+    // 4. Formatar o nome do proprietário: Apenas Nome de Guerra (last_name)
+    // Fallback para first_name, fallback final para 'Proprietário'
     const nomeGuerra = (profile?.last_name?.trim() || profile?.first_name?.trim() || 'Proprietário');
     
-    // Acessa e limpa os campos militares
-    const postoGraduacao = metadata?.posto_graduacao?.trim();
-    const nomeOM = metadata?.nome_om?.trim();
-    
-    let ownerNameParts: string[] = [];
-    
-    // 1. Adicionar Posto/Graduação se existir e não for vazio
-    if (postoGraduacao) {
-        ownerNameParts.push(postoGraduacao);
-    }
-    
-    // 2. Adicionar Nome de Guerra
-    ownerNameParts.push(nomeGuerra);
-    
-    let ownerName = ownerNameParts.join(' ');
-    
-    // 3. Adicionar OM (se existir, senão usa fallback)
-    if (nomeOM) {
-        ownerName += ` (${nomeOM})`;
-    } else {
-        ownerName += ` (OM Desconhecida)`;
-    }
-
+    const ownerName = nomeGuerra; // Simplificado para apenas o nome
 
     return new Response(
       JSON.stringify({
