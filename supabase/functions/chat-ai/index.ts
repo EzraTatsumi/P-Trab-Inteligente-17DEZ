@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
-// URL da API do Gemini (Google AI)
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+// NOVO: URL da API z.AI (Placeholder - Substitua pela URL real da sua API z.AI)
+const ZAI_API_URL = "https://api.z.ai/v1/chat/completions"; 
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,8 +18,8 @@ serve(async (req) => {
 
   try {
     // 1. Obter a chave de API do segredo (Usando o nome do segredo fornecido no contexto)
-    const GEMINI_API_KEY = Deno.env.get("Chat IA P Trab Inteligente");
-    if (!GEMINI_API_KEY) {
+    const ZAI_API_KEY = Deno.env.get("Chat IA P Trab Inteligente");
+    if (!ZAI_API_KEY) {
       return new Response(
         JSON.stringify({ error: "Erro de Configuração: A chave 'Chat IA P Trab Inteligente' não está definida nos segredos da Edge Function." }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -32,42 +32,37 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing message parameter' }), { status: 400, headers: corsHeaders });
     }
 
-    // 3. Preparar o payload para o Gemini API
+    // 3. Preparar o payload para a API z.AI (Formato OpenAI/Chat padrão)
     const payload = {
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: `${SYSTEM_PROMPT}\n\nUsuário: ${message}` }
-          ]
-        }
+      model: "gpt-3.5-turbo", // Modelo comum em APIs de terceiros
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: message }
       ],
-      // CORREÇÃO: Usar generationConfig em vez de config
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 2048, // Aumentado para 2048 tokens
-      }
+      temperature: 0.7,
+      max_tokens: 2048,
     };
 
-    // 4. Chamar a API do Gemini
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    // 4. Chamar a API z.AI
+    const response = await fetch(ZAI_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ZAI_API_KEY}`, // Usando Bearer Token
       },
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Gemini API Error:", errorText);
-      throw new Error(`Gemini API returned status ${response.status}: ${errorText}`);
+      console.error("z.AI API Error:", errorText);
+      throw new Error(`z.AI API returned status ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
     
-    // 5. Extrair a resposta do formato Gemini
-    const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Não foi possível obter uma resposta da IA.";
+    // 5. Extrair a resposta do formato Chat padrão (choices[0].message.content)
+    const aiResponse = data.choices?.[0]?.message?.content || "Não foi possível obter uma resposta da IA.";
 
     return new Response(
       JSON.stringify({ response: aiResponse }),
