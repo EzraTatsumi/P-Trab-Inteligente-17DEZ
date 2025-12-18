@@ -1184,7 +1184,7 @@ const PTrabManager = () => {
   };
 
   const needsNumbering = (ptrab: PTrab) => {
-    return ptrab.status === 'aberto' || ptrab.status === 'em_andamento';
+    return ptrab.numero_ptrab.startsWith("Minuta") && (ptrab.status === 'aberto' || ptrab.status === 'em_andamento');
   };
   
   const isFinalStatus = (ptrab: PTrab) => {
@@ -1446,15 +1446,14 @@ const PTrabManager = () => {
     
     setLoading(true);
     try {
-        const { error } = await supabase
-            .from('p_trab')
-            .update({ 
-                shared_with: (ptrabToManageSharing?.shared_with || []).filter(id => id !== userIdToRemove)
-            })
-            .eq('id', ptrabId)
-            .eq('user_id', user?.id);
+        // CORREÇÃO: Usar a função RPC para remover o usuário, que tem SECURITY DEFINER
+        const { data: success, error } = await supabase.rpc('remove_user_from_shared_with', {
+            p_ptrab_id: ptrabId,
+            p_user_to_remove_id: userIdToRemove,
+        });
             
         if (error) throw error;
+        if (success === false) throw new Error("Falha na remoção de acesso. Verifique se você é o dono.");
         
         toast.success(`Acesso de ${userName} removido com sucesso.`);
         
@@ -1479,21 +1478,21 @@ const PTrabManager = () => {
     
     setLoading(true);
     try {
-        const { error } = await supabase
-            .from('p_trab')
-            .update({ 
-                shared_with: (ptrabToUnlink.shared_with || []).filter(id => id !== user.id)
-            })
-            .eq('id', ptrabToUnlink.id);
+        // CORREÇÃO: Usar a função RPC para remover o próprio usuário, que tem SECURITY DEFINER
+        const { data: success, error } = await supabase.rpc('remove_user_from_shared_with', {
+            p_ptrab_id: ptrabToUnlink.id,
+            p_user_to_remove_id: user.id, // O usuário está se removendo
+        });
             
         if (error) throw error;
+        if (success === false) throw new Error("Falha na desvinculação. O P Trab não foi encontrado ou você não tinha acesso.");
         
         toast.success(`P Trab ${ptrabToUnlink.numero_ptrab} desvinculado com sucesso.`);
         setShowUnlinkPTrabDialog(false);
         loadPTrabs();
         
     } catch (error: any) {
-        toast.error("Erro ao desvincular P Trab.");
+        toast.error("Erro ao desvincular P Trab.", { description: sanitizeError(error) });
         console.error(error);
     } finally {
         setLoading(false);
