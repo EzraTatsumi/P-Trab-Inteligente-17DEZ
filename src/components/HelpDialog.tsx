@@ -18,25 +18,25 @@ const DOC_TABS = [
     value: "guia",
     label: "Guia do Usuário",
     icon: BookOpen,
-    path: "/docs/GuiaDoUsuario.md",
+    path: "/docs/GuiaDoUsuario.md", // Caminho atualizado
   },
   {
     value: "regras",
     label: "Regras de Negócio",
     icon: FileText,
-    path: "/docs/RegrasDeNegocio.md",
+    path: "/docs/RegrasDeNegocio.md", // Caminho atualizado
   },
   {
     value: "seguranca",
     label: "Segurança",
     icon: Shield,
-    path: "/docs/Seguranca.md",
+    path: "/docs/Seguranca.md", // Caminho atualizado
   },
   {
     value: "arquitetura",
     label: "Arquitetura",
     icon: Code,
-    path: "/docs/Arquitetura.md",
+    path: "/docs/Arquitetura.md", // Caminho atualizado
   },
 ];
 
