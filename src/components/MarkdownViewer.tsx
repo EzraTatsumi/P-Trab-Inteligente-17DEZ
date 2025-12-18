@@ -1,71 +1,43 @@
-"use client";
-
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MarkdownViewerProps {
-  filePath: string;
+  content: string;
   className?: string;
 }
 
-const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ filePath, className }) => {
-  const [content, setContent] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    setContent(null);
-
-    // Nota: O Vite lida com a importação de arquivos estáticos via fetch
-    fetch(filePath)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`Failed to fetch ${filePath}: ${response.statusText}`);
-        }
-        return response.text();
-      })
-      .then(text => {
-        setContent(text);
-      })
-      .catch(e => {
-        console.error("Error loading markdown:", e);
-        setError("Não foi possível carregar a documentação. Verifique o caminho do arquivo.");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [filePath]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-40">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <span className="ml-2 text-muted-foreground">Carregando documentação...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-40 p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
-        <AlertTriangle className="h-6 w-6 text-destructive" />
-        <span className="ml-2 text-destructive">{error}</span>
-      </div>
-    );
-  }
-
+export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content, className }) => {
   return (
-    // Removendo 'prose' e aplicando classes de layout e cor base
-    <div className={cn("markdown-doc-content max-w-none text-foreground text-sm", className)}>
-      <ReactMarkdown>
-        {content || ''}
+    <div className={cn("prose dark:prose-invert max-w-none", className)}>
+      <ReactMarkdown
+        components={{
+          // Custom components for better styling consistency
+          h1: ({ node, ...props }) => <h1 className="text-2xl font-bold mt-6 mb-3 border-b pb-2 text-primary" {...props} />,
+          h2: ({ node, ...props }) => <h2 className="text-xl font-semibold mt-5 mb-2 text-foreground" {...props} />,
+          h3: ({ node, ...props }) => <h3 className="text-lg font-semibold mt-4 mb-1 text-foreground" {...props} />,
+          p: ({ node, ...props }) => <p className="text-sm mb-3 leading-relaxed text-muted-foreground" {...props} />,
+          ul: ({ node, ...props }) => <ul className="list-disc list-inside pl-5 space-y-1 text-sm text-muted-foreground" {...props} />,
+          ol: ({ node, ...props }) => <ol className="list-decimal list-inside pl-5 space-y-1 text-sm text-muted-foreground" {...props} />,
+          li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+          table: ({ node, ...props }) => (
+            <div className="overflow-x-auto my-4">
+              <table className="w-full text-sm border border-border" {...props} />
+            </div>
+          ),
+          th: ({ node, ...props }) => <th className="bg-muted p-2 border border-border text-left font-semibold text-foreground" {...props} />,
+          td: ({ node, ...props }) => <td className="p-2 border border-border align-top text-muted-foreground" {...props} />,
+          code: ({ node, inline, ...props }) => {
+            if (inline) {
+              return <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono text-primary" {...props} />;
+            }
+            return <pre className="bg-muted p-3 rounded-md overflow-x-auto text-xs font-mono" {...props} />;
+          },
+          a: ({ node, ...props }) => <a className="text-primary hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
+        }}
+      >
+        {content}
       </ReactMarkdown>
     </div>
   );
 };
-
-export default MarkdownViewer;

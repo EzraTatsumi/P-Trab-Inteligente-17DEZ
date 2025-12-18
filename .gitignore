@@ -79,9 +79,9 @@ src/components/CreditPromptDialog.tsx
 src/components/CreditInputDialog.tsx
 src/components/CreditInputCard.tsx
 src/components/RmSelector.tsx
-src/components/MarkdownAccordion.tsx
-src/components/MarkdownViewer.tsx
-src/components/HelpDialog.tsx
+# src/components/MarkdownAccordion.tsx <--- REMOVIDO
+# src/components/MarkdownViewer.tsx <--- REMOVIDO
+# src/components/HelpDialog.tsx <--- REMOVIDO
 src/components/YearManagementDialog.tsx
 src/components/RefLPCFormSection.tsx
 src/components/ClasseIIIRegistryForm.tsx
