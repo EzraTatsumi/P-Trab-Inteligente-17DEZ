@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Link, Share2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -206,6 +206,25 @@ const PTrabManager = () => {
 
   const handleNavigateToPrintOrExport = (ptrabId: string) => {
       navigate(`/ptrab/print?ptrabId=${ptrabId}`);
+  };
+  
+  // NOVO: Função para gerar e copiar o link de compartilhamento
+  const handleGenerateShareLink = (ptrab: PTrab) => {
+    if (!ptrab.share_token) {
+        toast.error("Token de compartilhamento não encontrado.");
+        return;
+    }
+    
+    // O link de compartilhamento deve levar para a página de visualização/preenchimento com o token
+    // Assumindo que a URL base é a raiz do app e a rota de preenchimento é /ptrab/form
+    const shareUrl = `${window.location.origin}/ptrab/form?shareToken=${ptrab.share_token}`;
+    
+    navigator.clipboard.writeText(shareUrl).then(() => {
+        toast.success("Link de compartilhamento copiado para a área de transferência!");
+    }).catch(err => {
+        toast.error("Falha ao copiar o link. Tente novamente.");
+        console.error("Erro ao copiar link:", err);
+    });
   };
 
   // Lógica de Consolidação
@@ -1902,6 +1921,16 @@ const PTrabManager = () => {
                               >
                                 <Copy className="mr-2 h-4 w-4" />
                                 Clonar P Trab
+                              </DropdownMenuItem>
+                              
+                              {/* Ação 4: Compartilhar P Trab (Desabilitado se arquivado) */}
+                              <DropdownMenuItem 
+                                onClick={() => ptrab.status !== 'arquivado' && handleGenerateShareLink(ptrab)}
+                                disabled={ptrab.status === 'arquivado'}
+                                className={ptrab.status === 'arquivado' ? "opacity-50 cursor-not-allowed" : ""}
+                              >
+                                <Share2 className="mr-2 h-4 w-4" />
+                                Compartilhar
                               </DropdownMenuItem>
                               
                               {/* NOVO: Arquivar (Disponível se NÃO estiver arquivado) */}
