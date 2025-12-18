@@ -550,8 +550,8 @@ const PTrabExportImportPage = () => {
     
     // 3. Importar P Trabs (com lógica de conflito simplificada: se o número já existe, ele é ignorado)
     const pTrabsToInsert = (p_trab as Tables<'p_trab'>[]).map(p => {
-        const { id, share_token, ...rest } = p; // FIX: Exclui id e share_token
-        return { ...rest, user_id: currentUserId };
+        const { id, share_token, shared_with, ...rest } = p; // FIX: Exclui id, share_token E shared_with
+        return { ...rest, user_id: currentUserId, shared_with: [] }; // Garante que shared_with é resetado
     });
     
     for (const ptrab of pTrabsToInsert) {
@@ -582,8 +582,8 @@ const PTrabExportImportPage = () => {
     const importedPTrab = data.data.p_trab as Tables<'p_trab'>;
     
     // 1. Preparar dados do PTrab
-    // FIX: Exclui id e share_token
-    const { id: originalId, created_at, updated_at, share_token, ...restOfPTrab } = importedPTrab; 
+    // FIX: Exclui id, share_token E shared_with
+    const { id: originalId, created_at, updated_at, share_token, shared_with, ...restOfPTrab } = importedPTrab; 
     
     // Determine the status for the new record
     let newStatus: string;
@@ -616,6 +616,7 @@ const PTrabExportImportPage = () => {
         user_id: currentUserId,
         origem: overwriteId ? importedPTrab.origem : 'importado',
         status: newStatus, // Use the determined status
+        shared_with: [], // GARANTE QUE O CAMPO É RESETADO
     };
     
     let finalPTrabId: string;
