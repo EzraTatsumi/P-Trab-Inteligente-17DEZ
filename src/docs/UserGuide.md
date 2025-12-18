@@ -77,7 +77,7 @@ Permite atualizar informações pessoais, como nome de guerra, posto/graduação
 Permite configurar os valores e fatores de cálculo utilizados pelo sistema, garantindo a conformidade com as diretrizes do COLOG para o ano de referência.
 
 - **Classe I:** Define os valores de etapa QS e QR.
-- **Classe II:** Define os valores de manutenção por dia para itens de intendência.
+- **Classes II, V, VI, VII, VIII (Saúde/Remonta):** Define os valores de manutenção por dia para itens de intendência, armamento, engenharia, comunicações, informática, saúde e remonta.
 - **Classe III:** Permite cadastrar e editar equipamentos (Geradores, Viaturas, etc.) e seus consumos padrão.
 - **Classe IX:** Permite cadastrar e editar os valores de manutenção e acionamento para viaturas de Motomecanização.
 
