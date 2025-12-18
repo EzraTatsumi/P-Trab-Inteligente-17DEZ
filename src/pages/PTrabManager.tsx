@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Link, Users, Bell } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -49,12 +49,16 @@ import { updateUserCredits, fetchUserCredits } from "@/lib/creditUtils";
 import { cn } from "@/lib/utils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 import { useSession } from "@/components/SessionContextProvider";
-import AIChatDrawer from "@/components/AIChatDrawer"; // NOVO IMPORT
+import AIChatDrawer from "@/components/AIChatDrawer";
+import { ShareDialog } from "@/components/ShareDialog";
+import { ShareRequestDialog } from "@/components/ShareRequestDialog";
+import { ShareRequestsDialog } from "@/components/ShareRequestsDialog"; // NOVO IMPORT
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
   origem: 'original' | 'importado' | 'consolidado';
   rotulo_versao: string | null;
+  shared_with: string[] | null; // Incluir shared_with
 };
 
 export interface SimplePTrab {
@@ -69,6 +73,8 @@ interface PTrab extends PTrabDB {
   totalMaterialPermanente?: number;
   quantidadeRacaoOp?: number;
   quantidadeHorasVoo?: number;
+  isShared: boolean; // Indica se o PTrab está compartilhado com o usuário logado
+  pendingRequestsCount: number; // NOVO: Contagem de solicitações pendentes
 }
 
 const PTrabManager = () => {
@@ -130,6 +136,19 @@ const PTrabManager = () => {
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
   const [ptrabToFill, setPtrabToFill] = useState<PTrab | null>(null);
   const hasBeenPrompted = useRef(new Set<string>()); // Armazena IDs dos PTrabs já perguntados
+  
+  // NOVO ESTADO: Compartilhamento
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [ptrabToShare, setPtrabToShare] = useState<Tables<'p_trab'> | null>(null);
+  
+  // NOVO ESTADO: Solicitação de Compartilhamento (Passo 2)
+  const [showShareRequestDialog, setShowShareRequestDialog] = useState(false);
+  const [shareLinkInput, setShareLinkInput] = useState("");
+  
+  // NOVO ESTADO: Gerenciamento de Solicitações (Passo 3)
+  const [showShareRequestsDialog, setShowShareRequestsDialog] = useState(false);
+  const [ptrabToManageRequests, setPtrabToManageRequests] = useState<string | null>(null);
+  const [totalPendingRequests, setTotalPendingRequests] = useState(0);
 
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
@@ -198,6 +217,24 @@ const PTrabManager = () => {
         return name.replace('CONSOLIDADO - ', '');
     }
     return name;
+  };
+  
+  // NOVO: Função para obter o badge de status de compartilhamento
+  const getShareStatusBadge = (ptrab: PTrab, currentUserId: string | undefined) => {
+    if (!currentUserId) return null;
+    
+    const isOwner = ptrab.user_id === currentUserId;
+    const isSharedWithMe = ptrab.shared_with?.includes(currentUserId);
+    
+    if (isOwner && (ptrab.shared_with?.length || 0) > 0) {
+        return { label: 'Compartilhando', className: 'bg-indigo-600 text-white hover:bg-indigo-700' };
+    }
+    
+    if (!isOwner && isSharedWithMe) {
+        return { label: 'Compartilhado', className: 'bg-pink-600 text-white hover:bg-pink-700' };
+    }
+    
+    return null;
   };
 
   const handleSelectPTrab = (ptrab: PTrab) => {
@@ -310,12 +347,35 @@ const PTrabManager = () => {
     const diff = end.getTime() - start.getTime();
     return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
   };
+  
+  // NOVO: Função para buscar solicitações pendentes para todos os PTrabs do usuário
+  const fetchPendingRequests = useCallback(async (ptrabIds: string[]) => {
+    if (!ptrabIds.length) return 0;
+    
+    // Busca todas as solicitações pendentes para os PTrabs que o usuário é dono
+    const { count, error } = await supabase
+        .from('ptrab_share_requests')
+        .select('id', { count: 'exact', head: true })
+        .in('ptrab_id', ptrabIds)
+        .eq('status', 'pending');
+        
+    if (error) {
+        console.error("Error fetching pending requests count:", error);
+        return 0;
+    }
+    
+    return count || 0;
+  }, []);
 
   const loadPTrabs = useCallback(async () => {
+    const currentUserId = user?.id;
+    if (!currentUserId) return;
+    
     try {
+      // MUDANÇA AQUI: A RLS agora garante que apenas os PTrabs do usuário OU compartilhados com ele sejam retornados.
       const { data: pTrabsData, error: pTrabsError } = await supabase
         .from("p_trab")
-        .select("*, comentario, origem, rotulo_versao") // Incluir rotulo_versao
+        .select("*, comentario, origem, rotulo_versao, shared_with") // Incluir shared_with
         .order("created_at", { ascending: false });
 
       if (pTrabsError) throw pTrabsError;
@@ -331,6 +391,13 @@ const PTrabManager = () => {
 
       const numbers = (typedPTrabsData || []).map(p => p.numero_ptrab);
       setExistingPTrabNumbers(numbers);
+      
+      // IDs dos PTrabs que o usuário é proprietário
+      const ownedPTrabIds = typedPTrabsData.filter(p => p.user_id === currentUserId).map(p => p.id);
+      
+      // Busca a contagem total de solicitações pendentes para todos os PTrabs do usuário
+      const totalPending = await fetchPendingRequests(ownedPTrabIds);
+      setTotalPendingRequests(totalPending);
 
       const pTrabsWithTotals: PTrab[] = await Promise.all(
         (typedPTrabsData || []).map(async (ptrab) => {
@@ -429,9 +496,32 @@ const PTrabManager = () => {
             totalMaterialPermanente: totalMaterialPermanenteCalculado, // Inicializado como 0
             quantidadeRacaoOp: quantidadeRacaoOpCalculada, // Valor real da Classe I
             quantidadeHorasVoo: quantidadeHorasVooCalculada, // Inicializado como 0
+            isShared: ptrab.shared_with?.includes(currentUserId) || false, // NOVO: Define se está compartilhado comigo
+            pendingRequestsCount: 0, // Será atualizado abaixo se necessário
           } as PTrab;
         })
       );
+      
+      // Se o usuário for proprietário, busca a contagem de solicitações pendentes por PTrab
+      if (ownedPTrabIds.length > 0) {
+          const { data: requestsData } = await supabase
+              .from('ptrab_share_requests')
+              .select('ptrab_id', { count: 'exact' })
+              .in('ptrab_id', ownedPTrabIds)
+              .eq('status', 'pending');
+              
+          const requestCounts: Record<string, number> = {};
+          (requestsData || []).forEach((req: any) => {
+              requestCounts[req.ptrab_id] = (requestCounts[req.ptrab_id] || 0) + 1;
+          });
+          
+          // Atualiza a contagem no objeto PTrab
+          pTrabsWithTotals.forEach(ptrab => {
+              if (ptrab.user_id === currentUserId) {
+                  ptrab.pendingRequestsCount = requestCounts[ptrab.id] || 0;
+              }
+          });
+      }
 
       setPTrabs(pTrabsWithTotals);
 
@@ -459,14 +549,14 @@ const PTrabManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setPTrabs, setExistingPTrabNumbers, toast]);
+  }, [user, toast, setPTrabs, setExistingPTrabNumbers, fetchPendingRequests]);
 
   useEffect(() => {
     checkAuth();
-    loadPTrabs();
-    
-    // ADDED: Fetch user name on load
     if (user?.id) {
+        loadPTrabs();
+        
+        // ADDED: Fetch user name on load
         // MUDANÇA: Passando user.user_metadata para a função
         fetchUserName(user.id, user.user_metadata).then(name => {
             // Se o nome for encontrado, usa ele. Caso contrário, define como string vazia.
@@ -819,11 +909,12 @@ const PTrabManager = () => {
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza?")) return;
     try {
+      // MUDANÇA: A RLS agora impede que usuários compartilhados excluam o PTrab.
       await supabase.from("p_trab").delete().eq("id", id);
       toast.success("P Trab excluído!");
       loadPTrabs();
     } catch (error: any) {
-      toast.error("Erro ao excluir");
+      toast.error("Erro ao excluir. Apenas o proprietário pode excluir o P Trab.");
     }
   };
 
@@ -903,7 +994,7 @@ const PTrabManager = () => {
         id, created_at, updated_at, totalLogistica, totalOperacional, 
         totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo, // <-- CAMPOS CALCULADOS EXCLUÍDOS
         rotulo_versao, nome_om, nome_om_extenso, codug_om, rm_vinculacao, codug_rm_vinculacao,
-        share_token, // Adicionado share_token para que o DB gere um novo
+        share_token, shared_with, // Adicionado shared_with para que o novo PTrab não herde o compartilhamento
         ...restOfPTrab 
       } = ptrabToClone;
       
@@ -953,9 +1044,10 @@ const PTrabManager = () => {
         const { 
             id, created_at, updated_at, totalLogistica, totalOperacional, 
             totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo, // <-- CAMPOS CALCULADOS EXCLUÍDOS
-            rotulo_versao, share_token, 
+            rotulo_versao, share_token, shared_with, // Adicionado shared_with
             ...restOfPTrab 
-        } = ptrabToClone;
+        }
+        = ptrabToClone;
         
         const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = {
             ...restOfPTrab,
@@ -1228,7 +1320,7 @@ const PTrabManager = () => {
         
         // NOVO: Destruturar e omitir campos que devem ser gerados pelo DB
         const { 
-            id, created_at, updated_at, share_token, 
+            id, created_at, updated_at, share_token, shared_with,
             ...restOfBasePTrab 
         } = basePTrab;
         
@@ -1326,9 +1418,103 @@ const PTrabManager = () => {
         .filter(p => selectedPTrabsToConsolidate.includes(p.id))
         .map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }));
   }, [pTrabs, selectedPTrabsToConsolidate]);
+  
+  // =================================================================
+  // LÓGICA DE COMPARTILHAMENTO (Passo 1)
+  // =================================================================
+  
+  const handleOpenShareDialog = (ptrab: PTrab) => {
+    setPtrabToShare(ptrab);
+    setShowShareDialog(true);
+  };
+  
+  // =================================================================
+  // LÓGICA DE SOLICITAÇÃO DE COMPARTILHAMENTO (Passo 2)
+  // =================================================================
+  
+  const handleOpenShareRequestDialog = () => {
+    setShareLinkInput("");
+    setShowShareRequestDialog(true);
+  };
+  
+  const handleProcessShareLink = async (link: string) => {
+    if (!user?.id) {
+        toast.error("Você precisa estar logado para solicitar acesso.");
+        return;
+    }
+    
+    setLoading(true);
+    
+    try {
+        // 1. Extrair ptrabId e token do link
+        const url = new URL(link);
+        const ptrabId = url.searchParams.get('ptrabId');
+        const token = url.searchParams.get('token');
+        
+        if (!ptrabId || !token) {
+            throw new Error("Link inválido. Certifique-se de que o link contém o ID do P Trab e o token.");
+        }
+        
+        // 2. Redireciona para a página /share para processar o link
+        // Isso garante que a lógica de contextualização e chamada RPC seja centralizada no SharePage
+        navigate(`/share?ptrabId=${ptrabId}&token=${token}`);
+        
+    } catch (e: any) {
+        toast.error(e.message || "Erro ao processar o link de compartilhamento.");
+    } finally {
+        setLoading(false);
+        setShowShareRequestDialog(false);
+    }
+  };
+  
+  // =================================================================
+  // LÓGICA DE GERENCIAMENTO DE SOLICITAÇÕES (Passo 3)
+  // =================================================================
+  
+  const handleOpenShareRequestsDialog = (ptrabId: string) => {
+    setPtrabToManageRequests(ptrabId);
+    setShowShareRequestsDialog(true);
+  };
+  
+  // =================================================================
+  // LÓGICA DE DESVINCULAÇÃO (Passo 6)
+  // =================================================================
+  
+  const handleUnshare = async (ptrabId: string, ptrabName: string) => {
+    if (!user?.id) return;
+    if (!confirm(`Tem certeza que deseja DESVINCULAR-SE do P Trab "${ptrabName}"? Você perderá o acesso colaborativo.`)) return;
+
+    setLoading(true);
+    try {
+        // Remove o ID do usuário logado do array shared_with
+        const { error } = await supabase
+            .from('p_trab')
+            .update({ 
+                shared_with: pTrabs.find(p => p.id === ptrabId)?.shared_with?.filter(id => id !== user.id) || []
+            })
+            .eq('id', ptrabId);
+
+        if (error) throw error;
+
+        toast.success(`Você foi desvinculado do P Trab ${ptrabName}.`);
+        loadPTrabs();
+    } catch (error) {
+        console.error("Erro ao desvincular P Trab:", error);
+        toast.error("Erro ao desvincular P Trab. Tente novamente.");
+    } finally {
+        setLoading(false);
+    }
+  };
 
 
-  // REMOVIDO: O bloco if (loading) de tela cheia foi removido daqui.
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Carregando P Trabs...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1598,6 +1784,49 @@ const PTrabManager = () => {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            
+            {/* NOVO BOTÃO DE VINCULAR P TRAB (Passo 2) */}
+            <Button 
+                onClick={handleOpenShareRequestDialog} 
+                variant="outline"
+                className="flex items-center gap-2"
+            >
+                <Link className="h-4 w-4" />
+                Vincular P Trab
+            </Button>
+            
+            {/* NOVO BOTÃO DE GERENCIAR SOLICITAÇÕES (Passo 3) */}
+            {totalPendingRequests > 0 && (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button 
+                                onClick={() => {
+                                    // Abre o diálogo de gerenciamento para o primeiro PTrab com solicitação pendente
+                                    const ptrabWithRequest = pTrabs.find(p => p.pendingRequestsCount > 0);
+                                    if (ptrabWithRequest) {
+                                        handleOpenShareRequestsDialog(ptrabWithRequest.id);
+                                    }
+                                }} 
+                                variant="destructive"
+                                size="icon"
+                                className="relative"
+                            >
+                                <Bell className="h-5 w-5" />
+                                <Badge 
+                                    variant="default" 
+                                    className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center bg-red-700 text-white"
+                                >
+                                    {totalPendingRequests}
+                                </Badge>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{totalPendingRequests} solicitações de acesso pendentes.</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            )}
 
             {/* NOVO BOTÃO DE AJUDA */}
             <HelpDialog />
@@ -1679,10 +1908,13 @@ const PTrabManager = () => {
                 </TableHeader>
                 <TableBody>
                   {pTrabs.map((ptrab) => {
+                    const isOwner = ptrab.user_id === user?.id;
                     const originBadge = getOriginBadge(ptrab.origem);
+                    const shareStatusBadge = getShareStatusBadge(ptrab, user?.id); // NOVO
                     const isMinuta = ptrab.numero_ptrab.startsWith("Minuta");
                     const isNumbered = !needsNumbering(ptrab);
-                    const isEditable = ptrab.status !== 'aprovado' && ptrab.status !== 'arquivado'; // MUDANÇA: Editável se não for aprovado/arquivado
+                    // MUDANÇA: Editável se não for aprovado/arquivado E se for o dono OU compartilhado
+                    const isEditable = (ptrab.status !== 'aprovado' && ptrab.status !== 'arquivado') && (isOwner || ptrab.isShared); 
                     const isApprovedOrArchived = isFinalStatus(ptrab); // NOVO: Verifica se está em status final
                     
                     const totalGeral = (ptrab.totalLogistica || 0) + (ptrab.totalOperacional || 0) + (ptrab.totalMaterialPermanente || 0);
@@ -1749,6 +1981,31 @@ const PTrabManager = () => {
                           >
                             {statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}
                           </Badge>
+                          {/* NOVO: Badge de Compartilhamento (Passo 4) */}
+                          {shareStatusBadge && (
+                            <Badge 
+                                variant="outline" 
+                                className={cn(
+                                    "mt-1 text-xs font-semibold w-[140px] h-7 flex items-center justify-center cursor-pointer",
+                                    shareStatusBadge.className
+                                )}
+                                onClick={() => {
+                                    // Ação ao clicar no badge de compartilhamento (Passo 5)
+                                    if (isOwner) {
+                                        handleOpenShareRequestsDialog(ptrab.id);
+                                    }
+                                }}
+                            >
+                                <Users className="h-3 w-3 mr-1" />
+                                {shareStatusBadge.label}
+                                {/* NOVO: Indicador de solicitações pendentes */}
+                                {isOwner && ptrab.pendingRequestsCount > 0 && (
+                                    <span className="ml-2 bg-red-500 text-white rounded-full px-2 text-[10px]">
+                                        {ptrab.pendingRequestsCount}
+                                    </span>
+                                )}
+                            </Badge>
+                          )}
                           <div className="text-xs text-muted-foreground mt-1 flex flex-col items-center">
                             <span className="block">Última alteração:</span>
                             <span className="block">{formatDateTime(ptrab.updated_at)}</span>
@@ -1845,7 +2102,7 @@ const PTrabManager = () => {
                         <div className="flex justify-end gap-2">
                           
                           {/* Botão Aprovar: Aparece SEMPRE se precisar de numeração OU se estiver em status final */}
-                          {(needsNumbering(ptrab) || isApprovedOrArchived) && (
+                          {(needsNumbering(ptrab) || isApprovedOrArchived) && isOwner && ( // Apenas o dono pode aprovar
                             <Button
                               onClick={() => handleOpenApproveDialog(ptrab)}
                               size="sm"
@@ -1877,6 +2134,28 @@ const PTrabManager = () => {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Ações</DropdownMenuLabel>
                               <DropdownMenuSeparator />
+                              
+                              {/* NOVO: Botão Compartilhar (Passo 1) / Desvincular (Passo 6) */}
+                              {isOwner ? (
+                                <DropdownMenuItem 
+                                    onClick={() => handleOpenShareDialog(ptrab)}
+                                    disabled={ptrab.status === 'arquivado'}
+                                >
+                                    <Link className="mr-2 h-4 w-4" />
+                                    Compartilhar
+                                </DropdownMenuItem>
+                              ) : ptrab.isShared ? (
+                                <DropdownMenuItem 
+                                    onClick={() => handleUnshare(ptrab.id, `${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`)}
+                                    className="text-destructive"
+                                >
+                                    <Users className="mr-2 h-4 w-4" />
+                                    Desvincular
+                                </DropdownMenuItem>
+                              ) : null}
+                              
+                              {isOwner && <DropdownMenuSeparator />}
+                              
                               <DropdownMenuItem 
                                 onClick={() => handleNavigateToPrintOrExport(ptrab.id)}
                               >
@@ -1904,8 +2183,8 @@ const PTrabManager = () => {
                                 Clonar P Trab
                               </DropdownMenuItem>
                               
-                              {/* NOVO: Arquivar (Disponível se NÃO estiver arquivado) */}
-                              {ptrab.status !== 'arquivado' && (
+                              {/* NOVO: Arquivar (Disponível se NÃO estiver arquivado E for o dono) */}
+                              {ptrab.status !== 'arquivado' && isOwner && (
                                 <DropdownMenuItem 
                                   onClick={() => handleArchive(ptrab.id, `${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`)}
                                 >
@@ -1914,8 +2193,8 @@ const PTrabManager = () => {
                                 </DropdownMenuItem>
                               )}
                               
-                              {/* Ação 5: Reativar (Disponível APENAS se estiver arquivado) */}
-                              {ptrab.status === 'arquivado' && (
+                              {/* Ação 5: Reativar (Disponível APENAS se estiver arquivado E for o dono) */}
+                              {ptrab.status === 'arquivado' && isOwner && (
                                   <DropdownMenuItem 
                                       onClick={() => {
                                           setPtrabToReactivateId(ptrab.id);
@@ -1930,10 +2209,11 @@ const PTrabManager = () => {
                               
                               <DropdownMenuSeparator />
                               
-                              {/* Ação 6: Excluir (Sempre disponível) */}
+                              {/* Ação 6: Excluir (Sempre disponível, mas RLS impede se não for o dono) */}
                               <DropdownMenuItem 
                                 onClick={() => handleDelete(ptrab.id)}
-                                className="text-red-600"
+                                className={isOwner ? "text-red-600" : "opacity-50 cursor-not-allowed"}
+                                disabled={!isOwner} // Desabilita o botão de exclusão para usuários compartilhados (Passo 6)
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Excluir
@@ -1981,7 +2261,7 @@ const PTrabManager = () => {
             <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
               Cancelar
             </AlertDialogCancel>
-          </AlertDialogFooter>
+          </DialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
@@ -2131,6 +2411,33 @@ const PTrabManager = () => {
         onConfirm={handleConfirmConsolidation}
         loading={loading}
       />
+      
+      {/* NOVO: Diálogo de Compartilhamento (Passo 1) */}
+      {ptrabToShare && (
+        <ShareDialog
+          open={showShareDialog}
+          onOpenChange={setShowShareDialog}
+          ptrab={ptrabToShare}
+        />
+      )}
+      
+      {/* NOVO: Diálogo de Solicitação de Compartilhamento (Passo 2) */}
+      <ShareRequestDialog
+        open={showShareRequestDialog}
+        onOpenChange={setShowShareRequestDialog}
+        onConfirm={handleProcessShareLink}
+        loading={loading}
+      />
+      
+      {/* NOVO: Diálogo de Gerenciamento de Solicitações (Passo 3) */}
+      {ptrabToManageRequests && (
+        <ShareRequestsDialog
+          open={showShareRequestsDialog}
+          onOpenChange={setShowShareRequestsDialog}
+          ptrabId={ptrabToManageRequests}
+          onUpdate={loadPTrabs} // Recarrega a lista de PTrabs após aprovação/rejeição
+        />
+      )}
       
       {/* NOVO: Diálogo de Prompt de Crédito */}
       <CreditPromptDialog
