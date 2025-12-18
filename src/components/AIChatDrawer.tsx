@@ -26,13 +26,29 @@ const AIChatDrawer = () => {
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // Usamos behavior: 'smooth' para uma transição suave
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
     }
   };
 
+  // Efeito para rolar para baixo sempre que as mensagens mudam
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+  
+  // Efeito para rolar para baixo quando o drawer é aberto (garante que a rolagem inicial funcione)
+  useEffect(() => {
+    if (open) {
+        // Pequeno delay para garantir que o conteúdo do drawer tenha sido renderizado
+        const timer = setTimeout(() => {
+            scrollToBottom();
+        }, 100);
+        return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   const sendMessage = async (message: string) => {
     if (!message.trim() || loading) return;
