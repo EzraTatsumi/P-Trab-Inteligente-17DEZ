@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { MoreVertical, FileText, Printer, Pencil, Copy, Archive, RefreshCw, Trash2, MessageSquare, CheckCircle, GitBranch, Users, Loader2 } from "lucide-react";
+import { MoreVertical, FileText, Printer, Pencil, Copy, Archive, RefreshCw, Trash2, MessageSquare, CheckCircle, GitBranch, Users, Loader2, Link } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatUtils";
 import { PTrab, PTrabDB, statusConfig, formatDateTime, getOriginBadge, cleanOperationName, getShareStatusBadge, needsNumbering, isFinalStatus } from "@/pages/PTrabManager";
