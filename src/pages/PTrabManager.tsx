@@ -2113,10 +2113,12 @@ const PTrabManager = () => {
                                 Editar P Trab
                               </DropdownMenuItem>
                               
-                              {/* NOVO: Ação de Compartilhar (Apenas para o DONO E se não estiver aprovado/arquivado) */}
-                              {isOwnedByCurrentUser && !isSharingDisabled && (
+                              {/* NOVO: Ação de Compartilhar (Apenas para o DONO, visível mas desabilitado se finalizado) */}
+                              {isOwnedByCurrentUser && (
                                 <DropdownMenuItem 
-                                  onClick={() => handleOpenShareDialog(ptrab)}
+                                  onClick={() => !isSharingDisabled && handleOpenShareDialog(ptrab)}
+                                  disabled={isSharingDisabled}
+                                  className={isSharingDisabled ? "opacity-50 cursor-not-allowed" : ""}
                                 >
                                   <Share2 className="mr-2 h-4 w-4" />
                                   Compartilhar
@@ -2228,7 +2230,7 @@ const PTrabManager = () => {
             <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
               Cancelar
             </AlertDialogCancel>
-          </AlertDialogFooter>
+          </DialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
