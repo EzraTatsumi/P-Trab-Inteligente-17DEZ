@@ -59,9 +59,8 @@ const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ filePath, className }) 
   }
 
   return (
-    // Usando prose-sm para um tamanho de fonte menor e mais adequado para um modal
-    // Adicionando text-foreground para garantir que o texto seja visível
-    <div className={cn("prose prose-sm dark:prose-invert max-w-none text-foreground", className)}>
+    // Removendo 'prose' e aplicando classes de layout e cor base
+    <div className={cn("markdown-doc-content max-w-none text-foreground text-sm", className)}>
       <ReactMarkdown>
         {content || ''}
       </ReactMarkdown>
