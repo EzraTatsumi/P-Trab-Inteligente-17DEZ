@@ -72,7 +72,8 @@ export const HelpDialog: React.FC = () => {
             ))}
           </TabsList>
 
-          <ScrollArea className="flex-1 p-6 pt-4">
+          {/* Adicionado bg-card para garantir contraste no fundo da área de rolagem */}
+          <ScrollArea className="flex-1 p-6 pt-4 bg-card"> 
             {DOC_TABS.map(tab => (
               <TabsContent key={tab.value} value={tab.value} className="mt-0">
                 <MarkdownViewer filePath={tab.path} />
