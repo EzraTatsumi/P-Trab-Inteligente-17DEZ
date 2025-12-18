@@ -43,7 +43,7 @@ export const ReceiveShareLinkDialog: React.FC<ReceiveShareLinkDialogProps> = ({
 }) => {
   const { user } = useSession();
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'success' | 'error' | 'pending_approval'>('idle');
 
   const form = useForm<ShareLinkFormValues>({
     resolver: zodResolver(shareLinkSchema),
@@ -81,8 +81,8 @@ export const ReceiveShareLinkDialog: React.FC<ReceiveShareLinkDialogProps> = ({
     }
 
     try {
-      // Chama a função RPC (Remote Procedure Call) no Supabase
-      const { data: success, error } = await supabase.rpc('add_user_to_shared_with', {
+      // MUDANÇA: Chama a função RPC request_ptrab_share
+      const { data: success, error } = await supabase.rpc('request_ptrab_share', {
         p_ptrab_id: ptrabId,
         p_share_token: token,
         p_user_id: user.id,
@@ -96,9 +96,8 @@ export const ReceiveShareLinkDialog: React.FC<ReceiveShareLinkDialogProps> = ({
           throw new Error("Token de compartilhamento inválido ou expirado.");
       }
 
-      setStatus('success');
-      toast.success("Acesso concedido! O P Trab foi adicionado à sua lista.");
-      onSuccess();
+      setStatus('pending_approval');
+      toast.success("Solicitação enviada! Aguarde a aprovação do proprietário.");
       
     } catch (e: any) {
       setStatus('error');
@@ -127,7 +126,7 @@ export const ReceiveShareLinkDialog: React.FC<ReceiveShareLinkDialogProps> = ({
             Receber P Trab Compartilhado
           </DialogTitle>
           <DialogDescription>
-            Cole o link de compartilhamento que você recebeu para obter acesso de edição ao Plano de Trabalho.
+            Cole o link de compartilhamento que você recebeu para solicitar acesso de edição ao Plano de Trabalho.
           </DialogDescription>
         </DialogHeader>
         
@@ -142,7 +141,7 @@ export const ReceiveShareLinkDialog: React.FC<ReceiveShareLinkDialogProps> = ({
                   <FormControl>
                     <Input
                       placeholder={`${window.location.origin}/share?ptrabId=...`}
-                      disabled={loading}
+                      disabled={loading || status === 'pending_approval'}
                       {...field}
                     />
                   </FormControl>
@@ -151,22 +150,22 @@ export const ReceiveShareLinkDialog: React.FC<ReceiveShareLinkDialogProps> = ({
               )}
             />
             
-            {status === 'success' && (
-                <Alert className="bg-green-500/10 border-green-500 text-green-700">
-                    <Check className="h-4 w-4" />
-                    <div className="text-sm font-medium">Acesso concedido com sucesso! O P Trab está na sua lista.</div>
+            {status === 'pending_approval' && (
+                <Alert className="bg-yellow-500/10 border-yellow-500 text-yellow-700">
+                    <AlertTriangle className="h-4 w-4" />
+                    <div className="text-sm font-medium">Solicitação enviada! Você será notificado quando o proprietário aprovar o acesso.</div>
                 </Alert>
             )}
 
             <DialogFooter>
-              <Button type="submit" disabled={loading || status === 'success'}>
+              <Button type="submit" disabled={loading || status === 'pending_approval'}>
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Processando...
                   </>
                 ) : (
-                  "Receber P Trab"
+                  "Solicitar Acesso"
                 )}
               </Button>
               <Button type="button" variant="outline" onClick={() => handleClose(false)} disabled={loading}>

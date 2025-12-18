@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Link, Share2, Check } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Link, Share2, Check, Clock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -51,7 +51,8 @@ import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 import { useSession } from "@/components/SessionContextProvider";
 import AIChatDrawer from "@/components/AIChatDrawer";
 import { SharePTrabDialog } from "@/components/SharePTrabDialog";
-import { ReceiveShareLinkDialog } from "@/components/ReceiveShareLinkDialog"; // NOVO IMPORT
+import { ReceiveShareLinkDialog } from "@/components/ReceiveShareLinkDialog";
+import { ShareRequestsDialog } from "@/components/ShareRequestsDialog"; // NOVO IMPORT
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -140,6 +141,10 @@ const PTrabManager = () => {
   
   // NOVO ESTADO: Diálogo de Recebimento de Link
   const [showReceiveShareDialog, setShowReceiveShareDialog] = useState(false);
+  
+  // NOVO ESTADO: Diálogo de Gerenciamento de Solicitações
+  const [showShareRequestsDialog, setShowShareRequestsDialog] = useState(false);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0); // Contagem de solicitações pendentes
 
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
@@ -183,7 +188,7 @@ const PTrabManager = () => {
     return null; 
   }, []);
 
-  const formatDateTime = (dateString: string) => {
+  export const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
         day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
@@ -330,6 +335,39 @@ const PTrabManager = () => {
     const diff = end.getTime() - start.getTime();
     return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
   };
+
+  const fetchPendingRequestsCount = useCallback(async () => {
+    if (!user?.id) return 0;
+    
+    try {
+        // 1. Buscar IDs dos PTrabs que o usuário é proprietário
+        const { data: userPTrabs, error: ptrabError } = await supabase
+            .from('p_trab')
+            .select('id')
+            .eq('user_id', user.id);
+            
+        if (ptrabError) throw ptrabError;
+        
+        const ptrabIds = (userPTrabs || []).map(p => p.id);
+        
+        if (ptrabIds.length === 0) return 0;
+
+        // 2. Contar solicitações pendentes para esses PTrabs
+        const { count, error: countError } = await supabase
+            .from('ptrab_share_requests')
+            .select('id', { count: 'exact', head: true })
+            .in('ptrab_id', ptrabIds)
+            .eq('status', 'pending');
+            
+        if (countError) throw countError;
+        
+        return count || 0;
+        
+    } catch (e) {
+        console.error("Error fetching pending requests count:", e);
+        return 0;
+    }
+  }, [user?.id]);
 
   const loadPTrabs = useCallback(async () => {
     try {
@@ -492,8 +530,11 @@ const PTrabManager = () => {
             // Se o nome for encontrado, usa ele. Caso contrário, define como string vazia.
             setUserName(name || ""); 
         });
+        
+        // NOVO: Fetch pending requests count
+        fetchPendingRequestsCount().then(count => setPendingRequestsCount(count));
     }
-  }, [loadPTrabs, user, fetchUserName]);
+  }, [loadPTrabs, user, fetchUserName, fetchPendingRequestsCount]);
 
   // Efeito para atualizar o número sugerido no diálogo de clonagem
   useEffect(() => {
@@ -1624,8 +1665,12 @@ const PTrabManager = () => {
 
             <DropdownMenu open={settingsDropdownOpen} onOpenChange={setSettingsDropdownOpen}>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" className="relative">
                   <Settings className="h-4 w-4" />
+                  {/* Badge de Notificação de Solicitações Pendentes */}
+                  {pendingRequestsCount > 0 && (
+                    <span className="absolute top-0 right-0 block h-3 w-3 rounded-full ring-2 ring-background bg-red-500" />
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent 
@@ -1635,6 +1680,17 @@ const PTrabManager = () => {
               >
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                
+                {/* NOVO ITEM: Gerenciar Solicitações de Compartilhamento */}
+                <DropdownMenuItem onClick={() => setShowShareRequestsDialog(true)} className="relative">
+                  <Clock className="mr-2 h-4 w-4" />
+                  Gerenciar Solicitações
+                  {pendingRequestsCount > 0 && (
+                    <Badge className="ml-auto bg-red-500 text-white text-xs h-5">
+                        {pendingRequestsCount}
+                    </Badge>
+                  )}
+                </DropdownMenuItem>
                 
                 {/* NOVO ITEM: Receber P Trab Compartilhado */}
                 <DropdownMenuItem onClick={() => setShowReceiveShareDialog(true)}>
@@ -2213,6 +2269,13 @@ const PTrabManager = () => {
         open={showReceiveShareDialog}
         onOpenChange={setShowReceiveShareDialog}
         onSuccess={loadPTrabs} // Recarrega a lista após o sucesso
+      />
+      
+      {/* NOVO: Diálogo de Gerenciamento de Solicitações */}
+      <ShareRequestsDialog
+        open={showShareRequestsDialog}
+        onOpenChange={setShowShareRequestsDialog}
+        onApprovalSuccess={loadPTrabs} // Recarrega a lista após a aprovação
       />
       
       {/* NOVO: Drawer de Chat com IA */}
