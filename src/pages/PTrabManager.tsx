@@ -43,7 +43,7 @@ import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
 import { ConsolidationNumberDialog } from "@/components/ConsolidationNumberDialog";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
-import HelpDialog from "@/components/HelpDialog"; // Importar o HelpDialog
+import { HelpDialog } from "@/components/HelpDialog";
 import { CloneVariationDialog } from "@/components/CloneVariationDialog";
 import { updateUserCredits, fetchUserCredits } from "@/lib/creditUtils";
 import { cn } from "@/lib/utils";
@@ -1752,7 +1752,7 @@ const PTrabManager = () => {
               </Tooltip>
             </TooltipProvider>
 
-            <HelpDialog /> {/* Componente de Ajuda */}
+            <HelpDialog />
 
             <DropdownMenu open={settingsDropdownOpen} onOpenChange={setSettingsDropdownOpen}>
               <DropdownMenuTrigger asChild>
@@ -2195,14 +2195,14 @@ const PTrabManager = () => {
               Tem certeza que deseja reativar o P Trab "{ptrabToReactivateName}"? Ele retornará ao status de "Aprovado" (se já numerado) ou "Aberto" (se for Minuta), permitindo novas edições.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <DialogFooter>
+          <AlertDialogFooter>
             <AlertDialogAction onClick={handleConfirmReactivateStatus} disabled={loading}>
               {loading ? "Aguarde..." : "Confirmar Reativação"}
             </AlertDialogAction>
             <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
               Cancelar
             </AlertDialogCancel>
-          </DialogFooter>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
