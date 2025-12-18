@@ -1881,6 +1881,9 @@ const PTrabManager = () => {
                     const isSharedWithCurrentUser = ptrab.isShared;
                     const isOwnedByCurrentUser = ptrab.isOwner;
                     
+                    // Lógica de desativação para não-proprietários
+                    const isActionDisabledForShared = isSharedWithCurrentUser;
+
                     return (
                     <TableRow key={ptrab.id}>
                       <TableCell className="font-medium">
@@ -2063,7 +2066,7 @@ const PTrabManager = () => {
                               onClick={() => handleOpenApproveDialog(ptrab)}
                               size="sm"
                               className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                              disabled={loading || isApprovedOrArchived}
+                              disabled={loading || isApprovedOrArchived || isActionDisabledForShared} // Desativar se for compartilhado (não-dono)
                             >
                               <CheckCircle className="h-4 w-4" />
                               Aprovar
