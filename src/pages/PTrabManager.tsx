@@ -50,12 +50,14 @@ import { cn } from "@/lib/utils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 import { useSession } from "@/components/SessionContextProvider";
 import AIChatDrawer from "@/components/AIChatDrawer";
-import { SharePTrabDialog } from "@/components/SharePTrabDialog"; // NOVO IMPORT
+import { SharePTrabDialog } from "@/components/SharePTrabDialog";
+import { ReceiveShareLinkDialog } from "@/components/ReceiveShareLinkDialog"; // NOVO IMPORT
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
   origem: 'original' | 'importado' | 'consolidado';
   rotulo_versao: string | null;
+  shared_with: string[] | null; // Adicionado shared_with
 };
 
 export interface SimplePTrab {
@@ -135,6 +137,9 @@ const PTrabManager = () => {
   // NOVO ESTADO: Diálogo de Compartilhamento
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [ptrabToShare, setPtrabToShare] = useState<PTrab | null>(null);
+  
+  // NOVO ESTADO: Diálogo de Recebimento de Link
+  const [showReceiveShareDialog, setShowReceiveShareDialog] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
@@ -330,7 +335,7 @@ const PTrabManager = () => {
     try {
       const { data: pTrabsData, error: pTrabsError } = await supabase
         .from("p_trab")
-        .select("*, comentario, origem, rotulo_versao, share_token") // Incluir share_token
+        .select("*, comentario, origem, rotulo_versao, share_token, shared_with") // Incluir shared_with
         .order("created_at", { ascending: false });
 
       if (pTrabsError) throw pTrabsError;
@@ -1631,6 +1636,14 @@ const PTrabManager = () => {
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 
+                {/* NOVO ITEM: Receber P Trab Compartilhado */}
+                <DropdownMenuItem onClick={() => setShowReceiveShareDialog(true)}>
+                  <Link className="mr-2 h-4 w-4" />
+                  Receber P Trab Compartilhado
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
                 {/* NOVO ITEM: Perfil do Usuário */}
                 <DropdownMenuItem onClick={() => navigate("/config/profile")}>
                   Perfil do Usuário
@@ -1705,6 +1718,10 @@ const PTrabManager = () => {
                     // MUDANÇA AQUI: Limpa o nome da operação se for consolidado
                     const displayOperationName = cleanOperationName(ptrab.nome_operacao, ptrab.origem);
                     
+                    // NOVO: Lógica de Compartilhamento
+                    const isSharedByMe = ptrab.user_id === user?.id && ptrab.shared_with && ptrab.shared_with.length > 0;
+                    const isSharedWithMe = ptrab.user_id !== user?.id;
+                    
                     return (
                     <TableRow key={ptrab.id}>
                       <TableCell className="font-medium">
@@ -1735,6 +1752,20 @@ const PTrabManager = () => {
                             <Badge variant="secondary" className="mt-1 text-xs bg-secondary text-secondary-foreground">
                               <GitBranch className="h-3 w-3 mr-1" />
                               {ptrab.rotulo_versao}
+                            </Badge>
+                          )}
+                          
+                          {/* NOVO: Badge de Compartilhamento (Posição sugerida: abaixo do nome da operação/rótulo) */}
+                          {isSharedWithMe && (
+                            <Badge className="mt-1 text-xs bg-purple-500 text-white hover:bg-purple-600">
+                              <Share2 className="h-3 w-3 mr-1" />
+                              Compartilhado
+                            </Badge>
+                          )}
+                          {isSharedByMe && (
+                            <Badge className="mt-1 text-xs bg-green-500 text-white hover:bg-green-600">
+                              <Check className="h-3 w-3 mr-1" />
+                              Compartilhado (Ativo)
                             </Badge>
                           )}
                         </div>
@@ -2175,6 +2206,13 @@ const PTrabManager = () => {
             share_token: ptrabToShare.share_token || '',
             nome_om: ptrabToShare.nome_om,
         } : null}
+      />
+      
+      {/* NOVO: Diálogo de Recebimento de Link */}
+      <ReceiveShareLinkDialog
+        open={showReceiveShareDialog}
+        onOpenChange={setShowReceiveShareDialog}
+        onSuccess={loadPTrabs} // Recarrega a lista após o sucesso
       />
       
       {/* NOVO: Drawer de Chat com IA */}
