@@ -58,6 +58,7 @@ O cliente é inicializado em `src/integrations/supabase/client.ts` e utiliza var
 A segurança é mandatória. Todas as tabelas de dados do usuário (`p_trab`, `classe_i_registros`, `organizacoes_militares`, etc.) possuem **Row Level Security (RLS)** habilitada.
 
 - **Regra Padrão:** Usuários autenticados só podem `SELECT`, `INSERT`, `UPDATE` e `DELETE` em registros que lhes pertencem ou que foram explicitamente compartilhados.
+- **Colaboração:** Funções PostgreSQL (`is_ptrab_owner_or_shared`) são usadas nas políticas RLS para conceder acesso de leitura/escrita a colaboradores listados no array `shared_with` do P Trab.
 
 ### Edge Functions (Deno)
 
@@ -65,8 +66,8 @@ Para lógica de backend mais complexa, são utilizadas Supabase Edge Functions (
 
 - **Casos de Uso:**
     - **Integração com APIs Externas:** Busca de preços de combustível (LPC) para evitar problemas de CORS e expor chaves de API.
-    - **Lógica de Compartilhamento:** Funções RPC para solicitar, aprovar e remover acesso colaborativo (`add_user_to_shared_with`, `approve_ptrab_share`, etc.).
-    - **Pré-visualização de Compartilhamento:** Função para buscar o nome do P Trab e do proprietário a partir de um token de compartilhamento.
+    - **Lógica de Compartilhamento:** Funções RPC para solicitar, aprovar e remover acesso colaborativo (`request_ptrab_share`, `approve_ptrab_share`, `remove_user_from_shared_with`).
+    - **Pré-visualização de Compartilhamento:** Função (`fetch-share-preview`) para buscar o nome do P Trab e do proprietário a partir de um token de compartilhamento, garantindo que o token seja válido antes de enviar a solicitação.
     - **Assistente de IA:** Função para processar consultas de chat com o modelo Gemini, mantendo a chave de API segura no backend.
 
 ## 5. Convenções de Código
