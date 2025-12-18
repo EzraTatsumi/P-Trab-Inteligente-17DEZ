@@ -164,9 +164,22 @@ const Login = () => {
               </div>
             </div>
             
+            {/* Checkbox Lembrar de Mim - MOVIDO PARA CIMA */}
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="remember-me" 
+                checked={rememberMe} 
+                onCheckedChange={(checked) => setRememberMe(!!checked)} 
+                className="rounded-sm" // Adicionado para garantir a aparência quadrada
+              />
+              <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer">
+                Lembrar de mim
+              </Label>
+            </div>
+            
             {/* NOVO: Exibição da mensagem de erro */}
             {loginError && (
-              <Alert variant="destructive" className="mt-4">
+              <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription className="text-sm font-medium">
                   {loginError}
@@ -178,17 +191,6 @@ const Login = () => {
               {loading ? "Aguarde..." : "Entrar"}
             </Button>
             
-            {/* Checkbox Lembrar de Mim */}
-            <div className="flex items-center space-x-2 pt-1">
-              <Checkbox 
-                id="remember-me" 
-                checked={rememberMe} 
-                onCheckedChange={(checked) => setRememberMe(!!checked)} 
-              />
-              <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer">
-                Lembrar de mim
-              </Label>
-            </div>
           </form>
           
           {/* Opções Adicionais (Criar Conta e Recuperar Senha) */}
