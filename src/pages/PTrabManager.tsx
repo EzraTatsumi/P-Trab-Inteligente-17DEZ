@@ -557,6 +557,7 @@ const PTrabManager = () => {
   };
 
   const handleArchive = async (ptrabId: string, ptrabName: string) => {
+    const isOwner = pTrabs.find(p => p.id === ptrabId)?.isOwner;
     if (!isOwner) {
         toast.error("Apenas o dono do P Trab pode excluí-lo.");
         return;
@@ -1378,6 +1379,7 @@ const PTrabManager = () => {
     setLoading(true);
     
     try {
+        // CORREÇÃO: Garantir que a coluna 'requester_id' seja usada para o join com 'profiles'
         const { data: requestsData, error: requestsError } = await supabase
             .from('ptrab_share_requests')
             .select(`
@@ -1387,7 +1389,10 @@ const PTrabManager = () => {
             .eq('ptrab_id', ptrab.id)
             .order('created_at', { ascending: true });
             
-        if (requestsError) throw requestsError;
+        if (requestsError) {
+            console.error("Erro ao carregar solicitações de compartilhamento:", requestsError);
+            throw new Error(requestsError.message);
+        }
         
         setShareRequests(requestsData as ShareRequest[]);
         setShowManageSharingDialog(true);

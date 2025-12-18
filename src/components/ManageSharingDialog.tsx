@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Tables } from '@/integrations/supabase/types';
+import { Json } from '@/integrations/supabase/types'; // Importar o tipo Json
 
 // NOVO TIPO: Para gerenciar solicitações
 interface ShareRequest extends Tables<'ptrab_share_requests'> {
@@ -22,7 +23,7 @@ interface ShareRequest extends Tables<'ptrab_share_requests'> {
     id: string;
     first_name: string | null;
     last_name: string | null;
-    raw_user_meta_data: { posto_graduacao?: string, nome_om?: string } | null;
+    raw_user_meta_data: Json | null; // Usar o tipo Json
   } | null;
 }
 
@@ -74,6 +75,7 @@ const ManageSharingDialog: React.FC<ManageSharingDialogProps> = ({
 
     setLoadingUsers(true);
     try {
+      // A política profiles_select_sharing_related permite que o dono veja os perfis
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, raw_user_meta_data')
@@ -82,6 +84,7 @@ const ManageSharingDialog: React.FC<ManageSharingDialogProps> = ({
       if (error) throw error;
 
       const users: SharedUser[] = (profiles || []).map(p => {
+        // Acessar raw_user_meta_data como objeto
         const metadata = p.raw_user_meta_data as { posto_graduacao?: string, nome_om?: string } | undefined;
         const name = p.last_name || p.first_name || 'Usuário Desconhecido';
         const postoGrad = metadata?.posto_graduacao || '';
@@ -113,10 +116,17 @@ const ManageSharingDialog: React.FC<ManageSharingDialogProps> = ({
 
   const formatRequesterName = (profile: ShareRequest['requester_profile']) => {
     if (!profile) return 'Usuário Desconhecido';
+    
+    // Acessar raw_user_meta_data como objeto
     const metadata = profile.raw_user_meta_data as { posto_graduacao?: string, nome_om?: string } | undefined;
     const name = profile.last_name || profile.first_name || 'Usuário';
     const postoGrad = metadata?.posto_graduacao || '';
     const om = metadata?.nome_om || '';
+    
+    // Se o nome for 'Usuário' e não houver posto/graduação, tenta usar o email do metadata se disponível
+    if (name === 'Usuário' && !postoGrad && metadata?.email) {
+        return metadata.email;
+    }
     
     return `${postoGrad} ${name} (${om})`;
   };
