@@ -10,20 +10,39 @@ Esta é a tela principal após o login, onde você gerencia todos os seus Planos
 Cria um novo Plano de Trabalho. Você deve preencher os dados básicos (Número, Operação, Período, OM, etc.).
 
 ### Consolidar P Trab (Botão)
-Permite combinar os registros de Classe I, II e III de múltiplos P Trabs de origem em um único P Trab de destino (novo ou existente). Útil para consolidar dados de várias OM em um único P Trab de Comando.
+Permite combinar os registros de Classe I, II, III, V, VI, VII, VIII e IX de múltiplos P Trabs de origem em um único P Trab de destino (Minuta). Útil para consolidar dados de várias OM em um único P Trab de Comando.
 
 ### Tabela de P Trabs
 
-- **Status (Dropdown):** Permite alterar o status do P Trab (Aberto, Em Andamento, Completo, Arquivado).
+- **Status:** Indica o estado atual (Aberto, Em Andamento, Aprovado, Arquivado).
 - **Preencher (Botão):** Navega para a tela de edição de classes logísticas e operacionais.
 - **Visualizar Impressão (Ação):** Abre a tela de visualização do P Trab no formato oficial, permitindo exportação para PDF e Excel.
-- **Clonar P Trab (Ação):** Cria uma cópia exata do P Trab, incluindo todos os registros de Classes I, II, III e a Referência LPC, com um novo número sequencial.
+- **Clonar P Trab (Ação):** Cria uma cópia exata do P Trab, incluindo todos os registros de Classes e a Referência LPC, com um novo número de Minuta.
 - **Comentário (Ícone):** Permite adicionar ou editar um comentário interno sobre o P Trab.
-- **Numerar (Botão):** Disponível para P Trabs em status "Minuta". Permite atribuir o número oficial no padrão **Número/Ano/Sigla da OM** e alterar o status para "Em Andamento".
-- **Compartilhar (Ação):** Gera um link seguro para convidar outro usuário a colaborar neste P Trab.
-- **Gerenciar Compartilhamento (Ação):** Permite ao proprietário aprovar/rejeitar solicitações de acesso e remover colaboradores ativos.
+- **Aprovar (Botão):** Disponível para P Trabs em status "Minuta" ou "Em Andamento". Permite atribuir o número oficial no padrão **Número/Ano/Sigla da OM** e alterar o status para "Aprovado".
+- **Arquivar (Ação):** Finaliza o P Trab, alterando o status para "Arquivado" e restringindo edições.
+- **Reativar (Ação):** Disponível para P Trabs arquivados. Retorna o status para "Aprovado" ou "Aberto" (se for Minuta).
 
-## 2. Configurações
+## 2. Colaboração e Compartilhamento
+
+O sistema permite o compartilhamento seguro de P Trabs para edição colaborativa.
+
+### Compartilhar (Ação - Proprietário)
+Gera um link seguro contendo o ID do P Trab e um token. Este link deve ser enviado ao colaborador.
+
+### Gerenciar Compartilhamento (Ação - Proprietário)
+Permite ao proprietário:
+- Visualizar colaboradores ativos.
+- Aprovar ou rejeitar solicitações de acesso pendentes.
+- Remover o acesso de colaboradores ativos.
+
+### Vincular P Trab (Ação - Colaborador)
+Acessível no menu de Configurações. Permite colar o link de compartilhamento recebido para enviar uma solicitação de acesso ao proprietário. Após a aprovação, o P Trab aparece na sua lista com o status "Compartilhado".
+
+### Desvincular (Ação - Colaborador)
+Remove o seu acesso de edição ao P Trab compartilhado.
+
+## 3. Configurações
 
 Acessível pelo ícone de engrenagem (Settings).
 
@@ -47,10 +66,7 @@ Permite gerenciar backups e transferências de dados.
 - **Exportar:** Cria um arquivo JSON criptografado (com senha) de um P Trab único ou de um Backup Completo (incluindo todas as configurações e P Trabs).
 - **Importar:** Descriptografa e importa um arquivo. O sistema verifica conflitos de numeração e sugere a criação de uma Minuta se necessário.
 
-### Vincular P Trab Compartilhado (Diálogo)
-Acessível no menu de configurações. Permite colar um link de compartilhamento recebido para enviar uma solicitação de acesso ao proprietário do P Trab.
-
-## 3. Formulários de Classes (PTrabForm)
+## 4. Formulários de Classes (PTrabForm)
 
 Acessível pelo botão "Preencher" na tela principal.
 
@@ -69,24 +85,3 @@ Exibe o custo total calculado para cada aba (Logística, Operacional, etc.) e o 
 - **Classe VII - Comunicações e Informática:** Abre o formulário para calcular as necessidades de manutenção de material de comunicações e informática.
 - **Classe VIII - Material de Saúde e Remonta/Veterinária:** Abre o formulário para calcular as necessidades de saúde (KPSI/KPT) e remonta (animais).
 - **Classe IX - Material de Motomecanização:** Abre o formulário para calcular os custos de manutenção e acionamento de viaturas.
-
-## 4. Formulário Classe I - Subsistência
-
-### Campos Principais
-- **OM de Destino (QR):** A OM que receberá o recurso de Rancho Pronto (QR).
-- **RM que receberá o QS:** A OM (geralmente a RM) que fornecerá o Quantitativo de Subsistência (QS).
-- **Efetivo de Militares / Dias de Atividade:** Usados para calcular os ciclos e valores de complemento/etapa.
-- **Fase da Atividade:** Permite selecionar ou digitar a fase da operação para a memória de cálculo.
-
-### Memória de Cálculo Detalhada
-Após salvar, o sistema gera automaticamente a memória de cálculo. Você pode usar o botão **Editar Memória** para personalizar o texto, se necessário.
-
-## 5. Formulário Classe IX - Motomecanização (Exemplo de Nova Classe)
-
-### Configurar Itens por Categoria
-Permite selecionar a categoria (Ex: Vtr Operacional) e inserir a **Quantidade** de viaturas.
-
-### Cálculo
-O sistema calcula o custo total com base no valor de manutenção por dia e no valor de acionamento mensal, conforme as diretrizes.
-
-- **Alocação de ND:** O valor total é dividido entre ND 33.90.30 (Material) e ND 33.90.39 (Serviço), conforme a alocação manual do usuário.

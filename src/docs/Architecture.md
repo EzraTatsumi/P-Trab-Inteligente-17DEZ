@@ -67,7 +67,7 @@ Para lógica de backend mais complexa, são utilizadas Supabase Edge Functions (
     - **Integração com APIs Externas:** Busca de preços de combustível (LPC) para evitar problemas de CORS e expor chaves de API.
     - **Lógica de Compartilhamento:** Funções RPC para solicitar, aprovar e remover acesso colaborativo (`add_user_to_shared_with`, `approve_ptrab_share`, etc.).
     - **Pré-visualização de Compartilhamento:** Função para buscar o nome do P Trab e do proprietário a partir de um token de compartilhamento.
-    - **Assistente de IA:** Função para processar consultas de chat com o modelo Gemini.
+    - **Assistente de IA:** Função para processar consultas de chat com o modelo Gemini, mantendo a chave de API segura no backend.
 
 ## 5. Convenções de Código
 

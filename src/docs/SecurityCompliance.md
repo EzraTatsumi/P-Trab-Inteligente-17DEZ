@@ -32,7 +32,7 @@ O PTrab Inteligente foi desenvolvido para atender aos requisitos de rastreabilid
 ### Conformidade COLOG / COTER
 Os cálculos e a estrutura de dados são baseados nas diretrizes de custeio logístico e operacional mais recentes.
 
-- **Cálculos Padronizados:** As fórmulas de Classe I, II, III, VIII e IX são implementadas conforme as normas, minimizando erros humanos.
+- **Cálculos Padronizados:** As fórmulas de Classe I, II, III, V, VI, VII, VIII e IX são implementadas conforme as normas, minimizando erros humanos.
 - **Memória de Cálculo:** O sistema gera automaticamente a memória de cálculo detalhada para cada registro, fornecendo a justificativa completa para auditoria.
 
 ### Rastreabilidade e Logs
