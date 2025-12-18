@@ -24,7 +24,6 @@ import OmConfigPage from "./pages/OmConfigPage";
 import OmBulkUploadPage from "./pages/OmBulkUploadPage";
 import PTrabExportImportPage from "./pages/PTrabExportImportPage";
 import UserProfilePage from "./pages/UserProfilePage"; // NOVO: Importar UserProfilePage
-import SharePage from "./pages/SharePage"; // NOVO: Importar SharePage
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,7 +39,6 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/share" element={<SharePage />} /> {/* NOVO: Rota para processar o link de compartilhamento */}
               <Route path="/ptrab" element={<PTrabManager />} />
               <Route path="/ptrab/form" element={<PTrabForm />} />
               <Route path="/ptrab/print" element={<PTrabReportManager />} /> {/* Rota atualizada */}

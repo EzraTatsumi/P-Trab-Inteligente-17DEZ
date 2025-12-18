@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Link, Share2 } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -49,8 +49,7 @@ import { updateUserCredits, fetchUserCredits } from "@/lib/creditUtils";
 import { cn } from "@/lib/utils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 import { useSession } from "@/components/SessionContextProvider";
-import AIChatDrawer from "@/components/AIChatDrawer";
-import { SharePTrabDialog } from "@/components/SharePTrabDialog"; // NOVO IMPORT
+import AIChatDrawer from "@/components/AIChatDrawer"; // NOVO IMPORT
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -131,10 +130,6 @@ const PTrabManager = () => {
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
   const [ptrabToFill, setPtrabToFill] = useState<PTrab | null>(null);
   const hasBeenPrompted = useRef(new Set<string>()); // Armazena IDs dos PTrabs já perguntados
-  
-  // NOVO ESTADO: Diálogo de Compartilhamento
-  const [showShareDialog, setShowShareDialog] = useState(false);
-  const [ptrabToShare, setPtrabToShare] = useState<PTrab | null>(null);
 
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
@@ -211,16 +206,6 @@ const PTrabManager = () => {
 
   const handleNavigateToPrintOrExport = (ptrabId: string) => {
       navigate(`/ptrab/print?ptrabId=${ptrabId}`);
-  };
-  
-  // MUDANÇA: Função para abrir o diálogo de compartilhamento
-  const handleGenerateShareLink = (ptrab: PTrab) => {
-    if (!ptrab.share_token) {
-        toast.error("Token de compartilhamento não encontrado.");
-        return;
-    }
-    setPtrabToShare(ptrab);
-    setShowShareDialog(true);
   };
 
   // Lógica de Consolidação
@@ -330,7 +315,7 @@ const PTrabManager = () => {
     try {
       const { data: pTrabsData, error: pTrabsError } = await supabase
         .from("p_trab")
-        .select("*, comentario, origem, rotulo_versao, share_token") // Incluir share_token
+        .select("*, comentario, origem, rotulo_versao") // Incluir rotulo_versao
         .order("created_at", { ascending: false });
 
       if (pTrabsError) throw pTrabsError;
@@ -1919,16 +1904,6 @@ const PTrabManager = () => {
                                 Clonar P Trab
                               </DropdownMenuItem>
                               
-                              {/* Ação 4: Compartilhar P Trab (Desabilitado se arquivado) */}
-                              <DropdownMenuItem 
-                                onClick={() => ptrab.status !== 'arquivado' && handleGenerateShareLink(ptrab)}
-                                disabled={ptrab.status === 'arquivado'}
-                                className={ptrab.status === 'arquivado' ? "opacity-50 cursor-not-allowed" : ""}
-                              >
-                                <Share2 className="mr-2 h-4 w-4" />
-                                Compartilhar
-                              </DropdownMenuItem>
-                              
                               {/* NOVO: Arquivar (Disponível se NÃO estiver arquivado) */}
                               {ptrab.status !== 'arquivado' && (
                                 <DropdownMenuItem 
@@ -2162,19 +2137,6 @@ const PTrabManager = () => {
         open={showCreditPrompt}
         onConfirm={handlePromptConfirm}
         onCancel={handlePromptCancel}
-      />
-      
-      {/* NOVO: Diálogo de Compartilhamento */}
-      <SharePTrabDialog
-        open={showShareDialog}
-        onOpenChange={setShowShareDialog}
-        ptrab={ptrabToShare ? {
-            id: ptrabToShare.id,
-            numero_ptrab: ptrabToShare.numero_ptrab,
-            nome_operacao: ptrabToShare.nome_operacao,
-            share_token: ptrabToShare.share_token || '',
-            nome_om: ptrabToShare.nome_om,
-        } : null}
       />
       
       {/* NOVO: Drawer de Chat com IA */}
