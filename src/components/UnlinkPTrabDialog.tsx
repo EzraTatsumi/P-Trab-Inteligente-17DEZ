@@ -39,11 +39,11 @@ const UnlinkPTrabDialog: React.FC<UnlinkPTrabDialogProps> = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} disabled={loading} className="bg-destructive hover:bg-destructive/90">
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Confirmar Desvinculação
           </AlertDialogAction>
+          <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
