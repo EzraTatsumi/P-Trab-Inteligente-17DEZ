@@ -1882,7 +1882,7 @@ const PTrabManager = () => {
                     const isOwnedByCurrentUser = ptrab.isOwner;
                     
                     // Lógica de desativação para não-proprietários
-                    const isActionDisabledForShared = isSharedWithCurrentUser;
+                    const isActionDisabledForNonOwner = !isOwnedByCurrentUser;
 
                     return (
                     <TableRow key={ptrab.id}>
@@ -2061,12 +2061,12 @@ const PTrabManager = () => {
                         <div className="flex justify-end gap-2">
                           
                           {/* Botão Aprovar: Aparece SEMPRE se precisar de numeração OU se estiver em status final */}
-                          {isOwnedByCurrentUser && (needsNumbering(ptrab) || isApprovedOrArchived) && (
+                          {(needsNumbering(ptrab) || isApprovedOrArchived) && (
                             <Button
                               onClick={() => handleOpenApproveDialog(ptrab)}
                               size="sm"
                               className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                              disabled={loading || isApprovedOrArchived || isActionDisabledForShared} // Desativar se for compartilhado (não-dono)
+                              disabled={loading || isApprovedOrArchived || isActionDisabledForNonOwner}
                             >
                               <CheckCircle className="h-4 w-4" />
                               Aprovar
@@ -2142,9 +2142,12 @@ const PTrabManager = () => {
                               </DropdownMenuItem>
                               
                               {/* NOVO: Arquivar (Disponível se NÃO estiver arquivado) */}
-                              {isOwnedByCurrentUser && ptrab.status !== 'arquivado' && (
+                              {/* Visível para todos, mas desabilitado para não-donos */}
+                              {ptrab.status !== 'arquivado' && (
                                 <DropdownMenuItem 
-                                  onClick={() => handleArchive(ptrab.id, `${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`)}
+                                  onClick={() => isOwnedByCurrentUser && handleArchive(ptrab.id, `${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`)}
+                                  disabled={isActionDisabledForNonOwner}
+                                  className={isActionDisabledForNonOwner ? "opacity-50 cursor-not-allowed" : ""}
                                 >
                                   <Archive className="mr-2 h-4 w-4" />
                                   Arquivar
@@ -2152,13 +2155,18 @@ const PTrabManager = () => {
                               )}
                               
                               {/* Ação 5: Reativar (Disponível APENAS se estiver arquivado) */}
-                              {isOwnedByCurrentUser && ptrab.status === 'arquivado' && (
+                              {/* Visível para todos, mas desabilitado para não-donos */}
+                              {ptrab.status === 'arquivado' && (
                                   <DropdownMenuItem 
                                       onClick={() => {
-                                          setPtrabToReactivateId(ptrab.id);
-                                          setPtrabToReactivateName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
-                                          setShowReactivateStatusDialog(true);
+                                          if (isOwnedByCurrentUser) {
+                                              setPtrabToReactivateId(ptrab.id);
+                                              setPtrabToReactivateName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
+                                              setShowReactivateStatusDialog(true);
+                                          }
                                       }}
+                                      disabled={isActionDisabledForNonOwner}
+                                      className={isActionDisabledForNonOwner ? "opacity-50 cursor-not-allowed" : ""}
                                   >
                                       <RefreshCw className="mr-2 h-4 w-4" />
                                       Reativar
@@ -2364,7 +2372,7 @@ const PTrabManager = () => {
         open={showConsolidationNumberDialog}
         onOpenChange={setShowConsolidationNumberDialog}
         suggestedNumber={suggestedConsolidationNumber}
-        existingNumbers={existingPTrabNumbers}
+        existingNumbers={existingPTrabs}
         selectedPTrabs={simplePTrabsToConsolidate}
         onConfirm={handleConfirmConsolidation}
         loading={loading}
