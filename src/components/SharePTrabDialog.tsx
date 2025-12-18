@@ -47,8 +47,8 @@ export const SharePTrabDialog: React.FC<SharePTrabDialogProps> = ({
   // 2. Geração do Texto de Compartilhamento
   const shareText = useMemo(() => {
     if (!ptrab) return "";
-    // Adiciona quebras de linha (\n) para isolar o link e aumentar a chance de ser reconhecido como hiperlink.
-    return `Acesso Colaborativo ao P Trab: ${ptrab.numero_ptrab} - ${ptrab.nome_operacao} (${ptrab.nome_om}).\n\nClique no link para aceitar o convite:\n${shareUrl}`;
+    // Usando uma formatação mais limpa, mas garantindo que o URL esteja no final e isolado.
+    return `Convite de Colaboração: P Trab ${ptrab.numero_ptrab} - ${ptrab.nome_operacao} (${ptrab.nome_om}).\n\nPara aceitar o convite e obter acesso de edição, clique no link abaixo:\n\n${shareUrl}`;
   }, [ptrab, shareUrl]);
 
   // 3. Handlers de Ação
@@ -65,7 +65,9 @@ export const SharePTrabDialog: React.FC<SharePTrabDialogProps> = ({
   
   const handleEmail = () => {
     const subject = `Convite de Colaboração: P Trab ${ptrab?.numero_ptrab}`;
-    const body = shareText;
+    // Para e-mail, usamos o texto completo, que inclui o URL isolado.
+    const body = shareText; 
+    
     // Usar 'window.location.href' para garantir que o link seja aberto na mesma janela/aba
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
