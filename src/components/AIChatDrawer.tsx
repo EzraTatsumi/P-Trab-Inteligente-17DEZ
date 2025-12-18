@@ -22,33 +22,26 @@ const AIChatDrawer = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Ref para o viewport da ScrollArea (necessário para acessar o elemento DOM)
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
+  // Ref para a âncora no final da lista de mensagens
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    if (scrollRef.current) {
-      // Usamos behavior: 'smooth' para uma transição suave
-      scrollRef.current.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: 'smooth',
-      });
-    }
+    // Rola o elemento âncora para a visualização dentro do viewport da ScrollArea
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Efeito para rolar para baixo sempre que as mensagens mudam
+  // Efeito para rolar para baixo sempre que as mensagens mudam ou o drawer é aberto
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-  
-  // Efeito para rolar para baixo quando o drawer é aberto (garante que a rolagem inicial funcione)
-  useEffect(() => {
-    if (open) {
-        // Pequeno delay para garantir que o conteúdo do drawer tenha sido renderizado
-        const timer = setTimeout(() => {
-            scrollToBottom();
-        }, 100);
-        return () => clearTimeout(timer);
-    }
-  }, [open]);
+    // Pequeno delay para garantir que o DOM foi atualizado após a nova mensagem
+    const timer = setTimeout(() => {
+        scrollToBottom();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [messages, open]);
+
 
   const sendMessage = async (message: string) => {
     if (!message.trim() || loading) return;
@@ -127,7 +120,8 @@ const AIChatDrawer = () => {
             </div>
           </div>
           
-          <ScrollArea className="flex-1 p-4 overflow-y-auto" viewportRef={scrollRef}>
+          {/* Adicionado viewportRef para ScrollArea */}
+          <ScrollArea className="flex-1 p-4 overflow-y-auto" viewportRef={scrollViewportRef}>
             <div className="space-y-4">
               {messages.length === 0 && (
                 <div className="text-center text-muted-foreground mt-10">
@@ -165,6 +159,8 @@ const AIChatDrawer = () => {
                   </div>
                 </div>
               )}
+              {/* Âncora para rolagem automática */}
+              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
 
