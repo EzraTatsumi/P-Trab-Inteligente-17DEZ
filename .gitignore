@@ -33,7 +33,7 @@ supabase/migrations/
 diretrizes_classe_ix_export.csv
 
 # Excluir documentação para economizar tokens de contexto
-public/docs/
+src/docs/
 
 # Excluir componentes de UI gerados pelo shadcn/ui (redução de contexto)
 src/components/ui/
@@ -74,13 +74,14 @@ src/components/PTrabConsolidationDialog.tsx
 # src/lib/cryptoUtils.ts
 
 # Excluir arquivos de Gerenciamento, Clonagem e Crédito
-src/pages/PTrabManager.tsx
 src/components/CloneVariationDialog.tsx
 src/components/CreditPromptDialog.tsx
 src/components/CreditInputDialog.tsx
 src/components/CreditInputCard.tsx
 src/components/RmSelector.tsx
 src/components/MarkdownAccordion.tsx
+src/components/MarkdownViewer.tsx
+src/components/HelpDialog.tsx
 src/components/YearManagementDialog.tsx
 src/components/RefLPCFormSection.tsx
 src/components/ClasseIIIRegistryForm.tsx
