@@ -123,7 +123,7 @@ const PTrabManager = () => {
   const [suggestedCloneNumber, setSuggestedCloneNumber] = useState<string>("");
   const [customCloneNumber, setCustomCloneNumber] = useState<string>("");
   
-  const [originalPTrabIdToClone, setOriginalPTrabIdToClone] = useState<string | null>(null);
+  const [originalPTrabIdToClone, setOriginalPTrabIdToClone] = useState(null as string | null);
 
   // ESTADOS PARA APROVAÇÃO E NUMERAÇÃO
   const [showApproveDialog, setShowApproveDialog] = useState(false);
@@ -1883,6 +1883,9 @@ const PTrabManager = () => {
                     
                     // Lógica de desativação para não-proprietários
                     const isActionDisabledForNonOwner = !isOwnedByCurrentUser;
+                    
+                    // NOVO: Condição para desabilitar o compartilhamento
+                    const isSharingDisabled = ptrab.status === 'aprovado' || ptrab.status === 'arquivado';
 
                     return (
                     <TableRow key={ptrab.id}>
@@ -2110,8 +2113,8 @@ const PTrabManager = () => {
                                 Editar P Trab
                               </DropdownMenuItem>
                               
-                              {/* NOVO: Ação de Compartilhar (Apenas para o DONO) */}
-                              {isOwnedByCurrentUser && ptrab.status !== 'arquivado' && (
+                              {/* NOVO: Ação de Compartilhar (Apenas para o DONO E se não estiver aprovado/arquivado) */}
+                              {isOwnedByCurrentUser && !isSharingDisabled && (
                                 <DropdownMenuItem 
                                   onClick={() => handleOpenShareDialog(ptrab)}
                                 >
