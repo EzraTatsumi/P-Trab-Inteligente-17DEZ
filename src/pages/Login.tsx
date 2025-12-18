@@ -170,6 +170,7 @@ const Login = () => {
                 id="remember-me" 
                 checked={rememberMe} 
                 onCheckedChange={(checked) => setRememberMe(!!checked)} 
+                className="rounded-sm" // Adicionado para garantir a aparência quadrada
               />
               <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer">
                 Lembrar de mim
