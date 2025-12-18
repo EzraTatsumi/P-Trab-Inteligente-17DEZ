@@ -42,7 +42,8 @@ serve(async (req) => {
           ]
         }
       ],
-      config: {
+      // CORREÇÃO: Usar generationConfig em vez de config
+      generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 500,
       }
