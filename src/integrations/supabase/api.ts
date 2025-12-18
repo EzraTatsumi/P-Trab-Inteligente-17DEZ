@@ -49,3 +49,46 @@ export async function fetchFuelPrice(fuelType: 'diesel' | 'gasolina'): Promise<{
     throw error;
   }
 }
+
+// NOVO: Interface para a pré-visualização de compartilhamento
+interface SharePreview {
+    ptrabName: string;
+    ownerName: string;
+}
+
+/**
+ * Fetches the PTrab and owner name preview using the share link details.
+ * @param ptrabId The ID of the PTrab.
+ * @param token The share token.
+ * @returns PTrab name and owner name.
+ */
+export async function fetchSharePreview(ptrabId: string, token: string): Promise<SharePreview> {
+    try {
+        const { data, error } = await supabase.functions.invoke('fetch-share-preview', {
+            body: { ptrabId, token },
+        });
+
+        if (error) {
+            throw new Error(error.message || "Falha na execução da Edge Function de pré-visualização.");
+        }
+        
+        const responseData = data as SharePreview;
+        
+        if (!responseData.ptrabName || !responseData.ownerName) {
+            throw new Error("Dados de pré-visualização incompletos.");
+        }
+        
+        return responseData;
+
+    } catch (error) {
+        console.error("Erro ao buscar pré-visualização de compartilhamento:", error);
+        const errorMessage = error instanceof Error ? error.message : "Erro desconhecido.";
+        
+        if (errorMessage.includes("P Trab not found or token invalid")) {
+            toast.error("Link inválido ou expirado.");
+        } else {
+            toast.error(`Falha ao carregar pré-visualização. Detalhes: ${errorMessage}`);
+        }
+        throw error;
+    }
+}
