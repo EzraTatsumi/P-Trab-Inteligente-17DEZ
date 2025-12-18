@@ -1945,7 +1945,7 @@ const PTrabManager = () => {
                                 <TooltipTrigger asChild>
                                   <Badge 
                                     variant="outline" 
-                                    className="mt-1 text-xs bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer"
+                                    className="mt-1 text-xs bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer w-[140px] h-7 flex items-center justify-center"
                                     onClick={() => handleOpenManageSharingDialog(ptrab)}
                                   >
                                     <Users className="h-3 w-3 mr-1" />
