@@ -1534,6 +1534,13 @@ const PTrabManager = () => {
   // FIM LÓGICA DE COMPARTILHAMENTO
   // =================================================================
 
+  const currentYear = new Date().getFullYear();
+  const yearSuffix = `/${currentYear}`;
+
+  // =================================================================
+  // FUNÇÕES AUXILIARES
+  // =================================================================
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-4">
@@ -1931,7 +1938,7 @@ const PTrabManager = () => {
                         <div className="flex flex-col items-center">
                           <Badge 
                             className={cn(
-                              "w-[140px] h-7 text-xs flex items-center justify-center", // Revertido para w-[140px]
+                              "w-[140px] h-7 text-xs flex items-center justify-center", 
                               statusConfig[ptrab.status as keyof typeof statusConfig]?.className || 'bg-background'
                             )}
                           >
@@ -1966,7 +1973,7 @@ const PTrabManager = () => {
                           {isSharedWithCurrentUser && (
                             <Badge 
                               variant="outline" 
-                              className="mt-1 text-xs bg-purple-600 text-white hover:bg-purple-700"
+                              className="mt-1 text-xs bg-purple-600 text-white hover:bg-purple-700 w-[140px] h-7 flex items-center justify-center"
                             >
                               <Share2 className="h-3 w-3 mr-1" />
                               Compartilhado
