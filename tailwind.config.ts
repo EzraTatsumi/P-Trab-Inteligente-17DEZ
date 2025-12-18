@@ -77,7 +77,7 @@ export default {
         'sm': 'var(--shadow-sm)',
         'md': 'var(--shadow-md)',
         'lg': 'var(--shadow-lg)',
-        'xl': '0 16px 48px -12px hsl(220 20% 15% / 0.15)',
+        'xl': 'var(--shadow-xl)',
         'glow': 'var(--shadow-glow)',
       },
       transitionTimingFunction: {
