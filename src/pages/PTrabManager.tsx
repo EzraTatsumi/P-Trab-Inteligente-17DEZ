@@ -49,7 +49,8 @@ import { updateUserCredits, fetchUserCredits } from "@/lib/creditUtils";
 import { cn } from "@/lib/utils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 import { useSession } from "@/components/SessionContextProvider";
-import AIChatDrawer from "@/components/AIChatDrawer"; // NOVO IMPORT
+import AIChatDrawer from "@/components/AIChatDrawer";
+import { SharePTrabDialog } from "@/components/SharePTrabDialog"; // NOVO IMPORT
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -130,6 +131,10 @@ const PTrabManager = () => {
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
   const [ptrabToFill, setPtrabToFill] = useState<PTrab | null>(null);
   const hasBeenPrompted = useRef(new Set<string>()); // Armazena IDs dos PTrabs já perguntados
+  
+  // NOVO ESTADO: Diálogo de Compartilhamento
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [ptrabToShare, setPtrabToShare] = useState<PTrab | null>(null);
 
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
@@ -208,23 +213,14 @@ const PTrabManager = () => {
       navigate(`/ptrab/print?ptrabId=${ptrabId}`);
   };
   
-  // NOVO: Função para gerar e copiar o link de compartilhamento
+  // MUDANÇA: Função para abrir o diálogo de compartilhamento
   const handleGenerateShareLink = (ptrab: PTrab) => {
     if (!ptrab.share_token) {
         toast.error("Token de compartilhamento não encontrado.");
         return;
     }
-    
-    // O link de compartilhamento deve levar para a página de visualização/preenchimento com o token
-    // Assumindo que a URL base é a raiz do app e a rota de preenchimento é /ptrab/form
-    const shareUrl = `${window.location.origin}/ptrab/form?shareToken=${ptrab.share_token}`;
-    
-    navigator.clipboard.writeText(shareUrl).then(() => {
-        toast.success("Link de compartilhamento copiado para a área de transferência!");
-    }).catch(err => {
-        toast.error("Falha ao copiar o link. Tente novamente.");
-        console.error("Erro ao copiar link:", err);
-    });
+    setPtrabToShare(ptrab);
+    setShowShareDialog(true);
   };
 
   // Lógica de Consolidação
@@ -334,7 +330,7 @@ const PTrabManager = () => {
     try {
       const { data: pTrabsData, error: pTrabsError } = await supabase
         .from("p_trab")
-        .select("*, comentario, origem, rotulo_versao") // Incluir rotulo_versao
+        .select("*, comentario, origem, rotulo_versao, share_token") // Incluir share_token
         .order("created_at", { ascending: false });
 
       if (pTrabsError) throw pTrabsError;
@@ -2166,6 +2162,19 @@ const PTrabManager = () => {
         open={showCreditPrompt}
         onConfirm={handlePromptConfirm}
         onCancel={handlePromptCancel}
+      />
+      
+      {/* NOVO: Diálogo de Compartilhamento */}
+      <SharePTrabDialog
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+        ptrab={ptrabToShare ? {
+            id: ptrabToShare.id,
+            numero_ptrab: ptrabToShare.numero_ptrab,
+            nome_operacao: ptrabToShare.nome_operacao,
+            share_token: ptrabToShare.share_token || '',
+            nome_om: ptrabToShare.nome_om,
+        } : null}
       />
       
       {/* NOVO: Drawer de Chat com IA */}
