@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Copy, Share2, Mail, MessageSquare, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 interface ShareLinkDialogProps {
   open: boolean;
@@ -69,14 +70,19 @@ Aguarde minha aprovação para começar a editar.`;
             <Label htmlFor="share-link">Link de Compartilhamento</Label>
             <div className="flex space-x-2">
               <Input id="share-link" readOnly value={shareLink} className="flex-1" />
-              <Button type="button" onClick={handleCopy} size="icon" variant="secondary">
+              <Button 
+                type="button" 
+                onClick={handleCopy} 
+                size="icon" 
+                className="bg-primary hover:bg-primary/90 text-white" // Cor azul escuro padrão
+              >
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
-          <Alert variant="default">
-            <Check className="h-4 w-4" />
+          <Alert variant="default" className="bg-gray-50 border-gray-200">
+            <Check className="h-4 w-4 text-green-600" />
             <AlertTitle>Instruções Importantes</AlertTitle>
             <AlertDescription>
               O usuário de destino deve usar a opção "Vincular P Trab" no menu de configurações para solicitar acesso.
@@ -86,12 +92,12 @@ Aguarde minha aprovação para começar a editar.`;
           <div className="space-y-2">
             <Label>Enviar via:</Label>
             <div className="flex gap-3">
-              <Button asChild variant="outline" className="flex-1">
+              <Button asChild className={cn("flex-1 bg-blue-600 hover:bg-blue-700 text-white")}>
                 <a href={generateMessage('email')} target="_blank" rel="noopener noreferrer">
                   <Mail className="h-4 w-4 mr-2" /> Email
                 </a>
               </Button>
-              <Button asChild variant="outline" className="flex-1">
+              <Button asChild className={cn("flex-1 bg-green-600 hover:bg-green-700 text-white")}>
                 <a href={generateMessage('whatsapp')} target="_blank" rel="noopener noreferrer">
                   <MessageSquare className="h-4 w-4 mr-2" /> WhatsApp
                 </a>
