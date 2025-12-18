@@ -42,7 +42,15 @@ Acessível no menu de Configurações. Permite colar o link de compartilhamento 
 ### Desvincular (Ação - Colaborador)
 Remove o seu acesso de edição ao P Trab compartilhado.
 
-## 3. Configurações
+## 3. Assistente Dyad (IA)
+
+O Assistente Dyad é um chatbot de Inteligência Artificial integrado que pode ajudar com dúvidas sobre a usabilidade, regras de negócio e funcionalidades da plataforma.
+
+- **Acesso:** Clique no ícone de balão de chat (MessageSquare) no canto inferior direito da tela.
+- **Funcionalidade:** Faça perguntas sobre como usar um formulário, o significado de um campo, ou as regras de cálculo de uma classe específica.
+- **Limpar Chat:** Use o botão "Limpar" dentro do diálogo para apagar o histórico da conversa.
+
+## 4. Configurações
 
 Acessível pelo ícone de engrenagem (Settings).
 
@@ -66,7 +74,7 @@ Permite gerenciar backups e transferências de dados.
 - **Exportar:** Cria um arquivo JSON criptografado (com senha) de um P Trab único ou de um Backup Completo (incluindo todas as configurações e P Trabs).
 - **Importar:** Descriptografa e importa um arquivo. O sistema verifica conflitos de numeração e sugere a criação de uma Minuta se necessário.
 
-## 4. Formulários de Classes (PTrabForm)
+## 5. Formulários de Classes (PTrabForm)
 
 Acessível pelo botão "Preencher" na tela principal.
 
