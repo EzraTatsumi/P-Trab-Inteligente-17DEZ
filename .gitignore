@@ -80,8 +80,6 @@ src/components/CreditInputDialog.tsx
 src/components/CreditInputCard.tsx
 src/components/RmSelector.tsx
 src/components/MarkdownAccordion.tsx
-src/components/MarkdownViewer.tsx
-src/components/HelpDialog.tsx
 src/components/YearManagementDialog.tsx
 src/components/RefLPCFormSection.tsx
 src/components/ClasseIIIRegistryForm.tsx
