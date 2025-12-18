@@ -54,16 +54,21 @@ serve(async (req) => {
     }
     
     // 4. Formatar o nome do proprietário
+    // Acessa os dados do JSONB de forma segura
     const metadata = profile?.raw_user_meta_data as { posto_graduacao?: string, nome_om?: string } | undefined;
+    
     const nomeGuerra = profile?.last_name || profile?.first_name || 'Proprietário Desconhecido';
-    const postoGraduacao = metadata?.posto_graduacao || '';
+    const postoGraduacao = metadata?.posto_graduacao || 'Posto/Grad Desconhecido';
     const nomeOM = metadata?.nome_om || 'OM Desconhecida';
     
     // Formato completo: Posto/Grad Nome de Guerra (OM)
     let ownerName = nomeGuerra;
-    if (postoGraduacao) {
+    
+    // Se o posto/graduação for 'Posto/Grad Desconhecido', não o exibe, apenas o nome de guerra
+    if (postoGraduacao !== 'Posto/Grad Desconhecido') {
         ownerName = `${postoGraduacao} ${nomeGuerra}`;
     }
+    
     ownerName = `${ownerName} (${nomeOM})`;
 
 
