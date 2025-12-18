@@ -29,7 +29,8 @@ const LinkPTrabDialog: React.FC<LinkPTrabDialogProps> = ({
   onRequestLink,
   loading,
 }) => {
-  const isLinkValid = linkInput.startsWith(window.location.origin) && linkInput.includes('?id=') && linkInput.includes('&token=');
+  // CORREÇÃO: A validação agora verifica por '?ptrabId=' para corresponder ao link gerado.
+  const isLinkValid = linkInput.startsWith(window.location.origin) && linkInput.includes('?ptrabId=') && linkInput.includes('&token=');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
