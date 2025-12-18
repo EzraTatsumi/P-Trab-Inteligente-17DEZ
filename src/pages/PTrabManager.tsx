@@ -43,7 +43,7 @@ import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
 import { ConsolidationNumberDialog } from "@/components/ConsolidationNumberDialog";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
-import { HelpDialog } from "@/components/HelpDialog";
+import HelpDialog from "@/components/HelpDialog"; // Importar o HelpDialog
 import { CloneVariationDialog } from "@/components/CloneVariationDialog";
 import { updateUserCredits, fetchUserCredits } from "@/lib/creditUtils";
 import { cn } from "@/lib/utils";
@@ -1752,7 +1752,7 @@ const PTrabManager = () => {
               </Tooltip>
             </TooltipProvider>
 
-            <HelpDialog />
+            <HelpDialog /> {/* Componente de Ajuda */}
 
             <DropdownMenu open={settingsDropdownOpen} onOpenChange={setSettingsDropdownOpen}>
               <DropdownMenuTrigger asChild>
