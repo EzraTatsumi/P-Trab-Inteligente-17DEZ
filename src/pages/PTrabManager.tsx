@@ -1534,13 +1534,6 @@ const PTrabManager = () => {
   // FIM LÓGICA DE COMPARTILHAMENTO
   // =================================================================
 
-  const currentYear = new Date().getFullYear();
-  const yearSuffix = `/${currentYear}`;
-
-  // =================================================================
-  // FUNÇÕES AUXILIARES
-  // =================================================================
-
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-4">
