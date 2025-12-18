@@ -557,6 +557,10 @@ const PTrabManager = () => {
   };
 
   const handleArchive = async (ptrabId: string, ptrabName: string) => {
+    if (!isOwner) {
+        toast.error("Apenas o dono do P Trab pode excluí-lo.");
+        return;
+    }
     if (!confirm(`Tem certeza que deseja ARQUIVAR o P Trab "${ptrabName}"? Esta ação irá finalizar o trabalho e restringir edições.`)) return;
 
     setLoading(true);
