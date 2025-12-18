@@ -32,9 +32,6 @@ tsconfig.node.json
 supabase/migrations/
 diretrizes_classe_ix_export.csv
 
-# Excluir documentação para economizar tokens de contexto
-# REMOVIDO: public/docs/
-
 # Excluir componentes de UI gerados pelo shadcn/ui (redução de contexto)
 src/components/ui/
 
