@@ -188,23 +188,32 @@ const PTrabManager = () => {
     // Usar dados do perfil se disponíveis, senão usar o metadata do auth.user
     const nomeGuerra = profileData?.last_name || '';
     
-    // Acessar posto_graduacao do raw_user_meta_data do perfil (que é JSONB)
-    const profileMetadata = profileData?.raw_user_meta_data as { posto_graduacao?: string } | undefined;
-    const postoGraduacao = profileMetadata?.posto_graduacao || userMetadata?.posto_graduacao || '';
+    // Acessar posto_graduacao e nome_om do raw_user_meta_data do perfil (que é JSONB)
+    const profileMetadata = profileData?.raw_user_meta_data as { posto_graduacao?: string, nome_om?: string } | undefined;
+    const postoGraduacao = profileMetadata?.posto_graduacao?.trim() || userMetadata?.posto_graduacao?.trim() || '';
+    const nomeOM = profileMetadata?.nome_om?.trim() || '';
     
-    if (postoGraduacao && nomeGuerra) {
-        return `${postoGraduacao} ${nomeGuerra}`;
+    let nameParts: string[] = [];
+    
+    if (postoGraduacao) {
+        nameParts.push(postoGraduacao);
     }
     
     if (nomeGuerra) {
-        return nomeGuerra;
+        nameParts.push(nomeGuerra);
     }
     
-    if (postoGraduacao) {
-        return postoGraduacao;
+    let finalName = nameParts.join(' ');
+    
+    if (nomeOM) {
+        finalName += ` (${nomeOM})`;
+    }
+    
+    if (!finalName.trim()) {
+        return 'Perfil Incompleto';
     }
 
-    return null; 
+    return finalName; 
   }, []);
 
   const formatDateTime = (dateString: string) => {
