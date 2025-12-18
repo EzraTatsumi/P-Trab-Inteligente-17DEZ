@@ -1348,7 +1348,7 @@ const PTrabManager = () => {
         }
         
         // 2. Simplificação: Apenas confirma que a solicitação foi enviada.
-        // Removemos a busca por dados do P Trab e do perfil do proprietário para evitar erros de RLS.
+        // Removido: Busca de dados do P Trab e do perfil do proprietário.
         
         toast.success(
             "Solicitação Enviada!", 
@@ -1876,6 +1876,9 @@ const PTrabManager = () => {
                     // NOVO: Condição para desabilitar o compartilhamento
                     const isSharingDisabled = ptrab.status === 'aprovado' || ptrab.status === 'arquivado';
 
+                    // CORREÇÃO: O badge de gerenciamento deve aparecer se for o dono E houver compartilhamento ativo OU solicitações pendentes.
+                    const showManageSharingBadge = isOwnedByCurrentUser && ((ptrab.shared_with?.length || 0) > 0 || ptrab.hasPendingRequests);
+
                     return (
                     <TableRow key={ptrab.id}>
                       <TableCell className="font-medium">
@@ -1933,8 +1936,8 @@ const PTrabManager = () => {
                             {statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}
                           </Badge>
                           
-                          {/* NOVO BADGE DE COMPARTILHAMENTO (DONO) */}
-                          {isOwnedByCurrentUser && (ptrab.shared_with?.length || 0) > 0 && (
+                          {/* NOVO BADGE DE COMPARTILHAMENTO (DONO) - CORRIGIDO */}
+                          {showManageSharingBadge && (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -2219,7 +2222,7 @@ const PTrabManager = () => {
             <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
               Cancelar
             </AlertDialogCancel>
-          </AlertDialogFooter>
+          </DialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
