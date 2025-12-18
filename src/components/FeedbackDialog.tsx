@@ -16,8 +16,8 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ open, onOpenChan
   const [feedbackText, setFeedbackText] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // O e-mail do administrador deve ser configurado aqui. Usarei um placeholder.
-  const ADMIN_EMAIL = "suporte@ptrab.eb.mil.br"; 
+  // O e-mail do administrador foi atualizado
+  const ADMIN_EMAIL = "ezratatsumi@hotmail.com"; 
 
   const handleSendFeedback = () => {
     if (!feedbackText.trim()) {
