@@ -54,16 +54,23 @@ serve(async (req) => {
     }
     
     // 4. Formatar o nome do proprietário
-    const metadata = profile?.raw_user_meta_data as { posto_graduacao?: string } | undefined;
+    const metadata = profile?.raw_user_meta_data as { posto_graduacao?: string, nome_om?: string } | undefined;
     const nomeGuerra = profile?.last_name || profile?.first_name || 'Proprietário Desconhecido';
     const postoGraduacao = metadata?.posto_graduacao || '';
+    const nomeOM = metadata?.nome_om || 'OM Desconhecida';
     
-    const ownerName = postoGraduacao ? `${postoGraduacao} ${nomeGuerra}` : nomeGuerra;
+    // Formato completo: Posto/Grad Nome de Guerra (OM)
+    let ownerName = nomeGuerra;
+    if (postoGraduacao) {
+        ownerName = `${postoGraduacao} ${nomeGuerra}`;
+    }
+    ownerName = `${ownerName} (${nomeOM})`;
+
 
     return new Response(
       JSON.stringify({
         ptrabName: `${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`,
-        ownerName: ownerName,
+        ownerName: ownerName, // Agora inclui Posto/Grad e OM
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
