@@ -1033,6 +1033,7 @@ const PTrabManager = () => {
             const { error: insertError } = await supabase
                 .from(tableName)
                 .insert(newRecords as TablesInsert<typeof tableName>[]);
+            
             if (insertError) {
                 console.error(`ERRO DE INSERÇÃO ${tableName}:`, insertError);
                 toast.error(`Erro ao clonar registros da ${tableName}: ${sanitizeError(insertError)}`);
@@ -2230,7 +2231,7 @@ const PTrabManager = () => {
             <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
               Cancelar
             </AlertDialogCancel>
-          </DialogFooter>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
