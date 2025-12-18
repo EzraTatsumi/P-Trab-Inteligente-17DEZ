@@ -909,11 +909,11 @@ const PTrabManager = () => {
     if (cloneType === 'new') {
       setShowCloneOptionsDialog(false);
       
+      // CORREÇÃO: Excluir explicitamente todos os campos calculados e de sistema
       const { 
-        id, created_at, updated_at, totalLogistica, totalOperacional, 
-        totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo,
-        rotulo_versao, nome_om, nome_om_extenso, codug_om, rm_vinculacao, codug_rm_vinculacao,
-        share_token,
+        id, created_at, updated_at, user_id, share_token, shared_with,
+        totalLogistica, totalOperacional, totalMaterialPermanente, 
+        quantidadeRacaoOp, quantidadeHorasVoo, isOwner, isShared, hasPendingRequests,
         ...restOfPTrab 
       } = ptrabToClone;
       
@@ -925,6 +925,7 @@ const PTrabManager = () => {
         comentario: "",
         rotulo_versao: ptrabToClone.rotulo_versao,
         
+        // Reset OM fields because the user needs to select a new OM in the form
         nome_om: "",
         nome_om_extenso: "",
         codug_om: "",
@@ -953,10 +954,11 @@ const PTrabManager = () => {
     setLoading(true);
 
     try {
+        // CORREÇÃO: Excluir explicitamente todos os campos calculados e de sistema
         const { 
-            id, created_at, updated_at, totalLogistica, totalOperacional, 
-            totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo,
-            rotulo_versao, share_token, 
+            id, created_at, updated_at, user_id, share_token, shared_with,
+            totalLogistica, totalOperacional, totalMaterialPermanente, 
+            quantidadeRacaoOp, quantidadeHorasVoo, isOwner, isShared, hasPendingRequests,
             ...restOfPTrab 
         } = ptrabToClone;
         
