@@ -77,7 +77,7 @@ export default {
         'sm': 'var(--shadow-sm)',
         'md': 'var(--shadow-md)',
         'lg': 'var(--shadow-lg)',
-        'xl': 'var(--shadow-xl)',
+        'xl': '0 16px 48px -12px hsl(220 20% 15% / 0.15)',
         'glow': 'var(--shadow-glow)',
       },
       transitionTimingFunction: {
@@ -126,5 +126,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")], // Adicionado o plugin de tipografia
+  plugins: [require("tailwindcss-animate")],
 } satisfies Config;
