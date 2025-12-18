@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../integrations/supabase/client";
 import { toast } from "sonner";
+import { useSession } from "@/components/SessionContextProvider";
 
 export interface Profile {
   id: string;
@@ -13,14 +14,12 @@ export interface Profile {
   raw_user_meta_data: any;
 }
 
-const fetchProfile = async (): Promise<Profile> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("User not authenticated");
-
+// Modified fetchProfile to accept userId
+const fetchProfile = async (userId: string): Promise<Profile> => {
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
 
   if (error) throw error;
@@ -43,9 +42,13 @@ const updateProfile = async (profileData: Partial<Profile>): Promise<Profile> =>
 };
 
 export const useProfile = () => {
+  const { user, loading: loadingSession } = useSession();
+  
   return useQuery<Profile, Error>({
-    queryKey: ["profile"],
-    queryFn: fetchProfile,
+    queryKey: ["profile", user?.id],
+    queryFn: () => fetchProfile(user!.id),
+    // Enable query only if user ID is available and session is not loading
+    enabled: !!user?.id && !loadingSession, 
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 };
@@ -55,7 +58,8 @@ export const useUpdateProfile = () => {
   return useMutation<Profile, Error, Partial<Profile>>({
     mutationFn: updateProfile,
     onSuccess: (newProfile) => {
-      queryClient.setQueryData(["profile"], newProfile);
+      // Invalidate the query to ensure fresh data if needed, or set the data directly
+      queryClient.setQueryData(["profile", newProfile.id], newProfile);
       toast.success("Perfil atualizado com sucesso!");
     },
     onError: (error) => {
