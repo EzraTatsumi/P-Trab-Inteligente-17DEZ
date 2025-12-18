@@ -29,8 +29,19 @@ const LinkPTrabDialog: React.FC<LinkPTrabDialogProps> = ({
   onRequestLink,
   loading,
 }) => {
-  // CORREÇÃO: A validação agora verifica por '?ptrabId=' para corresponder ao link gerado.
-  const isLinkValid = linkInput.startsWith(window.location.origin) && linkInput.includes('?ptrabId=') && linkInput.includes('&token=');
+  // Validação mais robusta: tenta criar um objeto URL e verifica a presença dos parâmetros.
+  let isLinkValid = false;
+  try {
+    const url = new URL(linkInput);
+    const ptrabId = url.searchParams.get('ptrabId');
+    const token = url.searchParams.get('token');
+    
+    // O link é válido se tiver ambos os parâmetros e não estiver vazio
+    isLinkValid = !!ptrabId && !!token;
+  } catch (e) {
+    // Se falhar ao criar a URL (link mal formatado), isLinkValid permanece false
+    isLinkValid = false;
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
