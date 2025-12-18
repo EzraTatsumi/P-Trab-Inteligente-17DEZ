@@ -158,7 +158,7 @@ const PTrabManager = () => {
   
   const [showManageSharingDialog, setShowManageSharingDialog] = useState(false);
   const [ptrabToManageSharing, setPtrabToManageSharing] = useState<PTrab | null>(null);
-  const [shareRequests, setShareRequests] = useState<ShareRequest[]>([]);
+  // Removido o estado local de requests, pois será gerenciado no componente filho
   
   const [showUnlinkPTrabDialog, setShowUnlinkPTrabDialog] = useState(false);
   const [ptrabToUnlink, setPtrabToUnlink] = useState<PTrab | null>(null);
@@ -1376,33 +1376,10 @@ const PTrabManager = () => {
     if (!ptrab.isOwner) return;
     
     setPtrabToManageSharing(ptrab);
-    setLoading(true);
-    
-    try {
-        // CORREÇÃO: Garantir que a coluna 'requester_id' seja usada para o join com 'profiles'
-        const { data: requestsData, error: requestsError } = await supabase
-            .from('ptrab_share_requests')
-            .select(`
-                *,
-                requester_profile:requester_id (id, first_name, last_name, raw_user_meta_data)
-            `)
-            .eq('ptrab_id', ptrab.id)
-            .order('created_at', { ascending: true });
-            
-        if (requestsError) {
-            console.error("Erro ao carregar solicitações de compartilhamento:", requestsError);
-            throw new Error(requestsError.message);
-        }
-        
-        setShareRequests(requestsData as ShareRequest[]);
-        setShowManageSharingDialog(true);
-        
-    } catch (error: any) {
-        toast.error("Erro ao carregar solicitações de compartilhamento.");
-        console.error(error);
-    } finally {
-        setLoading(false);
-    }
+    // Abre o diálogo imediatamente
+    setShowManageSharingDialog(true); 
+    // A busca de requests e shared users será feita dentro do ManageSharingDialog
+    // para que o estado de loading seja local a ele.
   };
   
   const handleApproveRequest = async (requestId: string) => {
@@ -1418,12 +1395,7 @@ const PTrabManager = () => {
         toast.success("Compartilhamento aprovado com sucesso!");
         
         loadPTrabs();
-        if (ptrabToManageSharing) {
-            // Reabre o diálogo para atualizar a lista de solicitações e usuários ativos
-            handleOpenManageSharingDialog(ptrabToManageSharing);
-        } else {
-            setShowManageSharingDialog(false);
-        }
+        // Não precisa reabrir o diálogo aqui, o ManageSharingDialog deve ter sua própria lógica de atualização interna.
         
     } catch (error: any) {
         toast.error("Erro ao aprovar solicitação.");
@@ -1446,11 +1418,7 @@ const PTrabManager = () => {
         toast.info("Solicitação rejeitada.");
         
         loadPTrabs();
-        if (ptrabToManageSharing) {
-            handleOpenManageSharingDialog(ptrabToManageSharing);
-        } else {
-            setShowManageSharingDialog(false);
-        }
+        // Não precisa reabrir o diálogo aqui, o ManageSharingDialog deve ter sua própria lógica de atualização interna.
         
     } catch (error: any) {
         toast.error("Erro ao rejeitar solicitação.");
@@ -1478,16 +1446,7 @@ const PTrabManager = () => {
         toast.success(`Acesso de ${userName} removido com sucesso.`);
         
         loadPTrabs();
-        if (ptrabToManageSharing) {
-            const updatedPTrab = { 
-                ...ptrabToManageSharing, 
-                shared_with: (ptrabToManageSharing.shared_with || []).filter(id => id !== userIdToRemove)
-            } as PTrab;
-            setPtrabToManageSharing(updatedPTrab);
-            handleOpenManageSharingDialog(updatedPTrab);
-        } else {
-            setShowManageSharingDialog(false);
-        }
+        // Não precisa reabrir o diálogo aqui, o ManageSharingDialog deve ter sua própria lógica de atualização interna.
         
     } catch (error: any) {
         toast.error("Erro ao cancelar compartilhamento.");
@@ -2420,12 +2379,12 @@ const PTrabManager = () => {
           onOpenChange={setShowManageSharingDialog}
           ptrabId={ptrabToManageSharing.id}
           ptrabName={`${ptrabToManageSharing.numero_ptrab} - ${ptrabToManageSharing.nome_operacao}`}
-          sharedWith={ptrabToManageSharing.shared_with}
-          requests={shareRequests}
+          // Não passamos sharedWith e requests diretamente, o componente filho irá buscar
           onApprove={handleApproveRequest}
           onReject={handleRejectRequest}
           onCancelSharing={handleCancelSharing}
-          loading={loading}
+          // O loading aqui é o loading global do Manager, mas o ManageSharingDialog terá seu próprio loading interno
+          loading={loading} 
         />
       )}
       
