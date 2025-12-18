@@ -423,8 +423,6 @@ export const PTrabCostSummary = ({
     initialData: {
       totalLogisticoGeral: 0,
       totalOperacional: 0,
-      totalMaterialPermanente: 0,
-      totalAviacaoExercito: 0,
       totalClasseI: 0,
       totalClasseII: 0,
       totalClasseII_ND30: 0,
