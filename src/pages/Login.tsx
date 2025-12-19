@@ -200,7 +200,7 @@ const Login = () => {
               onClick={() => setShowSignupDialog(true)}
               disabled={loading}
             >
-              Não tem conta? Crie uma agora!
+              Não tem conta? Crie uma agora! Clique aqui.
             </Button>
             
             {/* Botão de Recuperar Senha */}
