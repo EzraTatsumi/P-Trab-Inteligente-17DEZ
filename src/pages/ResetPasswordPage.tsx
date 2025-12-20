@@ -13,8 +13,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { sanitizeAuthError } from '@/lib/errorUtils';
 import { useFormNavigation } from '@/hooks/useFormNavigation';
 
+// Esquema de validação de senha atualizado para ser mais rigoroso
+const passwordValidation = z.string()
+  .min(8, { message: 'A senha deve ter no mínimo 8 caracteres.' })
+  .regex(/[A-Z]/, { message: 'A senha deve conter pelo menos uma letra maiúscula.' })
+  .regex(/[0-9]/, { message: 'A senha deve conter pelo menos um número.' })
+  .regex(/[^a-zA-Z0-9]/, { message: 'A senha deve conter pelo menos um caractere especial.' });
+
 const resetPasswordSchema = z.object({
-  password: z.string().min(6, { message: 'A senha deve ter no mínimo 6 caracteres.' }),
+  password: passwordValidation,
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "As senhas não coincidem.",
@@ -158,7 +165,7 @@ const ResetPasswordPage: React.FC = () => {
                         <div className="relative">
                           <Input
                             type={showPassword ? "text" : "password"}
-                            placeholder="Mínimo 6 caracteres"
+                            placeholder="Mínimo 8 caracteres"
                             autoComplete="new-password"
                             {...field}
                             className="pr-10"
@@ -178,6 +185,9 @@ const ResetPasswordPage: React.FC = () => {
                         </div>
                       </FormControl>
                       <FormMessage />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        A senha deve ter no mínimo 8 caracteres, incluindo maiúscula, número e caractere especial.
+                      </p>
                     </FormItem>
                   )}
                 />
