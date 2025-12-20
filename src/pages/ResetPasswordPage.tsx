@@ -25,9 +25,10 @@ type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
 const ResetPasswordPage: React.FC = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Começa como true
   const [isSuccess, setIsSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isTokenValid, setIsTokenValid] = useState(false); // Novo estado para rastrear a validade do token
   const { handleEnterToNextField } = useFormNavigation();
 
   const form = useForm<ResetPasswordFormValues>({
@@ -38,23 +39,40 @@ const ResetPasswordPage: React.FC = () => {
     },
   });
 
-  // Efeito para verificar se o usuário está logado via token na URL
+  // 1. Listener para o evento de recuperação de senha
   useEffect(() => {
-    // O Supabase lida com a sessão automaticamente quando o usuário chega nesta página
-    // via o link de redefinição de senha (que contém o access_token).
-    // Se o token for válido, o usuário estará autenticado temporariamente.
-    const checkSession = async () => {
-        setLoading(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-            // Se não houver sessão, o token expirou ou é inválido.
-            toast.error("Link de redefinição inválido ou expirado. Tente novamente.");
-            navigate('/login');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || session) {
+        // Se o evento for de recuperação OU se já houver uma sessão (token válido na URL)
+        setIsTokenValid(true);
+        setLoading(false);
+      } else if (event === 'SIGNED_OUT' && !session) {
+        // Se o usuário for deslogado ou não houver sessão inicial, e não for recuperação
+        if (window.location.hash.includes('access_token')) {
+             // Se houver token na URL, mas o Supabase não conseguiu processar, 
+             // pode ser um erro de token expirado ou já usado.
+             toast.error("Link de redefinição inválido ou expirado. Tente novamente.");
+             navigate('/login');
         }
         setLoading(false);
-    };
+      } else if (event === 'INITIAL_SESSION' && !session) {
+        // Se a sessão inicial não retornar nada, e não houver token na URL, redireciona.
+        if (!window.location.hash.includes('access_token')) {
+            setLoading(false);
+            navigate('/login');
+        }
+      }
+    });
     
-    checkSession();
+    // Tenta obter a sessão inicial imediatamente para cobrir o caso de carregamento direto
+    supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+            setIsTokenValid(true);
+        }
+        setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const onSubmit = async (data: ResetPasswordFormValues) => {
@@ -71,6 +89,8 @@ const ResetPasswordPage: React.FC = () => {
         console.error("Password update error:", error);
       } else {
         setIsSuccess(true);
+        // Força o logout da sessão temporária de recuperação
+        await supabase.auth.signOut(); 
         toast.success('Senha redefinida com sucesso! Faça login com sua nova senha.');
         setTimeout(() => {
             navigate('/login');
@@ -87,9 +107,19 @@ const ResetPasswordPage: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <span className="ml-2 text-muted-foreground">Verificando link...</span>
+        <span className="ml-2 text-muted-foreground">Verificando link de redefinição...</span>
       </div>
     );
+  }
+  
+  // Se o token não for válido e o loading terminou, redireciona para login (tratado no useEffect)
+  if (!isTokenValid && !loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+            <AlertTriangle className="h-6 w-6 text-destructive" />
+            <span className="ml-2 text-muted-foreground">Link inválido. Redirecionando...</span>
+        </div>
+      );
   }
 
   return (
