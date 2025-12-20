@@ -25,6 +25,7 @@ import OmBulkUploadPage from "./pages/OmBulkUploadPage";
 import PTrabExportImportPage from "./pages/PTrabExportImportPage";
 import UserProfilePage from "./pages/UserProfilePage";
 import SharePage from "./pages/SharePage"; // Importar SharePage
+import ResetPasswordPage from "./pages/ResetPasswordPage"; // Importar ResetPasswordPage
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} /> {/* NOVA ROTA */}
               <Route path="/ptrab" element={<PTrabManager />} />
               <Route path="/ptrab/form" element={<PTrabForm />} />
               <Route path="/ptrab/print" element={<PTrabReportManager />} />
@@ -57,7 +59,7 @@ const App = () => (
               <Route path="/config/om/bulk-upload" element={<OmBulkUploadPage />} />
               <Route path="/config/ptrab-export-import" element={<PTrabExportImportPage />} />
               <Route path="/config/profile" element={<UserProfilePage />} />
-              <Route path="/share-ptrab" element={<SharePage />} /> {/* NOVA ROTA */}
+              <Route path="/share-ptrab" element={<SharePage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </SessionContextProvider>
