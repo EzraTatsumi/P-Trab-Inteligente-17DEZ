@@ -1649,7 +1649,7 @@ const PTrabManager = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="periodo_inicio">Período Início *</Label>
+                      <Label htmlFor="periodo_inicio">Início da Operação *</Label>
                       <Input
                         id="periodo_inicio"
                         type="date"
@@ -1660,7 +1660,7 @@ const PTrabManager = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="periodo_fim">Período Fim *</Label>
+                      <Label htmlFor="periodo_fim">Término da Operação *</Label>
                       <Input
                         id="periodo_fim"
                         type="date"
