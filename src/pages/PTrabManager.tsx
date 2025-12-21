@@ -89,6 +89,18 @@ interface ShareRequest extends Tables<'ptrab_share_requests'> {
   } | null;
 }
 
+// Lista de Comandos Militares de Área (CMA)
+const COMANDOS_MILITARES_AREA = [
+  "Comando Militar da Amazônia",
+  "Comando Militar do Norte",
+  "Comando Militar do Nordeste",
+  "Comando Militar do Planalto",
+  "Comando Militar do Oeste",
+  "Comando Militar do Leste",
+  "Comando Militar do Sudeste",
+  "Comando Militar do Sul",
+];
+
 const PTrabManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -144,7 +156,7 @@ const PTrabManager = () => {
   // NOVO ESTADO: Controle do Prompt de Crédito
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
   const [ptrabToFill, setPtrabToFill] = useState<PTrab | null>(null);
-  const hasBeenPrompted = useRef(new Set<string>());
+  hasBeenPrompted = useRef(new Set<string>());
 
   // =================================================================
   // ESTADOS DE COMPARTILHAMENTO (NOVOS)
@@ -726,6 +738,7 @@ const PTrabManager = () => {
           if (fieldName === 'acoes') fieldName = 'Ações realizadas ou a serem realizadas';
           if (fieldName === 'local om') fieldName = 'Local da OM';
           if (fieldName === 'nome cmt om') fieldName = 'Nome do Comandante da OM';
+          if (fieldName === 'comando militar area') fieldName = 'Comando Militar de Área';
           
           toast.error(`O campo '${fieldName}' é obrigatório.`);
           setLoading(false);
@@ -1574,15 +1587,22 @@ const PTrabManager = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="comando_militar_area">Comando Militar de Área *</Label>
-                      <Input
-                        id="comando_militar_area"
+                      <Select
                         value={formData.comando_militar_area}
-                        onChange={(e) => setFormData({ ...formData, comando_militar_area: e.target.value })}
-                        placeholder="Ex: Comando Militar da Amazônia"
-                        maxLength={100}
-                        required
-                        onKeyDown={handleEnterToNextField}
-                      />
+                        onValueChange={(value) => setFormData({ ...formData, comando_militar_area: value })}
+                        disabled={loading}
+                      >
+                        <SelectTrigger id="comando_militar_area">
+                          <SelectValue placeholder="Selecione o Comando Militar de Área" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COMANDOS_MILITARES_AREA.map((cma) => (
+                            <SelectItem key={cma} value={cma}>
+                              {cma}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="nome_om_extenso">Nome da OM (por extenso) *</Label>
