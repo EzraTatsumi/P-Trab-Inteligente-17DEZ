@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Download, Upload, Lock, AlertCircle, Check, FileText, Loader2, ChevronsUpDown } from "lucide-react";
+import { ArrowLeft, Download, Upload, Lock, AlertCircle, Check, FileText, Loader2, ChevronsUpDown, ArrowDownUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { toast } from "sonner";
@@ -754,7 +754,7 @@ const PTrabExportImportPage = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Download className="h-5 w-5 text-primary" />
+              <ArrowDownUp className="h-5 w-5 text-primary" />
               Exportar e Importar P Trabs
             </CardTitle>
             <CardDescription>
@@ -766,7 +766,7 @@ const PTrabExportImportPage = () => {
             {/* Coluna de Exportação */}
             <div className="space-y-4 border-r pr-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Upload className="h-4 w-4" /> {/* Ícone corrigido para Upload (seta para cima) */}
+                <Upload className="h-4 w-4" />
                 Exportar Dados
               </h3>
               
@@ -864,7 +864,7 @@ const PTrabExportImportPage = () => {
             {/* Coluna de Importação */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Download className="h-4 w-4" /> {/* Ícone corrigido para Download (seta para baixo) */}
+                <Download className="h-4 w-4" />
                 Importar Dados
               </h3>
               
