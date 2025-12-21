@@ -60,16 +60,27 @@ const fetchPTrabTotals = async (ptrabId: string) => {
 
   (classeIData || []).forEach(record => {
     if (record.categoria === 'RACAO_QUENTE') {
-        totalClasseI += record.total_qs + record.total_qr;
-        totalComplemento += record.complemento_qs + record.complemento_qr;
-        totalEtapaSolicitadaValor += record.etapa_qs + record.etapa_qr;
+        // Garantir que todos os campos numéricos sejam tratados como números
+        const totalQs = Number(record.total_qs || 0);
+        const totalQr = Number(record.total_qr || 0);
+        const complementoQs = Number(record.complemento_qs || 0);
+        const etapaQs = Number(record.etapa_qs || 0);
+        const complementoQr = Number(record.complemento_qr || 0);
+        const etapaQr = Number(record.etapa_qr || 0);
+        const efetivo = Number(record.efetivo || 0);
+        const nrRefInt = Number(record.nr_ref_int || 0);
+        const diasOperacao = Number(record.dias_operacao || 0);
+
+        totalClasseI += totalQs + totalQr;
+        totalComplemento += complementoQs + complementoQr;
+        totalEtapaSolicitadaValor += etapaQs + etapaQr;
         
-        const diasEtapaSolicitada = calculateDiasEtapaSolicitada(record.dias_operacao);
+        const diasEtapaSolicitada = calculateDiasEtapaSolicitada(diasOperacao);
         totalDiasEtapaSolicitada += diasEtapaSolicitada;
         
-        totalRefeicoesIntermediarias += (record.efetivo || 0) * (record.nr_ref_int || 0) * record.dias_operacao;
+        totalRefeicoesIntermediarias += efetivo * nrRefInt * diasOperacao;
     } else if (record.categoria === 'RACAO_OPERACIONAL') {
-        totalRacoesOperacionaisGeral += (record.quantidade_r2 || 0) + (record.quantidade_r3 || 0);
+        totalRacoesOperacionaisGeral += Number(record.quantidade_r2 || 0) + Number(record.quantidade_r3 || 0);
     }
   });
   
@@ -180,11 +191,13 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   (allClasseItemsData || []).forEach(record => {
     const category = record.categoria;
     const items = (record.itens_equipamentos || []) as ItemClasseII[];
-    const totalItemsCategory = items.reduce((sum, item) => sum + (item.quantidade || 0), 0); 
+    // Garante que a quantidade de itens é numérica
+    const totalItemsCategory = items.reduce((sum, item) => sum + (Number(item.quantidade) || 0), 0); 
     
-    const valorTotal = record.valor_total;
-    const valorND30 = Number(record.valor_nd_30);
-    const valorND39 = Number(record.valor_nd_39);
+    // Garante que valor_total é numérico
+    const valorTotal = Number(record.valor_total || 0);
+    const valorND30 = Number(record.valor_nd_30 || 0);
+    const valorND39 = Number(record.valor_nd_39 || 0);
 
     if (CATEGORIAS_CLASSE_II.includes(category)) {
         // CLASSE II
@@ -254,7 +267,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         
         if (category === 'Remonta/Veterinária') {
             const animalType = (record as any).animal_tipo;
-            const quantidadeAnimais = (record as any).quantidade_animais || 0;
+            const quantidadeAnimais = Number((record as any).quantidade_animais || 0);
             
             if (animalType) {
                 groupKey = `Remonta - ${animalType}`;
@@ -313,29 +326,29 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // Totais de Combustível (ND 33.90.30)
   const totalDieselValor = combustivelRecords
     .filter(r => r.tipo_combustivel === 'DIESEL' || r.tipo_combustivel === 'OD')
-    .reduce((sum, record) => sum + record.valor_total, 0);
+    .reduce((sum, record) => sum + Number(record.valor_total || 0), 0);
     
   const totalGasolinaValor = combustivelRecords
     .filter(r => r.tipo_combustivel === 'GASOLINA' || r.tipo_combustivel === 'GAS')
-    .reduce((sum, record) => sum + record.valor_total, 0);
+    .reduce((sum, record) => sum + Number(record.valor_total || 0), 0);
     
   const totalDieselLitros = combustivelRecords
     .filter(r => r.tipo_combustivel === 'DIESEL' || r.tipo_combustivel === 'OD')
-    .reduce((sum, record) => sum + record.total_litros, 0);
+    .reduce((sum, record) => sum + Number(record.total_litros || 0), 0);
     
   const totalGasolinaLitros = combustivelRecords
     .filter(r => r.tipo_combustivel === 'GASOLINA' || r.tipo_combustivel === 'GAS')
-    .reduce((sum, record) => sum + record.total_litros, 0);
+    .reduce((sum, record) => sum + Number(record.total_litros || 0), 0);
 
   const totalCombustivel = totalDieselValor + totalGasolinaValor;
   
   // Totais de Lubrificante (ND 33.90.30)
   const totalLubrificanteValor = lubrificanteRecords
-    .reduce((sum, record) => sum + record.valor_total, 0);
+    .reduce((sum, record) => sum + Number(record.valor_total || 0), 0);
     
   const totalLubrificanteLitros = lubrificanteRecords
-    .reduce((sum, record) => sum + record.total_litros, 0);
-
+    .reduce((sum, record) => sum + Number(record.total_litros || 0), 0);
+    
   // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
   const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX + totalCombustivel + totalLubrificanteValor;
   
@@ -746,6 +759,7 @@ export const PTrabCostSummary = ({
                                 Lubrificante
                             </span>
                             <span className="w-1/4 text-right font-medium">
+                              {/* Corrigido: totalLubrificanteLitros agora é garantido como número */}
                               {formatNumber(totals.totalLubrificanteLitros, 2)} L
                             </span>
                             <span className="w-1/4 text-right font-medium">
