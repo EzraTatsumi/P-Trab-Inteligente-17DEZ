@@ -12,7 +12,7 @@ const stakeholders = [
   },
   {
     icon: Network,
-    name: "CITEx / DCT",
+    name: "DCT", // Alterado de "CITEx / DCT" para "DCT"
     role: "Centro de Telemática",
     interest: "Homologação técnica da solução",
     influence: "Alta"
