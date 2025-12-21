@@ -19,7 +19,7 @@ export const Footer = () => {
               <span className="text-xl font-bold font-display">PTrab Inteligente</span>
             </div>
             <p className="text-primary-foreground/70 text-sm leading-relaxed max-w-md">
-              Sistema oficial de gestão do Plano de Trabalho do Exército Brasileiro. 
+              Sistema oficial de gestão do Plano de Trabalho. 
               Desenvolvido com tecnologia de ponta para máxima eficiência operacional.
             </p>
           </div>
@@ -39,11 +39,11 @@ export const Footer = () => {
           <div>
             <h3 className="font-bold mb-4 font-display">Contato</h3>
             <ul className="space-y-2 text-sm text-primary-foreground/70">
-              <li>CITEx</li>
-              <li>Comando Militar da Amazônia</li>
-              <li>Brasília - DF</li>
+              <li>P Trab Inteligente</li>
+              <li>Maj Tatsumi</li>
+              <li>Maputo/Moçambique</li>
               <li className="text-accent hover:text-accent-light transition-colors cursor-pointer">
-                suporte@ptrab.eb.mil.br
+                ezratatsumi@hotmail.com
               </li>
             </ul>
           </div>
@@ -52,7 +52,7 @@ export const Footer = () => {
         {/* Bottom bar */}
         <div className="pt-8 border-t border-primary-foreground/10 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-primary-foreground/50 text-center md:text-left">
-            © 2025 Exército Brasileiro • Sistema de uso institucional militar
+            © 2025 • Sistema de uso institucional militar
           </p>
           <div className="flex gap-6 text-sm text-primary-foreground/50">
             <span className="hover:text-accent transition-colors cursor-pointer">Privacidade</span>
