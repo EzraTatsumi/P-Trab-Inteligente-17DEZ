@@ -766,7 +766,7 @@ const PTrabExportImportPage = () => {
             {/* Coluna de Exportação */}
             <div className="space-y-4 border-r pr-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Download className="h-4 w-4" />
+                <Upload className="h-4 w-4" /> {/* Ícone corrigido para Upload (seta para cima) */}
                 Exportar Dados
               </h3>
               
@@ -864,7 +864,7 @@ const PTrabExportImportPage = () => {
             {/* Coluna de Importação */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Upload className="h-4 w-4" />
+                <Download className="h-4 w-4" /> {/* Ícone corrigido para Download (seta para baixo) */}
                 Importar Dados
               </h3>
               
