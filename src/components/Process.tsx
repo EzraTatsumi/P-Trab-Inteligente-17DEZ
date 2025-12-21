@@ -3,7 +3,7 @@ import { Upload, Brain, CheckCircle, Download } from "lucide-react";
 
 const steps = [
   {
-    icon: Upload,
+    icon: Download, // Corrigido: Seta para baixo para Importação
     number: "01",
     title: "Importação",
     description: "Carregue dados das OM e atas de pregão. Sistema organiza automaticamente as informações.",
@@ -21,7 +21,7 @@ const steps = [
     description: "Verificação de conformidade e ajustes com controle total de versões.",
   },
   {
-    icon: Download,
+    icon: Upload, // Corrigido: Seta para cima para Exportação
     number: "04",
     title: "Exportação",
     description: "PTrab finalizado em formatos oficiais Excel e PDF conforme padrões do COLOG e COTER.",
