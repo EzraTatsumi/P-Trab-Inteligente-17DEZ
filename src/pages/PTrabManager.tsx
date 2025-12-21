@@ -156,7 +156,7 @@ const PTrabManager = () => {
   // NOVO ESTADO: Controle do Prompt de Crédito
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
   const [ptrabToFill, setPtrabToFill] = useState<PTrab | null>(null);
-  hasBeenPrompted = useRef(new Set<string>());
+  const hasBeenPrompted = useRef(new Set<string>()); // FIX: Correctly declared with 'const'
 
   // =================================================================
   // ESTADOS DE COMPARTILHAMENTO (NOVOS)
