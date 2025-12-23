@@ -1258,12 +1258,11 @@ const DiretrizesCusteioPage = () => {
                           <Input
                             type="text"
                             inputMode="numeric"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             value={formatCurrencyInput(rawQSInput).formatted}
                             onChange={(e) => handleClasseIChange('classe_i_valor_qs', e.target.value)}
                             onKeyDown={handleEnterToNextField}
                           />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -1272,12 +1271,11 @@ const DiretrizesCusteioPage = () => {
                           <Input
                             type="text"
                             inputMode="numeric"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             value={formatCurrencyInput(rawQRInput).formatted}
                             onChange={(e) => handleClasseIChange('classe_i_valor_qr', e.target.value)}
                             onKeyDown={handleEnterToNextField}
                           />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$/dia</span>
                         </div>
                       </div>
                     </div>
