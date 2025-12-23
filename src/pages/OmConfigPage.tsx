@@ -248,7 +248,7 @@ const OmConfigPage = () => {
                     <Input
                       id="nome_om"
                       value={formData.nome_om}
-                      onChange={(e) => setFormData({ ...formData, nome_om: e.target.value.toUpperCase() })}
+                      onChange={(e) => setFormData({ ...formData, nome_om: e.target.value })}
                       placeholder="Ex: 23ª Bda Inf Sl"
                       required
                       onKeyDown={handleEnterToNextField}
@@ -287,7 +287,7 @@ const OmConfigPage = () => {
                     <Input
                       id="rm_vinculacao"
                       value={formData.rm_vinculacao}
-                      onChange={(e) => setFormData({ ...formData, rm_vinculacao: e.target.value.toUpperCase() })}
+                      onChange={(e) => setFormData({ ...formData, rm_vinculacao: e.target.value })}
                       placeholder="Ex: 8ª RM"
                       required
                       onKeyDown={handleEnterToNextField}
