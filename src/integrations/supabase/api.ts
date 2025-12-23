@@ -7,21 +7,6 @@ interface EdgeFunctionResponse {
   gasolina: { price: number, source: string };
 }
 
-// NOVO: Interface para a Referência LPC
-interface RefLPC {
-  id: string;
-  p_trab_id: string;
-  data_inicio_consulta: string;
-  data_fim_consulta: string;
-  ambito: 'Nacional' | 'Estadual' | 'Municipal';
-  nome_local: string | null;
-  preco_diesel: number;
-  preco_gasolina: number;
-  source: 'Manual' | 'API';
-  created_at: string;
-  updated_at: string;
-}
-
 /**
  * Fetches the latest price for a given fuel type by invoking a Supabase Edge Function.
  * This bypasses potential CORS issues with the external API.
@@ -106,34 +91,4 @@ export async function fetchSharePreview(ptrabId: string, token: string): Promise
         }
         throw error;
     }
-}
-
-/**
- * Fetches the RefLPC record for a given PTrab ID.
- * @param ptrabId The ID of the PTrab.
- * @returns RefLPC object or null if not found.
- */
-export async function fetchRefLPC(ptrabId: string): Promise<RefLPC | null> {
-    const { data, error } = await supabase
-        .from('p_trab_ref_lpc')
-        .select('*')
-        .eq('p_trab_id', ptrabId)
-        .maybeSingle();
-
-    if (error) {
-        console.error("Error fetching RefLPC:", error);
-        throw error;
-    }
-    
-    // Ensure numeric fields are treated as numbers if they exist
-    if (data) {
-        return {
-            ...data,
-            preco_diesel: Number(data.preco_diesel),
-            preco_gasolina: Number(data.preco_gasolina),
-            source: data.source as 'Manual' | 'API',
-        } as RefLPC;
-    }
-
-    return null;
 }
