@@ -201,7 +201,7 @@ const OmConfigPage = () => {
           <CardContent className="space-y-6">
             
             {/* Controles de Ação (Nova OM e Importação) */}
-            <div className="flex justify-end items-center border-b pb-4">
+            <div className="flex justify-end items-center pb-4">
               <div className="flex gap-2">
                 <Button 
                   variant={isFormOpen ? "secondary" : "default"} 
