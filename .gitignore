@@ -89,9 +89,11 @@ src/lib/creditUtils.ts
 # NOVAS EXCLUSÕES PARA ECONOMIA DE CONTEXTO
 src/pages/UserProfilePage.tsx
 src/components/SignupDialog.tsx
-src/lib/formatUtils.ts
 src/components/reports/PTrabLogisticoReport.tsx
 src/components/reports/PTrabRacaoOperacionalReport.tsx
 
 # Vercel Configuration
 # vercel.json
+
+# INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
+# src/lib/formatUtils.ts

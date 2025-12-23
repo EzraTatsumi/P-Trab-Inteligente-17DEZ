@@ -1,25 +1,34 @@
 import { format, subWeeks, startOfWeek, endOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-export const formatCurrency = (value: number): string => {
+export const formatCurrency = (value: number | string | null | undefined): string => {
+  if (value === null || value === undefined) return 'R$ 0,00';
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return 'R$ 0,00';
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
-  }).format(value);
+  }).format(num);
 };
 
-export const formatNumber = (value: number, decimals: number = 0): string => {
+export const formatNumber = (value: number | string | null | undefined, decimals: number = 0): string => {
+  if (value === null || value === undefined) return '0';
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return '0';
   return new Intl.NumberFormat("pt-BR", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-  }).format(value);
+  }).format(num);
 };
 
 /**
  * Parses a string input (allowing comma as decimal separator) into a number.
  * Handles optional thousand separators (dots) by removing them.
  */
-export const parseInputToNumber = (input: string): number => {
+export const parseInputToNumber = (input: string | number | null | undefined): number => {
+  if (input === null || input === undefined) return 0;
+  if (typeof input === 'number') return input;
+  
   // 1. Remove dots (thousand separators)
   // 2. Replace comma (decimal separator) with dot
   const cleaned = input.replace(/\./g, '').replace(',', '.');
@@ -30,14 +39,18 @@ export const parseInputToNumber = (input: string): number => {
  * Formats a number for display in an input field using the Brazilian standard (comma for decimal).
  * Ensures a minimum number of fraction digits.
  */
-export const formatNumberForInput = (num: number, minFractionDigits: number = 2): string => {
-  if (num === 0) return ""; // Retorna string vazia se for zero
+export const formatNumberForInput = (num: number | string | null | undefined, minFractionDigits: number = 2): string => {
+  if (num === undefined || num === null) return "";
+  const numericValue = typeof num === 'string' ? parseFloat(num) : num;
   
-  // Use Intl.NumberFormat to format with thousand separator (dot) and decimal separator (comma)
+  if (isNaN(numericValue) || numericValue === 0) return ""; // Retorna string vazia se for zero ou NaN
+  
+  // Use Intl.NumberFormat para formatar com o separador decimal (vírgula)
   return new Intl.NumberFormat('pt-BR', {
     minimumFractionDigits: minFractionDigits,
     maximumFractionDigits: minFractionDigits,
-  }).format(num);
+    useGrouping: false, // Não usa separador de milhar
+  }).format(numericValue);
 };
 
 /**
@@ -60,7 +73,6 @@ export const formatInputWithThousands = (value: string | undefined | null): stri
   
   // 3. Remove pontos que não estejam na posição correta de milhar (simplificado para ser mais permissivo)
   // Para inputs de valor, vamos apenas remover todos os pontos para evitar confusão durante a digitação.
-  // A formatação de milhar será aplicada apenas no blur.
   
   // Se houver vírgula, remove todos os pontos da parte inteira
   if (cleaned.includes(',')) {
