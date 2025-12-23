@@ -27,6 +27,7 @@ interface OmSelectorProps {
   placeholder?: string;
   disabled?: boolean;
   omsList?: OMData[]; // Novo prop: lista de OMs pré-carregada
+  defaultOmId?: string; // NOVO: ID da OM padrão a ser sugerida
 }
 
 export function OmSelector({
@@ -36,20 +37,11 @@ export function OmSelector({
   placeholder = "Selecione uma OM...",
   disabled = false,
   omsList, // Usar a lista passada se existir
+  defaultOmId, // Recebe o ID padrão
 }: OmSelectorProps) {
   const [open, setOpen] = useState(false);
   const [oms, setOms] = useState<OMData[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Se omsList for fornecido, usa ele. Caso contrário, carrega do Supabase.
-  useEffect(() => {
-    if (omsList) {
-      setOms(omsList);
-      setLoading(false);
-    } else {
-      loadOMs();
-    }
-  }, [filterByRM, omsList]);
 
   const loadOMs = async () => {
     setLoading(true);
@@ -72,6 +64,30 @@ export function OmSelector({
       setLoading(false);
     }
   };
+
+  // 1. Carrega OMs (da prop ou do DB)
+  useEffect(() => {
+    if (omsList) {
+      setOms(omsList);
+      setLoading(false);
+    } else {
+      loadOMs();
+    }
+  }, [filterByRM, omsList]);
+
+  // 2. Lógica para sugerir a OM padrão automaticamente
+  useEffect(() => {
+    // Só executa se o carregamento estiver completo, se não houver OM selecionada,
+    // se um ID padrão for fornecido e se a lista de OMs estiver populada.
+    if (!loading && !selectedOmId && defaultOmId && oms.length > 0) {
+      const defaultOM = oms.find(om => om.id === defaultOmId);
+      if (defaultOM) {
+        // Chama onChange para definir a OM padrão no estado pai
+        onChange(defaultOM);
+      }
+    }
+  }, [loading, selectedOmId, defaultOmId, oms, onChange]);
+
 
   const selectedOM = oms.find(om => om.id === selectedOmId);
 
