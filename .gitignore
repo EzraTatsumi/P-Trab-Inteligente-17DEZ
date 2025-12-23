@@ -52,10 +52,7 @@ src/pages/ClasseIForm.tsx
 src/pages/ClasseIIForm.tsx
 
 # Excluir páginas de configuração secundária
-# src/pages/OmConfigPage.tsx
-# src/pages/OmBulkUploadPage.tsx
 src/pages/VisualizacaoConfigPage.tsx
-src/pages/DiretrizesCusteioPage.tsx
 
 # Excluir arquivos de consolidação e numeração
 src/components/PTrabConsolidationDialog.tsx
