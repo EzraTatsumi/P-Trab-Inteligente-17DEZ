@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { RefLPC, RefLPCForm, RefLPCSource } from "@/types/refLPC";
-import { getPreviousWeekRange, formatNumberForInput, parseInputToNumber, formatInputWithThousands, formatDateDDMMMAA } from "@/lib/formatUtils";
+import { getPreviousWeekRange, formatDateDDMMMAA, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
 import { fetchFuelPrice } from "@/integrations/supabase/api";
 
 interface RefLPCFormSectionProps {
@@ -25,8 +25,8 @@ const initialFormState: RefLPCForm = {
   data_fim_consulta: "",
   ambito: "Nacional",
   nome_local: "",
-  preco_diesel: "", // Alterado para string para manipulação de input
-  preco_gasolina: "", // Alterado para string para manipulação de input
+  preco_diesel: "0", // Armazenar como string de dígitos brutos
+  preco_gasolina: "0", // Armazenar como string de dígitos brutos
   source: "Manual",
 };
 
@@ -37,6 +37,10 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
   const [loading, setLoading] = useState(false);
   const { handleEnterToNextField } = useFormNavigation();
   const contentRef = useRef<HTMLDivElement>(null);
+  
+  // Estado para rastrear o input focado e seus dígitos brutos
+  const [focusedInput, setFocusedInput] = useState<{ field: 'preco_diesel' | 'preco_gasolina', rawDigits: string } | null>(null);
+
 
   useEffect(() => {
     if (refLPC) {
@@ -45,9 +49,9 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         data_fim_consulta: refLPC.data_fim_consulta,
         ambito: refLPC.ambito as 'Nacional' | 'Estadual' | 'Municipal',
         nome_local: refLPC.nome_local || "",
-        // Inicializa como string formatada
-        preco_diesel: formatNumberForInput(Number(refLPC.preco_diesel), 2),
-        preco_gasolina: formatNumberForInput(Number(refLPC.preco_gasolina), 2),
+        // Inicializa como string de dígitos brutos
+        preco_diesel: numberToRawDigits(Number(refLPC.preco_diesel)),
+        preco_gasolina: numberToRawDigits(Number(refLPC.preco_gasolina)),
         source: refLPC.source || 'Manual',
       });
       setIsLPCFormExpanded(false);
@@ -86,9 +90,9 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
       return;
     }
     
-    // Converte os valores de preço (que estão em string formatada) para numérico antes de salvar
-    const dieselPrice = parseInputToNumber(String(formLPC.preco_diesel));
-    const gasolinePrice = parseInputToNumber(String(formLPC.preco_gasolina));
+    // Converte os valores de preço (que estão em string de dígitos brutos) para numérico antes de salvar
+    const dieselPrice = formatCurrencyInput(formLPC.preco_diesel).numericValue;
+    const gasolinePrice = formatCurrencyInput(formLPC.preco_gasolina).numericValue;
 
     if (dieselPrice <= 0 || gasolinePrice <= 0) {
       toast.error("Os preços devem ser maiores que zero");
@@ -156,10 +160,10 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         data_inicio_consulta: start,
         data_fim_consulta: end,
         ambito: 'Nacional',
-        nome_local: 'ANP - Média Nacional', // Adicionando nome local para API
-        // Salva como string formatada
-        preco_diesel: formatNumberForInput(dieselResult.price, 2),
-        preco_gasolina: formatNumberForInput(gasolinaResult.price, 2),
+        nome_local: 'ANP - Média Nacional',
+        // Salva como string de dígitos brutos
+        preco_diesel: numberToRawDigits(dieselResult.price),
+        preco_gasolina: numberToRawDigits(gasolinaResult.price),
         source: 'API',
       }));
       
@@ -172,41 +176,52 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
     }
   };
 
-  // Handlers para inputs de preço (para permitir vírgula e formatação)
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'preco_diesel' | 'preco_gasolina') => {
-    const rawValue = e.target.value;
-    // Aplica a formatação de milhar e decimal enquanto digita
-    const formattedValue = formatInputWithThousands(rawValue);
+  // Handlers para inputs de preço usando formatCurrencyInput
+  const getPriceInputProps = (field: 'preco_diesel' | 'preco_gasolina') => {
+    const rawDigits = formLPC[field];
+    const isFocused = focusedInput?.field === field;
     
-    setFormLPC(prev => ({ 
-        ...prev, 
-        [field]: formattedValue,
-        source: 'Manual'
-    }));
-  };
+    let displayValue = isFocused 
+        ? formatCurrencyInput(focusedInput.rawDigits).formatted
+        : formatCurrencyInput(rawDigits).formatted;
+        
+    if (rawDigits === "0" && !isFocused) {
+        displayValue = "";
+    }
 
-  const handlePriceBlur = (e: React.FocusEvent<HTMLInputElement>, field: 'preco_diesel' | 'preco_gasolina') => {
-    const numericValue = parseInputToNumber(e.target.value);
+    const handleFocus = () => {
+        setFocusedInput({ 
+            field: field, 
+            rawDigits: rawDigits 
+        });
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { digits } = formatCurrencyInput(e.target.value);
+        setFocusedInput(prev => prev ? { ...prev, rawDigits: digits } : null);
+        setFormLPC(prev => ({ 
+            ...prev, 
+            [field]: digits,
+            source: 'Manual'
+        }));
+    };
     
-    // Formata o valor numérico de volta para a string de exibição com 2 casas decimais
-    const formattedString = formatNumberForInput(numericValue, 2);
+    const handleBlur = () => {
+        setFocusedInput(null);
+    };
     
-    setFormLPC(prev => ({ 
-        ...prev, 
-        [field]: formattedString,
-        source: 'Manual'
-    }));
+    return {
+        value: displayValue,
+        onChange: handleChange,
+        onFocus: handleFocus,
+        onBlur: handleBlur,
+        type: "text" as const,
+        inputMode: "numeric" as const,
+    };
   };
   
-  // Função para formatar o valor numérico para exibição no input
-  const formatPriceForInput = (price: number | string): string => {
-    // Se o preço já for uma string (formatada ou em digitação), retorna a string
-    if (typeof price === 'string') {
-        return price;
-    }
-    // Se for um número (o que não deve acontecer após o useEffect, mas por segurança), formata
-    return formatNumberForInput(price, 2);
-  };
+  const dieselProps = getPriceInputProps('preco_diesel');
+  const gasolineProps = getPriceInputProps('preco_gasolina');
 
   // Lógica para exibir a fonte no título
   const displaySource = formLPC.source || 'Manual';
@@ -330,12 +345,8 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
                 <Label>Preço Diesel</Label>
                 <div className="relative">
                   <Input
-                    type="text"
-                    inputMode="decimal"
+                    {...dieselProps}
                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                    value={formatPriceForInput(formLPC.preco_diesel)}
-                    onChange={(e) => handlePriceChange(e, 'preco_diesel')}
-                    onBlur={(e) => handlePriceBlur(e, 'preco_diesel')}
                     onKeyDown={handleEnterToNextField}
                     disabled={loading}
                   />
@@ -349,12 +360,8 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
                 <Label>Preço Gasolina</Label>
                 <div className="relative">
                   <Input
-                    type="text"
-                    inputMode="decimal"
+                    {...gasolineProps}
                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                    value={formatPriceForInput(formLPC.preco_gasolina)}
-                    onChange={(e) => handlePriceChange(e, 'preco_gasolina')}
-                    onBlur={(e) => handlePriceBlur(e, 'preco_gasolina')}
                     onKeyDown={handleEnterToNextField}
                     disabled={loading}
                   />
