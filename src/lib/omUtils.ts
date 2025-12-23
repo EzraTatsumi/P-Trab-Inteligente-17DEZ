@@ -49,7 +49,8 @@ export interface CleanOMData {
  */
 const standardizeOM = (rawData: RawOMData[]): CleanOMData[] => {
   return rawData.map(row => ({
-    nome_om: String(row['OM (Sigla)'] || '').trim().toUpperCase(),
+    // REMOVIDO .toUpperCase() para nome_om
+    nome_om: String(row['OM (Sigla)'] || '').trim(),
     codug_om: String(row['CODUG OM'] || '').trim(),
     rm_vinculacao: String(row['RM Vinculação'] || '').trim().toUpperCase(),
     codug_rm_vinculacao: String(row['CODUG RM'] || '').trim(),
