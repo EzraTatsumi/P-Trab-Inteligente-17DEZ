@@ -35,9 +35,6 @@ export const parseInputToNumber = (input: string | number | null | undefined): n
   return parseFloat(cleaned) || 0;
 };
 
-// Alias for currency parsing, which uses the same logic as general input parsing
-export const parseCurrency = parseInputToNumber;
-
 /**
  * Formats a number for display in an input field using the Brazilian standard (comma for decimal).
  * Ensures a minimum number of fraction digits.
