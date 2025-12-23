@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import * as z from "zod";
+import { formatNumber } from "@/lib/formatUtils"; // Importar formatNumber
 
 const fetchOMs = async (): Promise<OMData[]> => {
   const { data, error } = await supabase
@@ -157,7 +158,6 @@ const OmConfigPage = () => {
   };
 
   const handleToggleActive = (om: OMData) => {
-    // Mantendo a função, mas ela não será mais chamada pelo Badge
     mutation.mutate({ ...om, ativo: !om.ativo });
   };
 
@@ -337,7 +337,7 @@ const OmConfigPage = () => {
                       <TableHead className="w-[30%]">Cidade</TableHead>
                       <TableHead className="w-[15%]">CODUG</TableHead>
                       <TableHead className="w-[10%]">RM</TableHead>
-                      <TableHead className="w-[15%]">CODUG RM</TableHead>
+                      <TableHead className="w-[15%] whitespace-nowrap">CODUG RM</TableHead>
                       <TableHead className="w-[15%] text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -353,9 +353,13 @@ const OmConfigPage = () => {
                         <TableRow key={om.id}>
                           <TableCell className="font-medium whitespace-nowrap">{om.nome_om}</TableCell>
                           <TableCell className="break-words">{om.cidade}</TableCell>
-                          <TableCell className="whitespace-nowrap">{om.codug_om}</TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatNumber(om.codug_om)}
+                          </TableCell>
                           <TableCell className="whitespace-nowrap">{om.rm_vinculacao}</TableCell>
-                          <TableCell className="whitespace-nowrap">{om.codug_rm_vinculacao}</TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatNumber(om.codug_rm_vinculacao)}
+                          </TableCell>
                           <TableCell className="text-right space-x-2 whitespace-nowrap">
                             <Button 
                               variant="outline" 
