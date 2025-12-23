@@ -201,7 +201,7 @@ const OmConfigPage = () => {
           <CardContent className="space-y-6">
             
             {/* Controles de Ação (Nova OM e Importação) */}
-            <div className="flex justify-end items-center pb-4">
+            <div className="flex justify-end items-center">
               <div className="flex gap-2">
                 <Button 
                   variant={isFormOpen ? "secondary" : "default"} 
@@ -326,7 +326,7 @@ const OmConfigPage = () => {
             </Collapsible>
 
             {/* Tabela de OMs Cadastradas */}
-            <div className="mt-6">
+            <div className="mt-4">
               <h3 className="text-lg font-semibold mb-4">OMs Cadastradas ({oms?.length || 0})</h3>
               <div className="border rounded-lg overflow-hidden">
                 <Table>
