@@ -295,6 +295,10 @@ const OmConfigPage = () => {
                   </div>
                   
                   <div className="col-span-full flex justify-end gap-2 pt-2">
+                    <Button type="submit" disabled={mutation.isPending}>
+                      {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      {editingId ? "Atualizar OM" : "Adicionar OM"}
+                    </Button>
                     {/* Botão Cancelar (substitui o antigo 'Cancelar Edição' e fecha o formulário) */}
                     <Button 
                       type="button" 
@@ -303,10 +307,6 @@ const OmConfigPage = () => {
                       disabled={mutation.isPending}
                     >
                       Cancelar
-                    </Button>
-                    <Button type="submit" disabled={mutation.isPending}>
-                      {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      {editingId ? "Atualizar OM" : "Adicionar OM"}
                     </Button>
                   </div>
                 </form>
