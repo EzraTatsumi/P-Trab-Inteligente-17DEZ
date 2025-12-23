@@ -42,7 +42,7 @@ src/data/classeIIIData.ts
 src/assets/
 
 # Excluir páginas de formulário de Classes finalizadas
-src/pages/ClasseIIIForm.tsx
+# src/pages/ClasseIIIForm.tsx <-- REMOVIDO
 src/pages/ClasseVForm.tsx
 src/pages/ClasseVIForm.tsx
 src/pages/ClasseVIIForm.tsx
