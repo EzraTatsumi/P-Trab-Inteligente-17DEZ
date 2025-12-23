@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Edit, Trash2, Loader2, Upload, Check, X } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash2, Loader2, Upload, Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -24,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import * as z from "zod";
 
 const fetchOMs = async (): Promise<OMData[]> => {
@@ -42,6 +43,7 @@ const OmConfigPage = () => {
   const { handleEnterToNextField } = useFormNavigation();
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false); // Novo estado para controlar o colapso
   const [formData, setFormData] = useState<z.infer<typeof omSchema>>({
     nome_om: "",
     codug_om: "",
@@ -57,6 +59,13 @@ const OmConfigPage = () => {
     queryKey: ["organizacoesMilitares"],
     queryFn: fetchOMs,
   });
+
+  // Efeito para abrir o formulário se estiver em modo de edição
+  useEffect(() => {
+    if (editingId) {
+      setIsFormOpen(true);
+    }
+  }, [editingId]);
 
   const mutation = useMutation({
     mutationFn: async (data: TablesInsert<'organizacoes_militares'> | TablesUpdate<'organizacoes_militares'>) => {
@@ -77,6 +86,7 @@ const OmConfigPage = () => {
       queryClient.invalidateQueries({ queryKey: ["organizacoesMilitares"] });
       toast.success(`OM ${editingId ? "atualizada" : "adicionada"} com sucesso!`);
       resetForm();
+      setIsFormOpen(false); // Fechar o formulário após o sucesso
     },
     onError: (err) => {
       toast.error(sanitizeError(err));
@@ -124,6 +134,7 @@ const OmConfigPage = () => {
       cidade: om.cidade || "", // Carregar cidade
       ativo: om.ativo,
     });
+    // O useEffect cuidará de abrir o formulário
   };
 
   const handleConfirmDelete = (om: OMData) => {
@@ -174,88 +185,106 @@ const OmConfigPage = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             
-            {/* Formulário de Cadastro/Edição */}
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg bg-muted/50">
-              <h3 className="col-span-full text-lg font-semibold mb-2">
-                {editingId ? "Editar OM" : "Nova OM"}
-              </h3>
-              
-              <div className="space-y-2">
-                <Label htmlFor="nome_om">Nome da OM (Sigla) *</Label>
-                <Input
-                  id="nome_om"
-                  value={formData.nome_om}
-                  onChange={(e) => setFormData({ ...formData, nome_om: e.target.value.toUpperCase() })}
-                  placeholder="Ex: 23ª Bda Inf Sl"
-                  required
-                  onKeyDown={handleEnterToNextField}
-                  disabled={mutation.isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="codug_om">CODUG da OM *</Label>
-                <Input
-                  id="codug_om"
-                  value={formData.codug_om}
-                  onChange={(e) => setFormData({ ...formData, codug_om: e.target.value })}
-                  placeholder="Ex: 160001"
-                  required
-                  onKeyDown={handleEnterToNextField}
-                  disabled={mutation.isPending}
-                />
-              </div>
-              
-              {/* NOVO CAMPO: CIDADE */}
-              <div className="space-y-2">
-                <Label htmlFor="cidade">Cidade da OM *</Label>
-                <Input
-                  id="cidade"
-                  value={formData.cidade}
-                  onChange={(e) => setFormData({ ...formData, cidade: e.target.value })}
-                  placeholder="Ex: Marabá/PA"
-                  required
-                  onKeyDown={handleEnterToNextField}
-                  disabled={mutation.isPending}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="rm_vinculacao">RM de Vinculação *</Label>
-                <Input
-                  id="rm_vinculacao"
-                  value={formData.rm_vinculacao}
-                  onChange={(e) => setFormData({ ...formData, rm_vinculacao: e.target.value.toUpperCase() })}
-                  placeholder="Ex: 8ª RM"
-                  required
-                  onKeyDown={handleEnterToNextField}
-                  disabled={mutation.isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="codug_rm_vinculacao">CODUG da RM *</Label>
-                <Input
-                  id="codug_rm_vinculacao"
-                  value={formData.codug_rm_vinculacao}
-                  onChange={(e) => setFormData({ ...formData, codug_rm_vinculacao: e.target.value })}
-                  placeholder="Ex: 160000"
-                  required
-                  onKeyDown={handleEnterToNextField}
-                  disabled={mutation.isPending}
-                />
-              </div>
-              
-              <div className="col-span-full flex justify-end gap-2 pt-2">
-                {editingId && (
-                  <Button type="button" variant="outline" onClick={resetForm} disabled={mutation.isPending}>
-                    Cancelar Edição
+            {/* Controle de Colapso para o Formulário */}
+            <Collapsible
+              open={isFormOpen}
+              onOpenChange={setIsFormOpen}
+              className="space-y-4"
+            >
+              <div className="flex items-center justify-between border-b pb-4">
+                <h3 className="text-lg font-semibold">
+                  {editingId ? "Editar OM" : "Cadastro de Nova OM"}
+                </h3>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-[150px] justify-between">
+                    {editingId ? "Modo Edição" : "Nova OM"}
+                    {isFormOpen ? <ChevronUp className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                   </Button>
-                )}
-                <Button type="submit" disabled={mutation.isPending}>
-                  {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {editingId ? "Atualizar OM" : "Adicionar OM"}
-                </Button>
+                </CollapsibleTrigger>
               </div>
-            </form>
+
+              <CollapsibleContent>
+                {/* Formulário de Cadastro/Edição */}
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg bg-muted/50">
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="nome_om">Nome da OM (Sigla) *</Label>
+                    <Input
+                      id="nome_om"
+                      value={formData.nome_om}
+                      onChange={(e) => setFormData({ ...formData, nome_om: e.target.value.toUpperCase() })}
+                      placeholder="Ex: 23ª Bda Inf Sl"
+                      required
+                      onKeyDown={handleEnterToNextField}
+                      disabled={mutation.isPending}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="codug_om">CODUG da OM *</Label>
+                    <Input
+                      id="codug_om"
+                      value={formData.codug_om}
+                      onChange={(e) => setFormData({ ...formData, codug_om: e.target.value })}
+                      placeholder="Ex: 160001"
+                      required
+                      onKeyDown={handleEnterToNextField}
+                      disabled={mutation.isPending}
+                    />
+                  </div>
+                  
+                  {/* NOVO CAMPO: CIDADE */}
+                  <div className="space-y-2">
+                    <Label htmlFor="cidade">Cidade da OM *</Label>
+                    <Input
+                      id="cidade"
+                      value={formData.cidade}
+                      onChange={(e) => setFormData({ ...formData, cidade: e.target.value })}
+                      placeholder="Ex: Marabá/PA"
+                      required
+                      onKeyDown={handleEnterToNextField}
+                      disabled={mutation.isPending}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="rm_vinculacao">RM de Vinculação *</Label>
+                    <Input
+                      id="rm_vinculacao"
+                      value={formData.rm_vinculacao}
+                      onChange={(e) => setFormData({ ...formData, rm_vinculacao: e.target.value.toUpperCase() })}
+                      placeholder="Ex: 8ª RM"
+                      required
+                      onKeyDown={handleEnterToNextField}
+                      disabled={mutation.isPending}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="codug_rm_vinculacao">CODUG da RM *</Label>
+                    <Input
+                      id="codug_rm_vinculacao"
+                      value={formData.codug_rm_vinculacao}
+                      onChange={(e) => setFormData({ ...formData, codug_rm_vinculacao: e.target.value })}
+                      placeholder="Ex: 160000"
+                      required
+                      onKeyDown={handleEnterToNextField}
+                      disabled={mutation.isPending}
+                    />
+                  </div>
+                  
+                  <div className="col-span-full flex justify-end gap-2 pt-2">
+                    {editingId && (
+                      <Button type="button" variant="outline" onClick={resetForm} disabled={mutation.isPending}>
+                        Cancelar Edição
+                      </Button>
+                    )}
+                    <Button type="submit" disabled={mutation.isPending}>
+                      {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      {editingId ? "Atualizar OM" : "Adicionar OM"}
+                    </Button>
+                  </div>
+                </form>
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* Opções de Importação */}
             <div className="flex justify-between items-center border-t pt-4">
@@ -277,7 +306,7 @@ const OmConfigPage = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>OM (Sigla)</TableHead>
-                      <TableHead>Cidade</TableHead> {/* NOVO CABEÇALHO */}
+                      <TableHead>Cidade</TableHead> {/* EXIBIÇÃO DA CIDADE */}
                       <TableHead>CODUG</TableHead>
                       <TableHead>RM</TableHead>
                       <TableHead>CODUG RM</TableHead>
