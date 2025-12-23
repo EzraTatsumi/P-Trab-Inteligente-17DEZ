@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Edit, Trash2, Loader2, Upload, Check, X, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash2, Loader2, Upload, Check, X, ChevronDown, ChevronUp, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -224,7 +224,7 @@ const OmConfigPage = () => {
                   variant="secondary" 
                   onClick={() => navigate("/config/om/bulk-upload")}
                 >
-                  <Upload className="mr-2 h-4 w-4" />
+                  <Download className="mr-2 h-4 w-4" />
                   Importar CSV/XLSX
                 </Button>
               </div>
