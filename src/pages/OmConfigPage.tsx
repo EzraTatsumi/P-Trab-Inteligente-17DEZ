@@ -1,26 +1,19 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Pencil, Trash2, Power, UploadCloud } from "lucide-react"; // Importar UploadCloud
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { toast } from "sonner";
+import { ArrowLeft, Plus, Edit, Trash2, Loader2, Upload, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { sanitizeError } from "@/lib/errorUtils";
+import { useFormNavigation } from "@/hooks/useFormNavigation";
+import { OMData, omSchema } from "@/lib/omUtils";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,575 +24,339 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { OMData, formatCODUG, validateCODUG, searchOMs, getUniqueRMs } from "@/lib/omUtils";
-import { useFormNavigation } from "@/hooks/useFormNavigation";
+import * as z from "zod";
+
+const fetchOMs = async (): Promise<OMData[]> => {
+  const { data, error } = await supabase
+    .from("organizacoes_militares")
+    .select("*")
+    .order("nome_om", { ascending: true });
+
+  if (error) throw error;
+  return data as OMData[];
+};
 
 const OmConfigPage = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { handleEnterToNextField } = useFormNavigation();
 
-  const [oms, setOms] = useState<OMData[]>([]);
-  const [filteredOms, setFilteredOms] = useState<OMData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterRM, setFilterRM] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [uniqueRMs, setUniqueRMs] = useState<string[]>([]);
-
-  // Dialog states
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingOM, setEditingOM] = useState<OMData | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [omToDelete, setOmToDelete] = useState<OMData | null>(null);
-
-  // Form states
-  const [formData, setFormData] = useState({
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState<z.infer<typeof omSchema>>({
     nome_om: "",
     codug_om: "",
     rm_vinculacao: "",
     codug_rm_vinculacao: "",
+    cidade: "", // Adicionado cidade
     ativo: true,
   });
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [omToDelete, setOmToDelete] = useState<OMData | null>(null);
 
-  useEffect(() => {
-    loadOMs();
-  }, []);
+  const { data: oms, isLoading, error } = useQuery({
+    queryKey: ["organizacoesMilitares"],
+    queryFn: fetchOMs,
+  });
 
-  useEffect(() => {
-    applyFilters();
-  }, [oms, searchTerm, filterRM, filterStatus]);
-
-  const loadOMs = async () => {
-    setLoading(true);
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session?.session?.user) {
-        toast({
-          title: "Erro de autenticação",
-          description: "Você precisa estar logado para acessar esta página.",
-          variant: "destructive",
-        });
-        navigate("/login");
-        return;
+  const mutation = useMutation({
+    mutationFn: async (data: TablesInsert<'organizacoes_militares'> | TablesUpdate<'organizacoes_militares'>) => {
+      if (editingId) {
+        const { error } = await supabase
+          .from("organizacoes_militares")
+          .update(data as TablesUpdate<'organizacoes_militares'>)
+          .eq("id", editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("organizacoes_militares")
+          .insert(data as TablesInsert<'organizacoes_militares'>[]);
+        if (error) throw error;
       }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organizacoesMilitares"] });
+      toast.success(`OM ${editingId ? "atualizada" : "adicionada"} com sucesso!`);
+      resetForm();
+    },
+    onError: (err) => {
+      toast.error(sanitizeError(err));
+    },
+  });
 
-      const { data, error } = await supabase
-        .from('organizacoes_militares')
-        .select('*')
-        .eq('user_id', session.session.user.id) // Filtrar por user_id
-        .order('nome_om');
-
+  const handleDeleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("organizacoes_militares")
+        .delete()
+        .eq("id", id);
       if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organizacoesMilitares"] });
+      toast.success("OM excluída com sucesso!");
+      setOmToDelete(null);
+      setShowDeleteDialog(false);
+    },
+    onError: (err) => {
+      toast.error(sanitizeError(err));
+    },
+  });
 
-      const omsData = (data || []) as OMData[];
-      setOms(omsData);
-      setUniqueRMs(getUniqueRMs(omsData));
-    } catch (error: any) {
-      toast({
-        title: "Erro ao carregar OMs",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const applyFilters = () => {
-    let filtered = [...oms];
-
-    // Filtro de busca
-    if (searchTerm) {
-      filtered = searchOMs(searchTerm, filtered);
-    }
-
-    // Filtro por RM
-    if (filterRM !== "all") {
-      filtered = filtered.filter(om => om.rm_vinculacao === filterRM);
-    }
-
-    // Filtro por status
-    if (filterStatus === "active") {
-      filtered = filtered.filter(om => om.ativo !== false);
-    } else if (filterStatus === "inactive") {
-      filtered = filtered.filter(om => om.ativo === false);
-    }
-
-    setFilteredOms(filtered);
-  };
-
-  const handleOpenDialog = (om?: OMData) => {
-    if (om) {
-      setEditingOM(om);
-      setFormData({
-        nome_om: om.nome_om,
-        codug_om: om.codug_om,
-        rm_vinculacao: om.rm_vinculacao,
-        codug_rm_vinculacao: om.codug_rm_vinculacao,
-        ativo: om.ativo !== false,
-      });
-    } else {
-      setEditingOM(null);
-      setFormData({
-        nome_om: "",
-        codug_om: "",
-        rm_vinculacao: "",
-        codug_rm_vinculacao: "",
-        ativo: true,
-      });
-    }
-    setDialogOpen(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // Rola para o topo ao abrir o diálogo
-  };
-
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
-    setEditingOM(null);
+  const resetForm = () => {
+    setEditingId(null);
     setFormData({
       nome_om: "",
       codug_om: "",
       rm_vinculacao: "",
       codug_rm_vinculacao: "",
+      cidade: "", // Resetar cidade
       ativo: true,
     });
   };
 
-  const handleSave = async () => {
-    // Validações
-    if (!formData.nome_om.trim()) {
-      toast({
-        title: "Erro de validação",
-        description: "Nome da OM é obrigatório.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!validateCODUG(formData.codug_om)) {
-      toast({
-        title: "Erro de validação",
-        description: "CODUG da OM deve estar no formato XXX.XXX",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.rm_vinculacao.trim()) {
-      toast({
-        title: "Erro de validação",
-        description: "RM de Vinculação é obrigatória.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!validateCODUG(formData.codug_rm_vinculacao)) {
-      toast({
-        title: "Erro de validação",
-        description: "CODUG da RM deve estar no formato XXX.XXX",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session?.session?.user) {
-        toast({
-          title: "Erro de autenticação",
-          description: "Sessão expirada. Faça login novamente.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (editingOM) {
-        // Atualizar
-        const { error } = await supabase
-          .from('organizacoes_militares')
-          .update({
-            nome_om: formData.nome_om.trim(),
-            codug_om: formData.codug_om,
-            rm_vinculacao: formData.rm_vinculacao.trim(),
-            codug_rm_vinculacao: formData.codug_rm_vinculacao,
-            ativo: formData.ativo,
-          })
-          .eq('id', editingOM.id)
-          .eq('user_id', session.session.user.id); // Garantir que só o próprio usuário edite
-
-        if (error) throw error;
-
-        toast({
-          title: "Sucesso",
-          description: "OM atualizada com sucesso!",
-        });
-      } else {
-        // Criar
-        const { error } = await supabase
-          .from('organizacoes_militares')
-          .insert({
-            user_id: session.session.user.id,
-            nome_om: formData.nome_om.trim(),
-            codug_om: formData.codug_om,
-            rm_vinculacao: formData.rm_vinculacao.trim(),
-            codug_rm_vinculacao: formData.codug_rm_vinculacao,
-            ativo: formData.ativo,
-          });
-
-        if (error) {
-          if (error.code === '23505') {
-            toast({
-              title: "Erro",
-              description: "Já existe uma OM com este CODUG para o seu usuário.",
-              variant: "destructive",
-            });
-            return;
-          }
-          throw error;
-        }
-
-        toast({
-          title: "Sucesso",
-          description: "OM criada com sucesso!",
-        });
-      }
-
-      handleCloseDialog();
-      loadOMs();
-    } catch (error: any) {
-      toast({
-        title: "Erro ao salvar",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+  const handleEdit = (om: OMData) => {
+    setEditingId(om.id);
+    setFormData({
+      nome_om: om.nome_om,
+      codug_om: om.codug_om,
+      rm_vinculacao: om.rm_vinculacao,
+      codug_rm_vinculacao: om.codug_rm_vinculacao,
+      cidade: om.cidade || "", // Carregar cidade
+      ativo: om.ativo,
+    });
   };
 
-  const handleToggleStatus = async (om: OMData) => {
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session?.session?.user) {
-        toast({
-          title: "Erro de autenticação",
-          description: "Sessão expirada. Faça login novamente.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const { error } = await supabase
-        .from('organizacoes_militares')
-        .update({ ativo: !om.ativo })
-        .eq('id', om.id)
-        .eq('user_id', session.session.user.id); // Garantir que só o próprio usuário altere
-
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso",
-        description: `OM ${om.ativo ? 'desativada' : 'ativada'} com sucesso!`,
-      });
-
-      loadOMs();
-    } catch (error: any) {
-      toast({
-        title: "Erro ao alterar status",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteClick = (om: OMData) => {
+  const handleConfirmDelete = (om: OMData) => {
     setOmToDelete(om);
-    setDeleteDialogOpen(true);
+    setShowDeleteDialog(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!omToDelete) return;
-
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session?.session?.user) {
-        toast({
-          title: "Erro de autenticação",
-          description: "Sessão expirada. Faça login novamente.",
-          variant: "destructive",
-        });
-        return;
+      omSchema.parse(formData);
+      mutation.mutate(formData);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        toast.error(err.errors[0].message);
+      } else {
+        toast.error("Erro de validação desconhecido.");
       }
-
-      const { error } = await supabase
-        .from('organizacoes_militares')
-        .delete()
-        .eq('id', omToDelete.id)
-        .eq('user_id', session.session.user.id); // Garantir que só o próprio usuário exclua
-
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso",
-        description: "OM excluída com sucesso!",
-      });
-
-      setDeleteDialogOpen(false);
-      setOmToDelete(null);
-      loadOMs();
-    } catch (error: any) {
-      toast({
-        title: "Erro ao excluir",
-        description: error.message,
-        variant: "destructive",
-      });
     }
   };
+
+  const handleToggleActive = (om: OMData) => {
+    mutation.mutate({ ...om, ativo: !om.ativo });
+  };
+
+  if (error) {
+    return (
+      <div className="min-h-screen p-8">
+        <p className="text-destructive">Erro ao carregar OMs: {error.message}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Button>
-          <div className="flex gap-2"> {/* Agrupando botões de ação */}
-            <Button onClick={() => navigate("/config/om/bulk-upload")} variant="outline"> {/* Novo botão */}
-              <UploadCloud className="mr-2 h-4 w-4" />
-              Upload em Massa
-            </Button>
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nova OM
-            </Button>
-          </div>
-        </div>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-4">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar para Gerenciamento
+        </Button>
 
         <Card>
           <CardHeader>
             <CardTitle>Gerenciamento de Organizações Militares (CODUG)</CardTitle>
+            <CardDescription>
+              Cadastre e gerencie as OMs e seus respectivos CODUGs para uso nos Planos de Trabalho.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Filtros */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label>Buscar</Label>
+          <CardContent className="space-y-6">
+            
+            {/* Formulário de Cadastro/Edição */}
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg bg-muted/50">
+              <h3 className="col-span-full text-lg font-semibold mb-2">
+                {editingId ? "Editar OM" : "Nova OM"}
+              </h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="nome_om">Nome da OM (Sigla) *</Label>
                 <Input
-                  placeholder="Nome ou CODUG..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  id="nome_om"
+                  value={formData.nome_om}
+                  onChange={(e) => setFormData({ ...formData, nome_om: e.target.value.toUpperCase() })}
+                  placeholder="Ex: 23ª Bda Inf Sl"
+                  required
+                  onKeyDown={handleEnterToNextField}
+                  disabled={mutation.isPending}
                 />
               </div>
-              <div>
-                <Label>Filtrar por RM</Label>
-                <Select value={filterRM} onValueChange={setFilterRM}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as RMs</SelectItem>
-                    {uniqueRMs.map(rm => (
-                      <SelectItem key={rm} value={rm}>{rm}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2">
+                <Label htmlFor="codug_om">CODUG da OM *</Label>
+                <Input
+                  id="codug_om"
+                  value={formData.codug_om}
+                  onChange={(e) => setFormData({ ...formData, codug_om: e.target.value })}
+                  placeholder="Ex: 160001"
+                  required
+                  onKeyDown={handleEnterToNextField}
+                  disabled={mutation.isPending}
+                />
               </div>
-              <div>
-                <Label>Status</Label>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="active">Ativos</SelectItem>
-                    <SelectItem value="inactive">Inativos</SelectItem>
-                  </SelectContent>
-                </Select>
+              
+              {/* NOVO CAMPO: CIDADE */}
+              <div className="space-y-2">
+                <Label htmlFor="cidade">Cidade da OM *</Label>
+                <Input
+                  id="cidade"
+                  value={formData.cidade}
+                  onChange={(e) => setFormData({ ...formData, cidade: e.target.value })}
+                  placeholder="Ex: Marabá/PA"
+                  required
+                  onKeyDown={handleEnterToNextField}
+                  disabled={mutation.isPending}
+                />
               </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="rm_vinculacao">RM de Vinculação *</Label>
+                <Input
+                  id="rm_vinculacao"
+                  value={formData.rm_vinculacao}
+                  onChange={(e) => setFormData({ ...formData, rm_vinculacao: e.target.value.toUpperCase() })}
+                  placeholder="Ex: 8ª RM"
+                  required
+                  onKeyDown={handleEnterToNextField}
+                  disabled={mutation.isPending}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="codug_rm_vinculacao">CODUG da RM *</Label>
+                <Input
+                  id="codug_rm_vinculacao"
+                  value={formData.codug_rm_vinculacao}
+                  onChange={(e) => setFormData({ ...formData, codug_rm_vinculacao: e.target.value })}
+                  placeholder="Ex: 160000"
+                  required
+                  onKeyDown={handleEnterToNextField}
+                  disabled={mutation.isPending}
+                />
+              </div>
+              
+              <div className="col-span-full flex justify-end gap-2 pt-2">
+                {editingId && (
+                  <Button type="button" variant="outline" onClick={resetForm} disabled={mutation.isPending}>
+                    Cancelar Edição
+                  </Button>
+                )}
+                <Button type="submit" disabled={mutation.isPending}>
+                  {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {editingId ? "Atualizar OM" : "Adicionar OM"}
+                </Button>
+              </div>
+            </form>
+
+            {/* Opções de Importação */}
+            <div className="flex justify-between items-center border-t pt-4">
+              <h3 className="text-lg font-semibold">Importação em Massa</h3>
+              <Button 
+                variant="secondary" 
+                onClick={() => navigate("/config/om/bulk-upload")}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Importar CSV
+              </Button>
             </div>
 
-            {/* Tabela */}
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome da OM</TableHead>
-                    <TableHead>CODUG OM</TableHead>
-                    <TableHead>RM Vinculação</TableHead>
-                    <TableHead>CODUG RM</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
+            {/* Tabela de OMs Cadastradas */}
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-4">OMs Cadastradas ({oms?.length || 0})</h3>
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center">
-                        Carregando...
-                      </TableCell>
+                      <TableHead>OM (Sigla)</TableHead>
+                      <TableHead>Cidade</TableHead> {/* NOVO CABEÇALHO */}
+                      <TableHead>CODUG</TableHead>
+                      <TableHead>RM</TableHead>
+                      <TableHead>CODUG RM</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
-                  ) : filteredOms.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
-                        Nenhuma OM encontrada. Clique em "Nova OM" para adicionar.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredOms.map((om) => (
-                      <TableRow key={om.id}>
-                        <TableCell className="font-medium">{om.nome_om}</TableCell>
-                        <TableCell>{om.codug_om}</TableCell>
-                        <TableCell>{om.rm_vinculacao}</TableCell>
-                        <TableCell>{om.codug_rm_vinculacao}</TableCell>
-                        <TableCell>
-                          <Badge variant={om.ativo !== false ? "default" : "secondary"}>
-                            {om.ativo !== false ? "Ativo" : "Inativo"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpenDialog(om)}
-                              title="Editar"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleToggleStatus(om)}
-                              title={om.ativo ? "Desativar" : "Ativar"}
-                            >
-                              <Power className={`h-4 w-4 ${om.ativo ? 'text-green-600' : 'text-gray-400'}`} />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteClick(om)}
-                              title="Excluir"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center">
+                          <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      (oms || []).map((om) => (
+                        <TableRow key={om.id}>
+                          <TableCell className="font-medium">{om.nome_om}</TableCell>
+                          <TableCell>{om.cidade}</TableCell> {/* EXIBIÇÃO DA CIDADE */}
+                          <TableCell>{om.codug_om}</TableCell>
+                          <TableCell>{om.rm_vinculacao}</TableCell>
+                          <TableCell>{om.codug_rm_vinculacao}</TableCell>
+                          <TableCell className="text-center">
+                            <Badge 
+                              className={om.ativo ? "bg-green-500 hover:bg-green-600 text-white" : "bg-red-500 hover:bg-red-600 text-white"}
+                              onClick={() => handleToggleActive(om)}
+                            >
+                              {om.ativo ? "Ativo" : "Inativo"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right space-x-2">
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              onClick={() => handleEdit(om)}
+                              disabled={mutation.isPending || handleDeleteMutation.isPending}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="destructive" 
+                              size="icon" 
+                              onClick={() => handleConfirmDelete(om)}
+                              disabled={mutation.isPending || handleDeleteMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Dialog de Criação/Edição */}
-      <Dialog open={dialogOpen} onOpenChange={handleCloseDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>{editingOM ? 'Editar OM' : 'Nova OM'}</DialogTitle>
-            <DialogDescription>
-              {editingOM 
-                ? 'Edite as informações da Organização Militar.'
-                : 'Adicione uma nova Organização Militar ao sistema.'}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="nome_om">Nome da OM *</Label>
-                <Input
-                  id="nome_om"
-                  value={formData.nome_om}
-                  onChange={(e) => setFormData({ ...formData, nome_om: e.target.value })}
-                  onKeyDown={handleEnterToNextField}
-                  placeholder="Ex: Cmdo 23ª Bda Inf Sl"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="codug_om">CODUG da OM *</Label>
-                <Input
-                  id="codug_om"
-                  value={formData.codug_om}
-                  onChange={(e) => setFormData({ ...formData, codug_om: formatCODUG(e.target.value) })}
-                  onKeyDown={handleEnterToNextField}
-                  placeholder="XXX.XXX"
-                  maxLength={7}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="rm_vinculacao">RM de Vinculação *</Label>
-                <Input
-                  id="rm_vinculacao"
-                  value={formData.rm_vinculacao}
-                  onChange={(e) => setFormData({ ...formData, rm_vinculacao: e.target.value })}
-                  onKeyDown={handleEnterToNextField}
-                  placeholder="Ex: 8º RM"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="codug_rm">CODUG da RM *</Label>
-                <Input
-                  id="codug_rm"
-                  value={formData.codug_rm_vinculacao}
-                  onChange={(e) => setFormData({ ...formData, codug_rm_vinculacao: formatCODUG(e.target.value) })}
-                  onKeyDown={handleEnterToNextField}
-                  placeholder="XXX.XXX"
-                  maxLength={7}
-                  required
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="ativo"
-                  checked={formData.ativo}
-                  onCheckedChange={(checked) => setFormData({ ...formData, ativo: checked })}
-                />
-                <Label htmlFor="ativo">OM Ativa</Label>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleCloseDialog}>
-                Cancelar
-              </Button>
-              <Button type="submit">
-                {editingOM ? 'Salvar Alterações' : 'Criar OM'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog de Confirmação de Exclusão */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      {/* Diálogo de Confirmação de Exclusão */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Confirmar Exclusão
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir a OM "{omToDelete?.nome_om}"? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir a OM <span className="font-bold">{omToDelete?.nome_om}</span>? Esta ação é irreversível e pode afetar P Trabs existentes.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setOmToDelete(null)}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">
+            <AlertDialogCancel disabled={handleDeleteMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => omToDelete && handleDeleteMutation.mutate(omToDelete.id)}
+              disabled={handleDeleteMutation.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {handleDeleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>

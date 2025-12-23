@@ -1,288 +1,243 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { ArrowLeft, UploadCloud, AlertCircle, Search } from "lucide-react";
+import { ArrowLeft, Upload, Loader2, FileText, AlertCircle, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { parseOmCsv, OMData, validateCODUG } from "@/lib/omUtils";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { sanitizeError } from "@/lib/errorUtils";
+import { toast } from "sonner";
+import * as XLSX from 'xlsx';
+import { OMData, omSchema, analyzeOMData, cleanAndDeduplicateOMs } from "@/lib/omUtils";
+import { TablesInsert } from "@/integrations/supabase/types";
 import { OmUploadConfirmDialog } from "@/components/OmUploadConfirmDialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import * as z from "zod";
+
+// Define a interface para os dados lidos do CSV/Excel
+interface RawOMData {
+  'OM (Sigla)': string;
+  'CODUG OM': string;
+  'RM Vinculação': string;
+  'CODUG RM': string;
+  'Cidade': string; // NOVO CAMPO
+}
 
 const OmBulkUploadPage = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [csvData, setCsvData] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [analysisResult, setAnalysisResult] = useState<{
-    total: number;
-    totalAposDeduplicacao: number;
-    duplicatasRemovidas: number;
-    unique: Partial<OMData>[];
-    multipleCodugs: { nome: string; registros: Partial<OMData>[] }[];
-  } | null>(null);
+  const [rawOMs, setRawOMs] = useState<RawOMData[]>([]);
+  const [analysisResult, setAnalysisResult] = useState<ReturnType<typeof analyzeOMData> | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [parsedOmsCache, setParsedOmsCache] = useState<Partial<OMData>[]>([]);
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "Erro de autenticação",
-          description: "Você precisa estar logado para acessar esta página.",
-          variant: "destructive",
-        });
-        navigate("/login");
-        return;
-      }
-      setUserId(user.id);
-    };
-    fetchUser();
-  }, [navigate, toast]);
-
-  const removeDuplicates = (oms: Partial<OMData>[]) => {
-    const uniqueOms = new Map<string, Partial<OMData>>();
-    
-    oms.forEach(om => {
-      // Criar chave única baseada em todos os campos
-      const key = `${om.nome_om}|${om.codug_om}|${om.rm_vinculacao}|${om.codug_rm_vinculacao}`;
-      if (!uniqueOms.has(key)) {
-        uniqueOms.set(key, om);
-      }
-    });
-    
-    return Array.from(uniqueOms.values());
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setRawOMs([]);
+      setAnalysisResult(null);
+    } else {
+      setFile(null);
+    }
   };
 
-  const analyzeOmData = (parsedOms: Partial<OMData>[]) => {
-    const totalOriginal = parsedOms.length;
-    
-    // 1. Remover duplicatas exatas primeiro
-    const deduplicatedOms = removeDuplicates(parsedOms);
-    const duplicatasRemovidas = totalOriginal - deduplicatedOms.length;
-    
-    // 2. Agrupar por nome
-    const groupedByName = new Map<string, Partial<OMData>[]>();
-    deduplicatedOms.forEach(om => {
-      const existing = groupedByName.get(om.nome_om!) || [];
-      existing.push(om);
-      groupedByName.set(om.nome_om!, existing);
-    });
-    
-    // 3. Classificar
-    const unique: Partial<OMData>[] = [];
-    const multipleCodugs: { nome: string; registros: Partial<OMData>[] }[] = [];
-    
-    groupedByName.forEach((oms, nome) => {
-      if (oms.length === 1) {
-        unique.push(oms[0]);
-      } else {
-        // OMs com mesmo nome mas CODUGs diferentes (características especiais)
-        multipleCodugs.push({ nome, registros: oms });
-      }
-    });
-    
-    return { 
-      total: totalOriginal,
-      totalAposDeduplicacao: deduplicatedOms.length,
-      duplicatasRemovidas,
-      unique, 
-      multipleCodugs,
-      deduplicatedOms // Retornar os dados limpos para o upload
-    };
-  };
-
-  const handleAnalyze = async () => {
-    if (!csvData.trim()) {
-      toast({
-        title: "Erro",
-        description: "Por favor, cole os dados CSV na caixa de texto.",
-        variant: "destructive",
-      });
+  const processFile = () => {
+    if (!file) {
+      toast.error("Selecione um arquivo CSV ou Excel.");
       return;
     }
 
     setLoading(true);
-    try {
-      const parsedOms = parseOmCsv(csvData);
+    const reader = new FileReader();
 
-      if (parsedOms.length === 0) {
-        throw new Error("Nenhum dado de OM válido foi encontrado no CSV.");
-      }
-
-      // Validação adicional dos CODUGs
-      for (const om of parsedOms) {
-        if (!validateCODUG(om.codug_om!)) {
-          throw new Error(`CODUG da OM inválido para "${om.nome_om}": ${om.codug_om}. Formato esperado: XXX.XXX`);
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // Lê os dados, garantindo que os cabeçalhos sejam mapeados corretamente
+        const json: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        if (json.length < 2) {
+            throw new Error("O arquivo está vazio ou não possui cabeçalho e dados.");
         }
-        if (!validateCODUG(om.codug_rm_vinculacao!)) {
-          throw new Error(`CODUG da RM inválido para "${om.rm_vinculacao}" (OM: ${om.nome_om}): ${om.codug_rm_vinculacao}. Formato esperado: XXX.XXX`);
+        
+        const headers = json[0] as string[];
+        // NOVO: Adicionado 'Cidade' aos cabeçalhos obrigatórios
+        const requiredHeaders = ['OM (Sigla)', 'CODUG OM', 'RM Vinculação', 'CODUG RM', 'Cidade'];
+        
+        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+        if (missingHeaders.length > 0) {
+            throw new Error(`Cabeçalhos obrigatórios ausentes: ${missingHeaders.join(', ')}`);
         }
-      }
-
-      // Analisar dados
-      const analysis = analyzeOmData(parsedOms);
-      setAnalysisResult(analysis);
-      setParsedOmsCache(analysis.deduplicatedOms);
-
-      // Informar sobre deduplicação se houver
-      if (analysis.duplicatasRemovidas > 0) {
-        toast({
-          title: "Duplicatas removidas",
-          description: `${analysis.duplicatasRemovidas} registros idênticos foram automaticamente removidos.`,
-        });
-      }
-
-      // Se houver OMs com múltiplos CODUGs, mostrar modal para revisão
-      if (analysis.multipleCodugs.length > 0) {
+        
+        // Mapeia os dados para o formato RawOMData
+        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: requiredHeaders, range: 1 }) as RawOMData[];
+        
+        if (rawData.length === 0) {
+            throw new Error("Nenhum dado de OM encontrado após a leitura.");
+        }
+        
+        setRawOMs(rawData);
+        
+        // 1. Analisar e limpar os dados
+        const analysis = analyzeOMData(rawData);
+        setAnalysisResult(analysis);
+        
+        // 2. Abrir diálogo de confirmação
         setShowConfirmDialog(true);
-        toast({
-          title: "Análise concluída",
-          description: `${analysis.multipleCodugs.length} OMs com múltiplos CODUGs detectadas. Revise e confirme.`,
-        });
-      } else {
-        // Se não houver múltiplos CODUGs, carregar diretamente
-        await performUpload(analysis.deduplicatedOms);
+
+      } catch (error: any) {
+        toast.error(`Erro ao processar arquivo: ${error.message}`);
+        setRawOMs([]);
+        setAnalysisResult(null);
+      } finally {
+        setLoading(false);
       }
-    } catch (error: any) {
-      console.error("Erro na análise:", error);
-      toast({
-        title: "Erro na análise",
-        description: error.message || "Ocorreu um erro ao analisar os dados.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    reader.readAsBinaryString(file);
   };
 
-  const performUpload = async (parsedOms: Partial<OMData>[]) => {
-    if (!userId) {
-      toast({
-        title: "Erro",
-        description: "ID do usuário não encontrado. Tente fazer login novamente.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleConfirmUpload = async () => {
+    if (!analysisResult) return;
 
     setLoading(true);
-    try {
+    setShowConfirmDialog(false);
 
-      // 1. Excluir OMs existentes do usuário
+    try {
+      // 1. Limpar e deduzir os dados finais
+      const finalOMs = cleanAndDeduplicateOMs(rawOMs);
+      
+      // 2. Obter o ID do usuário
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado.");
+
+      // 3. Preparar para inserção (adicionar user_id e garantir que o ID seja gerado pelo DB)
+      const omsToInsert: TablesInsert<'organizacoes_militares'>[] = finalOMs.map(om => ({
+        user_id: user.id,
+        nome_om: om.nome_om,
+        codug_om: om.codug_om,
+        rm_vinculacao: om.rm_vinculacao,
+        codug_rm_vinculacao: om.codug_rm_vinculacao,
+        cidade: om.cidade, // NOVO: Incluir cidade
+        ativo: true,
+      }));
+
+      // 4. Limpar a tabela existente do usuário antes de inserir
       const { error: deleteError } = await supabase
         .from('organizacoes_militares')
         .delete()
-        .eq('user_id', userId);
+        .eq('user_id', user.id);
 
       if (deleteError) throw deleteError;
 
-      // 2. Inserir novas OMs
-      const omsToInsert = parsedOms.map(om => ({
-        nome_om: om.nome_om!,
-        codug_om: om.codug_om!,
-        rm_vinculacao: om.rm_vinculacao!,
-        codug_rm_vinculacao: om.codug_rm_vinculacao!,
-        ativo: om.ativo ?? true,
-        user_id: userId,
-      }));
-
+      // 5. Inserir os novos dados
       const { error: insertError } = await supabase
         .from('organizacoes_militares')
         .insert(omsToInsert);
 
       if (insertError) throw insertError;
 
-      const multipleCodugsCount = analysisResult 
-        ? analysisResult.multipleCodugs.reduce((sum, dup) => sum + dup.registros.length, 0)
-        : 0;
-
-      toast({
-        title: "Sucesso",
-        description: `${parsedOms.length} registros de OMs carregados com sucesso!${multipleCodugsCount > 0 ? ` (incluindo ${analysisResult!.multipleCodugs.length} OMs com múltiplos CODUGs)` : ''}`,
-      });
-      
-      // Limpar estados
-      setCsvData("");
-      setAnalysisResult(null);
-      setParsedOmsCache([]);
-      setShowConfirmDialog(false);
-      
+      toast.success(`Sucesso! ${finalOMs.length} OMs carregadas e dados antigos substituídos.`);
       navigate("/config/om");
+
     } catch (error: any) {
       console.error("Erro no upload em massa:", error);
-      toast({
-        title: "Erro no upload",
-        description: error.message || "Ocorreu um erro ao carregar as OMs.",
-        variant: "destructive",
-      });
+      toast.error(sanitizeError(error));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConfirmUpload = async () => {
-    setShowConfirmDialog(false);
-    await performUpload(parsedOmsCache);
-  };
+  const isFileSelected = !!file;
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-3xl mx-auto space-y-6">
-        <Button variant="ghost" onClick={() => navigate("/config/om")} className="mb-2">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Button variant="ghost" onClick={() => navigate("/config/om")} className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para Gerenciamento de OMs
+          Voltar para Gerenciamento de OM
         </Button>
 
         <Card>
           <CardHeader>
-            <CardTitle>Upload em Massa de Organizações Militares</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5 text-primary" />
+              Importação em Massa de OMs
+            </CardTitle>
             <CardDescription>
-              Cole os dados da sua planilha "LISTA OM-CODUG" no formato CSV.
+              Carregue uma planilha (.csv ou .xlsx) para substituir a lista de Organizações Militares (CODUG) cadastradas.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
+          <CardContent className="space-y-6">
+            
+            <Alert variant="default">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Importante!</AlertTitle>
+              <AlertTitle>Formato Obrigatório</AlertTitle>
               <AlertDescription>
-                Ao realizar o upload, **todos os dados de OMs existentes** associados à sua conta serão **substituídos** pelos dados que você colar aqui.
-                Certifique-se de que seu CSV contenha as colunas: "Nome da OM", "CODUG OM", "RM vinculacao", "CODUG RM".
+                O arquivo deve conter as colunas exatas: 
+                <span className="font-mono text-sm block mt-1">
+                  'OM (Sigla)', 'CODUG OM', 'RM Vinculação', 'CODUG RM', 'Cidade'
+                </span>
+                <span className="text-xs mt-2 block">
+                    Atenção: Todos os dados existentes serão substituídos.
+                </span>
               </AlertDescription>
             </Alert>
 
             <div className="space-y-2">
-              <Label htmlFor="csv-data">Cole os dados CSV aqui:</Label>
-              <Textarea
-                id="csv-data"
-                rows={15}
-                value={csvData}
-                onChange={(e) => setCsvData(e.target.value)}
-                placeholder={`Exemplo:\nNome da OM;CODUG OM;RM vinculacao;CODUG RM\nCmdo 23ª Bda Inf Sl;160.170;8º RM;160.163\n50º BIS;160.103;8º RM;160.163`}
-                className="font-mono text-sm"
+              <Label htmlFor="om-file">Selecione o Arquivo</Label>
+              <Input
+                id="om-file"
+                type="file"
+                accept=".csv, .xlsx"
+                onChange={handleFileChange}
+                disabled={loading}
               />
             </div>
 
-            <Button onClick={handleAnalyze} disabled={loading || !userId} className="w-full">
-              <Search className="mr-2 h-4 w-4" />
-              {loading ? "Analisando..." : "Analisar Dados"}
+            <Button
+              onClick={processFile}
+              disabled={loading || !isFileSelected}
+              className="w-full gap-2"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              {loading ? "Processando..." : "Analisar e Carregar Dados"}
             </Button>
+            
+            {/* Exibição do resultado da análise */}
+            {analysisResult && (
+                <Alert variant="default" className="mt-4">
+                    <FileText className="h-4 w-4" />
+                    <AlertTitle>Análise Concluída</AlertTitle>
+                    <AlertDescription>
+                        {analysisResult.total} registros lidos. {analysisResult.duplicatasRemovidas} duplicatas exatas removidas. 
+                        {analysisResult.multipleCodugs.length > 0 && (
+                            <span className="text-yellow-700 font-medium block">
+                                ⚠️ {analysisResult.multipleCodugs.length} OMs com múltiplos CODUGs detectadas.
+                            </span>
+                        )}
+                        Pronto para confirmar o upload.
+                    </AlertDescription>
+                </Alert>
+            )}
+
           </CardContent>
         </Card>
-
-        {analysisResult && (
-          <OmUploadConfirmDialog
-            open={showConfirmDialog}
-            onOpenChange={setShowConfirmDialog}
-            analysisResult={analysisResult}
-            onConfirm={handleConfirmUpload}
-          />
-        )}
       </div>
+      
+      {/* Diálogo de Confirmação de Upload */}
+      {analysisResult && (
+        <OmUploadConfirmDialog
+          open={showConfirmDialog}
+          onOpenChange={setShowConfirmDialog}
+          analysisResult={analysisResult}
+          onConfirm={handleConfirmUpload}
+        />
+      )}
     </div>
   );
 };

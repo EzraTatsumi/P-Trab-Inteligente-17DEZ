@@ -1,105 +1,142 @@
+import * as z from "zod";
+
+// Define a interface para os dados da OM no banco de dados
 export interface OMData {
   id: string;
+  user_id: string;
   nome_om: string;
   codug_om: string;
   rm_vinculacao: string;
   codug_rm_vinculacao: string;
-  ativo?: boolean;
-  user_id?: string;
+  cidade: string | null; // NOVO CAMPO
+  ativo: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+// Define o esquema de validação para o formulário de OM
+export const omSchema = z.object({
+  nome_om: z.string().min(1, "A sigla da OM é obrigatória."),
+  codug_om: z.string().min(1, "O CODUG da OM é obrigatório."),
+  rm_vinculacao: z.string().min(1, "A RM de vinculação é obrigatória."),
+  codug_rm_vinculacao: z.string().min(1, "O CODUG da RM é obrigatório."),
+  cidade: z.string().min(1, "A cidade é obrigatória."), // NOVO CAMPO: Tornando obrigatório no formulário
+  ativo: z.boolean().optional(),
+});
+
+// Define a interface para os dados brutos lidos do arquivo (deve ser consistente com OmBulkUploadPage.tsx)
+interface RawOMData {
+  'OM (Sigla)': string;
+  'CODUG OM': string;
+  'RM Vinculação': string;
+  'CODUG RM': string;
+  'Cidade': string; // NOVO CAMPO
+}
+
+// Define a interface para os dados de OM limpos e padronizados
+export interface CleanOMData {
+  nome_om: string;
+  codug_om: string;
+  rm_vinculacao: string;
+  codug_rm_vinculacao: string;
+  cidade: string; // NOVO CAMPO
 }
 
 /**
- * Formata um CODUG para o padrão XXX.XXX
+ * Limpa e padroniza os dados brutos de OM.
+ * @param rawData Dados brutos lidos do arquivo.
+ * @returns Array de objetos CleanOMData.
  */
-export const formatCODUG = (value: string | undefined | null): string => {
-  // Garante que o valor seja uma string, mesmo que seja undefined ou null
-  const stringValue = value === undefined || value === null ? '' : String(value);
-  const numbers = stringValue.replace(/\D/g, '');
-  if (numbers.length <= 3) return numbers;
-  return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}`;
+const standardizeOM = (rawData: RawOMData[]): CleanOMData[] => {
+  return rawData.map(row => ({
+    nome_om: String(row['OM (Sigla)'] || '').trim().toUpperCase(),
+    codug_om: String(row['CODUG OM'] || '').trim(),
+    rm_vinculacao: String(row['RM Vinculação'] || '').trim().toUpperCase(),
+    codug_rm_vinculacao: String(row['CODUG RM'] || '').trim(),
+    cidade: String(row['Cidade'] || '').trim(), // NOVO CAMPO
+  })).filter(om => om.nome_om && om.codug_om && om.rm_vinculacao && om.codug_rm_vinculacao && om.cidade);
 };
 
 /**
- * Valida se um CODUG está no formato correto XXX.XXX
+ * Analisa os dados de OM para identificar duplicatas e múltiplos CODUGs.
+ * @param rawData Dados brutos lidos do arquivo.
+ * @returns Um objeto com o resultado da análise.
  */
-export const validateCODUG = (value: string): boolean => {
-  const codugRegex = /^\d{3}\.\d{3}$/;
-  return codugRegex.test(value);
-};
-
-/**
- * Remove a formatação do CODUG (remove pontos)
- */
-export const unformatCODUG = (value: string): string => {
-  return value.replace(/\D/g, '');
-};
-
-/**
- * Busca OMs por termo (nome ou CODUG)
- */
-export const searchOMs = (term: string, oms: OMData[]): OMData[] => {
-  if (!term) return oms;
+export const analyzeOMData = (rawData: RawOMData[]) => {
+  const standardized = standardizeOM(rawData);
+  const total = standardized.length;
   
-  const searchTerm = term.toLowerCase().trim();
-  
-  return oms.filter(om => 
-    om.nome_om.toLowerCase().includes(searchTerm) ||
-    om.codug_om.includes(searchTerm) ||
-    om.rm_vinculacao.toLowerCase().includes(searchTerm)
-  );
-};
+  const uniqueMap = new Map<string, CleanOMData>();
+  const duplicates = new Map<string, number>();
+  const multipleCodugsMap = new Map<string, CleanOMData[]>(); // Key: nome_om
 
-/**
- * Agrupa OMs por RM
- */
-export const groupOMsByRM = (oms: OMData[]): Record<string, OMData[]> => {
-  return oms.reduce((acc, om) => {
-    const rm = om.rm_vinculacao;
-    if (!acc[rm]) {
-      acc[rm] = [];
+  // 1. Identificação de duplicatas exatas (nome, codug, rm, codug_rm, cidade)
+  standardized.forEach(om => {
+    const key = `${om.nome_om}|${om.codug_om}|${om.rm_vinculacao}|${om.codug_rm_vinculacao}|${om.cidade}`;
+    if (uniqueMap.has(key)) {
+      duplicates.set(key, (duplicates.get(key) || 1) + 1);
+    } else {
+      uniqueMap.set(key, om);
     }
-    acc[rm].push(om);
-    return acc;
-  }, {} as Record<string, OMData[]>);
+  });
+  
+  const uniqueRecords = Array.from(uniqueMap.values());
+  const totalAposDeduplicacao = uniqueRecords.length;
+  const duplicatasRemovidas = total - totalAposDeduplicacao;
+
+  // 2. Identificação de OMs com múltiplos CODUGs (OMs com o mesmo nome, mas CODUGs diferentes)
+  const omGroupMap = new Map<string, CleanOMData[]>();
+  uniqueRecords.forEach(om => {
+    const name = om.nome_om;
+    if (!omGroupMap.has(name)) {
+      omGroupMap.set(name, []);
+    }
+    omGroupMap.get(name)!.push(om);
+  });
+
+  omGroupMap.forEach((oms, name) => {
+    const uniqueCodugs = new Set(oms.map(o => o.codug_om));
+    if (uniqueCodugs.size > 1) {
+      multipleCodugsMap.set(name, oms);
+    }
+  });
+
+  const multipleCodugs = Array.from(multipleCodugsMap.entries()).map(([nome, registros]) => ({
+    nome,
+    registros: registros.map(r => ({
+        nome_om: r.nome_om,
+        codug_om: r.codug_om,
+        rm_vinculacao: r.rm_vinculacao,
+        codug_rm_vinculacao: r.codug_rm_vinculacao,
+        cidade: r.cidade, // Incluir cidade na análise
+    })),
+  }));
+
+  return {
+    total,
+    totalAposDeduplicacao,
+    duplicatasRemovidas,
+    unique: uniqueRecords,
+    multipleCodugs,
+  };
 };
 
 /**
- * Obtém lista de RMs únicas
+ * Limpa e deduplica os dados de OM para a inserção final.
+ * @param rawData Dados brutos lidos do arquivo.
+ * @returns Array de objetos CleanOMData prontos para inserção.
  */
-export const getUniqueRMs = (oms: OMData[]): string[] => {
-  const rms = new Set(oms.map(om => om.rm_vinculacao));
-  return Array.from(rms).sort();
-};
+export const cleanAndDeduplicateOMs = (rawData: RawOMData[]): CleanOMData[] => {
+  const standardized = standardizeOM(rawData);
+  const uniqueMap = new Map<string, CleanOMData>();
 
-/**
- * Parsea dados CSV para um array de objetos OMData.
- * Espera que a primeira linha seja o cabeçalho.
- * Assume as colunas: "Nome da OM", "CODUG OM", "RM vinculacao", "CODUG RM".
- */
-export const parseOmCsv = (csvString: string): Partial<OMData>[] => {
-  const lines = csvString.trim().split('\n');
-  if (lines.length === 0) return [];
+  // Usa a chave composta (nome, codug, rm, codug_rm, cidade) para garantir a unicidade
+  standardized.forEach(om => {
+    const key = `${om.nome_om}|${om.codug_om}|${om.rm_vinculacao}|${om.codug_rm_vinculacao}|${om.cidade}`;
+    if (!uniqueMap.has(key)) {
+      uniqueMap.set(key, om);
+    }
+  });
 
-  const headers = lines[0].split(';').map(h => h.trim());
-  const dataLines = lines.slice(1);
-
-  const nomeOmIndex = headers.indexOf('Nome da OM');
-  const codugOmIndex = headers.indexOf('CODUG OM');
-  const rmVinculacaoIndex = headers.indexOf('RM vinculacao');
-  const codugRmVinculacaoIndex = headers.indexOf('CODUG RM');
-
-  if (nomeOmIndex === -1 || codugOmIndex === -1 || rmVinculacaoIndex === -1 || codugRmVinculacaoIndex === -1) {
-    throw new Error("Cabeçalhos CSV esperados não encontrados: 'Nome da OM', 'CODUG OM', 'RM vinculacao', 'CODUG RM'.");
-  }
-
-  return dataLines.map(line => {
-    const values = line.split(';').map(v => v.trim());
-    return {
-      nome_om: values[nomeOmIndex],
-      codug_om: formatCODUG(values[codugOmIndex]), // Formata o CODUG ao parsear
-      rm_vinculacao: values[rmVinculacaoIndex],
-      codug_rm_vinculacao: formatCODUG(values[codugRmVinculacaoIndex]), // Formata o CODUG ao parsear
-      ativo: true, // Por padrão, novas OMs são ativas
-    };
-  }).filter(om => om.nome_om && om.codug_om && om.rm_vinculacao && om.codug_rm_vinculacao); // Filtra linhas incompletas
+  return Array.from(uniqueMap.values());
 };

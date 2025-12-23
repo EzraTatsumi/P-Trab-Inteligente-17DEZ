@@ -52,8 +52,8 @@ src/pages/ClasseIForm.tsx
 src/pages/ClasseIIForm.tsx
 
 # Excluir páginas de configuração secundária
-src/pages/OmConfigPage.tsx
-src/pages/OmBulkUploadPage.tsx
+# src/pages/OmConfigPage.tsx
+# src/pages/OmBulkUploadPage.tsx
 src/pages/VisualizacaoConfigPage.tsx
 src/pages/DiretrizesCusteioPage.tsx
 
@@ -81,10 +81,10 @@ src/components/RefLPCFormSection.tsx
 src/components/ClasseIIIRegistryForm.tsx
 src/hooks/useFormNavigation.ts
 src/hooks/use-mobile.tsx
-src/lib/omUtils.ts
+# src/lib/omUtils.ts
 # src/lib/ptrabUtils.ts
 src/lib/creditUtils.ts
-src/lib/validationSchemas.ts
+# src/lib/validationSchemas.ts
 
 # NOVAS EXCLUSÕES PARA ECONOMIA DE CONTEXTO
 src/pages/UserProfilePage.tsx
