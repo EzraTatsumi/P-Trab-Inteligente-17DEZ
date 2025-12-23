@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Edit, Trash2, Loader2, Upload, Check, X, ChevronDown, ChevronUp, Download } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash2, Loader2, Upload, Check, X, ChevronDown, ChevronUp, Download, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -347,7 +347,7 @@ const OmConfigPage = () => {
                           <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
-                    ) : (
+                    ) : (oms && oms.length > 0) ? (
                       (oms || []).map((om) => (
                         <TableRow key={om.id}>
                           <TableCell className="font-medium whitespace-nowrap">{om.nome_om}</TableCell>
@@ -379,6 +379,15 @@ const OmConfigPage = () => {
                           </TableCell>
                         </TableRow>
                       ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8">
+                          <Building2 className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            Nenhuma Organização Militar cadastrada. Use o botão "Nova OM" ou "Importar CSV/XLSX" para começar.
+                          </p>
+                        </TableCell>
+                      </TableRow>
                     )}
                   </TableBody>
                 </Table>
