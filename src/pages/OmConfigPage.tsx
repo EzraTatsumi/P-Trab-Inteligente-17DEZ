@@ -332,39 +332,36 @@ const OmConfigPage = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>OM (Sigla)</TableHead>
-                      <TableHead>Cidade</TableHead> {/* EXIBIÇÃO DA CIDADE */}
-                      <TableHead>CODUG</TableHead>
-                      <TableHead>RM</TableHead>
-                      <TableHead>CODUG RM</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
+                      <TableHead className="w-[15%]">OM (Sigla)</TableHead>
+                      <TableHead className="w-[30%]">Cidade</TableHead>
+                      <TableHead className="w-[15%]">CODUG</TableHead>
+                      <TableHead className="w-[10%]">RM</TableHead>
+                      <TableHead className="w-[15%]">CODUG RM</TableHead>
+                      <TableHead className="w-[15%] text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {isLoading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center">
+                        <TableCell colSpan={6} className="text-center">
                           <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
                     ) : (
                       (oms || []).map((om) => (
                         <TableRow key={om.id}>
-                          <TableCell className="font-medium">{om.nome_om}</TableCell>
-                          <TableCell>{om.cidade}</TableCell> {/* EXIBIÇÃO DA CIDADE */}
-                          <TableCell>{om.codug_om}</TableCell>
-                          <TableCell>{om.rm_vinculacao}</TableCell>
-                          <TableCell>{om.codug_rm_vinculacao}</TableCell>
-                          <TableCell className="text-center">
+                          <TableCell className="font-medium whitespace-nowrap">{om.nome_om}</TableCell>
+                          <TableCell className="break-words">{om.cidade}</TableCell>
+                          <TableCell className="whitespace-nowrap">{om.codug_om}</TableCell>
+                          <TableCell className="whitespace-nowrap">{om.rm_vinculacao}</TableCell>
+                          <TableCell className="whitespace-nowrap">{om.codug_rm_vinculacao}</TableCell>
+                          <TableCell className="text-right space-x-2 whitespace-nowrap">
                             <Badge 
-                              className={om.ativo ? "bg-green-500 hover:bg-green-600 text-white" : "bg-red-500 hover:bg-red-600 text-white"}
+                              className={om.ativo ? "bg-green-500 hover:bg-green-600 text-white cursor-pointer" : "bg-red-500 hover:bg-red-600 text-white cursor-pointer"}
                               onClick={() => handleToggleActive(om)}
                             >
                               {om.ativo ? "Ativo" : "Inativo"}
                             </Badge>
-                          </TableCell>
-                          <TableCell className="text-right space-x-2">
                             <Button 
                               variant="outline" 
                               size="icon" 
