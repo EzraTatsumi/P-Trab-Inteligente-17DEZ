@@ -160,12 +160,15 @@ const OmConfigPage = () => {
     mutation.mutate({ ...om, ativo: !om.ativo });
   };
 
-  // Função para alternar o formulário e resetar se estiver fechando
-  const handleToggleForm = () => {
-    if (isFormOpen) {
-      resetForm();
-    }
-    setIsFormOpen(!isFormOpen);
+  // Função para abrir o formulário (se já estiver aberto, não faz nada)
+  const handleOpenForm = () => {
+    setIsFormOpen(true);
+  };
+  
+  // Função para fechar o formulário e resetar o estado
+  const handleCancelForm = () => {
+    resetForm();
+    setIsFormOpen(false);
   };
 
   if (error) {
@@ -198,21 +201,12 @@ const OmConfigPage = () => {
               <h3 className="text-lg font-semibold">Ações</h3>
               <div className="flex gap-2">
                 <Button 
-                  variant={isFormOpen ? "secondary" : "default"} 
-                  onClick={handleToggleForm}
-                  className="w-[150px]" // Removendo justify-between
+                  variant="default" 
+                  onClick={handleOpenForm}
+                  className="w-[150px]"
                 >
-                  {isFormOpen ? (
-                    <>
-                      {editingId ? "Modo Edição" : "Fechar Cadastro"}
-                      <X className="ml-2 h-4 w-4" /> {/* Usando X para fechar */}
-                    </>
-                  ) : (
-                    <>
-                      Nova OM
-                      <Plus className="ml-2 h-4 w-4" />
-                    </>
-                  )}
+                  Nova OM
+                  <Plus className="ml-2 h-4 w-4" />
                 </Button>
                 <Button 
                   variant="secondary" 
@@ -301,11 +295,15 @@ const OmConfigPage = () => {
                   </div>
                   
                   <div className="col-span-full flex justify-end gap-2 pt-2">
-                    {editingId && (
-                      <Button type="button" variant="outline" onClick={resetForm} disabled={mutation.isPending}>
-                        Cancelar Edição
-                      </Button>
-                    )}
+                    {/* Botão Cancelar (substitui o antigo 'Cancelar Edição' e fecha o formulário) */}
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={handleCancelForm} 
+                      disabled={mutation.isPending}
+                    >
+                      Cancelar
+                    </Button>
                     <Button type="submit" disabled={mutation.isPending}>
                       {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       {editingId ? "Atualizar OM" : "Adicionar OM"}
