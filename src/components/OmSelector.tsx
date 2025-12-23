@@ -18,7 +18,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
-import { OMData } from "@/lib/omUtils"; // Certifique-se de que OMData está corretamente importado
+import { OMData } from "@/lib/omUtils";
 
 interface OmSelectorProps {
   selectedOmId?: string; // Agora recebe o ID da OM selecionada
@@ -42,6 +42,8 @@ export function OmSelector({
   const [open, setOpen] = useState(false);
   const [oms, setOms] = useState<OMData[]>([]);
   const [loading, setLoading] = useState(true);
+  // NOVO ESTADO: Armazena os dados da OM selecionada, especialmente se ela não estiver na lista 'oms' (e.g., inativa)
+  const [displayOM, setDisplayOM] = useState<OMData | undefined>(undefined);
 
   const loadOMs = async () => {
     setLoading(true);
@@ -88,8 +90,34 @@ export function OmSelector({
     }
   }, [loading, selectedOmId, defaultOmId, oms, onChange]);
 
+  // 3. Efeito para garantir que a OM selecionada seja exibida, mesmo que não esteja na lista 'oms' (e.g., inativa)
+  useEffect(() => {
+    if (!selectedOmId) {
+      setDisplayOM(undefined);
+      return;
+    }
 
-  const selectedOM = oms.find(om => om.id === selectedOmId);
+    const foundInList = oms.find(om => om.id === selectedOmId);
+    
+    if (foundInList) {
+      setDisplayOM(foundInList);
+      return;
+    }
+
+    // Se não for encontrada na lista ativa/filtrada, busca diretamente pelo ID
+    const fetchSelectedOM = async () => {
+      const { data } = await supabase
+        .from('organizacoes_militares')
+        .select('*')
+        .eq('id', selectedOmId)
+        .maybeSingle();
+      
+      setDisplayOM((data || undefined) as OMData | undefined);
+    };
+
+    fetchSelectedOM();
+  }, [selectedOmId, oms]);
+
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -103,9 +131,9 @@ export function OmSelector({
         >
           {loading ? (
             "Carregando..."
-          ) : selectedOM ? (
+          ) : displayOM ? ( // Usa displayOM para renderizar
             // Exibe apenas o nome da OM (sigla)
-            <span className="truncate">{selectedOM.nome_om}</span>
+            <span className="truncate">{displayOM.nome_om}</span>
           ) : (
             <span className="text-muted-foreground">{placeholder}</span>
           )}
