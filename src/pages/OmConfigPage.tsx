@@ -43,7 +43,7 @@ const OmConfigPage = () => {
   const { handleEnterToNextField } = useFormNavigation();
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false); // Novo estado para controlar o colapso
+  const [isFormOpen, setIsFormOpen] = useState(false); // Estado para controlar o colapso do formulário
   const [formData, setFormData] = useState<z.infer<typeof omSchema>>({
     nome_om: "",
     codug_om: "",
@@ -160,6 +160,14 @@ const OmConfigPage = () => {
     mutation.mutate({ ...om, ativo: !om.ativo });
   };
 
+  // Função para alternar o formulário e resetar se estiver fechando
+  const handleToggleForm = () => {
+    if (isFormOpen) {
+      resetForm();
+    }
+    setIsFormOpen(!isFormOpen);
+  };
+
   if (error) {
     return (
       <div className="min-h-screen p-8">
@@ -185,26 +193,47 @@ const OmConfigPage = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             
-            {/* Controle de Colapso para o Formulário */}
+            {/* Controles de Ação (Nova OM e Importação) */}
+            <div className="flex justify-between items-center border-b pb-4">
+              <h3 className="text-lg font-semibold">Ações</h3>
+              <div className="flex gap-2">
+                <Button 
+                  variant={isFormOpen ? "secondary" : "default"} 
+                  onClick={handleToggleForm}
+                  className="w-[150px] justify-between"
+                >
+                  {isFormOpen ? (
+                    <>
+                      {editingId ? "Modo Edição" : "Fechar Cadastro"}
+                      <ChevronUp className="h-4 w-4" />
+                    </>
+                  ) : (
+                    <>
+                      Nova OM
+                      <Plus className="h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  onClick={() => navigate("/config/om/bulk-upload")}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Importar CSV/XLSX
+                </Button>
+              </div>
+            </div>
+
+            {/* Formulário de Cadastro/Edição (Colapsável) */}
             <Collapsible
               open={isFormOpen}
               onOpenChange={setIsFormOpen}
               className="space-y-4"
             >
-              <div className="flex items-center justify-between border-b pb-4">
-                <h3 className="text-lg font-semibold">
+              <CollapsibleContent>
+                <h3 className="text-lg font-semibold mb-4">
                   {editingId ? "Editar OM" : "Cadastro de Nova OM"}
                 </h3>
-                <CollapsibleTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-[150px] justify-between">
-                    {editingId ? "Modo Edição" : "Nova OM"}
-                    {isFormOpen ? <ChevronUp className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                  </Button>
-                </CollapsibleTrigger>
-              </div>
-
-              <CollapsibleContent>
-                {/* Formulário de Cadastro/Edição */}
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg bg-muted/50">
                   
                   <div className="space-y-2">
@@ -232,7 +261,7 @@ const OmConfigPage = () => {
                     />
                   </div>
                   
-                  {/* NOVO CAMPO: CIDADE */}
+                  {/* CAMPO: CIDADE */}
                   <div className="space-y-2">
                     <Label htmlFor="cidade">Cidade da OM *</Label>
                     <Input
@@ -285,18 +314,6 @@ const OmConfigPage = () => {
                 </form>
               </CollapsibleContent>
             </Collapsible>
-
-            {/* Opções de Importação */}
-            <div className="flex justify-between items-center border-t pt-4">
-              <h3 className="text-lg font-semibold">Importação em Massa</h3>
-              <Button 
-                variant="secondary" 
-                onClick={() => navigate("/config/om/bulk-upload")}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Importar CSV
-              </Button>
-            </div>
 
             {/* Tabela de OMs Cadastradas */}
             <div className="mt-6">
