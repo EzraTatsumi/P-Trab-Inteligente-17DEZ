@@ -1253,7 +1253,7 @@ const DiretrizesCusteioPage = () => {
                   <div className="space-y-4 mt-2">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Valor QS</Label>
+                        <Label>Valor QS (R$/dia/militar)</Label>
                         <div className="relative">
                           <Input
                             type="text"
@@ -1267,7 +1267,7 @@ const DiretrizesCusteioPage = () => {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label>Valor QR</Label>
+                        <Label>Valor QR (R$/dia/militar)</Label>
                         <div className="relative">
                           <Input
                             type="text"
