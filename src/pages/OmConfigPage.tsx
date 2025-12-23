@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Edit, Trash2, Loader2, Upload, Check, X, ChevronDown, ChevronUp, Download, Building2 } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash2, Loader2, Upload, Check, X, ChevronDown, ChevronUp, Download, Building2, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -55,11 +55,31 @@ const OmConfigPage = () => {
   });
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [omToDelete, setOmToDelete] = useState<OMData | null>(null);
+  
+  // NOVO ESTADO: Filtro de pesquisa
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data: oms, isLoading, error } = useQuery({
     queryKey: ["organizacoesMilitares"],
     queryFn: fetchOMs,
   });
+  
+  // Lógica de Filtragem
+  const filteredOms = useMemo(() => {
+    if (!oms) return [];
+    if (!searchTerm) return oms;
+
+    const lowerCaseSearch = searchTerm.toLowerCase();
+
+    return oms.filter(om => 
+      om.nome_om.toLowerCase().includes(lowerCaseSearch) ||
+      om.codug_om.toLowerCase().includes(lowerCaseSearch) ||
+      om.rm_vinculacao.toLowerCase().includes(lowerCaseSearch) ||
+      om.codug_rm_vinculacao.toLowerCase().includes(lowerCaseSearch) ||
+      om.cidade?.toLowerCase().includes(lowerCaseSearch)
+    );
+  }, [oms, searchTerm]);
+
 
   // Efeito para abrir o formulário se estiver em modo de edição
   useEffect(() => {
@@ -328,6 +348,18 @@ const OmConfigPage = () => {
             {/* Tabela de OMs Cadastradas */}
             <div className="mt-4">
               <h3 className="text-lg font-semibold mb-4">OMs Cadastradas ({oms?.length || 0})</h3>
+              
+              {/* NOVO: Campo de Pesquisa */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar por OM, CODUG, RM ou Cidade..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
               <div className="border rounded-lg overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -347,8 +379,8 @@ const OmConfigPage = () => {
                           <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
-                    ) : (oms && oms.length > 0) ? (
-                      (oms || []).map((om) => (
+                    ) : (filteredOms && filteredOms.length > 0) ? (
+                      (filteredOms || []).map((om) => (
                         <TableRow key={om.id}>
                           <TableCell className="font-medium whitespace-nowrap">{om.nome_om}</TableCell>
                           <TableCell className="break-words">{om.cidade}</TableCell>
@@ -384,7 +416,10 @@ const OmConfigPage = () => {
                         <TableCell colSpan={6} className="text-center py-8">
                           <Building2 className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                           <p className="text-sm text-muted-foreground">
-                            Nenhuma Organização Militar cadastrada. Use o botão "Nova OM" ou "Importar CSV/XLSX" para começar.
+                            {oms && oms.length > 0 && searchTerm ? 
+                                `Nenhuma OM encontrada para o termo "${searchTerm}".` :
+                                `Nenhuma Organização Militar cadastrada. Use o botão "Nova OM" ou "Importar CSV/XLSX" para começar.`
+                            }
                           </p>
                         </TableCell>
                       </TableRow>
