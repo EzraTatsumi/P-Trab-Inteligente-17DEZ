@@ -1704,7 +1704,7 @@ const PTrabManager = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="nome_cmt_om">Nome do Comandante da OM com o posto *</Label>
+                      <Label htmlFor="nome_cmt_om">Nome do Comandante da OM - Posto *</Label>
                       <Input
                         id="nome_cmt_om"
                         value={formData.nome_cmt_om}
