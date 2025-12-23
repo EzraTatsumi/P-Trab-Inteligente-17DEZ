@@ -160,12 +160,15 @@ const OmConfigPage = () => {
     mutation.mutate({ ...om, ativo: !om.ativo });
   };
 
-  // Função para abrir o formulário (se já estiver aberto, não faz nada)
-  const handleOpenForm = () => {
-    setIsFormOpen(true);
+  // Função para alternar o formulário e resetar se estiver fechando
+  const handleToggleForm = () => {
+    if (isFormOpen) {
+      resetForm();
+    }
+    setIsFormOpen(!isFormOpen);
   };
   
-  // Função para fechar o formulário e resetar o estado
+  // Função para fechar o formulário e resetar o estado (usada pelo botão Cancelar interno)
   const handleCancelForm = () => {
     resetForm();
     setIsFormOpen(false);
@@ -201,12 +204,21 @@ const OmConfigPage = () => {
               <h3 className="text-lg font-semibold">Ações</h3>
               <div className="flex gap-2">
                 <Button 
-                  variant="default" 
-                  onClick={handleOpenForm}
+                  variant={isFormOpen ? "secondary" : "default"} 
+                  onClick={handleToggleForm}
                   className="w-[150px]"
                 >
-                  Nova OM
-                  <Plus className="ml-2 h-4 w-4" />
+                  {isFormOpen ? (
+                    <>
+                      Fechar
+                      <X className="ml-2 h-4 w-4" />
+                    </>
+                  ) : (
+                    <>
+                      Nova OM
+                      <Plus className="ml-2 h-4 w-4" />
+                    </>
+                  )}
                 </Button>
                 <Button 
                   variant="secondary" 
