@@ -341,34 +341,26 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div className="space-y-2">
-                <Label>Preço Diesel (R$/litro)</Label>
-                <div className="relative">
-                  <Input
-                    {...dieselProps}
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                    onKeyDown={handleEnterToNextField}
-                    disabled={loading}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    R$/litro
-                  </span>
-                </div>
+              {/* Campo Preço Diesel */}
+              <div className="flex items-center gap-2">
+                <Label className="w-1/2 min-w-[150px]">Preço Diesel (R$/litro)</Label>
+                <Input
+                  {...dieselProps}
+                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  onKeyDown={handleEnterToNextField}
+                  disabled={loading}
+                />
               </div>
               
-              <div className="space-y-2">
-                <Label>Preço Gasolina (R$/litro)</Label>
-                <div className="relative">
-                  <Input
-                    {...gasolineProps}
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-16"
-                    onKeyDown={handleEnterToNextField}
-                    disabled={loading}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    R$/litro
-                  </span>
-                </div>
+              {/* Campo Preço Gasolina */}
+              <div className="flex items-center gap-2">
+                <Label className="w-1/2 min-w-[150px]">Preço Gasolina (R$/litro)</Label>
+                <Input
+                  {...gasolineProps}
+                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  onKeyDown={handleEnterToNextField}
+                  disabled={loading}
+                />
               </div>
             </div>
             
