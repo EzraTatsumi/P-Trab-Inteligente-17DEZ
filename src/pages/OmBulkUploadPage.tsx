@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Upload, Loader2, FileText, AlertCircle, Check } from "lucide-react";
+import { ArrowLeft, Upload, Loader2, FileText, AlertCircle, Check, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeError } from "@/lib/errorUtils";
 import { toast } from "sonner";
@@ -167,7 +167,7 @@ const OmBulkUploadPage = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5 text-primary" />
+              <Download className="h-5 w-5 text-primary" />
               Importação em Massa de OMs
             </CardTitle>
             <CardDescription>
