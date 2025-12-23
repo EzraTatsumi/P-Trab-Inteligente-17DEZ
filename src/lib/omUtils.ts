@@ -73,11 +73,12 @@ export const analyzeOMData = (rawData: RawOMData[]) => {
   // Mapa para identificar OMs com múltiplos CODUGs (chave: nome_om)
   const omGroupMap = new Map<string, CleanOMData[]>();
   
-  // Mapa para identificar CODUGs duplicados (chave: codug_om) - CRÍTICO PARA A RESTRIÇÃO DO DB
+  // Mapa para identificar CODUGs duplicados (chave: codug_om)
   const codugMap = new Map<string, CleanOMData[]>();
 
   // 1. Processamento inicial para identificar duplicatas exatas e agrupar por nome/codug
   standardized.forEach(om => {
+    // Chave de unicidade EXATA (todas as colunas)
     const key = `${om.nome_om}|${om.codug_om}|${om.rm_vinculacao}|${om.codug_rm_vinculacao}|${om.cidade}`;
     if (uniqueMap.has(key)) {
       duplicates.set(key, (duplicates.get(key) || 1) + 1);
@@ -124,7 +125,7 @@ export const analyzeOMData = (rawData: RawOMData[]) => {
     })),
   }));
   
-  // 3. Identificação de CODUGs duplicados (que serão descartados na inserção final)
+  // 3. Identificação de CODUGs duplicados (que podem causar falha na inserção se houver restrição)
   const codugDuplicates = Array.from(codugMap.entries())
     .filter(([, oms]) => oms.length > 1)
     .map(([codug, oms]) => ({
@@ -138,43 +139,43 @@ export const analyzeOMData = (rawData: RawOMData[]) => {
         })),
     }));
     
-  // O número final de OMs a serem inseridas é o número de CODUGs únicos
-  const totalFinalAposCodugDeduplicacao = codugMap.size;
-  const codugsDescartados = totalAposDeduplicacao - totalFinalAposCodugDeduplicacao;
-
+  // O número final a ser inserido é o número de registros únicos (após remoção de duplicatas EXATAS)
+  const totalFinalAposCodugDeduplicacao = totalAposDeduplicacao; // Mantemos o total após deduplicação exata
+  const codugsDescartados = 0; // Não descartamos mais por CODUG repetido no código
 
   return {
     total,
     totalAposDeduplicacao,
-    totalFinalAposCodugDeduplicacao, // Novo campo para o número real de OMs a serem inseridas
+    totalFinalAposCodugDeduplicacao, 
     duplicatasRemovidas,
     unique: uniqueRecords,
     multipleCodugs,
-    codugDuplicates, // Renomeado para clareza
-    codugsDescartados, // Novo campo
+    codugDuplicates, 
+    codugsDescartados, 
   };
 };
 
 /**
- * Limpa e deduplica os dados de OM para a inserção final, garantindo que o CODUG seja único.
+ * Limpa e deduplica os dados de OM para a inserção final, mantendo apenas registros únicos (todas as colunas).
+ * Se houver CODUGs repetidos, eles serão enviados ao banco de dados, que deve lidar com a restrição.
  * @param rawData Dados brutos lidos do arquivo.
  * @returns Array de objetos CleanOMData prontos para inserção.
  */
 export const cleanAndDeduplicateOMs = (rawData: RawOMData[]): CleanOMData[] => {
   const standardized = standardizeOM(rawData);
   
-  // Usamos um mapa onde a chave é o CODUG para garantir que ele seja único.
-  // Se houver múltiplos registros com o mesmo CODUG, o último prevalece.
-  const uniqueCodugMap = new Map<string, CleanOMData>();
+  // Mapa para identificar duplicatas exatas (chave composta)
+  const uniqueMap = new Map<string, CleanOMData>();
 
   standardized.forEach(om => {
-    // A chave de unicidade para a inserção final é o CODUG, conforme a restrição do DB.
-    const key = om.codug_om; 
+    // Chave de unicidade EXATA (todas as colunas)
+    const key = `${om.nome_om}|${om.codug_om}|${om.rm_vinculacao}|${om.codug_rm_vinculacao}|${om.cidade}`;
     
-    // Se o CODUG já existe, ele é sobrescrito (mantendo o último registro encontrado para aquele CODUG).
-    // Isso resolve o problema de duplicidade de CODUG no arquivo de entrada.
-    uniqueCodugMap.set(key, om);
+    // Apenas insere se a combinação exata não existir
+    if (!uniqueMap.has(key)) {
+      uniqueMap.set(key, om);
+    }
   });
 
-  return Array.from(uniqueCodugMap.values());
+  return Array.from(uniqueMap.values());
 };
