@@ -49,7 +49,6 @@ export interface CleanOMData {
  */
 const standardizeOM = (rawData: RawOMData[]): CleanOMData[] => {
   return rawData.map(row => ({
-    // REMOVIDO .toUpperCase() para nome_om
     nome_om: String(row['OM (Sigla)'] || '').trim(),
     codug_om: String(row['CODUG OM'] || '').trim(),
     rm_vinculacao: String(row['RM Vinculação'] || '').trim().toUpperCase(),
@@ -125,8 +124,8 @@ export const analyzeOMData = (rawData: RawOMData[]) => {
     })),
   }));
   
-  // 3. Verificar se há CODUGs duplicados que violam a restrição do DB
-  const codugViolations = Array.from(codugMap.entries())
+  // 3. Identificação de CODUGs duplicados (que serão descartados na inserção final)
+  const codugDuplicates = Array.from(codugMap.entries())
     .filter(([, oms]) => oms.length > 1)
     .map(([codug, oms]) => ({
         codug,
@@ -138,15 +137,21 @@ export const analyzeOMData = (rawData: RawOMData[]) => {
             cidade: r.cidade,
         })),
     }));
+    
+  // O número final de OMs a serem inseridas é o número de CODUGs únicos
+  const totalFinalAposCodugDeduplicacao = codugMap.size;
+  const codugsDescartados = totalAposDeduplicacao - totalFinalAposCodugDeduplicacao;
 
 
   return {
     total,
     totalAposDeduplicacao,
+    totalFinalAposCodugDeduplicacao, // Novo campo para o número real de OMs a serem inseridas
     duplicatasRemovidas,
     unique: uniqueRecords,
     multipleCodugs,
-    codugViolations, // Adicionado para debug/alerta futuro
+    codugDuplicates, // Renomeado para clareza
+    codugsDescartados, // Novo campo
   };
 };
 

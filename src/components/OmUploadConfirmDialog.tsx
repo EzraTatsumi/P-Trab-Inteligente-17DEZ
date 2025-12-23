@@ -25,7 +25,9 @@ import { AlertCircle } from "lucide-react";
 interface AnalysisResult {
   total: number;
   totalAposDeduplicacao: number;
+  totalFinalAposCodugDeduplicacao: number; // NOVO
   duplicatasRemovidas: number;
+  codugsDescartados: number; // NOVO
   unique: Partial<OMData>[];
   multipleCodugs: { nome: string; registros: Partial<OMData>[] }[];
 }
@@ -54,19 +56,26 @@ export const OmUploadConfirmDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>⚠️ Revisão de Dados</AlertDialogTitle>
           <AlertDialogDescription>
-            Algumas OMs possuem múltiplos CODUGs (características especiais). Revise os dados antes de confirmar.
+            Algumas OMs possuem múltiplos CODUGs (características especiais) ou CODUGs duplicados. Revise os dados antes de confirmar.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="space-y-4 flex-1 overflow-hidden">
           {/* Alerta de Duplicatas Removidas */}
-          {analysisResult.duplicatasRemovidas > 0 && (
+          {(analysisResult.duplicatasRemovidas > 0 || analysisResult.codugsDescartados > 0) && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Duplicatas Automáticas Removidas</AlertTitle>
+              <AlertTitle>Duplicatas Removidas</AlertTitle>
               <AlertDescription>
-                {analysisResult.duplicatasRemovidas} registro(s) idêntico(s) foi(foram) automaticamente 
-                removido(s) para evitar dados duplicados. Total após limpeza: {analysisResult.totalAposDeduplicacao} OMs.
+                {analysisResult.duplicatasRemovidas} registro(s) idêntico(s) removido(s).
+                {analysisResult.codugsDescartados > 0 && (
+                    <span className="block mt-1">
+                        ⚠️ {analysisResult.codugsDescartados} registro(s) descartado(s) devido a CODUG duplicado.
+                    </span>
+                )}
+                <span className="font-bold block mt-1">
+                    Total final a ser inserido: {analysisResult.totalFinalAposCodugDeduplicacao} OMs.
+                </span>
               </AlertDescription>
             </Alert>
           )}
@@ -75,15 +84,15 @@ export const OmUploadConfirmDialog = ({
           <div className="grid grid-cols-3 gap-3 p-4 bg-muted rounded-lg">
             <div className="text-center">
               <div className="text-2xl font-bold text-foreground">
-                {analysisResult.totalAposDeduplicacao}
+                {analysisResult.total}
               </div>
-              <div className="text-xs text-muted-foreground">Total após limpeza</div>
+              <div className="text-xs text-muted-foreground">Total lido</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {analysisResult.unique.length}
+                {analysisResult.totalFinalAposCodugDeduplicacao}
               </div>
-              <div className="text-xs text-muted-foreground">OMs únicas</div>
+              <div className="text-xs text-muted-foreground">OMs únicas (CODUG)</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-yellow-600">
