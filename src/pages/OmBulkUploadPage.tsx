@@ -55,7 +55,8 @@ const OmBulkUploadPage = () => {
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
+        // Adicionado cellDates: true para melhor leitura de datas, mas o principal é o cellText
+        const workbook = XLSX.read(data, { type: 'binary', cellDates: true }); 
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
@@ -75,8 +76,13 @@ const OmBulkUploadPage = () => {
             throw new Error(`Cabeçalhos obrigatórios ausentes: ${missingHeaders.join(', ')}`);
         }
         
-        // Mapeia os dados para o formato RawOMData
-        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: requiredHeaders, range: 1 }) as RawOMData[];
+        // Mapeia os dados para o formato RawOMData, usando cellText: true para ler o valor formatado (string)
+        const rawData = XLSX.utils.sheet_to_json(worksheet, { 
+            header: requiredHeaders, 
+            range: 1,
+            raw: false, // Garante que não tenta inferir tipos brutos
+            cellText: true, // Lê o texto formatado da célula (preserva pontos e zeros à esquerda)
+        }) as RawOMData[];
         
         if (rawData.length === 0) {
             throw new Error("Nenhum dado de OM encontrado após a leitura.");
