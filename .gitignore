@@ -74,7 +74,6 @@ src/components/MarkdownAccordion.tsx
 src/components/MarkdownViewer.tsx
 src/components/HelpDialog.tsx
 src/components/YearManagementDialog.tsx
-src/components/RefLPCFormSection.tsx
 src/components/ClasseIIIRegistryForm.tsx
 src/hooks/useFormNavigation.ts
 src/hooks/use-mobile.tsx

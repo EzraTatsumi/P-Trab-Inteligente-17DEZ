@@ -156,7 +156,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         data_inicio_consulta: start,
         data_fim_consulta: end,
         ambito: 'Nacional',
-        nome_local: '',
+        nome_local: 'ANP - Média Nacional', // Adicionando nome local para API
         // Salva como string formatada
         preco_diesel: formatNumberForInput(dieselResult.price, 2),
         preco_gasolina: formatNumberForInput(gasolinaResult.price, 2),
@@ -209,12 +209,12 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
   };
 
   // Lógica para exibir a fonte no título
-  const displaySource = refLPC?.source || 'Manual';
+  const displaySource = formLPC.source || 'Manual';
   const sourceText = displaySource === 'API' ? 'API Externa' : 'Manual';
   const sourceColor = displaySource === 'API' ? 'text-green-700' : 'text-blue-700';
   const sourceBg = displaySource === 'API' ? 'bg-green-100' : 'bg-blue-100';
   
-  // NOVO: Lógica para exibir a data de atualização
+  // Lógica para exibir a data de atualização
   const lastUpdateDate = refLPC?.updated_at ? formatDateDDMMMAA(refLPC.updated_at) : null;
 
 
