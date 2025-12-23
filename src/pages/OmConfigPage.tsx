@@ -200,17 +200,17 @@ const OmConfigPage = () => {
                 <Button 
                   variant={isFormOpen ? "secondary" : "default"} 
                   onClick={handleToggleForm}
-                  className="w-[150px] justify-between"
+                  className="w-[150px]" // Removendo justify-between
                 >
                   {isFormOpen ? (
                     <>
                       {editingId ? "Modo Edição" : "Fechar Cadastro"}
-                      <ChevronUp className="h-4 w-4" />
+                      <X className="ml-2 h-4 w-4" /> {/* Usando X para fechar */}
                     </>
                   ) : (
                     <>
                       Nova OM
-                      <Plus className="h-4 w-4" />
+                      <Plus className="ml-2 h-4 w-4" />
                     </>
                   )}
                 </Button>
