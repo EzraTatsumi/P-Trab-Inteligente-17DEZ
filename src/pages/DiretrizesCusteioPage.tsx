@@ -1252,9 +1252,9 @@ const DiretrizesCusteioPage = () => {
                 {showClasseIAlimentacaoConfig && (
                   <div className="space-y-4 mt-2">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Valor QS (R$/dia/militar)</Label>
-                        <div className="relative">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium whitespace-nowrap mr-4">Valor QS (R$/dia/militar)</Label>
+                        <div className="relative w-full max-w-[150px]">
                           <Input
                             type="text"
                             inputMode="numeric"
@@ -1265,9 +1265,9 @@ const DiretrizesCusteioPage = () => {
                           />
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Valor QR (R$/dia/militar)</Label>
-                        <div className="relative">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium whitespace-nowrap mr-4">Valor QR (R$/dia/militar)</Label>
+                        <div className="relative w-full max-w-[150px]">
                           <Input
                             type="text"
                             inputMode="numeric"
