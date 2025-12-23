@@ -157,6 +157,7 @@ const OmConfigPage = () => {
   };
 
   const handleToggleActive = (om: OMData) => {
+    // Mantendo a função, mas ela não será mais chamada pelo Badge
     mutation.mutate({ ...om, ativo: !om.ativo });
   };
 
@@ -356,12 +357,6 @@ const OmConfigPage = () => {
                           <TableCell className="whitespace-nowrap">{om.rm_vinculacao}</TableCell>
                           <TableCell className="whitespace-nowrap">{om.codug_rm_vinculacao}</TableCell>
                           <TableCell className="text-right space-x-2 whitespace-nowrap">
-                            <Badge 
-                              className={om.ativo ? "bg-green-500 hover:bg-green-600 text-white cursor-pointer" : "bg-red-500 hover:bg-red-600 text-white cursor-pointer"}
-                              onClick={() => handleToggleActive(om)}
-                            >
-                              {om.ativo ? "Ativo" : "Inativo"}
-                            </Badge>
                             <Button 
                               variant="outline" 
                               size="icon" 
