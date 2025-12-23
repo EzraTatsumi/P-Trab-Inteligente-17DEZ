@@ -1634,6 +1634,7 @@ const PTrabManager = () => {
                               codug_om: omData.codug_om,
                               rm_vinculacao: omData.rm_vinculacao,
                               codug_rm_vinculacao: omData.codug_rm_vinculacao,
+                              local_om: omData.cidade || "", // NOVO: Preenche a cidade
                             });
                           } else {
                             setSelectedOmId(undefined);
@@ -1644,6 +1645,7 @@ const PTrabManager = () => {
                               codug_om: "",
                               rm_vinculacao: "",
                               codug_rm_vinculacao: "",
+                              local_om: "", // Limpa a cidade
                             });
                           }
                         }}
