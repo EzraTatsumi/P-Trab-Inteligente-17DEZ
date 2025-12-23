@@ -198,6 +198,8 @@ const OmBulkUploadPage = () => {
                 accept=".csv, .xlsx"
                 onChange={handleFileChange}
                 disabled={loading}
+                // Adicionando classes para estilizar o botão de seleção de arquivo
+                className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
               />
             </div>
 
