@@ -342,7 +342,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div className="space-y-2">
-                <Label>Preço Diesel</Label>
+                <Label>Preço Diesel (R$/litro)</Label>
                 <div className="relative">
                   <Input
                     {...dieselProps}
@@ -357,7 +357,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
               </div>
               
               <div className="space-y-2">
-                <Label>Preço Gasolina</Label>
+                <Label>Preço Gasolina (R$/litro)</Label>
                 <div className="relative">
                   <Input
                     {...gasolineProps}
