@@ -44,6 +44,7 @@ export function OmSelector({
   const [loading, setLoading] = useState(true);
   // NOVO ESTADO: Armazena os dados da OM selecionada, especialmente se ela não estiver na lista 'oms' (e.g., inativa)
   const [displayOM, setDisplayOM] = useState<OMData | undefined>(undefined);
+  const [isFetchingSelected, setIsFetchingSelected] = useState(false); // Novo estado para carregar a OM selecionada
 
   const loadOMs = async () => {
     setLoading(true);
@@ -97,27 +98,41 @@ export function OmSelector({
       return;
     }
 
+    // 1. Tenta encontrar na lista de OMs ativas/filtradas
     const foundInList = oms.find(om => om.id === selectedOmId);
     
     if (foundInList) {
       setDisplayOM(foundInList);
+      setIsFetchingSelected(false); 
       return;
     }
 
-    // Se não for encontrada na lista ativa/filtrada, busca diretamente pelo ID
+    // 2. Se não for encontrada, busca diretamente pelo ID (pode ser inativa ou fora do filtro)
     const fetchSelectedOM = async () => {
-      const { data } = await supabase
-        .from('organizacoes_militares')
-        .select('*')
-        .eq('id', selectedOmId)
-        .maybeSingle();
+      setIsFetchingSelected(true);
       
-      setDisplayOM((data || undefined) as OMData | undefined);
+      try {
+        const { data } = await supabase
+          .from('organizacoes_militares')
+          .select('*')
+          .eq('id', selectedOmId)
+          .maybeSingle();
+        
+        setDisplayOM((data || undefined) as OMData | undefined);
+      } catch (error) {
+        console.error('Erro ao buscar OM selecionada:', error);
+        // Se falhar, displayOM permanece undefined
+      } finally {
+        setIsFetchingSelected(false);
+      }
     };
 
+    // Dispara a busca individual imediatamente se o ID estiver presente e não encontrado na lista atual.
     fetchSelectedOM();
-  }, [selectedOmId, oms]);
+    
+  }, [selectedOmId, oms]); // Removido 'loading' das dependências para esta busca
 
+  const isOverallLoading = loading || isFetchingSelected;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -127,9 +142,9 @@ export function OmSelector({
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between"
-          disabled={disabled || loading}
+          disabled={disabled || isOverallLoading}
         >
-          {loading ? (
+          {isOverallLoading ? (
             "Carregando..."
           ) : displayOM ? ( // Usa displayOM para renderizar
             // Exibe apenas o nome da OM (sigla)
