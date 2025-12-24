@@ -1,5 +1,4 @@
-"use client";
-
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,6 +21,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { usePTrabContext } from "@/context/PTrabContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations"; // Importado
 
 // Tipagem do registro de Classe I
 export interface ClasseIRegistro {
@@ -78,6 +78,7 @@ interface ClasseIFormProps {
 export function ClasseIForm({ initialData, onSuccess }: ClasseIFormProps) {
   const queryClient = useQueryClient();
   const { pTrab } = usePTrabContext();
+  const { data: oms } = useMilitaryOrganizations(); // Usando hook
 
   const form = useForm<ClasseIFormValues>({
     resolver: zodResolver(ClasseIFormSchema),
@@ -105,13 +106,31 @@ export function ClasseIForm({ initialData, onSuccess }: ClasseIFormProps) {
   // Efeito para inicializar os IDs se estivermos em modo de edição
   useEffect(() => {
     if (initialData) {
-      // Nota: A tabela classe_i_registros não armazena o ID da OM, apenas o nome e UG.
-      // Para que o OmSelector funcione corretamente em modo de edição, precisamos de uma forma
-      // de mapear o nome/UG de volta para um ID, ou aceitar que o OmSelector exibirá o nome
-      // via `currentOmName` (que é o que faremos).
-      // Não podemos definir selectedOmId/selectedOmQsId aqui, pois não temos o ID no initialData.
+      form.reset(initialData);
+      
+      if (oms && oms.length > 0) {
+        // Find OM ID for 'organizacao'
+        const foundOm = oms.find(om => 
+          om.nome_om === initialData.organizacao && om.codug_om === initialData.ug
+        );
+        if (foundOm) {
+          setSelectedOmId(foundOm.id);
+        } else {
+          setSelectedOmId(undefined);
+        }
+        
+        // Find OM ID for 'om_qs'
+        const foundOmQs = oms.find(om => 
+          om.nome_om === initialData.om_qs && om.codug_om === initialData.ug_qs
+        );
+        if (foundOmQs) {
+          setSelectedOmQsId(foundOmQs.id);
+        } else {
+          setSelectedOmQsId(undefined);
+        }
+      }
     }
-  }, [initialData]);
+  }, [initialData, oms, form]); // Adicionado 'oms' e 'form' às dependências
 
   const mutation = useMutation({
     mutationFn: async (data: ClasseIFormValues) => {

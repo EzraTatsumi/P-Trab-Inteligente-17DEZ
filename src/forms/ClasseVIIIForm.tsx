@@ -1,5 +1,4 @@
-"use client";
-
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,6 +21,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { usePTrabContext } from "@/context/PTrabContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations"; // Importado
 
 // Tipagem do registro de Classe VIII - Saúde
 export interface ClasseVIIISaudeRegistro {
@@ -92,6 +92,7 @@ interface ClasseVIIIFormProps {
 export function ClasseVIIIForm({ initialData, onSuccess, subClasse }: ClasseVIIIFormProps) {
   const queryClient = useQueryClient();
   const { pTrab } = usePTrabContext();
+  const { data: oms } = useMilitaryOrganizations(); // Usando hook
 
   const isSaude = subClasse === 'saude';
   const schema = isSaude ? ClasseVIIISaudeFormSchema : ClasseVIIIRemontaFormSchema;
@@ -117,6 +118,27 @@ export function ClasseVIIIForm({ initialData, onSuccess, subClasse }: ClasseVIII
   });
 
   const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
+
+  // Efeito para inicializar os IDs se estivermos em modo de edição
+  useEffect(() => {
+    if (initialData) {
+      // Reset the form with the initial data
+      form.reset(defaultValues); 
+      
+      if (oms && oms.length > 0) {
+        // Find the OM ID based on name and UG
+        const foundOm = oms.find(om => 
+          om.nome_om === initialData.organizacao && om.codug_om === initialData.ug
+        );
+        
+        if (foundOm) {
+          setSelectedOmId(foundOm.id);
+        } else {
+          setSelectedOmId(undefined);
+        }
+      }
+    }
+  }, [initialData, oms, form, defaultValues]); // Adicionado 'oms' e 'form' às dependências
 
   const mutation = useMutation({
     mutationFn: async (data: ClasseVIIIFormValues) => {
