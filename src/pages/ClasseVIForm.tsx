@@ -14,7 +14,7 @@ import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -121,7 +121,7 @@ const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseV
 
     return `33.90.30 - Aquisição de Material de Classe VI (${getCategoryLabel(categoria)})
 OM de Destino: ${organizacao} (UG: ${ug})
-Período: ${diasOperacao} dias de ${faseFormatada}
+Período: ${dias_operacao} dias de ${faseFormatada}
 Total de Itens na Categoria: ${totalQuantidade}
 
 Cálculo:
@@ -493,7 +493,7 @@ const ClasseVIForm = () => {
 
   const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = e.target.value;
-      setCurrentND39Input(formatInputWithThousands(rawValue));
+      setCurrentND39Input(formatCurrencyInput(rawValue));
   };
 
   const handleND39InputBlur = () => {
