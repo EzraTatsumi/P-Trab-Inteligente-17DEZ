@@ -14,7 +14,7 @@ import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatCurrencyInput } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -447,7 +447,7 @@ const ClasseVForm = () => {
 
   const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = e.target.value;
-      setCurrentND39Input(formatInputWithThousands(rawValue));
+      setCurrentND39Input(formatCurrencyInput(rawValue));
   };
 
   const handleND39InputBlur = () => {
