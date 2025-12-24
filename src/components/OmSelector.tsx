@@ -21,15 +21,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { OMData } from "@/lib/omUtils";
 
 interface OmSelectorProps {
-  selectedOmId?: string; // Agora recebe o ID da OM selecionada
+  selectedOmId?: string; // ID da OM selecionada
   onChange: (omData: OMData | undefined) => void; // Passa o objeto OMData completo
   filterByRM?: string;
   placeholder?: string;
   disabled?: boolean;
-  omsList?: OMData[]; // Novo prop: lista de OMs pré-carregada
-  defaultOmId?: string; // NOVO: ID da OM padrão a ser sugerida
-  initialOmName?: string; // NOVO: Nome inicial da OM para exibição imediata
-  initialOmUg?: string; // NOVO: UG inicial da OM
+  omsList?: OMData[]; // Lista de OMs pré-carregada
+  defaultOmId?: string; // ID da OM padrão a ser sugerida
+  currentOmName?: string; // NOVO: Nome atual da OM (vindo do field.value do formulário)
+  initialOmUg?: string; // UG inicial da OM
 }
 
 export function OmSelector({
@@ -38,17 +38,16 @@ export function OmSelector({
   filterByRM,
   placeholder = "Selecione uma OM...",
   disabled = false,
-  omsList, // Usar a lista passada se existir
-  defaultOmId, // Recebe o ID padrão
-  initialOmName, // NOVO
-  initialOmUg, // NOVO
+  omsList,
+  defaultOmId,
+  currentOmName, // USANDO O NOVO NOME DA PROP
+  initialOmUg,
 }: OmSelectorProps) {
   const [open, setOpen] = useState(false);
   const [oms, setOms] = useState<OMData[]>([]);
   const [loading, setLoading] = useState(true);
-  // NOVO ESTADO: Armazena os dados da OM selecionada, especialmente se ela não estiver na lista 'oms' (e.g., inativa)
   const [displayOM, setDisplayOM] = useState<OMData | undefined>(undefined);
-  const [isFetchingSelected, setIsFetchingSelected] = useState(false); // Novo estado para carregar a OM selecionada
+  const [isFetchingSelected, setIsFetchingSelected] = useState(false);
 
   const loadOMs = async () => {
     setLoading(true);
@@ -84,25 +83,21 @@ export function OmSelector({
 
   // 2. Lógica para sugerir a OM padrão automaticamente
   useEffect(() => {
-    // Só executa se o carregamento estiver completo, se não houver OM selecionada,
-    // se um ID padrão for fornecido e se a lista de OMs estiver populada.
     if (!loading && !selectedOmId && defaultOmId && oms.length > 0) {
       const defaultOM = oms.find(om => om.id === defaultOmId);
       if (defaultOM) {
-        // Chama onChange para definir a OM padrão no estado pai
         onChange(defaultOM);
       }
     }
   }, [loading, selectedOmId, defaultOmId, oms, onChange]);
 
-  // 3. Efeito para garantir que a OM selecionada seja exibida, mesmo que não esteja na lista 'oms' (e.g., inativa)
+  // 3. Efeito para garantir que a OM selecionada seja exibida, mesmo que não esteja na lista 'oms'
   useEffect(() => {
     if (!selectedOmId) {
       setDisplayOM(undefined);
       return;
     }
 
-    // 1. Tenta encontrar na lista de OMs ativas/filtradas
     const foundInList = oms.find(om => om.id === selectedOmId);
     
     if (foundInList) {
@@ -111,7 +106,6 @@ export function OmSelector({
       return;
     }
 
-    // 2. Se não for encontrada, busca diretamente pelo ID (pode ser inativa ou fora do filtro)
     const fetchSelectedOM = async () => {
       setIsFetchingSelected(true);
       
@@ -125,39 +119,37 @@ export function OmSelector({
         setDisplayOM((data || undefined) as OMData | undefined);
       } catch (error) {
         console.error('Erro ao buscar OM selecionada:', error);
-        // Se falhar, displayOM permanece undefined
       } finally {
         setIsFetchingSelected(false);
       }
     };
 
-    // Dispara a busca individual imediatamente se o ID estiver presente e não encontrado na lista atual.
     fetchSelectedOM();
     
-  }, [selectedOmId, oms]); // Removido 'loading' das dependências para esta busca
+  }, [selectedOmId, oms]);
 
   const isOverallLoading = loading || isFetchingSelected;
 
   // Lógica de exibição do texto no botão
   const buttonText = useMemo(() => {
-    // 1. If loading, prioritize initial name
-    if (isOverallLoading) {
-      return initialOmName || placeholder; // Use initial name if available, even if ID is missing during loading
-    }
-    
-    // 2. If a full OM object was successfully loaded (via ID lookup)
+    // 1. Se um objeto OM completo foi carregado (via ID lookup)
     if (displayOM) {
       return displayOM.nome_om;
     }
     
-    // 3. Fallback: If no OM is selected (ID is missing), but the parent provided an initial name (from the DB record)
-    if (initialOmName) {
-      return initialOmName;
+    // 2. Fallback: Usa o nome atual do formulário (field.value)
+    if (currentOmName) {
+      return currentOmName;
+    }
+    
+    // 3. Se estiver carregando, mostra o placeholder
+    if (isOverallLoading) {
+      return "Carregando OMs...";
     }
     
     // 4. Default
     return placeholder;
-  }, [isOverallLoading, displayOM, selectedOmId, initialOmName, placeholder]);
+  }, [isOverallLoading, displayOM, currentOmName, placeholder]);
 
 
   return (
@@ -170,7 +162,8 @@ export function OmSelector({
           className="w-full justify-between"
           disabled={disabled || isOverallLoading}
         >
-          <span className={cn("truncate", !selectedOmId && !displayOM && "text-muted-foreground")}>
+          {/* Ajuste na classe: Muta apenas se o texto for o placeholder */}
+          <span className={cn("truncate", buttonText === placeholder && "text-muted-foreground")}>
             {buttonText}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -185,12 +178,10 @@ export function OmSelector({
               {oms.map((om) => (
                 <CommandItem
                   key={om.id}
-                  // Alterado o valor para incluir nome e CODUG, melhorando a busca do cmdk
                   value={`${om.nome_om} ${om.codug_om} ${om.rm_vinculacao} ${om.id}`} 
                   onSelect={(currentValue) => {
-                    // O currentValue agora é a string completa, precisamos encontrar o ID
-                    const selected = oms.find(o => o.id === om.id); // Usamos o om.id do loop para garantir a seleção correta
-                    onChange(selected?.id === selectedOmId ? undefined : selected); // Passa o objeto completo ou undefined
+                    const selected = oms.find(o => o.id === om.id);
+                    onChange(selected?.id === selectedOmId ? undefined : selected);
                     setOpen(false);
                   }}
                 >

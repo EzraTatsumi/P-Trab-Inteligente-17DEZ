@@ -147,8 +147,8 @@ export function ClasseVForm({ initialData, onSuccess }: ClasseVFormProps) {
                     selectedOmId={selectedOmId}
                     onChange={handleOmChange}
                     placeholder="Selecione a OM executante..."
-                    // CORREÇÃO: Passando o nome inicial para exibição em modo de edição
-                    initialOmName={initialData?.organizacao}
+                    // CORREÇÃO ESTRUTURAL: Usando field.value para garantir o nome salvo
+                    currentOmName={field.value}
                     initialOmUg={initialData?.ug}
                   />
                 </FormControl>

@@ -108,9 +108,7 @@ export function ClasseIForm({ initialData, onSuccess }: ClasseIFormProps) {
       // Nota: A tabela classe_i_registros não armazena o ID da OM, apenas o nome e UG.
       // Para que o OmSelector funcione corretamente em modo de edição, precisamos de uma forma
       // de mapear o nome/UG de volta para um ID, ou aceitar que o OmSelector exibirá o nome
-      // via `initialOmName` (que é o que faremos).
-      // No entanto, se o usuário selecionar uma nova OM, o ID será definido.
-      // Por enquanto, vamos garantir que o `initialOmName` seja passado.
+      // via `currentOmName` (que é o que faremos).
       // Não podemos definir selectedOmId/selectedOmQsId aqui, pois não temos o ID no initialData.
     }
   }, [initialData]);
@@ -205,8 +203,8 @@ export function ClasseIForm({ initialData, onSuccess }: ClasseIFormProps) {
                     selectedOmId={selectedOmId}
                     onChange={handleOmChange}
                     placeholder="Selecione a OM executante..."
-                    // Passando o nome inicial para exibição em modo de edição
-                    initialOmName={initialData?.organizacao}
+                    // CORREÇÃO ESTRUTURAL: Usando field.value para garantir o nome salvo
+                    currentOmName={field.value}
                     initialOmUg={initialData?.ug}
                   />
                 </FormControl>
@@ -227,8 +225,8 @@ export function ClasseIForm({ initialData, onSuccess }: ClasseIFormProps) {
                     selectedOmId={selectedOmQsId}
                     onChange={handleOmQsChange}
                     placeholder="Selecione uma OM de Destino..."
-                    // CORREÇÃO: Passando o nome inicial para exibição em modo de edição
-                    initialOmName={initialData?.om_qs}
+                    // CORREÇÃO ESTRUTURAL: Usando field.value para garantir o nome salvo
+                    currentOmName={field.value}
                     initialOmUg={initialData?.ug_qs}
                   />
                 </FormControl>
