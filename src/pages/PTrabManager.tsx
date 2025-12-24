@@ -107,7 +107,7 @@ const PTrabManager = () => {
   const [pTrabs, setPTrabs] = useState<PTrab[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(false);
   const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
   
   const { user } = useSession();
@@ -840,8 +840,10 @@ const PTrabManager = () => {
 
   const handleEdit = (ptrab: PTrab) => {
     setEditingId(ptrab.id);
-    // Se a OM estiver preenchida, usamos o ID dela para o seletor. Se não, usamos 'temp' para forçar a exibição do nome.
-    setSelectedOmId(ptrab.codug_om ? 'temp' : undefined); 
+    // CORREÇÃO: Ao editar o PTrab principal, definimos selectedOmId como undefined
+    // para que o OmSelector use o nome da OM salva (ptrab.nome_om) como currentOmName
+    // e encontre o ID na lista de OMs carregadas.
+    setSelectedOmId(undefined); 
     setFormData({
       numero_ptrab: ptrab.numero_ptrab,
       comando_militar_area: ptrab.comando_militar_area,
@@ -1625,7 +1627,7 @@ const PTrabManager = () => {
                       <Label htmlFor="nome_om">Nome da OM (sigla) *</Label>
                       <OmSelector
                         selectedOmId={selectedOmId}
-                        initialOmName={formData.nome_om} // PASSANDO O NOME INICIAL AQUI
+                        currentOmName={formData.nome_om} // PASSANDO O NOME ATUAL
                         onChange={(omData: OMData | undefined) => {
                           if (omData) {
                             setSelectedOmId(omData.id);

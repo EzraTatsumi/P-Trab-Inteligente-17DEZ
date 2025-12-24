@@ -129,9 +129,8 @@ export function ClasseVForm({ pTrabId, initialData, onSuccess }: ClasseVFormProp
                     <OmSelector
                       // O ID da OM não é persistido na tabela de registro, 
                       // então passamos o ID temporário (se houver) ou undefined.
-                      // O nome da OM é lido diretamente do field.value (organizacao)
                       selectedOmId={form.watch("om_id") || undefined} 
-                      currentOmName={field.value}
+                      currentOmName={field.value} // CORREÇÃO: Passa o nome da OM salva
                       onChange={(omData: OMData | undefined) => {
                         field.onChange(omData?.nome_om || "");
                         ugField.onChange(omData?.codug_om || "");
