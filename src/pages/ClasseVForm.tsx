@@ -447,7 +447,9 @@ const ClasseVForm = () => {
 
   const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = e.target.value;
-      setCurrentND39Input(formatCurrencyInput(rawValue));
+      // CORREÇÃO: formatCurrencyInput retorna um objeto, precisamos da propriedade 'formatted'
+      const { formatted } = formatCurrencyInput(rawValue);
+      setCurrentND39Input(formatted);
   };
 
   const handleND39InputBlur = () => {
