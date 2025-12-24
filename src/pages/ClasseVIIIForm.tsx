@@ -14,7 +14,7 @@ import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
+import { formatCurrency, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -82,7 +82,7 @@ interface ClasseVIIIRegistro {
 
 interface CategoryAllocation {
   total_valor: number;
-  nd_39_input: string; // User input string for ND 39
+  nd_39_input: string; // User input string for ND 39 (Formatted string for persistence)
   nd_30_value: number; // Calculated ND 30 value
   nd_39_value: number; // Calculated ND 39 value
   om_destino_recurso: string;
@@ -337,7 +337,8 @@ const ClasseVIIIForm = () => {
   });
   
   const [categoryAllocations, setCategoryAllocations] = useState<Record<Categoria, CategoryAllocation>>(initialCategoryAllocations);
-  const [currentND39Input, setCurrentND39Input] = useState<string>("");
+  // ALTERADO: Agora armazena os dígitos brutos para usar formatCurrencyInput
+  const [nd39RawDigits, setNd39RawDigits] = useState<string>(""); 
   
   const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemSaude[] | ItemRemonta[]>([]);
   const [remontaValidationWarning, setRemontaValidationWarning] = useState<string | null>(null); // Novo estado para aviso de validação
@@ -347,6 +348,12 @@ const ClasseVIIIForm = () => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
   const { handleEnterToNextField } = useFormNavigation();
+
+  // Helper para converter string formatada (ex: "1.234,56") de volta para dígitos brutos ("123456")
+  const formattedToRawDigits = (formatted: string): string => {
+    const numericValue = parseInputToNumber(formatted);
+    return numberToRawDigits(numericValue);
+  };
 
   useEffect(() => {
     if (!ptrabId) {
@@ -360,8 +367,10 @@ const ClasseVIIIForm = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId]);
   
+  // ALTERADO: Carrega dígitos brutos do estado de alocação
   useEffect(() => {
-    setCurrentND39Input(categoryAllocations[selectedTab].nd_39_input);
+    const formattedValue = categoryAllocations[selectedTab].nd_39_input;
+    setNd39RawDigits(formattedToRawDigits(formattedValue));
   }, [selectedTab, categoryAllocations]);
 
   // Efeito para gerenciar a lista de itens da categoria atual
@@ -646,7 +655,7 @@ const ClasseVIIIForm = () => {
       itensRemonta: [],
     });
     setCategoryAllocations(initialCategoryAllocations);
-    setCurrentND39Input("");
+    setNd39RawDigits(""); // Resetar para dígitos brutos
     setCurrentCategoryItems([]);
     setFasesAtividade(["Execução"]);
     setCustomFaseAtividade("");
@@ -753,7 +762,7 @@ const ClasseVIIIForm = () => {
   // --- ND Allocation Handlers ---
   const currentCategoryTotalValue = useMemo(() => {
     if (selectedTab === 'Saúde') {
-        return (currentCategoryItems as ItemSaude[]).reduce((sum, item) => sum + calculateSaudeItemTotal(item), 0);
+        return (currentCategoryItems as ItemSaude[]).reduce((sum, item) => sum + calculateSaudeItemTotal(item) + sum, 0);
     } else {
         const remontaItems = currentCategoryItems as ItemRemonta[];
         
@@ -768,18 +777,25 @@ const ClasseVIIIForm = () => {
     }
   }, [currentCategoryItems, selectedTab, diretrizesRemonta]);
   
-  const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, parseInputToNumber(currentND39Input)));
+  // ALTERADO: nd39ValueTemp agora é calculado a partir dos dígitos brutos
+  const { numericValue: nd39NumericValueTemp } = formatCurrencyInput(nd39RawDigits);
+  const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, nd39NumericValueTemp));
   const nd30ValueTemp = currentCategoryTotalValue - nd39ValueTemp;
 
+  // ALTERADO: Usa formatCurrencyInput para processar o input e armazenar dígitos brutos
   const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = e.target.value;
-      setCurrentND39Input(formatInputWithThousands(rawValue));
+      const { digits } = formatCurrencyInput(rawValue);
+      setNd39RawDigits(digits);
   };
 
+  // ALTERADO: Usa formatCurrencyInput para obter o valor numérico e armazena o valor final em dígitos brutos
   const handleND39InputBlur = () => {
-      const numericValue = parseInputToNumber(currentND39Input);
+      const { numericValue } = formatCurrencyInput(nd39RawDigits);
       const finalND39Value = Math.min(currentCategoryTotalValue, Math.max(0, numericValue));
-      setCurrentND39Input(formatNumberForInput(finalND39Value, 2));
+      
+      // Atualiza o estado para refletir o valor final (arredondado/limitado) em dígitos brutos
+      setNd39RawDigits(numberToRawDigits(finalND39Value));
   };
 
   // --- Save Category Items to Form State ---
@@ -791,7 +807,8 @@ const ClasseVIIIForm = () => {
     
     const categoryTotalValue = currentCategoryTotalValue;
 
-    const numericInput = parseInputToNumber(currentND39Input);
+    // ALTERADO: Obtém o valor numérico dos dígitos brutos
+    const { numericValue: numericInput } = formatCurrencyInput(nd39RawDigits);
     const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
     const finalND30Value = categoryTotalValue - finalND39Value;
     
@@ -850,7 +867,8 @@ const ClasseVIIIForm = () => {
         [selectedTab]: {
             ...prev[selectedTab],
             total_valor: categoryTotalValue,
-            nd_39_input: formatNumberForInput(finalND39Value, 2),
+            // Salva o valor formatado para persistência
+            nd_39_input: formatNumberForInput(finalND39Value, 2), 
             nd_30_value: finalND30Value,
             nd_39_value: finalND39Value,
         }
@@ -1527,8 +1545,9 @@ const ClasseVIIIForm = () => {
                                             <Input
                                                 id="nd39-input"
                                                 type="text"
-                                                inputMode="decimal"
-                                                value={currentND39Input}
+                                                inputMode="numeric"
+                                                // ALTERADO: Usa formatCurrencyInput para exibir o valor formatado
+                                                value={formatCurrencyInput(nd39RawDigits).formatted}
                                                 onChange={handleND39InputChange}
                                                 onBlur={handleND39InputBlur}
                                                 placeholder="0,00"
