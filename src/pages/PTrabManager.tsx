@@ -29,6 +29,8 @@ import LinkPTrabDialog from "@/components/LinkPTrabDialog";
 import { sanitizeError } from "@/lib/errorUtils";
 import AIChatDrawer from "@/components/AIChatDrawer";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
+import { cn } from "@/lib/utils"; // Importação adicionada
+import { Checkbox } from "@/components/ui/checkbox"; // Importação adicionada
 
 // --- DEFINIÇÕES DE TIPOS ---
 type PTrab = Tables<'p_trab'>;
