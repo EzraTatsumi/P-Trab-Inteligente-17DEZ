@@ -493,7 +493,7 @@ const ClasseIIForm = () => {
 
   const handleFaseChange = (fase: string, checked: boolean) => {
     if (checked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase]));
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
@@ -1098,7 +1098,7 @@ const ClasseIIForm = () => {
                                                 value={formatNumberForInput(nd30ValueTemp, 2)}
                                                 readOnly
                                                 disabled
-                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 text-right"
+                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
                                             />
                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                         </div>
@@ -1118,7 +1118,7 @@ const ClasseIIForm = () => {
                                                 onChange={handleND39InputChange}
                                                 onBlur={handleND39InputBlur}
                                                 placeholder="0,00"
-                                                className="pl-12 text-lg text-right"
+                                                className="pl-12 text-lg"
                                                 disabled={currentCategoryTotalValue === 0}
                                                 onKeyDown={handleEnterToNextField}
                                             />
@@ -1206,11 +1206,11 @@ const ClasseIIForm = () => {
                             </div>
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
-                            <span className="font-medium text-green-600">{formatCurrency(allocation.nd_30_value)}</span>
+                                <span className="font-medium text-green-600">{formatCurrency(allocation.nd_30_value)}</span>
                             </div>
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
-                            <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
+                                <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
                             </div>
                             {!areNumbersEqual(allocation.total_valor, totalCategoria) && (
                                 <p className="text-xs text-destructive flex items-center gap-1 pt-1">
