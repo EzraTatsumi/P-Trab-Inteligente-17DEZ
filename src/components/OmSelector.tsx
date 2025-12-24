@@ -137,12 +137,13 @@ export function OmSelector({
       return displayOM.nome_om;
     }
     
-    // 2. Fallback: Usa o nome atual do formulário (field.value)
+    // 2. Se o formulário já tem um nome salvo (modo de edição), exibe-o imediatamente.
+    // Isso garante que o nome apareça mesmo que a lista de OMs ainda esteja carregando.
     if (currentOmName) {
       return currentOmName;
     }
     
-    // 3. Se estiver carregando, mostra o placeholder
+    // 3. Se estiver carregando, mostra o placeholder de carregamento
     if (isOverallLoading) {
       return "Carregando OMs...";
     }
