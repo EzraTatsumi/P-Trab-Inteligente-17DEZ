@@ -93,3 +93,62 @@ export const parseInputToNumber = (input: string): number => {
   const cleaned = input.replace(/\./g, '').replace(',', '.');
   return parseFloat(cleaned) || 0;
 };
+
+// --- Functions for raw digit handling (used in RefLPC and ClasseIX forms) ---
+
+/**
+ * Converts a numeric value (e.g., 1234.56) into a raw digit string (e.g., "123456").
+ */
+export const numberToRawDigits = (num: number): string => {
+  if (num === 0 || isNaN(num)) return "0";
+  // Multiplica por 100, arredonda para evitar float issues, e converte para string
+  return Math.round(num * 100).toString();
+};
+
+/**
+ * Takes a raw digit string (e.g., "123456") and returns the formatted string ("1.234,56")
+ * and the numeric value (1234.56).
+ */
+export const formatCurrencyInput = (rawDigits: string): { formatted: string, numericValue: number, digits: string } => {
+  // Remove non-digits
+  const cleanedDigits = rawDigits.replace(/\D/g, '');
+  
+  if (cleanedDigits === "" || cleanedDigits === "0") {
+    return { formatted: "", numericValue: 0, digits: "0" };
+  }
+
+  // Pad with leading zero if necessary (e.g., "5" -> "05")
+  const paddedDigits = cleanedDigits.padStart(3, '0');
+  
+  // Separate integer and decimal parts
+  const integerPart = paddedDigits.slice(0, -2);
+  const decimalPart = paddedDigits.slice(-2);
+  
+  // Apply thousands formatting (dot) to the integer part
+  const integerPartFormatted = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  
+  const formatted = `${integerPartFormatted},${decimalPart}`;
+  
+  // Calculate numeric value
+  const numericValue = parseFloat(`${integerPart}.${decimalPart}`) / 100;
+  
+  return { formatted, numericValue, digits: cleanedDigits };
+};
+
+/**
+ * Formats a number into a string suitable for input display, ensuring two decimal places.
+ * This is used for read-only fields or when displaying a final calculated value.
+ */
+export const formatNumberForInput = (num: number, precision: number = 2): string => {
+  if (num === null || num === undefined || isNaN(num)) return '0,00';
+  
+  // Arredonda para a precisão desejada
+  const factor = Math.pow(10, precision);
+  const roundedNum = Math.round(num * factor) / factor;
+  
+  // Usa Intl.NumberFormat para formatação com separadores
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+  }).format(roundedNum);
+};
