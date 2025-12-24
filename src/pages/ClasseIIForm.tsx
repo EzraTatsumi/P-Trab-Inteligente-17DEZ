@@ -14,7 +14,7 @@ import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -75,7 +75,7 @@ interface ClasseIIRegistro {
 
 interface CategoryAllocation {
   total_valor: number;
-  nd_39_input: string; // User input string for ND 39
+  nd_39_input: string; // User input string for ND 39 (Now stores formatted string for DB consistency)
   nd_30_value: number; // Calculated ND 30 value
   nd_39_value: number; // Calculated ND 39 value
   // NEW: Destination fields (Per Category)
@@ -229,7 +229,7 @@ const ClasseIIForm = () => {
   
   // NOVO ESTADO: Rastreia a alocação de ND por categoria
   const [categoryAllocations, setCategoryAllocations] = useState<Record<Categoria, CategoryAllocation>>(initialCategoryAllocations);
-  // NOVO ESTADO: Input temporário para ND 39 da aba atual
+  // NOVO ESTADO: Input temporário para ND 39 da aba atual (AGORA ARMAZENA DÍGITOS BRUTOS)
   const [currentND39Input, setCurrentND39Input] = useState<string>("");
   
   // NOVO ESTADO: Lista de itens da categoria atual com quantidades editáveis
@@ -255,7 +255,10 @@ const ClasseIIForm = () => {
   
   // Efeito para sincronizar o input ND 39 ao mudar de aba
   useEffect(() => {
-    setCurrentND39Input(categoryAllocations[selectedTab].nd_39_input);
+    // Converte o valor numérico armazenado (que está em formato string formatada) de volta para dígitos (cents)
+    const numericValue = parseInputToNumber(categoryAllocations[selectedTab].nd_39_input);
+    const digits = String(Math.round(numericValue * 100));
+    setCurrentND39Input(digits);
   }, [selectedTab, categoryAllocations]);
 
   // Efeito para gerenciar a lista de itens da categoria atual
@@ -428,7 +431,7 @@ const ClasseIIForm = () => {
     });
     
     setCategoryAllocations(initialCategoryAllocations); // Reset allocations
-    setCurrentND39Input(""); // Reset current input
+    setCurrentND39Input(""); // Reset current input (digits)
     
     setCurrentCategoryItems([]);
     
@@ -507,20 +510,29 @@ const ClasseIIForm = () => {
     setCurrentCategoryItems(newItems);
   };
 
+  // MEMO: Calcula o valor numérico do ND 39 a partir do input de dígitos
+  const nd39NumericValue = useMemo(() => {
+    return formatCurrencyInput(currentND39Input).numericValue;
+  }, [currentND39Input]);
+  
   // ND Calculation and Input Handlers (Temporary for current tab)
   const currentCategoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
-  const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, parseInputToNumber(currentND39Input)));
+  const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, nd39NumericValue));
   const nd30ValueTemp = currentCategoryTotalValue - nd39ValueTemp;
 
   const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = e.target.value;
-      setCurrentND39Input(formatInputWithThousands(rawValue));
+      const { digits } = formatCurrencyInput(rawValue);
+      setCurrentND39Input(digits);
   };
 
   const handleND39InputBlur = () => {
-      const numericValue = parseInputToNumber(currentND39Input);
-      const finalND39Value = Math.min(currentCategoryTotalValue, Math.max(0, numericValue));
-      setCurrentND39Input(formatNumberForInput(finalND39Value, 2));
+      // Usa o valor numérico já calculado (nd39NumericValue)
+      const finalND39Value = Math.min(currentCategoryTotalValue, Math.max(0, nd39NumericValue));
+      
+      // Converte o valor final de volta para dígitos (cents) para manter o estado interno como string de dígitos
+      const finalDigits = String(Math.round(finalND39Value * 100));
+      setCurrentND39Input(finalDigits);
   };
 
   // NOVO HANDLER: Salva os itens da lista expandida para o form.itens principal
@@ -534,7 +546,7 @@ const ClasseIIForm = () => {
     const categoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
 
     // 2. Calculate final ND split for this category based on current input
-    const numericInput = parseInputToNumber(currentND39Input);
+    const numericInput = nd39NumericValue; // Usa o valor numérico do input
     const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
     const finalND30Value = categoryTotalValue - finalND39Value;
     
@@ -564,7 +576,7 @@ const ClasseIIForm = () => {
         [selectedTab]: {
             ...prev[selectedTab], // Keep existing destination fields
             total_valor: categoryTotalValue,
-            nd_39_input: formatNumberForInput(finalND39Value, 2), // Store the final formatted input
+            nd_39_input: formatNumberForInput(finalND39Value, 2), // Store the final formatted input (for DB consistency)
             nd_30_value: finalND30Value,
             nd_39_value: finalND39Value,
         }
@@ -583,6 +595,9 @@ const ClasseIIForm = () => {
   const totalAlocado = totalND30Final + totalND39Final;
   
   const isTotalAlocadoCorrect = areNumbersEqual(valorTotalForm, totalAlocado);
+  
+  // Calcula o valor formatado para exibição do ND 39
+  const { formatted: formattedND39Value } = formatCurrencyInput(currentND39Input);
 
 
   const handleSalvarRegistros = async () => {
@@ -1114,7 +1129,7 @@ const ClasseIIForm = () => {
                                                 id="nd39-input"
                                                 type="text"
                                                 inputMode="decimal"
-                                                value={currentND39Input}
+                                                value={formattedND39Value}
                                                 onChange={handleND39InputChange}
                                                 onBlur={handleND39InputBlur}
                                                 placeholder="0,00"
