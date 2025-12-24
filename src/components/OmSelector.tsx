@@ -35,7 +35,7 @@ interface OmSelectorProps {
   omsList?: OMData[]; // Lista de OMs pré-carregada
   defaultOmId?: string; // ID da OM padrão a ser sugerida
   currentOmName?: string; // NOVO: Nome atual da OM (vindo do field.value do formulário)
-  initialOmUg?: string; // UG inicial da OM
+  initialOmUg?: string; // NOVO: UG inicial da OM (vindo do field.value do formulário)
 }
 
 export function OmSelector({
@@ -47,7 +47,7 @@ export function OmSelector({
   omsList,
   defaultOmId,
   currentOmName,
-  initialOmUg,
+  initialOmUg, // NOVO PROP
 }: OmSelectorProps) {
   const [open, setOpen] = useState(false);
   const [oms, setOms] = useState<OMData[]>([]);
@@ -133,10 +133,10 @@ export function OmSelector({
     
     // Case 2: No valid ID, but we have a saved name (edit mode for RHF forms or PTrabManager)
     if (!selectedOmId && currentOmName && oms.length > 0) {
-        // Try to find the OM object based on the name and UG
+        // Try to find the OM object based on the name AND UG (if provided)
         const foundOm = oms.find(om => 
             om.nome_om === currentOmName && 
-            (!initialOmUg || om.codug_om === initialOmUg)
+            (!initialOmUg || om.codug_om === initialOmUg) // Usa initialOmUg para desambiguação
         );
         
         if (foundOm) {
@@ -151,7 +151,7 @@ export function OmSelector({
     setDisplayOM(undefined);
     setIsFetchingSelected(false);
     
-  }, [selectedOmId, oms, currentOmName, initialOmUg]);
+  }, [selectedOmId, oms, currentOmName, initialOmUg]); // Adicionado initialOmUg como dependência
 
   const isOverallLoading = loading || isFetchingSelected;
 

@@ -1628,6 +1628,7 @@ const PTrabManager = () => {
                       <OmSelector
                         selectedOmId={selectedOmId}
                         currentOmName={formData.nome_om} // PASSANDO O NOME ATUAL
+                        initialOmUg={formData.codug_om} // NOVO: Passa o CODUG para lookup
                         onChange={(omData: OMData | undefined) => {
                           if (omData) {
                             setSelectedOmId(omData.id);

@@ -169,6 +169,7 @@ export function ClasseIForm({ pTrabId, initialData, onSuccess }: ClasseIFormProp
                       // então passamos o ID temporário (se houver) ou undefined.
                       selectedOmId={form.watch("om_id") || undefined} 
                       currentOmName={field.value} // CORREÇÃO: Passa o nome da OM salva
+                      initialOmUg={ugField.value} // NOVO: Passa a UG para lookup
                       onChange={(omData: OMData | undefined) => {
                         field.onChange(omData?.nome_om || "");
                         ugField.onChange(omData?.codug_om || "");
@@ -207,6 +208,7 @@ export function ClasseIForm({ pTrabId, initialData, onSuccess }: ClasseIFormProp
                       // então passamos o ID temporário (se houver) ou undefined.
                       selectedOmId={form.watch("om_qs_id") || undefined} 
                       currentOmName={field.value} // CORREÇÃO: Passa o nome da OM salva
+                      initialOmUg={ugQsField.value} // NOVO: Passa a UG para lookup
                       onChange={(omData: OMData | undefined) => {
                         field.onChange(omData?.nome_om || "");
                         ugQsField.onChange(omData?.codug_om || "");
