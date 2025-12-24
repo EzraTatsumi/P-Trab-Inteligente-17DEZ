@@ -140,7 +140,7 @@ const generateDetalhamento = (itens: ItemClasseVII[], diasOperacao: number, orga
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe VII (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe VII (Diversos) para ${totalItens} itens, durante ${dias_operacao} dias de ${faseFormatada}, para ${organizacao}.
 Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
 Alocação:
@@ -899,7 +899,7 @@ const ClasseVIIForm = () => {
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
                 <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as Categoria)}>
-                  <TabsList className="grid w-full grid-cols-4">
+                  <TabsList className="grid w-full grid-cols-2">
                     {CATEGORIAS.map(cat => (
                       <TabsTrigger key={cat} value={cat}>{getCategoryLabel(cat)}</TabsTrigger>
                     ))}
