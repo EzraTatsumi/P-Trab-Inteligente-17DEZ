@@ -458,8 +458,9 @@ const ClasseIIIForm = () => {
       selectedOmDestinoId: undefined, // Will be fetched below
     });
     
-    // 4. Consolidate all ItemClasseIII data
-    let consolidatedItems: ItemClasseIII[] = [];
+    // 4. Consolidate all ItemClasseIII data, ensuring no duplicates and merging lubricant info
+    const consolidatedItemsMap = new Map<string, ItemClasseIII>();
+    
     [...combustivelRecords, ...lubricantRecords].forEach(r => {
       if (r.itens_equipamentos && Array.isArray(r.itens_equipamentos)) {
         (r.itens_equipamentos as any[]).forEach(item => {
@@ -467,13 +468,16 @@ const ClasseIIIForm = () => {
           const directiveItem = allDiretrizItems[baseCategory]?.find(d => d.nome === item.tipo_equipamento_especifico);
           
           if (directiveItem) {
+            const itemName = directiveItem.nome;
+            
             const precoLubrificante = item.preco_lubrificante || 0;
+            const consumoLubrificante = item.consumo_lubrificante_litro || 0;
+            
             // Converte o preço para a string de dígitos (centavos) para o input mascarado
             const precoLubrificanteInput = precoLubrificante > 0 
               ? formatCurrencyInput(String(Math.round(precoLubrificante * 100))).digits
               : "";
             
-            const consumoLubrificante = item.consumo_lubrificante_litro || 0;
             const consumoLubrificanteInput = consumoLubrificante > 0 
               ? formatNumberForInput(consumoLubrificante, 2)
               : "";
@@ -494,11 +498,28 @@ const ClasseIIIForm = () => {
               preco_lubrificante_input: precoLubrificanteInput,
               consumo_lubrificante_input: consumoLubrificanteInput,
             };
-            consolidatedItems.push(newItem);
+            
+            let existingItem = consolidatedItemsMap.get(itemName);
+            
+            if (existingItem) {
+                // Merge logic: Prioritize non-zero lubricant data from the current item if the existing one is zeroed.
+                const mergedItem: ItemClasseIII = {
+                    ...existingItem,
+                    consumo_lubrificante_litro: existingItem.consumo_lubrificante_litro || newItem.consumo_lubrificante_litro,
+                    preco_lubrificante: existingItem.preco_lubrificante || newItem.preco_lubrificante,
+                    preco_lubrificante_input: existingItem.preco_lubrificante_input || newItem.preco_lubrificante_input,
+                    consumo_lubrificante_input: existingItem.consumo_lubrificante_input || newItem.consumo_lubrificante_input,
+                };
+                consolidatedItemsMap.set(itemName, mergedItem);
+            } else {
+                consolidatedItemsMap.set(itemName, newItem);
+            }
           }
         });
       }
     });
+    
+    let consolidatedItems = Array.from(consolidatedItemsMap.values());
     
     // 5. Fetch OM IDs
     const fetchOmId = async (nome: string, ug: string) => {
@@ -1214,6 +1235,9 @@ const getMemoriaRecords = granularRegistros;
         itens_equipamentos: consolidado.itens.map((item: ItemClasseIII) => ({
           ...item,
           tipo_equipamento_especifico: item.item,
+          // Garante que os campos de lubrificante são zeroed para o registro de COMBUSTÍVEL
+          consumo_lubrificante_litro: 0,
+          preco_lubrificante: 0,
         })) as any,
         fase_atividade: faseFinalString,
         consumo_lubrificante_litro: 0,
@@ -1226,12 +1250,17 @@ const getMemoriaRecords = granularRegistros;
     
     // 2. Preparar registro de LUBRIFICANTE (ND 33.90.30)
     if (consolidadoLubrificante) {
+      // Filtra apenas itens que realmente usam lubrificante para o registro de LUBRIFICANTE
+      const itensLubrificante = consolidadoLubrificante.itens.filter((item: ItemClasseIII) => 
+        item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0
+      );
+
       const registroLubrificante: TablesInsert<'classe_iii_registros'> = {
         p_trab_id: ptrabId,
         tipo_equipamento: 'LUBRIFICANTE_CONSOLIDADO',
         organizacao: lubricantAllocation.om_destino_recurso,
         ug: lubricantAllocation.ug_destino_recurso,
-        quantidade: consolidadoLubrificante.itens.reduce((sum: number, item: ItemClasseIII) => sum + item.quantidade, 0),
+        quantidade: itensLubrificante.reduce((sum: number, item: ItemClasseIII) => sum + item.quantidade, 0),
         dias_operacao: form.dias_operacao, // Salva o dia global para contexto
         tipo_combustivel: 'LUBRIFICANTE',
         preco_litro: 0,
@@ -1239,13 +1268,17 @@ const getMemoriaRecords = granularRegistros;
         total_litros_sem_margem: consolidadoLubrificante.total_litros,
         valor_total: consolidadoLubrificante.valor_total,
         detalhamento: consolidadoLubrificante.detalhamento,
-        itens_equipamentos: consolidadoLubrificante.itens.map((item: ItemClasseIII) => ({
+        itens_equipamentos: itensLubrificante.map((item: ItemClasseIII) => ({
           ...item,
           tipo_equipamento_especifico: item.item,
+          // Garante que os campos de lubrificante são salvos corretamente
+          consumo_lubrificante_litro: item.consumo_lubrificante_litro,
+          preco_lubrificante: item.preco_lubrificante,
         })) as any,
         fase_atividade: faseFinalString,
-        consumo_lubrificante_litro: consolidadoLubrificante.itens[0]?.consumo_lubrificante_litro || 0,
-        preco_lubrificante: consolidadoLubrificante.itens[0]?.preco_lubrificante || 0,
+        // Estes campos não são consolidados no nível do registro, mas sim nos itens_equipamentos
+        consumo_lubrificante_litro: 0, 
+        preco_lubrificante: 0,
         valor_nd_30: consolidadoLubrificante.valor_total, // Classe III Lubrificante é ND 30
         valor_nd_39: 0,
       };
@@ -1325,6 +1358,9 @@ const getMemoriaRecords = granularRegistros;
     reconstructFormState(recordsToReconstruct);
     
     // 4. Set the tab based on the first item found (if any)
+    // We need to find the category of the first item in the reconstructed list, not the raw record.
+    // Since reconstructFormState is async due to OM fetching, we rely on the state update later.
+    // For now, we can try to infer the category from the first item in the raw records:
     const firstItem = (recordsToReconstruct[0].itens_equipamentos as any[])?.[0];
     if (firstItem) {
         setSelectedTab(firstItem.categoria as TipoEquipamento);
@@ -1426,7 +1462,7 @@ const getMemoriaRecords = granularRegistros;
     }
   };
   
-  const getCombustivelBadgeClass = (tipo: CombustivelTipo) => {
+  const getCombustivelBadgeClass = (tipo: CombustivelTipo | string) => {
     return tipo === 'DIESEL' 
       ? 'bg-cyan-600 text-white hover:bg-cyan-700' 
       : 'bg-amber-500 text-white hover:bg-amber-600';
