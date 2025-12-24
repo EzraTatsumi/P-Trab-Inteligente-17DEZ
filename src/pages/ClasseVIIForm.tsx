@@ -102,14 +102,26 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-const generateDetalhamento = (itens: ItemClasseVII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
+// Função generateDetalhamento reescrita para garantir que use apenas os argumentos
+const generateDetalhamento = (
+    itens: ItemClasseVII[], 
+    diasOperacao: number, 
+    organizacao: string, 
+    ug: string, 
+    faseAtividade: string, 
+    omDestino: string, 
+    ugDestino: string, 
+    valorND30: number, 
+    valorND39: number
+): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const valorTotal = valorND30 + valorND39;
 
     const gruposPorCategoria = itens.reduce((acc, item) => {
         const categoria = item.categoria;
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
+        // Acessando diasOperacao do argumento
+        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao; 
         
         if (!acc[categoria]) {
             acc[categoria] = {
@@ -140,7 +152,7 @@ const generateDetalhamento = (itens: ItemClasseVII[], diasOperacao: number, orga
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe VII (Diversos) para ${totalItens} itens, durante ${dias_operacao} dias de ${faseFormatada}, para ${organizacao}.
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe VII (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
 Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
 Alocação:
