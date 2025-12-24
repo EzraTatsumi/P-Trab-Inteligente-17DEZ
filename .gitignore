@@ -41,27 +41,29 @@ src/data/classeVIIIData.ts
 src/data/classeIIIData.ts
 src/assets/
 
-# Excluir páginas de formulário de Classes finalizadas
-src/pages/ClasseVForm.tsx
-src/pages/ClasseVIForm.tsx
-src/pages/ClasseVIIForm.tsx
-src/pages/ClasseVIIIForm.tsx
-src/pages/ClasseIXForm.tsx
-src/pages/ClasseIForm.tsx
-src/pages/ClasseIIForm.tsx
+# EXCLUSÕES DE FUNCIONALIDADES FINALIZADAS
+src/pages/Login.tsx
+src/pages/ResetPasswordPage.tsx
+src/components/ForgotPasswordDialog.tsx
+src/components/EmailVerificationDialog.tsx
+src/components/SignupDialog.tsx
+src/pages/DiretrizesCusteioPage.tsx
+src/components/YearManagementDialog.tsx
+src/pages/PTrabExportImportPage.tsx
+src/components/ExportPasswordDialog.tsx
+src/components/ImportPTrabOptionsDialog.tsx
+src/components/ImportConflictDialog.tsx
+src/components/MinutaNumberDialog.tsx
+src/lib/cryptoUtils.ts
+src/integrations/supabase/api.ts
+supabase/functions/fetch-fuel-prices/index.ts
+supabase/functions/fetch-share-preview/index.ts
 
 # Excluir páginas de configuração secundária
 src/pages/VisualizacaoConfigPage.tsx
 
 # Excluir arquivos de consolidação e numeração
 src/components/PTrabConsolidationDialog.tsx
-
-# Excluir arquivos de Importação/Exportação (REMOVIDOS PARA INCLUSÃO)
-# src/pages/PTrabExportImportPage.tsx
-# src/components/ExportPasswordDialog.tsx
-# src/components/ImportPTrabOptionsDialog.tsx
-# src/components/ImportConflictDialog.tsx
-# src/lib/cryptoUtils.ts
 
 # Excluir arquivos de Gerenciamento, Clonagem e Crédito
 src/components/CloneVariationDialog.tsx
@@ -72,14 +74,10 @@ src/components/RmSelector.tsx
 src/components/MarkdownAccordion.tsx
 src/components/MarkdownViewer.tsx
 src/components/HelpDialog.tsx
-src/components/YearManagementDialog.tsx
 src/components/ClasseIIIRegistryForm.tsx
 src/hooks/useFormNavigation.ts
 src/hooks/use-mobile.tsx
-# src/lib/omUtils.ts
-# src/lib/ptrabUtils.ts
 src/lib/creditUtils.ts
-# src/lib/validationSchemas.ts
 
 # NOVAS EXCLUSÕES PARA ECONOMIA DE CONTEXTO
 src/pages/UserProfilePage.tsx
@@ -87,8 +85,8 @@ src/components/SignupDialog.tsx
 src/components/reports/PTrabLogisticoReport.tsx
 src/components/reports/PTrabRacaoOperacionalReport.tsx
 
-# Vercel Configuration
-# vercel.json
-
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
 # src/lib/formatUtils.ts
+# src/lib/omUtils.ts
+# src/lib/ptrabUtils.ts
+# src/lib/validationSchemas.ts
