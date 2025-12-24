@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DollarSign, TrendingUp, Save } from "lucide-react";
+import { TrendingUp, Save } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatCurrency } from "@/lib/formatUtils";
+import { 
+  formatCurrency, 
+  formatCurrencyInput, 
+  numberToRawDigits, 
+  rawDigitsToNumber 
+} from "@/lib/formatUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 
 interface CreditInputDialogProps {
@@ -24,42 +29,7 @@ interface CreditInputDialogProps {
   onSave: (gnd3: number, gnd4: number) => void;
 }
 
-// Função auxiliar para formatar o número para exibição no input (usando vírgula)
-const formatNumberForInput = (num: number): string => {
-  if (num === 0) return "";
-  // Usa Intl.NumberFormat para formatar com separador de milhar (ponto) e decimal (vírgula)
-  return new Intl.NumberFormat('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(num);
-};
-
-// Função para limpar e formatar a string de entrada com separadores de milhar
-const formatInputWithThousands = (value: string): string => {
-  // 1. Remove tudo exceto dígitos, ponto e vírgula
-  let cleaned = value.replace(/[^\d,.]/g, '');
-
-  // 2. Substitui a primeira vírgula por ponto (para parsear) e remove as demais
-  const decimalIndex = cleaned.indexOf(',');
-  if (decimalIndex !== -1) {
-    const integerPart = cleaned.substring(0, decimalIndex).replace(/\./g, '');
-    let decimalPart = cleaned.substring(decimalIndex + 1).replace(/,/g, '');
-    
-    // Limita a parte decimal a 2 dígitos
-    decimalPart = decimalPart.substring(0, 2);
-    
-    // Reinsere a vírgula para exibição
-    cleaned = `${integerPart}${decimalPart ? `,${decimalPart}` : ''}`;
-  } else {
-    cleaned = cleaned.replace(/\./g, '');
-  }
-  
-  // Aplica a formatação de milhar (ponto)
-  const parts = cleaned.split(',');
-  let integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  
-  return parts.length > 1 ? `${integerPart},${parts[1]}` : integerPart;
-};
+// Funções auxiliares formatNumberForInput, formatInputWithThousands e parseInputToNumber removidas.
 
 export const CreditInputDialog = ({
   open,
@@ -70,52 +40,49 @@ export const CreditInputDialog = ({
   initialCreditGND4,
   onSave,
 }: CreditInputDialogProps) => {
-  // Usamos strings para o estado interno dos inputs para permitir a digitação de vírgulas
-  const [inputGND3, setInputGND3] = useState<string>(formatNumberForInput(initialCreditGND3));
-  const [inputGND4, setInputGND4] = useState<string>(formatNumberForInput(initialCreditGND4));
+  // O estado agora armazena a string de dígitos brutos (ex: "123456" para R$ 1.234,56)
+  const [inputGND3Raw, setInputGND3Raw] = useState<string>(numberToRawDigits(initialCreditGND3));
+  const [inputGND4Raw, setInputGND4Raw] = useState<string>(numberToRawDigits(initialCreditGND4));
   const { handleEnterToNextField } = useFormNavigation();
 
   // Sincroniza o estado interno com os props iniciais quando o diálogo abre
   useEffect(() => {
     if (open) {
-      setInputGND3(formatNumberForInput(initialCreditGND3));
-      setInputGND4(formatNumberForInput(initialCreditGND4));
+      setInputGND3Raw(numberToRawDigits(initialCreditGND3));
+      setInputGND4Raw(numberToRawDigits(initialCreditGND4));
     }
   }, [open, initialCreditGND3, initialCreditGND4]);
 
-  const parseInputToNumber = (input: string): number => {
-    // Remove pontos de milhar e substitui vírgula por ponto decimal
-    const cleaned = input.replace(/\./g, '').replace(',', '.');
-    return parseFloat(cleaned) || 0;
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, setInput: React.Dispatch<React.SetStateAction<string>>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, setInputRaw: React.Dispatch<React.SetStateAction<string>>) => {
     const rawValue = e.target.value;
     
-    // Aplica a formatação de milhar e decimal
-    const formattedValue = formatInputWithThousands(rawValue);
+    // formatCurrencyInput retorna os dígitos brutos limpos para armazenar no estado
+    const { digits } = formatCurrencyInput(rawValue);
     
-    setInput(formattedValue);
+    setInputRaw(digits);
   };
   
-  const handleInputBlur = (input: string, setInput: React.Dispatch<React.SetStateAction<string>>) => {
-    // Ao perder o foco, parseia para número e formata com 2 casas decimais
-    const numericValue = parseInputToNumber(input);
-    setInput(formatNumberForInput(numericValue));
+  // Não precisamos de handleInputBlur para formatação, pois formatCurrencyInput formata em tempo real.
+  const handleInputBlur = () => {
+    // No-op
   };
 
   const handleSave = () => {
-    // Ao salvar, usamos o parseInputToNumber para obter o valor limpo
-    const finalGND3 = parseInputToNumber(inputGND3);
-    const finalGND4 = parseInputToNumber(inputGND4);
+    // Ao salvar, usamos rawDigitsToNumber para obter o valor numérico limpo
+    const finalGND3 = rawDigitsToNumber(inputGND3Raw);
+    const finalGND4 = rawDigitsToNumber(inputGND4Raw);
     
     onSave(finalGND3, finalGND4);
     onOpenChange(false);
   };
 
+  // Calcula os valores formatados para exibição
+  const { formatted: formattedGND3 } = formatCurrencyInput(inputGND3Raw);
+  const { formatted: formattedGND4 } = formatCurrencyInput(inputGND4Raw);
+  
   // Calcula os custos e saldos usando os valores numéricos parseados
-  const currentCreditGND3 = parseInputToNumber(inputGND3);
-  const currentCreditGND4 = parseInputToNumber(inputGND4);
+  const currentCreditGND3 = rawDigitsToNumber(inputGND3Raw);
+  const currentCreditGND4 = rawDigitsToNumber(inputGND4Raw);
   
   const saldoGND3 = currentCreditGND3 - totalGND3Cost;
   const saldoGND4 = currentCreditGND4 - totalGND4Cost;
@@ -143,9 +110,9 @@ export const CreditInputDialog = ({
                 id="credit-gnd3"
                 type="text"
                 inputMode="decimal"
-                value={inputGND3}
-                onChange={(e) => handleInputChange(e, setInputGND3)}
-                onBlur={() => handleInputBlur(inputGND3, setInputGND3)}
+                value={formattedGND3}
+                onChange={(e) => handleInputChange(e, setInputGND3Raw)}
+                onBlur={handleInputBlur}
                 placeholder="0,00"
                 className="pl-12 text-lg"
                 onKeyDown={handleEnterToNextField}
@@ -174,9 +141,9 @@ export const CreditInputDialog = ({
                 id="credit-gnd4"
                 type="text"
                 inputMode="decimal"
-                value={inputGND4}
-                onChange={(e) => handleInputChange(e, setInputGND4)}
-                onBlur={() => handleInputBlur(inputGND4, setInputGND4)}
+                value={formattedGND4}
+                onChange={(e) => handleInputChange(e, setInputGND4Raw)}
+                onBlur={handleInputBlur}
                 placeholder="0,00"
                 className="pl-12 text-lg"
                 onKeyDown={handleEnterToNextField}
