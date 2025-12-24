@@ -140,25 +140,22 @@ export function OmSelector({
 
   // Lógica de exibição do texto no botão
   const buttonText = useMemo(() => {
+    // 1. If loading, prioritize initial name
     if (isOverallLoading) {
-      // Se estiver carregando, mas tivermos um nome inicial, mostre o nome inicial
-      if (selectedOmId && initialOmName) {
-        return initialOmName;
-      }
-      return "Carregando...";
+      return initialOmName || placeholder; // Use initial name if available, even if ID is missing during loading
     }
     
+    // 2. If a full OM object was successfully loaded (via ID lookup)
     if (displayOM) {
-      // Se a OM completa foi carregada, use o nome dela
       return displayOM.nome_om;
     }
     
-    if (selectedOmId && initialOmName) {
-      // Se o ID está presente, mas a busca falhou ou a OM não está na lista, use o nome inicial
+    // 3. Fallback: If no OM is selected (ID is missing), but the parent provided an initial name (from the DB record)
+    if (initialOmName) {
       return initialOmName;
     }
     
-    // Caso contrário, mostre o placeholder
+    // 4. Default
     return placeholder;
   }, [isOverallLoading, displayOM, selectedOmId, initialOmName, placeholder]);
 
