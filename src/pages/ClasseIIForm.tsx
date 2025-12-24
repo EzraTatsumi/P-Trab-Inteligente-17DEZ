@@ -1095,11 +1095,12 @@ const ClasseIIForm = () => {
                                         <Label>ND 33.90.30 (Material)</Label>
                                         <div className="relative">
                                             <Input
-                                                value={formatCurrency(nd30ValueTemp)}
+                                                value={formatNumberForInput(nd30ValueTemp, 2)}
                                                 readOnly
                                                 disabled
-                                                className="pl-2 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 text-right"
+                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
                                             />
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                         </div>
                                         <p className="text-xs text-muted-foreground">
                                             Calculado por diferença (Total - ND 39).
@@ -1117,7 +1118,7 @@ const ClasseIIForm = () => {
                                                 onChange={handleND39InputChange}
                                                 onBlur={handleND39InputBlur}
                                                 placeholder="0,00"
-                                                className="pl-12 text-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                className="pl-12 text-lg"
                                                 disabled={currentCategoryTotalValue === 0}
                                                 onKeyDown={handleEnterToNextField}
                                             />
