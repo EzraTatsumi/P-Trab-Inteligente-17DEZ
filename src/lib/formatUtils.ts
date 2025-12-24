@@ -29,9 +29,12 @@ export const parseInputToNumber = (input: string | number | null | undefined): n
   if (input === null || input === undefined) return 0;
   if (typeof input === 'number') return input;
   
+  // Ensure input is treated as a string for replacement operations
+  const stringInput = String(input); 
+  
   // 1. Remove dots (thousand separators)
   // 2. Replace comma (decimal separator) with dot
-  const cleaned = input.replace(/\./g, '').replace(',', '.');
+  const cleaned = stringInput.replace(/\./g, '').replace(',', '.');
   return parseFloat(cleaned) || 0;
 };
 
