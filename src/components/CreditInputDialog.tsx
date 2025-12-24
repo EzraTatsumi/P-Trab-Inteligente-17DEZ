@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TrendingUp, Save } from "lucide-react";
 import {
@@ -11,13 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { 
-  formatCurrency, 
-  formatCurrencyInput, 
-  numberToRawDigits, 
-  rawDigitsToNumber 
-} from "@/lib/formatUtils";
+import { formatCurrency } from "@/lib/formatUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
+import { CurrencyInput } from "@/components/CurrencyInput";
 
 interface CreditInputDialogProps {
   open: boolean;
@@ -29,8 +24,6 @@ interface CreditInputDialogProps {
   onSave: (gnd3: number, gnd4: number) => void;
 }
 
-// Funções auxiliares formatNumberForInput, formatInputWithThousands e parseInputToNumber removidas.
-
 export const CreditInputDialog = ({
   open,
   onOpenChange,
@@ -40,52 +33,28 @@ export const CreditInputDialog = ({
   initialCreditGND4,
   onSave,
 }: CreditInputDialogProps) => {
-  // O estado agora armazena a string de dígitos brutos (ex: "123456" para R$ 1.234,56)
-  const [inputGND3Raw, setInputGND3Raw] = useState<string>(numberToRawDigits(initialCreditGND3));
-  const [inputGND4Raw, setInputGND4Raw] = useState<string>(numberToRawDigits(initialCreditGND4));
+  // State now holds the numeric value, managed by CurrencyInput's onChange
+  const [creditGND3, setCreditGND3] = useState<number>(initialCreditGND3);
+  const [creditGND4, setCreditGND4] = useState<number>(initialCreditGND4);
   const { handleEnterToNextField } = useFormNavigation();
 
   // Sincroniza o estado interno com os props iniciais quando o diálogo abre
   useEffect(() => {
     if (open) {
-      setInputGND3Raw(numberToRawDigits(initialCreditGND3));
-      setInputGND4Raw(numberToRawDigits(initialCreditGND4));
+      setCreditGND3(initialCreditGND3);
+      setCreditGND4(initialCreditGND4);
     }
   }, [open, initialCreditGND3, initialCreditGND4]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, setInputRaw: React.Dispatch<React.SetStateAction<string>>) => {
-    const rawValue = e.target.value;
-    
-    // formatCurrencyInput retorna os dígitos brutos limpos para armazenar no estado
-    const { digits } = formatCurrencyInput(rawValue);
-    
-    setInputRaw(digits);
-  };
-  
-  // Não precisamos de handleInputBlur para formatação, pois formatCurrencyInput formata em tempo real.
-  const handleInputBlur = () => {
-    // No-op
-  };
-
   const handleSave = () => {
-    // Ao salvar, usamos rawDigitsToNumber para obter o valor numérico limpo
-    const finalGND3 = rawDigitsToNumber(inputGND3Raw);
-    const finalGND4 = rawDigitsToNumber(inputGND4Raw);
-    
-    onSave(finalGND3, finalGND4);
+    // State already holds the numeric values
+    onSave(creditGND3, creditGND4);
     onOpenChange(false);
   };
 
-  // Calcula os valores formatados para exibição
-  const { formatted: formattedGND3 } = formatCurrencyInput(inputGND3Raw);
-  const { formatted: formattedGND4 } = formatCurrencyInput(inputGND4Raw);
-  
-  // Calcula os custos e saldos usando os valores numéricos parseados
-  const currentCreditGND3 = rawDigitsToNumber(inputGND3Raw);
-  const currentCreditGND4 = rawDigitsToNumber(inputGND4Raw);
-  
-  const saldoGND3 = currentCreditGND3 - totalGND3Cost;
-  const saldoGND4 = currentCreditGND4 - totalGND4Cost;
+  // Calcula os custos e saldos usando os valores numéricos do estado
+  const saldoGND3 = creditGND3 - totalGND3Cost;
+  const saldoGND4 = creditGND4 - totalGND4Cost;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -105,21 +74,12 @@ export const CreditInputDialog = ({
           {/* GND 3 - Custeio (Logística, Operacional, Aviação) */}
           <div className="space-y-2 p-3 border rounded-lg bg-muted/50">
             <Label htmlFor="credit-gnd3" className="font-semibold text-sm">GND 3 - Custeio</Label>
-            <div className="relative">
-              <Input
-                id="credit-gnd3"
-                type="text"
-                inputMode="decimal"
-                value={formattedGND3}
-                onChange={(e) => handleInputChange(e, setInputGND3Raw)}
-                onBlur={handleInputBlur}
-                placeholder="0,00"
-                className="pl-12 text-lg"
-                onKeyDown={handleEnterToNextField}
-              />
-              {/* Ajustado o estilo do R$ para text-lg e foreground */}
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
-            </div>
+            <CurrencyInput
+              id="credit-gnd3"
+              value={creditGND3}
+              onChange={setCreditGND3}
+              onKeyDown={handleEnterToNextField}
+            />
             
             <div className="flex justify-between text-xs pt-1">
               <span className="text-muted-foreground">Custo Calculado:</span>
@@ -136,21 +96,12 @@ export const CreditInputDialog = ({
           {/* GND 4 - Material Permanente */}
           <div className="space-y-2 p-3 border rounded-lg bg-muted/50">
             <Label htmlFor="credit-gnd4" className="font-semibold text-sm">GND 4 - Investimento (Material Permanente)</Label>
-            <div className="relative">
-              <Input
-                id="credit-gnd4"
-                type="text"
-                inputMode="decimal"
-                value={formattedGND4}
-                onChange={(e) => handleInputChange(e, setInputGND4Raw)}
-                onBlur={handleInputBlur}
-                placeholder="0,00"
-                className="pl-12 text-lg"
-                onKeyDown={handleEnterToNextField}
-              />
-              {/* Ajustado o estilo do R$ para text-lg e foreground */}
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
-            </div>
+            <CurrencyInput
+              id="credit-gnd4"
+              value={creditGND4}
+              onChange={setCreditGND4}
+              onKeyDown={handleEnterToNextField}
+            />
             
             <div className="flex justify-between text-xs pt-1">
               <span className="text-muted-foreground">Custo Calculado:</span>
