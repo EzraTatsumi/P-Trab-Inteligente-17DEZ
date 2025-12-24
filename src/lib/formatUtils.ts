@@ -82,12 +82,47 @@ export const formatDate = (date: Date | string | null | undefined): string => {
 };
 
 /**
+ * Formats a date object or string into 'dd/MMM/yy' (e.g., 25/DEZ/24).
+ */
+export const formatDateDDMMMAA = (date: Date | string | null | undefined): string => {
+  if (!date) return '';
+  try {
+    // Formato 'dd/MMM/yy' em português
+    return format(new Date(date), 'dd/MMM/yy', { locale: { format: { MMM: (date) => format(date, 'MMM', { locale: { format: { MMM: (date) => format(date, 'MMM').toUpperCase() } } }).toUpperCase() } } }).toUpperCase();
+  } catch (e) {
+    // Fallback para o formato padrão se houver erro de locale
+    return format(new Date(date), 'dd/MM/yy');
+  }
+};
+
+/**
  * Formats a number with thousands separator (dot) and two decimal places (comma).
  */
-export const formatNumber = (num: number | null | undefined): string => {
+export const formatNumber = (num: number | null | undefined, decimals: number = 2): string => {
   if (num === null || num === undefined || isNaN(num)) return '0,00';
   return new Intl.NumberFormat('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   }).format(num);
+};
+
+/**
+ * Retorna o intervalo de datas da semana anterior (segunda a domingo) no formato 'yyyy-MM-dd'.
+ */
+export const getPreviousWeekRange = (): { start: string, end: string } => {
+  const today = new Date();
+  // Move para o domingo da semana atual
+  const currentSunday = new Date(today.setDate(today.getDate() - today.getDay()));
+  
+  // Move para o domingo da semana anterior
+  const previousSunday = new Date(currentSunday.setDate(currentSunday.getDate() - 7));
+  
+  // Move para a segunda-feira da semana anterior
+  const previousMonday = new Date(previousSunday.setDate(previousSunday.getDate() - 6));
+  
+  // O fim é o domingo da semana anterior
+  const end = format(previousSunday, 'yyyy-MM-dd');
+  const start = format(previousMonday, 'yyyy-MM-dd');
+  
+  return { start, end };
 };
