@@ -9,6 +9,18 @@ export const formatCurrency = (amount: number | null | undefined): string => {
   }).format(amount);
 };
 
+/**
+ * Formats a number with thousands separators (e.g., 1234567.89 -> 1.234.567,89).
+ * Defaults to 0 decimal places if precision is not specified.
+ */
+export const formatNumber = (amount: number | null | undefined, precision: number = 0): string => {
+  if (amount === null || amount === undefined) return '0';
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+  }).format(amount);
+};
+
 // --- Utility functions for currency input handling (using comma as decimal separator) ---
 
 /**
