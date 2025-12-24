@@ -28,6 +28,8 @@ interface OmSelectorProps {
   disabled?: boolean;
   omsList?: OMData[]; // Novo prop: lista de OMs pré-carregada
   defaultOmId?: string; // NOVO: ID da OM padrão a ser sugerida
+  initialOmName?: string; // NOVO: Nome inicial da OM para exibição imediata
+  initialOmUg?: string; // NOVO: UG inicial da OM
 }
 
 export function OmSelector({
@@ -38,6 +40,8 @@ export function OmSelector({
   disabled = false,
   omsList, // Usar a lista passada se existir
   defaultOmId, // Recebe o ID padrão
+  initialOmName, // NOVO
+  initialOmUg, // NOVO
 }: OmSelectorProps) {
   const [open, setOpen] = useState(false);
   const [oms, setOms] = useState<OMData[]>([]);
@@ -149,6 +153,8 @@ export function OmSelector({
           ) : displayOM ? ( // Usa displayOM para renderizar
             // Exibe apenas o nome da OM (sigla)
             <span className="truncate">{displayOM.nome_om}</span>
+          ) : selectedOmId && initialOmName ? ( // NOVO: Fallback display if ID is present but OM object is missing
+            <span className="truncate">{initialOmName}</span>
           ) : (
             <span className="text-muted-foreground">{placeholder}</span>
           )}
