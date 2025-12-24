@@ -54,7 +54,28 @@ export const formatCurrencyInput = (value: string): { formatted: string; digits:
   return { formatted, digits: cleanedDigits };
 };
 
-// --- General Formatting Utilities (assuming these existed previously) ---
+// --- General Formatting Utilities ---
+
+/**
+ * Formats a number (or string representation of a number) with thousands separator (dot) 
+ * and a specified number of decimal places (comma).
+ */
+export const formatNumber = (num: number | string | null | undefined, decimals: number = 2): string => {
+  let value: number;
+  if (typeof num === 'string') {
+    value = parseFloat(num.replace(',', '.')); // Tenta converter string para float
+    if (isNaN(value)) return '0,00';
+  } else if (num === null || num === undefined || isNaN(num)) {
+    value = 0;
+  } else {
+    value = num;
+  }
+  
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value);
+};
 
 /**
  * Formats a number as Brazilian currency (R$ X.XXX,XX).
@@ -93,17 +114,6 @@ export const formatDateDDMMMAA = (date: Date | string | null | undefined): strin
     // Fallback para o formato padrão se houver erro de locale
     return format(new Date(date), 'dd/MM/yy');
   }
-};
-
-/**
- * Formats a number with thousands separator (dot) and two decimal places (comma).
- */
-export const formatNumber = (num: number | null | undefined, decimals: number = 2): string => {
-  if (num === null || num === undefined || isNaN(num)) return '0,00';
-  return new Intl.NumberFormat('pt-BR', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(num);
 };
 
 /**
