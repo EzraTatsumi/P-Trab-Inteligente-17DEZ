@@ -385,11 +385,11 @@ const OmConfigPage = () => {
                           <TableCell className="font-medium whitespace-nowrap">{om.nome_om}</TableCell>
                           <TableCell className="break-words">{om.cidade}</TableCell>
                           <TableCell className="whitespace-nowrap">
-                            {formatNumber(om.codug_om, 0)}
+                            {formatNumber(om.codug_om)}
                           </TableCell>
                           <TableCell className="whitespace-nowrap">{om.rm_vinculacao}</TableCell>
                           <TableCell className="whitespace-nowrap">
-                            {formatNumber(om.codug_rm_vinculacao, 0)}
+                            {formatNumber(om.codug_rm_vinculacao)}
                           </TableCell>
                           <TableCell className="text-right space-x-2 whitespace-nowrap">
                             <Button 

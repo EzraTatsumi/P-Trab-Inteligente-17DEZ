@@ -68,7 +68,7 @@ src/components/PTrabConsolidationDialog.tsx
 # Excluir arquivos de Gerenciamento, Clonagem e Crédito
 src/components/CloneVariationDialog.tsx
 src/components/CreditPromptDialog.tsx
-src/components/CreditInputDialog.tsx1
+src/components/CreditInputDialog.tsx
 src/components/CreditInputCard.tsx
 src/components/RmSelector.tsx
 src/components/MarkdownAccordion.tsx
@@ -91,7 +91,6 @@ src/pages/ClasseVForm.tsx
 src/pages/ClasseVIForm.tsx
 src/pages/ClasseVIIForm.tsx
 src/pages/ClasseVIIIForm.tsx
-src/pages/ClasseIXForm.tsx
 
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
 # src/lib/formatUtils.ts
