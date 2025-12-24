@@ -1,3 +1,6 @@
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
 /**
  * Formats a number into Brazilian Real currency string (R$ 1.234,56).
  */
@@ -19,6 +22,20 @@ export const formatNumber = (amount: number | null | undefined, precision: numbe
     minimumFractionDigits: precision,
     maximumFractionDigits: precision,
   }).format(amount);
+};
+
+/**
+ * Formats a date string (ISO or Date object) to DD/MMM/AA (e.g., 25/DEZ/24).
+ */
+export const formatDateDDMMMAA = (dateString: string | Date): string => {
+  try {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    if (isNaN(date.getTime())) return 'Data Inválida';
+    // Usa date-fns para formatação, garantindo o locale pt-BR
+    return format(date, 'dd/MMM/yy', { locale: ptBR }).toUpperCase();
+  } catch (e) {
+    return 'Data Inválida';
+  }
 };
 
 // --- Utility functions for currency input handling (using comma as decimal separator) ---
