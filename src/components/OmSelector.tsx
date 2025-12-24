@@ -138,6 +138,31 @@ export function OmSelector({
 
   const isOverallLoading = loading || isFetchingSelected;
 
+  // Lógica de exibição do texto no botão
+  const buttonText = useMemo(() => {
+    if (isOverallLoading) {
+      // Se estiver carregando, mas tivermos um nome inicial, mostre o nome inicial
+      if (selectedOmId && initialOmName) {
+        return initialOmName;
+      }
+      return "Carregando...";
+    }
+    
+    if (displayOM) {
+      // Se a OM completa foi carregada, use o nome dela
+      return displayOM.nome_om;
+    }
+    
+    if (selectedOmId && initialOmName) {
+      // Se o ID está presente, mas a busca falhou ou a OM não está na lista, use o nome inicial
+      return initialOmName;
+    }
+    
+    // Caso contrário, mostre o placeholder
+    return placeholder;
+  }, [isOverallLoading, displayOM, selectedOmId, initialOmName, placeholder]);
+
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -148,16 +173,9 @@ export function OmSelector({
           className="w-full justify-between"
           disabled={disabled || isOverallLoading}
         >
-          {isOverallLoading ? (
-            "Carregando..."
-          ) : displayOM ? ( // Usa displayOM para renderizar
-            // Exibe apenas o nome da OM (sigla)
-            <span className="truncate">{displayOM.nome_om}</span>
-          ) : selectedOmId && initialOmName ? ( // NOVO: Fallback display if ID is present but OM object is missing
-            <span className="truncate">{initialOmName}</span>
-          ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
-          )}
+          <span className={cn("truncate", !selectedOmId && !displayOM && "text-muted-foreground")}>
+            {buttonText}
+          </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
