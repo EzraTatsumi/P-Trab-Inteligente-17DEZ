@@ -88,6 +88,7 @@ src/pages/ClasseIForm.tsx
 src/pages/ClasseIIForm.tsx
 src/pages/ClasseIIIForm.tsx
 src/pages/ClasseVForm.tsx
+src/pages/ClasseVIForm.tsx
 
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
 # src/lib/formatUtils.ts
