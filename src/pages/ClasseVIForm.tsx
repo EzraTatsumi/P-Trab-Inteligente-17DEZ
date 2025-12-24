@@ -121,7 +121,7 @@ const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseV
 
     return `33.90.30 - Aquisição de Material de Classe VI (${getCategoryLabel(categoria)})
 OM de Destino: ${organizacao} (UG: ${ug})
-Período: ${dias_operacao} dias de ${faseFormatada}
+Período: ${diasOperacao} dias de ${faseFormatada}
 Total de Itens na Categoria: ${totalQuantidade}
 
 Cálculo:
@@ -493,7 +493,9 @@ const ClasseVIForm = () => {
 
   const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = e.target.value;
-      setCurrentND39Input(formatCurrencyInput(rawValue));
+      // FIX: Use the formatted string value from formatCurrencyInput
+      const { formatted } = formatCurrencyInput(rawValue);
+      setCurrentND39Input(formatted);
   };
 
   const handleND39InputBlur = () => {
