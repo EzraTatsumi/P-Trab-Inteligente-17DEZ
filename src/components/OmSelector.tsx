@@ -20,6 +20,12 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { OMData } from "@/lib/omUtils";
 
+// Helper function to check if a string is a valid UUID (approximation)
+const isUUID = (id: string): boolean => {
+  // Simple check for UUID format (8-4-4-4-12 hex characters)
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+};
+
 interface OmSelectorProps {
   selectedOmId?: string; // ID da OM selecionada
   onChange: (omData: OMData | undefined) => void; // Passa o objeto OMData completo
@@ -104,6 +110,13 @@ export function OmSelector({
       setDisplayOM(foundInList);
       setIsFetchingSelected(false); 
       return;
+    }
+    
+    // NEW CHECK: If the ID is not a valid UUID, we stop here and rely on currentOmName fallback.
+    if (!isUUID(selectedOmId)) {
+        setDisplayOM(undefined);
+        setIsFetchingSelected(false);
+        return;
     }
 
     const fetchSelectedOM = async () => {
