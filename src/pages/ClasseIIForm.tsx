@@ -1206,11 +1206,11 @@ const ClasseIIForm = () => {
                             </div>
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
-                                <span className="font-medium text-green-600">{formatCurrency(allocation.nd_30_value)}</span>
+                            <span className="font-medium text-green-600">{formatCurrency(allocation.nd_30_value)}</span>
                             </div>
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
-                                <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
+                            <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
                             </div>
                             {!areNumbersEqual(allocation.total_valor, totalCategoria) && (
                                 <p className="text-xs text-destructive flex items-center gap-1 pt-1">
