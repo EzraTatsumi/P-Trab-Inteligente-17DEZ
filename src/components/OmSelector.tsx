@@ -151,7 +151,6 @@ export function OmSelector({
     }
     
     // 2. Se o formulário já tem um nome salvo (modo de edição), exibe-o imediatamente.
-    // Isso garante que o nome apareça mesmo que a lista de OMs ainda esteja carregando.
     if (currentOmName) {
       return currentOmName;
     }
@@ -164,6 +163,22 @@ export function OmSelector({
     // 4. Default
     return placeholder;
   }, [isOverallLoading, displayOM, currentOmName, placeholder]);
+  
+  // Novo: Determina o ID de seleção para a lista de comandos
+  const commandSelectedId = useMemo(() => {
+    if (selectedOmId && isUUID(selectedOmId)) {
+      return selectedOmId;
+    }
+    
+    // Se não temos um ID válido, mas temos um nome (em modo de edição), 
+    // tentamos encontrar o ID correspondente na lista de OMs carregadas.
+    if (currentOmName && oms.length > 0) {
+      const foundOm = oms.find(om => om.nome_om === currentOmName);
+      return foundOm?.id;
+    }
+    
+    return undefined;
+  }, [selectedOmId, currentOmName, oms]);
 
 
   return (
@@ -187,7 +202,14 @@ export function OmSelector({
         <Command>
           <CommandInput placeholder="Buscar OM..." />
           <CommandList>
-            <CommandEmpty>Nenhuma OM encontrada.</CommandEmpty>
+            {isOverallLoading && (
+                <CommandItem disabled>
+                    Carregando lista de OMs...
+                </CommandItem>
+            )}
+            {!isOverallLoading && oms.length === 0 && (
+                <CommandEmpty>Nenhuma OM encontrada.</CommandEmpty>
+            )}
             <CommandGroup>
               {oms.map((om) => (
                 <CommandItem
@@ -195,14 +217,15 @@ export function OmSelector({
                   value={`${om.nome_om} ${om.codug_om} ${om.rm_vinculacao} ${om.id}`} 
                   onSelect={(currentValue) => {
                     const selected = oms.find(o => o.id === om.id);
-                    onChange(selected?.id === selectedOmId ? undefined : selected);
+                    // Se o item selecionado for o mesmo que o atual, deseleciona (passa undefined)
+                    onChange(selected?.id === commandSelectedId ? undefined : selected);
                     setOpen(false);
                   }}
                 >
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      selectedOmId === om.id ? "opacity-100" : "opacity-0"
+                      commandSelectedId === om.id ? "opacity-100" : "opacity-0"
                     )}
                   />
                   <div className="flex flex-col">
