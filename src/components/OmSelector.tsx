@@ -46,7 +46,7 @@ export function OmSelector({
   disabled = false,
   omsList,
   defaultOmId,
-  currentOmName, // USANDO O NOVO NOME DA PROP
+  currentOmName,
   initialOmUg,
 }: OmSelectorProps) {
   const [open, setOpen] = useState(false);
@@ -99,59 +99,71 @@ export function OmSelector({
 
   // 3. Efeito para garantir que a OM selecionada seja exibida, mesmo que não esteja na lista 'oms'
   useEffect(() => {
-    if (!selectedOmId) {
-      setDisplayOM(undefined);
-      return;
-    }
-
-    const foundInList = oms.find(om => om.id === selectedOmId);
-    
-    if (foundInList) {
-      setDisplayOM(foundInList);
-      setIsFetchingSelected(false); 
-      return;
-    }
-    
-    // NEW CHECK: If the ID is not a valid UUID, we stop here and rely on currentOmName fallback.
-    if (!isUUID(selectedOmId)) {
-        setDisplayOM(undefined);
-        setIsFetchingSelected(false);
-        return;
-    }
-
-    const fetchSelectedOM = async () => {
-      setIsFetchingSelected(true);
+    // Case 1: We have a valid ID (either selected or previously fetched)
+    if (selectedOmId && isUUID(selectedOmId)) {
+      const foundInList = oms.find(om => om.id === selectedOmId);
       
-      try {
-        const { data } = await supabase
-          .from('organizacoes_militares')
-          .select('*')
-          .eq('id', selectedOmId)
-          .maybeSingle();
-        
-        setDisplayOM((data || undefined) as OMData | undefined);
-      } catch (error) {
-        console.error('Erro ao buscar OM selecionada:', error);
-      } finally {
-        setIsFetchingSelected(false);
+      if (foundInList) {
+        setDisplayOM(foundInList);
+        setIsFetchingSelected(false); 
+        return;
       }
-    };
-
-    fetchSelectedOM();
+      
+      // If ID is present but not in list, fetch it (e.g., if list is filtered or incomplete)
+      const fetchSelectedOM = async () => {
+        setIsFetchingSelected(true);
+        
+        try {
+          const { data } = await supabase
+            .from('organizacoes_militares')
+            .select('*')
+            .eq('id', selectedOmId)
+            .maybeSingle();
+          
+          setDisplayOM((data || undefined) as OMData | undefined);
+        } catch (error) {
+          console.error('Erro ao buscar OM selecionada:', error);
+        } finally {
+          setIsFetchingSelected(false);
+        }
+      };
+      fetchSelectedOM();
+      return;
+    }
     
-  }, [selectedOmId, oms]);
+    // Case 2: No valid ID, but we have a saved name (edit mode for RHF forms or PTrabManager)
+    if (!selectedOmId && currentOmName && oms.length > 0) {
+        // Try to find the OM object based on the name and UG
+        const foundOm = oms.find(om => 
+            om.nome_om === currentOmName && 
+            (!initialOmUg || om.codug_om === initialOmUg)
+        );
+        
+        if (foundOm) {
+            // Set the display OM immediately using the found object
+            setDisplayOM(foundOm);
+            setIsFetchingSelected(false);
+            return;
+        }
+    }
+    
+    // Case 3: Nothing found, clear display
+    setDisplayOM(undefined);
+    setIsFetchingSelected(false);
+    
+  }, [selectedOmId, oms, currentOmName, initialOmUg]);
 
   const isOverallLoading = loading || isFetchingSelected;
 
   // Lógica de exibição do texto no botão
   const buttonText = useMemo(() => {
-    // 1. Se um objeto OM completo foi carregado (via ID lookup)
+    // 1. Se um objeto OM completo foi carregado (via ID lookup or name lookup)
     if (displayOM) {
       return displayOM.nome_om;
     }
     
     // 2. Se o formulário já tem um nome salvo (modo de edição), exibe-o imediatamente.
-    if (currentOmName) {
+    if (currentOmName) { 
       return currentOmName;
     }
     
@@ -166,19 +178,18 @@ export function OmSelector({
   
   // Novo: Determina o ID de seleção para a lista de comandos
   const commandSelectedId = useMemo(() => {
+    // If we have a displayOM (found via ID or Name lookup), use its ID
+    if (displayOM) {
+        return displayOM.id;
+    }
+    
+    // Fallback to the ID passed in props if it's valid (should be handled by displayOM logic above)
     if (selectedOmId && isUUID(selectedOmId)) {
       return selectedOmId;
     }
     
-    // Se não temos um ID válido, mas temos um nome (em modo de edição), 
-    // tentamos encontrar o ID correspondente na lista de OMs carregadas.
-    if (currentOmName && oms.length > 0) {
-      const foundOm = oms.find(om => om.nome_om === currentOmName);
-      return foundOm?.id;
-    }
-    
     return undefined;
-  }, [selectedOmId, currentOmName, oms]);
+  }, [selectedOmId, displayOM]);
 
 
   return (
