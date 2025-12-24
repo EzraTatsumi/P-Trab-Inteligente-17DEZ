@@ -20,6 +20,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox"; // Importação adicionada
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Pencil, Trash2, Plus, FileText, Loader2, Check, X, Share2, Users, RefreshCw, ArrowLeft, Copy, AlertTriangle, MessageSquare, ClipboardList } from "lucide-react";
 import { CloneVariationDialog } from "@/components/CloneVariationDialog";
 import ShareLinkDialog from "@/components/ShareLinkDialog";
@@ -30,7 +41,7 @@ import { sanitizeError } from "@/lib/errorUtils";
 import AIChatDrawer from "@/components/AIChatDrawer";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { cn } from "@/lib/utils"; // Importação adicionada
-import { Checkbox } from "@/components/ui/checkbox"; // Importação adicionada
+import { ConsolidationNumberDialog } from "@/components/ConsolidationNumberDialog"; // Importação adicionada
 
 // --- DEFINIÇÕES DE TIPOS ---
 type PTrab = Tables<'p_trab'>;
