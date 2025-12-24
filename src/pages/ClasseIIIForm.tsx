@@ -442,7 +442,7 @@ const ClasseIIIForm = () => {
       setRmFornecimento(rmFromDetailing);
       setCodugRmFornecimento(codugRmFromDetailing);
     } else {
-      // Clear RM/CODUG state, relying on OM fetch later if possible
+      // Clear RM/CODUG state if not found in detailing, relying on OM fetch later if possible
       setRmFornecimento("");
       setCodugRmFornecimento("");
     }
@@ -1359,7 +1359,8 @@ const getMemoriaRecords = granularRegistros;
     
     // 4. Set the tab based on the first item found (if any)
     // We need to find the category of the first item in the reconstructed list, not the raw record.
-    // We rely on the state update later.
+    // Since reconstructFormState is async due to OM fetching, we rely on the state update later.
+    // For now, we can try to infer the category from the first item in the raw records:
     const firstItem = (recordsToReconstruct[0].itens_equipamentos as any[])?.[0];
     if (firstItem) {
         setSelectedTab(firstItem.categoria as TipoEquipamento);
@@ -1560,7 +1561,6 @@ const getMemoriaRecords = granularRegistros;
                   <Label>OM Detentora do Equipamento *</Label>
                   <OmSelector 
                     selectedOmId={form.selectedOmId} 
-                    initialOmName={form.organizacao} // ADICIONADO: Nome inicial para exibição imediata
                     onChange={handleOMChange} 
                     placeholder="Selecione a OM detentora..."
                     disabled={loading}
@@ -1666,7 +1666,6 @@ const getMemoriaRecords = granularRegistros;
                   <Label>OM Destino Recurso Lubrificante (ND 30) *</Label>
                   <OmSelector 
                     selectedOmId={lubricantAllocation.selectedOmDestinoId} 
-                    initialOmName={lubricantAllocation.om_destino_recurso} // ADICIONADO: Nome inicial para exibição imediata
                     onChange={handleOMLubrificanteChange} 
                     placeholder="Selecione a OM de destino..."
                     disabled={!form.organizacao || loading}
@@ -1964,109 +1963,79 @@ const getMemoriaRecords = granularRegistros;
                 )}
 
                 <div className="space-y-4">
-                  {Object.entries(registrosAgrupadosPorSuprimento).map(([omKey, group]) => {
-                    const omName = group.om;
-                    const ug = group.ug;
+                  {Object.entries(itensAgrupadosPorCategoriaParaResumo).map(([categoria, itens]) => {
+                    const categoriaLabel = CATEGORIAS.find(c => c.key === categoria)?.label || categoria;
+                    
+                    const totalCombustivelCategoria = itens.reduce((sum, item) => {
+                      const { valorCombustivel } = calculateItemTotals(item, refLPC, form.dias_operacao);
+                      return sum + valorCombustivel;
+                    }, 0);
+                    
+                    const totalLubrificanteCategoria = itens.reduce((sum, item) => {
+                      const { valorLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
+                      return sum + valorLubrificante;
+                    }, 0);
+                    
+                    const totalCategoria = totalCombustivelCategoria + totalLubrificanteCategoria;
                     
                     return (
-                      <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                      <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
-                          <h3 className="font-bold text-lg text-primary">
-                            {omName} (UG: {ug})
-                          </h3>
-                          <span className="font-extrabold text-xl text-primary">
-                            {formatCurrency(group.total)}
-                          </span>
+                          <h4 className="font-bold text-base text-primary">{categoriaLabel}</h4>
+                          <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
                         </div>
                         
-                        <div className="space-y-3">
-                          {group.suprimentos.map((suprimentoGroup) => {
-                            const isCombustivel = suprimentoGroup.suprimento_tipo === 'COMBUSTIVEL';
-                            
-                            // Determine badge class and text based on consolidated type
-                            let badgeText = '';
-                            let badgeClass = '';
-                            
-                            if (isCombustivel) {
-                              badgeText = suprimentoGroup.original_registro.tipo_combustivel;
-                              // Use getCombustivelBadgeClass based on the specific fuel type
-                              badgeClass = getCombustivelBadgeClass(suprimentoGroup.original_registro.tipo_combustivel as CombustivelTipo);
-                            } else {
-                              badgeText = 'LUBRIFICANTE';
-                              badgeClass = 'bg-purple-600 text-white hover:bg-purple-700'; // Cor padronizada para Lubrificante
-                            }
-                            
-                            const originalRegistro = suprimentoGroup.original_registro;
+                        <div className="space-y-2">
+                          {itens.map((item, index) => {
+                            const { itemTotal, totalLitros, valorCombustivel, valorLubrificante, formulaLitros, precoLitro, litrosSemMargemItem } = calculateItemTotals(item, refLPC, form.dias_operacao);
+                            const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
                             
                             return (
-                              <Card key={originalRegistro.id} className="p-3 bg-background border">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex flex-col gap-1">
-                                    <div className="flex items-center gap-2">
-                                      <h4 className="font-semibold text-base text-foreground">
-                                        {isCombustivel ? 'Combustível' : 'Lubrificante'}
-                                      </h4>
-                                      <Badge variant="default" className={cn("w-fit", badgeClass)}>
-                                        {badgeText}
-                                      </Badge>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                      Total Litros: {formatNumber(suprimentoGroup.total_litros, 2)} L | Dias: {originalRegistro.dias_operacao}
-                                    </p>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-bold text-lg text-primary/80">
-                                      {formatCurrency(suprimentoGroup.total_valor)}
+                              <div 
+                                key={index} 
+                                className={cn(
+                                  "p-2 border-b border-dashed border-border/50",
+                                  index === itens.length - 1 && "border-b-0 pb-0"
+                                )}
+                              >
+                                <div className="flex justify-between items-center">
+                                  <span className="font-medium text-sm text-foreground">
+                                    {item.item}
+                                  </span>
+                                  <span className="font-bold text-base text-primary">
+                                    {formatCurrency(itemTotal)}
+                                  </span>
+                                </div>
+                                
+                                <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                                  {/* Detalhe Combustível - Volume e Custo */}
+                                  <div className="flex justify-between">
+                                    <span className="w-2/3">
+                                      Combustível ({item.tipo_combustivel_fixo}): {formulaLitros} = {formatNumber(litrosSemMargemItem)} L + 30% = {formatNumber(totalLitros)} L
                                     </span>
-                                    <div className="flex gap-1">
-                                      {/* Ações de Edição e Deleção devem ser feitas no registro CONSOLIDADO original */}
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-8 w-8"
-                                        onClick={() => handleEditarConsolidado(originalRegistro)}
-                                      >
-                                        <Pencil className="h-4 w-4" />
-                                      </Button>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        onClick={() => handleDeletarConsolidado(originalRegistro.id)}
-                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </div>
+                                    <span className="w-1/3 text-right font-medium text-foreground">
+                                      {formatNumber(totalLitros)} L x {formatCurrency(precoLitro)} = {formatCurrency(valorCombustivel)}
+                                    </span>
                                   </div>
+                                  
+                                  {/* Detalhe Lubrificante */}
+                                  {isLubricantType && valorLubrificante > 0 && (
+                                    <div className="flex justify-between text-purple-600">
+                                      <span className="w-1/2">
+                                        Lubrificante:
+                                      </span>
+                                      <span className="w-1/2 text-right font-medium">
+                                        {formatCurrency(valorLubrificante)}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
-                                
-                                {/* Detalhes por Categoria (Gerador, Embarcação, etc.) */}
-                                <div className="pt-2 border-t mt-2 space-y-1">
-                                  {CATEGORIAS.map(cat => {
-                                    const totais = suprimentoGroup.categoria_totais[cat.key];
-                                    if (totais.valor > 0) {
-                                      const categoryBadgeStyle = getClasseIIICategoryBadgeStyle(cat.key);
-                                      return (
-                                        <div key={cat.key} className="flex justify-between text-xs">
-                                          <span className="text-muted-foreground flex items-center gap-1">
-                                            <cat.icon className="h-3 w-3" />
-                                            {categoryBadgeStyle.label}: {formatNumber(totais.litros, 2)} L
-                                          </span>
-                                          <span className="font-medium text-foreground text-right">
-                                            {formatCurrency(totais.valor)}
-                                          </span>
-                                        </div>
-                                      );
-                                    }
-                                    return null;
-                                  })}
-                                </div>
-                                
-                                {/* Detalhes da Alocação (ND 30/39) - REMOVIDO */}
-                              </Card>
+                              </div>
                             );
                           })}
                         </div>
+                        
+                        {/* REMOVIDO: Detalhes de Custo Combustível e Lubrificante */}
                       </Card>
                     );
                   })}
@@ -2197,31 +2166,23 @@ const getMemoriaRecords = granularRegistros;
                                           {categoryBadgeStyle.label}: {formatNumber(totais.litros, 2)} L
                                         </span>
                                         <span className="font-medium text-foreground text-right">
-                                            {formatCurrency(totais.valor)}
-                                          </span>
-                                        </div>
-                                      );
-                                    }
-                                    return null;
-                                  })}
-                                </div>
-                                
-                                {/* Detalhes da Alocação (ND 30/39) - REMOVIDO */}
-                              </Card>
-                            );
-                          })}
-                        </div>
-                      </Card>
-                    );
-                  })}
-                </div>
-                
-                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
-                  <span className="font-bold text-base text-primary">VALOR TOTAL DA CLASSE III</span>
-                  <span className="font-extrabold text-xl text-primary">
-                    {formatCurrency(registros.reduce((sum, r) => sum + r.valor_total, 0))}
-                  </span>
-                </div>
+                                          {formatCurrency(totais.valor)}
+                                        </span>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                              
+                              {/* Detalhes da Alocação (ND 30/39) - REMOVIDO */}
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             )}
             
