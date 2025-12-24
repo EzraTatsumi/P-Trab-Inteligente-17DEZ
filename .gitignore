@@ -93,7 +93,7 @@ src/pages/ClasseVIIForm.tsx
 src/pages/ClasseVIIIForm.tsx
 
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
-# src/lib/formatUtils.ts1
+# src/lib/formatUtils.ts
 # src/lib/omUtils.ts
 # src/lib/ptrabUtils.ts
 # src/lib/validationSchemas.ts
