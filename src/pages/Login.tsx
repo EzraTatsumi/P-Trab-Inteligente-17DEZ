@@ -69,8 +69,8 @@ const Login = () => {
         
         // --- TRATAMENTO ESPECÍFICO PARA E-MAIL NÃO CONFIRMADO ---
         if (error.message === "Email not confirmed") {
-            // Mensagem ajustada para não sugerir um clique inexistente
-            setLoginError("Seu e-mail ainda não foi confirmado. Por favor, verifique sua caixa de entrada. O diálogo para reenviar o link de verificação foi aberto.");
+            // Mensagem ajustada para direcionar o usuário ao diálogo para reenvio
+            setLoginError("Seu e-mail ainda não foi confirmado. O diálogo de verificação foi aberto para que você possa reenviar o link.");
             setShowEmailVerificationDialog(true); // Abre o diálogo para reenviar
             return;
         }
