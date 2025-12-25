@@ -13,7 +13,7 @@ serve(async (req) => {
   
   try {
     const { email } = await req.json();
-    console.log(`Received email for check: ${email}`); // DEBUG LOG
+    console.log(`Received email for check: ${email}`);
 
     if (!email) {
       return new Response(
@@ -34,19 +34,18 @@ serve(async (req) => {
       }
     );
 
-    // Consulta a tabela auth.users (acessível apenas com Service Role Key)
-    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({
-        filter: `email eq '${email}'`,
-        perPage: 1,
-    });
+    // ✅ Usando a função administrativa correta para verificar a existência do usuário
+    const { data, error } = await supabaseAdmin.auth.admin.getUserByEmail(email);
 
-    if (error) {
+    // Se o erro for 'User not found', isso significa que o usuário não existe, o que é o resultado esperado.
+    if (error && error.message !== "User not found") {
       console.error("Supabase Admin Error:", error);
       throw new Error("Erro ao consultar o banco de dados de usuários.");
     }
     
-    const exists = users && users.length > 0;
-    console.log(`User existence check result for ${email}: ${exists}`); // DEBUG LOG
+    // O usuário existe se 'data' e 'data.user' estiverem presentes.
+    const exists = !!data?.user;
+    console.log(`User existence check result for ${email}: ${exists}`);
 
     return new Response(
       JSON.stringify({ exists }),
