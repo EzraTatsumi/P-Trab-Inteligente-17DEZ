@@ -280,8 +280,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
       }
 
       if (emailCheck?.exists) {
-        // MENSAGEM DE ERRO MELHORADA
-        const msg = "Este e-mail já está cadastrado. Se você não confirmou sua conta, use a opção 'Excluir conta não confirmada' na tela de Login para limpar o registro e tentar novamente.";
+        const msg = "Este e-mail já está cadastrado. Utilize outro ou faça login.";
         toast.error(msg);
         setSubmissionError(msg);
         return; // ⛔ BLOQUEIA FLUXO
