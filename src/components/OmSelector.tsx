@@ -122,19 +122,57 @@ export function OmSelector({
           .eq('id', selectedOmId)
           .maybeSingle();
         
-        setDisplayOM((data || undefined) as OMData | undefined);
+        // Se a busca falhar ou não encontrar, mas temos o nome inicial, usamos ele como fallback final.
+        if (data) {
+            setDisplayOM(data as OMData);
+        } else if (initialOmName) {
+            // Fallback para OM inativa/excluída, usando o nome inicial
+            setDisplayOM({
+                id: selectedOmId,
+                nome_om: initialOmName,
+                codug_om: initialOmUg || 'N/A', 
+                rm_vinculacao: 'N/A', 
+                user_id: '',
+                ativo: false,
+                cidade: '',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            } as OMData);
+        } else {
+            setDisplayOM(undefined);
+        }
+
       } catch (error) {
         console.error('Erro ao buscar OM selecionada:', error);
-        // Se falhar, displayOM permanece undefined
+        setDisplayOM(undefined);
       } finally {
         setIsFetchingSelected(false);
       }
     };
 
-    // Dispara a busca individual imediatamente se o ID estiver presente e não encontrado na lista atual.
-    fetchSelectedOM();
+    // Se selectedOmId está presente, mas displayOM não está definido, e temos initialOmName,
+    // definimos um display temporário para garantir a exibição imediata (priorizando displayOM no useMemo).
+    if (selectedOmId && initialOmName && !displayOM && !isFetchingSelected) {
+        setDisplayOM({
+            id: selectedOmId,
+            nome_om: initialOmName,
+            codug_om: initialOmUg || 'N/A', 
+            rm_vinculacao: 'N/A', 
+            user_id: '',
+            ativo: false,
+            cidade: '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        } as OMData);
+    }
+
+
+    // Dispara a busca individual se não estivermos buscando e a OM não foi encontrada na lista.
+    if (!isFetchingSelected) {
+        fetchSelectedOM();
+    }
     
-  }, [selectedOmId, oms]); // Removido 'loading' das dependências para esta busca
+  }, [selectedOmId, oms, initialOmName, initialOmUg]);
 
   const isOverallLoading = loading || isFetchingSelected;
 
@@ -146,7 +184,7 @@ export function OmSelector({
     }
     
     // 2. Se temos um nome inicial (do registro de edição), use-o como fallback imediato.
-    // Isso cobre o caso onde selectedOmId é undefined (OM não encontrada) ou a busca ainda está em andamento.
+    // Esta linha agora é um fallback secundário, pois a lógica acima tenta preencher displayOM primeiro.
     if (initialOmName) {
       return initialOmName;
     }
