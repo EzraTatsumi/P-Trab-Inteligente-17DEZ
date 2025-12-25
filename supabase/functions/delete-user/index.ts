@@ -30,22 +30,32 @@ serve(async (req) => {
     const email = body.email ? String(body.email).trim() : null; 
     let userId: string | null = null;
 
-    if (authHeader) {
+    // Adiciona verificação robusta para o cabeçalho de autorização
+    if (authHeader && authHeader.startsWith('Bearer ') && authHeader.length > 10) {
       // --- Case 1: Deletion by JWT (Authenticated User) ---
       const token = authHeader.replace('Bearer ', '');
       const { data: { user }, error: userError } = await supabaseServiceRole.auth.getUser(token);
 
       if (userError || !user) {
         console.error("JWT Validation Error:", userError);
-        return new Response(JSON.stringify({ error: 'Unauthorized: Invalid user token.' }), { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
+        // Se o token for inválido, não retornamos 401 imediatamente, 
+        // mas tentamos o Caminho 2 se o email estiver presente.
+        // Se o email não estiver presente, retornamos 401.
+        if (!email) {
+            return new Response(JSON.stringify({ error: 'Unauthorized: Invalid user token and missing email.' }), { 
+              status: 401, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            });
+        }
+        // Se o token for inválido, mas o email estiver presente, o fluxo continua para o Caminho 2.
+      } else {
+        userId = user.id;
+        console.log(`User ID found via JWT: ${userId}`);
       }
-      userId = user.id;
-      console.log(`User ID found via JWT: ${userId}`);
-      
-    } else if (email) {
+    } 
+    
+    // Se o userId não foi encontrado via JWT (ou o JWT era inválido/ausente) E o email está presente, tenta o Caminho 2.
+    if (!userId && email) {
       // --- Case 2: Deletion by Email (Unauthenticated/Unconfirmed User) ---
       console.log(`Attempting to find user by email: ${email}`);
       
@@ -57,7 +67,6 @@ serve(async (req) => {
       
       if (listError) {
           console.error("Admin list users error:", listError);
-          // Return a specific error response for DB failure
           return new Response(JSON.stringify({ error: 'Database error while finding user by email.' }), { 
               status: 500, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -86,7 +95,7 @@ serve(async (req) => {
       userId = userToDelete.id;
       console.log(`Unconfirmed User ID found via email: ${userId}`);
       
-    } else {
+    } else if (!userId) {
       // Neither token nor email provided
       return new Response(JSON.stringify({ error: 'Unauthorized: Missing Authorization header or email parameter.' }), { 
         status: 401, 
@@ -96,6 +105,7 @@ serve(async (req) => {
 
     // 4. Excluir o usuário usando o Service Role Client
     if (!userId) {
+        // Este caso só deve ocorrer se a lógica acima falhar, mas é um bom fallback
         throw new Error("Internal logic error: userId is null after checks.");
     }
     
