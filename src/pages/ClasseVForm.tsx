@@ -173,6 +173,32 @@ ${detalhamentoItens}
 Valor Total: ${formatCurrency(valorTotal)}.`;
   };
 
+// NOVO: Gera a memória de cálculo detalhada para uma categoria
+const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseV[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
+    const faseFormatada = formatFasesParaTexto(faseAtividade);
+    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
+    const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
+
+    let detalhamentoItens = "";
+    itens.forEach(item => {
+        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
+        detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
+    });
+
+    return `33.90.30 - Aquisição de Material de Armamento (${getCategoryLabel(categoria)})
+OM de Destino: ${organizacao} (UG: ${ug})
+Período: ${diasOperacao} dias de ${faseFormatada}
+Total de Itens na Categoria: ${totalQuantidade}
+
+Cálculo:
+Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
+
+Detalhes dos Itens:
+${detalhamentoItens.trim()}
+
+Valor Total da Categoria: ${formatCurrency(totalValor)}.`;
+};
+
 
 const ClasseVForm = () => {
   const navigate = useNavigate();
@@ -915,6 +941,7 @@ const ClasseVForm = () => {
   // Helper function to check if a category is dirty (needs saving)
   const isCategoryAllocationDirty = (category: Categoria, currentTotal: number, allocation: CategoryAllocation, tempInputs: Record<Categoria, string>, tempDestinations: Record<Categoria, TempDestination>): boolean => {
       // 1. Check for quantity/item change (total value mismatch)
+      // currentTotal agora é o valor calculado a partir dos itens ATUAIS (currentItemsForCheck)
       if (!areNumbersEqual(allocation.total_valor, currentTotal)) {
           return true;
       }
@@ -1237,10 +1264,14 @@ const ClasseVForm = () => {
                     
                     const allocation = categoryAllocations[categoria as Categoria];
                     
+                    // NOVO CÁLCULO: Obtém o total atual (base value) para a categoria, usando os itens não salvos se for a aba ativa
+                    const currentItemsForCheck = categoria === selectedTab ? currentCategoryItems : itens;
+                    const currentTotalForCheck = currentItemsForCheck.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    
                     // NOVO: Verifica se a categoria está "suja" (itens ou alocação alterados)
                     const isDirty = isCategoryAllocationDirty(
                         categoria as Categoria, 
-                        totalCategoria, 
+                        currentTotalForCheck, // Passa o total atual (base value)
                         allocation, 
                         tempND39Inputs, 
                         tempDestinations
@@ -1438,16 +1469,13 @@ const ClasseVForm = () => {
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
                   // NOVO: Gera a memória automática com o rótulo padronizado
-                  const memoriaAutomatica = generateDetalhamento(
+                  const memoriaAutomatica = generateCategoryMemoriaCalculo(
+                      registro.categoria as Categoria, 
                       registro.itens_equipamentos as ItemClasseV[], 
                       registro.dias_operacao, 
                       registro.organizacao, 
                       registro.ug, 
-                      registro.fase_atividade || '', 
-                      registro.organizacao, 
-                      registro.ug, 
-                      registro.valor_nd_30, 
-                      registro.valor_nd_39
+                      registro.fase_atividade
                   );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);

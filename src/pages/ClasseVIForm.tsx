@@ -943,6 +943,7 @@ const ClasseVIForm = () => {
   // Helper function to check if a category is dirty (needs saving)
   const isCategoryAllocationDirty = (category: Categoria, currentTotal: number, allocation: CategoryAllocation, tempInputs: Record<Categoria, string>, tempDestinations: Record<Categoria, TempDestination>): boolean => {
       // 1. Check for quantity/item change (total value mismatch)
+      // currentTotal agora é o valor calculado a partir dos itens ATUAIS (currentItemsForCheck)
       if (!areNumbersEqual(allocation.total_valor_com_margem, currentTotal)) {
           return true;
       }
@@ -1281,10 +1282,15 @@ const ClasseVIForm = () => {
                     
                     const allocation = categoryAllocations[categoria as Categoria];
                     
+                    // NOVO CÁLCULO: Obtém o total atual (COM MARGEM) para a categoria, usando os itens não salvos se for a aba ativa
+                    const currentItemsForCheck = categoria === selectedTab ? currentCategoryItems : itens;
+                    const currentTotalBaseForCheck = currentItemsForCheck.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    const currentTotalComMargemForCheck = currentTotalBaseForCheck * (1 + MARGEM_RESERVA);
+                    
                     // NOVO: Verifica se a categoria está "suja" (itens ou alocação alterados)
                     const isDirty = isCategoryAllocationDirty(
                         categoria as Categoria, 
-                        totalCategoriaComMargem, 
+                        currentTotalComMargemForCheck, // Passa o total atual COM MARGEM
                         allocation, 
                         tempND39Inputs, 
                         tempDestinations
