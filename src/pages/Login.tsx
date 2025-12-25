@@ -67,6 +67,14 @@ const Login = () => {
         // Incrementa a contagem de tentativas falhas
         setLoginAttempts(prev => prev + 1);
         
+        // --- TRATAMENTO ESPECÍFICO PARA E-MAIL NÃO CONFIRMADO ---
+        if (error.message === "Email not confirmed") {
+            setLoginError("Seu e-mail ainda não foi confirmado. Por favor, verifique sua caixa de entrada ou clique abaixo para reenviar o link de verificação.");
+            setShowEmailVerificationDialog(true); // Abre o diálogo para reenviar
+            return;
+        }
+        // --------------------------------------------------------
+        
         const sanitizedMessage = sanitizeAuthError(error);
         
         // Lógica de erro inteligente: Se for credencial inválida e já tentou 3 vezes, sugere cadastro
@@ -80,7 +88,7 @@ const Login = () => {
           return;
         }
         
-        // Para outros erros (e-mail não confirmado, etc.)
+        // Para outros erros
         setLoginError(sanitizedMessage);
         throw error;
       }
