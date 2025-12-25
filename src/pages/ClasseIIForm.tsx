@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -24,8 +24,8 @@ import { TablesInsert } from "@/integrations/supabase/types";
 import { defaultClasseIIConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Importar AlertTitle
-import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils"; // NOVO IMPORT
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -82,6 +82,17 @@ interface CategoryAllocation {
   selectedOmDestinoId?: string;
 }
 
+// --- NOVOS TIPOS TEMPORÁRIOS (UNSAVED CHANGES) ---
+interface TempDestination {
+    om: string;
+    ug: string;
+    id?: string;
+}
+const initialTempDestinations: Record<Categoria, TempDestination> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: { om: "", ug: "", id: undefined } }), {} as Record<Categoria, TempDestination>);
+const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, string>);
+// --- FIM NOVOS TIPOS TEMPORÁRIOS ---
+
+
 const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
     'Equipamento Individual': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
     'Proteção Balística': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
@@ -91,6 +102,12 @@ const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
 // Função para comparar números de ponto flutuante com tolerância
 const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
     return Math.abs(a - b) < tolerance;
+};
+
+// Helper function to get the numeric ND 39 value from the temporary input digits
+const getTempND39NumericValue = (category: Categoria, tempInputs: Record<Categoria, string>): number => {
+    const digits = tempInputs[category] || "";
+    return formatCurrencyInput(digits).numericValue;
 };
 
 // Helper para agrupar itens de um registro por categoria
@@ -185,7 +202,7 @@ const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organ
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${dias_operacao} dias de ${faseFormatada}, para ${organizacao}.
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
 Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
 Alocação:
@@ -231,27 +248,51 @@ const ClasseIIForm = () => {
   // NOVO ESTADO: Lista de itens da categoria atual com quantidades editáveis
   const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemClasseII[]>([]);
   
-  const [fasesAtividade, setFasesAtividade] = useState<string[]>(["Execução"]);
-  const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  
   // --- NOVOS ESTADOS TEMPORÁRIOS (UNSAVED CHANGES) ---
-  interface TempDestination {
-      om: string;
-      ug: string;
-      id?: string;
-  }
-  const initialTempDestinations: Record<Categoria, TempDestination> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: { om: "", ug: "", id: undefined } }), {} as Record<Categoria, TempDestination>);
-  const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, string>);
-  
   // Rastreia o input ND 39 (dígitos) temporário por categoria
   const [tempND39Inputs, setTempND39Inputs] = useState<Record<Categoria, string>>(initialTempND39Inputs);
   // Rastreia a OM de destino temporária por categoria
   const [tempDestinations, setTempDestinations] = useState<Record<Categoria, TempDestination>>(initialTempDestinations);
   // --- FIM NOVOS ESTADOS TEMPORÁRIOS ---
   
+  const [fasesAtividade, setFasesAtividade] = useState<string[]>(["Execução"]);
+  const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  
   const { handleEnterToNextField } = useFormNavigation();
   const formRef = useRef<HTMLDivElement>(null);
+
+  // Helper function to check if a category is dirty (needs saving)
+  const isCategoryAllocationDirty = useCallback((
+      category: Categoria, 
+      currentTotal: number, // Total calculated from the items being checked (either saved or current tab items)
+      allocation: CategoryAllocation, 
+      tempInputs: Record<Categoria, string>, 
+      tempDestinations: Record<Categoria, TempDestination>
+  ): boolean => {
+      // 1. Check for quantity/item change (total value mismatch)
+      if (!areNumbersEqual(allocation.total_valor, currentTotal)) {
+          return true;
+      }
+      
+      // 2. Check for ND 39 allocation change
+      const tempND39Value = getTempND39NumericValue(category, tempInputs);
+      if (!areNumbersEqual(tempND39Value, allocation.nd_39_value)) {
+          return true;
+      }
+      
+      // 3. Check for Destination OM change
+      const tempDest = tempDestinations[category];
+      if (allocation.om_destino_recurso !== tempDest.om || allocation.ug_destino_recurso !== tempDest.ug) {
+          // Only consider it dirty if the category has items (i.e., total > 0)
+          if (currentTotal > 0) {
+              return true;
+          }
+      }
+      
+      return false;
+  }, []);
+
 
   useEffect(() => {
     if (!ptrabId) {
@@ -352,11 +393,6 @@ const ClasseIIForm = () => {
     }
   }, [selectedTab, diretrizes, form.itens, form.organizacao, form.dias_operacao]);
 
-
-  const itensDisponiveis = useMemo(() => {
-    return diretrizes.filter(d => d.categoria === selectedTab);
-  }, [diretrizes, selectedTab]);
-  
   // MEMO: Agrupa os itens do formulário por categoria para exibição consolidada
   const itensAgrupadosPorCategoria = useMemo(() => {
     return form.itens.reduce((acc, item) => {
@@ -974,37 +1010,6 @@ const ClasseIIForm = () => {
     return [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
   }, [fasesAtividade, customFaseAtividade]);
 
-  // Helper function to get the numeric ND 39 value from the temporary input digits
-  const getTempND39NumericValue = (category: Categoria, tempInputs: Record<Categoria, string>): number => {
-      const digits = tempInputs[category] || "";
-      return formatCurrencyInput(digits).numericValue;
-  };
-
-  // Helper function to check if a category is dirty (needs saving)
-  const isCategoryAllocationDirty = (category: Categoria, currentTotal: number, allocation: CategoryAllocation, tempInputs: Record<Categoria, string>, tempDestinations: Record<Categoria, TempDestination>): boolean => {
-      // 1. Check for quantity/item change (total value mismatch)
-      if (!areNumbersEqual(allocation.total_valor, currentTotal)) {
-          return true;
-      }
-      
-      // 2. Check for ND 39 allocation change
-      const tempND39Value = getTempND39NumericValue(category, tempInputs);
-      if (!areNumbersEqual(tempND39Value, allocation.nd_39_value)) {
-          return true;
-      }
-      
-      // 3. Check for Destination OM change
-      const tempDest = tempDestinations[category];
-      if (allocation.om_destino_recurso !== tempDest.om || allocation.ug_destino_recurso !== tempDest.ug) {
-          // Only consider it dirty if the category has items (i.e., total > 0)
-          if (currentTotal > 0) {
-              return true;
-          }
-      }
-      
-      return false;
-  };
-
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1300,15 +1305,27 @@ const ClasseIIForm = () => {
 
                 <div className="space-y-4">
                   {Object.entries(itensAgrupadosPorCategoria).map(([categoria, itens]) => {
-                    const totalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    
+                    // Total calculado a partir dos itens SALVOS (form.itens)
+                    const totalCategoriaSaved = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    
+                    // 1. Determinar qual lista de itens usar para a verificação de sujeira:
+                    // Se a categoria for a aba ativa, usa os itens não salvos (currentCategoryItems)
+                    const itemsForDirtyCheck = categoria === selectedTab 
+                        ? currentCategoryItems.filter(i => i.quantidade > 0) 
+                        : itens;
+                    
+                    // 2. Calcular o total a partir da lista de verificação
+                    const currentTotalForCheck = itemsForDirtyCheck.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    
                     const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
                     
                     const allocation = categoryAllocations[categoria as Categoria];
                     
-                    // NOVO: Verifica se a categoria está "suja" (itens ou alocação alterados)
+                    // 3. Realizar a verificação de sujeira usando o total atual
                     const isDirty = isCategoryAllocationDirty(
                         categoria as Categoria, 
-                        totalCategoria, 
+                        currentTotalForCheck, 
                         allocation, 
                         tempND39Inputs, 
                         tempDestinations
@@ -1318,7 +1335,7 @@ const ClasseIIForm = () => {
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
                           <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} itens)</h4>
-                          <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
+                          <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoriaSaved)}</span>
                         </div>
                         
                         <div className="space-y-2">
