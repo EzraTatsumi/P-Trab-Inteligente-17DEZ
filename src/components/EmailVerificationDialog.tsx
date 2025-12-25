@@ -47,6 +47,8 @@ export const EmailVerificationDialog: React.FC<EmailVerificationDialogProps> = (
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: email,
+        // Adicionado emailRedirectTo para garantir que o link gerado seja consistente
+        emailRedirectTo: `${window.location.origin}/ptrab`, 
       });
 
       if (error) throw error;
@@ -197,7 +199,7 @@ export const EmailVerificationDialog: React.FC<EmailVerificationDialogProps> = (
             <AlertDialogDescription>
               Tem certeza que deseja excluir a conta associada a <span className="font-bold text-foreground">{email}</span>? Esta ação é irreversível.
             </AlertDialogDescription>
-          </AlertDialogHeader>
+          </AlertDialogDescription>
           <AlertDialogFooter>
             <AlertDialogAction 
               onClick={handleDeleteAccount}
