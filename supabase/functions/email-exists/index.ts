@@ -1,6 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-// Removendo a versão específica para tentar forçar o carregamento completo do módulo
-import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,23 +21,35 @@ serve(async (req) => {
       );
     }
 
-    // Cliente Supabase com Service Role Key para acesso administrativo
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-
-    // ✅ ÚNICA FORMA CORRETA DE CHECAR EMAIL
-    const { data, error } = await supabaseAdmin.auth.admin.getUserByEmail(email);
-
-    // Se houver um erro E não for o erro esperado de 'User not found'
-    if (error && error.message !== "User not found") {
-      console.error("Supabase Admin Error:", error);
-      // Retorna a mensagem de erro real do Supabase Admin para depuração
-      throw new Error(`Supabase Admin Error: ${error.message}`); 
-    }
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     
-    const exists = !!data?.user;
+    // Endpoint da API REST de Autenticação para listar usuários por email
+    const AUTH_API_URL = `${SUPABASE_URL}/auth/v1/admin/users?email=eq.${encodeURIComponent(email)}`;
+
+    const authResponse = await fetch(AUTH_API_URL, {
+        method: 'GET',
+        headers: {
+            // A Service Role Key é obrigatória para acessar endpoints de admin
+            'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+            // A apikey (anon key) também é necessária para a API REST
+            'apikey': ANON_KEY, 
+            'Content-Type': 'application/json',
+        },
+    });
+
+    if (!authResponse.ok) {
+        const errorText = await authResponse.text();
+        console.error("Supabase Auth REST API Error:", authResponse.status, errorText);
+        throw new Error(`Falha na API de Autenticação: Status ${authResponse.status}`);
+    }
+
+    const data = await authResponse.json();
+    
+    // A resposta é um array de usuários. Se o array tiver 1 ou mais elementos, o usuário existe.
+    const exists = data.users && data.users.length > 0;
+    
     console.log(`User existence check result for ${email}: ${exists}`);
 
     return new Response(
