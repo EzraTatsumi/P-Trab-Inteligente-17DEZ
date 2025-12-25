@@ -11,11 +11,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // 1. Autenticação e obtenção do JWT/Email
-  const authHeader = req.headers.get('Authorization');
-  const { email } = await req.json(); // Extract email from body
-
-  // 2. Criar cliente Supabase com Service Role Key
+  // 1. Criar cliente Supabase com Service Role Key
   const supabaseServiceRole = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -28,6 +24,8 @@ serve(async (req) => {
   );
 
   try {
+    const authHeader = req.headers.get('Authorization');
+    const { email } = await req.json(); // Extract email from body
     let userId: string | null = null;
 
     if (authHeader) {
@@ -36,7 +34,11 @@ serve(async (req) => {
       const { data: { user }, error: userError } = await supabaseServiceRole.auth.getUser(token);
 
       if (userError || !user) {
-        throw new Error(userError?.message || 'Invalid user token');
+        console.error("JWT Validation Error:", userError);
+        return new Response(JSON.stringify({ error: 'Unauthorized: Invalid user token.' }), { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
       }
       userId = user.id;
     } else if (email) {
@@ -81,6 +83,10 @@ serve(async (req) => {
     }
 
     // 4. Excluir o usuário usando o Service Role Client
+    if (!userId) {
+        throw new Error("Internal logic error: userId is null after checks.");
+    }
+    
     const { error: deleteError } = await supabaseServiceRole.auth.admin.deleteUser(userId);
 
     if (deleteError) {
