@@ -543,7 +543,7 @@ const ClasseIIForm = () => {
     }
     
     // 1. Calculate total value for items currently in the tab
-    const categoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+    const categoryTotalValue = currentCategoryTotalValue;
 
     // 2. Calculate final ND split for this category based on current input
     const numericInput = nd39NumericValue; // Usa o valor numérico do input
@@ -933,8 +933,8 @@ const ClasseIIForm = () => {
                     selectedOmId={form.selectedOmId}
                     onChange={handleOMChange}
                     placeholder="Selecione a OM..."
-                    initialOmName={form.organizacao} {/* CORREÇÃO APLICADA AQUI */}
-                    initialOmUg={form.ug} {/* CORREÇÃO APLICADA AQUI */}
+                    initialOmName={form.organizacao} 
+                    initialOmUg={form.ug} 
                   />
                 </div>
 
@@ -1098,8 +1098,8 @@ const ClasseIIForm = () => {
                                         onChange={handleOMDestinoChange}
                                         placeholder="Selecione a OM que receberá o recurso..."
                                         disabled={!form.organizacao} 
-                                        initialOmName={categoryAllocations[cat].om_destino_recurso} {/* CORREÇÃO APLICADA AQUI */}
-                                        initialOmUg={categoryAllocations[cat].ug_destino_recurso} {/* CORREÇÃO APLICADA AQUI */}
+                                        initialOmName={categoryAllocations[cat].om_destino_recurso} 
+                                        initialOmUg={categoryAllocations[cat].ug_destino_recurso} 
                                     />
                                     {categoryAllocations[cat].ug_destino_recurso && (
                                         <p className="text-xs text-muted-foreground">
