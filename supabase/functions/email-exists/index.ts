@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-// Usando a importação padrão do esm.sh para garantir que todos os módulos sejam carregados
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+// Removendo a versão específica para tentar forçar o carregamento completo do módulo
+import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,11 +24,9 @@ serve(async (req) => {
     }
 
     // Cliente Supabase com Service Role Key para acesso administrativo
-    // O cliente criado com a Service Role Key automaticamente tem acesso a auth.admin
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      // Removendo as opções de auth, pois elas são irrelevantes para o Service Role
     );
 
     // ✅ ÚNICA FORMA CORRETA DE CHECAR EMAIL
