@@ -80,6 +80,10 @@ const DOMAIN_CORRECTIONS: Record<string, string> = {
     "yaho.com": "yahoo.com",
     "gmial.com": "gmail.com",
     "gmal.com": "gmail.com",
+    // NOVAS CORREÇÕES PARA DOMÍNIO INSTITUCIONAL
+    "ebmil.br": "eb.mil.br",
+    "eb.milbr": "eb.mil.br",
+    "eb.mil.brr": "eb.mil.br",
 };
 
 export const SignupDialog: React.FC<SignupDialogProps> = ({
