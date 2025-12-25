@@ -12,8 +12,9 @@ serve(async (req) => {
   }
   
   try {
-    const { email } = await req.json();
-    console.log(`Received email for check: ${email}`);
+    // Tenta ler o corpo da requisição, falhando silenciosamente se não for JSON válido
+    const body = await req.json().catch(() => null);
+    const email = body?.email;
 
     if (!email) {
       return new Response(
@@ -34,7 +35,7 @@ serve(async (req) => {
       }
     );
 
-    // Usando a função administrativa correta para verificar a existência do usuário
+    // ✅ ÚNICA FORMA CORRETA DE CHECAR EMAIL
     const { data, error } = await supabaseAdmin.auth.admin.getUserByEmail(email);
 
     // Se houver um erro E não for o erro esperado de 'User not found'
@@ -53,9 +54,9 @@ serve(async (req) => {
     );
 
   } catch (err) {
-    console.error("email-exists error:", err);
+    console.error("email-exists fatal error:", err);
     return new Response(
-      JSON.stringify({ error: err.message || "Erro interno do servidor" }),
+      JSON.stringify({ error: err.message || "Erro interno na função" }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
