@@ -25,7 +25,8 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const { email } = await req.json(); // Extract email from body
+    const body = await req.json();
+    const email = body.email; // Extract email from body
     let userId: string | null = null;
 
     if (authHeader) {
@@ -41,8 +42,11 @@ serve(async (req) => {
         });
       }
       userId = user.id;
+      console.log(`User ID found via JWT: ${userId}`);
+      
     } else if (email) {
       // --- Case 2: Deletion by Email (Unauthenticated/Unconfirmed User) ---
+      console.log(`Attempting to find user by email: ${email}`);
       
       // Use auth.admin.listUsers to find the user by email
       const { data: { users }, error: listError } = await supabaseServiceRole.auth.admin.listUsers({
@@ -58,6 +62,7 @@ serve(async (req) => {
       const userToDelete = users?.[0];
       
       if (!userToDelete) {
+          console.log(`User not found for email: ${email}`);
           return new Response(JSON.stringify({ error: 'User not found for this email.' }), { 
               status: 404, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -66,6 +71,7 @@ serve(async (req) => {
       
       // Security Check: Only allow deletion if the email is NOT confirmed
       if (userToDelete.email_confirmed_at) {
+          console.log(`User ${userToDelete.id} is confirmed. Deletion denied.`);
           return new Response(JSON.stringify({ error: 'Unauthorized: Confirmed users must be logged in to delete their account.' }), { 
               status: 403, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -73,6 +79,7 @@ serve(async (req) => {
       }
       
       userId = userToDelete.id;
+      console.log(`Unconfirmed User ID found via email: ${userId}`);
       
     } else {
       // Neither token nor email provided
@@ -87,12 +94,15 @@ serve(async (req) => {
         throw new Error("Internal logic error: userId is null after checks.");
     }
     
+    console.log(`Attempting to delete user ID: ${userId}`);
     const { error: deleteError } = await supabaseServiceRole.auth.admin.deleteUser(userId);
 
     if (deleteError) {
       console.error("Error deleting user:", deleteError);
       throw new Error(deleteError.message);
     }
+    
+    console.log(`User ${userId} deleted successfully.`);
 
     return new Response(
       JSON.stringify({ message: `User ${userId} deleted successfully.` }),
@@ -103,7 +113,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error("Edge Function Error:", error);
+    console.error("Edge Function Final Catch Error:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Internal Server Error" }),
       {
