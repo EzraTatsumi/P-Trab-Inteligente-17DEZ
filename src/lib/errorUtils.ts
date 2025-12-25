@@ -40,19 +40,26 @@ export const sanitizeError = (error: any): string => {
 export const sanitizeAuthError = (error: any): string => {
   if (isDev) {
     console.error('Auth error (dev only):', error);
-    return error.message || 'Erro ao autenticar';
   }
 
-  // Common auth error patterns
-  if (error.message?.includes('Invalid login')) return 'Email ou senha incorretos';
-  if (error.message?.includes('Email not confirmed')) return 'Confirme seu email antes de fazer login';
-  if (error.message?.includes('already registered')) return 'Este email já está cadastrado';
-  if (error.message?.includes('Password')) return 'Senha inválida ou muito fraca';
-  if (error.message?.includes('rate limit')) return 'Muitas tentativas. Aguarde alguns minutos';
-  if (error.message?.includes('network')) return 'Erro de conexão. Verifique sua internet';
-  
-  // NOVO: Tradução para erro de e-mail inválido
-  if (error.message?.includes('Email address') && error.message?.includes('is invalid')) return 'O endereço de e-mail fornecido é inválido.';
+  const message = error.message || '';
 
+  // Common auth error patterns (Translated even in dev mode for better UX)
+  if (message.includes('Invalid login')) return 'Email ou senha incorretos';
+  if (message.includes('Email not confirmed')) return 'Confirme seu email antes de fazer login';
+  if (message.includes('already registered')) return 'Este email já está cadastrado';
+  if (message.includes('Password')) return 'Senha inválida ou muito fraca';
+  if (message.includes('rate limit')) return 'Muitas tentativas. Aguarde alguns minutos';
+  if (message.includes('network')) return 'Erro de conexão. Verifique sua internet';
+  
+  // Tradução para erro de e-mail inválido
+  if (message.includes('Email address') && message.includes('is invalid')) return 'O endereço de e-mail fornecido é inválido.';
+
+  // Fallback: If in dev mode, return the raw message if no specific translation was found.
+  if (isDev) {
+    return message || 'Erro ao autenticar (Dev Fallback)';
+  }
+
+  // Production fallback
   return 'Erro ao autenticar. Tente novamente.';
 };
