@@ -38,17 +38,13 @@ export const sanitizeError = (error: any): string => {
  * Sanitize authentication errors specifically
  */
 export const sanitizeAuthError = (error: any): string => {
-  if (isDev) {
-    console.error('Auth error (dev only):', error);
-  }
-
   const message = error.message || '';
 
-  // Common auth error patterns (Translated even in dev mode for better UX)
+  // Common auth error patterns (Always translated for better UX)
   if (message.includes('Invalid login')) return 'Email ou senha incorretos';
   if (message.includes('Email not confirmed')) return 'Confirme seu email antes de fazer login';
   
-  // Verificação mais robusta para 'already registered' (Caso 2)
+  // Verificação robusta para 'already registered' (Caso 2)
   if (message.includes('already registered') || (message.includes('user') && message.includes('registered'))) {
       return 'Este email já está cadastrado';
   }
@@ -60,8 +56,9 @@ export const sanitizeAuthError = (error: any): string => {
   // Tradução para erro de e-mail inválido
   if (message.includes('Email address') && message.includes('is invalid')) return 'O endereço de e-mail fornecido é inválido.';
 
-  // Fallback: If in dev mode, return the raw message if no specific translation was found.
+  // Fallback: If in dev mode, return the raw message for debugging. Otherwise, return generic.
   if (isDev) {
+    console.error('Auth error (dev only):', error);
     return message || 'Erro ao autenticar (Dev Fallback)';
   }
 
