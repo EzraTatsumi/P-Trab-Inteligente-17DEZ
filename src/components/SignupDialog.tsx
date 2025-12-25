@@ -192,7 +192,6 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
     setValidationErrors(prev => ({ ...prev, [name]: undefined }));
-    // REMOVIDO: setSubmissionError(null); // Não limpa o erro de submissão ao digitar
     
     if (name === 'password') {
       checkPasswordCriteria(value);
@@ -202,7 +201,6 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
   const handleSelectChange = (name: string, value: string) => {
     setForm({ ...form, [name]: value });
     setValidationErrors(prev => ({ ...prev, [name]: undefined }));
-    // REMOVIDO: setSubmissionError(null); // Não limpa o erro de submissão ao selecionar
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -212,7 +210,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     setSubmissionError(null); // Limpa o erro de submissão ANTES de tentar
 
     try {
-      // --- NOVO: Camada 1: Bloqueio se houver sugestão de correção de domínio E não foi ignorado ---
+      // --- Camada 1: Bloqueio se houver sugestão de correção de domínio E não foi ignorado ---
       if (suggestedEmailCorrection && form.email !== ignoredCorrection) {
           toast.error(`O e-mail digitado parece incorreto. Por favor, corrija ou confirme a digitação.`);
           setLoading(false);
@@ -288,9 +286,22 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         },
       });
 
-      if (error) throw error;
+      // --- NOVO: Verificação explícita do erro de e-mail já cadastrado ---
+      if (error) {
+        // Se o erro for 'User already registered', tratamos e exibimos o alerta
+        if (error.message.includes('already registered')) {
+            const sanitizedError = sanitizeAuthError(error);
+            setSubmissionError(sanitizedError);
+            toast.error(sanitizedError);
+            setLoading(false);
+            return; // Interrompe o fluxo de sucesso
+        }
+        // Para outros erros, lançamos para o catch genérico
+        throw error;
+      }
+      // ------------------------------------------------------------------
 
-      // Sucesso no cadastro
+      // Sucesso no cadastro (apenas se não houver erro)
       onSignupSuccess(email);
       setForm({ 
         email: "", 
