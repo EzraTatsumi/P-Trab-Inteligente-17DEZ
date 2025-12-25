@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { sanitizeAuthError } from "@/lib/errorUtils";
 import { loginSchema } from "@/lib/validationSchemas";
-import { Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { Eye, EyeOff, AlertTriangle, Trash2 } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { EmailVerificationDialog } from "@/components/EmailVerificationDialog";
 import { SignupDialog } from "@/components/SignupDialog";
@@ -16,6 +16,7 @@ import { SignupSuccessDialog } from "@/components/SignupSuccessDialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog";
+import { DeleteUnconfirmedAccountDialog } from "@/components/DeleteUnconfirmedAccountDialog"; // NOVO IMPORT
 
 const Login = () => {
   const navigate = useNavigate();
@@ -28,6 +29,9 @@ const Login = () => {
   
   // NOVO ESTADO: Diálogo de recuperação de senha
   const [showForgotPasswordDialog, setShowForgotPasswordDialog] = useState(false);
+  
+  // NOVO ESTADO: Diálogo de exclusão de conta não confirmada
+  const [showDeleteUnconfirmedDialog, setShowDeleteUnconfirmedDialog] = useState(false);
   
   // NOVO ESTADO: Mensagem de erro de login no formulário
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -229,6 +233,17 @@ const Login = () => {
             >
               Esqueceu sua senha?
             </Button>
+            
+            {/* NOVO: Link para Excluir Conta Não Confirmada */}
+            <Button 
+              variant="link" 
+              className="text-xs text-destructive hover:text-destructive/80 h-auto p-0 flex items-center gap-1"
+              onClick={() => setShowDeleteUnconfirmedDialog(true)}
+              disabled={loading}
+            >
+              <Trash2 className="h-3 w-3" />
+              Excluir conta não confirmada (erro de digitação)
+            </Button>
           </div>
           
         </CardContent>
@@ -259,6 +274,12 @@ const Login = () => {
       <ForgotPasswordDialog
         open={showForgotPasswordDialog}
         onOpenChange={setShowForgotPasswordDialog}
+      />
+      
+      {/* NOVO: Diálogo de Exclusão de Conta Não Confirmada */}
+      <DeleteUnconfirmedAccountDialog
+        open={showDeleteUnconfirmedDialog}
+        onOpenChange={setShowDeleteUnconfirmedDialog}
       />
     </div>
   );
