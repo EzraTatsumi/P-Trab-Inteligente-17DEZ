@@ -153,7 +153,6 @@ export const EmailVerificationDialog: React.FC<EmailVerificationDialogProps> = (
               <Trash2 className="mr-2 h-4 w-4" />
               Excluir Conta
             </Button>
-            {/* Removendo w-full do div para garantir que ele não force a largura total em telas grandes */}
             <div className="flex flex-col sm:flex-row gap-2 sm:w-auto"> 
               <Button 
                 onClick={handleResendEmail} 
@@ -188,7 +187,6 @@ export const EmailVerificationDialog: React.FC<EmailVerificationDialogProps> = (
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDeleteAccount}
               disabled={loading}
@@ -197,6 +195,7 @@ export const EmailVerificationDialog: React.FC<EmailVerificationDialogProps> = (
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Excluir Permanentemente
             </AlertDialogAction>
+            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
