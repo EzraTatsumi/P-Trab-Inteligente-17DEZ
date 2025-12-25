@@ -324,6 +324,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
       
     } catch (error: any) {
       // 4. Catch genérico: Captura erros explícitos (como 'already registered') e erros de rede/outros
+      console.error("Supabase Signup Error (Raw):", error); // NOVO LOG DE DEBUG
       const sanitizedError = sanitizeAuthError(error);
       setSubmissionError(sanitizedError);
       toast.error(sanitizedError);
