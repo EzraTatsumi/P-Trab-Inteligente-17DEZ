@@ -517,7 +517,7 @@ const ClasseVIIForm = () => {
 
   const handleFaseChange = (fase: string, checked: boolean) => {
     if (checked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase]));
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
