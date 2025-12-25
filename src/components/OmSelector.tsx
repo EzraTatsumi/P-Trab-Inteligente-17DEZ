@@ -145,8 +145,9 @@ export function OmSelector({
       return displayOM.nome_om;
     }
     
-    // 2. Se estamos carregando (ou acabamos de carregar) e temos um nome inicial (do registro de edição), use-o.
-    if (selectedOmId && initialOmName) {
+    // 2. Se temos um nome inicial (do registro de edição), use-o como fallback imediato.
+    // Isso cobre o caso onde selectedOmId é undefined (OM não encontrada) ou a busca ainda está em andamento.
+    if (initialOmName) {
       return initialOmName;
     }
     
@@ -157,7 +158,7 @@ export function OmSelector({
     
     // 4. Caso contrário, mostre o placeholder.
     return placeholder;
-  }, [loading, displayOM, selectedOmId, initialOmName, placeholder]);
+  }, [loading, displayOM, initialOmName, placeholder]);
 
 
   return (
