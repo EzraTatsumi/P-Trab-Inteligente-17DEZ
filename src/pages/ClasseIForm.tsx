@@ -943,24 +943,44 @@ export default function ClasseIForm() {
   };
 
   const handleEditRegistro = async (registro: ClasseIRegistro) => {
-    // 1. Resetar o formulário para garantir que não haja lixo de um lançamento anterior
+    setLoading(true);
+    
+    // 1. Buscar o ID da OM de destino imediatamente
+    let omId: string | undefined = undefined;
+    try {
+      const { data: omData, error: omError } = await supabase
+        .from('organizacoes_militares')
+        .select('id')
+        .eq('nome_om', registro.organizacao)
+        .eq('codug_om', registro.ug)
+        .maybeSingle();
+      
+      if (omData && !omError) {
+        omId = omData.id;
+      }
+    } catch (error) {
+      console.error("Erro ao buscar ID da OM para edição:", error);
+    }
+    
+    // 2. Resetar o formulário
     resetFormFields();
     
-    // 2. Set Global Fields (usando o registro clicado como base)
+    // 3. Setar o ID da OM e o nome inicial (para exibição imediata)
+    setSelectedOmId(omId);
+    setInitialOmName(registro.organizacao);
+    setInitialOmUg(registro.ug);
+    
+    // 4. Set Global Fields
     setOrganizacao(registro.organizacao);
     setUg(registro.ug);
     setEfetivo(registro.efetivo || 0);
     setDiasOperacao(registro.diasOperacao);
     
-    // NOVO: Define o nome e UG iniciais para exibição imediata no OmSelector
-    setInitialOmName(registro.organizacao);
-    setInitialOmUg(registro.ug);
-    
     const fasesSalvas = (registro.faseAtividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
 
-    // 3. Preencher Ração Quente/Operacional (se for o caso)
+    // 5. Preencher Ração Quente/Operacional (se for o caso)
     const newConsolidatedData: typeof currentOMConsolidatedData = {};
     
     if (registro.categoria === 'RACAO_QUENTE') {
@@ -996,6 +1016,7 @@ export default function ClasseIForm() {
             total_geral: registro.calculos.totalQS + registro.calculos.totalQR,
             total_unidades: 0,
         };
+        setSelectedTab('RACAO_QUENTE');
     } else if (registro.categoria === 'RACAO_OPERACIONAL') {
         setQuantidadeR2(registro.quantidadeR2 || 0);
         setQuantidadeR3(registro.quantidadeR3 || 0);
@@ -1013,41 +1034,15 @@ export default function ClasseIForm() {
             total_geral: 0,
             total_unidades: (registro.quantidadeR2 || 0) + (registro.quantidadeR3 || 0),
         };
+        setSelectedTab('RACAO_OPERACIONAL');
     }
     
     setCurrentOMConsolidatedData(newConsolidatedData);
 
-    // 4. Setando o ID do registro que está sendo editado (para o botão Salvar)
+    // 6. Setando o ID do registro que está sendo editado (para o botão Salvar)
     setEditingRegistroId(registro.id);
-    setSelectedTab(registro.categoria);
 
-    // 5. Find OM ID for OmSelector (This is the crucial step that was causing the delay/issue)
-    try {
-      const { data: omData, error: omError } = await supabase
-        .from('organizacoes_militares')
-        .select('id')
-        .eq('nome_om', registro.organizacao)
-        .eq('codug_om', registro.ug)
-        .maybeSingle(); // Use maybeSingle to handle cases where OM might not be found (e.g., deleted)
-      
-      if (omData && !omError) {
-        setSelectedOmId(omData.id);
-      } else {
-        // Se a OM não for encontrada (e.g., inativa), ainda assim definimos o ID para que o OmSelector tente buscar
-        // Mas como não temos o ID do registro, vamos tentar buscar pelo nome/ug.
-        // Se a busca falhar, o OmSelector usará o initialOmName/Ug para exibição.
-        // Como o OmSelector já tem a lógica de buscar pelo ID, vamos apenas garantir que o ID seja setado se encontrado.
-        // Se não for encontrado, o selectedOmId permanece undefined, mas o initialOmName/Ug garante a exibição.
-        // Para garantir que o OmSelector tente buscar a OM pelo nome/ug, precisamos de um ID.
-        // Se o registro foi salvo, a OM deve existir. Vamos confiar na busca acima.
-        // Se a busca falhar, o selectedOmId fica undefined, mas o nome aparece.
-        // Se a OM for encontrada, o selectedOmId é setado, e o OmSelector a exibe.
-      }
-    } catch (error) {
-      console.error("Erro ao buscar ID da OM para edição:", error);
-      // Se houver erro, o selectedOmId permanece undefined, mas o initialOmName/Ug garante a exibição.
-    }
-
+    setLoading(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
