@@ -470,7 +470,6 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                                       toast.info("Correção ignorada. Clique em 'Criar Conta' para continuar.");
                                   }}
                               >
-                                  <ArrowRight className="h-3 w-3 mr-1" />
                                   Manter Digitação
                               </Button>
                           </div>
