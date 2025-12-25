@@ -26,7 +26,8 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     const body = await req.json();
-    const email = body.email; // Extract email from body
+    // Ensure email is extracted and trimmed safely
+    const email = body.email ? String(body.email).trim() : null; 
     let userId: string | null = null;
 
     if (authHeader) {
@@ -56,7 +57,11 @@ serve(async (req) => {
       
       if (listError) {
           console.error("Admin list users error:", listError);
-          throw new Error("Database error while finding user by email.");
+          // Return a specific error response for DB failure
+          return new Response(JSON.stringify({ error: 'Database error while finding user by email.' }), { 
+              status: 500, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          });
       }
       
       const userToDelete = users?.[0];
