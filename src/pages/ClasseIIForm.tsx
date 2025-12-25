@@ -933,6 +933,8 @@ const ClasseIIForm = () => {
                     selectedOmId={form.selectedOmId}
                     onChange={handleOMChange}
                     placeholder="Selecione a OM..."
+                    initialOmName={form.organizacao} {/* CORREÇÃO APLICADA AQUI */}
+                    initialOmUg={form.ug} {/* CORREÇÃO APLICADA AQUI */}
                   />
                 </div>
 
@@ -1096,6 +1098,8 @@ const ClasseIIForm = () => {
                                         onChange={handleOMDestinoChange}
                                         placeholder="Selecione a OM que receberá o recurso..."
                                         disabled={!form.organizacao} 
+                                        initialOmName={categoryAllocations[cat].om_destino_recurso} {/* CORREÇÃO APLICADA AQUI */}
+                                        initialOmUg={categoryAllocations[cat].ug_destino_recurso} {/* CORREÇÃO APLICADA AQUI */}
                                     />
                                     {categoryAllocations[cat].ug_destino_recurso && (
                                         <p className="text-xs text-muted-foreground">
