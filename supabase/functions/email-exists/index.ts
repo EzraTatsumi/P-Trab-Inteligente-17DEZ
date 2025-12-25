@@ -28,12 +28,12 @@ serve(async (req) => {
     );
 
     /* =====================================================
-       ✅ API ESTÁVEL (FUNCIONA EM TODOS OS RUNTIMES)
+       ✅ API ESTÁVEL: Usando listUsers com filtro
     ====================================================== */
-    // Usando listUsers para contornar o problema de getUserByEmail e a falha da API REST
+    // Filtra diretamente pelo email, que é mais eficiente do que carregar todos os usuários.
     const { data, error } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000, // limite seguro
+      filter: `email eq '${email.toLowerCase()}'`,
+      perPage: 1, // Só precisamos de 1 resultado para saber se existe
     });
 
     if (error) {
@@ -44,10 +44,8 @@ serve(async (req) => {
       );
     }
 
-    // Filtragem manual no lado da Edge Function
-    const exists = data.users.some(
-      (user) => user.email?.toLowerCase() === email.toLowerCase()
-    );
+    // Se a lista de usuários tiver pelo menos um item, o e-mail existe.
+    const exists = data.users.length > 0;
 
     return new Response(
       JSON.stringify({ exists }),
