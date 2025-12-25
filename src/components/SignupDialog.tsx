@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Loader2, AlertCircle, Check, X } from "lucide-react";
+import { UserPlus, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -109,10 +109,8 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         return;
     }
     
-    // CORREÇÃO: A verificação de sugestão de domínio deve ser feita aqui
+    // Camada 1: Bloqueio se houver sugestão de correção de domínio
     if (suggestedEmailCorrection) {
-        // Se houver uma correção sugerida, o botão de submissão já estará desabilitado.
-        // Se o usuário tentar submeter via Enter, exibimos um erro explícito.
         setError(`O e-mail digitado parece incorreto. Você quis dizer ${suggestedEmailCorrection}? Por favor, corrija antes de continuar.`);
         return;
     }
