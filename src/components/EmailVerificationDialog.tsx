@@ -199,7 +199,7 @@ export const EmailVerificationDialog: React.FC<EmailVerificationDialogProps> = (
             <AlertDialogDescription>
               Tem certeza que deseja excluir a conta associada a <span className="font-bold text-foreground">{email}</span>? Esta ação é irreversível.
             </AlertDialogDescription>
-          </AlertDialogDescription>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction 
               onClick={handleDeleteAccount}
