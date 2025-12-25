@@ -308,6 +308,10 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
           const repeatedSignupError = "Este e-mail já está cadastrado, mas ainda não foi confirmado. Um novo link de confirmação foi enviado.";
           setSubmissionError(repeatedSignupError);
           toast.warning(repeatedSignupError);
+          
+          // CORREÇÃO CRÍTICA: Fechar o diálogo de cadastro e NÃO chamar onSignupSuccess
+          onOpenChange(false); 
+          
           setLoading(false);
           return; // INTERROMPE O FLUXO DE SUCESSO
       }
