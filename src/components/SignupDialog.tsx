@@ -317,12 +317,12 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         </DialogHeader>
         <form onSubmit={handleSignup} className="grid gap-4 py-3">
           
-          {/* NOVO: Alerta de Erro de Submissão (Topo) */}
+          {/* Alerta de Erro de Submissão (Topo) */}
           {submissionError && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Erro de Cadastro</AlertTitle>
-              <AlertDescription className="font-medium">
+              <AlertDescription>
                 {submissionError}
               </AlertDescription>
             </Alert>
@@ -465,7 +465,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
               {validationErrors.email && <p className="text-xs text-destructive">{validationErrors.email}</p>}
             </div>
             
-            {/* NOVO: Alerta de Sugestão de Domínio (Lateral) */}
+            {/* Alerta de Sugestão de Domínio (Lateral) */}
             {suggestedEmailCorrection && form.email !== ignoredCorrection && (
                 <Alert variant="default" className="mt-7 p-2 bg-yellow-50 border-yellow-200 w-full md:w-2/3">
                     <AlertCircle className="h-4 w-4 text-yellow-700" />

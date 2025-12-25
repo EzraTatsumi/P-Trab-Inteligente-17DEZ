@@ -30,12 +30,6 @@ export const sanitizeError = (error: any): string => {
   if (error.message?.includes('not found')) return 'Registro não encontrado';
   if (error.message?.includes('permission')) return 'Permissão negada';
 
-  // Auth errors
-  if (error.message?.includes('Invalid login')) return 'Email ou senha incorretos';
-  if (error.message?.includes('Email not confirmed')) return 'Confirme seu email antes de fazer login';
-  if (error.message?.includes('User already registered')) return 'Este email já está cadastrado';
-  if (error.message?.includes('rate limit')) return 'Muitas tentativas. Aguarde alguns minutos';
-
   // Generic fallback
   return 'Ocorreu um erro. Tente novamente.';
 };
