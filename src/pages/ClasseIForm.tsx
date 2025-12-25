@@ -315,6 +315,10 @@ export default function ClasseIForm() {
   const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
+  // NOVO ESTADO: Para exibir o nome da OM imediatamente durante a edição
+  const [initialOmName, setInitialOmName] = useState<string | undefined>(undefined);
+  const [initialOmUg, setInitialOmUg] = useState<string | undefined>(undefined);
+  
   // --- RACAO_QUENTE State ---
   const [omQS, setOmQS] = useState<string>("");
   const [ugQS, setUgQS] = useState<string>("");
@@ -623,6 +627,8 @@ export default function ClasseIForm() {
     setCustomFaseAtividade("");
     setSelectedTab('RACAO_QUENTE');
     setCurrentOMConsolidatedData(null); // Reset consolidated data
+    setInitialOmName(undefined); // Reset initial OM name
+    setInitialOmUg(undefined); // Reset initial OM UG
   };
 
   const handleOMChange = async (omData: OMData | undefined) => {
@@ -946,6 +952,10 @@ export default function ClasseIForm() {
     setEfetivo(registro.efetivo || 0);
     setDiasOperacao(registro.diasOperacao);
     
+    // NOVO: Define o nome e UG iniciais para exibição imediata no OmSelector
+    setInitialOmName(registro.organizacao);
+    setInitialOmUg(registro.ug);
+    
     const fasesSalvas = (registro.faseAtividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
@@ -1011,20 +1021,31 @@ export default function ClasseIForm() {
     setEditingRegistroId(registro.id);
     setSelectedTab(registro.categoria);
 
-    // 5. Find OM ID for OmSelector
+    // 5. Find OM ID for OmSelector (This is the crucial step that was causing the delay/issue)
     try {
       const { data: omData, error: omError } = await supabase
         .from('organizacoes_militares')
         .select('id')
         .eq('nome_om', registro.organizacao)
         .eq('codug_om', registro.ug)
-        .single();
+        .maybeSingle(); // Use maybeSingle to handle cases where OM might not be found (e.g., deleted)
+      
       if (omData && !omError) {
         setSelectedOmId(omData.id);
+      } else {
+        // Se a OM não for encontrada (e.g., inativa), ainda assim definimos o ID para que o OmSelector tente buscar
+        // Mas como não temos o ID do registro, vamos tentar buscar pelo nome/ug.
+        // Se a busca falhar, o OmSelector usará o initialOmName/Ug para exibição.
+        // Como o OmSelector já tem a lógica de buscar pelo ID, vamos apenas garantir que o ID seja setado se encontrado.
+        // Se não for encontrado, o selectedOmId permanece undefined, mas o initialOmName/Ug garante a exibição.
+        // Para garantir que o OmSelector tente buscar a OM pelo nome/ug, precisamos de um ID.
+        // Se o registro foi salvo, a OM deve existir. Vamos confiar na busca acima.
+        // Se a busca falhar, o selectedOmId fica undefined, mas o nome aparece.
+        // Se a OM for encontrada, o selectedOmId é setado, e o OmSelector a exibe.
       }
     } catch (error) {
       console.error("Erro ao buscar ID da OM para edição:", error);
-      setSelectedOmId(undefined);
+      // Se houver erro, o selectedOmId permanece undefined, mas o initialOmName/Ug garante a exibição.
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1160,6 +1181,8 @@ export default function ClasseIForm() {
                       selectedOmId={selectedOmId}
                       onChange={handleOMChange}
                       placeholder="Selecione uma OM de Destino..."
+                      initialOmName={initialOmName} // PASSANDO O NOME INICIAL
+                      initialOmUg={initialOmUg} // PASSANDO A UG INICIAL
                     />
                   </div>
 

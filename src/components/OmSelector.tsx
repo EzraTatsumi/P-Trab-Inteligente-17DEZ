@@ -140,22 +140,19 @@ export function OmSelector({
 
   // Lógica de exibição do texto no botão
   const buttonText = useMemo(() => {
-    if (isOverallLoading) {
-      // Se estiver carregando, mas tivermos um nome inicial, mostre o nome inicial
-      if (selectedOmId && initialOmName) {
-        return initialOmName;
-      }
-      return "Carregando...";
-    }
-    
+    // Prioriza a OM carregada (displayOM)
     if (displayOM) {
-      // Se a OM completa foi carregada, use o nome dela
       return displayOM.nome_om;
     }
     
+    // Se a OM ainda está sendo buscada (isFetchingSelected) ou se o componente está carregando a lista (loading),
+    // mas temos um nome inicial (vindo do registro de edição), usamos ele.
     if (selectedOmId && initialOmName) {
-      // Se o ID está presente, mas a busca falhou ou a OM não está na lista, use o nome inicial
       return initialOmName;
+    }
+    
+    if (isOverallLoading) {
+      return "Carregando...";
     }
     
     // Caso contrário, mostre o placeholder
@@ -173,7 +170,7 @@ export function OmSelector({
           className="w-full justify-between"
           disabled={disabled || isOverallLoading}
         >
-          <span className={cn("truncate", !selectedOmId && !displayOM && "text-muted-foreground")}>
+          <span className={cn("truncate", !selectedOmId && !displayOM && !initialOmName && "text-muted-foreground")}>
             {buttonText}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
