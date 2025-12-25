@@ -422,9 +422,11 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
               </InputMask>
               {validationErrors.telefone && <p className="text-xs text-destructive">{validationErrors.telefone}</p>}
             </div>
-            
-            {/* Email (Movido para cá) */}
-            <div className="space-y-1">
+          </div>
+          
+          {/* Email (Movido para ocupar 3 colunas e permitir o alerta lateral) */}
+          <div className="md:col-span-3 flex flex-col md:flex-row gap-3 items-start">
+            <div className="space-y-1 w-full md:w-1/3">
               <Label htmlFor="email-signup">Email *</Label>
               <Input
                 id="email-signup"
@@ -438,49 +440,49 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                 onKeyDown={handleEnterToNextField}
               />
               {validationErrors.email && <p className="text-xs text-destructive">{validationErrors.email}</p>}
-              
-              {/* NOVO: Alerta de Sugestão de Domínio */}
-              {suggestedEmailCorrection && form.email !== ignoredCorrection && (
-                  <Alert variant="default" className="mt-2 p-2 bg-yellow-50 border-yellow-200">
-                      <AlertCircle className="h-4 w-4 text-yellow-700" />
-                      <AlertDescription className="text-xs text-yellow-700 space-y-2">
-                          <p>Domínio incorreto? Sugestão:</p>
-                          <div className="flex gap-2">
-                              <Button 
-                                  type="button" 
-                                  size="sm"
-                                  variant="secondary"
-                                  className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
-                                  onClick={() => {
-                                      setForm(prev => ({ ...prev, email: suggestedEmailCorrection }));
-                                      setValidationErrors(prev => ({ ...prev, email: undefined }));
-                                      setIgnoredCorrection(null); // Reseta a ignorância se aceitar
-                                  }}
-                              >
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Usar {suggestedEmailCorrection.split('@')[1]}
-                              </Button>
-                              <Button 
-                                  type="button" 
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 text-xs"
-                                  onClick={() => {
-                                      setIgnoredCorrection(form.email); // Marca o email atual como ignorado
-                                      toast.info("Correção ignorada. Clique em 'Criar Conta' para continuar.");
-                                  }}
-                              >
-                                  Manter Digitação
-                              </Button>
-                          </div>
-                      </AlertDescription>
-                  </Alert>
-              )}
             </div>
+            
+            {/* NOVO: Alerta de Sugestão de Domínio (Lateral) */}
+            {suggestedEmailCorrection && form.email !== ignoredCorrection && (
+                <Alert variant="default" className="mt-7 p-2 bg-yellow-50 border-yellow-200 w-full md:w-2/3">
+                    <AlertCircle className="h-4 w-4 text-yellow-700" />
+                    <AlertDescription className="text-xs text-yellow-700 space-y-2">
+                        <p>Domínio incorreto? Sugestão:</p>
+                        <div className="flex gap-2">
+                            <Button 
+                                type="button" 
+                                size="sm"
+                                variant="secondary"
+                                className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() => {
+                                    setForm(prev => ({ ...prev, email: suggestedEmailCorrection }));
+                                    setValidationErrors(prev => ({ ...prev, email: undefined }));
+                                    setIgnoredCorrection(null); // Reseta a ignorância se aceitar
+                                }}
+                            >
+                                <Check className="h-3 w-3 mr-1" />
+                                Usar {suggestedEmailCorrection.split('@')[1]}
+                            </Button>
+                            <Button 
+                                type="button" 
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                onClick={() => {
+                                    setIgnoredCorrection(form.email); // Marca o email atual como ignorado
+                                    toast.info("Correção ignorada. Clique em 'Criar Conta' para continuar.");
+                                }}
+                            >
+                                Manter Digitação
+                            </Button>
+                        </div>
+                    </AlertDescription>
+                </Alert>
+            )}
           </div>
           
           {/* Senha */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 md:col-span-3">
             <div className="space-y-1">
               <Label htmlFor="password-signup">Senha *</Label>
               <div className="relative">
@@ -545,7 +547,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
           </div>
           
           {/* Critérios de Senha */}
-          <Alert className="mt-2 p-3">
+          <Alert className="mt-2 p-3 md:col-span-3">
             <AlertDescription className="text-xs text-muted-foreground">
               <span className="font-bold text-foreground block mb-1">Critérios de Senha:</span>
               <ul className="grid grid-cols-2 gap-x-4 gap-y-1 ml-2 mt-1">
@@ -554,7 +556,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             </AlertDescription>
           </Alert>
 
-          <DialogFooter className="mt-4">
+          <DialogFooter className="mt-4 md:col-span-3">
             <Button type="submit" disabled={loading || isLoadingOms}>
               {loading ? "Cadastrando..." : "Criar Conta"}
             </Button>
