@@ -267,9 +267,29 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
       }
 
       /* =====================================================
-         4. SIGNUP SUPABASE (PONTO CRÍTICO)
+         4. PRÉ-CHECAGEM DEFINITIVA (EDGE FUNCTION)
       ====================================================== */
-      const { data, error } = await supabase.auth.signUp({
+      const { data: emailCheck, error: emailCheckError } =
+        await supabase.functions.invoke("email-exists", {
+          body: { email },
+        });
+
+      if (emailCheckError) {
+        console.error("Email check error:", emailCheckError);
+        throw new Error("Falha ao verificar e-mail no servidor.");
+      }
+
+      if (emailCheck?.exists) {
+        const msg = "Este e-mail já está cadastrado. Utilize outro ou faça login.";
+        toast.error(msg);
+        setSubmissionError(msg);
+        return; // ⛔ BLOQUEIA FLUXO
+      }
+
+      /* =====================================================
+         5. SIGNUP SUPABASE (AGORA SEM SURPRESAS)
+      ====================================================== */
+      const { error: signupError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -288,31 +308,12 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         },
       });
 
-      /* =====================================================
-         5. ERRO EXPLÍCITO (Ex: Senha fraca, Erro de rede)
-      ====================================================== */
-      if (error) {
-        throw error;
+      if (signupError) {
+        throw signupError;
       }
 
       /* =====================================================
-         6. ERRO FUNCIONAL (EMAIL JÁ EXISTENTE)
-         REGRA: signup só é sucesso se data.user EXISTE.
-         Se data.user for null, o Supabase enviou um novo link de confirmação
-         para um usuário não confirmado existente.
-      ====================================================== */
-      if (!data?.user) {
-        const msg = "Este e-mail já está cadastrado. Um novo link de confirmação foi enviado. Por favor, verifique sua caixa de entrada.";
-        toast.warning(msg);
-        setSubmissionError(msg);
-        
-        // Não chama onSignupSuccess, apenas fecha o diálogo para que o usuário tente o login
-        onOpenChange(false); 
-        return;
-      }
-
-      /* =====================================================
-         7. SUCESSO REAL (Novo usuário criado)
+         6. SUCESSO REAL
       ====================================================== */
       onSignupSuccess(email);
 
