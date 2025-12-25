@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { sanitizeAuthError } from '@/lib/errorUtils';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const deleteAccountSchema = z.object({
   email: z.string().email({ message: 'E-mail inválido.' }),
