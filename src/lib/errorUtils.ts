@@ -5,7 +5,7 @@ import { AuthApiError } from "@supabase/supabase-js";
  * @param error O objeto de erro retornado pelo Supabase.
  * @returns Uma string de erro amigável em português.
  */
-export const sanitizeAuthError = (error: Error | AuthApiError): string => {
+export const sanitizeError = (error: Error | AuthApiError): string => {
   // Erro genérico de rede ou servidor
   if (error instanceof Error && !(error instanceof AuthApiError)) {
     return 'Ocorreu um erro de rede ou servidor. Tente novamente.';
