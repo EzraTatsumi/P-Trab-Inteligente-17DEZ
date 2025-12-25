@@ -56,6 +56,9 @@ export const sanitizeAuthError = (error: any): string => {
   if (error.message?.includes('Password')) return 'Senha inválida ou muito fraca';
   if (error.message?.includes('rate limit')) return 'Muitas tentativas. Aguarde alguns minutos';
   if (error.message?.includes('network')) return 'Erro de conexão. Verifique sua internet';
+  
+  // NOVO: Tradução para erro de e-mail inválido
+  if (error.message?.includes('Email address') && error.message?.includes('is invalid')) return 'O endereço de e-mail fornecido é inválido.';
 
   return 'Erro ao autenticar. Tente novamente.';
 };

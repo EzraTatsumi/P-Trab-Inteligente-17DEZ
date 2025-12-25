@@ -119,6 +119,9 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     specialChar: false,
   });
   
+  // NOVO ESTADO: Erro de submissão (para o alerta no topo)
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  
   // NOVO ESTADO: Rastreia se o usuário ignorou a sugestão de correção
   const [ignoredCorrection, setIgnoredCorrection] = useState<string | null>(null);
   
@@ -165,6 +168,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
     setValidationErrors(prev => ({ ...prev, [name]: undefined }));
+    setSubmissionError(null); // Limpa o erro de submissão ao digitar
     
     if (name === 'password') {
       checkPasswordCriteria(value);
@@ -174,12 +178,14 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
   const handleSelectChange = (name: string, value: string) => {
     setForm({ ...form, [name]: value });
     setValidationErrors(prev => ({ ...prev, [name]: undefined }));
+    setSubmissionError(null); // Limpa o erro de submissão ao selecionar
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setValidationErrors({});
+    setSubmissionError(null); // Limpa o erro de submissão antes de tentar
 
     try {
       // --- NOVO: Camada 1: Bloqueio se houver sugestão de correção de domínio E não foi ignorado ---
@@ -210,7 +216,8 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         });
         setValidationErrors(fieldErrors);
         
-        // Exibe o primeiro erro como toast
+        // Exibe o primeiro erro de validação Zod no alerta de submissão
+        setSubmissionError(validationResult.error.errors[0].message);
         toast.error(validationResult.error.errors[0].message);
         setLoading(false);
         return;
@@ -221,7 +228,9 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
       // Busca os dados completos da OM para incluir CODUG e RM no metadata
       const selectedOmData = oms?.find(om => om.nome_om === sigla_om);
       if (!selectedOmData) {
-          toast.error("OM de vinculação não encontrada na lista.");
+          const omError = "OM de vinculação não encontrada na lista.";
+          setSubmissionError(omError);
+          toast.error(omError);
           setLoading(false);
           return;
       }
@@ -265,7 +274,9 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
       });
       
     } catch (error: any) {
-      toast.error(sanitizeAuthError(error));
+      const sanitizedError = sanitizeAuthError(error);
+      setSubmissionError(sanitizedError);
+      toast.error(sanitizedError);
     } finally {
       setLoading(false);
     }
@@ -305,6 +316,17 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSignup} className="grid gap-4 py-3">
+          
+          {/* NOVO: Alerta de Erro de Submissão (Topo) */}
+          {submissionError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Erro de Cadastro</AlertTitle>
+              <AlertDescription className="font-medium">
+                {submissionError}
+              </AlertDescription>
+            </Alert>
+          )}
           
           {/* Dados Pessoais, Institucionais e Email (3 colunas em desktop) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
