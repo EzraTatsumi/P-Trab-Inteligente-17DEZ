@@ -55,7 +55,7 @@ src/components/ImportPTrabOptionsDialog.tsx
 src/components/ImportConflictDialog.tsx
 src/components/MinutaNumberDialog.tsx
 src/lib/cryptoUtils.ts
-src/integrations/supabase/api.ts
+src/integrations/supabase/api.ts1
 supabase/functions/fetch-fuel-prices/index.ts
 supabase/functions/fetch-share-preview/index.ts
 
