@@ -1,6 +1,4 @@
-"use client";
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,451 +10,265 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Eye, EyeOff, Loader2, Check, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { UserPlus, Loader2, AlertCircle, Check, X } from "lucide-react";
 import { toast } from "sonner";
-import { sanitizeAuthError } from "@/lib/errorUtils";
-import { z } from "zod";
-import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import InputMask from 'react-input-mask';
-import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { signupSchema } from '@/lib/validationSchemas';
+import * as z from 'zod';
+import { OmSelector } from './OmSelector';
+import { OMData } from '@/lib/omUtils';
+import { sanitizeAuthError } from '@/lib/errorUtils';
+
+type SignupFormData = z.infer<typeof signupSchema>;
 
 interface SignupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSignupSuccess: (email: string) => void;
+  onSuccess: (email: string) => void;
 }
 
-const MILITARY_RANKS = [
-  "Gen Ex", "Gen Div", "Gen Bda", "Cel", "TC", "Maj", "Cap", 
-  "1º Ten", "2º Ten", "Asp Of", "ST", "1º Sgt", "2º Sgt", 
-  "3º Sgt", "Cb", "Sd"
-] as const;
-
-// Schema de validação para o cadastro
-const signupSchema = z.object({
-  email: z.string().email("E-mail inválido."),
-  nome_completo: z.string().min(5, "Nome completo é obrigatório."),
-  nome_guerra: z.string().min(2, "Nome de Guerra é obrigatório."),
-  posto_graduacao: z.enum(MILITARY_RANKS as [string, ...string[]], { message: "Posto/Graduação é obrigatório." }),
-  sigla_om: z.string().min(2, "Sigla da OM é obrigatória."),
-  funcao_om: z.string().min(2, "Função na OM é obrigatória."),
-  // Nova validação para o formato (99) 999999999 (11 dígitos)
-  telefone: z.string().regex(/^\(?\d{2}\)?\s?\d{9}$/, "Telefone inválido (Ex: (99) 999999999).").optional().or(z.literal('')),
-  password: z.string()
-    .min(8, "A senha deve ter no mínimo 8 caracteres.")
-    .regex(/[A-Z]/, "A senha deve conter pelo menos uma letra maiúscula.")
-    .regex(/[a-z]/, "A senha deve conter pelo menos uma letra minúscula.")
-    .regex(/[0-9]/, "A senha deve conter pelo menos um número.")
-    .regex(/[^a-zA-Z0-9]/, "A senha deve conter pelo menos um caractere especial."),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "As senhas não coincidem.",
-  path: ["confirmPassword"],
-});
-
-interface PasswordCriteria {
-  minLength: boolean;
-  uppercase: boolean;
-  lowercase: boolean;
-  number: boolean;
-  specialChar: boolean;
-}
+// Mapeamento de erros comuns de domínio
+const DOMAIN_CORRECTIONS: Record<string, string> = {
+    "gamil.com": "gmail.com",
+    "hotmai.com": "hotmail.com",
+    "outlok.com": "outlook.com",
+    "yaho.com": "yahoo.com",
+    "gmial.com": "gmail.com",
+    "gmal.com": "gmail.com",
+};
 
 export const SignupDialog: React.FC<SignupDialogProps> = ({
   open,
   onOpenChange,
-  onSignupSuccess,
+  onSuccess,
 }) => {
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
-    nome_completo: "",
-    nome_guerra: "",
-    posto_graduacao: "",
-    sigla_om: "",
-    funcao_om: "",
-    telefone: "",
-  });
   const [loading, setLoading] = useState(false);
-  const [showPassword1, setShowPassword1] = useState(false);
-  const [showPassword2, setShowPassword2] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string | undefined>>({});
-  const [passwordCriteria, setPasswordCriteria] = useState<PasswordCriteria>({
-    minLength: false,
-    uppercase: false,
-    lowercase: false,
-    number: false,
-    specialChar: false,
+  const [error, setError] = useState<string | null>(null);
+  const [selectedOm, setSelectedOm] = useState<OMData | undefined>(undefined);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+    reset,
+  } = useForm<SignupFormData>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      posto_graduacao: '',
+      nome_guerra: '',
+      nome_om: '',
+    },
   });
   
-  const { handleEnterToNextField } = useFormNavigation();
+  const watchedEmail = watch('email');
   
-  const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
-
-  const checkPasswordCriteria = (password: string) => {
-    setPasswordCriteria({
-      minLength: password.length >= 8,
-      uppercase: /[A-Z]/.test(password),
-      lowercase: /[a-z]/.test(password),
-      number: /[0-9]/.test(password),
-      specialChar: /[^a-zA-Z0-9]/.test(password),
-    });
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
-    setValidationErrors(prev => ({ ...prev, [name]: undefined }));
+  // Lógica de Sugestão de Domínio
+  const suggestedEmailCorrection = useMemo(() => {
+    if (!watchedEmail || !watchedEmail.includes('@')) return null;
     
-    if (name === 'password') {
-      checkPasswordCriteria(value);
+    const parts = watchedEmail.split('@');
+    if (parts.length !== 2) return null;
+    
+    const domain = parts[1].toLowerCase();
+    
+    for (const [typo, correct] of Object.entries(DOMAIN_CORRECTIONS)) {
+        if (domain === typo) {
+            return `${parts[0]}@${correct}`;
+        }
     }
-  };
+    return null;
+  }, [watchedEmail]);
+
+
+  useEffect(() => {
+    if (open) {
+      reset();
+      setSelectedOm(undefined);
+      setError(null);
+    }
+  }, [open, reset]);
   
-  const handleSelectChange = (name: string, value: string) => {
-    setForm({ ...form, [name]: value });
-    setValidationErrors(prev => ({ ...prev, [name]: undefined }));
+  // Sync OmSelector changes to React Hook Form state
+  const handleOmChange = (omData: OMData | undefined) => {
+    setSelectedOm(omData);
+    setValue('nome_om', omData?.nome_om || '', { shouldValidate: true });
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setValidationErrors({});
+  const onSubmit = async (data: SignupFormData) => {
+    setError(null);
+    
+    if (!selectedOm) {
+        setError("Selecione a OM de vinculação na lista.");
+        return;
+    }
+    
+    // CORREÇÃO: A verificação de sugestão de domínio deve ser feita aqui
+    if (suggestedEmailCorrection) {
+        // Se houver uma correção sugerida, o botão de submissão já estará desabilitado.
+        // Se o usuário tentar submeter via Enter, exibimos um erro explícito.
+        setError(`O e-mail digitado parece incorreto. Você quis dizer ${suggestedEmailCorrection}? Por favor, corrija antes de continuar.`);
+        return;
+    }
 
+    setLoading(true);
     try {
-      // Remove caracteres não numéricos do telefone antes da validação, se houver
-      const rawForm = {
-        ...form,
-        telefone: form.telefone.replace(/\D/g, ''),
+      // 1. Prepara os metadados do usuário
+      const userMetadata = {
+        posto_graduacao: data.posto_graduacao,
+        nome_guerra: data.nome_guerra,
+        nome_om: data.nome_om,
+        codug_om: selectedOm.codug_om,
+        rm_vinculacao: selectedOm.rm_vinculacao,
+        codug_rm_vinculacao: selectedOm.codug_rm_vinculacao,
       };
       
-      // Se o telefone estiver vazio, garante que ele passe na validação opcional
-      const finalForm = rawForm.telefone.length === 0 ? { ...rawForm, telefone: '' } : rawForm;
-
-      const validationResult = signupSchema.safeParse(finalForm);
-      if (!validationResult.success) {
-        const errors = validationResult.error.flatten().fieldErrors;
-        const fieldErrors: Record<string, string | undefined> = {};
-        
-        // Mapeia os erros para o estado de validação
-        Object.keys(errors).forEach(key => {
-            fieldErrors[key] = errors[key]?.[0];
-        });
-        setValidationErrors(fieldErrors);
-        
-        // Exibe o primeiro erro como toast
-        toast.error(validationResult.error.errors[0].message);
-        setLoading(false);
-        return;
-      }
-
-      const { email, password, nome_completo, nome_guerra, posto_graduacao, sigla_om, funcao_om, telefone } = validationResult.data;
-
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
+      // 2. Tenta o registro
+      const { data: { user }, error: signupError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/ptrab`,
-          data: {
-            // Mapeamento para o trigger handle_new_user (first_name/last_name)
-            first_name: nome_completo, 
-            last_name: nome_guerra,
-            
-            // Dados adicionais para o perfil (AGORA TODOS OS CAMPOS SÃO PASSADOS)
-            posto_graduacao,
-            sigla_om,
-            funcao_om,
-            telefone,
-          },
+          data: userMetadata,
+          emailRedirectTo: `${window.location.origin}/ptrab`, // Redireciona para /ptrab após a confirmação
         },
       });
 
-      if (error) throw error;
-
-      // Sucesso no cadastro
-      onSignupSuccess(email);
-      setForm({ 
-        email: "", 
-        password: "", 
-        confirmPassword: "",
-        nome_completo: "", 
-        nome_guerra: "",
-        posto_graduacao: "",
-        sigla_om: "",
-        funcao_om: "",
-        telefone: "",
-      });
+      if (signupError) {
+        throw signupError;
+      }
       
-    } catch (error: any) {
-      toast.error(sanitizeAuthError(error));
+      if (user && !user.email_confirmed_at) {
+        // Sucesso no registro, mas a confirmação de e-mail é necessária
+        onSuccess(data.email);
+        toast.success("Cadastro realizado!", {
+            description: "Um link de confirmação foi enviado para seu e-mail. Por favor, confirme para acessar.",
+            duration: 8000,
+        });
+      } else {
+        // Caso raro onde o e-mail é confirmado imediatamente (não deve ocorrer com o fluxo padrão)
+        onSuccess(data.email);
+      }
+
+    } catch (err: any) {
+      console.error("Erro de Cadastro:", err);
+      setError(sanitizeAuthError(err));
     } finally {
       setLoading(false);
     }
   };
-  
-  // Máscara de telefone fixa
-  const phoneMask = "(99) 999999999";
-  
-  const criteriaList = useMemo(() => [
-    { key: 'minLength', label: 'Mínimo de 8 caracteres', met: passwordCriteria.minLength },
-    { key: 'uppercase', label: 'Uma letra maiúscula (A-Z)', met: passwordCriteria.uppercase },
-    { key: 'lowercase', label: 'Uma letra minúscula (a-z)', met: passwordCriteria.lowercase },
-    { key: 'number', label: 'Um número (0-9)', met: passwordCriteria.number },
-    { key: 'specialChar', label: 'Um caractere especial (!@#$%^&*)', met: passwordCriteria.specialChar },
-  ], [passwordCriteria]);
-
-  const renderCriteriaItem = (label: string, met: boolean) => (
-    <li className={cn(
-      "flex items-center gap-2 transition-colors", 
-      met ? "text-green-600" : "text-destructive" // Alterado para text-destructive
-    )}>
-      {met ? <Check className="h-3 w-3 shrink-0" /> : <X className="h-3 w-3 shrink-0" />}
-      {label}
-    </li>
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
             Criar Nova Conta
           </DialogTitle>
           <DialogDescription>
-            Preencha seus dados institucionais para criar sua conta.
+            Preencha seus dados para acessar a plataforma.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSignup} className="grid gap-4 py-3">
-          
-          {/* Dados Pessoais, Institucionais e Email (3 colunas em desktop) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="nome_completo">Nome Completo *</Label>
+        
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erro de Cadastro</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail *</Label>
               <Input
-                id="nome_completo"
-                name="nome_completo"
-                value={form.nome_completo}
-                onChange={handleChange}
-                placeholder="Seu nome completo"
-                required
-                onKeyDown={handleEnterToNextField}
+                id="email"
+                type="email"
+                placeholder="seu.email@dominio.com"
+                disabled={loading}
+                {...register('email')}
               />
-              {validationErrors.nome_completo && <p className="text-xs text-destructive">{validationErrors.nome_completo}</p>}
+              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+              
+              {/* Alerta de Sugestão de Domínio */}
+              {suggestedEmailCorrection && (
+                  <Alert variant="default" className="mt-2 p-2 bg-yellow-50 border-yellow-200">
+                      <AlertCircle className="h-4 w-4 text-yellow-700" />
+                      <AlertDescription className="text-xs text-yellow-700">
+                          Domínio incorreto? Sugestão: 
+                          <button 
+                              type="button" 
+                              className="font-semibold underline ml-1"
+                              onClick={() => setValue('email', suggestedEmailCorrection, { shouldValidate: true })}
+                          >
+                              {suggestedEmailCorrection}
+                          </button>
+                      </AlertDescription>
+                  </Alert>
+              )}
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha (mínimo 8 caracteres) *</Label>
+              <Input
+                id="password"
+                type="password"
+                disabled={loading}
+                {...register('password')}
+              />
+              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="posto_graduacao">Posto/Graduação *</Label>
+              <Input
+                id="posto_graduacao"
+                placeholder="Ex: Maj, Cap, 1º Sgt"
+                disabled={loading}
+                {...register('posto_graduacao')}
+              />
+              {errors.posto_graduacao && <p className="text-xs text-destructive">{errors.posto_graduacao.message}</p>}
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="nome_guerra">Nome de Guerra *</Label>
               <Input
                 id="nome_guerra"
-                name="nome_guerra"
-                value={form.nome_guerra}
-                onChange={handleChange}
-                placeholder="Seu nome de guerra"
-                required
-                onKeyDown={handleEnterToNextField}
+                placeholder="Ex: Tatsumi"
+                disabled={loading}
+                {...register('nome_guerra')}
               />
-              {validationErrors.nome_guerra && <p className="text-xs text-destructive">{validationErrors.nome_guerra}</p>}
-            </div>
-            
-            {/* NOVO CAMPO: Posto/Graduação */}
-            <div className="space-y-1">
-              <Label htmlFor="posto_graduacao">Posto/Graduação *</Label>
-              <Select
-                value={form.posto_graduacao}
-                onValueChange={(value) => handleSelectChange("posto_graduacao", value)}
-              >
-                <SelectTrigger id="posto_graduacao" className="justify-start">
-                  <SelectValue placeholder="Seu Posto/Grad">
-                    {form.posto_graduacao || "Seu Posto/Grad"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {MILITARY_RANKS.map((rank) => (
-                    <SelectItem key={rank} value={rank}>
-                      {rank}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {validationErrors.posto_graduacao && <p className="text-xs text-destructive">{validationErrors.posto_graduacao}</p>}
-            </div>
-            
-            {/* Campo Sigla da OM (Select) */}
-            <div className="space-y-1">
-              <Label htmlFor="sigla_om">Sigla da OM *</Label>
-              <Select
-                value={form.sigla_om}
-                onValueChange={(value) => handleSelectChange("sigla_om", value)}
-                disabled={isLoadingOms}
-              >
-                <SelectTrigger id="sigla_om" className="justify-start">
-                  {isLoadingOms ? (
-                    <div className="flex items-center text-muted-foreground">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando OMs...
-                    </div>
-                  ) : (
-                    <SelectValue placeholder="Selecione a OM">
-                      {form.sigla_om || "Selecione a OM"}
-                    </SelectValue>
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  {oms?.map((om) => (
-                    <SelectItem key={om.id} value={om.nome_om}>
-                      {om.nome_om}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {validationErrors.sigla_om && <p className="text-xs text-destructive">{validationErrors.sigla_om}</p>}
-            </div>
-            
-            <div className="space-y-1">
-              <Label htmlFor="funcao_om">Função na OM *</Label>
-              <Input
-                id="funcao_om"
-                name="funcao_om"
-                value={form.funcao_om}
-                onChange={handleChange}
-                placeholder="Ex: S4, Ch Sec Log"
-                required
-                onKeyDown={handleEnterToNextField}
-              />
-              {validationErrors.funcao_om && <p className="text-xs text-destructive">{validationErrors.funcao_om}</p>}
-            </div>
-            
-            {/* Campo Telefone (InputMask) */}
-            <div className="space-y-1">
-              <Label htmlFor="telefone">Telefone (Opcional)</Label>
-              <InputMask
-                mask={phoneMask}
-                value={form.telefone}
-                onChange={handleChange}
-                maskChar={null}
-              >
-                {(inputProps: any) => (
-                  <Input
-                    {...inputProps}
-                    id="telefone"
-                    name="telefone"
-                    placeholder="(99) 999999999"
-                    onKeyDown={handleEnterToNextField}
-                  />
-                )}
-              </InputMask>
-              {validationErrors.telefone && <p className="text-xs text-destructive">{validationErrors.telefone}</p>}
-            </div>
-            
-            {/* Email (Movido para cá) */}
-            <div className="space-y-1">
-              <Label htmlFor="email-signup">Email *</Label>
-              <Input
-                id="email-signup"
-                name="email"
-                type="email"
-                autoComplete="username"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="seu@email.com"
-                required
-                onKeyDown={handleEnterToNextField}
-              />
-              {validationErrors.email && <p className="text-xs text-destructive">{validationErrors.email}</p>}
+              {errors.nome_guerra && <p className="text-xs text-destructive">{errors.nome_guerra.message}</p>}
             </div>
           </div>
           
-          {/* Senha */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3">
-            <div className="space-y-1">
-              <Label htmlFor="password-signup">Senha *</Label>
-              <div className="relative">
-                <Input
-                  id="password-signup"
-                  name="password"
-                  type={showPassword1 ? "text" : "password"}
-                  autoComplete="new-password"
-                  value={form.password}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  required
-                  minLength={8}
-                  className="pr-10"
-                  onKeyDown={handleEnterToNextField}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onMouseDown={() => setShowPassword1(true)}
-                  onMouseUp={() => setShowPassword1(false)}
-                  tabIndex={-1}
-                >
-                  {showPassword1 ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-                </Button>
-              </div>
-              {validationErrors.password && <p className="text-xs text-destructive">{validationErrors.password}</p>}
-            </div>
-            
-            <div className="space-y-1">
-              <Label htmlFor="confirmPassword">Confirmar Senha *</Label>
-              <div className="relative">
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showPassword2 ? "text" : "password"}
-                  autoComplete="new-password"
-                  value={form.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  required
-                  minLength={8}
-                  className="pr-10"
-                  onKeyDown={handleEnterToNextField}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onMouseDown={() => setShowPassword2(true)}
-                  onMouseUp={() => setShowPassword2(false)}
-                  tabIndex={-1}
-                >
-                  {showPassword2 ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-                </Button>
-              </div>
-              {validationErrors.confirmPassword && <p className="text-xs text-destructive">{validationErrors.confirmPassword}</p>}
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="nome_om">OM de Vinculação *</Label>
+            <OmSelector
+                selectedOmId={selectedOm?.id}
+                onChange={handleOmChange}
+                placeholder="Selecione sua OM..."
+                disabled={loading}
+            />
+            {errors.nome_om && <p className="text-xs text-destructive">{errors.nome_om.message}</p>}
+            {selectedOm && (
+                <p className="text-xs text-muted-foreground">
+                    CODUG: {selectedOm.codug_om} | RM: {selectedOm.rm_vinculacao}
+                </p>
+            )}
           </div>
-          
-          {/* Critérios de Senha */}
-          <Alert className="mt-2 p-3">
-            <AlertDescription className="text-xs text-muted-foreground">
-              <span className="font-bold text-foreground block mb-1">Critérios de Senha:</span>
-              <ul className="grid grid-cols-2 gap-x-4 gap-y-1 ml-2 mt-1">
-                {criteriaList.map(item => renderCriteriaItem(item.label, item.met))}
-              </ul>
-            </AlertDescription>
-          </Alert>
 
-          <DialogFooter className="mt-4">
-            <Button type="submit" disabled={loading || isLoadingOms}>
-              {loading ? "Cadastrando..." : "Criar Conta"}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
+          <DialogFooter className="mt-6">
+            <Button type="submit" disabled={loading || !!suggestedEmailCorrection}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Criar Conta
             </Button>
           </DialogFooter>
         </form>
