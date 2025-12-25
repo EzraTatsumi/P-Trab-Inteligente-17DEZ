@@ -76,25 +76,30 @@ interface PasswordCriteria {
 const DOMAIN_CORRECTIONS: Record<string, string> = {
     // Gmail
     "gamil.com": "gmail.com",
-    "hotmai.com": "hotmail.com",
-    "outlok.com": "outlook.com",
-    "yaho.com": "yahoo.com",
     "gmial.com": "gmail.com",
     "gmal.com": "gmail.com",
-    "gmail.com.br": "gmail.com",
     "gmai.com": "gmail.com",
     "gmil.com": "gmail.com",
+    "gmai.lcom": "gmail.com", // Novo: Ponto em posição errada
+    "gmailcom": "gmail.com", // Novo: Sem ponto
+    "gmail.com.br": "gmail.com",
     
-    // Hotmail/Outlook
+    // Hotmail/Outlook/Live
+    "hotmai.com": "hotmail.com",
     "hotmal.com": "hotmail.com",
+    "outlok.com": "outlook.com",
     "outloock.com": "outlook.com",
     "outlok.com": "outlook.com",
+    "outlookcom": "outlook.com", // Novo: Sem ponto
     "live.com.br": "live.com",
     "live.com": "live.com",
     
     // Yahoo
+    "yaho.com": "yahoo.com",
     "yhoo.com": "yahoo.com",
     "yahho.com": "yahoo.com",
+    "yahoo.com.br": "yahoo.com", // Novo: Variação .com.br
+    "yahoocom": "yahoo.com", // Novo: Sem ponto
     
     // Institucional (eb.mil.br)
     "ebmil.br": "eb.mil.br",
@@ -107,6 +112,7 @@ const DOMAIN_CORRECTIONS: Record<string, string> = {
     "eb.br": "eb.mil.br", 
     "eb.mil.com": "eb.mil.br",
     "eb.com.br": "eb.mil.br",
+    "ebmilbr.com": "eb.mil.br", // Novo: Combinação de erros
 };
 
 export const SignupDialog: React.FC<SignupDialogProps> = ({
