@@ -24,15 +24,31 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         setSession(currentSession);
         setUser(currentSession.user);
         
+        // --- Lógica de Confirmação de E-mail ---
+        if (!currentSession.user.email_confirmed_at) {
+            // Se o usuário está logado mas o e-mail não está confirmado, 
+            // forçamos o logout e redirecionamos para /login.
+            // O componente Login.tsx detectará o status e abrirá o EmailVerificationDialog.
+            if (event !== 'SIGNED_OUT' && event !== 'USER_UPDATED') {
+                await supabase.auth.signOut();
+                setSession(null);
+                setUser(null);
+                toast.warning("Confirme seu e-mail para acessar a plataforma.");
+                navigate('/login');
+                return;
+            }
+        }
+        
         // Redirecionar usuários autenticados para /ptrab, exceto se já estiverem lá ou em /login
         if (window.location.pathname === '/login' || window.location.pathname === '/') {
           navigate('/ptrab');
-          toast.success("Login realizado com sucesso!");
-        } else if (event === 'SIGNED_IN') {
-          toast.success("Login realizado com sucesso!");
+          if (event === 'SIGNED_IN') {
+            toast.success("Login realizado com sucesso!");
+          }
         } else if (event === 'USER_UPDATED' && currentSession.user.email_confirmed_at) {
+          // Este evento ocorre após o usuário clicar no link de confirmação
           toast.success("Seu e-mail foi confirmado com sucesso! Faça login para continuar.");
-          navigate('/login'); // Redireciona para login após confirmação de e-mail
+          navigate('/login'); 
         }
       } else {
         setSession(null);
@@ -48,6 +64,20 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
     // Fetch initial session
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       if (initialSession) {
+        // Verifica a confirmação do e-mail na sessão inicial
+        if (!initialSession.user.email_confirmed_at) {
+            supabase.auth.signOut().then(() => {
+                setSession(null);
+                setUser(null);
+                setLoading(false);
+                if (window.location.pathname !== '/login') {
+                    toast.warning("Confirme seu e-mail para acessar a plataforma.");
+                    navigate('/login');
+                }
+            });
+            return;
+        }
+        
         setSession(initialSession);
         setUser(initialSession.user);
         if (window.location.pathname === '/login' || window.location.pathname === '/') {
