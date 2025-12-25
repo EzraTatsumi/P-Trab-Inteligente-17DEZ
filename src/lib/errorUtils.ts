@@ -47,7 +47,7 @@ export const sanitizeAuthError = (error: any): string => {
   // Common auth error patterns (Translated even in dev mode for better UX)
   if (message.includes('Invalid login')) return 'Email ou senha incorretos';
   if (message.includes('Email not confirmed')) return 'Confirme seu email antes de fazer login';
-  if (message.includes('already registered')) return 'Este email já está cadastrado';
+  if (message.includes('already registered')) return 'Este email já está cadastrado'; // Adicionado tratamento explícito
   if (message.includes('Password')) return 'Senha inválida ou muito fraca';
   if (message.includes('rate limit')) return 'Muitas tentativas. Aguarde alguns minutos';
   if (message.includes('network')) return 'Erro de conexão. Verifique sua internet';
