@@ -34,16 +34,16 @@ serve(async (req) => {
       }
     );
 
-    // ✅ Usando a função administrativa correta para verificar a existência do usuário
+    // Usando a função administrativa correta para verificar a existência do usuário
     const { data, error } = await supabaseAdmin.auth.admin.getUserByEmail(email);
 
-    // Se o erro for 'User not found', isso significa que o usuário não existe, o que é o resultado esperado.
+    // Se houver um erro E não for o erro esperado de 'User not found'
     if (error && error.message !== "User not found") {
       console.error("Supabase Admin Error:", error);
-      throw new Error("Erro ao consultar o banco de dados de usuários.");
+      // Retorna a mensagem de erro real do Supabase Admin para depuração
+      throw new Error(`Supabase Admin Error: ${error.message}`); 
     }
     
-    // O usuário existe se 'data' e 'data.user' estiverem presentes.
     const exists = !!data?.user;
     console.log(`User existence check result for ${email}: ${exists}`);
 
