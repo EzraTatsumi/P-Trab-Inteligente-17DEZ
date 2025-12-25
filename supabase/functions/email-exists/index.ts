@@ -13,6 +13,7 @@ serve(async (req) => {
   
   try {
     const { email } = await req.json();
+    console.log(`Received email for check: ${email}`); // DEBUG LOG
 
     if (!email) {
       return new Response(
@@ -45,6 +46,7 @@ serve(async (req) => {
     }
     
     const exists = users && users.length > 0;
+    console.log(`User existence check result for ${email}: ${exists}`); // DEBUG LOG
 
     return new Response(
       JSON.stringify({ exists }),
