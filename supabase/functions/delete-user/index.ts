@@ -11,15 +11,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // 1. Autenticação e obtenção do JWT
+  // 1. Autenticação e obtenção do JWT/Email
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Unauthorized: Missing Authorization header' }), { 
-      status: 401, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-    });
-  }
-  const token = authHeader.replace('Bearer ', '');
+  const { email } = await req.json(); // Extract email from body
 
   // 2. Criar cliente Supabase com Service Role Key
   const supabaseServiceRole = createClient(
@@ -34,14 +28,57 @@ serve(async (req) => {
   );
 
   try {
-    // 3. Obter o UID do usuário a partir do JWT (usando o Service Role Client)
-    const { data: { user }, error: userError } = await supabaseServiceRole.auth.getUser(token);
+    let userId: string | null = null;
 
-    if (userError || !user) {
-      throw new Error(userError?.message || 'Invalid user token');
+    if (authHeader) {
+      // --- Case 1: Deletion by JWT (Authenticated User) ---
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: userError } = await supabaseServiceRole.auth.getUser(token);
+
+      if (userError || !user) {
+        throw new Error(userError?.message || 'Invalid user token');
+      }
+      userId = user.id;
+    } else if (email) {
+      // --- Case 2: Deletion by Email (Unauthenticated/Unconfirmed User) ---
+      
+      // Use auth.admin.listUsers to find the user by email
+      const { data: { users }, error: listError } = await supabaseServiceRole.auth.admin.listUsers({
+          filter: `email eq '${email}'`,
+          perPage: 1,
+      });
+      
+      if (listError) {
+          console.error("Admin list users error:", listError);
+          throw new Error("Database error while finding user by email.");
+      }
+      
+      const userToDelete = users?.[0];
+      
+      if (!userToDelete) {
+          return new Response(JSON.stringify({ error: 'User not found for this email.' }), { 
+              status: 404, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          });
+      }
+      
+      // Security Check: Only allow deletion if the email is NOT confirmed
+      if (userToDelete.email_confirmed_at) {
+          return new Response(JSON.stringify({ error: 'Unauthorized: Confirmed users must be logged in to delete their account.' }), { 
+              status: 403, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          });
+      }
+      
+      userId = userToDelete.id;
+      
+    } else {
+      // Neither token nor email provided
+      return new Response(JSON.stringify({ error: 'Unauthorized: Missing Authorization header or email parameter.' }), { 
+        status: 401, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
     }
-
-    const userId = user.id;
 
     // 4. Excluir o usuário usando o Service Role Client
     const { error: deleteError } = await supabaseServiceRole.auth.admin.deleteUser(userId);

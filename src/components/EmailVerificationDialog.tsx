@@ -66,19 +66,19 @@ export const EmailVerificationDialog: React.FC<EmailVerificationDialogProps> = (
     setShowDeleteConfirm(false);
 
     try {
-      // 1. Obter o token JWT do usuário atual (mesmo que não confirmado, ele tem uma sessão temporária)
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // 1. Tenta obter a sessão. Se falhar (usuário deslogado), o token será null.
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (sessionError || !session) {
-        throw new Error("Sessão não encontrada. Tente fazer login novamente.");
-      }
+      const token = session?.access_token;
       
-      const token = session.access_token;
-      
-      // 2. Chamar a Edge Function para exclusão (requer Service Role Key)
+      // 2. Chamar a Edge Function para exclusão
       const { error: invokeError } = await supabase.functions.invoke('delete-user', {
-        headers: {
+        headers: token ? {
           Authorization: `Bearer ${token}`,
+        } : {},
+        body: {
+          // Sempre envia o email no corpo. A Edge Function usará o email se o token estiver ausente.
+          email: email, 
         },
       });
 
@@ -86,7 +86,7 @@ export const EmailVerificationDialog: React.FC<EmailVerificationDialogProps> = (
         throw new Error(invokeError.message || "Falha ao excluir conta via Edge Function.");
       }
       
-      // 3. Logout forçado (embora a Edge Function já tenha excluído o usuário)
+      // 3. Logout forçado (caso a exclusão tenha sido feita por email e o cliente ainda tenha uma sessão expirada/temporária)
       await supabase.auth.signOut();
 
       toast.success("Conta excluída com sucesso. Você pode se cadastrar novamente com o e-mail correto.");
