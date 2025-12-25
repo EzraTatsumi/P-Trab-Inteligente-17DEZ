@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -459,7 +459,7 @@ const ClasseVIIIForm = () => {
     loadDiretrizes();
     fetchRegistros().then(() => setLoading(false)); // Initial load, but don't populate form
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [ptrabId]);
+  }, [ptrabId, navigate]);
   
   // Efeito para gerenciar a lista de itens da categoria atual
   useEffect(() => {
@@ -597,7 +597,7 @@ const ClasseVIIIForm = () => {
             .eq("p_trab_id", ptrabId),
         supabase
             .from("classe_viii_remonta_registros")
-            .select("*, itens_remonta, detalhamento_customizado, valor_nd_30, valor_nd_39")
+            .select("*, itens_remonta, detalhamento_customizado, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais")
             .eq("p_trab_id", ptrabId),
     ]);
 
@@ -737,6 +737,7 @@ const ClasseVIIIForm = () => {
       itensRemonta: consolidatedRemonta,
     });
     setCategoryAllocations(newAllocations);
+    setTempND39Inputs(tempND39Inputs); // Atualiza o estado temporário de ND 39
     setTempDestinations(tempDestinations); // Atualiza o estado temporário de destino
     
     if (saudeRecords.length > 0) {
@@ -956,7 +957,7 @@ const ClasseVIIIForm = () => {
     
     if (selectedTab === 'Saúde') {
         itemsToKeep = (currentCategoryItems as ItemSaude[]).filter(item => item.quantidade > 0);
-        setForm({ ...form, itensSaude: itemsToKeep as ItemSaude[] });
+        setForm(prev => ({ ...prev, itensSaude: itemsToKeep as ItemSaude[] }));
     } else {
         const remontaItems = currentCategoryItems as ItemRemonta[];
         const directives = diretrizesRemonta;
@@ -984,7 +985,7 @@ const ClasseVIIIForm = () => {
         });
         
         itemsToKeep = activeRemontaItems;
-        setForm({ ...form, itensRemonta: itemsToKeep as ItemRemonta[] });
+        setForm(prev => ({ ...prev, itensRemonta: itemsToKeep as ItemRemonta[] }));
     }
 
     setCategoryAllocations(prev => ({
@@ -1009,7 +1010,7 @@ const ClasseVIIIForm = () => {
         [selectedTab]: finalDigits
     }));
     
-    toast.success(`Itens e alocação de ND para ${getCategoryLabel(selectedTab)} atualizados!`);
+    toast.success(`Itens e alocação de ND para ${selectedTab} atualizados!`);
   };
   
   // --- Global Totals and Validation ---
