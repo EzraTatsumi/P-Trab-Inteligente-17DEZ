@@ -143,17 +143,13 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     specialChar: false,
   });
   
-  // NOVO ESTADO: Erro de submissão (para o alerta no topo)
   const [submissionError, setSubmissionError] = useState<string | null>(null);
-  
-  // NOVO ESTADO: Rastreia se o usuário ignorou a sugestão de correção
   const [ignoredCorrection, setIgnoredCorrection] = useState<string | null>(null);
   
   const { handleEnterToNextField } = useFormNavigation();
   
   const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
 
-  // Lógica de Sugestão de Domínio (Integrada)
   const suggestedEmailCorrection = useMemo(() => {
     const watchedEmail = form.email;
     if (!watchedEmail || !watchedEmail.includes('@')) return null;
@@ -171,7 +167,6 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     return null;
   }, [form.email]);
   
-  // Efeito para resetar o estado de ignorar correção se o email mudar
   useEffect(() => {
     if (ignoredCorrection && form.email !== ignoredCorrection) {
         setIgnoredCorrection(null);
@@ -210,72 +205,78 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     setSubmissionError(null); 
 
     try {
-      // --- Camada 1: Bloqueio se houver sugestão de correção de domínio E não foi ignorado ---
+      /* =====================================================
+         1. BLOQUEIO POR SUGESTÃO DE DOMÍNIO
+      ====================================================== */
       if (suggestedEmailCorrection && form.email !== ignoredCorrection) {
-          toast.error(`O e-mail digitado parece incorreto. Por favor, corrija ou confirme a digitação.`);
-          setLoading(false);
-          return;
-      }
-      // -------------------------------------------------------------------------
-      
-      // Remove caracteres não numéricos do telefone antes da validação, se houver
-      const rawForm = {
-        ...form,
-        telefone: form.telefone.replace(/\D/g, ''),
-      };
-      
-      // Se o telefone estiver vazio, garante que ele passe na validação opcional
-      const finalForm = rawForm.telefone.length === 0 ? { ...rawForm, telefone: '' } : rawForm;
-
-      const validationResult = signupSchema.safeParse(finalForm);
-      if (!validationResult.success) {
-        const errors = validationResult.error.flatten().fieldErrors;
-        const fieldErrors: Record<string, string | undefined> = {};
-        
-        // Mapeia os erros para o estado de validação
-        Object.keys(errors).forEach(key => {
-            fieldErrors[key] = errors[key]?.[0];
-        });
-        setValidationErrors(fieldErrors);
-        
-        // Exibe o primeiro erro de validação Zod como toast
-        toast.error(validationResult.error.errors[0].message);
-        
-        // Se o erro for no email, exibe no alerta de submissão também
-        if (fieldErrors.email) {
-            setSubmissionError(fieldErrors.email);
-        } else {
-            setSubmissionError(validationResult.error.errors[0].message);
-        }
-        
-        setLoading(false);
+        const msg = "O e-mail digitado parece incorreto. Corrija ou confirme a digitação.";
+        toast.error(msg);
+        setSubmissionError(msg);
         return;
       }
 
-      const { email, password, nome_completo, nome_guerra, posto_graduacao, sigla_om, funcao_om, telefone } = validationResult.data;
+      /* =====================================================
+         2. NORMALIZAÇÃO + VALIDAÇÃO ZOD
+      ====================================================== */
+      const normalizedForm = {
+        ...form,
+        telefone: form.telefone.replace(/\D/g, ""),
+      };
 
-      // Busca os dados completos da OM para incluir CODUG e RM no metadata
-      const selectedOmData = oms?.find(om => om.nome_om === sigla_om);
-      if (!selectedOmData) {
-          const omError = "OM de vinculação não encontrada na lista.";
-          setSubmissionError(omError);
-          toast.error(omError);
-          setLoading(false);
-          return;
+      const parsed = signupSchema.safeParse({
+        ...normalizedForm,
+        telefone: normalizedForm.telefone || "",
+      });
+
+      if (!parsed.success) {
+        const errors = parsed.error.flatten().fieldErrors;
+        const fieldErrors: Record<string, string | undefined> = {};
+
+        Object.entries(errors).forEach(([key, value]) => {
+          if (value?.[0]) fieldErrors[key] = value[0];
+        });
+
+        setValidationErrors(fieldErrors);
+
+        const firstError = parsed.error.errors[0].message;
+        toast.error(firstError);
+        setSubmissionError(firstError);
+        return;
       }
 
-      // --- NOVO FLUXO: Captura o objeto de retorno do Supabase ---
+      const {
+        email,
+        password,
+        nome_completo,
+        nome_guerra,
+        posto_graduacao,
+        sigla_om,
+        funcao_om,
+        telefone,
+      } = parsed.data;
+
+      /* =====================================================
+         3. VALIDAÇÃO DA OM
+      ====================================================== */
+      const selectedOmData = oms?.find(om => om.nome_om === sigla_om);
+      if (!selectedOmData) {
+        const msg = "OM de vinculação não encontrada na lista.";
+        toast.error(msg);
+        setSubmissionError(msg);
+        return;
+      }
+
+      /* =====================================================
+         4. SIGNUP SUPABASE (PONTO CRÍTICO)
+      ====================================================== */
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/ptrab`,
           data: {
-            // Mapeamento para o trigger handle_new_user (first_name/last_name)
-            first_name: nome_completo, 
+            first_name: nome_completo,
             last_name: nome_guerra,
-            
-            // Dados adicionais para o perfil
             posto_graduacao,
             sigla_om,
             funcao_om,
@@ -287,47 +288,51 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         },
       });
 
-      // 1. VERIFICAÇÃO DE ERRO EXPLÍCITO (User already registered and confirmed)
+      /* =====================================================
+         5. ERRO EXPLÍCITO (Ex: Senha fraca, Erro de rede)
+      ====================================================== */
       if (error) {
-        // Se houver erro, lança para o catch genérico para sanitização e toast
         throw error;
       }
-      
-      // 2. VERIFICAÇÃO DE ERRO SILENCIOSO (User already exists but unconfirmed / repeated signup)
-      // Se não houve erro explícito, mas o objeto 'user' está nulo, significa que o signup foi repetido
-      // ou o usuário já existe e o Supabase enviou o email de confirmação novamente (segurança).
-      if (!data.user) {
-          const repeatedSignupError = "Este e-mail já está cadastrado, mas ainda não foi confirmado. Um novo link de confirmação foi enviado.";
-          setSubmissionError(repeatedSignupError);
-          toast.warning(repeatedSignupError);
-          
-          // CORREÇÃO CRÍTICA: Fechar o diálogo de cadastro e NÃO chamar onSignupSuccess
-          onOpenChange(false); 
-          
-          setLoading(false);
-          return; // INTERROMPE O FLUXO DE SUCESSO
+
+      /* =====================================================
+         6. ERRO FUNCIONAL (EMAIL JÁ EXISTENTE)
+         REGRA: signup só é sucesso se data.user EXISTE.
+         Se data.user for null, o Supabase enviou um novo link de confirmação
+         para um usuário não confirmado existente.
+      ====================================================== */
+      if (!data?.user) {
+        const msg = "Este e-mail já está cadastrado. Um novo link de confirmação foi enviado. Por favor, verifique sua caixa de entrada.";
+        toast.warning(msg);
+        setSubmissionError(msg);
+        
+        // Não chama onSignupSuccess, apenas fecha o diálogo para que o usuário tente o login
+        onOpenChange(false); 
+        return;
       }
-      
-      // 3. VERIFICAÇÃO DE SUCESSO (Novo usuário criado)
+
+      /* =====================================================
+         7. SUCESSO REAL (Novo usuário criado)
+      ====================================================== */
       onSignupSuccess(email);
-      setForm({ 
-        email: "", 
-        password: "", 
+
+      setForm({
+        email: "",
+        password: "",
         confirmPassword: "",
-        nome_completo: "", 
+        nome_completo: "",
         nome_guerra: "",
         posto_graduacao: "",
         sigla_om: "",
         funcao_om: "",
         telefone: "",
       });
-      
-    } catch (error: any) {
-      // 4. Catch genérico: Captura erros explícitos (como 'already registered') e erros de rede/outros
-      console.error("Supabase Signup Error (Raw):", error); // NOVO LOG DE DEBUG
-      const sanitizedError = sanitizeAuthError(error);
-      setSubmissionError(sanitizedError);
-      toast.error(sanitizedError);
+
+    } catch (err: any) {
+      console.error("Signup error:", err);
+      const msg = sanitizeAuthError(err);
+      toast.error(msg);
+      setSubmissionError(msg);
     } finally {
       setLoading(false);
     }
