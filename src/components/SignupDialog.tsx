@@ -80,6 +80,12 @@ const DOMAIN_CORRECTIONS: Record<string, string> = {
     "yaho.com": "yahoo.com",
     "gmial.com": "gmail.com",
     "gmal.com": "gmail.com",
+    // NOVAS CORREÇÕES PARA O DOMÍNIO INSTITUCIONAL
+    "eb.mil.brr": "eb.mil.br",
+    "eb.mil.com": "eb.mil.br",
+    "eb.mil.br.": "eb.mil.br",
+    "eb.mil.br ": "eb.mil.br",
+    "eb.mil.br": "eb.mil.br", // Mantém o original para garantir que a lógica de comparação funcione
 };
 
 export const SignupDialog: React.FC<SignupDialogProps> = ({
@@ -122,10 +128,12 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     const parts = watchedEmail.split('@');
     if (parts.length !== 2) return null;
     
-    const domain = parts[1].toLowerCase();
+    const domain = parts[1].toLowerCase().trim(); // Garante que o domínio seja limpo
     
     for (const [typo, correct] of Object.entries(DOMAIN_CORRECTIONS)) {
         if (domain === typo) {
+            // Se o domínio digitado for exatamente o correto, não sugere correção
+            if (typo === correct) return null; 
             return `${parts[0]}@${correct}`;
         }
     }
