@@ -117,38 +117,6 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-// Helper function to get the numeric ND 39 value from the temporary input digits
-const getClasseVITempND39NumericValue = (category: Categoria, tempInputs: Record<Categoria, string>): number => {
-    const digits = tempInputs[category] || "";
-    return formatCurrencyInput(digits).numericValue;
-};
-
-// Helper function to check if a category is dirty (needs saving)
-const isClasseVIAllocationDirty = (category: Categoria, currentTotal: number, allocation: CategoryAllocation, tempInputs: Record<Categoria, string>, tempDestinations: Record<Categoria, TempDestination>): boolean => {
-    // 1. Check for quantity/item change (total value mismatch)
-    // currentTotal agora é o valor calculado a partir dos itens ATUAIS (currentItemsForCheck)
-    if (!areNumbersEqual(allocation.total_valor_com_margem, currentTotal)) {
-        return true;
-    }
-    
-    // 2. Check for ND 39 allocation change
-    const tempND39Value = getClasseVITempND39NumericValue(category, tempInputs);
-    if (!areNumbersEqual(tempND39Value, allocation.nd_39_value)) {
-        return true;
-    }
-    
-    // 3. Check for Destination OM change
-    const tempDest = tempDestinations[category];
-    if (allocation.om_destino_recurso !== tempDest.om || allocation.ug_destino_recurso !== tempDest.ug) {
-        // Only consider it dirty if the category has items (i.e., total > 0)
-        if (currentTotal > 0) {
-            return true;
-        }
-    }
-    
-    return false;
-};
-
 // NOVO: Gera a memória de cálculo detalhada para uma categoria
 const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseVI[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
@@ -570,9 +538,8 @@ const ClasseVIForm = () => {
   const currentND39InputDigits = tempND39Inputs[selectedTab] || "";
   
   const nd39NumericValue = useMemo(() => {
-    // USANDO A FUNÇÃO RENOMEADA
-    return getClasseVITempND39NumericValue(selectedTab, tempND39Inputs);
-  }, [currentND39InputDigits, selectedTab, tempND39Inputs]);
+    return formatCurrencyInput(currentND39InputDigits).numericValue;
+  }, [currentND39InputDigits]);
 
   // CÁLCULO BASE SEM MARGEM
   const currentCategoryBaseValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
@@ -967,10 +934,36 @@ const ClasseVIForm = () => {
     return [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
   }, [fasesAtividade, customFaseAtividade]);
   
+  // Helper function to get the numeric ND 39 value from the temporary input digits
+  const getTempND39NumericValue = (category: Categoria, tempInputs: Record<Categoria, string>): number => {
+      const digits = tempInputs[category] || "";
+      return formatCurrencyInput(digits).numericValue;
+  };
+
   // Helper function to check if a category is dirty (needs saving)
-  const isCategoryAllocationDirtyCheck = (category: Categoria, currentTotal: number, allocation: CategoryAllocation, tempInputs: Record<Categoria, string>, tempDestinations: Record<Categoria, TempDestination>): boolean => {
-      // USANDO A FUNÇÃO RENOMEADA
-      return isClasseVIAllocationDirty(category, currentTotal, allocation, tempInputs, tempDestinations);
+  const isCategoryAllocationDirty = (category: Categoria, currentTotal: number, allocation: CategoryAllocation, tempInputs: Record<Categoria, string>, tempDestinations: Record<Categoria, TempDestination>): boolean => {
+      // 1. Check for quantity/item change (total value mismatch)
+      // currentTotal agora é o valor calculado a partir dos itens ATUAIS (currentItemsForCheck)
+      if (!areNumbersEqual(allocation.total_valor_com_margem, currentTotal)) {
+          return true;
+      }
+      
+      // 2. Check for ND 39 allocation change
+      const tempND39Value = getTempND39NumericValue(category, tempInputs);
+      if (!areNumbersEqual(tempND39Value, allocation.nd_39_value)) {
+          return true;
+      }
+      
+      // 3. Check for Destination OM change
+      const tempDest = tempDestinations[category];
+      if (allocation.om_destino_recurso !== tempDest.om || allocation.ug_destino_recurso !== tempDest.ug) {
+          // Only consider it dirty if the category has items (i.e., total > 0)
+          if (currentTotal > 0) {
+              return true;
+          }
+      }
+      
+      return false;
   };
 
 
@@ -1295,7 +1288,7 @@ const ClasseVIForm = () => {
                     const currentTotalComMargemForCheck = currentTotalBaseForCheck * (1 + MARGEM_RESERVA);
                     
                     // NOVO: Verifica se a categoria está "suja" (itens ou alocação alterados)
-                    const isDirty = isCategoryAllocationDirtyCheck(
+                    const isDirty = isCategoryAllocationDirty(
                         categoria as Categoria, 
                         currentTotalComMargemForCheck, // Passa o total atual COM MARGEM
                         allocation, 
