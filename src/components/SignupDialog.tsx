@@ -192,7 +192,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
     setValidationErrors(prev => ({ ...prev, [name]: undefined }));
-    setSubmissionError(null); // Limpa o erro de submissão ao digitar
+    // REMOVIDO: setSubmissionError(null); // Não limpa o erro de submissão ao digitar
     
     if (name === 'password') {
       checkPasswordCriteria(value);
@@ -202,14 +202,14 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
   const handleSelectChange = (name: string, value: string) => {
     setForm({ ...form, [name]: value });
     setValidationErrors(prev => ({ ...prev, [name]: undefined }));
-    setSubmissionError(null); // Limpa o erro de submissão ao selecionar
+    // REMOVIDO: setSubmissionError(null); // Não limpa o erro de submissão ao selecionar
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setValidationErrors({});
-    setSubmissionError(null); // Limpa o erro de submissão antes de tentar
+    setSubmissionError(null); // Limpa o erro de submissão ANTES de tentar
 
     try {
       // --- NOVO: Camada 1: Bloqueio se houver sugestão de correção de domínio E não foi ignorado ---
@@ -348,10 +348,6 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         </DialogHeader>
         <form onSubmit={handleSignup} className="grid gap-4 py-3">
           
-          {/* O Alerta de Erro de Submissão Geral (anteriormente na linha 353) foi removido daqui. 
-              Agora, todos os submissionErrors (que não são erros de validação Zod de campo) 
-              serão exibidos na lateral do campo de Email. */}
-          
           {/* Dados Pessoais, Institucionais e Email (3 colunas em desktop) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="space-y-1">
@@ -489,9 +485,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
               {validationErrors.email && <p className="text-xs text-destructive">{validationErrors.email}</p>}
             </div>
             
-            {/* Alerta de Erro de Submissão (Lateral) - Agora exibe QUALQUER submissionError, 
-                incluindo erros de OM não encontrada ou Supabase genérico, 
-                desde que não haja uma sugestão de correção de domínio ativa. */}
+            {/* Alerta de Erro de Submissão (Lateral) */}
             {submissionError && (
                 <Alert variant="destructive" className="mt-7 p-2 w-full md:w-2/3">
                     <AlertCircle className="h-4 w-4" />
