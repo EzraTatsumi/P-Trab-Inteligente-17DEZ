@@ -148,28 +148,12 @@ export function OmSelector({
       }
     };
 
-    // Se selectedOmId está presente, mas displayOM não está definido, e temos initialOmName,
-    // definimos um display temporário para garantir a exibição imediata.
-    if (selectedOmId && initialOmName && !displayOM && !isFetchingSelected) {
-        setDisplayOM({
-            id: selectedOmId,
-            nome_om: initialOmName,
-            codug_om: initialOmUg || 'N/A', 
-            rm_vinculacao: 'N/A', 
-            user_id: '',
-            ativo: false,
-            cidade: '',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        } as OMData);
-    }
-
-    // Dispara a busca individual se não estivermos buscando e a OM não foi encontrada na lista.
+    // Dispara a busca individual se a OM não foi encontrada na lista.
     if (!isFetchingSelected) {
         fetchSelectedOM();
     }
     
-  }, [selectedOmId, oms, initialOmName, initialOmUg]); // Adicionado initialOmName e initialOmUg às dependências
+  }, [selectedOmId, oms, initialOmName, initialOmUg]);
 
   const isOverallLoading = loading || isFetchingSelected;
 
@@ -180,11 +164,12 @@ export function OmSelector({
       return displayOM.nome_om;
     }
     
-    // 2. Se temos um nome inicial (do registro de edição), use-o como fallback imediato.
-    if (initialOmName) {
-      return initialOmName;
+    // 2. Se estamos no modo de edição (selectedOmId presente) E temos um nome inicial, 
+    // usamos o nome inicial como fallback imediato, mesmo que a busca esteja em andamento.
+    if (selectedOmId && initialOmName) {
+        return initialOmName;
     }
-    
+
     // 3. Se estiver carregando a lista de OMs (loading)
     if (loading) {
       return "Carregando...";
@@ -192,7 +177,7 @@ export function OmSelector({
     
     // 4. Caso contrário, mostre o placeholder.
     return placeholder;
-  }, [loading, displayOM, initialOmName, placeholder]);
+  }, [loading, displayOM, initialOmName, placeholder, selectedOmId]);
 
 
   return (
