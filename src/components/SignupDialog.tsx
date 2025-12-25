@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Eye, EyeOff, Loader2, Check, X, AlertCircle, ArrowRight } from "lucide-react";
+import { UserPlus, Eye, EyeOff, Loader2, Check, X, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sanitizeAuthError } from "@/lib/errorUtils";
@@ -75,16 +75,11 @@ interface PasswordCriteria {
 // Mapeamento de erros comuns de domínio
 const DOMAIN_CORRECTIONS: Record<string, string> = {
     "gamil.com": "gmail.com",
-    "hotmial.com": "hotmail.com", // CORRIGIDO
+    "hotmai.com": "hotmail.com",
     "outlok.com": "outlook.com",
     "yaho.com": "yahoo.com",
     "gmial.com": "gmail.com",
     "gmal.com": "gmail.com",
-    "eb.mil.brr": "eb.mil.br",
-    "eb.mil.com": "eb.mil.br",
-    "eb.mil.br.": "eb.mil.br",
-    "eb.mil.br ": "eb.mil.br",
-    "eb.mil.br": "eb.mil.br", 
 };
 
 export const SignupDialog: React.FC<SignupDialogProps> = ({
@@ -130,13 +125,10 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     const parts = watchedEmail.split('@');
     if (parts.length !== 2) return null;
     
-    const domain = parts[1].toLowerCase().trim();
+    const domain = parts[1].toLowerCase();
     
     for (const [typo, correct] of Object.entries(DOMAIN_CORRECTIONS)) {
         if (domain === typo) {
-            // Se o domínio digitado for exatamente o correto, ou se for o domínio institucional
-            // e o usuário digitou corretamente, não sugere correção.
-            if (typo === correct) return null; 
             return `${parts[0]}@${correct}`;
         }
     }
@@ -446,9 +438,9 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             {suggestedEmailCorrection && form.email !== ignoredCorrection && (
                 <Alert variant="default" className="mt-7 p-2 bg-yellow-50 border-yellow-200 w-full md:w-2/3">
                     <AlertCircle className="h-4 w-4 text-yellow-700" />
-                    <AlertDescription className="text-xs text-yellow-700 space-y-2">
+                    <AlertDescription className="text-xs text-yellow-700 flex items-center justify-between">
                         <p>Domínio incorreto? Sugestão:</p>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
                             <Button 
                                 type="button" 
                                 size="sm"
