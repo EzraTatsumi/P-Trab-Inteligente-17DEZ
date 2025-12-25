@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Eye, EyeOff, Loader2, Check, X, AlertCircle } from "lucide-react";
+import { UserPlus, Eye, EyeOff, Loader2, Check, X, AlertCircle, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sanitizeAuthError } from "@/lib/errorUtils";
@@ -75,17 +75,16 @@ interface PasswordCriteria {
 // Mapeamento de erros comuns de domínio
 const DOMAIN_CORRECTIONS: Record<string, string> = {
     "gamil.com": "gmail.com",
-    "hotmai.com": "hotmail.com",
+    "hotmial.com": "hotmail.com", // CORRIGIDO
     "outlok.com": "outlook.com",
     "yaho.com": "yahoo.com",
     "gmial.com": "gmail.com",
     "gmal.com": "gmail.com",
-    // NOVAS CORREÇÕES PARA O DOMÍNIO INSTITUCIONAL
     "eb.mil.brr": "eb.mil.br",
     "eb.mil.com": "eb.mil.br",
     "eb.mil.br.": "eb.mil.br",
     "eb.mil.br ": "eb.mil.br",
-    "eb.mil.br": "eb.mil.br", // Mantém o original para garantir que a lógica de comparação funcione
+    "eb.mil.br": "eb.mil.br", 
 };
 
 export const SignupDialog: React.FC<SignupDialogProps> = ({
@@ -116,6 +115,9 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     specialChar: false,
   });
   
+  // NOVO ESTADO: Rastreia se o usuário ignorou a sugestão de correção
+  const [ignoredCorrection, setIgnoredCorrection] = useState<string | null>(null);
+  
   const { handleEnterToNextField } = useFormNavigation();
   
   const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
@@ -128,17 +130,25 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     const parts = watchedEmail.split('@');
     if (parts.length !== 2) return null;
     
-    const domain = parts[1].toLowerCase().trim(); // Garante que o domínio seja limpo
+    const domain = parts[1].toLowerCase().trim();
     
     for (const [typo, correct] of Object.entries(DOMAIN_CORRECTIONS)) {
         if (domain === typo) {
-            // Se o domínio digitado for exatamente o correto, não sugere correção
+            // Se o domínio digitado for exatamente o correto, ou se for o domínio institucional
+            // e o usuário digitou corretamente, não sugere correção.
             if (typo === correct) return null; 
             return `${parts[0]}@${correct}`;
         }
     }
     return null;
   }, [form.email]);
+  
+  // Efeito para resetar o estado de ignorar correção se o email mudar
+  useEffect(() => {
+    if (ignoredCorrection && form.email !== ignoredCorrection) {
+        setIgnoredCorrection(null);
+    }
+  }, [form.email, ignoredCorrection]);
 
   const checkPasswordCriteria = (password: string) => {
     setPasswordCriteria({
@@ -171,9 +181,9 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     setValidationErrors({});
 
     try {
-      // --- NOVO: Camada 1: Bloqueio se houver sugestão de correção de domínio ---
-      if (suggestedEmailCorrection) {
-          toast.error(`O e-mail digitado parece incorreto. Você quis dizer ${suggestedEmailCorrection}? Por favor, corrija antes de continuar.`);
+      // --- NOVO: Camada 1: Bloqueio se houver sugestão de correção de domínio E não foi ignorado ---
+      if (suggestedEmailCorrection && form.email !== ignoredCorrection) {
+          toast.error(`O e-mail digitado parece incorreto. Por favor, corrija ou confirme a digitação.`);
           setLoading(false);
           return;
       }
@@ -430,21 +440,40 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
               {validationErrors.email && <p className="text-xs text-destructive">{validationErrors.email}</p>}
               
               {/* NOVO: Alerta de Sugestão de Domínio */}
-              {suggestedEmailCorrection && (
+              {suggestedEmailCorrection && form.email !== ignoredCorrection && (
                   <Alert variant="default" className="mt-2 p-2 bg-yellow-50 border-yellow-200">
                       <AlertCircle className="h-4 w-4 text-yellow-700" />
-                      <AlertDescription className="text-xs text-yellow-700">
-                          Domínio incorreto? Sugestão: 
-                          <button 
-                              type="button" 
-                              className="font-semibold underline ml-1"
-                              onClick={() => {
-                                  setForm(prev => ({ ...prev, email: suggestedEmailCorrection }));
-                                  setValidationErrors(prev => ({ ...prev, email: undefined }));
-                              }}
-                          >
-                              {suggestedEmailCorrection}
-                          </button>
+                      <AlertDescription className="text-xs text-yellow-700 space-y-2">
+                          <p>Domínio incorreto? Sugestão:</p>
+                          <div className="flex gap-2">
+                              <Button 
+                                  type="button" 
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+                                  onClick={() => {
+                                      setForm(prev => ({ ...prev, email: suggestedEmailCorrection }));
+                                      setValidationErrors(prev => ({ ...prev, email: undefined }));
+                                      setIgnoredCorrection(null); // Reseta a ignorância se aceitar
+                                  }}
+                              >
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Usar {suggestedEmailCorrection.split('@')[1]}
+                              </Button>
+                              <Button 
+                                  type="button" 
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs"
+                                  onClick={() => {
+                                      setIgnoredCorrection(form.email); // Marca o email atual como ignorado
+                                      toast.info("Correção ignorada. Clique em 'Criar Conta' para continuar.");
+                                  }}
+                              >
+                                  <ArrowRight className="h-3 w-3 mr-1" />
+                                  Manter Digitação
+                              </Button>
+                          </div>
                       </AlertDescription>
                   </Alert>
               )}
@@ -527,7 +556,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
           </Alert>
 
           <DialogFooter className="mt-4">
-            <Button type="submit" disabled={loading || isLoadingOms || !!suggestedEmailCorrection}>
+            <Button type="submit" disabled={loading || isLoadingOms}>
               {loading ? "Cadastrando..." : "Criar Conta"}
             </Button>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
