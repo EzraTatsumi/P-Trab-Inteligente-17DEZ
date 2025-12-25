@@ -216,9 +216,16 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         });
         setValidationErrors(fieldErrors);
         
-        // Exibe o primeiro erro de validação Zod no alerta de submissão
-        setSubmissionError(validationResult.error.errors[0].message);
+        // Exibe o primeiro erro de validação Zod como toast
         toast.error(validationResult.error.errors[0].message);
+        
+        // Se o erro for no email, exibe no alerta de submissão também
+        if (fieldErrors.email) {
+            setSubmissionError(fieldErrors.email);
+        } else {
+            setSubmissionError(validationResult.error.errors[0].message);
+        }
+        
         setLoading(false);
         return;
       }
@@ -317,16 +324,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         </DialogHeader>
         <form onSubmit={handleSignup} className="grid gap-4 py-3">
           
-          {/* Alerta de Erro de Submissão (Topo) */}
-          {submissionError && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Erro de Cadastro</AlertTitle>
-              <AlertDescription>
-                {submissionError}
-              </AlertDescription>
-            </Alert>
-          )}
+          {/* O Alerta de Submissão Geral foi removido daqui. */}
           
           {/* Dados Pessoais, Institucionais e Email (3 colunas em desktop) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -447,7 +445,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             </div>
           </div>
           
-          {/* Email (Movido para ocupar 3 colunas e permitir o alerta lateral) */}
+          {/* Email e Alertas (Movido para ocupar 3 colunas e permitir o alerta lateral) */}
           <div className="md:col-span-3 flex flex-col md:flex-row gap-3 items-start">
             <div className="space-y-1 w-full md:w-1/3">
               <Label htmlFor="email-signup">Email *</Label>
@@ -465,8 +463,19 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
               {validationErrors.email && <p className="text-xs text-destructive">{validationErrors.email}</p>}
             </div>
             
-            {/* Alerta de Sugestão de Domínio (Lateral) */}
-            {suggestedEmailCorrection && form.email !== ignoredCorrection && (
+            {/* NOVO: Alerta de Erro de Submissão (Lateral, se o erro for no email) */}
+            {submissionError && (
+                <Alert variant="destructive" className="mt-7 p-2 w-full md:w-2/3">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Erro de Cadastro</AlertTitle>
+                    <AlertDescription className="text-xs font-medium">
+                        {submissionError}
+                    </AlertDescription>
+                </Alert>
+            )}
+            
+            {/* Alerta de Sugestão de Domínio (Lateral) - Aparece apenas se não houver erro de submissão */}
+            {!submissionError && suggestedEmailCorrection && form.email !== ignoredCorrection && (
                 <Alert variant="default" className="mt-7 p-2 bg-yellow-50 border-yellow-200 w-full md:w-2/3">
                     <AlertCircle className="h-4 w-4 text-yellow-700" />
                     <AlertDescription className="text-xs text-yellow-700 flex items-center justify-between">
