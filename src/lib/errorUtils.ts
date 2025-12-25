@@ -45,7 +45,7 @@ export const sanitizeAuthError = (error: any): string => {
   if (message.includes('Email not confirmed')) return 'Confirme seu email antes de fazer login';
   
   // Verificação robusta para 'already registered' (Caso 2)
-  if (message.includes('already registered') || (message.includes('user') && message.includes('registered'))) {
+  if (message.includes('already registered') || message.includes('A user with this email address has already been registered')) {
       return 'Este email já está cadastrado';
   }
   
