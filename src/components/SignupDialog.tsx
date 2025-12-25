@@ -348,16 +348,9 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         </DialogHeader>
         <form onSubmit={handleSignup} className="grid gap-4 py-3">
           
-          {/* Alerta de Erro de Submissão (Topo) - Mantido para erros gerais */}
-          {submissionError && !validationErrors.email && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Erro de Cadastro</AlertTitle>
-              <AlertDescription>
-                {submissionError}
-              </AlertDescription>
-            </Alert>
-          )}
+          {/* O Alerta de Erro de Submissão Geral (anteriormente na linha 353) foi removido daqui. 
+              Agora, todos os submissionErrors (que não são erros de validação Zod de campo) 
+              serão exibidos na lateral do campo de Email. */}
           
           {/* Dados Pessoais, Institucionais e Email (3 colunas em desktop) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -496,8 +489,10 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
               {validationErrors.email && <p className="text-xs text-destructive">{validationErrors.email}</p>}
             </div>
             
-            {/* NOVO: Alerta de Erro de Submissão (Lateral, se o erro for no email) */}
-            {submissionError && validationErrors.email && (
+            {/* Alerta de Erro de Submissão (Lateral) - Agora exibe QUALQUER submissionError, 
+                incluindo erros de OM não encontrada ou Supabase genérico, 
+                desde que não haja uma sugestão de correção de domínio ativa. */}
+            {submissionError && (
                 <Alert variant="destructive" className="mt-7 p-2 w-full md:w-2/3">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Erro de Cadastro</AlertTitle>
