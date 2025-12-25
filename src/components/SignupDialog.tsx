@@ -264,7 +264,8 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
           return;
       }
 
-      const { error } = await supabase.auth.signUp({
+      // --- NOVO FLUXO: Captura o objeto de retorno do Supabase ---
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -286,7 +287,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         },
       });
 
-      // --- NOVO: Verificação explícita do erro de e-mail já cadastrado ---
+      // 1. VERIFICAÇÃO DE ERRO: Se houver um erro no objeto de retorno (caso de e-mail já registrado)
       if (error) {
         // Se o erro for 'User already registered', tratamos e exibimos o alerta
         if (error.message.includes('already registered')) {
@@ -294,14 +295,13 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             setSubmissionError(sanitizedError);
             toast.error(sanitizedError);
             setLoading(false);
-            return; // Interrompe o fluxo de sucesso
+            return; // INTERROMPE O FLUXO DE SUCESSO
         }
         // Para outros erros, lançamos para o catch genérico
         throw error;
       }
-      // ------------------------------------------------------------------
-
-      // Sucesso no cadastro (apenas se não houver erro)
+      
+      // 2. VERIFICAÇÃO DE SUCESSO: Se não houve erro, prossegue para o fluxo de sucesso (abrir diálogo de verificação)
       onSignupSuccess(email);
       setForm({ 
         email: "", 
