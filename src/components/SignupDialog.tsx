@@ -207,7 +207,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     e.preventDefault();
     setLoading(true);
     setValidationErrors({});
-    setSubmissionError(null); // Limpa o erro de submissão ANTES de tentar
+    setSubmissionError(null); 
 
     try {
       // --- Camada 1: Bloqueio se houver sugestão de correção de domínio E não foi ignorado ---
@@ -289,15 +289,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
 
       // 1. VERIFICAÇÃO DE ERRO EXPLÍCITO (User already registered and confirmed)
       if (error) {
-        // Se o erro for 'User already registered', tratamos e exibimos o alerta
-        if (error.message.includes('already registered')) {
-            const sanitizedError = sanitizeAuthError(error);
-            setSubmissionError(sanitizedError);
-            toast.error(sanitizedError);
-            setLoading(false);
-            return; // INTERROMPE O FLUXO
-        }
-        // Para outros erros, lançamos para o catch genérico
+        // Se houver erro, lança para o catch genérico para sanitização e toast
         throw error;
       }
       
@@ -331,6 +323,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
       });
       
     } catch (error: any) {
+      // 4. Catch genérico: Captura erros explícitos (como 'already registered') e erros de rede/outros
       const sanitizedError = sanitizeAuthError(error);
       setSubmissionError(sanitizedError);
       toast.error(sanitizedError);
