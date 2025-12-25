@@ -112,7 +112,8 @@ const Login = () => {
     setEmail(newEmail); // Preenche o email no formulário de login
     setPassword(""); // Limpa a senha
     setShowSignupDialog(false);
-    setShowEmailVerificationDialog(true);
+    // REMOVIDO: setShowEmailVerificationDialog(true);
+    toast.success("Cadastro realizado! Verifique seu e-mail para confirmar sua conta.");
   };
 
   return (

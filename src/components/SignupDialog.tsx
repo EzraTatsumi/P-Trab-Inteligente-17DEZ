@@ -301,23 +301,18 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         throw error;
       }
       
-      // 2. VERIFICAÇÃO DE ERRO SILENCIOSO (User already exists but unconfirmed / repeated signup)
-      // Se não houve erro explícito, mas o objeto 'user' está nulo, significa que o signup foi repetido
-      // ou o usuário já existe e o Supabase enviou o email de confirmação novamente (segurança).
-      if (!data.user) {
-          const repeatedSignupError = "Este e-mail já está cadastrado, mas ainda não foi confirmado. Um novo link de confirmação foi enviado.";
-          setSubmissionError(repeatedSignupError);
-          toast.warning(repeatedSignupError);
-          
-          // CORREÇÃO CRÍTICA: Fechar o diálogo de cadastro e NÃO chamar onSignupSuccess
-          onOpenChange(false); 
-          
-          setLoading(false);
-          return; // INTERROMPE O FLUXO DE SUCESSO
+      // 2. VERIFICAÇÃO DE SUCESSO (Novo usuário criado) OU REENVIO (user_repeated_signup)
+      if (data.user) {
+          // Novo usuário criado com sucesso
+          onSignupSuccess(email);
+          toast.success("Cadastro realizado! Verifique seu e-mail para confirmar sua conta.");
+      } else {
+          // user_repeated_signup: Usuário já existe, mas não confirmado. Link reenviado.
+          toast.warning("Este e-mail já está cadastrado, mas ainda não foi confirmado. Um novo link de confirmação foi enviado.");
       }
       
-      // 3. VERIFICAÇÃO DE SUCESSO (Novo usuário criado)
-      onSignupSuccess(email);
+      // Em ambos os casos (novo usuário ou reenvio), fechamos o diálogo e limpamos o formulário.
+      onOpenChange(false); 
       setForm({ 
         email: "", 
         password: "", 
