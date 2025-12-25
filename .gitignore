@@ -67,9 +67,9 @@ src/components/PTrabConsolidationDialog.tsx
 
 # Excluir arquivos de Gerenciamento, Clonagem e Crédito
 src/components/CloneVariationDialog.tsx
-src/components/CreditPromptDialog.tsx1
-src/components/CreditInputDialog.tsx1
-src/components/CreditInputCard.tsx1
+src/components/CreditPromptDialog.tsx
+src/components/CreditInputDialog.tsx
+src/components/CreditInputCard.tsx
 src/components/RmSelector.tsx
 src/components/MarkdownAccordion.tsx
 src/components/MarkdownViewer.tsx
@@ -84,7 +84,7 @@ src/pages/UserProfilePage.tsx
 src/components/SignupDialog.tsx
 src/components/reports/PTrabLogisticoReport.tsx
 src/components/reports/PTrabRacaoOperacionalReport.tsx
-src/pages/ClasseIForm.tsx1
+src/pages/ClasseIForm.tsx
 src/pages/ClasseIIForm.tsx1
 src/pages/ClasseIIIForm.tsx
 src/pages/ClasseVForm.tsx
