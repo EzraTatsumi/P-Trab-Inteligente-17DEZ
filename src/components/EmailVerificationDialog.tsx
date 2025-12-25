@@ -72,7 +72,7 @@ export const EmailVerificationDialog: React.FC<EmailVerificationDialogProps> = (
       const token = session?.access_token;
       
       // 2. Chamar a Edge Function para exclusão
-      const { error: invokeError } = await supabase.functions.invoke('delete-user', {
+      const { error: invokeError, data: invokeData } = await supabase.functions.invoke('delete-user', {
         headers: token ? {
           Authorization: `Bearer ${token}`,
         } : {},
@@ -83,7 +83,18 @@ export const EmailVerificationDialog: React.FC<EmailVerificationDialogProps> = (
       });
 
       if (invokeError) {
-        throw new Error(invokeError.message || "Falha ao excluir conta via Edge Function.");
+        // Tenta extrair a mensagem de erro do corpo da resposta se disponível
+        let errorMessage = invokeError.message || "Falha ao excluir conta via Edge Function.";
+        
+        // Se a função retornou um erro, mas o corpo da resposta contém uma mensagem de erro (invokeData)
+        if (invokeData && typeof invokeData === 'object' && 'error' in invokeData) {
+            errorMessage = (invokeData as { error: string }).error;
+        } else if (errorMessage.includes("non-2xx status code")) {
+            // Se for o erro genérico, tenta dar um feedback mais útil
+            errorMessage = "Falha na comunicação com o servidor. O link de exclusão pode ter expirado ou o e-mail não foi encontrado.";
+        }
+        
+        throw new Error(errorMessage);
       }
       
       // 3. Logout forçado (caso a exclusão tenha sido feita por email e o cliente ainda tenha uma sessão expirada/temporária)
@@ -94,6 +105,7 @@ export const EmailVerificationDialog: React.FC<EmailVerificationDialogProps> = (
       
     } catch (error: any) {
       console.error("Erro ao excluir conta:", error);
+      // Exibe a mensagem de erro tratada ou a mensagem de fallback
       toast.error(error.message || "Erro ao excluir conta. Tente novamente mais tarde.");
     } finally {
       setLoading(false);
