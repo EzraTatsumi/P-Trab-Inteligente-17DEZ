@@ -37,6 +37,16 @@ const CATEGORIAS: Categoria[] = [
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
 
+// --- NOVOS TIPOS TEMPORÁRIOS (UNSAVED CHANGES) ---
+interface TempDestination {
+    om: string;
+    ug: string;
+    id?: string;
+}
+const initialTempDestinations: Record<Categoria, TempDestination> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: { om: "", ug: "", id: undefined } }), {} as Record<Categoria, TempDestination>);
+const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, string>);
+// --- FIM NOVOS TIPOS TEMPORÁRIOS ---
+
 interface ItemSaude {
   item: string;
   quantidade: number; // Nr Kits
@@ -111,6 +121,12 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   const ultimaFase = fases[fases.length - 1];
   const demaisFases = fases.slice(0, -1).join(', ');
   return `${demaisFases} e ${ultimaFase}`;
+};
+
+// NOVO: Helper function to get the numeric ND 39 value from the temporary input digits
+const getTempND39NumericValue = (category: Categoria, tempInputs: Record<Categoria, string>): number => {
+    const digits = tempInputs[category] || "";
+    return formatCurrencyInput(digits).numericValue;
 };
 
 // --- Lógica de Cálculo Remonta/Veterinária ---
@@ -337,8 +353,11 @@ const ClasseVIIIForm = () => {
   });
   
   const [categoryAllocations, setCategoryAllocations] = useState<Record<Categoria, CategoryAllocation>>(initialCategoryAllocations);
-  // ALTERADO: Agora armazena os dígitos brutos para usar formatCurrencyInput
-  const [nd39RawDigits, setNd39RawDigits] = useState<string>(""); 
+  
+  // NOVOS ESTADOS: Rastreia o input ND 39 (dígitos) temporário por categoria
+  const [tempND39Inputs, setTempND39Inputs] = useState<Record<Categoria, string>>(initialTempND39Inputs);
+  // NOVOS ESTADOS: Rastreia a OM de destino temporária por categoria
+  const [tempDestinations, setTempDestinations] = useState<Record<Categoria, TempDestination>>(initialTempDestinations);
   
   const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemSaude[] | ItemRemonta[]>([]);
   const [remontaValidationWarning, setRemontaValidationWarning] = useState<string | null>(null); // Novo estado para aviso de validação
@@ -354,6 +373,81 @@ const ClasseVIIIForm = () => {
     const numericValue = parseInputToNumber(formatted);
     return numberToRawDigits(numericValue);
   };
+  
+  // NOVO: Efeito para sincronizar os estados temporários (ND 39 Input e OM Destino) ao mudar de aba ou carregar/resetar o formulário.
+  useEffect(() => {
+      const savedAllocation = categoryAllocations[selectedTab];
+      
+      // 1. Sincronizar ND 39 Input (dígitos)
+      const numericValue = parseInputToNumber(savedAllocation.nd_39_input);
+      const digits = String(Math.round(numericValue * 100));
+      
+      setTempND39Inputs(prev => ({
+          ...prev,
+          [selectedTab]: digits
+      }));
+      
+      // 2. Sincronizar OM Destino
+      if (savedAllocation.om_destino_recurso) {
+          setTempDestinations(prev => ({
+              ...prev,
+              [selectedTab]: {
+                  om: savedAllocation.om_destino_recurso,
+                  ug: savedAllocation.ug_destino_recurso,
+                  id: savedAllocation.selectedOmDestinoId,
+              }
+          }));
+      } else if (form.organizacao) {
+          // Se não houver alocação salva, mas houver OM Detentora, use a Detentora como padrão temporário
+          setTempDestinations(prev => ({
+              ...prev,
+              [selectedTab]: {
+                  om: form.organizacao,
+                  ug: form.ug,
+                  id: form.selectedOmId,
+              }
+          }));
+      } else {
+          // Se não houver OM Detentora, limpa o temporário
+          setTempDestinations(prev => ({
+              ...prev,
+              [selectedTab]: { om: "", ug: "", id: undefined }
+          }));
+      }
+      
+  }, [selectedTab, categoryAllocations, form.organizacao, form.ug, form.selectedOmId]);
+
+  // NOVO: Dirty Check Logic
+  const isCategoryAllocationDirty = useCallback((
+      category: Categoria, 
+      currentTotalValue: number, 
+      allocation: CategoryAllocation, 
+      tempInputs: Record<Categoria, string>, 
+      tempDestinations: Record<Categoria, TempDestination>
+  ): boolean => {
+      // 1. Check for quantity/item change (total value mismatch)
+      if (!areNumbersEqual(allocation.total_valor, currentTotalValue)) {
+          return true;
+      }
+      
+      // 2. Check for ND 39 allocation change
+      const tempND39Value = getTempND39NumericValue(category, tempInputs);
+      if (!areNumbersEqual(tempND39Value, allocation.nd_39_value)) {
+          return true;
+      }
+      
+      // 3. Check for Destination OM change
+      const tempDest = tempDestinations[category];
+      if (allocation.om_destino_recurso !== tempDest.om || allocation.ug_destino_recurso !== tempDest.ug) {
+          // Only consider it dirty if the category has items (i.e., total > 0)
+          if (currentTotalValue > 0) {
+              return true;
+          }
+      }
+      
+      return false;
+  }, []);
+
 
   useEffect(() => {
     if (!ptrabId) {
@@ -367,12 +461,6 @@ const ClasseVIIIForm = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId]);
   
-  // ALTERADO: Carrega dígitos brutos do estado de alocação
-  useEffect(() => {
-    const formattedValue = categoryAllocations[selectedTab].nd_39_input;
-    setNd39RawDigits(formattedToRawDigits(formattedValue));
-  }, [selectedTab, categoryAllocations]);
-
   // Efeito para gerenciar a lista de itens da categoria atual
   useEffect(() => {
     const isSaude = selectedTab === 'Saúde';
@@ -516,8 +604,14 @@ const ClasseVIIIForm = () => {
     if (saudeError) { console.error("Erro ao carregar Saúde:", saudeError); toast.error("Erro ao carregar registros de Saúde"); }
     if (remontaError) { console.error("Erro ao carregar Remonta:", remontaError); toast.error("Erro ao carregar registros de Remonta"); }
 
-    const newSaudeRecords = (saudeData || []) as ClasseVIIIRegistro[];
-    const newRemontaRecords = (remontaData || []) as ClasseVIIIRegistro[];
+    const newSaudeRecords = (saudeData || []).map(r => ({
+        ...r,
+        categoria: 'Saúde - KPSI/KPT', // Normaliza a categoria para exibição
+    })) as ClasseVIIIRegistro[];
+    const newRemontaRecords = (remontaData || []).map(r => ({
+        ...r,
+        categoria: 'Remonta/Veterinária', // Normaliza a categoria para exibição
+    })) as ClasseVIIIRegistro[];
 
     setRegistrosSaude(newSaudeRecords);
     setRegistrosRemonta(newRemontaRecords);
@@ -622,8 +716,15 @@ const ClasseVIIIForm = () => {
     
     for (const cat of CATEGORIAS) {
         const alloc = newAllocations[cat];
+        const tempDest = tempDestinations[cat]; // Usar o estado temporário para carregar a OM de destino
+        
         if (alloc.om_destino_recurso) {
             alloc.selectedOmDestinoId = await fetchOmId(alloc.om_destino_recurso, alloc.ug_destino_recurso);
+            
+            // Sincronizar o estado temporário de destino com o ID
+            tempDest.id = alloc.selectedOmDestinoId;
+            tempDest.om = alloc.om_destino_recurso;
+            tempDest.ug = alloc.ug_destino_recurso;
         }
     }
     
@@ -636,6 +737,7 @@ const ClasseVIIIForm = () => {
       itensRemonta: consolidatedRemonta,
     });
     setCategoryAllocations(newAllocations);
+    setTempDestinations(tempDestinations); // Atualiza o estado temporário de destino
     
     if (saudeRecords.length > 0) {
         setSelectedTab('Saúde');
@@ -655,7 +757,8 @@ const ClasseVIIIForm = () => {
       itensRemonta: [],
     });
     setCategoryAllocations(initialCategoryAllocations);
-    setNd39RawDigits(""); // Resetar para dígitos brutos
+    setTempND39Inputs(initialTempND39Inputs); // Resetar ND 39 temporário
+    setTempDestinations(initialTempDestinations); // Resetar destino temporário
     setCurrentCategoryItems([]);
     setFasesAtividade(["Execução"]);
     setCustomFaseAtividade("");
@@ -674,7 +777,18 @@ const ClasseVIIIForm = () => {
       ug: ug,
     }));
     
-    // Ao mudar a OM detentora, resetamos a OM de destino para a nova OM detentora
+    // Ao mudar a OM detentora, resetamos a OM de destino para a nova OM detentora (no estado temporário)
+    const newTempDestinations = CATEGORIAS.reduce((acc, cat) => {
+        acc[cat] = {
+            om: omName,
+            ug: ug,
+            id: omId,
+        };
+        return acc;
+    }, {} as Record<Categoria, TempDestination>);
+    setTempDestinations(newTempDestinations);
+    
+    // Também atualiza o estado de alocação salva para refletir a nova OM detentora como padrão
     const newAllocations = CATEGORIAS.reduce((acc, cat) => {
         acc[cat] = {
             ...categoryAllocations[cat],
@@ -688,13 +802,12 @@ const ClasseVIIIForm = () => {
   };
   
   const handleOMDestinoChange = (omData: OMData | undefined) => {
-    setCategoryAllocations(prev => ({
+    setTempDestinations(prev => ({
         ...prev,
         [selectedTab]: {
-            ...prev[selectedTab],
-            om_destino_recurso: omData?.nome_om || "",
-            ug_destino_recurso: omData?.codug_om || "",
-            selectedOmDestinoId: omData?.id,
+            om: omData?.nome_om || "",
+            ug: omData?.codug_om || "",
+            id: omData?.id,
         }
     }));
   };
@@ -762,7 +875,7 @@ const ClasseVIIIForm = () => {
   // --- ND Allocation Handlers ---
   const currentCategoryTotalValue = useMemo(() => {
     if (selectedTab === 'Saúde') {
-        return (currentCategoryItems as ItemSaude[]).reduce((sum, item) => sum + calculateSaudeItemTotal(item) + sum, 0);
+        return (currentCategoryItems as ItemSaude[]).reduce((sum, item) => calculateSaudeItemTotal(item) + sum, 0);
     } else {
         const remontaItems = currentCategoryItems as ItemRemonta[];
         
@@ -777,25 +890,36 @@ const ClasseVIIIForm = () => {
     }
   }, [currentCategoryItems, selectedTab, diretrizesRemonta]);
   
-  // ALTERADO: nd39ValueTemp agora é calculado a partir dos dígitos brutos
-  const { numericValue: nd39NumericValueTemp } = formatCurrencyInput(nd39RawDigits);
-  const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, nd39NumericValueTemp));
+  // ND Calculation and Input Handlers (Temporary for current tab)
+  const currentND39InputDigits = tempND39Inputs[selectedTab] || "";
+  
+  const nd39NumericValue = useMemo(() => {
+      return formatCurrencyInput(currentND39InputDigits).numericValue;
+  }, [currentND39InputDigits]);
+
+  const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, nd39NumericValue));
   const nd30ValueTemp = currentCategoryTotalValue - nd39ValueTemp;
+  
+  const { formatted: formattedND39Value } = formatCurrencyInput(currentND39InputDigits);
 
   // ALTERADO: Usa formatCurrencyInput para processar o input e armazenar dígitos brutos
   const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = e.target.value;
       const { digits } = formatCurrencyInput(rawValue);
-      setNd39RawDigits(digits);
+      setTempND39Inputs(prev => ({
+          ...prev,
+          [selectedTab]: digits
+      }));
   };
 
   // ALTERADO: Usa formatCurrencyInput para obter o valor numérico e armazena o valor final em dígitos brutos
   const handleND39InputBlur = () => {
-      const { numericValue } = formatCurrencyInput(nd39RawDigits);
-      const finalND39Value = Math.min(currentCategoryTotalValue, Math.max(0, numericValue));
-      
-      // Atualiza o estado para refletir o valor final (arredondado/limitado) em dígitos brutos
-      setNd39RawDigits(numberToRawDigits(finalND39Value));
+      // Usa o valor calculado final (nd39ValueTemp) e converte de volta para dígitos para armazenamento
+      const finalDigits = String(Math.round(nd39ValueTemp * 100));
+      setTempND39Inputs(prev => ({
+          ...prev,
+          [selectedTab]: finalDigits
+      }));
   };
 
   // --- Save Category Items to Form State ---
@@ -808,7 +932,7 @@ const ClasseVIIIForm = () => {
     const categoryTotalValue = currentCategoryTotalValue;
 
     // ALTERADO: Obtém o valor numérico dos dígitos brutos
-    const { numericValue: numericInput } = formatCurrencyInput(nd39RawDigits);
+    const numericInput = nd39NumericValue;
     const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
     const finalND30Value = categoryTotalValue - finalND39Value;
     
@@ -817,7 +941,8 @@ const ClasseVIIIForm = () => {
         return;
     }
     
-    if (categoryTotalValue > 0 && (!categoryAllocations[selectedTab].om_destino_recurso || !categoryAllocations[selectedTab].ug_destino_recurso)) {
+    const currentTempDest = tempDestinations[selectedTab];
+    if (categoryTotalValue > 0 && (!currentTempDest.om || !currentTempDest.ug)) {
         toast.error("Selecione a OM de destino do recurso antes de salvar a alocação.");
         return;
     }
@@ -871,7 +996,17 @@ const ClasseVIIIForm = () => {
             nd_39_input: formatNumberForInput(finalND39Value, 2), 
             nd_30_value: finalND30Value,
             nd_39_value: finalND39Value,
+            om_destino_recurso: currentTempDest.om,
+            ug_destino_recurso: currentTempDest.ug,
+            selectedOmDestinoId: currentTempDest.id,
         }
+    }));
+    
+    // 7. Ensure the temporary input state is synchronized with the saved value after saving
+    const finalDigits = String(Math.round(finalND39Value * 100));
+    setTempND39Inputs(prev => ({
+        ...prev,
+        [selectedTab]: finalDigits
     }));
     
     toast.success(`Itens e alocação de ND para ${getCategoryLabel(selectedTab)} atualizados!`);
@@ -1295,6 +1430,8 @@ const ClasseVIIIForm = () => {
                     selectedOmId={form.selectedOmId}
                     onChange={handleOMChange}
                     placeholder="Selecione a OM..."
+                    initialOmName={form.organizacao} // NOVO
+                    initialOmUg={form.ug} // NOVO
                   />
                 </div>
 
@@ -1503,20 +1640,22 @@ const ClasseVIIIForm = () => {
                         {/* BLOCO DE ALOCAÇÃO ND 30/39 */}
                         {currentCategoryTotalValue > 0 && (
                             <div className="space-y-4 p-4 border rounded-lg bg-background">
-                                <h4 className="font-semibold text-sm">Alocação de Recursos para {cat}</h4>
+                                <h4 className="font-semibold text-sm">Alocação de Recursos para {cat} (Valor Total: {formatCurrency(currentCategoryTotalValue)})</h4>
                                 
                                 {/* CAMPO: OM de Destino do Recurso */}
                                 <div className="space-y-2">
                                     <Label>OM de Destino do Recurso *</Label>
                                     <OmSelector
-                                        selectedOmId={categoryAllocations[cat].selectedOmDestinoId}
+                                        selectedOmId={tempDestinations[cat].id}
                                         onChange={handleOMDestinoChange}
                                         placeholder="Selecione a OM que receberá o recurso..."
                                         disabled={!form.organizacao} 
+                                        initialOmName={tempDestinations[cat].om} // NOVO
+                                        initialOmUg={tempDestinations[cat].ug} // NOVO
                                     />
-                                    {categoryAllocations[cat].ug_destino_recurso && (
+                                    {tempDestinations[cat].ug && (
                                         <p className="text-xs text-muted-foreground">
-                                            UG de Destino: {categoryAllocations[cat].ug_destino_recurso}
+                                            UG de Destino: {tempDestinations[cat].ug}
                                         </p>
                                     )}
                                 </div>
@@ -1545,9 +1684,8 @@ const ClasseVIIIForm = () => {
                                             <Input
                                                 id="nd39-input"
                                                 type="text"
-                                                inputMode="numeric"
-                                                // ALTERADO: Usa formatCurrencyInput para exibir o valor formatado
-                                                value={formatCurrencyInput(nd39RawDigits).formatted}
+                                                inputMode="decimal"
+                                                value={formattedND39Value}
                                                 onChange={handleND39InputChange}
                                                 onBlur={handleND39InputBlur}
                                                 placeholder="0,00"
@@ -1577,7 +1715,7 @@ const ClasseVIIIForm = () => {
                                 type="button" 
                                 onClick={handleUpdateCategoryItems} 
                                 className="w-full md:w-auto" 
-                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && !categoryAllocations[cat].om_destino_recurso) || !!remontaValidationWarning}
+                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && !tempDestinations[cat].om) || !!remontaValidationWarning}
                             >
                                 Salvar Itens da Categoria
                             </Button>
@@ -1610,6 +1748,22 @@ const ClasseVIIIForm = () => {
                     const isSaude = categoria === 'Saúde';
                     const totalCategoria = isSaude ? valorTotalSaude : valorTotalRemonta;
                     const allocation = categoryAllocations[categoria as Categoria];
+                    
+                    // NOVO CÁLCULO: Obtém o total atual (SEM MARGEM) para a categoria, usando os itens não salvos se for a aba ativa
+                    const currentItemsForCheck = isSaude ? (currentCategoryItems as ItemSaude[]).filter(i => i.quantidade > 0) : (currentCategoryItems as ItemRemonta[]).filter(i => i.quantidade_animais > 0);
+                    
+                    const currentTotalValueForCheck = isSaude 
+                        ? (currentItemsForCheck as ItemSaude[]).reduce((sum, item) => calculateSaudeItemTotal(item) + sum, 0)
+                        : (currentItemsForCheck as ItemRemonta[]).reduce((sum, item) => calculateTotalForAnimalType(item, diretrizesRemonta) + sum, 0);
+                    
+                    // NOVO: Verifica se a categoria está "suja" (itens ou alocação alterados)
+                    const isDirty = isCategoryAllocationDirty(
+                        categoria as Categoria, 
+                        currentTotalValueForCheck, 
+                        allocation, 
+                        tempND39Inputs, 
+                        tempDestinations
+                    );
                     
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
@@ -1676,6 +1830,15 @@ const ClasseVIIIForm = () => {
                                 <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
                                 <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
                             </div>
+                            {isDirty && (
+                                <Alert variant="destructive" className="mt-2 p-2">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertTitle className="text-xs font-semibold">Valores Desatualizados</AlertTitle>
+                                    <AlertDescription className="text-xs">
+                                        A quantidade de itens, a alocação de ND ou a OM de destino foi alterada. Clique em "Salvar Itens da Categoria" na aba "{categoria}" para atualizar.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
                         </div>
                       </Card>
                     );
