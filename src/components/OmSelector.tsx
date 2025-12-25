@@ -84,9 +84,12 @@ export function OmSelector({
 
   // 2. Lógica para sugerir a OM padrão automaticamente
   useEffect(() => {
+    // Só executa se o carregamento estiver completo, se não houver OM selecionada,
+    // se um ID padrão for fornecido e se a lista de OMs estiver populada.
     if (!loading && !selectedOmId && defaultOmId && oms.length > 0) {
       const defaultOM = oms.find(om => om.id === defaultOmId);
       if (defaultOM) {
+        // Chama onChange para definir a OM padrão no estado pai
         onChange(defaultOM);
       }
     }
@@ -108,7 +111,7 @@ export function OmSelector({
       return;
     }
 
-    // 2. Se não for encontrada, busca diretamente pelo ID
+    // 2. Se não for encontrada, busca diretamente pelo ID (pode ser inativa ou fora do filtro)
     const fetchSelectedOM = async () => {
       setIsFetchingSelected(true);
       
@@ -119,41 +122,19 @@ export function OmSelector({
           .eq('id', selectedOmId)
           .maybeSingle();
         
-        if (data) {
-            setDisplayOM(data as OMData);
-        } else {
-            // Se a busca falhar, mas temos o nome inicial, criamos um objeto temporário
-            if (initialOmName) {
-                setDisplayOM({
-                    id: selectedOmId,
-                    nome_om: initialOmName,
-                    codug_om: initialOmUg || 'N/A', 
-                    rm_vinculacao: 'N/A', 
-                    user_id: '',
-                    ativo: false,
-                    cidade: '',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                } as OMData);
-            } else {
-                setDisplayOM(undefined);
-            }
-        }
-
+        setDisplayOM((data || undefined) as OMData | undefined);
       } catch (error) {
         console.error('Erro ao buscar OM selecionada:', error);
-        setDisplayOM(undefined);
+        // Se falhar, displayOM permanece undefined
       } finally {
         setIsFetchingSelected(false);
       }
     };
 
-    // Dispara a busca individual se a OM não foi encontrada na lista.
-    if (!isFetchingSelected) {
-        fetchSelectedOM();
-    }
+    // Dispara a busca individual imediatamente se o ID estiver presente e não encontrado na lista atual.
+    fetchSelectedOM();
     
-  }, [selectedOmId, oms, initialOmName, initialOmUg]);
+  }, [selectedOmId, oms]); // Removido 'loading' das dependências para esta busca
 
   const isOverallLoading = loading || isFetchingSelected;
 
@@ -164,12 +145,12 @@ export function OmSelector({
       return displayOM.nome_om;
     }
     
-    // 2. Se estamos no modo de edição (selectedOmId presente) E temos um nome inicial, 
-    // usamos o nome inicial como fallback imediato, mesmo que a busca esteja em andamento.
-    if (selectedOmId && initialOmName) {
-        return initialOmName;
+    // 2. Se temos um nome inicial (do registro de edição), use-o como fallback imediato.
+    // Isso cobre o caso onde selectedOmId é undefined (OM não encontrada) ou a busca ainda está em andamento.
+    if (initialOmName) {
+      return initialOmName;
     }
-
+    
     // 3. Se estiver carregando a lista de OMs (loading)
     if (loading) {
       return "Carregando...";
@@ -177,7 +158,7 @@ export function OmSelector({
     
     // 4. Caso contrário, mostre o placeholder.
     return placeholder;
-  }, [loading, displayOM, initialOmName, placeholder, selectedOmId]);
+  }, [loading, displayOM, initialOmName, placeholder]);
 
 
   return (
@@ -190,7 +171,7 @@ export function OmSelector({
           className="w-full justify-between"
           disabled={disabled || isOverallLoading}
         >
-          <span className={cn("truncate", buttonText === placeholder && "text-muted-foreground")}>
+          <span className={cn("truncate", !selectedOmId && !displayOM && !initialOmName && "text-muted-foreground")}>
             {buttonText}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
