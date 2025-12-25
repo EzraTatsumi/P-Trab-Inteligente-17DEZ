@@ -74,21 +74,39 @@ interface PasswordCriteria {
 
 // Mapeamento de erros comuns de domínio
 const DOMAIN_CORRECTIONS: Record<string, string> = {
+    // Gmail
     "gamil.com": "gmail.com",
     "hotmai.com": "hotmail.com",
     "outlok.com": "outlook.com",
     "yaho.com": "yahoo.com",
     "gmial.com": "gmail.com",
     "gmal.com": "gmail.com",
-    // CORREÇÕES INSTITUCIONAIS (eb.mil.br)
+    "gmail.com.br": "gmail.com",
+    "gmai.com": "gmail.com",
+    "gmil.com": "gmail.com",
+    
+    // Hotmail/Outlook
+    "hotmal.com": "hotmail.com",
+    "outloock.com": "outlook.com",
+    "outlok.com": "outlook.com",
+    "live.com.br": "live.com",
+    "live.com": "live.com",
+    
+    // Yahoo
+    "yhoo.com": "yahoo.com",
+    "yahho.com": "yahoo.com",
+    
+    // Institucional (eb.mil.br)
     "ebmil.br": "eb.mil.br",
     "eb.milbr": "eb.mil.br",
     "eb.mil.brr": "eb.mil.br",
-    "eb.mi.lbr": "eb.mil.br", // Erro de pontuação
-    "eb.mil.br.": "eb.mil.br", // Ponto final extra
-    "ebmilbr": "eb.mil.br", // Sem pontos
-    "eb.mil": "eb.mil.br", // Falta .br
-    "eb.br": "eb.mil.br", // Falta .mil
+    "eb.mi.lbr": "eb.mil.br", 
+    "eb.mil.br.": "eb.mil.br", 
+    "ebmilbr": "eb.mil.br", 
+    "eb.mil": "eb.mil.br", 
+    "eb.br": "eb.mil.br", 
+    "eb.mil.com": "eb.mil.br",
+    "eb.com.br": "eb.mil.br",
 };
 
 export const SignupDialog: React.FC<SignupDialogProps> = ({
@@ -324,7 +342,16 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         </DialogHeader>
         <form onSubmit={handleSignup} className="grid gap-4 py-3">
           
-          {/* O Alerta de Submissão Geral foi removido daqui. */}
+          {/* Alerta de Erro de Submissão (Topo) - Mantido para erros gerais */}
+          {submissionError && !validationErrors.email && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Erro de Cadastro</AlertTitle>
+              <AlertDescription>
+                {submissionError}
+              </AlertDescription>
+            </Alert>
+          )}
           
           {/* Dados Pessoais, Institucionais e Email (3 colunas em desktop) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -464,7 +491,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             </div>
             
             {/* NOVO: Alerta de Erro de Submissão (Lateral, se o erro for no email) */}
-            {submissionError && (
+            {submissionError && validationErrors.email && (
                 <Alert variant="destructive" className="mt-7 p-2 w-full md:w-2/3">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Erro de Cadastro</AlertTitle>
