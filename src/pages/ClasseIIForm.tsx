@@ -14,7 +14,7 @@ import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -129,6 +129,38 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
+// Helper function to get the numeric ND 39 value from the temporary input digits
+const getClasseIITempND39NumericValue = (category: Categoria, tempInputs: Record<Categoria, string>): number => {
+    const digits = tempInputs[category] || "";
+    return formatCurrencyInput(digits).numericValue;
+};
+
+// Helper function to check if a category is dirty (needs saving)
+const isClasseIIAllocationDirty = (category: Categoria, currentTotal: number, allocation: CategoryAllocation, tempInputs: Record<Categoria, string>, tempDestinations: Record<Categoria, TempDestination>): boolean => {
+    // 1. Check for quantity/item change (total value mismatch)
+    // currentTotal agora é o valor calculado a partir dos itens ATUAIS (currentItemsForCheck)
+    if (!areNumbersEqual(allocation.total_valor, currentTotal)) {
+        return true;
+    }
+    
+    // 2. Check for ND 39 allocation change
+    const tempND39Value = getClasseIITempND39NumericValue(category, tempInputs);
+    if (!areNumbersEqual(tempND39Value, allocation.nd_39_value)) {
+        return true;
+    }
+    
+    // 3. Check for Destination OM change
+    const tempDest = tempDestinations[category];
+    if (allocation.om_destino_recurso !== tempDest.om || allocation.ug_destino_recurso !== tempDest.ug) {
+        // Only consider it dirty if the category has items (i.e., total > 0)
+        if (currentTotal > 0) {
+            return true;
+        }
+    }
+    
+    return false;
+};
+
 // NOVO: Gera a memória de cálculo detalhada para uma categoria
 const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
@@ -195,7 +227,7 @@ const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organ
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${dias_operacao} dias de ${faseFormatada}, para ${organizacao}.
 Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
 Alocação:
@@ -551,8 +583,9 @@ const ClasseIIForm = () => {
   const currentND39InputDigits = tempND39Inputs[selectedTab] || ""; // Use temporary state for current tab
   
   const nd39NumericValue = useMemo(() => {
-    return formatCurrencyInput(currentND39InputDigits).numericValue;
-  }, [currentND39InputDigits]);
+    // USANDO A FUNÇÃO RENOMEADA
+    return getClasseIITempND39NumericValue(selectedTab, tempND39Inputs);
+  }, [currentND39InputDigits, selectedTab, tempND39Inputs]);
   
   // ND Calculation and Input Handlers (Temporary for current tab)
   const currentCategoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
@@ -975,36 +1008,10 @@ const ClasseIIForm = () => {
     return [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
   }, [fasesAtividade, customFaseAtividade]);
   
-  // Helper function to get the numeric ND 39 value from the temporary input digits
-  const getTempND39NumericValue = (category: Categoria, tempInputs: Record<Categoria, string>): number => {
-      const digits = tempInputs[category] || "";
-      return formatCurrencyInput(digits).numericValue;
-  };
-
   // Helper function to check if a category is dirty (needs saving)
-  const isCategoryAllocationDirty = (category: Categoria, currentTotal: number, allocation: CategoryAllocation, tempInputs: Record<Categoria, string>, tempDestinations: Record<Categoria, TempDestination>): boolean => {
-      // 1. Check for quantity/item change (total value mismatch)
-      // currentTotal agora é o valor calculado a partir dos itens ATUAIS (currentItemsForCheck)
-      if (!areNumbersEqual(allocation.total_valor, currentTotal)) {
-          return true;
-      }
-      
-      // 2. Check for ND 39 allocation change
-      const tempND39Value = getTempND39NumericValue(category, tempInputs);
-      if (!areNumbersEqual(tempND39Value, allocation.nd_39_value)) {
-          return true;
-      }
-      
-      // 3. Check for Destination OM change
-      const tempDest = tempDestinations[category];
-      if (allocation.om_destino_recurso !== tempDest.om || allocation.ug_destino_recurso !== tempDest.ug) {
-          // Only consider it dirty if the category has items (i.e., total > 0)
-          if (currentTotal > 0) {
-              return true;
-          }
-      }
-      
-      return false;
+  const isCategoryAllocationDirtyCheck = (category: Categoria, currentTotal: number, allocation: CategoryAllocation, tempInputs: Record<Categoria, string>, tempDestinations: Record<Categoria, TempDestination>): boolean => {
+      // USANDO A FUNÇÃO RENOMEADA
+      return isClasseIIAllocationDirty(category, currentTotal, allocation, tempInputs, tempDestinations);
   };
 
 
@@ -1312,7 +1319,7 @@ const ClasseIIForm = () => {
                     const currentTotalForCheck = currentItemsForCheck.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
                     
                     // NOVO: Verifica se a categoria está "suja" (itens ou alocação alterados)
-                    const isDirty = isCategoryAllocationDirty(
+                    const isDirty = isCategoryAllocationDirtyCheck(
                         categoria as Categoria, 
                         currentTotalForCheck, // Passa o total atual (base value)
                         allocation, 
