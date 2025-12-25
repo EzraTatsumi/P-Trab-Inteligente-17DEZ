@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { sanitizeError } from '@/lib/errorUtils';
+import { sanitizeAuthError } from '@/lib/errorUtils';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email({ message: 'E-mail inválido.' }),
@@ -53,7 +53,7 @@ export const ForgotPasswordDialog: React.FC<ForgotPasswordDialogProps> = ({
       });
 
       if (error) {
-        toast.error(sanitizeError(error));
+        toast.error(sanitizeAuthError(error));
         console.error("Password reset error:", error);
       } else {
         setIsSubmitted(true);

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { sanitizeError } from "@/lib/errorUtils";
+import { sanitizeAuthError } from "@/lib/errorUtils";
 import { loginSchema } from "@/lib/validationSchemas";
 import { Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -67,7 +67,7 @@ const Login = () => {
         // Incrementa a contagem de tentativas falhas
         setLoginAttempts(prev => prev + 1);
         
-        const sanitizedMessage = sanitizeError(error);
+        const sanitizedMessage = sanitizeAuthError(error);
         
         // Lógica de erro inteligente: Se for credencial inválida e já tentou 3 vezes, sugere cadastro
         if (error.message === "Invalid login credentials") {
@@ -92,7 +92,7 @@ const Login = () => {
     } catch (error: any) {
       // Se o erro não foi tratado acima (ex: erro de rede), exibe o toast genérico
       if (!loginError) {
-        toast.error(sanitizeError(error));
+        toast.error(sanitizeAuthError(error));
       }
     } finally {
       setLoading(false);
