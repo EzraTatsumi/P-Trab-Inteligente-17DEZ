@@ -31,6 +31,7 @@ serve(async (req) => {
        ✅ API ESTÁVEL: Usando listUsers com filtro
     ====================================================== */
     // Filtra diretamente pelo email, que é mais eficiente do que carregar todos os usuários.
+    // Garante que o email seja minúsculo para a comparação.
     const { data, error } = await supabaseAdmin.auth.admin.listUsers({
       filter: `email eq '${email.toLowerCase()}'`,
       perPage: 1, // Só precisamos de 1 resultado para saber se existe
