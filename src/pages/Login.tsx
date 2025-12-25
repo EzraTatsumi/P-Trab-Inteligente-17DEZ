@@ -12,9 +12,10 @@ import { Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { EmailVerificationDialog } from "@/components/EmailVerificationDialog";
 import { SignupDialog } from "@/components/SignupDialog";
+import { SignupSuccessDialog } from "@/components/SignupSuccessDialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog"; // Importar o novo diálogo
+import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -36,6 +37,10 @@ const Login = () => {
   
   // NOVO ESTADO: Lembrar de mim
   const [rememberMe, setRememberMe] = useState(true);
+  
+  // NOVOS ESTADOS PARA O FLUXO DE CADASTRO BEM-SUCEDIDO
+  const [showSignupSuccessDialog, setShowSignupSuccessDialog] = useState(false);
+  const [signupSuccessEmail, setSignupSuccessEmail] = useState("");
   
   const { handleEnterToNextField } = useFormNavigation();
 
@@ -112,7 +117,10 @@ const Login = () => {
     setEmail(newEmail); // Preenche o email no formulário de login
     setPassword(""); // Limpa a senha
     setShowSignupDialog(false);
-    setShowEmailVerificationDialog(true);
+    
+    // NOVO FLUXO: Exibe o diálogo de sucesso simplificado
+    setSignupSuccessEmail(newEmail);
+    setShowSignupSuccessDialog(true);
   };
 
   return (
@@ -226,16 +234,25 @@ const Login = () => {
         </CardContent>
       </Card>
 
+      {/* Diálogo de Verificação de E-mail (Aparece ao tentar logar com e-mail não confirmado) */}
       <EmailVerificationDialog
         open={showEmailVerificationDialog}
         onOpenChange={setShowEmailVerificationDialog}
         email={email}
       />
       
+      {/* Diálogo de Cadastro */}
       <SignupDialog
         open={showSignupDialog}
         onOpenChange={setShowSignupDialog}
         onSignupSuccess={handleSignupSuccess}
+      />
+      
+      {/* NOVO: Diálogo de Sucesso de Cadastro (Aparece imediatamente após o cadastro) */}
+      <SignupSuccessDialog
+        open={showSignupSuccessDialog}
+        onOpenChange={setShowSignupSuccessDialog}
+        email={signupSuccessEmail}
       />
       
       {/* Diálogo de Recuperação de Senha */}
