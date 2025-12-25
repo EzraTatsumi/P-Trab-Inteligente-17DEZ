@@ -1,4 +1,5 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,36 +22,32 @@ serve(async (req) => {
       );
     }
 
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-    
-    // Endpoint da API REST de Autenticação para listar usuários por email
-    const AUTH_API_URL = `${SUPABASE_URL}/auth/v1/admin/users?email=eq.${encodeURIComponent(email)}`;
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
 
-    const authResponse = await fetch(AUTH_API_URL, {
-        method: 'GET',
-        headers: {
-            // A Service Role Key é obrigatória para acessar endpoints de admin
-            'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
-            // A apikey (anon key) também é necessária para a API REST
-            'apikey': ANON_KEY, 
-            'Content-Type': 'application/json',
-        },
+    /* =====================================================
+       ✅ API ESTÁVEL (FUNCIONA EM TODOS OS RUNTIMES)
+    ====================================================== */
+    // Usando listUsers para contornar o problema de getUserByEmail e a falha da API REST
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000, // limite seguro
     });
 
-    if (!authResponse.ok) {
-        const errorText = await authResponse.text();
-        console.error("Supabase Auth REST API Error:", authResponse.status, errorText);
-        throw new Error(`Falha na API de Autenticação: Status ${authResponse.status}`);
+    if (error) {
+      console.error("listUsers error:", error);
+      return new Response(
+        JSON.stringify({ error: "Erro ao consultar usuários" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const data = await authResponse.json();
-    
-    // A resposta é um array de usuários. Se o array tiver 1 ou mais elementos, o usuário existe.
-    const exists = data.users && data.users.length > 0;
-    
-    console.log(`User existence check result for ${email}: ${exists}`);
+    // Filtragem manual no lado da Edge Function
+    const exists = data.users.some(
+      (user) => user.email?.toLowerCase() === email.toLowerCase()
+    );
 
     return new Response(
       JSON.stringify({ exists }),
