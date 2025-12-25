@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { sanitizeAuthError } from '@/lib/errorUtils';
+import { sanitizeError } from '@/lib/errorUtils';
 import { useFormNavigation } from '@/hooks/useFormNavigation';
 
 // Esquema de validação de senha atualizado para ser mais rigoroso
@@ -92,7 +92,7 @@ const ResetPasswordPage: React.FC = () => {
       });
 
       if (error) {
-        toast.error(sanitizeAuthError(error));
+        toast.error(sanitizeError(error));
         console.error("Password update error:", error);
       } else {
         setIsSuccess(true);
