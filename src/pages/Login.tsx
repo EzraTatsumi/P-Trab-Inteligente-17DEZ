@@ -8,33 +8,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { sanitizeAuthError } from "@/lib/errorUtils";
 import { loginSchema } from "@/lib/validationSchemas";
-import { Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { Eye, EyeOff, AlertTriangle, Loader2 } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { EmailVerificationDialog } from "@/components/EmailVerificationDialog";
 import { SignupDialog } from "@/components/SignupDialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog"; // Importar o novo diálogo
+import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog"; 
+import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
 
 const Login = () => {
   const navigate = useNavigate();
+  const { loading: loadingSession } = useSession();
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showEmailVerificationDialog, setShowEmailVerificationDialog] = useState(false);
   const [showSignupDialog, setShowSignupDialog] = useState(false); 
-  
-  // NOVO ESTADO: Diálogo de recuperação de senha
   const [showForgotPasswordDialog, setShowForgotPasswordDialog] = useState(false);
-  
-  // NOVO ESTADO: Mensagem de erro de login no formulário
   const [loginError, setLoginError] = useState<string | null>(null);
-  
-  // Estado para rastrear tentativas de login falhas para o fluxo de sugestão de cadastro
   const [loginAttempts, setLoginAttempts] = useState(0); 
-  
-  // NOVO ESTADO: Lembrar de mim
   const [rememberMe, setRememberMe] = useState(true);
   
   const { handleEnterToNextField } = useFormNavigation();
@@ -42,7 +37,7 @@ const Login = () => {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setLoginError(null); // Limpa o erro anterior
+    setLoginError(null); 
 
     try {
       const validationResult = loginSchema.safeParse({ email, password });
@@ -52,42 +47,43 @@ const Login = () => {
         return;
       }
 
-      // Implementação da lógica do "Lembrar de mim"
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: { user }, error } = await supabase.auth.signInWithPassword({
         email,
         password,
         options: {
-          // Se rememberMe for true, a sessão é persistida (padrão Supabase).
-          // Se for false, a sessão é de curta duração (session cookie).
           shouldCreateSession: rememberMe, 
         }
       });
       
       if (error) {
-        // Incrementa a contagem de tentativas falhas
         setLoginAttempts(prev => prev + 1);
         
         const sanitizedMessage = sanitizeAuthError(error);
         
-        // Lógica de erro inteligente: Se for credencial inválida e já tentou 3 vezes, sugere cadastro
         if (error.message === "Invalid login credentials") {
-          if (loginAttempts >= 2) { // 3ª tentativa (0, 1, 2)
+          if (loginAttempts >= 2) { 
             setLoginError("Credenciais inválidas. Se você não tem uma conta, por favor, crie uma.");
-            setShowSignupDialog(true); // Abre o diálogo de sugestão
+            setShowSignupDialog(true); 
           } else {
             setLoginError("Email ou senha incorretos. Tente novamente.");
           }
           return;
         }
         
-        // Para outros erros (e-mail não confirmado, etc.)
+        // Se o erro for de e-mail não confirmado, abre o diálogo de verificação
+        if (error.message.includes("Email not confirmed")) {
+            setShowEmailVerificationDialog(true);
+            // Não exibe o erro de login no formulário
+            setLoginError(null); 
+            return;
+        }
+        
         setLoginError(sanitizedMessage);
         throw error;
       }
       
-      // Se o login for bem-sucedido, reseta as tentativas
+      // Se o login for bem-sucedido, o SessionContextProvider fará o redirecionamento
       setLoginAttempts(0);
-      // O SessionContextProvider agora lida com o redirecionamento e o toast de sucesso
       
     } catch (error: any) {
       // Se o erro não foi tratado acima (ex: erro de rede), exibe o toast genérico
@@ -100,11 +96,25 @@ const Login = () => {
   };
 
   const handleSignupSuccess = (newEmail: string) => {
-    setEmail(newEmail); // Preenche o email no formulário de login
-    setPassword(""); // Limpa a senha
+    setEmail(newEmail); 
+    setPassword(""); 
     setShowSignupDialog(false);
     setShowEmailVerificationDialog(true);
   };
+  
+  const handleEmailCorrection = (correctedEmail: string) => {
+    setEmail(correctedEmail);
+    // O EmailVerificationDialog já trata o reenvio
+  };
+  
+  if (loadingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Verificando sessão...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -164,7 +174,7 @@ const Login = () => {
               </div>
             </div>
             
-            {/* Checkbox Lembrar de Mim - MOVIDO PARA CIMA */}
+            {/* Checkbox Lembrar de Mim */}
             <div className="flex items-center space-x-2">
               <Checkbox 
                 id="remember-me" 
@@ -176,7 +186,7 @@ const Login = () => {
               </Label>
             </div>
             
-            {/* NOVO: Exibição da mensagem de erro */}
+            {/* Exibição da mensagem de erro */}
             {loginError && (
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
@@ -221,12 +231,13 @@ const Login = () => {
         open={showEmailVerificationDialog}
         onOpenChange={setShowEmailVerificationDialog}
         email={email}
+        onEmailCorrected={handleEmailCorrection}
       />
       
       <SignupDialog
         open={showSignupDialog}
         onOpenChange={setShowSignupDialog}
-        onSignupSuccess={handleSignupSuccess}
+        onSuccess={handleSignupSuccess}
       />
       
       {/* Diálogo de Recuperação de Senha */}

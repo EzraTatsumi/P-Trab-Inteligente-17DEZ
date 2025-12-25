@@ -264,7 +264,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
           </div>
 
           <DialogFooter className="mt-6">
-            <Button type="submit" disabled={loading || !!suggestedEmailCorrection}>
+            <Button type="submit" disabled={loading || !!suggestedEmailCorrection} className="w-full">
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Criar Conta
             </Button>
