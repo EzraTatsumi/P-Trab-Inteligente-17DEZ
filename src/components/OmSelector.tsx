@@ -140,24 +140,24 @@ export function OmSelector({
 
   // Lógica de exibição do texto no botão
   const buttonText = useMemo(() => {
-    // Prioriza a OM carregada (displayOM)
+    // 1. Se a OM completa foi carregada (displayOM), use o nome dela.
     if (displayOM) {
       return displayOM.nome_om;
     }
     
-    // Se a OM ainda está sendo buscada (isFetchingSelected) ou se o componente está carregando a lista (loading),
-    // mas temos um nome inicial (vindo do registro de edição), usamos ele.
+    // 2. Se estamos carregando (ou acabamos de carregar) e temos um nome inicial (do registro de edição), use-o.
     if (selectedOmId && initialOmName) {
       return initialOmName;
     }
     
-    if (isOverallLoading) {
+    // 3. Se estiver carregando a lista de OMs (loading)
+    if (loading) {
       return "Carregando...";
     }
     
-    // Caso contrário, mostre o placeholder
+    // 4. Caso contrário, mostre o placeholder.
     return placeholder;
-  }, [isOverallLoading, displayOM, selectedOmId, initialOmName, placeholder]);
+  }, [loading, displayOM, selectedOmId, initialOmName, placeholder]);
 
 
   return (
