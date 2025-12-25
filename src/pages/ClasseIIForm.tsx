@@ -24,7 +24,7 @@ import { TablesInsert } from "@/integrations/supabase/types";
 import { defaultClasseIIConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Importar AlertTitle
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils"; // NOVO IMPORT
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
@@ -1348,10 +1348,13 @@ const ClasseIIForm = () => {
                                 <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
                             </div>
                             {isDirty && (
-                                <p className="text-xs text-destructive flex items-center gap-1 pt-1">
-                                    <AlertCircle className="h-3 w-3" />
-                                    Valores desatualizados. Salve a categoria novamente.
-                                </p>
+                                <Alert variant="destructive" className="mt-2 p-2">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertTitle className="text-xs font-semibold">Valores Desatualizados</AlertTitle>
+                                    <AlertDescription className="text-xs">
+                                        A quantidade de itens, a alocação de ND ou a OM de destino foi alterada. Clique em "Salvar Itens da Categoria" na aba "{getCategoryLabel(categoria)}" para atualizar.
+                                    </AlertDescription>
+                                </Alert>
                             )}
                         </div>
                       </Card>
