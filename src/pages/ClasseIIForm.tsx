@@ -82,6 +82,16 @@ interface CategoryAllocation {
   selectedOmDestinoId?: string;
 }
 
+// --- NOVOS TIPOS TEMPORÁRIOS (UNSAVED CHANGES) ---
+interface TempDestination {
+    om: string;
+    ug: string;
+    id?: string;
+}
+const initialTempDestinations: Record<Categoria, TempDestination> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: { om: "", ug: "", id: undefined } }), {} as Record<Categoria, TempDestination>);
+const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, string>);
+// --- FIM NOVOS TIPOS TEMPORÁRIOS ---
+
 const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
     'Equipamento Individual': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
     'Proteção Balística': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
@@ -185,7 +195,7 @@ const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organ
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${dias_operacao} dias de ${faseFormatada}, para ${organizacao}.
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
 Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
 Alocação:
@@ -228,6 +238,11 @@ const ClasseIIForm = () => {
   // NOVO ESTADO: Rastreia a alocação de ND por categoria (SAVED STATE)
   const [categoryAllocations, setCategoryAllocations] = useState<Record<Categoria, CategoryAllocation>>(initialCategoryAllocations);
   
+  // NOVO ESTADO: Rastreia o input ND 39 (dígitos) temporário por categoria
+  const [tempND39Inputs, setTempND39Inputs] = useState<Record<Categoria, string>>(initialTempND39Inputs);
+  // NOVO ESTADO: Rastreia a OM de destino temporária por categoria
+  const [tempDestinations, setTempDestinations] = useState<Record<Categoria, TempDestination>>(initialTempDestinations);
+  
   // NOVO ESTADO: Lista de itens da categoria atual com quantidades editáveis
   const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemClasseII[]>([]);
   
@@ -235,23 +250,14 @@ const ClasseIIForm = () => {
   const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
-  // --- NOVOS ESTADOS TEMPORÁRIOS (UNSAVED CHANGES) ---
-  interface TempDestination {
-      om: string;
-      ug: string;
-      id?: string;
-  }
-  const initialTempDestinations: Record<Categoria, TempDestination> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: { om: "", ug: "", id: undefined } }), {} as Record<Categoria, TempDestination>);
-  const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, string>);
-  
-  // Rastreia o input ND 39 (dígitos) temporário por categoria
-  const [tempND39Inputs, setTempND39Inputs] = useState<Record<Categoria, string>>(initialTempND39Inputs);
-  // Rastreia a OM de destino temporária por categoria
-  const [tempDestinations, setTempDestinations] = useState<Record<Categoria, TempDestination>>(initialTempDestinations);
-  // --- FIM NOVOS ESTADOS TEMPORÁRIOS ---
-  
   const { handleEnterToNextField } = useFormNavigation();
   const formRef = useRef<HTMLDivElement>(null);
+
+  // Helper para converter string formatada (ex: "1.234,56") de volta para dígitos brutos ("123456")
+  const formattedToRawDigits = (formatted: string): string => {
+    const numericValue = parseInputToNumber(formatted);
+    return numberToRawDigits(numericValue);
+  };
 
   useEffect(() => {
     if (!ptrabId) {
@@ -353,11 +359,6 @@ const ClasseIIForm = () => {
   }, [selectedTab, diretrizes, form.itens, form.organizacao, form.dias_operacao]);
 
 
-  const itensDisponiveis = useMemo(() => {
-    return diretrizes.filter(d => d.categoria === selectedTab);
-  }, [diretrizes, selectedTab]);
-  
-  // MEMO: Agrupa os itens do formulário por categoria para exibição consolidada
   const itensAgrupadosPorCategoria = useMemo(() => {
     return form.itens.reduce((acc, item) => {
       if (!acc[item.categoria]) {
@@ -973,7 +974,7 @@ const ClasseIIForm = () => {
   const displayFases = useMemo(() => {
     return [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
   }, [fasesAtividade, customFaseAtividade]);
-
+  
   // Helper function to get the numeric ND 39 value from the temporary input digits
   const getTempND39NumericValue = (category: Categoria, tempInputs: Record<Categoria, string>): number => {
       const digits = tempInputs[category] || "";
@@ -983,6 +984,7 @@ const ClasseIIForm = () => {
   // Helper function to check if a category is dirty (needs saving)
   const isCategoryAllocationDirty = (category: Categoria, currentTotal: number, allocation: CategoryAllocation, tempInputs: Record<Categoria, string>, tempDestinations: Record<Categoria, TempDestination>): boolean => {
       // 1. Check for quantity/item change (total value mismatch)
+      // currentTotal agora é o valor calculado a partir dos itens ATUAIS (currentItemsForCheck)
       if (!areNumbersEqual(allocation.total_valor, currentTotal)) {
           return true;
       }
@@ -1305,10 +1307,14 @@ const ClasseIIForm = () => {
                     
                     const allocation = categoryAllocations[categoria as Categoria];
                     
+                    // NOVO CÁLCULO: Obtém o total atual (base value) para a categoria, usando os itens não salvos se for a aba ativa
+                    const currentItemsForCheck = categoria === selectedTab ? currentCategoryItems : itens;
+                    const currentTotalForCheck = currentItemsForCheck.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    
                     // NOVO: Verifica se a categoria está "suja" (itens ou alocação alterados)
                     const isDirty = isCategoryAllocationDirty(
                         categoria as Categoria, 
-                        totalCategoria, 
+                        currentTotalForCheck, // Passa o total atual (base value)
                         allocation, 
                         tempND39Inputs, 
                         tempDestinations
@@ -1417,7 +1423,7 @@ const ClasseIIForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1427,7 +1433,6 @@ const ClasseIIForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
-                                                        {/* REMOVIDO O BADGE DUPLICADO AQUI */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
@@ -1527,12 +1532,14 @@ const ClasseIIForm = () => {
                               <h4 className="text-base font-semibold text-foreground">
                                 OM Destino: {om} ({ug})
                               </h4>
-                              <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
+                              {/* Badge da Categoria movido para o lado esquerdo, junto ao h4 */}
+                              <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
                                   {badgeStyle.label}
                               </Badge>
                           </div>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
+                              
                               {!isEditing ? (
                                 <>
                                   <Button
