@@ -85,13 +85,13 @@ src/components/SignupDialog.tsx
 src/components/reports/PTrabLogisticoReport.tsx
 src/components/reports/PTrabRacaoOperacionalReport.tsx
 src/pages/ClasseIForm.tsx
-src/pages/ClasseIIForm.tsx1
+src/pages/ClasseIIForm.tsx
 src/pages/ClasseIIIForm.tsx
 src/pages/ClasseVForm.tsx
 src/pages/ClasseVIForm.tsx1
-src/pages/ClasseVIIForm.tsx
+src/pages/ClasseVIIForm.tsx1
 src/pages/ClasseVIIIForm.tsx
-src/pages/ClasseIXForm.tsx1
+src/pages/ClasseIXForm.tsx
 
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
 # src/lib/formatUtils.ts
