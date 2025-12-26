@@ -55,7 +55,7 @@ src/components/ImportPTrabOptionsDialog.tsx
 src/components/ImportConflictDialog.tsx
 src/components/MinutaNumberDialog.tsx
 src/lib/cryptoUtils.ts
-src/integrations/supabase/api.ts1
+src/integrations/supabase/api.ts
 supabase/functions/fetch-fuel-prices/index.ts
 supabase/functions/fetch-share-preview/index.ts
 
@@ -84,8 +84,8 @@ src/pages/UserProfilePage.tsx
 src/components/SignupDialog.tsx
 src/components/reports/PTrabLogisticoReport.tsx1
 src/components/reports/PTrabRacaoOperacionalReport.tsx1
-src/pages/ClasseIForm.tsx1
-src/pages/ClasseIIForm.tsx
+src/pages/ClasseIForm.tsx
+src/pages/ClasseIIForm.tsx1
 src/pages/ClasseIIIForm.tsx
 src/pages/ClasseVForm.tsx
 src/pages/ClasseVIForm.tsx
@@ -98,3 +98,4 @@ src/pages/ClasseIXForm.tsx
 # src/lib/omUtils.ts
 # src/lib/ptrabUtils.ts
 # src/lib/validationSchemas.ts
+# src/lib/ClasseIUtils.ts

@@ -1,6 +1,11 @@
 import { format, subWeeks, startOfWeek, endOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+/**
+ * Formats a number as currency (BRL).
+ * @param value The numeric value.
+ * @returns Formatted string (e.g., R$ 1.234,56).
+ */
 export const formatCurrency = (value: number | string | null | undefined): string => {
   if (value === null || value === undefined) return 'R$ 0,00';
   const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -11,6 +16,11 @@ export const formatCurrency = (value: number | string | null | undefined): strin
   }).format(num);
 };
 
+/**
+ * Formats a number with thousand separators.
+ * @param value The numeric value.
+ * @returns Formatted string (e.g., 1.234).
+ */
 export const formatNumber = (value: number | string | null | undefined, decimals: number = 0): string => {
   if (value === null || value === undefined) return '0';
   const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -104,7 +114,7 @@ export const numberToRawDigits = (num: number | undefined | null): string => {
 
 
 /**
- * Formata uma string de dígitos para o formato monetário brasileiro (preenchimento da direita).
+ * Formats a string de dígitos para o formato monetário brasileiro (preenchimento da direita).
  * Ex: "1" -> "0,01", "12" -> "0,12", "123" -> "1,23"
  * @param value String contendo apenas dígitos.
  * @returns { formatted: string, numericValue: number, digits: string } String formatada com vírgula e ponto de milhar, valor numérico e dígitos brutos.
@@ -131,7 +141,6 @@ export const formatCurrencyInput = (value: string | undefined | null): { formatt
 
   return { formatted, numericValue, digits };
 };
-
 
 /**
  * Calculates the start (Monday) and end (Friday) dates of the previous week.
@@ -165,4 +174,21 @@ export const formatDateDDMMMAA = (dateString: string | Date): string => {
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   // Use date-fns format: dd (day), MMM (short month name in Portuguese), yy (short year)
   return format(date, 'ddMMMyy', { locale: ptBR }).toUpperCase();
+};
+
+/**
+ * Formats a military UG code (usually 6 digits) into XXX.XXX format.
+ * If the input is not a 6-digit string, it returns the original input.
+ * @param ug The UG code string.
+ * @returns Formatted string (e.g., 123.456).
+ */
+export const formatUgNumber = (ug: string | null | undefined): string => {
+  if (!ug) return '';
+  const cleanedUg = ug.replace(/\D/g, ''); // Remove non-digits
+  
+  if (cleanedUg.length === 6) {
+    return `${cleanedUg.substring(0, 3)}.${cleanedUg.substring(3, 6)}`;
+  }
+  
+  return ug;
 };
