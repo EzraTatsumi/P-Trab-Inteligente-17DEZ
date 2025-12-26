@@ -87,9 +87,8 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistroBase): 
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    // 4. Construir o cabeçalho com a nova frase
+    // 4. Construir o cabeçalho com a nova frase (REMOVIDA A LINHA 'Recurso destinado à OM proprietária')
     const header = `${ndHeader} - Manutenção dos componentes do ${categoria} de ${formatNumber(efetivo)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(dias_operacao)} dias de ${faseFormatada}.
-Recurso destinado à OM proprietária: ${organizacao} (UG: ${ug})
 
 Alocação:
 ${valor_nd_30 > 0 ? `- ND 33.90.30 (Material): ${formatCurrency(valor_nd_30)}\n` : ''}${valor_nd_39 > 0 ? `- ND 33.90.39 (Serviço): ${formatCurrency(valor_nd_39)}\n` : ''}
