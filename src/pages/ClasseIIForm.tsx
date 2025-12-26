@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
-import { useFormNavigation } from "@/hooks/useFormNavigation";
+import { useFormNavigation } => "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
 import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
@@ -998,7 +998,7 @@ const ClasseIIForm = () => {
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
               
-              {/* PRIMEIRA LINHA: OM Detentora, UG Detentora, Efetivo */}
+              {/* PRIMEIRA LINHA: OM Detentora, UG Detentora, Efetivo (3 Colunas) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>OM Detentora do Equipamento *</Label>
@@ -1031,8 +1031,8 @@ const ClasseIIForm = () => {
                 </div>
               </div>
               
-              {/* SEGUNDA LINHA: Dias de Atividade, Fase da Atividade */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* SEGUNDA LINHA: Dias de Atividade, Fase da Atividade (3 Colunas: 1 + 2) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Dias de Atividade *</Label>
                   <Input
