@@ -36,6 +36,35 @@ export interface ClasseIRegistro {
 }
 
 /**
+ * Determina a preposição correta ('do' ou 'da') para o nome da OM.
+ * Baseado em prefixos comuns femininos.
+ */
+const getOmPreposition = (omName: string): 'do' | 'da' => {
+    if (!omName) return 'do';
+    
+    const lowerCaseOm = omName.toLowerCase().trim();
+    
+    // Lista de prefixos femininos comuns (RM, Cia, Es, Dir, etc.)
+    const femininePrefixes = [
+        'rm', 'cia', 'escola', 'diretoria', 'base', 'companhia', 'divisão', 
+        'bateria', 'seção', 'subseção', 'região militar', 'bda', 'brigada',
+        '1ª rm', '2ª rm', '3ª rm', '4ª rm', '5ª rm', '6ª rm', '7ª rm', '8ª rm', 
+        '9ª rm', '10ª rm', '11ª rm', '12ª rm',
+    ];
+    
+    // Verifica se a OM começa com algum prefixo feminino
+    const isFeminine = femininePrefixes.some(prefix => lowerCaseOm.startsWith(prefix));
+    
+    // Exceções comuns que parecem femininas mas são masculinas (ex: Batalhão, Regimento)
+    if (lowerCaseOm.includes('batalhão') || lowerCaseOm.includes('regimento') || lowerCaseOm.includes('b log')) {
+        return 'do';
+    }
+    
+    return isFeminine ? 'da' : 'do';
+};
+
+
+/**
  * Função auxiliar para formatar a fórmula de cálculo
  */
 export const formatFormula = (
@@ -158,7 +187,6 @@ export const calculateClasseICalculations = (
 
 /**
  * Gera a memória de cálculo formatada para Ração Quente (QS/QR).
- * REMOVIDO: Menção explícita à OM Fornecedora/Destino no corpo do texto.
  */
 export const generateRacaoQuenteMemoriaCalculo = (registro: ClasseIRegistro): { qs: string, qr: string } => {
   const { organizacao, efetivo, diasOperacao, nrRefInt, valorQS, valorQR, calculos, faseAtividade } = registro;
@@ -179,8 +207,11 @@ export const generateRacaoQuenteMemoriaCalculo = (registro: ClasseIRegistro): { 
   // Lógica de pluralização
   const militarPlural = E === 1 ? 'militar' : 'militares';
   
+  // Lógica de preposição
+  const preposition = getOmPreposition(organizacao);
+  
   // Memória QS (Quantitativo de Subsistência)
-  const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${E} ${militarPlural} do ${organizacao}, durante ${D} dias de ${faseFormatada}.
+  const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} dias de ${faseFormatada}.
 
 Cálculo:
 - Valor da Etapa (QS): ${formatCurrency(VQS)}.
@@ -197,7 +228,7 @@ Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicita
 Total QS: ${formatCurrency(calculos.totalQS)}.`;
 
   // Memória QR (Quantitativo de Reforço)
-  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Quantitativo de Reforço) destinados à complementação de alimentação de ${E} ${militarPlural} do ${organizacao}, durante ${D} dias de ${faseFormatada}.
+  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Quantitativo de Reforço) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} dias de ${faseFormatada}.
 
 Cálculo:
 - Valor da Etapa (QR): ${formatCurrency(VQR)}.
