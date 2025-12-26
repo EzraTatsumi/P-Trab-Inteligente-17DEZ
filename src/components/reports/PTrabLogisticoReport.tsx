@@ -382,16 +382,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           return;
         }
         
+        // CORREÇÃO AQUI: Incluir todas as listas de classes na ordem correta
         const linhasDespesaOrdenadas = [
             ...grupo.linhasQS,
             ...grupo.linhasQR,
             ...grupo.linhasClasseII,
-            ...grupo.linhasLubrificante,
             ...grupo.linhasClasseV,
             ...grupo.linhasClasseVI,
             ...grupo.linhasClasseVII,
             ...grupo.linhasClasseVIII,
             ...grupo.linhasClasseIX,
+            ...grupo.linhasLubrificante, // Classe III Lubrificante
         ];
         
         linhasDespesaOrdenadas.forEach((linha) => {
@@ -891,17 +892,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   return [];
                 }
                 
-                // Array de todas as linhas de despesa, ordenadas pela sequência romana:
+                // CORREÇÃO AQUI: Array de todas as linhas de despesa, ordenadas pela sequência romana:
                 const linhasDespesaOrdenadas = [
                     ...grupo.linhasQS,
                     ...grupo.linhasQR,
                     ...grupo.linhasClasseII,
-                    ...grupo.linhasLubrificante, // Classe III Lubrificante
                     ...grupo.linhasClasseV,
                     ...grupo.linhasClasseVI,
                     ...grupo.linhasClasseVII,
                     ...grupo.linhasClasseVIII,
-                    ...grupo.linhasClasseIX, // NOVO
+                    ...grupo.linhasClasseIX,
+                    ...grupo.linhasLubrificante, // Classe III Lubrificante
                 ];
                 
                 return [
@@ -918,26 +919,27 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         valorC: 0,
                         valorD: 0,
                         valorE: 0,
+                        litros: 0,
+                        precoUnitario: 0,
+                        precoTotal: 0,
                     };
                     
                     if (isClasseI) { // Classe I (QS/QR)
                         const registro = linha.registro as ClasseIRegistro;
                         if (linha.tipo === 'QS') {
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
-                            rowData.omValue = `${registro.om_qs}\n(${registro.ug_qs})`;
-                            rowData.valorC = registro.total_qs;
-                            rowData.valorE = registro.total_qs;
-                            // USANDO A FUNÇÃO UNIFICADA
+                            rowData.omValue = `${registro.om_qs}\n(${formatUgNumber(registro.ug_qs)})`;
+                            rowData.valorC = registro.calculos.totalQS;
+                            rowData.valorE = registro.calculos.totalQS;
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                         } else { // QR
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
-                            rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
-                            rowData.valorC = registro.total_qr;
-                            rowData.valorE = registro.total_qr;
-                            // USANDO A FUNÇÃO UNIFICADA
+                            rowData.omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`;
+                            rowData.valorC = registro.calculos.totalQR;
+                            rowData.valorE = registro.calculos.totalQR;
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                         }
-                    } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
+                    } else if (isClasseII_IX) { // Classes II, V, VI, VII, VIII, IX
                         const registro = linha.registro as ClasseIIRegistro;
                         const omDestinoRecurso = registro.organizacao;
                         const ugDestinoRecurso = registro.ug;
@@ -949,7 +951,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         }
                             
                         rowData.despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
-                        rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
+                        rowData.omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`;
                         rowData.valorC = registro.valor_nd_30;
                         rowData.valorD = registro.valor_nd_39;
                         rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
@@ -962,11 +964,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         
                     } else if (isLubrificante) { // Classe III Lubrificante
                         const registro = linha.registro as ClasseIIIRegistro;
-                        // const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
                         
                         let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
                         rowData.despesasValue = despesasLubValue;
-                        rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
+                        rowData.omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`;
                         rowData.valorC = registro.valor_total;
                         rowData.valorE = registro.valor_total;
                         rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
@@ -1025,7 +1026,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         </td>
                         <td className="col-om">
                           <div>{nomeRM}</div>
-                          <div>({gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || gruposPorOM[nomeRM]?.linhasQR[0]?.registro.ug || 'UG'})</div>
+                          <div>({formatUgNumber(gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || gruposPorOM[nomeRM]?.linhasQR[0]?.registro.ug || 'UG')})</div>
                         </td>
                         <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* 33.90.30 (Vazio) */}
                         <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* 33.90.39 (Vazio) */}
