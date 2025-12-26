@@ -56,26 +56,28 @@ export const EmailConfirmationDialog: React.FC<EmailConfirmationDialogProps> = (
         </div>
         
         <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={onBack}
-            disabled={loading}
-            className="w-full sm:w-auto"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar e Corrigir
-          </Button>
+          {/* Botão de Confirmação (Ação Primária) - Movido para a esquerda */}
           <Button 
             onClick={onConfirm} 
             disabled={loading}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto order-1 sm:order-none"
           >
             {loading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               "Confirmar e Cadastrar"
             )}
+          </Button>
+          {/* Botão de Voltar (Ação Secundária) - Movido para a direita */}
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onBack}
+            disabled={loading}
+            className="w-full sm:w-auto order-2 sm:order-none"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar e Corrigir
           </Button>
         </DialogFooter>
       </DialogContent>
