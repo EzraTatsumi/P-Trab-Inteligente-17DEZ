@@ -21,12 +21,6 @@ import { formatCurrency, formatNumber } from "@/lib/formatUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
 import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
-import { 
-  generateRacaoQuenteMemoriaCalculo, 
-  generateRacaoOperacionalMemoriaCalculo,
-  calculateClasseICalculations,
-  ClasseIRegistro as ClasseIRegistroType, // Importando o tipo correto
-} from "@/lib/classeIUtils"; // Importando as funções de utilidade
 
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
@@ -49,8 +43,29 @@ export interface PTrabData {
   updated_at: string; // NOVO: Data de última atualização
 }
 
-// Usando o tipo importado para garantir consistência
-export type ClasseIRegistro = ClasseIRegistroType;
+export interface ClasseIRegistro {
+  id: string;
+  organizacao: string;
+  ug: string;
+  om_qs: string;
+  ug_qs: string;
+  efetivo: number;
+  dias_operacao: number;
+  nr_ref_int: number;
+  valor_qs: number;
+  valor_qr: number;
+  complemento_qs: number;
+  etapa_qs: number;
+  total_qs: number;
+  total_qr: number;
+  total_geral: number;
+  memoria_calculo_qs_customizada?: string | null;
+  memoria_calculo_qr_customizada?: string | null;
+  fase_atividade?: string | null;
+  categoria: 'RACAO_QUENTE' | 'RACAO_OPERACIONAL';
+  quantidade_r2: number;
+  quantidade_r3: number;
+}
 
 export interface ItemClasseII {
   item: string;
@@ -163,28 +178,23 @@ export const formatFasesParaTexto = (faseCSV: string | null | undefined): string
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-// Helper function to get the label for Classe II/V/VI/VII/VIII/IX categories
-export const getClasseIILabel = (category: string): string => {
-    switch (category) {
-        case 'Vtr Administrativa': return 'Viatura Administrativa';
-        case 'Vtr Operacional': return 'Viatura Operacional';
-        case 'Motocicleta': return 'Motocicleta';
-        case 'Vtr Blindada': return 'Viatura Blindada';
-        case 'Equipamento Individual': return 'Eqp Individual';
-        case 'Proteção Balística': return 'Prot Balística';
-        case 'Material de Estacionamento': return 'Mat Estacionamento';
-        case 'Armt L': return 'Armamento Leve';
-        case 'Armt P': return 'Armamento Pesado';
-        case 'IODCT': return 'IODCT';
-        case 'DQBRN': return 'DQBRN';
-        case 'Embarcação': return 'Embarcação';
-        case 'Equipamento de Engenharia': return 'Eqp Engenharia';
-        case 'Comunicações': return 'Comunicações';
-        case 'Informática': return 'Informática';
-        case 'Saúde': return 'Saúde';
-        case 'Remonta/Veterinária': return 'Remonta/Veterinária';
-        default: return category;
+export const getClasseIILabel = (categoria: string): string => {
+    if (CLASSE_V_CATEGORIES.includes(categoria)) {
+        return 'CLASSE V - ARMAMENTO';
     }
+    if (CLASSE_VI_CATEGORIES.includes(categoria)) {
+        return 'CLASSE VI - MATERIAL DE ENGENHARIA';
+    }
+    if (CLASSE_VII_CATEGORIES.includes(categoria)) {
+        return 'CLASSE VII - COMUNICAÇÕES E INFORMÁTICA';
+    }
+    if (CLASSE_VIII_CATEGORIES.includes(categoria)) {
+        return 'CLASSE VIII - SAÚDE E REMONTA/VETERINÁRIA';
+    }
+    if (CLASSE_IX_CATEGORIES.includes(categoria)) {
+        return 'CLASSE IX - MOTOMECANIZAÇÃO';
+    }
+    return 'CLASSE II - MATERIAL DE INTENDÊNCIA';
 };
 
 export const calculateItemTotalClasseIX = (item: ItemClasseIX, diasOperacao: number): { base: number, acionamento: number, total: number } => {
@@ -278,109 +288,59 @@ ${detalhamentoItens}
 Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
 };
 
-/**
- * Função unificada para gerar a memória de cálculo da Classe I, priorizando o customizado.
- * Esta função é a única responsável por gerar a memória de cálculo de Classe I para relatórios.
- */
-export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP'): string => {
-    if (registro.categoria === 'RACAO_OPERACIONAL') {
-        if (tipo === 'OP') {
-            // Para Ração Operacional, sempre gera a memória automática (não há customização no DB para OP)
-            return generateRacaoOperacionalMemoriaCalculo({
-                id: registro.id,
-                organizacao: registro.organizacao,
-                ug: registro.ug,
-                diasOperacao: registro.dias_operacao,
-                faseAtividade: registro.fase_atividade,
-                efetivo: registro.efetivo,
-                quantidadeR2: registro.quantidade_r2,
-                quantidadeR3: registro.quantidade_r3,
-                // Campos não utilizados na memória OP, mas necessários para a interface
-                omQS: null, ugQS: null, nrRefInt: null, valorQS: null, valorQR: null,
-                memoriaQSCustomizada: null, memoriaQRCustomizada: null,
-                calculos: {
-                    totalQS: 0, totalQR: 0, nrCiclos: 0, diasEtapaPaga: 0, diasEtapaSolicitada: 0, totalEtapas: 0,
-                    complementoQS: 0, etapaQS: 0, complementoQR: 0, etapaQR: 0,
-                },
-                categoria: 'RACAO_OPERACIONAL',
-            });
-        }
-        return "Memória não aplicável para Ração Operacional.";
-    }
-
-    // Lógica para Ração Quente (QS/QR)
-    if (tipo === 'QS') {
-        if (registro.memoria_calculo_qs_customizada) {
-            return registro.memoria_calculo_qs_customizada;
-        }
-        const { qs } = generateRacaoQuenteMemoriaCalculo({
-            id: registro.id,
-            organizacao: registro.organizacao,
-            ug: registro.ug,
-            diasOperacao: registro.dias_operacao,
-            faseAtividade: registro.fase_atividade,
-            omQS: registro.om_qs,
-            ugQS: registro.ug_qs,
-            efetivo: registro.efetivo,
-            nrRefInt: registro.nr_ref_int,
-            valorQS: registro.valor_qs,
-            valorQR: registro.valor_qr,
-            calculos: {
-                totalQS: registro.total_qs,
-                totalQR: registro.total_qr,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int, registro.valor_qs, registro.valor_qr).nrCiclos,
-                diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int, registro.valor_qs, registro.valor_qr).diasEtapaSolicitada,
-                totalEtapas: 0,
-                complementoQS: registro.complemento_qs,
-                etapaQS: registro.etapa_qs,
-                complementoQR: registro.complemento_qr,
-                etapaQR: registro.etapa_qr,
-            },
-            quantidadeR2: 0,
-            quantidadeR3: 0,
-            categoria: 'RACAO_QUENTE',
-        });
-        return qs;
-    }
-
-    if (tipo === 'QR') {
-        if (registro.memoria_calculo_qr_customizada) {
-            return registro.memoria_calculo_qr_customizada;
-        }
-        const { qr } = generateRacaoQuenteMemoriaCalculo({
-            id: registro.id,
-            organizacao: registro.organizacao,
-            ug: registro.ug,
-            diasOperacao: registro.dias_operacao,
-            faseAtividade: registro.fase_atividade,
-            omQS: registro.om_qs,
-            ugQS: registro.ug_qs,
-            efetivo: registro.efetivo,
-            nrRefInt: registro.nr_ref_int,
-            valorQS: registro.valor_qs,
-            valorQR: registro.valor_qr,
-            calculos: {
-                totalQS: registro.total_qs,
-                totalQR: registro.total_qr,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int, registro.valor_qs, registro.valor_qr).nrCiclos,
-                diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int, registro.valor_qs, registro.valor_qr).diasEtapaSolicitada,
-                totalEtapas: 0,
-                complementoQS: registro.complemento_qs,
-                etapaQS: registro.etapa_qs,
-                complementoQR: registro.complemento_qr,
-                etapaQR: registro.etapa_qr,
-            },
-            quantidadeR2: 0,
-            quantidadeR3: 0,
-            categoria: 'RACAO_QUENTE',
-        });
-        return qr;
+export const generateClasseIMemoriaCalculo = (registro: ClasseIRegistro): { qs: string, qr: string } => {
+    const { 
+      organizacao, ug, om_qs, ug_qs, efetivo, dias_operacao, nr_ref_int, 
+      valor_qs, valor_qr, complemento_qs, etapa_qs, total_qs, 
+      complemento_qr, etapa_qr, total_qr, fase_atividade 
+    } = registro;
+    
+    const diasRestantesNoCiclo = dias_operacao % 30;
+    const ciclosCompletos = Math.floor(dias_operacao / 30);
+    
+    let diasEtapaSolicitada = 0;
+    if (diasRestantesNoCiclo <= 22 && dias_operacao >= 30) {
+      diasEtapaSolicitada = ciclosCompletos * 8;
+    } else if (diasRestantesNoCiclo > 22) {
+      diasEtapaSolicitada = (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
+    } else {
+      diasEtapaSolicitada = 0;
     }
     
-    return "Memória de cálculo não encontrada.";
-};
+    const faseFormatada = formatFasesParaTexto(fase_atividade);
+    
+    // Memória QS
+    const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${efetivo} militares do ${organizacao}, durante ${dias_operacao} dias de ${faseFormatada}.
+OM Fornecedora: ${om_qs} (UG: ${ug_qs})
+
+Cálculo:
+- Valor da Etapa (QS): ${formatCurrency(valor_qs)}.
+- Nr Refeições Intermediárias: ${nr_ref_int}.
+
+Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
+
+- [${efetivo} militares do ${organizacao} x ${nr_ref_int} Ref Int x (${formatCurrency(valor_qs)}/3) x ${dias_operacao} dias de atividade] = ${formatCurrency(complemento_qs)}.
+- [${efetivo} militares do ${organizacao} x ${formatCurrency(valor_qs)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(etapa_qs)}.
+
+Total QS: ${formatCurrency(total_qs)}.`;
+
+    // Memória QR
+    const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Rancho Pronto) destinados à complementação de alimentação de ${efetivo} militares do ${organizacao}, durante ${dias_operacao} dias de ${faseFormatada}.
+OM de Destino: ${organizacao} (UG: ${ug})
+
+Cálculo:
+- Valor da Etapa (QR): ${formatCurrency(valor_qr)}.
+- Nr Refeições Intermediárias: ${nr_ref_int}.
+
+Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
+
+- [${efetivo} militares do ${organizacao} x ${nr_ref_int} Ref Int x (${formatCurrency(valor_qr)}/3) x ${dias_operacao} dias de atividade] = ${formatCurrency(complemento_qr)}.
+- [${efetivo} militares do ${organizacao} x ${formatCurrency(valor_qr)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(etapa_qr)}.
+
+Total QR: ${formatCurrency(total_qr)}.`;
+
+    return { qs: memoriaQS, qr: memoriaQR };
+  };
 
 export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro): string => {
     if (registro.detalhamento_customizado) {
@@ -725,8 +685,7 @@ const PTrabReportManager = () => {
             setShowCompleteStatusDialog={setShowCompleteStatusDialog}
             handleConfirmCompleteStatus={handleConfirmCompleteStatus}
             handleCancelCompleteStatus={handleCancelCompleteStatus}
-            fileSuffix={fileSuffix}
-            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // USANDO A FUNÇÃO UNIFICADA
+            fileSuffix={fileSuffix} // NOVO PROP
           />
         );
       case 'racao_operacional':
@@ -735,8 +694,7 @@ const PTrabReportManager = () => {
             ptrabData={ptrabData}
             registrosClasseI={registrosClasseI}
             onExportSuccess={handleExportSuccess}
-            fileSuffix={fileSuffix}
-            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // USANDO A FUNÇÃO UNIFICADA
+            fileSuffix={fileSuffix} // NOVO PROP
           />
         );
       case 'operacional':

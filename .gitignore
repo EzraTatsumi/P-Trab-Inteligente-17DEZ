@@ -42,10 +42,10 @@ src/data/classeIIIData.ts
 src/assets/
 
 # EXCLUSÕES DE FUNCIONALIDADES FINALIZADAS
-src/pages/Login.tsx
-src/pages/ResetPasswordPage.tsx
-src/components/ForgotPasswordDialog.tsx
-src/components/EmailVerificationDialog.tsx
+src/pages/Login.tsx1
+src/pages/ResetPasswordPage.tsx1
+src/components/ForgotPasswordDialog.tsx1
+src/components/EmailVerificationDialog.tsx1
 src/components/SignupDialog.tsx1
 src/pages/DiretrizesCusteioPage.tsx
 src/components/YearManagementDialog.tsx
@@ -81,11 +81,11 @@ src/lib/creditUtils.ts
 
 # NOVAS EXCLUSÕES PARA ECONOMIA DE CONTEXTO
 src/pages/UserProfilePage.tsx
-src/components/SignupDialog.tsx
-src/components/reports/PTrabLogisticoReport.tsx1
-src/components/reports/PTrabRacaoOperacionalReport.tsx1
+src/components/SignupDialog.tsx1
+src/components/reports/PTrabLogisticoReport.tsx
+src/components/reports/PTrabRacaoOperacionalReport.tsx
 src/pages/ClasseIForm.tsx
-src/pages/ClasseIIForm.tsx1
+src/pages/ClasseIIForm.tsx
 src/pages/ClasseIIIForm.tsx
 src/pages/ClasseVForm.tsx
 src/pages/ClasseVIForm.tsx
