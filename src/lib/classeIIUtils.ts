@@ -114,7 +114,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistroBase): 
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    // 4. Construir o cabeçalho com a nova frase (REMOVIDAS AS LINHAS DE RECURSO E ALOCAÇÃO)
+    // 4. Construir o cabeçalho com a nova frase
     const header = `${ndHeader} - Manutenção dos componentes do ${getClasseIILabel(categoria)} de ${formatNumber(efetivo)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(dias_operacao)} dias de ${faseFormatada}.
 
 Cálculo:
