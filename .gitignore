@@ -46,6 +46,7 @@ src/pages/Login.tsx
 src/pages/ResetPasswordPage.tsx
 src/components/ForgotPasswordDialog.tsx
 src/components/EmailVerificationDialog.tsx
+src/components/SignupDialog.tsx
 src/pages/DiretrizesCusteioPage.tsx
 src/components/YearManagementDialog.tsx
 src/pages/PTrabExportImportPage.tsx
@@ -79,6 +80,10 @@ src/hooks/use-mobile.tsx
 src/lib/creditUtils.ts
 
 # NOVAS EXCLUSÕES PARA ECONOMIA DE CONTEXTO
+src/pages/UserProfilePage.tsx
+src/components/SignupDialog.tsx
+src/components/reports/PTrabLogisticoReport.tsx1
+src/components/reports/PTrabRacaoOperacionalReport.tsx1
 src/pages/ClasseIForm.tsx
 src/pages/ClasseIIForm.tsx1
 src/pages/ClasseIIIForm.tsx
@@ -87,3 +92,9 @@ src/pages/ClasseVIForm.tsx
 src/pages/ClasseVIIForm.tsx
 src/pages/ClasseVIIIForm.tsx
 src/pages/ClasseIXForm.tsx
+
+# INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
+# src/lib/formatUtils.ts
+# src/lib/omUtils.ts
+# src/lib/ptrabUtils.ts
+# src/lib/validationSchemas.ts
