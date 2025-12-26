@@ -66,6 +66,18 @@ interface PTrabLogisticoReportProps {
   generateClasseIMemoriaCalculo: (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP') => string;
 }
 
+// Helper function to determine the class number based on category
+const getClasseNumber = (category: string): string => {
+    if (CLASSE_V_CATEGORIES.includes(category)) return 'CLASSE V';
+    if (CLASSE_VI_CATEGORIES.includes(category)) return 'CLASSE VI';
+    if (CLASSE_VII_CATEGORIES.includes(category)) return 'CLASSE VII';
+    // Classe VIII includes Saúde and Remonta/Veterinária
+    if (CLASSE_VIII_CATEGORIES.includes(category) || category === 'Saúde' || category === 'Remonta/Veterinária') return 'CLASSE VIII';
+    if (CLASSE_IX_CATEGORIES.includes(category)) return 'CLASSE IX';
+    // Default to Classe II
+    return 'CLASSE II'; 
+};
+
 const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   ptrabData,
   registrosClasseI,
@@ -422,18 +434,22 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               // USANDO A FUNÇÃO UNIFICADA
               detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
             }
-          } else if ('categoria' in linha.registro) { // Classe II, V, VI, VII, VIII, IX
+          } else if ('categoria' in linha.registro) { // Classes II, V, VI, VII, VIII, IX
             const registro = linha.registro as ClasseIIRegistro;
             const omDestinoRecurso = registro.organizacao;
             const ugDestinoRecurso = registro.ug;
             
-            let secondDivContent = registro.categoria.toUpperCase();
+            const classeNumber = getClasseNumber(registro.categoria); // NOVO: Obtém o número da classe
+            const classeLabel = getClasseIILabel(registro.categoria); // Obtém o rótulo específico
+            
+            let secondDivContent = classeLabel.toUpperCase();
             
             if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                 secondDivContent = registro.animal_tipo.toUpperCase();
             }
                 
-            despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
+            // MODIFICADO: Incluir o número da classe explicitamente
+            despesasValue = `${classeNumber} - ${classeLabel}\n${secondDivContent}`;
             omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`; // CORRIGIDO: formatUgNumber
             valorC = registro.valor_nd_30;
             valorD = registro.valor_nd_39;
@@ -945,13 +961,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         const omDestinoRecurso = registro.organizacao;
                         const ugDestinoRecurso = registro.ug;
                         
-                        let secondDivContent = registro.categoria.toUpperCase();
+                        const classeNumber = getClasseNumber(registro.categoria); // NOVO: Obtém o número da classe
+                        const classeLabel = getClasseIILabel(registro.categoria); // Obtém o rótulo específico
+                        
+                        let secondDivContent = classeLabel.toUpperCase();
                         
                         if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                             secondDivContent = registro.animal_tipo.toUpperCase();
                         }
                             
-                        rowData.despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
+                        // MODIFICADO: Incluir o número da classe explicitamente
+                        rowData.despesasValue = `${classeNumber} - ${classeLabel}\n${secondDivContent}`;
                         rowData.omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`; // CORRIGIDO: formatUgNumber
                         rowData.valorC = registro.valor_nd_30;
                         rowData.valorD = registro.valor_nd_39;
