@@ -77,7 +77,7 @@ export interface ClasseIIRegistro {
   dias_operacao: number;
   categoria: string;
   // Tornando itens_equipamentos opcional, pois Classe IX usa itens_motomecanizacao
-  itens_equipamentos?: ItemClasseII[]; 
+  itens_equipamentos?: ItemClasseII[] | null; 
   valor_total: number;
   detalhamento: string;
   detalhamento_customizado?: string | null;
@@ -86,10 +86,10 @@ export interface ClasseIIRegistro {
   valor_nd_30: number;
   valor_nd_39: number;
   efetivo: number;
-  animal_tipo?: 'Equino' | 'Canino';
-  quantidade_animais?: number;
+  animal_tipo?: 'Equino' | 'Canino' | null;
+  quantidade_animais?: number | null;
   // Adicionando itens_motomecanizacao para Classe IX
-  itens_motomecanizacao?: ItemClasseIX[]; 
+  itens_motomecanizacao?: ItemClasseIX[] | null; 
 }
 
 export interface ClasseIIIRegistro {
@@ -481,55 +481,63 @@ const PTrabReportManager = () => {
         supabase.from('classe_iii_registros').select('*, detalhamento_customizado').eq('p_trab_id', ptrabId),
       ]);
 
-      const allClasseItems = [
+      const allClasseItems: ClasseIIRegistro[] = [
         ...(classeIIData || []).map(r => ({ 
             ...r, 
-            itens_equipamentos: r.itens_equipamentos, // Preserva itens_equipamentos
-            itens_motomecanizacao: undefined, // Garante que o campo de Classe IX seja undefined
+            itens_equipamentos: r.itens_equipamentos as ItemClasseII[] | null, 
+            itens_motomecanizacao: null, 
+            animal_tipo: null,
+            quantidade_animais: null,
         })),
         ...(classeVData || []).map(r => ({ 
             ...r, 
-            itens_equipamentos: r.itens_equipamentos,
-            itens_motomecanizacao: undefined,
+            itens_equipamentos: r.itens_equipamentos as ItemClasseII[] | null,
+            itens_motomecanizacao: null,
+            animal_tipo: null,
+            quantidade_animais: null,
         })),
         ...(classeVIData || []).map(r => ({ 
             ...r, 
-            itens_equipamentos: r.itens_equipamentos,
-            itens_motomecanizacao: undefined,
+            itens_equipamentos: r.itens_equipamentos as ItemClasseII[] | null,
+            itens_motomecanizacao: null,
+            animal_tipo: null,
+            quantidade_animais: null,
         })),
         ...(classeVIIData || []).map(r => ({ 
             ...r, 
-            itens_equipamentos: r.itens_equipamentos,
-            itens_motomecanizacao: undefined,
+            itens_equipamentos: r.itens_equipamentos as ItemClasseII[] | null,
+            itens_motomecanizacao: null,
+            animal_tipo: null,
+            quantidade_animais: null,
         })),
         // Mapeamento Classe VIII Saúde
         ...(classeVIIISaudeData || []).map(r => ({ 
             ...r, 
-            itens_equipamentos: r.itens_saude, 
+            itens_equipamentos: r.itens_saude as ItemClasseII[] | null, 
             categoria: 'Saúde',
-            animal_tipo: undefined,
-            quantidade_animais: undefined,
-            itens_motomecanizacao: undefined,
+            animal_tipo: null,
+            quantidade_animais: null,
+            itens_motomecanizacao: null,
         })),
         // Mapeamento Classe VIII Remonta
         ...(classeVIIIRemontaData || []).map(r => ({ 
             ...r, 
-            itens_equipamentos: r.itens_remonta, 
+            itens_equipamentos: r.itens_remonta as ItemClasseII[] | null, 
             categoria: 'Remonta/Veterinária', 
             animal_tipo: r.animal_tipo, 
             quantidade_animais: r.quantidade_animais,
-            itens_motomecanizacao: undefined,
+            itens_motomecanizacao: null,
         })),
         // Mapeamento Classe IX
         ...(classeIXData || []).map(r => ({ 
             ...r, 
-            itens_equipamentos: undefined, // Garante que o campo de Classe II-VIII seja undefined
-            itens_motomecanizacao: r.itens_motomecanizacao, 
+            itens_equipamentos: null, 
+            itens_motomecanizacao: r.itens_motomecanizacao as ItemClasseIX[] | null, 
             categoria: r.categoria,
-            animal_tipo: undefined,
-            quantidade_animais: undefined,
+            animal_tipo: null,
+            quantidade_animais: null,
         })),
-      ];
+      ] as ClasseIIRegistro[]; // Força o tipo para o array consolidado
 
       setPtrabData(ptrab as PTrabData); // Casting para incluir updated_at
       
@@ -578,7 +586,7 @@ const PTrabReportManager = () => {
           } as ClasseIRegistro;
       }));
       
-      setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
+      setRegistrosClasseII(allClasseItems);
       setRegistrosClasseIII(classeIIIData || []);
       
     } catch (error) {
@@ -700,15 +708,22 @@ const PTrabReportManager = () => {
   }, [gruposPorOM, ptrabData]);
 
   const omsOrdenadas = useMemo(() => {
-    return Object.keys(gruposPorOM).sort((a, b) => {
-        const aTemRM = a.includes('RM') || a.includes('R M');
-        const bTemRM = b.includes('RM') || b.includes('R M');
+    // 1. Criar uma lista de todas as OMs envolvidas (incluindo a RM)
+    let allOms = Object.keys(gruposPorOM);
+    if (ptrabData?.nome_om && !allOms.includes(ptrabData.nome_om)) {
+        allOms.push(ptrabData.nome_om);
+    }
+    
+    // 2. Ordenar: RM primeiro, depois as outras OMs em ordem alfabética
+    return allOms.sort((a, b) => {
+        const aIsRM = a === nomeRM;
+        const bIsRM = b === nomeRM;
         
-        if (aTemRM && !bTemRM) return -1;
-        if (!aTemRM && bTemRM) return 1;
+        if (aIsRM && !bIsRM) return -1;
+        if (!aIsRM && bIsRM) return 1;
         return a.localeCompare(b);
     });
-  }, [gruposPorOM]);
+  }, [gruposPorOM, nomeRM, ptrabData]);
   
   const calcularTotaisPorOM = useCallback((grupo: GrupoOM, nomeOM: string) => {
     const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.calculos.totalQS, 0);

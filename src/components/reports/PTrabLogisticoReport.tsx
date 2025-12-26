@@ -188,7 +188,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, onExportSuccess, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix]);
+  }, [ptrabData, onExportSuccess, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateFileName]);
 
   // NOVO: Função para abrir o diálogo de impressão do navegador
   const handlePrint = () => {
@@ -302,7 +302,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       
       addInfoRow('1. NOME DA OPERAÇÃO:', ptrabData.nome_operacao);
       addInfoRow('2. PERÍODO:', `de ${formatDate(ptrabData.periodo_inicio)} a ${formatDate(ptrabData.periodo_fim)} - Nr Dias: ${diasOperacao}`);
-      addInfoRow('3. EFETIVO EMPREGADO:', `${ptrabData.efetivo_empregado} militares`);
+      addInfoRow('3. EFETIVO EMPREGADO:', `${ptrabData.efetivo_empregado} militares do Exército Brasileiro`);
       addInfoRow('4. AÇÕES:', ptrabData.acoes || '');
       
       const despesasRow = worksheet.getRow(currentRow);
@@ -449,10 +449,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 
             // MODIFICADO: Incluir o número da classe explicitamente
             despesasValue = `${classeNumber} - ${classeLabel}\n${secondDivContent}`;
-            rowData.omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`; // CORRIGIDO: formatUgNumber
-            rowData.valorC = registro.valor_nd_30;
-            rowData.valorD = registro.valor_nd_39;
-            rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
+            omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`; // CORRIGIDO: formatUgNumber
+            valorC = registro.valor_nd_30;
+            valorD = registro.valor_nd_39;
+            valorE = registro.valor_nd_30 + registro.valor_nd_39;
             
             if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                 detalhamentoValue = registro.detalhamento_customizado || generateClasseIXMemoriaCalculo(registro);
@@ -466,10 +466,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             
             let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
             despesasValue = despesasLubValue;
-            rowData.omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`; // CORRIGIDO: formatUgNumber
-            rowData.valorC = registro.valor_total;
-            rowData.valorE = registro.valor_total;
-            rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
+            omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`; // CORRIGIDO: formatUgNumber
+            valorC = registro.valor_total;
+            valorE = registro.valor_total;
+            detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
           }
           
           row.getCell('A').value = despesasValue;
@@ -837,7 +837,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo]);
+  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateFileName, generateClasseIMemoriaCalculo]);
 
   return (
     <div className="space-y-6">
@@ -924,8 +924,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   // 1. Renderizar todas as linhas de despesa (I, II, III Lub, V, VI, VII, VIII, IX)
                   ...linhasDespesaOrdenadas.map((linha) => {
                     const isClasseI = 'tipo' in linha;
-                    const isClasseII_IX = 'categoria' in linha.registro;
-                    const isLubrificante = 'tipo_equipamento' in linha.registro;
+                    const isClasseII_IX = 'categoria' in linha.registro && !('tipo_equipamento' in linha.registro);
+                    const isLubrificante = 'tipo_equipamento' in linha.registro && linha.registro.tipo_equipamento.includes('LUBRIFICANTE');
                     
                     const rowData = {
                         despesasValue: '',
@@ -981,7 +981,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseIXMemoriaCalculo(registro);
                         } else {
                             // Usar a função genérica para Classes II, V, VI, VII, VIII
-                            rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseIIMemoriaCalculo(registro); 
+                            rowData.detalhamentoValue = registro.detalhamento_customizado || generateGenericClasseIIMemoria(registro as any); 
                         }
                         
                     } else if (isLubrificante) { // Classe III Lubrificante
