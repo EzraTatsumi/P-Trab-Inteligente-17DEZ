@@ -38,7 +38,19 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistroBase): 
     const militarPlural = efetivo === 1 ? 'militar' : 'militares';
     const preposition = getOmPreposition(organizacao);
 
-    // 1. Agrupar itens por categoria e calcular o subtotal de valor por categoria
+    // 1. Determinar a ND de acordo com a alocação
+    let ndHeader = "";
+    if (valor_nd_30 > 0 && valor_nd_39 > 0) {
+        ndHeader = "33.90.30 / 33.90.39";
+    } else if (valor_nd_30 > 0) {
+        ndHeader = "33.90.30";
+    } else if (valor_nd_39 > 0) {
+        ndHeader = "33.90.39";
+    } else {
+        ndHeader = "ND Não Alocada";
+    }
+
+    // 2. Agrupar itens por categoria e calcular o subtotal de valor por categoria
     const gruposPorCategoria = itens_equipamentos.reduce((acc, item) => {
         const itemCategoria = item.categoria;
         const valorItem = item.quantidade * item.valor_mnt_dia * dias_operacao;
@@ -63,14 +75,9 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistroBase): 
     }, {} as Record<string, { totalValor: number, totalQuantidade: number, detalhes: string[] }>);
 
     let detalhamentoItens = "";
-    let totalItensGeral = 0;
     
-    // 2. Formatar a seção de cálculo agrupada
+    // 3. Formatar a seção de cálculo agrupada
     Object.entries(gruposPorCategoria).forEach(([cat, grupo]) => {
-        totalItensGeral += grupo.totalQuantidade;
-        
-        // Usamos o rótulo da categoria principal (Classe II) no cabeçalho, mas detalhamos por subcategoria se necessário.
-        // Para Classe II, a categoria é a subcategoria (Equipamento Individual, etc.)
         detalhamentoItens += `\n--- ${cat.toUpperCase()} (${formatNumber(grupo.totalQuantidade)} ITENS) ---\n`;
         detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
         detalhamentoItens += `Detalhes:\n`;
@@ -80,14 +87,12 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistroBase): 
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    // 3. Construir o cabeçalho adaptado da Classe I
-    const header = `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (${categoria}) para atender a manutenção de material de ${formatNumber(efetivo)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(dias_operacao)} dias de ${faseFormatada}.
+    // 4. Construir o cabeçalho com a nova frase
+    const header = `${ndHeader} - Manutenção dos componentes do ${categoria} de ${formatNumber(efetivo)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(dias_operacao)} dias de ${faseFormatada}.
 Recurso destinado à OM proprietária: ${organizacao} (UG: ${ug})
 
 Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valor_nd_30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valor_nd_39)}
-
+${valor_nd_30 > 0 ? `- ND 33.90.30 (Material): ${formatCurrency(valor_nd_30)}\n` : ''}${valor_nd_39 > 0 ? `- ND 33.90.39 (Serviço): ${formatCurrency(valor_nd_39)}\n` : ''}
 Cálculo:
 Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
 
