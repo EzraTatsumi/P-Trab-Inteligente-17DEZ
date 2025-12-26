@@ -10,10 +10,9 @@ interface ItemClasseII {
   memoria_customizada?: string | null;
 }
 
-// Tipo base para o registro de classe II/V/VI/VII/VIII/IX
-export interface ClasseIIRegistroBase {
-  organizacao: string; // OM Detentora ou OM de Destino do Recurso
-  ug: string; // UG Detentora ou UG de Destino do Recurso
+interface ClasseIIRegistroBase {
+  organizacao: string; // OM Detentora
+  ug: string; // UG Detentora
   dias_operacao: number;
   categoria: string;
   itens_equipamentos: ItemClasseII[];
@@ -23,7 +22,9 @@ export interface ClasseIIRegistroBase {
   efetivo: number;
 }
 
-// Helper function to get the label for Classe II/V/VI/VII/VIII/IX categories
+/**
+ * Helper function to get the label for Classe II/V/VI/VII/VIII/IX categories
+ */
 export const getClasseIILabel = (category: string): string => {
     switch (category) {
         case 'Vtr Administrativa': return 'Viatura Administrativa';
@@ -53,7 +54,7 @@ export const getClasseIILabel = (category: string): string => {
  */
 export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistroBase): string => {
     const { 
-        organizacao, ug, dias_operacao, categoria, itens_equipamentos, 
+        organizacao, dias_operacao, categoria, itens_equipamentos, 
         fase_atividade, valor_nd_30, valor_nd_39, efetivo 
     } = registro;
     
@@ -113,12 +114,9 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistroBase): 
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    // 4. Construir o cabeçalho com a nova frase
+    // 4. Construir o cabeçalho com a nova frase (REMOVIDAS AS LINHAS DE RECURSO E ALOCAÇÃO)
     const header = `${ndHeader} - Manutenção dos componentes do ${getClasseIILabel(categoria)} de ${formatNumber(efetivo)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(dias_operacao)} dias de ${faseFormatada}.
-Recurso destinado à OM proprietária: ${organizacao} (UG: ${ug})
 
-Alocação:
-${valor_nd_30 > 0 ? `- ND 33.90.30 (Material): ${formatCurrency(valor_nd_30)}\n` : ''}${valor_nd_39 > 0 ? `- ND 33.90.39 (Serviço): ${formatCurrency(valor_nd_39)}\n` : ''}
 Cálculo:
 Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
 
