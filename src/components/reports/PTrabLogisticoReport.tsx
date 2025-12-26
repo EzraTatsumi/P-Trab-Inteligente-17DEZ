@@ -4,6 +4,8 @@ import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber, formatDateDDMMMAA, formatUgNumber } from "@/lib/formatUtils";
+import { FileSpreadsheet, Printer, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,13 +31,11 @@ import {
   formatDate,
   formatFasesParaTexto,
   getClasseIILabel,
-  generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport,
+  generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport, // Importar com alias
   generateClasseIIMemoriaCalculo,
   generateClasseIXMemoriaCalculo,
   calculateItemTotalClasseIX,
-} from "@/pages/PTrabReportManager";
-import { Button } from "@/components/ui/button";
-import { Download, FileSpreadsheet, Printer } from "lucide-react"; // ADDED ICONS
+} from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
 
 interface PTrabLogisticoReportProps {
   ptrabData: PTrabData;
@@ -101,7 +101,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   // NOVO: Função para gerar o nome do arquivo
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
-    // Substitui barras por hífens por segurança no nome do arquivo
+    // Substitui barras por hífens para segurança no nome do arquivo
     const numeroPTrab = ptrabData.numero_ptrab.replace(/\//g, '-'); 
     
     const isMinuta = ptrabData.numero_ptrab.startsWith("Minuta");
@@ -382,17 +382,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           return;
         }
         
-        // CORREÇÃO AQUI: Incluir todas as listas de classes na ordem correta
+        // CORREÇÃO AQUI: Array de todas as linhas de despesa, ordenadas pela sequência romana:
         const linhasDespesaOrdenadas = [
             ...grupo.linhasQS,
             ...grupo.linhasQR,
             ...grupo.linhasClasseII,
+            ...grupo.linhasLubrificante, // Classe III Lubrificante
             ...grupo.linhasClasseV,
             ...grupo.linhasClasseVI,
             ...grupo.linhasClasseVII,
             ...grupo.linhasClasseVIII,
             ...grupo.linhasClasseIX,
-            ...grupo.linhasLubrificante, // Classe III Lubrificante
         ];
         
         linhasDespesaOrdenadas.forEach((linha) => {
@@ -409,14 +409,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const registro = linha.registro as ClasseIRegistro;
             if (linha.tipo === 'QS') {
               despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
-              omValue = `${registro.om_qs}\n(${formatUgNumber(registro.ug_qs)})`;
+              omValue = `${registro.om_qs}\n(${formatUgNumber(registro.ug_qs)})`; // CORRIGIDO: formatUgNumber
               valorC = registro.calculos.totalQS;
               valorE = registro.calculos.totalQS;
               // USANDO A FUNÇÃO UNIFICADA
               detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
             } else { // QR
               despesasValue = `CLASSE I - SUBSISTÊNCIA`;
-              omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`;
+              omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`; // CORRIGIDO: formatUgNumber
               valorC = registro.calculos.totalQR;
               valorE = registro.calculos.totalQR;
               // USANDO A FUNÇÃO UNIFICADA
@@ -433,8 +433,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 secondDivContent = registro.animal_tipo.toUpperCase();
             }
                 
-            rowData.despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
-            rowData.omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`;
+            despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
+            omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`; // CORRIGIDO: formatUgNumber
             valorC = registro.valor_nd_30;
             valorD = registro.valor_nd_39;
             valorE = registro.valor_nd_30 + registro.valor_nd_39;
@@ -447,11 +447,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             
           } else if ('tipo_equipamento' in linha.registro) { // Classe III Lubrificante
             const registro = linha.registro as ClasseIIIRegistro;
-            // const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
             
             let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
             despesasValue = despesasLubValue;
-            omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`;
+            omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`; // CORRIGIDO: formatUgNumber
             valorC = registro.valor_total;
             valorE = registro.valor_total;
             detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
@@ -532,7 +531,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug_qs || '';
             
             row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
-            row.getCell('B').value = `${nomeRM}\n(${formatUgNumber(rmUg)})`;
+            row.getCell('B').value = `${nomeRM}\n(${formatUgNumber(rmUg)})`; // CORRIGIDO: formatUgNumber
             
             // Colunas azuis (C, D, E) - Vazias para Combustível
             row.getCell('C').value = ''; 
@@ -892,17 +891,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   return [];
                 }
                 
-                // CORREÇÃO AQUI: Array de todas as linhas de despesa, ordenadas pela sequência romana:
+                // Array de todas as linhas de despesa, ordenadas pela sequência romana:
                 const linhasDespesaOrdenadas = [
                     ...grupo.linhasQS,
                     ...grupo.linhasQR,
                     ...grupo.linhasClasseII,
+                    ...grupo.linhasLubrificante, // Classe III Lubrificante
                     ...grupo.linhasClasseV,
                     ...grupo.linhasClasseVI,
                     ...grupo.linhasClasseVII,
                     ...grupo.linhasClasseVIII,
                     ...grupo.linhasClasseIX,
-                    ...grupo.linhasLubrificante, // Classe III Lubrificante
                 ];
                 
                 return [
@@ -919,24 +918,23 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         valorC: 0,
                         valorD: 0,
                         valorE: 0,
-                        litros: 0,
-                        precoUnitario: 0,
-                        precoTotal: 0,
                     };
                     
                     if (isClasseI) { // Classe I (QS/QR)
                         const registro = linha.registro as ClasseIRegistro;
                         if (linha.tipo === 'QS') {
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
-                            rowData.omValue = `${registro.om_qs}\n(${formatUgNumber(registro.ug_qs)})`;
+                            rowData.omValue = `${registro.om_qs}\n(${formatUgNumber(registro.ug_qs)})`; // CORRIGIDO: formatUgNumber
                             rowData.valorC = registro.calculos.totalQS;
                             rowData.valorE = registro.calculos.totalQS;
+                            // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                         } else { // QR
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
-                            rowData.omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`;
+                            rowData.omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`; // CORRIGIDO: formatUgNumber
                             rowData.valorC = registro.calculos.totalQR;
                             rowData.valorE = registro.calculos.totalQR;
+                            // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                         }
                     } else if (isClasseII_IX) { // Classes II, V, VI, VII, VIII, IX
@@ -951,7 +949,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         }
                             
                         rowData.despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
-                        rowData.omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`;
+                        rowData.omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`; // CORRIGIDO: formatUgNumber
                         rowData.valorC = registro.valor_nd_30;
                         rowData.valorD = registro.valor_nd_39;
                         rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
@@ -967,7 +965,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         
                         let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
                         rowData.despesasValue = despesasLubValue;
-                        rowData.omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`;
+                        rowData.omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`; // CORRIGIDO: formatUgNumber
                         rowData.valorC = registro.valor_total;
                         rowData.valorE = registro.valor_total;
                         rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
