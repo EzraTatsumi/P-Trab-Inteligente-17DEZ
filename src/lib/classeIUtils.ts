@@ -1,4 +1,4 @@
-import { formatCurrency, formatNumber, formatUgNumber } from "./formatUtils";
+import { formatCurrency, formatNumber } from "@/lib/formatUtils";
 
 // Interface para o registro carregado do DB (simplificada para utilitário)
 export interface ClasseIRegistro {
@@ -39,7 +39,7 @@ export interface ClasseIRegistro {
  * Determina a preposição correta ('do' ou 'da') para o nome da OM.
  * Prioriza a detecção do indicador ordinal feminino (ª) ou 'RM'.
  */
-export const getOmPreposition = (omName: string): 'do' | 'da' => {
+const getOmPreposition = (omName: string): 'do' | 'da' => {
     if (!omName) return 'do';
     
     const normalizedOm = omName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); // Remove acentos e normaliza
