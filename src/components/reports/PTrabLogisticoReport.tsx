@@ -455,9 +455,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             valorE = registro.valor_nd_30 + registro.valor_nd_39;
             
             if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
+                detalhamentoValue = registro.detalhamento_customizado || generateClasseIXMemoriaCalculo(registro);
             } else {
-                detalhamentoValue = generateClasseIIMemoriaCalculo(registro); // USANDO A FUNÇÃO IMPORTADA CORRETAMENTE
+                detalhamentoValue = registro.detalhamento_customizado || generateClasseIIMemoriaCalculo(registro); // USANDO A FUNÇÃO IMPORTADA CORRETAMENTE
             }
             
           } else if ('tipo_equipamento' in linha.registro) { // Classe III Lubrificante
@@ -970,16 +970,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         }
                             
                         // MODIFICADO: Incluir o número da classe explicitamente
-                        rowData.despesasValue = `${classeNumber} - ${classeLabel}\n${secondDivContent}`;
+                        despesasValue = `${classeNumber} - ${classeLabel}\n${secondDivContent}`;
                         rowData.omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`; // CORRIGIDO: formatUgNumber
                         rowData.valorC = registro.valor_nd_30;
                         rowData.valorD = registro.valor_nd_39;
                         rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
                         
                         if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                            rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
+                            rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseIXMemoriaCalculo(registro);
                         } else {
-                            rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+                            // Usar a função genérica para Classes II, V, VI, VII, VIII
+                            rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseIIMemoriaCalculo(registro); 
                         }
                         
                     } else if (isLubrificante) { // Classe III Lubrificante

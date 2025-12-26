@@ -136,6 +136,7 @@ export interface GrupoOM {
   linhasLubrificante: LinhaLubrificante[];
 }
 
+export const CLASSE_II_CATEGORIES = ["Equipamento Individual", "Proteção Balística", "Material de Estacionamento"];
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 export const CLASSE_VI_CATEGORIES = ["Embarcação", "Equipamento de Engenharia"];
 export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
@@ -483,9 +484,33 @@ const PTrabReportManager = () => {
         ...(classeVData || []),
         ...(classeVIData || []),
         ...(classeVIIData || []),
-        ...(classeVIIISaudeData || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde' })),
-        ...(classeVIIIRemontaData || []).map(r => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais })),
-        ...(classeIXData || []).map(r => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria })),
+        // Mapeamento Classe VIII Saúde
+        ...(classeVIIISaudeData || []).map(r => ({ 
+            ...r, 
+            itens_equipamentos: r.itens_saude, 
+            categoria: 'Saúde',
+            // Garantir que campos de remonta não existam
+            animal_tipo: undefined,
+            quantidade_animais: undefined,
+            itens_motomecanizacao: undefined,
+        })),
+        // Mapeamento Classe VIII Remonta
+        ...(classeVIIIRemontaData || []).map(r => ({ 
+            ...r, 
+            itens_equipamentos: r.itens_remonta, 
+            categoria: 'Remonta/Veterinária', 
+            animal_tipo: r.animal_tipo, 
+            quantidade_animais: r.quantidade_animais,
+            itens_motomecanizacao: undefined,
+        })),
+        // Mapeamento Classe IX
+        ...(classeIXData || []).map(r => ({ 
+            ...r, 
+            itens_equipamentos: r.itens_motomecanizacao, 
+            categoria: r.categoria,
+            animal_tipo: undefined,
+            quantidade_animais: undefined,
+        })),
       ];
 
       setPtrabData(ptrab as PTrabData); // Casting para incluir updated_at
@@ -619,7 +644,7 @@ const PTrabReportManager = () => {
         grupos[registro.organizacao].linhasQR.push({ registro, tipo: 'QR' });
     });
     
-    // 2. Processar Classes II, V, VI, VII, VIII, IX
+    // 2. Processar Classes II, V, VI, VII, VIII, IX (Consolidados em registrosClasseII)
     registrosClasseII.forEach((registro) => {
         initializeGroup(registro.organizacao);
         const omGroup = grupos[registro.organizacao];
@@ -631,10 +656,11 @@ const PTrabReportManager = () => {
         } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
             omGroup.linhasClasseVII.push({ registro });
         } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+            // Classe VIII tem duas subcategorias: Saúde e Remonta/Veterinária
             omGroup.linhasClasseVIII.push({ registro });
         } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
             omGroup.linhasClasseIX.push({ registro });
-        } else {
+        } else if (CLASSE_II_CATEGORIES.includes(registro.categoria)) {
             omGroup.linhasClasseII.push({ registro });
         }
     });
