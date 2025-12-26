@@ -33,7 +33,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TablesInsert } from "@/integrations/supabase/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // ADDED
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { 
+  calculateClasseICalculations, 
+  formatFasesParaTexto, 
+  generateRacaoQuenteMemoriaCalculo, 
+  generateRacaoOperacionalMemoriaCalculo,
+  formatFormula,
+  ClasseIRegistro as ClasseIRegistroType, // Renomeando para evitar conflito
+} from "@/lib/classeIUtils";
 
 // New types for Classe I categories
 type CategoriaClasseI = 'RACAO_QUENTE' | 'RACAO_OPERACIONAL';
@@ -41,75 +49,6 @@ const CATEGORIAS_CLASSE_I: CategoriaClasseI[] = ['RACAO_QUENTE', 'RACAO_OPERACIO
 
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
-
-// Helper function to encapsulate calculation logic
-const calculateClasseICalculations = (
-  efetivo: number | null,
-  diasOperacao: number,
-  nrRefInt: number,
-  valorQS: number,
-  valorQR: number
-) => {
-  const E = efetivo || 0;
-  const D = diasOperacao || 0;
-  const R = nrRefInt || 0;
-  const VQS = valorQS || 0;
-  const VQR = valorQR || 0;
-
-  if (E <= 0 || D <= 0) {
-    return {
-      nrCiclos: 0,
-      diasEtapaPaga: 0,
-      diasEtapaSolicitada: 0,
-      totalEtapas: 0,
-      complementoQS: 0,
-      etapaQS: 0,
-      totalQS: 0,
-      complementoQR: 0,
-      etapaQR: 0,
-      totalQR: 0,
-    };
-  }
-
-  const nrCiclos = Math.ceil(D / 30);
-  const diasEtapaPaga = 22 * nrCiclos;
-  
-  let diasEtapaSolicitada = 0;
-  
-  const diasRestantesNoCiclo = D % 30;
-  const ciclosCompletos = Math.floor(D / 30);
-  
-  if (diasRestantesNoCiclo <= 22 && D >= 30) {
-    diasEtapaSolicitada = ciclosCompletos * 8;
-  } else if (diasRestantesNoCiclo > 22) {
-    diasEtapaSolicitada = (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
-  } else {
-    diasEtapaSolicitada = 0;
-  }
-  
-  const totalEtapas = diasEtapaSolicitada + (R * D);
-
-  const complementoQS = E * Math.min(R, 3) * (VQS / 3) * D;
-  const etapaQS = E * VQS * diasEtapaSolicitada;
-  const totalQS = complementoQS + etapaQS;
-
-  const complementoQR = E * Math.min(R, 3) * (VQR / 3) * D;
-  const etapaQR = E * VQR * diasEtapaSolicitada;
-  const totalQR = complementoQR + etapaQR;
-
-  return {
-    nrCiclos,
-    diasEtapaPaga,
-    diasEtapaSolicitada,
-    totalEtapas,
-    complementoQS,
-    etapaQS,
-    totalQS,
-    complementoQR,
-    etapaQR,
-    totalQR,
-  };
-};
 
 // Interface para o registro pendente (configurado na Seção 2)
 interface PendingRecord {
@@ -141,161 +80,8 @@ interface PendingRecord {
   total_unidades: number; // Unit total (R2 + R3)
 }
 
-// Interface para o registro carregado do DB
-interface ClasseIRegistro {
-  id: string;
-  categoria: CategoriaClasseI;
-  organizacao: string;
-  ug: string;
-  diasOperacao: number;
-  faseAtividade?: string | null;
-  
-  omQS: string | null;
-  ugQS: string | null;
-  efetivo: number | null;
-  nrRefInt: number | null;
-  valorQS: number | null;
-  valorQR: number | null;
-  memoriaQSCustomizada?: string | null;
-  memoriaQRCustomizada?: string | null;
-  
-  calculos: {
-    totalQS: number;
-    totalQR: number;
-    nrCiclos: number;
-    diasEtapaPaga: number;
-    diasEtapaSolicitada: number;
-    totalEtapas: number;
-    complementoQS: number;
-    etapaQS: number;
-    complementoQR: number;
-    etapaQR: number;
-  };
-  
-  quantidadeR2: number | null;
-  quantidadeR3: number | null;
-}
-
-// Função para formatar as fases de forma natural no texto
-const formatFasesParaTexto = (faseCSV: string | undefined | null): string => {
-  if (!faseCSV) return 'operação';
-  
-  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
-  
-  if (fases.length === 0) return 'operação';
-  if (fases.length === 1) return fases[0];
-  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
-  
-  const ultimaFase = fases[fases.length - 1];
-  const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFase}`;
-};
-
-// Nova função para gerar a memória de cálculo formatada para Ração Quente
-const generateRacaoQuenteMemoriaCalculo = (registro: ClasseIRegistro): { qs: string, qr: string } => {
-  const { organizacao, ug, omQS, ugQS, efetivo, diasOperacao, nrRefInt, valorQS, valorQR, calculos, faseAtividade } = registro;
-  
-  if (registro.categoria !== 'RACAO_QUENTE' || efetivo === null || valorQS === null || valorQR === null || nrRefInt === null || omQS === null || ugQS === null) {
-      return { qs: "Memória não aplicável para Ração Operacional.", qr: "" };
-  }
-  
-  const E = efetivo;
-  const D = diasOperacao;
-  const R = nrRefInt;
-  const VQS = valorQS;
-  const VQR = valorQR;
-  
-  const diasEtapaSolicitada = calculos.diasEtapaSolicitada;
-  const faseFormatada = formatFasesParaTexto(faseAtividade);
-  
-  // Memória QS (Quantitativo de Subsistência) - Fornecido pela RM (omQS/ugQS)
-  const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${E} militares do ${organizacao}, durante ${D} dias de ${faseFormatada}.
-OM Fornecedora: ${omQS} (UG: ${ugQS})
-
-Cálculo:
-- Valor da Etapa (QS): ${formatCurrency(VQS)}.
-- Nr Refeições Intermediárias: ${R}.
-
-Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
-
-- [${E} militares do ${organizacao} x ${R} Ref Int x (${formatCurrency(VQS)}/3) x ${D} dias de atividade] = ${formatCurrency(calculos.complementoQS)}.
-- [${E} militares do ${organizacao} x ${formatCurrency(VQS)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(calculos.etapaQS)}.
-
-Total QS: ${formatCurrency(calculos.totalQS)}.`;
-
-  // Memória QR (Quantitativo de Reforço) - Para a OM de Destino (organizacao/ug)
-  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Quantitativo de Reforço) destinados à complementação de alimentação de ${E} militares do ${organizacao}, durante ${D} dias de ${faseFormatada}.
-OM de Destino: ${organizacao} (UG: ${ug})
-
-Cálculo:
-- Valor da Etapa (QR): ${formatCurrency(VQR)}.
-- Nr Refeições Intermediárias: ${R}.
-
-Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
-
-- [${E} militares do ${organizacao} x ${R} Ref Int x (${formatCurrency(VQR)}/3) x ${D} dias de atividade] = ${formatCurrency(calculos.complementoQR)}.
-- [${E} militares do ${organizacao} x ${formatCurrency(VQR)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(calculos.etapaQR)}.
-
-Total QR: ${formatCurrency(calculos.totalQR)}.`;
-
-  return { qs: memoriaQS, qr: memoriaQR };
-};
-
-// NOVO: Função para gerar a memória de cálculo formatada para Ração Operacional (Versão Detalhada)
-const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro): string => {
-    if (registro.categoria !== 'RACAO_OPERACIONAL') {
-        return "Memória não aplicável para Ração Quente.";
-    }
-    
-    const { organizacao, ug, efetivo, diasOperacao, quantidadeR2, quantidadeR3, faseAtividade } = registro;
-    
-    const E = efetivo || 0;
-    const D = diasOperacao || 0;
-    const R2 = quantidadeR2 || 0;
-    const R3 = quantidadeR3 || 0;
-    const totalRacoes = R2 + R3;
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-
-    return `33.90.30 – ração operacional para atender ${E} militares, por até ${D} dias, para ser utilizada na Operação de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de tarefas, descentralizadas, afastadas da(s) base(s) de apoio logístico.
-OM de Destino: ${organizacao} (UG: ${ug})
-
-Quantitativo R2 (24h): ${formatNumber(R2)} un.
-Quantitativo R3 (12h): ${formatNumber(R3)} un.
-
-Total de Rções Operacionais: ${formatNumber(totalRacoes)} unidades.
-(Nota: O valor monetário desta solicitação é considerado R$ 0,00 para fins de cálculo logístico interno, conforme diretriz atual, mas o quantitativo é registrado.)`;
-};
-
-// Função auxiliar para formatar a fórmula de cálculo
-const formatFormula = (
-    efetivo: number,
-    diasOperacao: number,
-    nrRefInt: number,
-    valorEtapa: number,
-    diasEtapaSolicitada: number,
-    tipo: 'complemento' | 'etapa',
-    valorFinal: number // Novo parâmetro para o valor final
-): string => {
-    const E = efetivo;
-    const D = diasOperacao;
-    const R = nrRefInt;
-    const V = valorEtapa;
-    const DES = diasEtapaSolicitada;
-    
-    let formulaString = "";
-    
-    if (tipo === 'complemento') {
-        // Fórmula: Efetivo x min(Ref. Int., 3) x (Valor Etapa / 3) x Dias de Atividade
-        const minR = Math.min(R, 3);
-        formulaString = `${formatNumber(E)} mil. x ${formatNumber(minR)} ref. int. x (${formatCurrency(V)} / 3) x ${formatNumber(D)} dias`;
-    } else {
-        // Fórmula: Efetivo x Valor Etapa x Dias de Etapa Solicitada
-        formulaString = `${formatNumber(E)} mil. x ${formatCurrency(V)} x ${formatNumber(DES)} dias`;
-    }
-    
-    // Adiciona o sinal de igual e o valor final formatado
-    return `${formulaString} = ${formatCurrency(valorFinal)}`;
-};
+// Interface para o registro carregado do DB (Usando a interface do utilitário)
+type ClasseIRegistro = ClasseIRegistroType;
 
 
 export default function ClasseIForm() {
@@ -644,7 +430,6 @@ export default function ClasseIForm() {
       setUgQS(omData.codug_rm_vinculacao);
       
       // 3. NUNCA CARREGAR DADOS EXISTENTES PARA currentOMConsolidatedData AQUI.
-      // A Seção 3 só deve ser preenchida após o usuário clicar em 'Salvar Item da Categoria'.
       
       // 4. Ensure directive values are loaded if needed
       if (diretrizAno) {
@@ -769,11 +554,6 @@ export default function ClasseIForm() {
             [selectedTab]: newRecord,
         }));
         
-        // Se for um novo registro, definimos o editingRegistroId para o ID temporário do PendingRecord
-        // para que o botão "Salvar Registros" mostre "Salvar Registros" (se for novo) ou "Atualizar Registros" (se for edição).
-        // No entanto, como estamos permitindo múltiplos registros, o editingRegistroId só deve ser setado
-        // se o usuário estiver realmente editando (via handleEditRegistro).
-        // Se for um novo lançamento, o editingRegistroId deve ser null.
         if (!editingRegistroId) {
             // Se for um novo lançamento, garantimos que o ID não seja setado aqui,
             // mas o currentOMConsolidatedData é preenchido.
@@ -1108,6 +888,7 @@ export default function ClasseIForm() {
       if (error) throw error;
 
       toast.success("Memória de cálculo restaurada!");
+      handleCancelarEdicaoMemoria();
       await loadRegistros(ptrabId!);
     } catch (error: any) {
       toast.error(sanitizeError(error));
