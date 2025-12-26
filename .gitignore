@@ -46,7 +46,7 @@ src/pages/Login.tsx
 src/pages/ResetPasswordPage.tsx
 src/components/ForgotPasswordDialog.tsx
 src/components/EmailVerificationDialog.tsx
-src/components/SignupDialog.tsx
+src/components/SignupDialog.tsx1
 src/pages/DiretrizesCusteioPage.tsx
 src/components/YearManagementDialog.tsx
 src/pages/PTrabExportImportPage.tsx
