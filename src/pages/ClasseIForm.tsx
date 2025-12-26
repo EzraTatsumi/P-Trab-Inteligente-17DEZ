@@ -1694,7 +1694,7 @@ export default function ClasseIForm() {
                             <>
                                 {/* Bloco QS */}
                                 <div className="space-y-2 mb-6">
-                                  <h5 className="font-bold text-sm text-blue-600">QS (RM: {registro.omQS})</h5>
+                                  <h5 className="font-bold text-sm text-blue-600">QS - Quantitativo de Subsistência (RM: {registro.omQS})</h5>
                                   <Card className="p-4 bg-background rounded-lg border">
                                     <Textarea
                                       value={memoriaQSFinal}
@@ -1711,7 +1711,7 @@ export default function ClasseIForm() {
 
                                 {/* Bloco QR */}
                                 <div className="space-y-2">
-                                  <h5 className="font-bold text-sm text-green-600">QR (OM: {registro.organizacao})</h5>
+                                  <h5 className="font-bold text-sm text-green-600">QR - Quantitativo de Reforço (OM: {registro.organizacao})</h5>
                                   <Card className="p-4 bg-background rounded-lg border">
                                     <Textarea
                                       value={memoriaQRFinal}
