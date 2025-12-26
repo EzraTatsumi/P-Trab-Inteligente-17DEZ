@@ -184,7 +184,7 @@ export const formatFasesParaTexto = (faseCSV: string | null | undefined): string
 };
 
 // Helper function to get the label for Classe II/V/VI/VII/VIII/IX categories
-const getClasseIILabel = (category: string): string => {
+export const getClasseIILabel = (category: string): string => {
     switch (category) {
         case 'Vtr Administrativa': return 'Viatura Administrativa';
         case 'Vtr Operacional': return 'Viatura Operacional';
