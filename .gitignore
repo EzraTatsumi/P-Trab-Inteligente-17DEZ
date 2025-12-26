@@ -82,7 +82,7 @@ src/lib/creditUtils.ts
 # NOVAS EXCLUSÕES PARA ECONOMIA DE CONTEXTO
 src/pages/UserProfilePage.tsx
 src/components/SignupDialog.tsx
-src/components/reports/PTrabLogisticoReport.tsx
+src/components/reports/PTrabLogisticoReport.tsx1
 src/components/reports/PTrabRacaoOperacionalReport.tsx
 src/pages/ClasseIForm.tsx1
 src/pages/ClasseIIForm.tsx
