@@ -254,12 +254,9 @@ export const generateClasseIXMemoriaCalculo = (registro: ClasseIIRegistro): stri
 
     let detalhamentoItens = "";
     
+    // 3. Formatar a seção de cálculo agrupada (REMOVIDO O CABEÇALHO DE CATEGORIA E O TOTAL)
     Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        const totalCategoria = grupo.totalValorBase + grupo.totalValorAcionamento;
-
-        detalhamentoItens += `\n--- ${getClasseIILabel(categoria).toUpperCase()} (${grupo.totalQuantidade} VTR) ---\n`;
-        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(totalCategoria)}\n`;
-        detalhamentoItens += `Detalhes:\n`;
+        // Adiciona apenas os detalhes dos itens
         detalhamentoItens += grupo.detalhes.join('\n');
         detalhamentoItens += `\n`;
     });
@@ -273,7 +270,7 @@ Alocação:
 - ND 33.90.30 (Material): ${formatCurrency(valorND30)}
 - ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
-Fórmula Base: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
+Fórmula: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
 
 ${detalhamentoItens}
 

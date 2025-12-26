@@ -102,12 +102,9 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistroBase): 
 
     let detalhamentoItens = "";
     
-    // 3. Formatar a seção de cálculo agrupada
+    // 3. Formatar a seção de cálculo agrupada (REMOVIDO O CABEÇALHO DE CATEGORIA E O TOTAL)
     Object.entries(gruposPorCategoria).forEach(([cat, grupo]) => {
-        // Usar getClasseIILabel para garantir o rótulo correto (ex: Eqp Individual)
-        detalhamentoItens += `\n--- ${getClasseIILabel(cat).toUpperCase()} (${formatNumber(grupo.totalQuantidade)} ITENS) ---\n`; 
-        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
-        detalhamentoItens += `Detalhes:\n`;
+        // Adiciona apenas os detalhes dos itens
         detalhamentoItens += grupo.detalhes.join('\n');
         detalhamentoItens += `\n`;
     });
@@ -118,7 +115,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistroBase): 
     const header = `${ndHeader} - Manutenção dos componentes do ${getClasseIILabel(categoria)} de ${formatNumber(efetivo)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(dias_operacao)} dias de ${faseFormatada}.
 
 Cálculo:
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
+Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
 
 ${detalhamentoItens}
 
