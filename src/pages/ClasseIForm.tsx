@@ -256,7 +256,7 @@ export default function ClasseIForm() {
       setLoading(true);
       const { data, error } = await supabase
         .from("classe_i_registros")
-        .select("*, fase_atividade, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, categoria, quantidade_r2, quantidade_r3")
+        .select("*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3")
         .eq("p_trab_id", ptrabId)
         .order("organizacao", { ascending: true })
         .order("categoria", { ascending: true });
@@ -1054,7 +1054,7 @@ export default function ClasseIForm() {
                               onKeyDown={handleEnterToNextField}
                             />
                           </div>
-                        </div>
+                        </Command>
                       </PopoverContent>
                     </Popover>
                   </div>
@@ -1635,7 +1635,7 @@ export default function ClasseIForm() {
                           </div>
                           
                           {isRacaoQuente && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center justify-end gap-2">
                               {!isEditing ? (
                                 <>
                                   <Button
