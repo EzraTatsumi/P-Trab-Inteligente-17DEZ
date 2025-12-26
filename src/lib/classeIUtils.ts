@@ -45,7 +45,6 @@ const getOmPreposition = (omName: string): 'do' | 'da' => {
     const normalizedOm = omName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); // Remove acentos e normaliza
     
     // 1. Regra principal: Se contiver o indicador ordinal feminino 'ª' (ou 'a' após número)
-    // Nota: O caractere 'ª' pode ser difícil de digitar/manter, então verificamos também 'a' após um dígito.
     if (omName.includes('ª') || normalizedOm.match(/\d+\s*a\b/)) {
         return 'da';
     }
@@ -262,12 +261,18 @@ export const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro
     
     // Lógica de pluralização
     const militarPlural = E === 1 ? 'militar' : 'militares';
+    const diaPlural = D === 1 ? 'dia' : 'dias';
+    
+    // Lógica de preposição
+    const preposition = getOmPreposition(organizacao);
 
-    return `33.90.30 – ração operacional para atender ${E} ${militarPlural}, por até ${D} dias, para ser utilizada na Operação de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de tarefas, descentralizadas, afastadas da(s) base(s) de apoio logístico.
+    // NOVO CABEÇALHO AJUSTADO
+    const header = `Fornecimento de Ração Operacional para atender ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizada/afastadas de instalações militares.`;
+
+    return `${header}
 
 Quantitativo R2 (24h): ${formatNumber(R2)} un.
 Quantitativo R3 (12h): ${formatNumber(R3)} un.
 
-Total de Rções Operacionais: ${formatNumber(totalRacoes)} unidades.
-(Nota: O valor monetário desta solicitação é considerado R$ 0,00 para fins de cálculo logístico interno, conforme diretriz atual, mas o quantitativo é registrado.)`;
+Total de Rções Operacionais: ${formatNumber(totalRacoes)} unidades.`;
 };
