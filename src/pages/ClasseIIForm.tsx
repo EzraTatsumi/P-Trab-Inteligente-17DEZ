@@ -758,7 +758,7 @@ const ClasseIIForm = () => {
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
     let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
     let firstOmDetentora: { nome: string, ug: string } | null = null;
-    let firstEfetivo: number = 0; // NOVO: Capturar efetivo
+    let firstEfetivo: number = 0; // O efetivo será 0, forçando a entrada manual.
     
     // Substituir forEach por for...of para permitir await
     for (const r of (allRecords || [])) {
@@ -800,18 +800,7 @@ const ClasseIIForm = () => {
             // Nota: O campo 'organizacao' no DB é a OM de Destino do Recurso.
             // Para fins de edição, assumimos que a OM Detentora é a mesma que a OM de Destino do Recurso (organizacao/ug)
             firstOmDetentora = { nome: r.organizacao, ug: r.ug };
-            // Tenta buscar o efetivo do PTrab principal (não está no registro de classe II)
-            // Para simplificar, vamos buscar o efetivo do PTrab principal
-            const { data: ptrabData } = await supabase
-                .from('p_trab')
-                .select('efetivo_empregado')
-                .eq('id', ptrabId)
-                .single();
-            
-            // Tenta extrair o número do efetivo (ex: "110 militares e 250 OSP" -> 110)
-            const efetivoStr = ptrabData?.efetivo_empregado || '0';
-            const match = efetivoStr.match(/^(\d+)/);
-            firstEfetivo = match ? parseInt(match[1]) : 0;
+            // Lógica para buscar efetivo do PTrab principal removida. O efetivo (firstEfetivo) permanece 0.
         }
     } // Fim do loop for...of
     
@@ -838,7 +827,7 @@ const ClasseIIForm = () => {
       ug: firstOmDetentora?.ug || "",
       dias_operacao: registro.dias_operacao,
       itens: consolidatedItems,
-      efetivo: firstEfetivo, // NOVO: Setar efetivo
+      efetivo: firstEfetivo, // Setar efetivo (0)
     });
     
     // 5. Preencher o estado de alocação e buscar IDs de destino
