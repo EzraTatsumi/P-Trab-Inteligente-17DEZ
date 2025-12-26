@@ -238,24 +238,9 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         }
 
         /* =====================================================
-           1. PRÉ-CHECAGEM DEFINITIVA (EDGE FUNCTION)
+           1. PRÉ-CHECAGEM DE EXISTÊNCIA (JÁ FEITA NO handleSignup)
+           REMOVIDO DAQUI
         ====================================================== */
-        const { data: emailCheck, error: emailCheckError } =
-            await supabase.functions.invoke("email-exists", {
-                body: { email },
-            });
-
-        if (emailCheckError) {
-            console.error("Email check error:", emailCheckError);
-            throw new Error("Falha ao verificar e-mail no servidor.");
-        }
-
-        if (emailCheck?.exists) {
-            const msg = "Este e-mail já está cadastrado. Utilize outro ou faça login.";
-            toast.error(msg);
-            setSubmissionError(msg);
-            return; // ⛔ BLOQUEIA FLUXO
-        }
 
         /* =====================================================
            2. SIGNUP SUPABASE
@@ -312,7 +297,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     }
   };
 
-  // FUNÇÃO ORIGINAL: Agora apenas valida e abre o diálogo de confirmação
+  // FUNÇÃO ORIGINAL: Agora valida, checa existência e abre o diálogo de confirmação
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -368,6 +353,26 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
         toast.error(msg);
         setSubmissionError(msg);
         return;
+      }
+      
+      /* =====================================================
+         4. PRÉ-CHECAGEM DE EXISTÊNCIA (MOVIDO PARA CÁ)
+      ====================================================== */
+      const { data: emailCheck, error: emailCheckError } =
+          await supabase.functions.invoke("email-exists", {
+              body: { email: parsed.data.email },
+          });
+
+      if (emailCheckError) {
+          console.error("Email check error:", emailCheckError);
+          throw new Error("Falha ao verificar e-mail no servidor.");
+      }
+
+      if (emailCheck?.exists) {
+          const msg = "Este e-mail já está cadastrado. Utilize outro ou faça login.";
+          toast.error(msg);
+          setSubmissionError(msg);
+          return; // ⛔ BLOQUEIA FLUXO
       }
       
       // Se tudo estiver OK, abre o diálogo de confirmação de e-mail
