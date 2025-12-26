@@ -71,6 +71,9 @@ interface ClasseIIRegistro {
   // NOVOS CAMPOS DO DB
   valor_nd_30: number;
   valor_nd_39: number;
+  animal_tipo?: 'Equino' | 'Canino';
+  quantidade_animais?: number;
+  itens_motomecanizacao?: ItemClasseIX[];
 }
 
 interface CategoryAllocation {
@@ -151,7 +154,7 @@ const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseI
     itens.forEach(item => {
         const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
         // NOVO FORMATO DE FÓRMULA EXPLÍCITA
-        detalhamentoItens += `- ${item.quantidade} un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
+        detalhamentoItens += `- ${formatNumber(item.quantidade)} un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${formatNumber(diasOperacao)} dias = ${formatCurrency(valorItem)}.\n`;
     });
 
     // NOVO CABEÇALHO ADAPTADO DA CLASSE I
@@ -195,7 +198,7 @@ const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organ
         acc[categoria].totalQuantidade += item.quantidade;
         // NOVO FORMATO DE FÓRMULA EXPLÍCITA
         acc[categoria].detalhes.push(
-            `- ${item.quantidade} un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.`
+            `- ${formatNumber(item.quantidade)} un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${formatNumber(diasOperacao)} dias = ${formatCurrency(valorItem)}.`
         );
         
         return acc;
@@ -846,7 +849,8 @@ const ClasseIIForm = () => {
     let firstOmDetentora: { nome: string, ug: string } | null = null;
     let firstEfetivo: number = 0; // NOVO: Capturar efetivo
     
-    (allRecords || []).forEach(r => {
+    // Substituir forEach por for...of para permitir await
+    for (const r of (allRecords || [])) {
         const category = r.categoria as Categoria;
         const items = (r.itens_equipamentos || []) as ItemClasseII[];
         
@@ -898,7 +902,7 @@ const ClasseIIForm = () => {
             const match = efetivoStr.match(/^(\d+)/);
             firstEfetivo = match ? parseInt(match[1]) : 0;
         }
-    });
+    } // Fim do loop for...of
     
     // 3. Buscar IDs das OMs de Destino e Detentora
     let selectedOmIdForEdit: string | undefined = undefined;
