@@ -72,6 +72,7 @@ interface ClasseIIRegistro {
   // NOVOS CAMPOS DO DB
   valor_nd_30: number;
   valor_nd_39: number;
+  efetivo: number; // ADICIONADO: Efetivo
   animal_tipo?: 'Equino' | 'Canino';
   quantidade_animais?: number;
   itens_motomecanizacao?: ItemClasseIX[];
@@ -401,9 +402,10 @@ const ClasseIIForm = () => {
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
+    // ADICIONADO 'efetivo' na query
     const { data, error } = await supabase
       .from("classe_ii_registros")
-      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
+      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, efetivo")
       .eq("p_trab_id", ptrabId)
       .in("categoria", CATEGORIAS) // FILTRO ADICIONADO AQUI
       .order("organizacao", { ascending: true }) // Ordenar por OM
@@ -424,6 +426,7 @@ const ClasseIIForm = () => {
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseII[],
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
+            efetivo: r.efetivo || 0, // NOVO: Carregar efetivo
         } as ClasseIIRegistro;
         uniqueRecordsMap.set(key, record);
     });
@@ -706,6 +709,7 @@ const ClasseIIForm = () => {
             detalhamento_customizado: null,
             valor_nd_30: allocation.nd_30_value,
             valor_nd_39: allocation.nd_39_value,
+            efetivo: form.efetivo, // NOVO: Salvar o efetivo
         };
         registrosParaSalvar.push(registro);
     }
@@ -740,9 +744,10 @@ const ClasseIIForm = () => {
     resetFormFields();
     
     // 1. Buscar TODOS os registros de CLASSE II para este PTrab
+    // ADICIONADO 'efetivo' na query
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_ii_registros")
-        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo")
         .eq("p_trab_id", ptrabId)
         .in("categoria", CATEGORIAS); // FILTRO ADICIONADO AQUI
         
@@ -758,7 +763,7 @@ const ClasseIIForm = () => {
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
     let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
     let firstOmDetentora: { nome: string, ug: string } | null = null;
-    let firstEfetivo: number = 0; // O efetivo será 0, forçando a entrada manual.
+    let firstEfetivo: number = 0; // Inicializa com 0
     
     // Substituir forEach por for...of para permitir await
     for (const r of (allRecords || [])) {
@@ -800,7 +805,8 @@ const ClasseIIForm = () => {
             // Nota: O campo 'organizacao' no DB é a OM de Destino do Recurso.
             // Para fins de edição, assumimos que a OM Detentora é a mesma que a OM de Destino do Recurso (organizacao/ug)
             firstOmDetentora = { nome: r.organizacao, ug: r.ug };
-            // Lógica para buscar efetivo do PTrab principal removida. O efetivo (firstEfetivo) permanece 0.
+            // NOVO: Capturar o efetivo do primeiro registro encontrado (todos devem ter o mesmo efetivo)
+            firstEfetivo = r.efetivo || 0;
         }
     } // Fim do loop for...of
     
@@ -827,7 +833,7 @@ const ClasseIIForm = () => {
       ug: firstOmDetentora?.ug || "",
       dias_operacao: registro.dias_operacao,
       itens: consolidatedItems,
-      efetivo: firstEfetivo, // Setar efetivo (0)
+      efetivo: firstEfetivo, // NOVO: Setar efetivo carregado
     });
     
     // 5. Preencher o estado de alocação e buscar IDs de destino
@@ -895,7 +901,7 @@ const ClasseIIForm = () => {
         fase_atividade: registro.fase_atividade,
         valor_nd_30: registro.valor_nd_30,
         valor_nd_39: registro.valor_nd_39,
-        efetivo: form.efetivo, // Usar o efetivo do formulário principal
+        efetivo: registro.efetivo, // Usar o efetivo do registro (que foi carregado)
     });
     
     setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
@@ -1413,7 +1419,7 @@ const ClasseIIForm = () => {
                                                         {/* REMOVIDO O BADGE DUPLICADO AQUI */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Dias: {registro.dias_operacao} | Fases: {fases}
+                                                        Dias: {registro.dias_operacao} | Fases: {fases} | Efetivo: {registro.efetivo}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -1498,7 +1504,7 @@ const ClasseIIForm = () => {
                       fase_atividade: registro.fase_atividade,
                       valor_nd_30: registro.valor_nd_30,
                       valor_nd_39: registro.valor_nd_39,
-                      efetivo: form.efetivo, // Usar o efetivo do formulário principal
+                      efetivo: registro.efetivo, // Usar o efetivo do registro
                   });
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
