@@ -37,30 +37,26 @@ export interface ClasseIRegistro {
 
 /**
  * Determina a preposição correta ('do' ou 'da') para o nome da OM.
- * Baseado em prefixos comuns femininos.
+ * Prioriza a detecção do indicador ordinal feminino (ª) ou 'RM'.
  */
 const getOmPreposition = (omName: string): 'do' | 'da' => {
     if (!omName) return 'do';
     
-    const lowerCaseOm = omName.toLowerCase().trim();
+    const normalizedOm = omName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); // Remove acentos e normaliza
     
-    // Lista de prefixos femininos comuns (RM, Cia, Es, Dir, etc.)
-    const femininePrefixes = [
-        'rm', 'cia', 'escola', 'diretoria', 'base', 'companhia', 'divisão', 
-        'bateria', 'seção', 'subseção', 'região militar', 'bda', 'brigada',
-        '1ª rm', '2ª rm', '3ª rm', '4ª rm', '5ª rm', '6ª rm', '7ª rm', '8ª rm', 
-        '9ª rm', '10ª rm', '11ª rm', '12ª rm',
-    ];
-    
-    // Verifica se a OM começa com algum prefixo feminino
-    const isFeminine = femininePrefixes.some(prefix => lowerCaseOm.startsWith(prefix));
-    
-    // Exceções comuns que parecem femininas mas são masculinas (ex: Batalhão, Regimento)
-    if (lowerCaseOm.includes('batalhão') || lowerCaseOm.includes('regimento') || lowerCaseOm.includes('b log')) {
-        return 'do';
+    // 1. Regra principal: Se contiver o indicador ordinal feminino 'ª' (ou 'a' após número)
+    // Nota: O caractere 'ª' pode ser difícil de digitar/manter, então verificamos também 'a' após um dígito.
+    if (omName.includes('ª') || normalizedOm.match(/\d+\s*a\b/)) {
+        return 'da';
     }
     
-    return isFeminine ? 'da' : 'do';
+    // 2. Regra secundária: Se for uma Região Militar (RM)
+    if (normalizedOm.includes('rm')) {
+        return 'da';
+    }
+    
+    // 3. Regra de exceção/padrão: Padrão é 'do'
+    return 'do';
 };
 
 
