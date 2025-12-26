@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
-import { useFormNavigation } => "@/hooks/useFormNavigation";
+import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
 import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
@@ -690,7 +690,7 @@ const ClasseIIForm = () => {
             fase_atividade: faseFinalString,
             valor_nd_30: allocation.nd_30_value,
             valor_nd_39: allocation.nd_39_value,
-            efetivo: form.efetivo,
+            efetivo: form.efetivo, // Usar o efetivo do formulário principal
         });
         
         const registro: TablesInsert<'classe_ii_registros'> = {
@@ -1509,7 +1509,7 @@ const ClasseIIForm = () => {
                       fase_atividade: registro.fase_atividade,
                       valor_nd_30: registro.valor_nd_30,
                       valor_nd_39: registro.valor_nd_39,
-                      efetivo: form.efetivo, // NOVO: Passando o efetivo
+                      efetivo: form.efetivo, // Usar o efetivo do formulário principal
                   });
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
