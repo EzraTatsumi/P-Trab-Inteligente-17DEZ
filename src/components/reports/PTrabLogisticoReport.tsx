@@ -3,9 +3,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency, formatNumber, formatDateDDMMMAA } from "@/lib/formatUtils";
-import { FileSpreadsheet, Printer, Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { formatCurrency, formatNumber, formatDateDDMMMAA, formatUgNumber } from "@/lib/formatUtils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -101,7 +99,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   // NOVO: Função para gerar o nome do arquivo
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
-    // Substitui barras por hífens para segurança no nome do arquivo
+    // Substitui barras por hífens por segurança no nome do arquivo
     const numeroPTrab = ptrabData.numero_ptrab.replace(/\//g, '-'); 
     
     const isMinuta = ptrabData.numero_ptrab.startsWith("Minuta");
@@ -409,16 +407,16 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const registro = linha.registro as ClasseIRegistro;
             if (linha.tipo === 'QS') {
               despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
-              omValue = `${registro.om_qs}\n(${registro.ug_qs})`;
-              valorC = registro.total_qs;
-              valorE = registro.total_qs;
+              omValue = `${registro.om_qs}\n(${formatUgNumber(registro.ug_qs)})`;
+              valorC = registro.calculos.totalQS;
+              valorE = registro.calculos.totalQS;
               // USANDO A FUNÇÃO UNIFICADA
               detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
             } else { // QR
               despesasValue = `CLASSE I - SUBSISTÊNCIA`;
-              omValue = `${registro.organizacao}\n(${registro.ug})`;
-              valorC = registro.total_qr;
-              valorE = registro.total_qr;
+              omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`;
+              valorC = registro.calculos.totalQR;
+              valorE = registro.calculos.totalQR;
               // USANDO A FUNÇÃO UNIFICADA
               detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
             }
@@ -434,7 +432,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             }
                 
             despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
-            omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
+            omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`;
             valorC = registro.valor_nd_30;
             valorD = registro.valor_nd_39;
             valorE = registro.valor_nd_30 + registro.valor_nd_39;
@@ -451,7 +449,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             
             let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
             despesasValue = despesasLubValue;
-            omValue = `${registro.organizacao}\n(${registro.ug})`;
+            omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`;
             valorC = registro.valor_total;
             valorE = registro.valor_total;
             detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
@@ -532,7 +530,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug_qs || '';
             
             row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
-            row.getCell('B').value = `${nomeRM}\n(${rmUg})`;
+            row.getCell('B').value = `${nomeRM}\n(${formatUgNumber(rmUg)})`;
             
             // Colunas azuis (C, D, E) - Vazias para Combustível
             row.getCell('C').value = ''; 
