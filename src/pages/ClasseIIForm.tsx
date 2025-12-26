@@ -879,7 +879,7 @@ const ClasseIIForm = () => {
   // NOVO MEMO: Agrupa os registros por OM de Destino
   const registrosAgrupadosPorOM = useMemo(() => {
     return registros.reduce((acc, registro) => {
-        const key = `${registro.organizacao} (${registro.ug})`;
+        const key = `${registro.organizacao} (${formatNumber(registro.ug)})`; // FORMATANDO UG AQUI
         if (!acc[key]) {
             acc[key] = [];
         }
@@ -901,7 +901,7 @@ const ClasseIIForm = () => {
         fase_atividade: registro.fase_atividade,
         valor_nd_30: registro.valor_nd_30,
         valor_nd_39: registro.valor_nd_39,
-        efetivo: registro.efetivo, // Usar o efetivo do registro (que foi carregado)
+        efetivo: registro.efetivo, // Usar o efetivo do registro
     });
     
     setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
@@ -1008,7 +1008,12 @@ const ClasseIIForm = () => {
 
                 <div className="space-y-2">
                   <Label>UG Detentora</Label>
-                  <Input value={form.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
+                  <Input 
+                    value={formatNumber(form.ug)} // FORMATANDO AQUI
+                    readOnly 
+                    disabled 
+                    onKeyDown={handleEnterToNextField} 
+                  />
                 </div>
                 
                 <div className="space-y-2">
@@ -1187,7 +1192,7 @@ const ClasseIIForm = () => {
                                     />
                                     {tempDestinations[cat].ug && (
                                         <p className="text-xs text-muted-foreground">
-                                            UG de Destino: {tempDestinations[cat].ug}
+                                            UG de Destino: {formatNumber(tempDestinations[cat].ug)}
                                         </p>
                                     )}
                                 </div>
@@ -1325,7 +1330,7 @@ const ClasseIIForm = () => {
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
                                 <span className="font-medium text-foreground">
-                                    {allocation.om_destino_recurso} ({allocation.ug_destino_recurso})
+                                    {allocation.om_destino_recurso} ({formatNumber(allocation.ug_destino_recurso)})
                                 </span>
                             </div>
                             <div className="flex justify-between text-xs">
@@ -1419,7 +1424,7 @@ const ClasseIIForm = () => {
                                                         {/* REMOVIDO O BADGE DUPLICADO AQUI */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Dias: {registro.dias_operacao} | Fases: {fases} | Efetivo: {registro.efetivo}
+                                                        Dias: {registro.dias_operacao} | Fases: {fases} | Efetivo: {formatNumber(registro.efetivo)}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -1517,7 +1522,7 @@ const ClasseIIForm = () => {
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                               <h4 className="text-base font-semibold text-foreground">
-                                OM Destino: {om} ({ug})
+                                OM Destino: {om} ({formatNumber(ug)})
                               </h4>
                               <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
                                   {badgeStyle.label}
