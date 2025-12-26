@@ -223,7 +223,7 @@ Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicita
 Total QS: ${formatCurrency(calculos.totalQS)}.`;
 
   // Memória QR (Quantitativo de Reforço)
-  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Quantitativo de Reforço) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} dias de ${faseFormatada}.
+  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} dias de ${faseFormatada}.
 
 Cálculo:
 - Valor da Etapa (QR): ${formatCurrency(VQR)}.
