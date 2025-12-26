@@ -34,6 +34,7 @@ import {
   generateClasseIXMemoriaCalculo,
   calculateItemTotalClasseIX,
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
+import { Button } from "@/components/ui/button"; // Importação adicionada
 
 interface PTrabLogisticoReportProps {
   ptrabData: PTrabData;
@@ -277,7 +278,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         
         row.getCell(1).value = {
           richText: [
-            { text: label, font: titleFontStyle },
+            { text: label, font: headerFontStyle },
             { text: ` ${value}`, font: { name: 'Arial', size: 11, bold: false } }
           ]
         };
