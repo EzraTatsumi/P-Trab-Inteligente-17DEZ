@@ -681,7 +681,6 @@ const ClasseIIForm = () => {
             return;
         }
         
-        // USANDO A FUNÇÃO CANÔNICA IMPORTADA
         const detalhamento = generateClasseIIMemoriaCalculo({
             organizacao: allocation.om_destino_recurso, // OM de Destino do Recurso (ND 30/39)
             ug: allocation.ug_destino_recurso, // UG de Destino do Recurso (ND 30/39)
@@ -907,7 +906,7 @@ const ClasseIIForm = () => {
         fase_atividade: registro.fase_atividade,
         valor_nd_30: registro.valor_nd_30,
         valor_nd_39: registro.valor_nd_39,
-        efetivo: form.efetivo, // NOVO: Passando o efetivo
+        efetivo: form.efetivo, // Usar o efetivo do formulário principal
     });
     
     setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
@@ -999,7 +998,7 @@ const ClasseIIForm = () => {
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label>OM Detentora do Equipamento *</Label>
                   <OmSelector
@@ -1043,10 +1042,8 @@ const ClasseIIForm = () => {
                     disabled={!form.organizacao}
                   />
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                
+                <div className="space-y-2 md:col-span-2"> {/* Ocupa 2 colunas em telas médias */}
                   <Label>Fase da Atividade *</Label>
                   <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                     <PopoverTrigger asChild>
