@@ -1470,7 +1470,7 @@ export default function ClasseIForm() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-accent" />
-                    Registros Cadastrados
+                    OMs Cadastradas
                   </h2>
                 </div>
 
