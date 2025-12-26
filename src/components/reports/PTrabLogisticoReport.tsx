@@ -31,7 +31,7 @@ import {
   formatDate,
   formatFasesParaTexto,
   getClasseIILabel,
-  generateClasseIMemoriaCalculo,
+  generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport, // Importar com alias
   generateClasseIIMemoriaCalculo,
   generateClasseIXMemoriaCalculo,
   calculateItemTotalClasseIX,
@@ -62,6 +62,8 @@ interface PTrabLogisticoReportProps {
   handleConfirmCompleteStatus: () => void;
   handleCancelCompleteStatus: () => void;
   fileSuffix: string; // NOVO PROP
+  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe I
+  generateClasseIMemoriaCalculo: (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP') => string;
 }
 
 const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
@@ -79,6 +81,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   handleConfirmCompleteStatus,
   handleCancelCompleteStatus,
   fileSuffix, // NOVO PROP
+  generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -408,13 +411,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               omValue = `${registro.om_qs}\n(${registro.ug_qs})`;
               valorC = registro.total_qs;
               valorE = registro.total_qs;
-              detalhamentoValue = registro.memoria_calculo_qs_customizada || generateClasseIMemoriaCalculo(registro).qs;
+              // USANDO A FUNÇÃO UNIFICADA
+              detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
             } else { // QR
               despesasValue = `CLASSE I - SUBSISTÊNCIA`;
               omValue = `${registro.organizacao}\n(${registro.ug})`;
               valorC = registro.total_qr;
               valorE = registro.total_qr;
-              detalhamentoValue = registro.memoria_calculo_qr_customizada || generateClasseIMemoriaCalculo(registro).qr;
+              // USANDO A FUNÇÃO UNIFICADA
+              detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
             }
           } else if ('categoria' in linha.registro) { // Classe II, V, VI, VII, VIII, IX
             const registro = linha.registro as ClasseIIRegistro;
@@ -510,13 +515,16 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 default: return tipo;
               }
             };
-            
+
             const getTipoCombustivelLabel = (tipo: string) => {
-              if (tipo === 'DIESEL' || tipo === 'OD') return 'ÓLEO DIESEL';
-              if (tipo === 'GASOLINA' || tipo === 'GAS') return 'GASOLINA';
+              if (tipo === 'DIESEL' || tipo === 'OD') {
+                return 'ÓLEO DIESEL';
+              } else if (tipo === 'GASOLINA' || tipo === 'GAS') {
+                return 'GASOLINA';
+              }
               return tipo;
             };
-            
+
             const row = worksheet.getRow(currentRow);
             
             // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
@@ -813,7 +821,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix]);
+  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo]);
 
   return (
     <div className="space-y-6">
@@ -919,13 +927,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             rowData.omValue = `${registro.om_qs}\n(${registro.ug_qs})`;
                             rowData.valorC = registro.total_qs;
                             rowData.valorE = registro.total_qs;
-                            rowData.detalhamentoValue = registro.memoria_calculo_qs_customizada || generateClasseIMemoriaCalculo(registro).qs;
+                            // USANDO A FUNÇÃO UNIFICADA
+                            rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                         } else { // QR
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                             rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
                             rowData.valorC = registro.total_qr;
                             rowData.valorE = registro.total_qr;
-                            rowData.detalhamentoValue = registro.memoria_calculo_qr_customizada || generateClasseIMemoriaCalculo(registro).qr;
+                            // USANDO A FUNÇÃO UNIFICADA
+                            rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                         }
                     } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
                         const registro = linha.registro as ClasseIIRegistro;

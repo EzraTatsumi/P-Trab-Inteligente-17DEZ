@@ -13,6 +13,7 @@ import {
   calculateDays,
   formatDate,
   formatFasesParaTexto,
+  generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport, // Importar com alias
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
 
 interface PTrabRacaoOperacionalReportProps {
@@ -20,6 +21,8 @@ interface PTrabRacaoOperacionalReportProps {
   registrosClasseI: ClasseIRegistro[];
   onExportSuccess: () => void;
   fileSuffix: string; // NOVO PROP
+  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe I
+  generateClasseIMemoriaCalculo: (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP') => string;
 }
 
 // Interface para a linha consolidada de Ração Operacional
@@ -32,30 +35,16 @@ interface RacaoOpLinha {
     fase_atividade: string;
     efetivo: number;
     dias_operacao: number;
+    // Adicionar o registro original para passar para a função de memória
+    registroOriginal: ClasseIRegistro;
 }
-
-// Função para gerar a memória de cálculo detalhada para Ração Operacional
-const generateRacaoOpMemoriaCalculo = (linha: RacaoOpLinha): string => {
-    const { om, ug, r2_quantidade, r3_quantidade, efetivo, dias_operacao, fase_atividade } = linha;
-    const totalRacoes = r2_quantidade + r3_quantidade;
-    const faseFormatada = formatFasesParaTexto(linha.fase_atividade);
-
-    // Formato simplificado e padronizado (ajustado para o modelo)
-    return `33.90.30 – ração operacional para atender ${efetivo} militares, por até ${dias_operacao} dias, para ser utilizada na Operação de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de tarefas, descentralizadas, afastadas da(s) base(s) de apoio logístico.
-OM de Destino: ${om} (UG: ${ug})
-
-Quantitativo R2 (24h): ${formatNumber(r2_quantidade)} un.
-Quantitativo R3 (12h): ${formatNumber(r3_quantidade)} un.
-
-Total de Rções Operacionais: ${formatNumber(totalRacoes)} unidades.`;
-};
-
 
 const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = ({
   ptrabData,
   registrosClasseI,
   onExportSuccess,
   fileSuffix, // NOVO PROP
+  generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -82,6 +71,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
                 fase_atividade: r.fase_atividade || 'operação',
                 efetivo: r.efetivo || 0,
                 dias_operacao: r.dias_operacao,
+                registroOriginal: r, // Armazena o registro original
             };
         }
         
@@ -89,6 +79,11 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         grupos[key].r2_quantidade += (r.quantidade_r2 || 0);
         grupos[key].r3_quantidade += (r.quantidade_r3 || 0);
         grupos[key].total_unidades += (r.quantidade_r2 || 0) + (r.quantidade_r3 || 0);
+        
+        // Atualiza campos globais (embora em teoria devam ser os mesmos)
+        grupos[key].efetivo = r.efetivo || 0;
+        grupos[key].dias_operacao = r.dias_operacao;
+        grupos[key].fase_atividade = r.fase_atividade || 'operação';
     });
     
     return Object.values(grupos).sort((a, b) => a.om.localeCompare(b.om));
@@ -320,7 +315,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         row.getCell('C').alignment = centerMiddleAlignment;
         
         // D: DETALHAMENTO
-        row.getCell('D').value = generateRacaoOpMemoriaCalculo(linha);
+        // USANDO A FUNÇÃO UNIFICADA COM O REGISTRO ORIGINAL
+        row.getCell('D').value = generateClasseIMemoriaCalculo(linha.registroOriginal, 'OP');
         row.getCell('D').alignment = leftTopAlignment; // ALTERADO: Esquerda, Topo
         row.getCell('D').font = { name: 'Arial', size: 6.5 };
         
@@ -397,7 +393,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       description: "O relatório de Ração Operacional foi salvo com sucesso.",
       duration: 3000,
     });
-  }, [racaoOperacionalConsolidada, ptrabData, diasOperacao, onExportSuccess, toast, fileSuffix]);
+  }, [racaoOperacionalConsolidada, ptrabData, diasOperacao, onExportSuccess, toast, fileSuffix, generateClasseIMemoriaCalculo]);
 
 
   if (racaoOperacionalConsolidada.length === 0) {
@@ -481,7 +477,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
                   <td className="col-quantidade-op">{formatNumber(linha.total_unidades)}</td>
                   <td className="col-detalhamento-op" style={{ fontSize: '6.5pt' }}>
                     <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                      {generateRacaoOpMemoriaCalculo(linha)}
+                      {generateClasseIMemoriaCalculo(linha.registroOriginal, 'OP')}
                     </pre>
                   </td>
                 </tr>

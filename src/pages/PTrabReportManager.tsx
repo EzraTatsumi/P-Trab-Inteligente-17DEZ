@@ -25,6 +25,7 @@ import {
   generateRacaoQuenteMemoriaCalculo, 
   generateRacaoOperacionalMemoriaCalculo,
   calculateClasseICalculations,
+  ClasseIRegistro as ClasseIRegistroType, // Importando o tipo correto
 } from "@/lib/classeIUtils"; // Importando as funções de utilidade
 
 // =================================================================
@@ -48,29 +49,8 @@ export interface PTrabData {
   updated_at: string; // NOVO: Data de última atualização
 }
 
-export interface ClasseIRegistro {
-  id: string;
-  organizacao: string;
-  ug: string;
-  om_qs: string;
-  ug_qs: string;
-  efetivo: number;
-  dias_operacao: number;
-  nr_ref_int: number;
-  valor_qs: number;
-  valor_qr: number;
-  complemento_qs: number;
-  etapa_qs: number;
-  total_qs: number;
-  total_qr: number;
-  total_geral: number;
-  memoria_calculo_qs_customizada?: string | null; // INCLUÍDO
-  memoria_calculo_qr_customizada?: string | null; // INCLUÍDO
-  fase_atividade?: string | null;
-  categoria: 'RACAO_QUENTE' | 'RACAO_OPERACIONAL'; // INCLUÍDO
-  quantidade_r2: number; // INCLUÍDO
-  quantidade_r3: number; // INCLUÍDO
-}
+// Usando o tipo importado para garantir consistência
+export type ClasseIRegistro = ClasseIRegistroType;
 
 export interface ItemClasseII {
   item: string;
@@ -299,9 +279,10 @@ Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
 };
 
 /**
- * NOVO: Função unificada para gerar a memória de cálculo da Classe I, priorizando o customizado.
+ * Função unificada para gerar a memória de cálculo da Classe I, priorizando o customizado.
+ * Esta função é a única responsável por gerar a memória de cálculo de Classe I para relatórios.
  */
-export const generateClasseIMemoriaCalculo = (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP'): string => {
+export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP'): string => {
     if (registro.categoria === 'RACAO_OPERACIONAL') {
         if (tipo === 'OP') {
             // Para Ração Operacional, sempre gera a memória automática (não há customização no DB para OP)
@@ -745,7 +726,7 @@ const PTrabReportManager = () => {
             handleConfirmCompleteStatus={handleConfirmCompleteStatus}
             handleCancelCompleteStatus={handleCancelCompleteStatus}
             fileSuffix={fileSuffix}
-            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculo} // PASSANDO A NOVA FUNÇÃO
+            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // USANDO A FUNÇÃO UNIFICADA
           />
         );
       case 'racao_operacional':
@@ -755,7 +736,7 @@ const PTrabReportManager = () => {
             registrosClasseI={registrosClasseI}
             onExportSuccess={handleExportSuccess}
             fileSuffix={fileSuffix}
-            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculo} // PASSANDO A NOVA FUNÇÃO
+            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // USANDO A FUNÇÃO UNIFICADA
           />
         );
       case 'operacional':
