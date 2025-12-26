@@ -984,7 +984,21 @@ const ClasseIIForm = () => {
 
   const handleIniciarEdicaoMemoria = (registro: ClasseIIRegistro) => {
     setEditingMemoriaId(registro.id);
-    setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento || "");
+    
+    // NOVO: Gera a memória automática com o rótulo padronizado
+    const memoriaAutomatica = generateClasseIIMemoriaCalculo({
+        organizacao: registro.organizacao, // OM de Destino do Recurso (ND 30/39)
+        ug: registro.ug, // UG de Destino do Recurso (ND 30/39)
+        dias_operacao: registro.dias_operacao,
+        categoria: registro.categoria,
+        itens_equipamentos: registro.itens_equipamentos as ItemClasseII[],
+        fase_atividade: registro.fase_atividade,
+        valor_nd_30: registro.valor_nd_30,
+        valor_nd_39: registro.valor_nd_39,
+        efetivo: form.efetivo, // Usar o efetivo do formulário principal
+    });
+    
+    setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
   };
 
   const handleCancelarEdicaoMemoria = () => {
@@ -1073,7 +1087,7 @@ const ClasseIIForm = () => {
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label>OM Detentora do Equipamento *</Label>
                   <OmSelector
@@ -1573,15 +1587,17 @@ const ClasseIIForm = () => {
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
                   // NOVO: Gera a memória automática com o rótulo padronizado
-                  const memoriaAutomatica = generateCategoryMemoriaCalculo(
-                      registro.categoria as Categoria, 
-                      registro.itens_equipamentos as ItemClasseII[], 
-                      registro.dias_operacao, 
-                      registro.organizacao, 
-                      registro.ug, 
-                      registro.fase_atividade,
-                      form.efetivo // NOVO: Passando o efetivo
-                  );
+                  const memoriaAutomatica = generateClasseIIMemoriaCalculo({
+                      organizacao: registro.organizacao, // OM de Destino do Recurso (ND 30/39)
+                      ug: registro.ug, // UG de Destino do Recurso (ND 30/39)
+                      dias_operacao: registro.dias_operacao,
+                      categoria: registro.categoria,
+                      itens_equipamentos: registro.itens_equipamentos as ItemClasseII[],
+                      fase_atividade: registro.fase_atividade,
+                      valor_nd_30: registro.valor_nd_30,
+                      valor_nd_39: registro.valor_nd_39,
+                      efetivo: form.efetivo, // NOVO: Passando o efetivo
+                  });
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
                   const badgeStyle = getCategoryBadgeStyle(registro.categoria);
