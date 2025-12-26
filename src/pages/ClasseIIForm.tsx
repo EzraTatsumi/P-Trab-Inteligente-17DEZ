@@ -14,7 +14,7 @@ import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -149,7 +149,7 @@ const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseI
     });
 
     return `33.90.30 - Aquisição de Material de Intendência (${getCategoryLabel(categoria)})
-OM de Destino: ${organizacao} (UG: ${ug})
+OM de Destino: ${organizacao} (UG: ${formatCodug(ug)})
 Período: ${diasOperacao} dias de ${faseFormatada}
 Total de Itens na Categoria: ${totalQuantidade}
 
@@ -203,7 +203,7 @@ const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organ
     detalhamentoItens = detalhamentoItens.trim();
 
     return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
-Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
+Recurso destinado à OM proprietária: ${omDestino} (UG: ${formatCodug(ugDestino)})
 
 Alocação:
 - ND 33.90.30 (Material): ${formatCurrency(valorND30)}
@@ -1052,7 +1052,7 @@ const ClasseIIForm = () => {
 
                 <div className="space-y-2">
                   <Label>UG Detentora</Label>
-                  <Input value={form.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
+                  <Input value={formatCodug(form.ug)} readOnly disabled onKeyDown={handleEnterToNextField} />
                 </div>
                 
                 <div className="space-y-2">
@@ -1215,7 +1215,7 @@ const ClasseIIForm = () => {
                                     />
                                     {tempDestinations[cat].ug && (
                                         <p className="text-xs text-muted-foreground">
-                                            UG de Destino: {tempDestinations[cat].ug}
+                                            UG de Destino: {formatCodug(tempDestinations[cat].ug)}
                                         </p>
                                     )}
                                 </div>
@@ -1353,7 +1353,7 @@ const ClasseIIForm = () => {
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
                                 <span className="font-medium text-foreground">
-                                    {allocation.om_destino_recurso} ({allocation.ug_destino_recurso})
+                                    {allocation.om_destino_recurso} ({formatCodug(allocation.ug_destino_recurso)})
                                 </span>
                             </div>
                             <div className="flex justify-between text-xs">
@@ -1423,7 +1423,7 @@ const ClasseIIForm = () => {
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h3 className="font-bold text-lg text-primary">
-                                    {omName} (UG: {ug})
+                                    {omName} (UG: {formatCodug(ug)})
                                 </h3>
                                 <span className="font-extrabold text-xl text-primary">
                                     {formatCurrency(totalOM)}
@@ -1542,7 +1542,7 @@ const ClasseIIForm = () => {
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                               <h4 className="text-base font-semibold text-foreground">
-                                OM Destino: {om} ({ug})
+                                OM Destino: {om} (UG: {formatCodug(ug)})
                               </h4>
                               <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
                                   {badgeStyle.label}
