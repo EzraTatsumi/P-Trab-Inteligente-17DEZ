@@ -998,7 +998,8 @@ const ClasseIIForm = () => {
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* PRIMEIRA LINHA: OM Detentora, UG Detentora, Efetivo */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>OM Detentora do Equipamento *</Label>
                   <OmSelector
@@ -1028,7 +1029,10 @@ const ClasseIIForm = () => {
                     disabled={!form.organizacao}
                   />
                 </div>
-                
+              </div>
+              
+              {/* SEGUNDA LINHA: Dias de Atividade, Fase da Atividade */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label>Dias de Atividade *</Label>
                   <Input
