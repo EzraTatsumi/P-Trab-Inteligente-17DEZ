@@ -1,18 +1,16 @@
-import { formatCurrency, formatNumber } from "./formatUtils";
+import { formatCurrency, formatNumber } from "@/lib/formatUtils";
 
-// Interface para o registro carregado do DB (ou consolidado)
+// Interface para o registro carregado do DB (simplificada para utilitário)
 export interface ClasseIRegistro {
   id: string;
   organizacao: string;
   ug: string;
   diasOperacao: number;
-  faseAtividade: string | null;
-  categoria: 'RACAO_QUENTE' | 'RACAO_OPERACIONAL';
+  faseAtividade?: string | null;
   
-  // Racao Quente fields
   omQS: string | null;
   ugQS: string | null;
-  efetivo: number;
+  efetivo: number | null;
   nrRefInt: number | null;
   valorQS: number | null;
   valorQR: number | null;
@@ -32,66 +30,71 @@ export interface ClasseIRegistro {
     etapaQR: number;
   };
   
-  // Racao Operacional fields
-  quantidadeR2: number;
-  quantidadeR3: number;
+  quantidadeR2: number | null;
+  quantidadeR3: number | null;
+  categoria: 'RACAO_QUENTE' | 'RACAO_OPERACIONAL';
 }
 
 /**
- * Calcula os valores monetários e logísticos para Ração Quente (QS/QR).
+ * Determina a preposição correta ('do' ou 'da') para o nome da OM.
+ * Prioriza a detecção do indicador ordinal feminino (ª) ou 'RM'.
  */
-export const calculateClasseICalculations = (
-  efetivo: number,
-  diasOperacao: number,
-  nrRefInt: number,
-  valorQS: number,
-  valorQR: number
-) => {
-  if (efetivo <= 0 || diasOperacao <= 0 || nrRefInt <= 0) {
-    return {
-      nrCiclos: 0, diasEtapaPaga: 0, diasEtapaSolicitada: 0, totalEtapas: 0,
-      complementoQS: 0, etapaQS: 0, totalQS: 0, complementoQR: 0, etapaQR: 0, totalQR: 0,
-    };
-  }
+const getOmPreposition = (omName: string): 'do' | 'da' => {
+    if (!omName) return 'do';
+    
+    const normalizedOm = omName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); // Remove acentos e normaliza
+    
+    // 1. Regra principal: Se contiver o indicador ordinal feminino 'ª' (ou 'a' após número)
+    if (omName.includes('ª') || normalizedOm.match(/\d+\s*a\b/)) {
+        return 'da';
+    }
+    
+    // 2. Regra secundária: Se for uma Região Militar (RM)
+    if (normalizedOm.includes('rm')) {
+        return 'da';
+    }
+    
+    // 3. Regra de exceção/padrão: Padrão é 'do'
+    return 'do';
+};
 
-  // 1. Cálculo de Ciclos e Etapas
-  const nrCiclos = nrRefInt; // 1, 2 ou 3
-  const diasEtapaPaga = Math.floor(diasOperacao / 30) * 30; // Múltiplo de 30
-  const diasEtapaSolicitada = diasOperacao - diasEtapaPaga;
-  const totalEtapas = Math.ceil(diasOperacao / 30);
 
-  // 2. Cálculo do QS (Quantitativo de Subsistência - ND 33.90.30)
-  // QS = Efetivo x (Dias Operação - Dias Etapa Paga) x Valor QS
-  const complementoQS = efetivo * diasEtapaSolicitada * valorQS;
-  // Etapa QS = Efetivo x Dias Etapa Paga x Valor QS
-  const etapaQS = efetivo * diasEtapaPaga * valorQS;
-  const totalQS = complementoQS + etapaQS;
-
-  // 3. Cálculo do QR (Quantitativo de Reforço - ND 33.90.30)
-  // QR = Efetivo x (Dias Operação - Dias Etapa Paga) x Valor QR
-  const complementoQR = efetivo * diasEtapaSolicitada * valorQR;
-  // Etapa QR = Efetivo x Dias Etapa Paga x Valor QR
-  const etapaQR = efetivo * diasEtapaPaga * valorQR;
-  const totalQR = complementoQR + etapaQR;
-
-  return {
-    nrCiclos,
-    diasEtapaPaga,
-    diasEtapaSolicitada,
-    totalEtapas,
-    complementoQS: parseFloat(complementoQS.toFixed(2)),
-    etapaQS: parseFloat(etapaQS.toFixed(2)),
-    totalQS: parseFloat(totalQS.toFixed(2)),
-    complementoQR: parseFloat(complementoQR.toFixed(2)),
-    etapaQR: parseFloat(etapaQR.toFixed(2)),
-    totalQR: parseFloat(totalQR.toFixed(2)),
-  };
+/**
+ * Função auxiliar para formatar a fórmula de cálculo
+ */
+export const formatFormula = (
+    efetivo: number,
+    diasOperacao: number,
+    nrRefInt: number,
+    valorEtapa: number,
+    diasEtapaSolicitada: number,
+    tipo: 'complemento' | 'etapa',
+    valorFinal: number
+): string => {
+    const E = efetivo;
+    const D = diasOperacao;
+    const R = nrRefInt;
+    const V = valorEtapa;
+    const DES = diasEtapaSolicitada;
+    
+    let formulaString = "";
+    
+    if (tipo === 'complemento') {
+        // Fórmula: Efetivo x min(Ref. Int., 3) x (Valor Etapa / 3) x Dias de Atividade
+        const minR = Math.min(R, 3);
+        formulaString = `${formatNumber(E)} mil. x ${formatNumber(minR)} ref. int. x (${formatCurrency(V)} / 3) x ${formatNumber(D)} dias`;
+    } else {
+        // Fórmula: Efetivo x Valor Etapa x Dias de Etapa Solicitada
+        formulaString = `${formatNumber(E)} mil. x ${formatCurrency(V)} x ${formatNumber(DES)} dias`;
+    }
+    
+    return `${formulaString} = ${formatCurrency(valorFinal)}`;
 };
 
 /**
- * Formata as fases de atividade para exibição em texto.
+ * Função para formatar as fases de forma natural no texto
  */
-export const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
+export const formatFasesParaTexto = (faseCSV: string | undefined | null): string => {
   if (!faseCSV) return 'operação';
   
   const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
@@ -106,91 +109,170 @@ export const formatFasesParaTexto = (faseCSV: string | null | undefined): string
 };
 
 /**
- * Gera a memória de cálculo para Ração Quente (QS e QR).
+ * Helper function to calculate days of requested stage (diasEtapaSolicitada)
  */
-export const generateRacaoQuenteMemoriaCalculo = (registro: ClasseIRegistro): { qs: string, qr: string } => {
-  const { efetivo, diasOperacao, nrRefInt, valorQS, valorQR, omQS, ugQS, organizacao, ug, faseAtividade, calculos } = registro;
+export const calculateDiasEtapaSolicitada = (diasOperacao: number): number => {
+  const diasRestantesNoCiclo = diasOperacao % 30;
+  const ciclosCompletos = Math.floor(diasOperacao / 30);
   
-  const faseFormatada = formatFasesParaTexto(faseAtividade);
-  const nrRefIntDisplay = nrRefInt || 1;
-  const valorQSDisplay = valorQS || 0;
-  const valorQRDisplay = valorQR || 0;
-  
-  const diasEtapaSolicitada = calculos.diasEtapaSolicitada;
-  const diasEtapaPaga = calculos.diasEtapaPaga;
-  
-  const totalGeral = calculos.totalQS + calculos.totalQR;
-
-  // --- Memória QS ---
-  const qs = `33.90.30 – Quantitativo de Subsistência (QS) para atender ${efetivo} militares, por ${diasOperacao} dias de ${faseFormatada}, com ${nrRefIntDisplay} refeição intermediária.
-OM de Destino do Recurso: ${omQS} (UG: ${ugQS})
-
-Valor Unitário QS (Diretriz): ${formatCurrency(valorQSDisplay)}
-
-Cálculo:
-1. Complemento de Etapa (Dias não pagos):
-   Fórmula: ${efetivo} mil x ${diasEtapaSolicitada} dias x ${formatCurrency(valorQSDisplay)} = ${formatCurrency(calculos.complementoQS)}
-2. Etapa a Solicitar (Dias pagos):
-   Fórmula: ${efetivo} mil x ${diasEtapaPaga} dias x ${formatCurrency(valorQSDisplay)} = ${formatCurrency(calculos.etapaQS)}
-
-Total QS: ${formatCurrency(calculos.totalQS)}`;
-
-  // --- Memória QR ---
-  const qr = `33.90.30 – Quantitativo de Reforço (QR) para atender ${efetivo} militares, por ${diasOperacao} dias de ${faseFormatada}.
-OM de Destino do Recurso: ${organizacao} (UG: ${ug})
-
-Valor Unitário QR (Diretriz): ${formatCurrency(valorQRDisplay)}
-
-Cálculo:
-1. Complemento de Etapa (Dias não pagos):
-   Fórmula: ${efetivo} mil x ${diasEtapaSolicitada} dias x ${formatCurrency(valorQRDisplay)} = ${formatCurrency(calculos.complementoQR)}
-2. Etapa a Solicitar (Dias pagos):
-   Fórmula: ${efetivo} mil x ${diasEtapaPaga} dias x ${formatCurrency(valorQRDisplay)} = ${formatCurrency(calculos.etapaQR)}
-
-Total QR: ${formatCurrency(calculos.totalQR)}
-
-Valor Total Ração Quente (QS + QR): ${formatCurrency(totalGeral)}`;
-
-  return { qs, qr };
+  if (diasRestantesNoCiclo <= 22 && diasOperacao >= 30) {
+    return ciclosCompletos * 8;
+  } else if (diasRestantesNoCiclo > 22) {
+    return (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
+  } else {
+    return 0;
+  }
 };
 
 /**
- * Gera a memória de cálculo para Ração Operacional (R2/R3).
+ * Helper function to encapsulate calculation logic for Ração Quente
  */
-export const generateRacaoOperacionalMemoriaCalculo = (registro: Pick<ClasseIRegistro, 'organizacao' | 'ug' | 'efetivo' | 'diasOperacao' | 'faseAtividade' | 'quantidadeR2' | 'quantidadeR3'>): string => {
-    const { organizacao, ug, efetivo, diasOperacao, faseAtividade, quantidadeR2, quantidadeR3 } = registro;
-    const totalRacoes = quantidadeR2 + quantidadeR3;
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-
-    // CORREÇÃO: "Rações" estava faltando o 'a'
-    return `33.90.30 – Ração Operacional de Combate para atender ${efetivo} militares, por até ${diasOperacao} dias, para ser utilizada na Operação de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de tarefas, descentralizadas, afastadas da(s) base(s) de apoio logístico.
-OM de Destino: ${organizacao} (UG: ${ug})
-
-Quantitativo R2 (24h): ${formatNumber(quantidadeR2)} un.
-Quantitativo R3 (12h): ${formatNumber(quantidadeR3)} un.
-
-Total de Rações Operacionais: ${formatNumber(totalRacoes)} unidades.`;
-};
-
-/**
- * Helper para formatar a fórmula de cálculo para exibição no formulário.
- */
-export const formatFormula = (
-  efetivo: number,
+export const calculateClasseICalculations = (
+  efetivo: number | null,
   diasOperacao: number,
   nrRefInt: number,
-  valor: number,
-  diasEtapaSolicitada: number,
-  tipo: 'complemento' | 'etapa',
-  resultado: number
-): string => {
-  const diasEtapaPaga = diasOperacao - diasEtapaSolicitada;
-  const valorFormatado = formatCurrency(valor);
+  valorQS: number,
+  valorQR: number
+) => {
+  const E = efetivo || 0;
+  const D = diasOperacao || 0;
+  const R = nrRefInt || 0;
+  const VQS = valorQS || 0;
+  const VQR = valorQR || 0;
 
-  if (tipo === 'complemento') {
-    return `${efetivo} mil x ${diasEtapaSolicitada} dias x ${valorFormatado} = ${formatCurrency(resultado)}`;
-  } else if (tipo === 'etapa') {
-    return `${efetivo} mil x ${diasEtapaPaga} dias x ${valorFormatado} = ${formatCurrency(resultado)}`;
+  if (E <= 0 || D <= 0) {
+    return {
+      nrCiclos: 0,
+      diasEtapaPaga: 0,
+      diasEtapaSolicitada: 0,
+      totalEtapas: 0,
+      complementoQS: 0,
+      etapaQS: 0,
+      totalQS: 0,
+      complementoQR: 0,
+      etapaQR: 0,
+      totalQR: 0,
+    };
   }
-  return '';
+
+  const diasEtapaSolicitada = calculateDiasEtapaSolicitada(D);
+  
+  const complementoQS = E * Math.min(R, 3) * (VQS / 3) * D;
+  const etapaQS = E * VQS * diasEtapaSolicitada;
+  const totalQS = complementoQS + etapaQS;
+
+  const complementoQR = E * Math.min(R, 3) * (VQR / 3) * D;
+  const etapaQR = E * VQR * diasEtapaSolicitada;
+  const totalQR = complementoQR + etapaQR;
+
+  return {
+    nrCiclos: Math.ceil(D / 30),
+    diasEtapaPaga: Math.ceil(D / 30) * 22, // Este campo não é usado na fórmula, mas mantido para referência
+    diasEtapaSolicitada,
+    totalEtapas: diasEtapaSolicitada + (R * D),
+    complementoQS,
+    etapaQS,
+    totalQS,
+    complementoQR,
+    etapaQR,
+    totalQR,
+  };
+};
+
+
+/**
+ * Gera a memória de cálculo formatada para Ração Quente (QS/QR).
+ */
+export const generateRacaoQuenteMemoriaCalculo = (registro: ClasseIRegistro): { qs: string, qr: string } => {
+  const { organizacao, efetivo, diasOperacao, nrRefInt, valorQS, valorQR, calculos, faseAtividade } = registro;
+  
+  if (registro.categoria !== 'RACAO_QUENTE' || efetivo === null || valorQS === null || valorQR === null || nrRefInt === null) {
+      return { qs: "Memória não aplicável.", qr: "" };
+  }
+  
+  const E = efetivo;
+  const D = diasOperacao;
+  const R = nrRefInt;
+  const VQS = valorQS;
+  const VQR = valorQR;
+  
+  const diasEtapaSolicitada = calculos.diasEtapaSolicitada;
+  const faseFormatada = formatFasesParaTexto(faseAtividade);
+  
+  // Lógica de pluralização
+  const militarPlural = E === 1 ? 'militar' : 'militares';
+  
+  // Lógica de preposição
+  const preposition = getOmPreposition(organizacao);
+  
+  // Memória QS (Quantitativo de Subsistência)
+  const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} dias de ${faseFormatada}.
+
+Cálculo:
+- Valor da Etapa (QS): ${formatCurrency(VQS)}.
+- Nr Refeições Intermediárias: ${R}.
+- Dias de Etapa Solicitada: ${formatNumber(diasEtapaSolicitada)} dias.
+- Dias de Complemento de Etapa: ${formatNumber(D)} dias.
+
+Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 3) x Valor da Etapa/3 x Dias de Complemento de Etapa]
+Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
+
+- Complemento de Etapa: ${formatFormula(E, D, R, VQS, 0, 'complemento', calculos.complementoQS)}.
+- Etapa Solicitada: ${formatFormula(E, D, R, VQS, diasEtapaSolicitada, 'etapa', calculos.etapaQS)}.
+
+Total QS: ${formatCurrency(calculos.totalQS)}.`;
+
+  // Memória QR (Quantitativo de Reforço)
+  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Quantitativo de Reforço) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} dias de ${faseFormatada}.
+
+Cálculo:
+- Valor da Etapa (QR): ${formatCurrency(VQR)}.
+- Nr Refeições Intermediárias: ${R}.
+- Dias de Etapa Solicitada: ${formatNumber(diasEtapaSolicitada)} dias.
+- Dias de Complemento de Etapa: ${formatNumber(D)} dias.
+
+Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 3) x Valor da Etapa/3 x Dias de Complemento de Etapa]
+Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
+
+- Complemento de Etapa: ${formatFormula(E, D, R, VQR, 0, 'complemento', calculos.complementoQR)}.
+- Etapa Solicitada: ${formatFormula(E, D, R, VQR, diasEtapaSolicitada, 'etapa', calculos.etapaQR)}.
+
+Total QR: ${formatCurrency(calculos.totalQR)}.`;
+
+  return { qs: memoriaQS, qr: memoriaQR };
+};
+
+/**
+ * Gera a memória de cálculo formatada para Ração Operacional (R2/R3).
+ */
+export const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro): string => {
+    if (registro.categoria !== 'RACAO_OPERACIONAL') {
+        return "Memória não aplicável para Ração Quente.";
+    }
+    
+    const { organizacao, efetivo, diasOperacao, quantidadeR2, quantidadeR3, faseAtividade } = registro;
+    
+    const E = efetivo || 0;
+    const D = diasOperacao || 0;
+    const R2 = quantidadeR2 || 0;
+    const R3 = quantidadeR3 || 0;
+    const totalRacoes = R2 + R3;
+    const faseFormatada = formatFasesParaTexto(faseAtividade);
+    
+    // Lógica de pluralização
+    const militarPlural = E === 1 ? 'militar' : 'militares';
+    const diaPlural = D === 1 ? 'dia' : 'dias';
+    
+    // Lógica de preposição
+    const preposition = getOmPreposition(organizacao);
+
+    // NOVO CABEÇALHO AJUSTADO COM 33.90.30
+    const header = `33.90.30 - Fornecimento de Ração Operacional para atender ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizada/afastadas de instalações militares.`;
+
+    return `${header}
+
+Quantitativo R2 (24h): ${formatNumber(R2)} un.
+Quantitativo R3 (12h): ${formatNumber(R3)} un.
+
+Total de Rções Operacionais: ${formatNumber(totalRacoes)} unidades.`;
 };
