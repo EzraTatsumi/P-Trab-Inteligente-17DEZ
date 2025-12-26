@@ -176,8 +176,11 @@ export const generateRacaoQuenteMemoriaCalculo = (registro: ClasseIRegistro): { 
   const diasEtapaSolicitada = calculos.diasEtapaSolicitada;
   const faseFormatada = formatFasesParaTexto(faseAtividade);
   
+  // Lógica de pluralização
+  const militarPlural = E === 1 ? 'militar' : 'militares';
+  
   // Memória QS (Quantitativo de Subsistência)
-  const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${E} militares do ${organizacao}, durante ${D} dias de ${faseFormatada}.
+  const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${E} ${militarPlural} do ${organizacao}, durante ${D} dias de ${faseFormatada}.
 
 Cálculo:
 - Valor da Etapa (QS): ${formatCurrency(VQS)}.
@@ -194,7 +197,7 @@ Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicita
 Total QS: ${formatCurrency(calculos.totalQS)}.`;
 
   // Memória QR (Quantitativo de Reforço)
-  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Quantitativo de Reforço) destinados à complementação de alimentação de ${E} militares do ${organizacao}, durante ${D} dias de ${faseFormatada}.
+  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Quantitativo de Reforço) destinados à complementação de alimentação de ${E} ${militarPlural} do ${organizacao}, durante ${D} dias de ${faseFormatada}.
 
 Cálculo:
 - Valor da Etapa (QR): ${formatCurrency(VQR)}.
@@ -229,8 +232,11 @@ export const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro
     const R3 = quantidadeR3 || 0;
     const totalRacoes = R2 + R3;
     const faseFormatada = formatFasesParaTexto(faseAtividade);
+    
+    // Lógica de pluralização
+    const militarPlural = E === 1 ? 'militar' : 'militares';
 
-    return `33.90.30 – ração operacional para atender ${E} militares, por até ${D} dias, para ser utilizada na Operação de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de tarefas, descentralizadas, afastadas da(s) base(s) de apoio logístico.
+    return `33.90.30 – ração operacional para atender ${E} ${militarPlural}, por até ${D} dias, para ser utilizada na Operação de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de tarefas, descentralizadas, afastadas da(s) base(s) de apoio logístico.
 
 Quantitativo R2 (24h): ${formatNumber(R2)} un.
 Quantitativo R3 (12h): ${formatNumber(R3)} un.
