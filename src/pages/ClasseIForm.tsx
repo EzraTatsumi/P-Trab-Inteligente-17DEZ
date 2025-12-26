@@ -1711,7 +1711,7 @@ export default function ClasseIForm() {
 
                                 {/* Bloco QR */}
                                 <div className="space-y-2">
-                                  <h5 className="font-bold text-sm text-green-600">QR - Quantitativo de Reforço (OM: {registro.organizacao})</h5>
+                                  <h5 className="font-bold text-sm text-green-600">QR (OM: {registro.organizacao})</h5>
                                   <Card className="p-4 bg-background rounded-lg border">
                                     <Textarea
                                       value={memoriaQRFinal}
