@@ -26,8 +26,6 @@ import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
-import { getOmPreposition } from "@/lib/classeIUtils"; // NOVO: Importar getOmPreposition
-import { generateClasseIIMemoriaCalculo } from "@/lib/classeIIUtils"; // ADICIONADO: Importar a função canônica
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -55,7 +53,6 @@ interface FormDataClasseII {
   dias_operacao: number; // Global
   itens: ItemClasseII[]; // All items across all categories
   fase_atividade?: string; // Global
-  efetivo: number; // NOVO: Adicionado efetivo ao FormData
 }
 
 interface ClasseIIRegistro {
@@ -72,10 +69,6 @@ interface ClasseIIRegistro {
   // NOVOS CAMPOS DO DB
   valor_nd_30: number;
   valor_nd_39: number;
-  efetivo: number; // ADICIONADO: Efetivo
-  animal_tipo?: 'Equino' | 'Canino';
-  quantidade_animais?: number;
-  itens_motomecanizacao?: ItemClasseIX[];
 }
 
 interface CategoryAllocation {
@@ -143,8 +136,86 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-// REMOVIDAS AS FUNÇÕES generateCategoryMemoriaCalculo e generateDetalhamento
-// A lógica foi movida para generateClasseIIMemoriaCalculo em src/lib/classeIIUtils.ts
+// NOVO: Gera a memória de cálculo detalhada para uma categoria
+const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
+    const faseFormatada = formatFasesParaTexto(faseAtividade);
+    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
+    const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
+
+    let detalhamentoItens = "";
+    itens.forEach(item => {
+        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
+        detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
+    });
+
+    return `33.90.30 - Aquisição de Material de Intendência (${getCategoryLabel(categoria)})
+OM de Destino: ${organizacao} (UG: ${ug})
+Período: ${diasOperacao} dias de ${faseFormatada}
+Total de Itens na Categoria: ${totalQuantidade}
+
+Cálculo:
+Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
+
+Detalhes dos Itens:
+${detalhamentoItens.trim()}
+
+Valor Total da Categoria: ${formatCurrency(totalValor)}.`;
+};
+
+const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
+    const faseFormatada = formatFasesParaTexto(faseAtividade);
+    const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
+    const valorTotal = valorND30 + valorND39;
+
+    // 1. Agrupar itens por categoria e calcular o subtotal de valor por categoria
+    const gruposPorCategoria = itens.reduce((acc, item) => {
+        const categoria = item.categoria as Categoria;
+        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
+        
+        if (!acc[categoria]) {
+            acc[categoria] = {
+                totalValor: 0,
+                totalQuantidade: 0,
+                detalhes: [],
+            };
+        }
+        
+        acc[categoria].totalValor += valorItem;
+        acc[categoria].totalQuantidade += item.quantidade;
+        acc[categoria].detalhes.push(
+            `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.`
+        );
+        
+        return acc;
+    }, {} as Record<Categoria, { totalValor: number, totalQuantidade: number, detalhes: string[] }>);
+
+    let detalhamentoItens = "";
+    
+    // 2. Formatar a seção de cálculo agrupada
+    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
+        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`; // USANDO getCategoryLabel
+        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
+        detalhamentoItens += `Detalhes:\n`;
+        detalhamentoItens += grupo.detalhes.join('\n');
+        detalhamentoItens += `\n`;
+    });
+    
+    detalhamentoItens = detalhamentoItens.trim();
+
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
+
+Alocação:
+- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
+- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
+
+Cálculo:
+Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
+
+${detalhamentoItens}
+
+Valor Total: ${formatCurrency(valorTotal)}.`;
+  };
 
 
 const ClasseIIForm = () => {
@@ -169,7 +240,6 @@ const ClasseIIForm = () => {
     ug: "",
     dias_operacao: 0,
     itens: [],
-    efetivo: 0, // NOVO: Adicionado efetivo ao estado do formulário
   });
   
   // NOVO ESTADO: Rastreia a alocação de ND por categoria (SAVED STATE)
@@ -402,10 +472,9 @@ const ClasseIIForm = () => {
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
-    // ADICIONADO 'efetivo' na query
     const { data, error } = await supabase
       .from("classe_ii_registros")
-      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, efetivo")
+      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
       .eq("p_trab_id", ptrabId)
       .in("categoria", CATEGORIAS) // FILTRO ADICIONADO AQUI
       .order("organizacao", { ascending: true }) // Ordenar por OM
@@ -426,7 +495,6 @@ const ClasseIIForm = () => {
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseII[],
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
-            efetivo: r.efetivo || 0, // NOVO: Carregar efetivo
         } as ClasseIIRegistro;
         uniqueRecordsMap.set(key, record);
     });
@@ -442,7 +510,6 @@ const ClasseIIForm = () => {
       ug: "",
       dias_operacao: 0,
       itens: [],
-      efetivo: 0, // Resetar efetivo
     });
     
     setCategoryAllocations(initialCategoryAllocations); // Reset allocations
@@ -548,8 +615,8 @@ const ClasseIIForm = () => {
 
   // NOVO HANDLER: Salva os itens da lista expandida para o form.itens principal
   const handleUpdateCategoryItems = () => {
-    if (!form.organizacao || form.dias_operacao <= 0 || form.efetivo <= 0) {
-        toast.error("Preencha a OM, Efetivo e Dias de Operação antes de salvar itens.");
+    if (!form.organizacao || form.dias_operacao <= 0) {
+        toast.error("Preencha a OM e os Dias de Operação antes de salvar itens.");
         return;
     }
     
@@ -628,7 +695,6 @@ const ClasseIIForm = () => {
     if (!ptrabId) return;
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
     if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
-    if (form.efetivo <= 0) { toast.error("Efetivo deve ser maior que zero"); return; }
     if (form.itens.length === 0) { toast.error("Adicione pelo menos um item"); return; }
     
     let fasesFinais = [...fasesAtividade];
@@ -684,17 +750,17 @@ const ClasseIIForm = () => {
             return;
         }
         
-        const detalhamento = generateClasseIIMemoriaCalculo({
-            organizacao: allocation.om_destino_recurso, // OM de Destino do Recurso (ND 30/39)
-            ug: allocation.ug_destino_recurso, // UG de Destino do Recurso (ND 30/39)
-            dias_operacao: form.dias_operacao,
-            categoria: categoria,
-            itens_equipamentos: itens as any,
-            fase_atividade: faseFinalString,
-            valor_nd_30: allocation.nd_30_value,
-            valor_nd_39: allocation.nd_39_value,
-            efetivo: form.efetivo, // Usar o efetivo do formulário principal
-        });
+        const detalhamento = generateDetalhamento(
+            itens, 
+            form.dias_operacao, 
+            form.organizacao, // OM Detentora
+            form.ug, // UG Detentora
+            faseFinalString,
+            allocation.om_destino_recurso, // OM de Destino do Recurso (ND 30/39)
+            allocation.ug_destino_recurso, // UG de Destino do Recurso (ND 30/39)
+            allocation.nd_30_value,
+            allocation.nd_39_value
+        );
         
         const registro: TablesInsert<'classe_ii_registros'> = {
             p_trab_id: ptrabId,
@@ -709,7 +775,6 @@ const ClasseIIForm = () => {
             detalhamento_customizado: null,
             valor_nd_30: allocation.nd_30_value,
             valor_nd_39: allocation.nd_39_value,
-            efetivo: form.efetivo, // NOVO: Salvar o efetivo
         };
         registrosParaSalvar.push(registro);
     }
@@ -744,10 +809,9 @@ const ClasseIIForm = () => {
     resetFormFields();
     
     // 1. Buscar TODOS os registros de CLASSE II para este PTrab
-    // ADICIONADO 'efetivo' na query
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_ii_registros")
-        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo")
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
         .eq("p_trab_id", ptrabId)
         .in("categoria", CATEGORIAS); // FILTRO ADICIONADO AQUI
         
@@ -763,10 +827,8 @@ const ClasseIIForm = () => {
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
     let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
     let firstOmDetentora: { nome: string, ug: string } | null = null;
-    let firstEfetivo: number = 0; // Inicializa com 0
     
-    // Substituir forEach por for...of para permitir await
-    for (const r of (allRecords || [])) {
+    (allRecords || []).forEach(r => {
         const category = r.categoria as Categoria;
         const items = (r.itens_equipamentos || []) as ItemClasseII[];
         
@@ -805,10 +867,8 @@ const ClasseIIForm = () => {
             // Nota: O campo 'organizacao' no DB é a OM de Destino do Recurso.
             // Para fins de edição, assumimos que a OM Detentora é a mesma que a OM de Destino do Recurso (organizacao/ug)
             firstOmDetentora = { nome: r.organizacao, ug: r.ug };
-            // NOVO: Capturar o efetivo do primeiro registro encontrado (todos devem ter o mesmo efetivo)
-            firstEfetivo = r.efetivo || 0;
         }
-    } // Fim do loop for...of
+    });
     
     // 3. Buscar IDs das OMs de Destino e Detentora
     let selectedOmIdForEdit: string | undefined = undefined;
@@ -833,7 +893,6 @@ const ClasseIIForm = () => {
       ug: firstOmDetentora?.ug || "",
       dias_operacao: registro.dias_operacao,
       itens: consolidatedItems,
-      efetivo: firstEfetivo, // NOVO: Setar efetivo carregado
     });
     
     // 5. Preencher o estado de alocação e buscar IDs de destino
@@ -879,7 +938,7 @@ const ClasseIIForm = () => {
   // NOVO MEMO: Agrupa os registros por OM de Destino
   const registrosAgrupadosPorOM = useMemo(() => {
     return registros.reduce((acc, registro) => {
-        const key = `${registro.organizacao} (${formatNumber(registro.ug)})`; // FORMATANDO UG AQUI
+        const key = `${registro.organizacao} (${registro.ug})`;
         if (!acc[key]) {
             acc[key] = [];
         }
@@ -890,21 +949,7 @@ const ClasseIIForm = () => {
 
   const handleIniciarEdicaoMemoria = (registro: ClasseIIRegistro) => {
     setEditingMemoriaId(registro.id);
-    
-    // NOVO: Gera a memória automática com o rótulo padronizado
-    const memoriaAutomatica = generateClasseIIMemoriaCalculo({
-        organizacao: registro.organizacao, // OM de Destino do Recurso (ND 30/39)
-        ug: registro.ug, // UG de Destino do Recurso (ND 30/39)
-        dias_operacao: registro.dias_operacao,
-        categoria: registro.categoria,
-        itens_equipamentos: registro.itens_equipamentos as ItemClasseII[],
-        fase_atividade: registro.fase_atividade,
-        valor_nd_30: registro.valor_nd_30,
-        valor_nd_39: registro.valor_nd_39,
-        efetivo: registro.efetivo, // Usar o efetivo do registro
-    });
-    
-    setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
+    setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento || "");
   };
 
   const handleCancelarEdicaoMemoria = () => {
@@ -993,7 +1038,6 @@ const ClasseIIForm = () => {
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
               
-              {/* PRIMEIRA LINHA: OM Detentora, UG Detentora, Efetivo (3 Colunas) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>OM Detentora do Equipamento *</Label>
@@ -1008,31 +1052,9 @@ const ClasseIIForm = () => {
 
                 <div className="space-y-2">
                   <Label>UG Detentora</Label>
-                  <Input 
-                    value={formatNumber(form.ug)} // FORMATANDO AQUI
-                    readOnly 
-                    disabled 
-                    onKeyDown={handleEnterToNextField} 
-                  />
+                  <Input value={form.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label>Efetivo de Militares *</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
-                    value={form.efetivo || ""}
-                    onChange={(e) => setForm({ ...form, efetivo: parseInt(e.target.value) || 0 })}
-                    placeholder="Ex: 110"
-                    onKeyDown={handleEnterToNextField}
-                    disabled={!form.organizacao}
-                  />
-                </div>
-              </div>
-              
-              {/* SEGUNDA LINHA: Dias de Atividade, Fase da Atividade (3 Colunas: 1 + 2) */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Dias de Atividade *</Label>
                   <Input
@@ -1043,11 +1065,12 @@ const ClasseIIForm = () => {
                     onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value) || 0 })}
                     placeholder="Ex: 7"
                     onKeyDown={handleEnterToNextField}
-                    disabled={!form.organizacao}
                   />
                 </div>
-                
-                <div className="space-y-2 md:col-span-2"> {/* Ocupa 2 colunas em telas médias */}
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label>Fase da Atividade *</Label>
                   <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                     <PopoverTrigger asChild>
@@ -1101,7 +1124,7 @@ const ClasseIIForm = () => {
             </div>
 
             {/* 2. Adicionar Itens por Categoria (Aba) - REESTRUTURADO PARA TABELA */}
-            {form.organizacao && form.dias_operacao > 0 && form.efetivo > 0 && (
+            {form.organizacao && form.dias_operacao > 0 && (
               <div className="space-y-4 border-b pb-4" ref={formRef}>
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
@@ -1192,7 +1215,7 @@ const ClasseIIForm = () => {
                                     />
                                     {tempDestinations[cat].ug && (
                                         <p className="text-xs text-muted-foreground">
-                                            UG de Destino: {formatNumber(tempDestinations[cat].ug)}
+                                            UG de Destino: {tempDestinations[cat].ug}
                                         </p>
                                     )}
                                 </div>
@@ -1252,7 +1275,7 @@ const ClasseIIForm = () => {
                                 type="button" 
                                 onClick={handleUpdateCategoryItems} 
                                 className="w-full md:w-auto" 
-                                disabled={!form.organizacao || form.dias_operacao <= 0 || form.efetivo <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && !tempDestinations[cat].om)}
+                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && !tempDestinations[cat].om)}
                             >
                                 Salvar Itens da Categoria
                             </Button>
@@ -1311,7 +1334,7 @@ const ClasseIIForm = () => {
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
-                          <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({formatNumber(totalQuantidade)} itens)</h4>
+                          <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} itens)</h4>
                           <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoriaSaved)}</span>
                         </div>
                         
@@ -1320,7 +1343,7 @@ const ClasseIIForm = () => {
                             <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
                               <span className="font-medium">{item.item}</span>
                               <span className="text-right">
-                                {formatNumber(item.quantidade)} un. x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
+                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
                               </span>
                             </div>
                           ))}
@@ -1330,7 +1353,7 @@ const ClasseIIForm = () => {
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
                                 <span className="font-medium text-foreground">
-                                    {allocation.om_destino_recurso} ({formatNumber(allocation.ug_destino_recurso)})
+                                    {allocation.om_destino_recurso} ({allocation.ug_destino_recurso})
                                 </span>
                             </div>
                             <div className="flex justify-between text-xs">
@@ -1424,7 +1447,7 @@ const ClasseIIForm = () => {
                                                         {/* REMOVIDO O BADGE DUPLICADO AQUI */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Dias: {registro.dias_operacao} | Fases: {fases} | Efetivo: {formatNumber(registro.efetivo)}
+                                                        Dias: {registro.dias_operacao} | Fases: {fases}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -1500,17 +1523,14 @@ const ClasseIIForm = () => {
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
                   // NOVO: Gera a memória automática com o rótulo padronizado
-                  const memoriaAutomatica = generateClasseIIMemoriaCalculo({
-                      organizacao: registro.organizacao, // OM de Destino do Recurso (ND 30/39)
-                      ug: registro.ug, // UG de Destino do Recurso (ND 30/39)
-                      dias_operacao: registro.dias_operacao,
-                      categoria: registro.categoria,
-                      itens_equipamentos: registro.itens_equipamentos as ItemClasseII[],
-                      fase_atividade: registro.fase_atividade,
-                      valor_nd_30: registro.valor_nd_30,
-                      valor_nd_39: registro.valor_nd_39,
-                      efetivo: registro.efetivo, // Usar o efetivo do registro
-                  });
+                  const memoriaAutomatica = generateCategoryMemoriaCalculo(
+                      registro.categoria as Categoria, 
+                      registro.itens_equipamentos as ItemClasseII[], 
+                      registro.dias_operacao, 
+                      registro.organizacao, 
+                      registro.ug, 
+                      registro.fase_atividade
+                  );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
                   const badgeStyle = getCategoryBadgeStyle(registro.categoria);
@@ -1522,7 +1542,7 @@ const ClasseIIForm = () => {
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                               <h4 className="text-base font-semibold text-foreground">
-                                OM Destino: {om} ({formatNumber(ug)})
+                                OM Destino: {om} ({ug})
                               </h4>
                               <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
                                   {badgeStyle.label}

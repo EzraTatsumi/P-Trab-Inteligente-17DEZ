@@ -22,6 +22,22 @@ export const formatNumber = (value: number | string | null | undefined, decimals
 };
 
 /**
+ * Formata um CODUG (código de unidade gestora) para o padrão XXX.XXX.
+ * Se o valor não for um número de 6 dígitos, retorna o valor original.
+ * @param codug O CODUG como string ou número.
+ * @returns String formatada como XXX.XXX.
+ */
+export const formatCodug = (codug: string | number | null | undefined): string => {
+  if (codug === null || codug === undefined) return "";
+  const strCodug = String(codug).replace(/\D/g, ''); // Remove non-digits
+
+  if (strCodug.length === 6) {
+    return `${strCodug.substring(0, 3)}.${strCodug.substring(3)}`;
+  }
+  return String(codug); // Retorna o original se não tiver 6 dígitos
+};
+
+/**
  * Parses a string input (allowing comma as decimal separator) into a number.
  * Handles optional thousand separators (dots) by removing them.
  */

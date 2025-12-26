@@ -25,6 +25,7 @@ import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
 import { 
   formatCurrency, 
   formatNumber, 
+  formatCodug, // IMPORTADO
 } from "@/lib/formatUtils";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -150,7 +151,7 @@ export default function ClasseIForm() {
   // NOVO MEMO: Agrupa os registros por OM de Destino
   const registrosAgrupadosPorOM = useMemo(() => {
     return registros.reduce((acc, registro) => {
-        const key = `${registro.organizacao} (${registro.ug})`;
+        const key = `${registro.organizacao} (${formatCodug(registro.ug)})`; // USANDO formatCodug
         if (!acc[key]) {
             acc[key] = [];
         }
@@ -966,7 +967,7 @@ export default function ClasseIForm() {
                     <Label htmlFor="ug">UG de Destino</Label>
                     <Input
                       id="ug"
-                      value={ug}
+                      value={formatCodug(ug)} // APLICANDO FORMATO
                       readOnly
                       disabled={true}
                       className="disabled:opacity-60"
@@ -1053,7 +1054,7 @@ export default function ClasseIForm() {
                               onKeyDown={handleEnterToNextField}
                             />
                           </div>
-                        </Command>
+                        </div>
                       </PopoverContent>
                     </Popover>
                   </div>
@@ -1115,7 +1116,7 @@ export default function ClasseIForm() {
                             <Label htmlFor="ugQS">UG de Destino</Label>
                             <Input
                               id="ugQS"
-                              value={ugQS}
+                              value={formatCodug(ugQS)} // APLICANDO FORMATO
                               readOnly
                               disabled={true}
                               className="disabled:opacity-60"
@@ -1365,8 +1366,8 @@ export default function ClasseIForm() {
                                     {/* Linha 1: Destinos */}
                                     <div className="font-medium text-muted-foreground">OM Destino Recurso</div>
                                     <div className="flex justify-between">
-                                        <span className="font-medium text-blue-600">QS: {RACAO_QUENTE_DATA.om_qs} ({RACAO_QUENTE_DATA.ug_qs})</span>
-                                        <span className="font-medium text-green-600">QR: {organizacao} ({ug})</span>
+                                        <span className="font-medium text-blue-600">QS: {RACAO_QUENTE_DATA.om_qs} ({formatCodug(RACAO_QUENTE_DATA.ug_qs)})</span>
+                                        <span className="font-medium text-green-600">QR: {organizacao} ({formatCodug(ug)})</span>
                                     </div>
                                     
                                     {/* Linha 2: ND e Valores */}
@@ -1483,13 +1484,13 @@ export default function ClasseIForm() {
                             .reduce((sum, r) => sum + (r.quantidadeR2 || 0) + (r.quantidadeR3 || 0), 0);
                             
                         const omName = omKey.split(' (')[0];
-                        const ug = omKey.split(' (')[1].replace(')', '');
+                        const ugFormatted = omKey.split(' (')[1].replace(')', ''); // Já está formatado pelo useMemo
                         
                         return (
                             <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                                 <div className="flex items-center justify-between mb-3 border-b pb-2">
                                     <h3 className="font-bold text-lg text-primary">
-                                        {omName} (UG: {ug})
+                                        {omName} (UG: {ugFormatted})
                                     </h3>
                                     <div className="flex flex-col items-end">
                                         {totalMonetarioOM > 0 && (
@@ -1619,7 +1620,7 @@ export default function ClasseIForm() {
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <h4 className="text-lg font-semibold text-foreground">
-                              {registro.organizacao} (UG: {registro.ug})
+                              {registro.organizacao} (UG: {formatCodug(registro.ug)})
                             </h4>
                             <Badge variant="default" className={cn(
                                 isRacaoQuente ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
