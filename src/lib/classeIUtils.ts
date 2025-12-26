@@ -274,5 +274,5 @@ export const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro
 Quantitativo R2 (24h): ${formatNumber(R2)} un.
 Quantitativo R3 (12h): ${formatNumber(R3)} un.
 
-Total de Rações Operacionais: ${formatNumber(totalRacoes)} unidades.`;
+Total de Rções Operacionais: ${formatNumber(totalRacoes)} unidades.`;
 };
