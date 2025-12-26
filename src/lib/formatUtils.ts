@@ -1,3 +1,6 @@
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
 /**
  * Formats a number as currency (BRL).
  * @param value The numeric value.
@@ -128,4 +131,21 @@ export const formatInputWithThousands = (value: number | string | null | undefin
   return new Intl.NumberFormat('pt-BR', {
     maximumFractionDigits: 0,
   }).format(num);
+};
+
+/**
+ * Formats a date string into DD/MMM/AA format (e.g., 25/OUT/24).
+ * @param dateString The date string (ISO format).
+ * @returns Formatted date string.
+ */
+export const formatDateDDMMMAA = (dateString: string | Date): string => {
+  try {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    if (isNaN(date.getTime())) return 'N/A';
+    
+    // Usa date-fns para formatação localizada
+    return format(date, 'dd/MMM/yy', { locale: ptBR }).toUpperCase();
+  } catch (e) {
+    return 'N/A';
+  }
 };
