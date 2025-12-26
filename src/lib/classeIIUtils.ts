@@ -92,9 +92,9 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistroBase): 
         acc[itemCategoria].totalValor += valorItem;
         acc[itemCategoria].totalQuantidade += item.quantidade;
         
-        // NOVO FORMATO DE FÓRMULA EXPLÍCITA
+        // NOVO FORMATO DE FÓRMULA EXPLÍCITA (REQUISITO 2: Incluir nome do item)
         acc[itemCategoria].detalhes.push(
-            `- ${formatNumber(item.quantidade)} un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${formatNumber(dias_operacao)} dias = ${formatCurrency(valorItem)}.`
+            `- ${item.item}: ${formatNumber(item.quantidade)} un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${formatNumber(dias_operacao)} dias = ${formatCurrency(valorItem)}.`
         );
         
         return acc;
@@ -102,7 +102,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistroBase): 
 
     let detalhamentoItens = "";
     
-    // 3. Formatar a seção de cálculo agrupada (REMOVIDO O CABEÇALHO DE CATEGORIA E O TOTAL)
+    // 3. Formatar a seção de cálculo agrupada
     Object.entries(gruposPorCategoria).forEach(([cat, grupo]) => {
         // Adiciona apenas os detalhes dos itens
         detalhamentoItens += grupo.detalhes.join('\n');
@@ -111,15 +111,14 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistroBase): 
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    // 4. Construir o cabeçalho com a nova frase
+    // 4. Construir o cabeçalho com a nova frase (REQUISITO 1: Remover linha vazia, REQUISITO 3: Mudar "Valor Total" para "Total")
     const header = `${ndHeader} - Manutenção dos componentes do ${getClasseIILabel(categoria)} de ${formatNumber(efetivo)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(dias_operacao)} dias de ${faseFormatada}.
 
 Cálculo:
 Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
-
 ${detalhamentoItens}
 
-Valor Total: ${formatCurrency(valorTotal)}.`;
+Total: ${formatCurrency(valorTotal)}.`;
 
     return header;
 };

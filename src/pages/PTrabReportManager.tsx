@@ -27,6 +27,7 @@ import {
   calculateClasseICalculations,
   ClasseIRegistro as ClasseIRegistroType, // Importando o tipo correto
 } from "@/lib/classeIUtils"; // Importando as funções de utilidade
+import { generateClasseIIMemoriaCalculo as generateGenericClasseIIMemoria } from "@/lib/classeIIUtils"; // NOVO IMPORT
 
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
@@ -162,7 +163,7 @@ export const formatFasesParaTexto = (faseCSV: string | null | undefined): string
   
   const ultimaFase = fases[fases.length - 1];
   const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFases}`;
+  return `${demaisFases} e ${ultimaFase}`;
 };
 
 // Helper function to get the label for Classe II/V/VI/VII/VIII/IX categories
@@ -246,7 +247,7 @@ export const generateClasseIXMemoriaCalculo = (registro: ClasseIIRegistro): stri
         const nrMeses = Math.ceil(diasOperacao / 30);
 
         acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} (Base: ${formatCurrency(base)}, Acionamento: ${formatCurrency(acionamento)} em ${nrMeses} meses) = ${formatCurrency(total)}.`
+            `- ${item.item}: (Base: ${formatCurrency(base)}, Acionamento: ${formatCurrency(acionamento)} em ${nrMeses} meses) = ${formatCurrency(total)}.`
         );
         
         return acc;
@@ -271,10 +272,9 @@ Alocação:
 - ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
 Fórmula: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
-
 ${detalhamentoItens}
 
-Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
+Total: ${formatCurrency(valorTotalFinal)}.`;
 };
 
 /**
@@ -386,15 +386,12 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro): stri
       return registro.detalhamento_customizado;
     }
     
-    // Importado de src/lib/classeIIUtils.ts
-    const { generateClasseIIMemoriaCalculo: generateGenericMemoria } = require("@/lib/classeIIUtils");
-    
     if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
         return generateClasseIXMemoriaCalculo(registro);
     }
     
     // Usar a função genérica para Classes II, V, VI, VII, VIII
-    return generateGenericMemoria({
+    return generateGenericClasseIIMemoria({
         organizacao: registro.organizacao,
         ug: registro.ug,
         dias_operacao: registro.dias_operacao,
