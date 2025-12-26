@@ -1,6 +1,4 @@
-"use client";
-
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,700 +10,326 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Eye, EyeOff, Loader2, Check, X, AlertCircle } from "lucide-react";
+import { Loader2, UserPlus, Mail, Lock, Briefcase, Users, Building2, AlertCircle, ArrowLeft } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { signupSchema } from "@/lib/validationSchemas";
+import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sanitizeAuthError } from "@/lib/errorUtils";
-import { z } from "zod";
-import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import InputMask from 'react-input-mask';
-import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { EmailConfirmationDialog } from './EmailConfirmationDialog'; // Importar o novo diálogo
+import { OmSelector } from "@/components/OmSelector";
+import { OMData } from "@/lib/omUtils";
+import { SignupSuccessDialog } from './SignupSuccessDialog';
+import { EmailConfirmationDialog } from './EmailConfirmationDialog';
+
+type SignupFormValues = z.infer<typeof signupSchema>;
+
+// Mapeamento de erros de digitação comuns em domínios de e-mail
+const DOMAIN_CORRECTIONS: Record<string, string> = {
+    "gamil.com": "gmail.com",
+    "gmai.com": "gmail.com",
+    "hotmal.com": "hotmail.com",
+    "hotmaill.com": "hotmail.com",
+    "outloock.com": "outlook.com",
+    "outlookcom": "outlook.com",
+    "live.com.br": "live.com",
+    "yaho.com": "yahoo.com",
+    "yhoo.com": "yahoo.com",
+    "bol.com.br": "bol.com.br",
+    "uol.com.br": "uol.com.br",
+    "terra.com.br": "terra.com.br",
+    "ig.com.br": "ig.com.br",
+    "eb.mil.br": "eb.mil.br",
+    "exercito.mil.br": "exercito.mil.br",
+    "mil.br": "mil.br",
+};
+
+const correctEmailTypo = (email: string): string => {
+    const parts = email.split('@');
+    if (parts.length !== 2) return email;
+    
+    const [username, domain] = parts;
+    const correctedDomain = DOMAIN_CORRECTIONS[domain.toLowerCase()];
+    
+    if (correctedDomain) {
+        return `${username}@${correctedDomain}`;
+    }
+    return email;
+};
 
 interface SignupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSignupSuccess: (email: string) => void;
+  onLoginRedirect: () => void;
 }
 
-const MILITARY_RANKS = [
-  "Gen Ex", "Gen Div", "Gen Bda", "Cel", "TC", "Maj", "Cap", 
-  "1º Ten", "2º Ten", "Asp Of", "ST", "1º Sgt", "2º Sgt", 
-  "3º Sgt", "Cb", "Sd"
-] as const;
-
-// Schema de validação para o cadastro
-const signupSchema = z.object({
-  email: z.string().email("E-mail inválido."),
-  nome_completo: z.string().min(5, "Nome completo é obrigatório."),
-  nome_guerra: z.string().min(2, "Nome de Guerra é obrigatório."),
-  posto_graduacao: z.enum(MILITARY_RANKS as [string, ...string[]], { message: "Posto/Graduação é obrigatório." }),
-  sigla_om: z.string().min(2, "Sigla da OM é obrigatória."),
-  funcao_om: z.string().min(2, "Função na OM é obrigatória."),
-  // Nova validação para o formato (99) 999999999 (11 dígitos)
-  telefone: z.string().regex(/^\(?\d{2}\)?\s?\d{9}$/, "Telefone inválido (Ex: (99) 999999999).").optional().or(z.literal('')),
-  password: z.string()
-    .min(8, "A senha deve ter no mínimo 8 caracteres.")
-    .regex(/[A-Z]/, "A senha deve conter pelo menos uma letra maiúscula.")
-    .regex(/[a-z]/, "A senha deve conter pelo menos uma letra minúscula.")
-    .regex(/[0-9]/, "A senha deve conter pelo menos um número.")
-    .regex(/[^a-zA-Z0-9]/, "A senha deve conter pelo menos um caractere especial."),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "As senhas não coincidem.",
-  path: ["confirmPassword"],
-});
-
-interface PasswordCriteria {
-  minLength: boolean;
-  uppercase: boolean;
-  lowercase: boolean;
-  number: boolean;
-  specialChar: boolean;
-}
-
-// Mapeamento de erros comuns de domínio
-const DOMAIN_CORRECTIONS: Record<string, string> = {
-    // Gmail
-    "gamil.com": "gmail.com",
-    "gmial.com": "gmail.com",
-    "gmal.com": "gmail.com",
-    "gmai.com": "gmail.com",
-    "gmil.com": "gmail.com",
-    "gmai.lcom": "gmail.com", 
-    "gmailcom": "gmail.com", 
-    "gmail.com.br": "gmail.com",
-    
-    // Hotmail/Outlook/Live
-    "hotmai.com": "hotmail.com",
-    "hotmal.com": "hotmail.com",
-    "outlok.com": "outlook.com",
-    "outloock.com": "outlook.com",
-    "outlok.com": "outlook.com",
-    "outlookcom": "outlook.com", 
-    "live.com.br": "live.com",
-    "live.com": "live.com",
-    
-    // Yahoo
-    "yaho.com": "yahoo.com",
-    "yhoo.com": "yahoo.com",
-    "yahho.com": "yahoo.com",
-    "yahoo.com.br": "yahoo.com", 
-    "yahoocom": "yahoo.com", 
-    
-    // Institucional (eb.mil.br)
-    "ebmil.br": "eb.mil.br",
-    "eb.milbr": "eb.mil.br",
-    "eb.mil.brr": "eb.mil.br",
-    "eb.mi.lbr": "eb.mil.br", 
-    "eb.mil.br.": "eb.mil.br", 
-    "ebmilbr": "eb.mil.br", 
-    "eb.mil": "eb.mil.br", 
-    "eb.br": "eb.mil.br", 
-    "eb.mil.com": "eb.mil.br",
-    "eb.com.br": "eb.mil.br",
-    "ebmilbr.com": "eb.mil.br", 
-};
-
-export const SignupDialog: React.FC<SignupDialogProps> = ({
-  open,
-  onOpenChange,
-  onSignupSuccess,
-}) => {
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
-    nome_completo: "",
-    nome_guerra: "",
-    posto_graduacao: "",
-    sigla_om: "",
-    funcao_om: "",
-    telefone: "",
-  });
+export const SignupDialog: React.FC<SignupDialogProps> = ({ open, onOpenChange, onLoginRedirect }) => {
   const [loading, setLoading] = useState(false);
-  const [showPassword1, setShowPassword1] = useState(false);
-  const [showPassword2, setShowPassword2] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string | undefined>>({});
-  const [passwordCriteria, setPasswordCriteria] = useState<PasswordCriteria>({
-    minLength: false,
-    uppercase: false,
-    lowercase: false,
-    number: false,
-    specialChar: false,
+  const [omData, setOmData] = useState<OMData | undefined>(undefined);
+  
+  // Estados para o fluxo de confirmação
+  const [showEmailConfirmDialog, setShowEmailConfirmDialog] = useState(false);
+  const [showSignupSuccessDialog, setShowSignupSuccessDialog] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
+  
+  const {
+    register,
+    handleSubmit,
+    setError,
+    clearErrors,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      posto_graduacao: "",
+      nome_guerra: "",
+      nome_om: "",
+    },
   });
   
-  const [submissionError, setSubmissionError] = useState<string | null>(null);
-  const [ignoredCorrection, setIgnoredCorrection] = useState<string | null>(null);
-  
-  // NOVO ESTADO: Controle do diálogo de confirmação de e-mail
-  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
-  
-  const { handleEnterToNextField } = useFormNavigation();
-  
-  const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
+  const watchedEmail = watch('email');
+  const watchedNomeOM = watch('nome_om');
 
-  const suggestedEmailCorrection = useMemo(() => {
-    const watchedEmail = form.email;
-    if (!watchedEmail || !watchedEmail.includes('@')) return null;
-    
-    const parts = watchedEmail.split('@');
-    if (parts.length !== 2) return null;
-    
-    const domain = parts[1].toLowerCase();
-    
-    for (const [typo, correct] of Object.entries(DOMAIN_CORRECTIONS)) {
-        if (domain === typo) {
-            return `${parts[0]}@${correct}`;
-        }
-    }
-    return null;
-  }, [form.email]);
-  
+  // Efeito para sincronizar o nome da OM no formulário com o seletor
   useEffect(() => {
-    if (ignoredCorrection && form.email !== ignoredCorrection) {
-        setIgnoredCorrection(null);
+    if (omData) {
+      setValue('nome_om', omData.nome_om, { shouldValidate: true });
+    } else if (watchedNomeOM && !omData) {
+        // Se o usuário digitou algo e não selecionou, limpa o valor para forçar a seleção
+        // Mas só se o campo não estiver vazio (para permitir o placeholder)
+        // Não fazemos nada aqui, a validação Zod cuida disso no submit.
     }
-  }, [form.email, ignoredCorrection]);
+  }, [omData, setValue, watchedNomeOM]);
 
-  const checkPasswordCriteria = (password: string) => {
-    setPasswordCriteria({
-      minLength: password.length >= 8,
-      uppercase: /[A-Z]/.test(password),
-      lowercase: /[a-z]/.test(password),
-      number: /[0-9]/.test(password),
-      specialChar: /[^a-zA-Z0-9]/.test(password),
-    });
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
-    setValidationErrors(prev => ({ ...prev, [name]: undefined }));
-    
-    if (name === 'password') {
-      checkPasswordCriteria(value);
+  const handleOMChange = (selectedOm: OMData | undefined) => {
+    setOmData(selectedOm);
+    if (selectedOm) {
+        // Preenche os campos de metadados que serão enviados ao Supabase
+        setValue('nome_om', selectedOm.nome_om, { shouldValidate: true });
+    } else {
+        setValue('nome_om', '', { shouldValidate: true });
     }
   };
   
-  const handleSelectChange = (name: string, value: string) => {
-    setForm({ ...form, [name]: value });
-    setValidationErrors(prev => ({ ...prev, [name]: undefined }));
+  const handleConfirmEmail = () => {
+      setShowEmailConfirmDialog(false);
+      handleSubmit(onSubmit)();
+  };
+  
+  const handleBackToForm = () => {
+      setShowEmailConfirmDialog(false);
   };
 
-  // NOVA FUNÇÃO: Lógica de submissão final (chamada após a confirmação do e-mail)
-  const handleFinalSubmission = async () => {
+  const onSubmit = async (data: SignupFormValues) => {
     setLoading(true);
-    setSubmissionError(null);
-    setShowEmailConfirmation(false); // Fecha o diálogo de confirmação
-
-    try {
-        // Revalidação Zod (apenas para garantir que o estado não mudou)
-        const normalizedForm = {
-            ...form,
-            telefone: form.telefone.replace(/\D/g, ""),
-        };
-        const parsed = signupSchema.safeParse({
-            ...normalizedForm,
-            telefone: normalizedForm.telefone || "",
-        });
-        if (!parsed.success) {
-            // Se falhar aqui, é um erro interno, mas voltamos ao formulário principal
-            throw new Error("Erro de validação interna. Tente novamente.");
-        }
-        
-        const {
-            email,
-            password,
-            nome_completo,
-            nome_guerra,
-            posto_graduacao,
-            sigla_om,
-            funcao_om,
-            telefone,
-        } = parsed.data;
-        
-        const selectedOmData = oms?.find(om => om.nome_om === sigla_om);
-        if (!selectedOmData) {
-            throw new Error("OM de vinculação não encontrada na lista.");
-        }
-
-        /* =====================================================
-           1. PRÉ-CHECAGEM DEFINITIVA (EDGE FUNCTION)
-        ====================================================== */
-        const { data: emailCheck, error: emailCheckError } =
-            await supabase.functions.invoke("email-exists", {
-                body: { email },
-            });
-
-        if (emailCheckError) {
-            console.error("Email check error:", emailCheckError);
-            throw new Error("Falha ao verificar e-mail no servidor.");
-        }
-
-        if (emailCheck?.exists) {
-            const msg = "Este e-mail já está cadastrado. Utilize outro ou faça login.";
-            toast.error(msg);
-            setSubmissionError(msg);
-            return; // ⛔ BLOQUEIA FLUXO
-        }
-
-        /* =====================================================
-           2. SIGNUP SUPABASE
-        ====================================================== */
-        const { error: signupError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                emailRedirectTo: `${window.location.origin}/ptrab`,
-                data: {
-                    first_name: nome_completo,
-                    last_name: nome_guerra,
-                    posto_graduacao,
-                    sigla_om,
-                    funcao_om,
-                    telefone,
-                    codug_om: selectedOmData.codug_om,
-                    rm_vinculacao: selectedOmData.rm_vinculacao,
-                    codug_rm_vinculacao: selectedOmData.codug_rm_vinculacao,
-                },
-            },
-        });
-
-        if (signupError) {
-            throw signupError;
-        }
-
-        /* =====================================================
-           3. SUCESSO REAL
-        ====================================================== */
-        onSignupSuccess(email);
-
-        setForm({
-            email: "",
-            password: "",
-            confirmPassword: "",
-            nome_completo: "",
-            nome_guerra: "",
-            posto_graduacao: "",
-            sigla_om: "",
-            funcao_om: "",
-            telefone: "",
-        });
-        
-    } catch (err: any) {
-        console.error("Final submission error:", err);
-        const msg = sanitizeAuthError(err);
-        toast.error(msg);
-        setSubmissionError(msg);
-        // Se houver erro na submissão final, reabre o formulário principal
-        setShowEmailConfirmation(false); 
-    } finally {
+    clearErrors();
+    
+    // 1. Correção de digitação do e-mail
+    const correctedEmail = correctEmailTypo(data.email);
+    
+    // 2. Se o e-mail foi corrigido, avisa o usuário e pede confirmação
+    if (correctedEmail !== data.email && !showEmailConfirmDialog) {
+        setValue('email', correctedEmail);
+        setPendingEmail(correctedEmail);
+        setShowEmailConfirmDialog(true);
         setLoading(false);
-    }
-  };
-
-  // FUNÇÃO ORIGINAL: Agora apenas valida e abre o diálogo de confirmação
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setValidationErrors({});
-    setSubmissionError(null); 
-
-    try {
-      /* =====================================================
-         1. BLOQUEIO POR SUGESTÃO DE DOMÍNIO
-      ====================================================== */
-      if (suggestedEmailCorrection && form.email !== ignoredCorrection) {
-        const msg = "O e-mail digitado parece incorreto. Corrija ou confirme a digitação.";
-        toast.error(msg);
-        setSubmissionError(msg);
         return;
-      }
-
-      /* =====================================================
-         2. NORMALIZAÇÃO + VALIDAÇÃO ZOD
-      ====================================================== */
-      const normalizedForm = {
-        ...form,
-        telefone: form.telefone.replace(/\D/g, ""),
-      };
-
-      const parsed = signupSchema.safeParse({
-        ...normalizedForm,
-        telefone: normalizedForm.telefone || "",
+    }
+    
+    // 3. Se a OM não foi selecionada, o Zod já deve ter pego, mas reforçamos
+    if (!omData) {
+        setError('nome_om', { message: "Selecione a OM na lista." });
+        setLoading(false);
+        return;
+    }
+    
+    // 4. Se a confirmação foi dada (ou não era necessária), prossegue com o cadastro
+    try {
+      const { data: { user }, error } = await supabase.auth.signUp({
+        email: correctedEmail,
+        password: data.password,
+        options: {
+          data: {
+            posto_graduacao: data.posto_graduacao,
+            nome_guerra: data.nome_guerra,
+            nome_om: omData.nome_om,
+            codug_om: omData.codug_om,
+            rm_vinculacao: omData.rm_vinculacao,
+            codug_rm_vinculacao: omData.codug_rm_vinculacao,
+          },
+          emailRedirectTo: `${window.location.origin}/login`,
+        },
       });
 
-      if (!parsed.success) {
-        const errors = parsed.error.flatten().fieldErrors;
-        const fieldErrors: Record<string, string | undefined> = {};
-
-        Object.entries(errors).forEach(([key, value]) => {
-          if (value?.[0]) fieldErrors[key] = value[0];
-        });
-
-        setValidationErrors(fieldErrors);
-
-        const firstError = parsed.error.errors[0].message;
-        toast.error(firstError);
-        setSubmissionError(firstError);
-        return;
-      }
-
-      /* =====================================================
-         3. VALIDAÇÃO DA OM
-      ====================================================== */
-      const selectedOmData = oms?.find(om => om.nome_om === parsed.data.sigla_om);
-      if (!selectedOmData) {
-        const msg = "OM de vinculação não encontrada na lista.";
-        toast.error(msg);
-        setSubmissionError(msg);
-        return;
+      if (error) {
+        throw error;
       }
       
-      // Se tudo estiver OK, abre o diálogo de confirmação de e-mail
-      setShowEmailConfirmation(true);
-
-    } catch (err: any) {
-      console.error("Signup validation error:", err);
-      const msg = sanitizeAuthError(err);
-      toast.error(msg);
-      setSubmissionError(msg);
+      // 5. Sucesso: Exibe o diálogo de sucesso e redireciona para login
+      setPendingEmail(correctedEmail);
+      setShowSignupSuccessDialog(true);
+      onOpenChange(false); // Fecha o diálogo de cadastro
+      
+    } catch (error: any) {
+      const errorMessage = sanitizeAuthError(error);
+      
+      if (errorMessage.includes('já está cadastrado')) {
+          setError('email', { message: errorMessage });
+      } else {
+          toast.error(errorMessage);
+      }
+      
     } finally {
       setLoading(false);
     }
   };
-  
-  // Máscara de telefone fixa
-  const phoneMask = "(99) 999999999";
-  
-  const criteriaList = useMemo(() => [
-    { key: 'minLength', label: 'Mínimo de 8 caracteres', met: passwordCriteria.minLength },
-    { key: 'uppercase', label: 'Uma letra maiúscula (A-Z)', met: passwordCriteria.uppercase },
-    { key: 'lowercase', label: 'Uma letra minúscula (a-z)', met: passwordCriteria.lowercase },
-    { key: 'number', label: 'Um número (0-9)', met: passwordCriteria.number },
-    { key: 'specialChar', label: 'Um caractere especial (!@#$%^&*)', met: passwordCriteria.specialChar },
-  ], [passwordCriteria]);
-
-  const renderCriteriaItem = (label: string, met: boolean) => (
-    <li className={cn(
-      "flex items-center gap-2 transition-colors", 
-      met ? "text-green-600" : "text-destructive"
-    )}>
-      {met ? <Check className="h-3 w-3 shrink-0" /> : <X className="h-3 w-3 shrink-0" />}
-      {label}
-    </li>
-  );
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-3xl">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-primary" />
               Criar Nova Conta
             </DialogTitle>
             <DialogDescription>
-              Preencha seus dados institucionais para criar sua conta.
+              Preencha seus dados para acessar a plataforma PTrab Inteligente.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSignup} className="grid gap-4 py-3">
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(onSubmit)(); }} className="grid gap-4 py-4">
             
-            {/* Dados Pessoais, Institucionais e Email (3 colunas em desktop) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="nome_completo">Nome Completo *</Label>
+            {/* E-mail */}
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail *</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  id="nome_completo"
-                  name="nome_completo"
-                  value={form.nome_completo}
-                  onChange={handleChange}
-                  placeholder="Seu nome completo"
-                  required
-                  onKeyDown={handleEnterToNextField}
+                  id="email"
+                  type="email"
+                  placeholder="seu.email@exercito.mil.br"
+                  className="pl-10"
+                  disabled={loading}
+                  {...register("email")}
                 />
-                {validationErrors.nome_completo && <p className="text-xs text-destructive">{validationErrors.nome_completo}</p>}
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="nome_guerra">Nome de Guerra *</Label>
+              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+            </div>
+
+            {/* Senha */}
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha *</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Mínimo 8 caracteres"
+                  className="pl-10"
+                  disabled={loading}
+                  {...register("password")}
+                />
+              </div>
+              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+            </div>
+            
+            {/* Posto/Graduação */}
+            <div className="space-y-2">
+              <Label htmlFor="posto_graduacao">Posto / Graduação *</Label>
+              <div className="relative">
+                <Briefcase className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="posto_graduacao"
+                  placeholder="Ex: Cap, 1º Sgt, Gen Bda"
+                  className="pl-10"
+                  disabled={loading}
+                  {...register("posto_graduacao")}
+                />
+              </div>
+              {errors.posto_graduacao && <p className="text-xs text-destructive">{errors.posto_graduacao.message}</p>}
+            </div>
+            
+            {/* Nome de Guerra */}
+            <div className="space-y-2">
+              <Label htmlFor="nome_guerra">Nome de Guerra *</Label>
+              <div className="relative">
+                <Users className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="nome_guerra"
-                  name="nome_guerra"
-                  value={form.nome_guerra}
-                  onChange={handleChange}
-                  placeholder="Seu nome de guerra"
-                  required
-                  onKeyDown={handleEnterToNextField}
+                  placeholder="Ex: TATSUMI"
+                  className="pl-10"
+                  disabled={loading}
+                  {...register("nome_guerra")}
                 />
-                {validationErrors.nome_guerra && <p className="text-xs text-destructive">{validationErrors.nome_guerra}</p>}
               </div>
-              
-              {/* CAMPO: Posto/Graduação */}
-              <div className="space-y-1">
-                <Label htmlFor="posto_graduacao">Posto/Graduação *</Label>
-                <Select
-                  value={form.posto_graduacao}
-                  onValueChange={(value) => handleSelectChange("posto_graduacao", value)}
-                >
-                  <SelectTrigger id="posto_graduacao" className="justify-start">
-                    <SelectValue placeholder="Seu Posto/Grad">
-                      {form.posto_graduacao || "Seu Posto/Grad"}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MILITARY_RANKS.map((rank) => (
-                      <SelectItem key={rank} value={rank}>
-                        {rank}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {validationErrors.posto_graduacao && <p className="text-xs text-destructive">{validationErrors.posto_graduacao}</p>}
-              </div>
-              
-              {/* Campo Sigla da OM (Select) */}
-              <div className="space-y-1">
-                <Label htmlFor="sigla_om">Sigla da OM *</Label>
-                <Select
-                  value={form.sigla_om}
-                  onValueChange={(value) => handleSelectChange("sigla_om", value)}
-                  disabled={isLoadingOms}
-                >
-                  <SelectTrigger id="sigla_om" className="justify-start">
-                    {isLoadingOms ? (
-                      <div className="flex items-center text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando OMs...
-                      </div>
-                    ) : (
-                      <SelectValue placeholder="Selecione a OM">
-                        {form.sigla_om || "Selecione a OM"}
-                      </SelectValue>
-                    )}
-                  </SelectTrigger>
-                  <SelectContent>
-                    {oms?.map((om) => (
-                      <SelectItem key={om.id} value={om.nome_om}>
-                        {om.nome_om}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {validationErrors.sigla_om && <p className="text-xs text-destructive">{validationErrors.sigla_om}</p>}
-              </div>
-              
-              <div className="space-y-1">
-                <Label htmlFor="funcao_om">Função na OM *</Label>
-                <Input
-                  id="funcao_om"
-                  name="funcao_om"
-                  value={form.funcao_om}
-                  onChange={handleChange}
-                  placeholder="Ex: S4, Ch Sec Log"
-                  required
-                  onKeyDown={handleEnterToNextField}
-                />
-                {validationErrors.funcao_om && <p className="text-xs text-destructive">{validationErrors.funcao_om}</p>}
-              </div>
-              
-              {/* Campo Telefone (InputMask) */}
-              <div className="space-y-1">
-                <Label htmlFor="telefone">Telefone (Opcional)</Label>
-                <InputMask
-                  mask={phoneMask}
-                  value={form.telefone}
-                  onChange={handleChange}
-                  maskChar={null}
-                >
-                  {(inputProps: any) => (
-                    <Input
-                      {...inputProps}
-                      id="telefone"
-                      name="telefone"
-                      placeholder="(99) 999999999"
-                      onKeyDown={handleEnterToNextField}
-                    />
-                  )}
-                </InputMask>
-                {validationErrors.telefone && <p className="text-xs text-destructive">{validationErrors.telefone}</p>}
-              </div>
+              {errors.nome_guerra && <p className="text-xs text-destructive">{errors.nome_guerra.message}</p>}
             </div>
             
-            {/* Email e Alertas (Movido para ocupar 3 colunas e permitir o alerta lateral) */}
-            <div className="md:col-span-3 flex flex-col md:flex-row gap-3 items-start">
-              <div className="space-y-1 w-full md:w-1/3">
-                <Label htmlFor="email-signup">Email *</Label>
-                <Input
-                  id="email-signup"
-                  name="email"
-                  type="email"
-                  autoComplete="username"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="seu@email.com"
-                  required
-                  onKeyDown={handleEnterToNextField}
+            {/* OM de Vinculação (Seletor) */}
+            <div className="space-y-2">
+              <Label htmlFor="nome_om">OM de Vinculação *</Label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground z-10" />
+                <OmSelector
+                    selectedOmId={omData?.id}
+                    onChange={handleOMChange}
+                    placeholder="Selecione sua OM..."
+                    disabled={loading}
                 />
-                {validationErrors.email && <p className="text-xs text-destructive">{validationErrors.email}</p>}
               </div>
-              
-              {/* Alerta de Erro de Submissão (Lateral) */}
-              {submissionError && (
-                  <Alert variant="destructive" className="mt-7 p-2 w-full md:w-2/3">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>Erro de Cadastro</AlertTitle>
-                      <AlertDescription className="text-xs font-medium">
-                          {submissionError}
-                      </AlertDescription>
-                  </Alert>
-              )}
-              
-              {/* Alerta de Sugestão de Domínio (Lateral) - Aparece apenas se não houver erro de submissão */}
-              {!submissionError && suggestedEmailCorrection && form.email !== ignoredCorrection && (
-                  <Alert variant="default" className="mt-7 p-2 bg-yellow-50 border-yellow-200 w-full md:w-2/3">
-                      <AlertCircle className="h-4 w-4 text-yellow-700" />
-                      <AlertDescription className="text-xs text-yellow-700 flex items-center justify-between">
-                          <p>Domínio incorreto? Sugestão:</p>
-                          <div className="flex gap-2 items-center">
-                              <Button 
-                                  type="button" 
-                                  size="sm"
-                                  variant="secondary"
-                                  className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
-                                  onClick={() => {
-                                      setForm(prev => ({ ...prev, email: suggestedEmailCorrection }));
-                                      setValidationErrors(prev => ({ ...prev, email: undefined }));
-                                      setIgnoredCorrection(null); 
-                                  }}
-                              >
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Usar {suggestedEmailCorrection.split('@')[1]}
-                              </Button>
-                              <Button 
-                                  type="button" 
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 text-xs"
-                                  onClick={() => {
-                                      setIgnoredCorrection(form.email); 
-                                      toast.info("Correção ignorada. Clique em 'Criar Conta' para continuar.");
-                                  }}
-                              >
-                                  Manter Digitação
-                              </Button>
-                          </div>
-                      </AlertDescription>
-                  </Alert>
+              {errors.nome_om && <p className="text-xs text-destructive">{errors.nome_om.message}</p>}
+              {omData && (
+                <p className="text-xs text-muted-foreground">
+                    CODUG: {omData.codug_om} | RM: {omData.rm_vinculacao}
+                </p>
               )}
             </div>
-            
-            {/* Senha */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 md:col-span-3">
-              <div className="space-y-1">
-                <Label htmlFor="password-signup">Senha *</Label>
-                <div className="relative">
-                  <Input
-                    id="password-signup"
-                    name="password"
-                    type={showPassword1 ? "text" : "password"}
-                    autoComplete="new-password"
-                    value={form.password}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                    required
-                    minLength={8}
-                    className="pr-10"
-                    onKeyDown={handleEnterToNextField}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onMouseDown={() => setShowPassword1(true)}
-                    onMouseUp={() => setShowPassword1(false)}
-                    tabIndex={-1}
-                  >
-                    {showPassword1 ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-                  </Button>
-                </div>
-                {validationErrors.password && <p className="text-xs text-destructive">{validationErrors.password}</p>}
-              </div>
-              
-              <div className="space-y-1">
-                <Label htmlFor="confirmPassword">Confirmar Senha *</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showPassword2 ? "text" : "password"}
-                    autoComplete="new-password"
-                    value={form.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                    required
-                    minLength={8}
-                    className="pr-10"
-                    onKeyDown={handleEnterToNextField}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onMouseDown={() => setShowPassword2(true)}
-                    onMouseUp={() => setShowPassword2(false)}
-                    tabIndex={-1}
-                  >
-                    {showPassword2 ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-                  </Button>
-                </div>
-                {validationErrors.confirmPassword && <p className="text-xs text-destructive">{validationErrors.confirmPassword}</p>}
-              </div>
-            </div>
-            
-            {/* Critérios de Senha */}
-            <Alert className="mt-2 p-3 md:col-span-3">
-              <AlertDescription className="text-xs text-muted-foreground">
-                <span className="font-bold text-foreground block mb-1">Critérios de Senha:</span>
-                <ul className="grid grid-cols-2 gap-x-4 gap-y-1 ml-2 mt-1">
-                  {criteriaList.map(item => renderCriteriaItem(item.label, item.met))}
-                </ul>
-              </AlertDescription>
-            </Alert>
 
-            <DialogFooter className="mt-4 md:col-span-3">
-              <Button type="submit" disabled={loading || isLoadingOms}>
-                {loading ? "Verificando..." : "Criar Conta"}
+            <DialogFooter className="mt-4 flex flex-col sm:flex-row sm:justify-between gap-2">
+              <Button 
+                type="button" 
+                variant="link" 
+                onClick={onLoginRedirect}
+                className="p-0 h-auto text-sm text-muted-foreground hover:text-primary justify-start"
+                disabled={loading}
+              >
+                <ArrowLeft className="mr-1 h-4 w-4" />
+                Já tenho conta
               </Button>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
+              
+              <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <UserPlus className="mr-2 h-4 w-4" />
+                )}
+                {loading ? "Cadastrando..." : "Criar Conta"}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
       
-      {/* Diálogo de Confirmação de E-mail (Novo) */}
+      {/* Diálogo de Confirmação de E-mail (Pré-cadastro) */}
       <EmailConfirmationDialog
-        open={showEmailConfirmation}
-        onOpenChange={setShowEmailConfirmation}
-        email={form.email}
-        onConfirm={handleFinalSubmission}
-        onBack={() => {
-            setShowEmailConfirmation(false);
-            setLoading(false); // Garante que o loading seja desativado ao voltar
-        }}
+        open={showEmailConfirmDialog}
+        onOpenChange={setShowEmailConfirmDialog}
+        email={pendingEmail}
+        onConfirm={handleConfirmEmail}
+        onBack={handleBackToForm}
         loading={loading}
+      />
+      
+      {/* Diálogo de Sucesso (Pós-cadastro) */}
+      <SignupSuccessDialog
+        open={showSignupSuccessDialog}
+        onOpenChange={setShowSignupSuccessDialog}
+        email={pendingEmail}
       />
     </>
   );
