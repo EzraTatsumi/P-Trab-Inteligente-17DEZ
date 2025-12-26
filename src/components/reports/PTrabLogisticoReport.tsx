@@ -449,15 +449,16 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 
             // MODIFICADO: Incluir o número da classe explicitamente
             despesasValue = `${classeNumber} - ${classeLabel}\n${secondDivContent}`;
-            omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`; // CORRIGIDO: formatUgNumber
-            valorC = registro.valor_nd_30;
-            valorD = registro.valor_nd_39;
-            valorE = registro.valor_nd_30 + registro.valor_nd_39;
+            rowData.omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`; // CORRIGIDO: formatUgNumber
+            rowData.valorC = registro.valor_nd_30;
+            rowData.valorD = registro.valor_nd_39;
+            rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
             
             if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                 detalhamentoValue = registro.detalhamento_customizado || generateClasseIXMemoriaCalculo(registro);
             } else {
-                detalhamentoValue = registro.detalhamento_customizado || generateClasseIIMemoriaCalculo(registro); // USANDO A FUNÇÃO IMPORTADA CORRETAMENTE
+                // Usar a função genérica para Classes II, V, VI, VII, VIII
+                detalhamentoValue = registro.detalhamento_customizado || generateClasseIIMemoriaCalculo(registro); 
             }
             
           } else if ('tipo_equipamento' in linha.registro) { // Classe III Lubrificante
@@ -465,10 +466,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             
             let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
             despesasValue = despesasLubValue;
-            omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`; // CORRIGIDO: formatUgNumber
-            valorC = registro.valor_total;
-            valorE = registro.valor_total;
-            detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
+            rowData.omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`; // CORRIGIDO: formatUgNumber
+            rowData.valorC = registro.valor_total;
+            rowData.valorE = registro.valor_total;
+            rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
           }
           
           row.getCell('A').value = despesasValue;
@@ -970,7 +971,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         }
                             
                         // MODIFICADO: Incluir o número da classe explicitamente
-                        despesasValue = `${classeNumber} - ${classeLabel}\n${secondDivContent}`;
+                        rowData.despesasValue = `${classeNumber} - ${classeLabel}\n${secondDivContent}`;
                         rowData.omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`; // CORRIGIDO: formatUgNumber
                         rowData.valorC = registro.valor_nd_30;
                         rowData.valorD = registro.valor_nd_39;
