@@ -110,8 +110,6 @@ const DOMAIN_CORRECTIONS: Record<string, string> = {
     "eb.mil.br.": "eb.mil.br", 
     "ebmilbr": "eb.mil.br", 
     "eb.mil": "eb.mil.br", 
-    "eb.br": "eb.mil.br", 
-    "eb.mil.com": "eb.mil.br",
     "eb.com.br": "eb.mil.br",
     "ebmilbr.com": "eb.mil.br", 
 };

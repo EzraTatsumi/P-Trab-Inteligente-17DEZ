@@ -42,11 +42,13 @@ src/data/classeIIIData.ts
 src/assets/
 
 # EXCLUSÕES DE FUNCIONALIDADES FINALIZADAS
-src/pages/Login.tsx
-src/pages/ResetPasswordPage.tsx
-src/components/ForgotPasswordDialog.tsx
-src/components/EmailVerificationDialog.tsx
-src/components/SignupDialog.tsx1
+# Mantendo Login.tsx e ResetPasswordPage.tsx no contexto, pois são páginas de rota
+# Removendo exclusões de componentes de autenticação ativos:
+# src/components/ForgotPasswordDialog.tsx
+# src/components/EmailVerificationDialog.tsx
+# src/components/SignupDialog.tsx
+# src/components/EmailConfirmationDialog.tsx
+
 src/pages/DiretrizesCusteioPage.tsx
 src/components/YearManagementDialog.tsx
 src/pages/PTrabExportImportPage.tsx
@@ -81,7 +83,6 @@ src/lib/creditUtils.ts
 
 # NOVAS EXCLUSÕES PARA ECONOMIA DE CONTEXTO
 src/pages/UserProfilePage.tsx
-src/components/SignupDialog.tsx
 src/components/reports/PTrabLogisticoReport.tsx1
 src/components/reports/PTrabRacaoOperacionalReport.tsx1
 src/pages/ClasseIForm.tsx
