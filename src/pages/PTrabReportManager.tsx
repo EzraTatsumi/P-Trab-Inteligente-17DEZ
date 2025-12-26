@@ -295,11 +295,18 @@ export const generateClasseIMemoriaCalculo = (registro: ClasseIRegistro): { qs: 
       complemento_qr, etapa_qr, total_qr, fase_atividade 
     } = registro;
     
-    const diasRestantesNoCiclo = dias_operacao % 30;
-    const ciclosCompletos = Math.floor(dias_operacao / 30);
+    const E = efetivo;
+    const D = dias_operacao;
+    const R = nr_ref_int;
+    const VQS = valor_qs;
+    const VQR = valor_qr;
+    
+    // Cálculo de Dias de Etapa Solicitada (Dias Etapa Solicitada)
+    const diasRestantesNoCiclo = D % 30;
+    const ciclosCompletos = Math.floor(D / 30);
     
     let diasEtapaSolicitada = 0;
-    if (diasRestantesNoCiclo <= 22 && dias_operacao >= 30) {
+    if (diasRestantesNoCiclo <= 22 && D >= 30) {
       diasEtapaSolicitada = ciclosCompletos * 8;
     } else if (diasRestantesNoCiclo > 22) {
       diasEtapaSolicitada = (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
@@ -310,32 +317,36 @@ export const generateClasseIMemoriaCalculo = (registro: ClasseIRegistro): { qs: 
     const faseFormatada = formatFasesParaTexto(fase_atividade);
     
     // Memória QS
-    const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${efetivo} militares do ${organizacao}, durante ${dias_operacao} dias de ${faseFormatada}.
-OM Fornecedora: ${om_qs} (UG: ${ug_qs})
+    const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${E} militares do ${organizacao}, durante ${D} dias de ${faseFormatada}.
 
 Cálculo:
-- Valor da Etapa (QS): ${formatCurrency(valor_qs)}.
-- Nr Refeições Intermediárias: ${nr_ref_int}.
+- Valor da Etapa (QS): ${formatCurrency(VQS)}.
+- Nr Refeições Intermediárias: ${R}.
+- Dias de Etapa Solicitada: ${diasEtapaSolicitada} dias.
+- Dias de Complemento de Etapa: ${D} dias.
 
-Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
+Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 3) x Valor da Etapa/3 x Dias de Complemento de Etapa]
+Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
 
-- [${efetivo} militares do ${organizacao} x ${nr_ref_int} Ref Int x (${formatCurrency(valor_qs)}/3) x ${dias_operacao} dias de atividade] = ${formatCurrency(complemento_qs)}.
-- [${efetivo} militares do ${organizacao} x ${formatCurrency(valor_qs)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(etapa_qs)}.
+- Complemento de Etapa: [${E} mil. x ${Math.min(R, 3)} ref. int. x (${formatCurrency(VQS)}/3) x ${D} dias] = ${formatCurrency(complemento_qs)}.
+- Etapa Solicitada: [${E} mil. x ${formatCurrency(VQS)} x ${diasEtapaSolicitada} dias] = ${formatCurrency(etapa_qs)}.
 
 Total QS: ${formatCurrency(total_qs)}.`;
 
     // Memória QR
-    const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Rancho Pronto) destinados à complementação de alimentação de ${efetivo} militares do ${organizacao}, durante ${dias_operacao} dias de ${faseFormatada}.
-OM de Destino: ${organizacao} (UG: ${ug})
+    const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR - Quantitativo de Reforço) destinados à complementação de alimentação de ${E} militares do ${organizacao}, durante ${D} dias de ${faseFormatada}.
 
 Cálculo:
-- Valor da Etapa (QR): ${formatCurrency(valor_qr)}.
-- Nr Refeições Intermediárias: ${nr_ref_int}.
+- Valor da Etapa (QR): ${formatCurrency(VQR)}.
+- Nr Refeições Intermediárias: ${R}.
+- Dias de Etapa Solicitada: ${diasEtapaSolicitada} dias.
+- Dias de Complemento de Etapa: ${D} dias.
 
-Fórmula: [Efetivo empregado x Nr Ref Int (máx 3) x Valor da Etapa/3 x Nr de dias de complemento] + [Efetivo empregado x Valor da etapa x Nr de dias de etapa completa solicitada.]
+Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 3) x Valor da Etapa/3 x Dias de Complemento de Etapa]
+Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
 
-- [${efetivo} militares do ${organizacao} x ${nr_ref_int} Ref Int x (${formatCurrency(valor_qr)}/3) x ${dias_operacao} dias de atividade] = ${formatCurrency(complemento_qr)}.
-- [${efetivo} militares do ${organizacao} x ${formatCurrency(valor_qr)} x ${diasEtapaSolicitada} dias de etapa completa solicitada] = ${formatCurrency(etapa_qr)}.
+- Complemento de Etapa: [${E} mil. x ${Math.min(R, 3)} ref. int. x (${formatCurrency(VQR)}/3) x ${D} dias] = ${formatCurrency(complemento_qr)}.
+- Etapa Solicitada: [${E} mil. x ${formatCurrency(VQR)} x ${diasEtapaSolicitada} dias] = ${formatCurrency(etapa_qr)}.
 
 Total QR: ${formatCurrency(total_qr)}.`;
 
