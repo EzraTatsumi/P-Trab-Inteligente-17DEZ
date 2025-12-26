@@ -29,12 +29,13 @@ import {
   formatDate,
   formatFasesParaTexto,
   getClasseIILabel,
-  generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport, // Importar com alias
+  generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport,
   generateClasseIIMemoriaCalculo,
   generateClasseIXMemoriaCalculo,
   calculateItemTotalClasseIX,
-} from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
-import { Button } from "@/components/ui/button"; // Importação adicionada
+} from "@/pages/PTrabReportManager";
+import { Button } from "@/components/ui/button";
+import { Download, FileSpreadsheet, Printer } from "lucide-react"; // ADDED ICONS
 
 interface PTrabLogisticoReportProps {
   ptrabData: PTrabData;
@@ -432,8 +433,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 secondDivContent = registro.animal_tipo.toUpperCase();
             }
                 
-            despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
-            omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`;
+            rowData.despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
+            rowData.omValue = `${omDestinoRecurso}\n(${formatUgNumber(ugDestinoRecurso)})`;
             valorC = registro.valor_nd_30;
             valorD = registro.valor_nd_39;
             valorE = registro.valor_nd_30 + registro.valor_nd_39;
