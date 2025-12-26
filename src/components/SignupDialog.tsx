@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, UserPlus, Mail, Lock, Briefcase, Users, Building2, AlertCircle, ArrowLeft } from "lucide-react";
+import { Loader2, UserPlus, Mail, Lock, Briefcase, Users, Building2, AlertCircle, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signupSchema } from "@/lib/validationSchemas";
