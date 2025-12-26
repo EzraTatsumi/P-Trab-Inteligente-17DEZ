@@ -18,7 +18,6 @@ import {
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
-import { RmSelector } from "@/components/RmSelector";
 import { OMData } from "@/lib/omUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
