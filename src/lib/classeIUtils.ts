@@ -51,6 +51,30 @@ interface ClasseICalculations {
 }
 
 /**
+ * Determina a preposição correta ('do', 'da', 'de') para uma OM.
+ * @param omName Nome da OM (sigla).
+ * @returns A preposição correta.
+ */
+export const getOmPreposition = (omName: string): string => {
+  if (!omName) return 'da';
+  
+  const lowerCaseName = omName.toLowerCase();
+  
+  // Casos comuns que usam 'do' ou 'da'
+  if (lowerCaseName.includes('bda') || lowerCaseName.includes('rm') || lowerCaseName.includes('cm')) {
+    return 'da';
+  }
+  
+  // Casos que usam 'do'
+  if (lowerCaseName.includes('batalhão') || lowerCaseName.includes('regimento') || lowerCaseName.includes('comando')) {
+    return 'do';
+  }
+  
+  // Padrão: se a sigla começar com número ou for genérica, usa 'da'
+  return 'da';
+};
+
+/**
  * Calcula os valores de QS e QR para Ração Quente.
  */
 export const calculateClasseICalculations = (
