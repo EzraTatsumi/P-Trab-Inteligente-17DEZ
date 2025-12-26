@@ -39,7 +39,7 @@ export interface ClasseIRegistro {
  * Determina a preposição correta ('do' ou 'da') para o nome da OM.
  * Prioriza a detecção do indicador ordinal feminino (ª) ou 'RM'.
  */
-const getOmPreposition = (omName: string): 'do' | 'da' => {
+export const getOmPreposition = (omName: string): 'do' | 'da' => {
     if (!omName) return 'do';
     
     const normalizedOm = omName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); // Remove acentos e normaliza
@@ -206,11 +206,11 @@ export const generateRacaoQuenteMemoriaCalculo = (registro: ClasseIRegistro): { 
   const preposition = getOmPreposition(organizacao);
   
   // Memória QS (Quantitativo de Subsistência)
-  const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} dias de ${faseFormatada}.
+  const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(D)} dias de ${faseFormatada}.
 
 Cálculo:
 - Valor da Etapa (QS): ${formatCurrency(VQS)}.
-- Nr Refeições Intermediárias: ${R}.
+- Nr Refeições Intermediárias: ${formatNumber(R)}.
 - Dias de Etapa Solicitada: ${formatNumber(diasEtapaSolicitada)} dias.
 - Dias de Complemento de Etapa: ${formatNumber(D)} dias.
 
@@ -223,11 +223,11 @@ Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicita
 Total QS: ${formatCurrency(calculos.totalQS)}.`;
 
   // Memória QR (Quantitativo de Reforço)
-  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} dias de ${faseFormatada}.
+  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR) destinados à complementação de alimentação de ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(D)} dias de ${faseFormatada}.
 
 Cálculo:
 - Valor da Etapa (QR): ${formatCurrency(VQR)}.
-- Nr Refeições Intermediárias: ${R}.
+- Nr Refeições Intermediárias: ${formatNumber(R)}.
 - Dias de Etapa Solicitada: ${formatNumber(diasEtapaSolicitada)} dias.
 - Dias de Complemento de Etapa: ${formatNumber(D)} dias.
 

@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
+import { getOmPreposition } from "@/lib/classeIUtils"; // NOVO: Importar getOmPreposition
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -53,6 +54,7 @@ interface FormDataClasseII {
   dias_operacao: number; // Global
   itens: ItemClasseII[]; // All items across all categories
   fase_atividade?: string; // Global
+  efetivo: number; // NOVO: Adicionado efetivo ao FormData
 }
 
 interface ClasseIIRegistro {
@@ -137,21 +139,25 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
 };
 
 // NOVO: Gera a memória de cálculo detalhada para uma categoria
-const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
+const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined, efetivo: number): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
+    
+    const militarPlural = efetivo === 1 ? 'militar' : 'militares';
+    const preposition = getOmPreposition(organizacao); // NOVO: Usando a função de preposição
 
     let detalhamentoItens = "";
     itens.forEach(item => {
         const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
+        // NOVO FORMATO DE FÓRMULA EXPLÍCITA
+        detalhamentoItens += `- ${item.quantidade} un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
     });
 
-    return `33.90.30 - Aquisição de Material de Intendência (${getCategoryLabel(categoria)})
+    // NOVO CABEÇALHO ADAPTADO DA CLASSE I
+    const header = `33.90.30 - Aquisição de Material de Intendência (${getCategoryLabel(categoria)}) para atender a manutenção de material de ${formatNumber(efetivo)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(diasOperacao)} dias de ${faseFormatada}.
 OM de Destino: ${organizacao} (UG: ${ug})
-Período: ${diasOperacao} dias de ${faseFormatada}
-Total de Itens na Categoria: ${totalQuantidade}
+Total de Itens na Categoria: ${formatNumber(totalQuantidade)}
 
 Cálculo:
 Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
@@ -160,12 +166,17 @@ Detalhes dos Itens:
 ${detalhamentoItens.trim()}
 
 Valor Total da Categoria: ${formatCurrency(totalValor)}.`;
+
+    return header;
 };
 
-const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
+const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number, efetivo: number): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const valorTotal = valorND30 + valorND39;
+    
+    const militarPlural = efetivo === 1 ? 'militar' : 'militares';
+    const preposition = getOmPreposition(organizacao); // NOVO: Usando a função de preposição
 
     // 1. Agrupar itens por categoria e calcular o subtotal de valor por categoria
     const gruposPorCategoria = itens.reduce((acc, item) => {
@@ -182,8 +193,9 @@ const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organ
         
         acc[categoria].totalValor += valorItem;
         acc[categoria].totalQuantidade += item.quantidade;
+        // NOVO FORMATO DE FÓRMULA EXPLÍCITA
         acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.`
+            `- ${item.quantidade} un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.`
         );
         
         return acc;
@@ -193,7 +205,7 @@ const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organ
     
     // 2. Formatar a seção de cálculo agrupada
     Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`; // USANDO getCategoryLabel
+        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${formatNumber(grupo.totalQuantidade)} ITENS) ---\n`; // USANDO getCategoryLabel
         detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
         detalhamentoItens += `Detalhes:\n`;
         detalhamentoItens += grupo.detalhes.join('\n');
@@ -202,7 +214,8 @@ const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organ
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+    // NOVO CABEÇALHO ADAPTADO DA CLASSE I
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para atender a manutenção de material de ${formatNumber(efetivo)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(diasOperacao)} dias de ${faseFormatada}.
 Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
 
 Alocação:
@@ -240,6 +253,7 @@ const ClasseIIForm = () => {
     ug: "",
     dias_operacao: 0,
     itens: [],
+    efetivo: 0, // NOVO: Adicionado efetivo ao estado do formulário
   });
   
   // NOVO ESTADO: Rastreia a alocação de ND por categoria (SAVED STATE)
@@ -510,6 +524,7 @@ const ClasseIIForm = () => {
       ug: "",
       dias_operacao: 0,
       itens: [],
+      efetivo: 0, // Resetar efetivo
     });
     
     setCategoryAllocations(initialCategoryAllocations); // Reset allocations
@@ -615,8 +630,8 @@ const ClasseIIForm = () => {
 
   // NOVO HANDLER: Salva os itens da lista expandida para o form.itens principal
   const handleUpdateCategoryItems = () => {
-    if (!form.organizacao || form.dias_operacao <= 0) {
-        toast.error("Preencha a OM e os Dias de Operação antes de salvar itens.");
+    if (!form.organizacao || form.dias_operacao <= 0 || form.efetivo <= 0) {
+        toast.error("Preencha a OM, Efetivo e Dias de Operação antes de salvar itens.");
         return;
     }
     
@@ -695,6 +710,7 @@ const ClasseIIForm = () => {
     if (!ptrabId) return;
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
     if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
+    if (form.efetivo <= 0) { toast.error("Efetivo deve ser maior que zero"); return; }
     if (form.itens.length === 0) { toast.error("Adicione pelo menos um item"); return; }
     
     let fasesFinais = [...fasesAtividade];
@@ -759,7 +775,8 @@ const ClasseIIForm = () => {
             allocation.om_destino_recurso, // OM de Destino do Recurso (ND 30/39)
             allocation.ug_destino_recurso, // UG de Destino do Recurso (ND 30/39)
             allocation.nd_30_value,
-            allocation.nd_39_value
+            allocation.nd_39_value,
+            form.efetivo // NOVO: Passando o efetivo
         );
         
         const registro: TablesInsert<'classe_ii_registros'> = {
@@ -827,6 +844,7 @@ const ClasseIIForm = () => {
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
     let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
     let firstOmDetentora: { nome: string, ug: string } | null = null;
+    let firstEfetivo: number = 0; // NOVO: Capturar efetivo
     
     (allRecords || []).forEach(r => {
         const category = r.categoria as Categoria;
@@ -867,6 +885,18 @@ const ClasseIIForm = () => {
             // Nota: O campo 'organizacao' no DB é a OM de Destino do Recurso.
             // Para fins de edição, assumimos que a OM Detentora é a mesma que a OM de Destino do Recurso (organizacao/ug)
             firstOmDetentora = { nome: r.organizacao, ug: r.ug };
+            // Tenta buscar o efetivo do PTrab principal (não está no registro de classe II)
+            // Para simplificar, vamos buscar o efetivo do PTrab principal
+            const { data: ptrabData } = await supabase
+                .from('p_trab')
+                .select('efetivo_empregado')
+                .eq('id', ptrabId)
+                .single();
+            
+            // Tenta extrair o número do efetivo (ex: "110 militares e 250 OSP" -> 110)
+            const efetivoStr = ptrabData?.efetivo_empregado || '0';
+            const match = efetivoStr.match(/^(\d+)/);
+            firstEfetivo = match ? parseInt(match[1]) : 0;
         }
     });
     
@@ -893,6 +923,7 @@ const ClasseIIForm = () => {
       ug: firstOmDetentora?.ug || "",
       dias_operacao: registro.dias_operacao,
       itens: consolidatedItems,
+      efetivo: firstEfetivo, // NOVO: Setar efetivo
     });
     
     // 5. Preencher o estado de alocação e buscar IDs de destino
@@ -1056,6 +1087,20 @@ const ClasseIIForm = () => {
                 </div>
                 
                 <div className="space-y-2">
+                  <Label>Efetivo de Militares *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
+                    value={form.efetivo || ""}
+                    onChange={(e) => setForm({ ...form, efetivo: parseInt(e.target.value) || 0 })}
+                    placeholder="Ex: 110"
+                    onKeyDown={handleEnterToNextField}
+                    disabled={!form.organizacao}
+                  />
+                </div>
+                
+                <div className="space-y-2">
                   <Label>Dias de Atividade *</Label>
                   <Input
                     type="number"
@@ -1065,6 +1110,7 @@ const ClasseIIForm = () => {
                     onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value) || 0 })}
                     placeholder="Ex: 7"
                     onKeyDown={handleEnterToNextField}
+                    disabled={!form.organizacao}
                   />
                 </div>
               </div>
@@ -1124,7 +1170,7 @@ const ClasseIIForm = () => {
             </div>
 
             {/* 2. Adicionar Itens por Categoria (Aba) - REESTRUTURADO PARA TABELA */}
-            {form.organizacao && form.dias_operacao > 0 && (
+            {form.organizacao && form.dias_operacao > 0 && form.efetivo > 0 && (
               <div className="space-y-4 border-b pb-4" ref={formRef}>
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
@@ -1275,7 +1321,7 @@ const ClasseIIForm = () => {
                                 type="button" 
                                 onClick={handleUpdateCategoryItems} 
                                 className="w-full md:w-auto" 
-                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && !tempDestinations[cat].om)}
+                                disabled={!form.organizacao || form.dias_operacao <= 0 || form.efetivo <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && !tempDestinations[cat].om)}
                             >
                                 Salvar Itens da Categoria
                             </Button>
@@ -1334,7 +1380,7 @@ const ClasseIIForm = () => {
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
-                          <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} itens)</h4>
+                          <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({formatNumber(totalQuantidade)} itens)</h4>
                           <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoriaSaved)}</span>
                         </div>
                         
@@ -1343,7 +1389,7 @@ const ClasseIIForm = () => {
                             <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
                               <span className="font-medium">{item.item}</span>
                               <span className="text-right">
-                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
+                                {formatNumber(item.quantidade)} un. x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
                               </span>
                             </div>
                           ))}
@@ -1529,7 +1575,8 @@ const ClasseIIForm = () => {
                       registro.dias_operacao, 
                       registro.organizacao, 
                       registro.ug, 
-                      registro.fase_atividade
+                      registro.fase_atividade,
+                      form.efetivo // NOVO: Passando o efetivo
                   );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
