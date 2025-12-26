@@ -76,7 +76,8 @@ export interface ClasseIIRegistro {
   ug: string;
   dias_operacao: number;
   categoria: string;
-  itens_equipamentos: ItemClasseII[]; // Tipo corrigido
+  // Tornando itens_equipamentos opcional, pois Classe IX usa itens_motomecanizacao
+  itens_equipamentos?: ItemClasseII[]; 
   valor_total: number;
   detalhamento: string;
   detalhamento_customizado?: string | null;
@@ -87,7 +88,8 @@ export interface ClasseIIRegistro {
   efetivo: number;
   animal_tipo?: 'Equino' | 'Canino';
   quantidade_animais?: number;
-  itens_motomecanizacao?: ItemClasseIX[];
+  // Adicionando itens_motomecanizacao para Classe IX
+  itens_motomecanizacao?: ItemClasseIX[]; 
 }
 
 export interface ClasseIIIRegistro {
@@ -480,16 +482,31 @@ const PTrabReportManager = () => {
       ]);
 
       const allClasseItems = [
-        ...(classeIIData || []),
-        ...(classeVData || []),
-        ...(classeVIData || []),
-        ...(classeVIIData || []),
+        ...(classeIIData || []).map(r => ({ 
+            ...r, 
+            itens_equipamentos: r.itens_equipamentos, // Preserva itens_equipamentos
+            itens_motomecanizacao: undefined, // Garante que o campo de Classe IX seja undefined
+        })),
+        ...(classeVData || []).map(r => ({ 
+            ...r, 
+            itens_equipamentos: r.itens_equipamentos,
+            itens_motomecanizacao: undefined,
+        })),
+        ...(classeVIData || []).map(r => ({ 
+            ...r, 
+            itens_equipamentos: r.itens_equipamentos,
+            itens_motomecanizacao: undefined,
+        })),
+        ...(classeVIIData || []).map(r => ({ 
+            ...r, 
+            itens_equipamentos: r.itens_equipamentos,
+            itens_motomecanizacao: undefined,
+        })),
         // Mapeamento Classe VIII Saúde
         ...(classeVIIISaudeData || []).map(r => ({ 
             ...r, 
             itens_equipamentos: r.itens_saude, 
             categoria: 'Saúde',
-            // Garantir que campos de remonta não existam
             animal_tipo: undefined,
             quantidade_animais: undefined,
             itens_motomecanizacao: undefined,
@@ -506,7 +523,8 @@ const PTrabReportManager = () => {
         // Mapeamento Classe IX
         ...(classeIXData || []).map(r => ({ 
             ...r, 
-            itens_equipamentos: r.itens_motomecanizacao, 
+            itens_equipamentos: undefined, // Garante que o campo de Classe II-VIII seja undefined
+            itens_motomecanizacao: r.itens_motomecanizacao, 
             categoria: r.categoria,
             animal_tipo: undefined,
             quantidade_animais: undefined,
