@@ -410,15 +410,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             if (linha.tipo === 'QS') {
               despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
               omValue = `${registro.om_qs}\n(${formatUgNumber(registro.ug_qs)})`; // CORRIGIDO: formatUgNumber
-              valorC = registro.calculos.totalQS;
-              valorE = registro.calculos.totalQS;
+              valorC = registro.calculos?.totalQS || 0; // CORREÇÃO: Acesso seguro
+              valorE = registro.calculos?.totalQS || 0; // CORREÇÃO: Acesso seguro
               // USANDO A FUNÇÃO UNIFICADA
               detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
             } else { // QR
               despesasValue = `CLASSE I - SUBSISTÊNCIA`;
               omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`; // CORRIGIDO: formatUgNumber
-              valorC = registro.calculos.totalQR;
-              valorE = registro.calculos.totalQR;
+              valorC = registro.calculos?.totalQR || 0; // CORREÇÃO: Acesso seguro
+              valorE = registro.calculos?.totalQR || 0; // CORREÇÃO: Acesso seguro
               // USANDO A FUNÇÃO UNIFICADA
               detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
             }
@@ -922,18 +922,21 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     
                     if (isClasseI) { // Classe I (QS/QR)
                         const registro = linha.registro as ClasseIRegistro;
+                        const totalQS = registro.calculos?.totalQS || 0; // CORREÇÃO: Acesso seguro
+                        const totalQR = registro.calculos?.totalQR || 0; // CORREÇÃO: Acesso seguro
+
                         if (linha.tipo === 'QS') {
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                             rowData.omValue = `${registro.om_qs}\n(${formatUgNumber(registro.ug_qs)})`; // CORRIGIDO: formatUgNumber
-                            rowData.valorC = registro.calculos.totalQS;
-                            rowData.valorE = registro.calculos.totalQS;
+                            rowData.valorC = totalQS;
+                            rowData.valorE = totalQS;
                             // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                         } else { // QR
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                             rowData.omValue = `${registro.organizacao}\n(${formatUgNumber(registro.ug)})`; // CORRIGIDO: formatUgNumber
-                            rowData.valorC = registro.calculos.totalQR;
-                            rowData.valorE = registro.calculos.totalQR;
+                            rowData.valorC = totalQR;
+                            rowData.valorE = totalQR;
                             // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                         }
