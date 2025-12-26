@@ -28,7 +28,7 @@ import {
   ClasseIRegistro as ClasseIRegistroType, // Importando o tipo correto
   calculateDiasEtapaSolicitada, // Importado para uso no mapeamento
 } from "@/lib/classeIUtils"; // Importando as funções de utilidade
-import { generateClasseIIMemoriaCalculo as generateGenericClasseIIMemoria } from "@/lib/classeIIUtils"; // NOVO IMPORT
+import { generateClasseIIMemoriaCalculo as generateGenericClasseIIMemoria } from "@/lib/classeIIUtils"; // Importação correta da função genérica
 
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)

@@ -31,11 +31,10 @@ import {
   formatDate,
   formatFasesParaTexto,
   getClasseIILabel,
-  generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport, // Importar com alias
-  generateClasseIIMemoriaCalculo,
   generateClasseIXMemoriaCalculo,
   calculateItemTotalClasseIX,
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
+import { generateClasseIIMemoriaCalculo } from "@/lib/classeIIUtils"; // IMPORTAÇÃO CORRETA
 
 interface PTrabLogisticoReportProps {
   ptrabData: PTrabData;
@@ -101,8 +100,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR' && r.tipo_equipamento !== 'LUBRIFICANTE_EMBARCACAO' && r.tipo_equipamento !== 'LUBRIFICANTE_CONSOLIDADO';
 
   // 1. Recalcular Totais Gerais (para HTML/PDF)
-  const totalGeral_33_90_30 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_30, 0), [gruposPorOM, calcularTotaisPorOM]);
-  const totalGeral_33_90_39 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_39, 0), [gruposPorOM, calcularTotaisPorOM]);
+  const totalGeral_33_90_30 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.omQS || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_30, 0), [gruposPorOM, calcularTotaisPorOM]);
+  const totalGeral_33_90_39 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.omQS || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_39, 0), [gruposPorOM, calcularTotaisPorOM]);
   const totalValorCombustivel = useMemo(() => registrosClasseIII.filter(isCombustivel).reduce((acc, reg) => acc + reg.valor_total, 0), [registrosClasseIII]);
   
   const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39;
@@ -421,7 +420,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const registro = linha.registro as ClasseIRegistro;
             if (linha.tipo === 'QS') {
               despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
-              omValue = `${registro.om_qs}\n(${formatUgNumber(registro.ug_qs)})`; // CORRIGIDO: formatUgNumber
+              omValue = `${registro.omQS}\n(${formatUgNumber(registro.ugQS)})`; // CORRIGIDO: formatUgNumber
               valorC = registro.calculos?.totalQS || 0; // CORREÇÃO: Acesso seguro
               valorE = registro.calculos?.totalQS || 0; // CORREÇÃO: Acesso seguro
               // USANDO A FUNÇÃO UNIFICADA
@@ -458,7 +457,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                 detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
             } else {
-                detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+                detalhamentoValue = generateClasseIIMemoriaCalculo(registro); // USANDO A FUNÇÃO IMPORTADA CORRETAMENTE
             }
             
           } else if ('tipo_equipamento' in linha.registro) { // Classe III Lubrificante
@@ -544,7 +543,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const row = worksheet.getRow(currentRow);
             
             // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
-            const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug_qs || '';
+            const rmUg = grupo.linhasQS[0]?.registro.ugQS || grupo.linhasQR[0]?.registro.ug || '';
             
             row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
             row.getCell('B').value = `${nomeRM}\n(${formatUgNumber(rmUg)})`; // CORRIGIDO: formatUgNumber
@@ -943,7 +942,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
 
                         if (linha.tipo === 'QS') {
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
-                            rowData.omValue = `${registro.om_qs}\n(${formatUgNumber(registro.ug_qs)})`; // CORRIGIDO: formatUgNumber
+                            rowData.omValue = `${registro.omQS}\n(${formatUgNumber(registro.ugQS)})`; // CORRIGIDO: formatUgNumber
                             rowData.valorC = totalQS;
                             rowData.valorE = totalQS;
                             // USANDO A FUNÇÃO UNIFICADA
@@ -1047,7 +1046,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         </td>
                         <td className="col-om">
                           <div>{nomeRM}</div>
-                          <div>({formatUgNumber(gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || gruposPorOM[nomeRM]?.linhasQR[0]?.registro.ug || 'UG')})</div>
+                          <div>({formatUgNumber(gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ugQS || gruposPorOM[nomeRM]?.linhasQR[0]?.registro.ug || 'UG')})</div>
                         </td>
                         <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* 33.90.30 (Vazio) */}
                         <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* 33.90.39 (Vazio) */}
