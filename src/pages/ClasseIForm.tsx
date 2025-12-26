@@ -25,7 +25,6 @@ import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
 import { 
   formatCurrency, 
   formatNumber, 
-  formatUgNumber, // Adicionado para formatar UG
 } from "@/lib/formatUtils";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -967,7 +966,7 @@ export default function ClasseIForm() {
                     <Label htmlFor="ug">UG de Destino</Label>
                     <Input
                       id="ug"
-                      value={formatUgNumber(ug)}
+                      value={ug}
                       readOnly
                       disabled={true}
                       className="disabled:opacity-60"
@@ -1116,7 +1115,7 @@ export default function ClasseIForm() {
                             <Label htmlFor="ugQS">UG de Destino</Label>
                             <Input
                               id="ugQS"
-                              value={formatUgNumber(ugQS)}
+                              value={ugQS}
                               readOnly
                               disabled={true}
                               className="disabled:opacity-60"
@@ -1366,8 +1365,8 @@ export default function ClasseIForm() {
                                     {/* Linha 1: Destinos */}
                                     <div className="font-medium text-muted-foreground">OM Destino Recurso</div>
                                     <div className="flex justify-between">
-                                        <span className="font-medium text-blue-600">QS: {RACAO_QUENTE_DATA.om_qs} ({formatUgNumber(RACAO_QUENTE_DATA.ug_qs)})</span>
-                                        <span className="font-medium text-green-600">QR: {RACAO_QUENTE_DATA.organizacao} ({formatUgNumber(RACAO_QUENTE_DATA.ug)})</span>
+                                        <span className="font-medium text-blue-600">QS: {RACAO_QUENTE_DATA.om_qs} ({RACAO_QUENTE_DATA.ug_qs})</span>
+                                        <span className="font-medium text-green-600">QR: {organizacao} ({ug})</span>
                                     </div>
                                     
                                     {/* Linha 2: ND e Valores */}
@@ -1470,7 +1469,7 @@ export default function ClasseIForm() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-accent" />
-                    OMs Cadastradas
+                    Registros Cadastrados
                   </h2>
                 </div>
 
@@ -1490,7 +1489,7 @@ export default function ClasseIForm() {
                             <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                                 <div className="flex items-center justify-between mb-3 border-b pb-2">
                                     <h3 className="font-bold text-lg text-primary">
-                                        {omName} (UG: {formatUgNumber(ug)})
+                                        {omName} (UG: {ug})
                                     </h3>
                                     <div className="flex flex-col items-end">
                                         {totalMonetarioOM > 0 && (
@@ -1620,7 +1619,7 @@ export default function ClasseIForm() {
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <h4 className="text-lg font-semibold text-foreground">
-                              {registro.organizacao} (UG: {formatUgNumber(registro.ug)})
+                              {registro.organizacao} (UG: {registro.ug})
                             </h4>
                             <Badge variant="default" className={cn(
                                 isRacaoQuente ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
