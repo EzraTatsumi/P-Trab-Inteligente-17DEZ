@@ -27,6 +27,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
 import { getOmPreposition } from "@/lib/classeIUtils"; // NOVO: Importar getOmPreposition
+import { generateClasseIIMemoriaCalculo } from "@/lib/classeIIUtils"; // ADICIONADO: Importar a função canônica
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -141,97 +142,8 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-// NOVO: Gera a memória de cálculo detalhada para uma categoria
-const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined, efetivo: number): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
-    
-    const militarPlural = efetivo === 1 ? 'militar' : 'militares';
-    const preposition = getOmPreposition(organizacao); // NOVO: Usando a função de preposição
-
-    let detalhamentoItens = "";
-    itens.forEach(item => {
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        // NOVO FORMATO DE FÓRMULA EXPLÍCITA
-        detalhamentoItens += `- ${formatNumber(item.quantidade)} un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${formatNumber(diasOperacao)} dias = ${formatCurrency(valorItem)}.\n`;
-    });
-
-    // NOVO CABEÇALHO ADAPTADO DA CLASSE I
-    const header = `33.90.30 - Aquisição de Material de Intendência (${getCategoryLabel(categoria)}) para atender a manutenção de material de ${formatNumber(efetivo)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(diasOperacao)} dias de ${faseFormatada}.
-OM de Destino: ${organizacao} (UG: ${ug})
-Total de Itens na Categoria: ${formatNumber(totalQuantidade)}
-
-Cálculo:
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
-
-Detalhes dos Itens:
-${detalhamentoItens.trim()}
-
-Valor Total da Categoria: ${formatCurrency(totalValor)}.`;
-
-    return header;
-};
-
-const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number, efetivo: number): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const valorTotal = valorND30 + valorND39;
-    
-    const militarPlural = efetivo === 1 ? 'militar' : 'militares';
-    const preposition = getOmPreposition(organizacao); // NOVO: Usando a função de preposição
-
-    // 1. Agrupar itens por categoria e calcular o subtotal de valor por categoria
-    const gruposPorCategoria = itens.reduce((acc, item) => {
-        const categoria = item.categoria as Categoria;
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        
-        if (!acc[categoria]) {
-            acc[categoria] = {
-                totalValor: 0,
-                totalQuantidade: 0,
-                detalhes: [],
-            };
-        }
-        
-        acc[categoria].totalValor += valorItem;
-        acc[categoria].totalQuantidade += item.quantidade;
-        // NOVO FORMATO DE FÓRMULA EXPLÍCITA
-        acc[categoria].detalhes.push(
-            `- ${formatNumber(item.quantidade)} un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${formatNumber(diasOperacao)} dias = ${formatCurrency(valorItem)}.`
-        );
-        
-        return acc;
-    }, {} as Record<Categoria, { totalValor: number, totalQuantidade: number, detalhes: string[] }>);
-
-    let detalhamentoItens = "";
-    
-    // 2. Formatar a seção de cálculo agrupada
-    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${formatNumber(grupo.totalQuantidade)} ITENS) ---\n`; // USANDO getCategoryLabel
-        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
-        detalhamentoItens += `Detalhes:\n`;
-        detalhamentoItens += grupo.detalhes.join('\n');
-        detalhamentoItens += `\n`;
-    });
-    
-    detalhamentoItens = detalhamentoItens.trim();
-
-    // NOVO CABEÇALHO ADAPTADO DA CLASSE I
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para atender a manutenção de material de ${formatNumber(efetivo)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(diasOperacao)} dias de ${faseFormatada}.
-Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
-
-Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
-
-Cálculo:
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
-
-${detalhamentoItens}
-
-Valor Total: ${formatCurrency(valorTotal)}.`;
-  };
+// REMOVIDAS AS FUNÇÕES generateCategoryMemoriaCalculo e generateDetalhamento
+// A lógica foi movida para generateClasseIIMemoriaCalculo em src/lib/classeIIUtils.ts
 
 
 const ClasseIIForm = () => {
@@ -586,7 +498,7 @@ const ClasseIIForm = () => {
 
   const handleFaseChange = (fase: string, checked: boolean) => {
     if (checked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase]));
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
@@ -769,18 +681,18 @@ const ClasseIIForm = () => {
             return;
         }
         
-        const detalhamento = generateDetalhamento(
-            itens, 
-            form.dias_operacao, 
-            form.organizacao, // OM Detentora
-            form.ug, // UG Detentora
-            faseFinalString,
-            allocation.om_destino_recurso, // OM de Destino do Recurso (ND 30/39)
-            allocation.ug_destino_recurso, // UG de Destino do Recurso (ND 30/39)
-            allocation.nd_30_value,
-            allocation.nd_39_value,
-            form.efetivo // NOVO: Passando o efetivo
-        );
+        // USANDO A FUNÇÃO CANÔNICA IMPORTADA
+        const detalhamento = generateClasseIIMemoriaCalculo({
+            organizacao: allocation.om_destino_recurso, // OM de Destino do Recurso (ND 30/39)
+            ug: allocation.ug_destino_recurso, // UG de Destino do Recurso (ND 30/39)
+            dias_operacao: form.dias_operacao,
+            categoria: categoria,
+            itens_equipamentos: itens as any,
+            fase_atividade: faseFinalString,
+            valor_nd_30: allocation.nd_30_value,
+            valor_nd_39: allocation.nd_39_value,
+            efetivo: form.efetivo,
+        });
         
         const registro: TablesInsert<'classe_ii_registros'> = {
             p_trab_id: ptrabId,
@@ -995,7 +907,7 @@ const ClasseIIForm = () => {
         fase_atividade: registro.fase_atividade,
         valor_nd_30: registro.valor_nd_30,
         valor_nd_39: registro.valor_nd_39,
-        efetivo: form.efetivo, // Usar o efetivo do formulário principal
+        efetivo: form.efetivo, // NOVO: Passando o efetivo
     });
     
     setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
@@ -1087,7 +999,7 @@ const ClasseIIForm = () => {
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>OM Detentora do Equipamento *</Label>
                   <OmSelector

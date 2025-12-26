@@ -10,9 +10,10 @@ interface ItemClasseII {
   memoria_customizada?: string | null;
 }
 
-interface ClasseIIRegistroBase {
-  organizacao: string; // OM Detentora
-  ug: string; // UG Detentora
+// Tipo base para o registro de classe II/V/VI/VII/VIII/IX
+export interface ClasseIIRegistroBase {
+  organizacao: string; // OM Detentora ou OM de Destino do Recurso
+  ug: string; // UG Detentora ou UG de Destino do Recurso
   dias_operacao: number;
   categoria: string;
   itens_equipamentos: ItemClasseII[];
@@ -21,6 +22,30 @@ interface ClasseIIRegistroBase {
   valor_nd_39: number;
   efetivo: number;
 }
+
+// Helper function to get the label for Classe II/V/VI/VII/VIII/IX categories
+export const getClasseIILabel = (category: string): string => {
+    switch (category) {
+        case 'Vtr Administrativa': return 'Viatura Administrativa';
+        case 'Vtr Operacional': return 'Viatura Operacional';
+        case 'Motocicleta': return 'Motocicleta';
+        case 'Vtr Blindada': return 'Viatura Blindada';
+        case 'Equipamento Individual': return 'Eqp Individual';
+        case 'Proteção Balística': return 'Prot Balística';
+        case 'Material de Estacionamento': return 'Mat Estacionamento';
+        case 'Armt L': return 'Armamento Leve';
+        case 'Armt P': return 'Armamento Pesado';
+        case 'IODCT': return 'IODCT';
+        case 'DQBRN': return 'DQBRN';
+        case 'Embarcação': return 'Embarcação';
+        case 'Equipamento de Engenharia': return 'Eqp Engenharia';
+        case 'Comunicações': return 'Comunicações';
+        case 'Informática': return 'Informática';
+        case 'Saúde': return 'Saúde';
+        case 'Remonta/Veterinária': return 'Remonta/Veterinária';
+        default: return category;
+    }
+};
 
 /**
  * Gera a memória de cálculo detalhada para um registro de Classe II (Material de Intendência).
@@ -78,7 +103,8 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistroBase): 
     
     // 3. Formatar a seção de cálculo agrupada
     Object.entries(gruposPorCategoria).forEach(([cat, grupo]) => {
-        detalhamentoItens += `\n--- ${cat.toUpperCase()} (${formatNumber(grupo.totalQuantidade)} ITENS) ---\n`;
+        // Usar getClasseIILabel para garantir o rótulo correto (ex: Eqp Individual)
+        detalhamentoItens += `\n--- ${getClasseIILabel(cat).toUpperCase()} (${formatNumber(grupo.totalQuantidade)} ITENS) ---\n`; 
         detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
         detalhamentoItens += `Detalhes:\n`;
         detalhamentoItens += grupo.detalhes.join('\n');
@@ -88,7 +114,8 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistroBase): 
     detalhamentoItens = detalhamentoItens.trim();
 
     // 4. Construir o cabeçalho com a nova frase
-    const header = `${ndHeader} - Manutenção dos componentes do ${categoria} de ${formatNumber(efetivo)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(dias_operacao)} dias de ${faseFormatada}.
+    const header = `${ndHeader} - Manutenção dos componentes do ${getClasseIILabel(categoria)} de ${formatNumber(efetivo)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(dias_operacao)} dias de ${faseFormatada}.
+Recurso destinado à OM proprietária: ${organizacao} (UG: ${ug})
 
 Alocação:
 ${valor_nd_30 > 0 ? `- ND 33.90.30 (Material): ${formatCurrency(valor_nd_30)}\n` : ''}${valor_nd_39 > 0 ? `- ND 33.90.39 (Serviço): ${formatCurrency(valor_nd_39)}\n` : ''}
