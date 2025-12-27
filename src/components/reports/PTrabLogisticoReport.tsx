@@ -459,8 +459,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                 secondDivContent = registro.animal_tipo.toUpperCase();
             }
-                
-            despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
+            
+            // NOVO FORMATO: CLASSE <ROMANA> - <CATEGORIA>
+            const classeLabel = getClasseIILabel(registro.categoria).split(' - ')[0]; // Ex: "CLASSE II"
+            despesasValue = `${classeLabel} - ${secondDivContent}`;
+            
             omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
             valorC = registro.valor_nd_30;
             valorD = registro.valor_nd_39;
@@ -814,7 +817,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow++;
       
       const cmtRow = worksheet.getRow(currentRow);
-      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'; // CORRIGIDO: Removida a aspa extra
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment; // Centraliza
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
@@ -977,8 +980,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                             secondDivContent = registro.animal_tipo.toUpperCase();
                         }
+                        
+                        // NOVO FORMATO: CLASSE <ROMANA> - <CATEGORIA>
+                        const classeLabel = getClasseIILabel(registro.categoria).split(' - ')[0]; // Ex: "CLASSE II"
+                        rowData.despesasValue = `${classeLabel} - ${secondDivContent}`;
                             
-                        rowData.despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
                         rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
                         rowData.valorC = registro.valor_nd_30;
                         rowData.valorD = registro.valor_nd_39;
@@ -1007,7 +1013,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     return (
                       <tr key={isClasseI ? `${linha.registro.id}-${linha.tipo}` : isLubrificante ? `lub-${linha.registro.id}` : `classe-ii-${linha.registro.id}`}>
                         <td className="col-despesas">
-                          {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
+                          {/* Renderiza o valor da despesa sem quebra de linha, conforme o novo formato */}
+                          {rowData.despesasValue}
                         </td>
                         <td className="col-om">
                           {rowData.omValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
