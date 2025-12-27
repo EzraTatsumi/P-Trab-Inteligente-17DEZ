@@ -299,6 +299,7 @@ const ClasseIIForm = () => {
 
         // 2. Mapear itens existentes no formulário principal para a categoria atual
         const existingItemsMap = new Map<string, ItemClasseII>();
+        // Filtra os itens do form.itens que pertencem à aba atual
         form.itens.filter(i => i.categoria === selectedTab).forEach(item => {
             existingItemsMap.set(item.item, item);
         });
@@ -306,6 +307,7 @@ const ClasseIIForm = () => {
         // 3. Mesclar: usar o item existente (com quantidade e memória) ou o item disponível (com quantidade 0)
         const mergedItems = availableItems.map(availableItem => {
             const existing = existingItemsMap.get(availableItem.item);
+            // Se existir, retorna o item com a quantidade e dados do DB. Se não, retorna o item da diretriz (quantidade 0).
             return existing || availableItem;
         });
 
@@ -1102,7 +1104,6 @@ const ClasseIIForm = () => {
             </div>
 
             {/* 2. Adicionar Itens por Categoria (Aba) - REESTRUTURADO PARA TABELA */}
-            {/* REMOVIDA A CONDIÇÃO form.efetivo > 0 PARA PERMITIR EDIÇÃO MESMO QUE O EFETIVO ESTEJA ZERADO */}
             {form.organizacao && form.ug !== "" && form.dias_operacao > 0 && (
               <div className="space-y-4 border-b pb-4" ref={formRef}>
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
