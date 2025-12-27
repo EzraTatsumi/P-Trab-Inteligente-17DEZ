@@ -78,7 +78,6 @@ export const generateCategoryMemoriaCalculo = (
     valorND39: number // NOVO: Valor ND 39
 ): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
 
     // 1. Determinar o prefixo ND
@@ -99,7 +98,7 @@ export const generateCategoryMemoriaCalculo = (
     // 3. Determinar o artigo 'do/da' da OM
     const omArticle = getOmArticle(omDetentora);
     
-    // 4. Determinar o artigo 'do/da' da Categoria (NOVO)
+    // 4. Determinar o artigo 'do/da' da Categoria
     const categoryArticle = getCategoryArticle(categoria);
     
     // 5. Determinar singular/plural de 'dia'
@@ -115,16 +114,14 @@ export const generateCategoryMemoriaCalculo = (
         detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
     });
 
-    // Montar a memória de cálculo
+    // Montar a memória de cálculo simplificada
     return `${header}
 
-OM Detentora: ${omDetentora} (UG: ${formatCodug(ugDetentora)})
-Total de Itens na Categoria: ${totalQuantidade}
-
-Detalhes dos Itens (Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias):
+Cálculo:
+Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias:
 ${detalhamentoItens.trim()}
 
-Valor Total da Categoria: ${formatCurrency(totalValor)}.`;
+Total: ${formatCurrency(totalValor)}.`;
 };
 
 /**
