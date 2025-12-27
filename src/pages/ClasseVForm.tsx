@@ -832,7 +832,9 @@ const ClasseVForm = () => {
         registro.organizacao, 
         registro.ug, 
         registro.fase_atividade,
-        registro.efetivo // NOVO: Passando o efetivo
+        registro.efetivo, // Passando o efetivo
+        registro.valor_nd_30, // PASSANDO ND 30
+        registro.valor_nd_39 // PASSANDO ND 39
     );
     
     // 2. Usar a customizada se existir, senão usar a automática recém-gerada
@@ -1207,17 +1209,21 @@ const ClasseVForm = () => {
 
                 <div className="space-y-4">
                   {Object.entries(itensAgrupadosPorCategoria).map(([categoria, itens]) => {
-                    const totalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    const totalCategoriaSaved = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    
+                    const itemsForDirtyCheck = categoria === selectedTab 
+                        ? currentCategoryItems.filter(i => i.quantidade > 0) 
+                        : itens;
+                    
+                    const currentTotalForCheck = itemsForDirtyCheck.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    
                     const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
                     
                     const allocation = categoryAllocations[categoria as Categoria];
                     
-                    const currentItemsForCheck = categoria === selectedTab ? currentCategoryItems : itens;
-                    const currentTotalForCheck = currentItemsForCheck.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
-                    
                     const isDirty = isCategoryAllocationDirty(
                         categoria as Categoria, 
-                        currentTotalForCheck,
+                        currentTotalForCheck, 
                         allocation, 
                         tempND39Inputs, 
                         tempDestinations
@@ -1227,7 +1233,7 @@ const ClasseVForm = () => {
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
                           <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} itens)</h4>
-                          <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
+                          <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoriaSaved)}</span>
                         </div>
                         
                         <div className="space-y-2">
@@ -1426,7 +1432,9 @@ const ClasseVForm = () => {
                       registro.organizacao, 
                       registro.ug, 
                       registro.fase_atividade,
-                      registro.efetivo
+                      registro.efetivo,
+                      registro.valor_nd_30, // PASSANDO ND 30
+                      registro.valor_nd_39 // PASSANDO ND 39
                   );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
@@ -1439,7 +1447,7 @@ const ClasseVForm = () => {
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                               <h4 className="text-base font-semibold text-foreground">
-                                OM Destino: {om} ({formatCodug(ug)})
+                                OM Destino: {om} (UG: {formatCodug(ug)})
                               </h4>
                               <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
                                   {badgeStyle.label}

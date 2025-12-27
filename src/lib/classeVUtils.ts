@@ -57,7 +57,7 @@ const getCategoryArticle = (categoria: Categoria): 'do' | 'da' | 'de' => {
         case 'IODCT':
             return 'do'; // Manutenção DO IODCT
         case 'DQBRN':
-            return 'de'; // Manutenção DE DQBRN (Ajuste para concordância correta)
+            return 'de'; // Manutenção DE DQBRN
         default:
             return 'do';
     }
@@ -66,6 +66,8 @@ const getCategoryArticle = (categoria: Categoria): 'do' | 'da' | 'de' => {
 /**
  * Generates the detailed calculation memory for a specific Classe V category.
  * This is used for the editable memory field.
+ * 
+ * NOTE: This function now requires valorND30 and valorND39 to correctly determine the ND prefix.
  */
 export const generateCategoryMemoriaCalculo = (
     categoria: Categoria, 
@@ -74,13 +76,24 @@ export const generateCategoryMemoriaCalculo = (
     omDetentora: string, // OM Detentora (Source)
     ugDetentora: string, // UG Detentora (Source)
     faseAtividade: string | null | undefined,
-    efetivo: number = 0 // NOVO: Adicionado efetivo
+    efetivo: number = 0, // Adicionado efetivo
+    valorND30: number = 0, // NOVO: Valor ND 30
+    valorND39: number = 0 // NOVO: Valor ND 39
 ): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
 
-    // 1. Determinar o prefixo ND (REMOVIDO 'ND ')
-    const ndPrefix = "33.90.30 / 33.90.39"; // Classe V sempre usa 30/39
+    // 1. Determinar o prefixo ND baseado nos valores
+    let ndPrefix = "";
+    if (valorND30 > 0 && valorND39 > 0) {
+        ndPrefix += "33.90.30 / 33.90.39";
+    } else if (valorND30 > 0) {
+        ndPrefix += "33.90.30";
+    } else if (valorND39 > 0) {
+        ndPrefix += "33.90.39";
+    } else {
+        ndPrefix = "(Não Alocado)";
+    }
     
     // 2. Determinar singular/plural do efetivo
     const militarPlural = efetivo === 1 ? "militar" : "militares";
@@ -96,7 +109,6 @@ export const generateCategoryMemoriaCalculo = (
 
     // 6. Montar o cabeçalho dinâmico
     const categoryLabel = getCategoryLabel(categoria);
-    // Se for 'de', não usamos o artigo 'o/a' no label, apenas 'de' + 'DQBRN'
     const header = `${ndPrefix} - Manutenção de componentes ${categoryArticle} ${categoryLabel} de ${efetivo} ${militarPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
     let detalhamentoItens = "";
