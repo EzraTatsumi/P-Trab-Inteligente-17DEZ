@@ -940,7 +940,7 @@ const ClasseVForm = () => {
             </CardTitle>
             <CardDescription>
               Solicitação de recursos para manutenção de armamento e material de tiro.
-            </CardDescription>
+            </Description>
           </CardHeader>
           <CardContent className="space-y-6">
             
@@ -1488,9 +1488,14 @@ const ClasseVForm = () => {
                                   </Badge>
                               </div>
                               {/* NOVO AVISO DE OM DESTINO */}
-                              <p className={cn("text-xs mt-1", isDifferentOm ? "text-red-600 font-bold" : "text-muted-foreground")}>
-                                  OM Destino Recurso: {registro.organizacao} ({formatCodug(registro.ug)})
-                              </p>
+                              {isDifferentOm && (
+                                  <div className="flex items-center gap-1 mt-1">
+                                      <AlertCircle className="h-4 w-4 text-red-600" />
+                                      <span className="text-sm font-medium text-red-600">
+                                          Recurso destinado à OM: {registro.organizacao} ({formatCodug(registro.ug)})
+                                      </span>
+                                  </div>
+                              )}
                           </div>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
