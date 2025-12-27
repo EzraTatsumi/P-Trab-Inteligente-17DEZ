@@ -747,7 +747,7 @@ const ClasseVForm = () => {
         selectedOmIdForEdit = omData?.id;
     } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
     
-    (allRecords || []).forEach(r => {
+    for (const r of (allRecords || [])) {
         const category = r.categoria as Categoria;
         // CORREÇÃO: Garantir que itens_equipamentos seja tratado como array de ItemClasseV
         const items = (r.itens_equipamentos as any[] || []).map(item => ({
@@ -799,7 +799,7 @@ const ClasseVForm = () => {
                 id: selectedOmDestinoId,
             };
         }
-    });
+    }
     
     // 4. Preencher o formulário principal com a OM Detentora
     setEditingId(registro.id); 
@@ -1358,6 +1358,9 @@ const ClasseVForm = () => {
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
                                     const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                                     
+                                    // Verifica se a OM Detentora é diferente da OM de Destino
+                                    const isDifferentOm = registro.om_detentora !== registro.organizacao;
+
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
                                             <div className="flex items-center justify-between">
@@ -1416,7 +1419,7 @@ const ClasseVForm = () => {
                                             <div className="pt-2 border-t mt-2">
                                                 <div className="flex justify-between text-xs">
                                                     <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                                    <span className="font-medium text-foreground">
+                                                    <span className={cn("font-medium", isDifferentOm ? "text-red-600 font-bold" : "text-foreground")}>
                                                         {registro.organizacao} ({formatCodug(registro.ug)})
                                                     </span>
                                                 </div>
