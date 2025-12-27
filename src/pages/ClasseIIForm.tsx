@@ -65,7 +65,7 @@ interface ClasseIIRegistro {
   valor_total: number;
   detalhamento: string;
   detalhamento_customizado?: string | null;
-  fase_atividade?: string;
+  fase_atividade?: string | null;
   // NOVOS CAMPOS DO DB
   valor_nd_30: number;
   valor_nd_39: number;
@@ -133,7 +133,7 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   
   const ultimaFase = fases[fases.length - 1];
   const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFase}`;
+  return `${demaisFases} e ${ultimaFases}`;
 };
 
 // NOVO: Gera a memória de cálculo detalhada para uma categoria
@@ -151,12 +151,9 @@ const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseI
     return `33.90.30 - Aquisição de Material de Intendência (${getCategoryLabel(categoria)})
 OM de Destino: ${organizacao} (UG: ${formatCodug(ug)})
 Período: ${diasOperacao} dias de ${faseFormatada}
-Total de Itens na Categoria: ${totalQuantidade}
+Total de Itens Solicitados: ${totalQuantidade}
 
-Cálculo:
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
-
-Detalhes dos Itens:
+Detalhes do Custeio (Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias):
 ${detalhamentoItens.trim()}
 
 Valor Total da Categoria: ${formatCurrency(totalValor)}.`;
@@ -167,7 +164,7 @@ const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organ
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const valorTotal = valorND30 + valorND39;
 
-    // 1. Agrupar itens por categoria e calcular o subtotal de valor por categoria
+    // 1. Agrupar itens por categoria que possuem quantidade > 0
     const gruposPorCategoria = itens.reduce((acc, item) => {
         const categoria = item.categoria as Categoria;
         const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
