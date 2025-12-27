@@ -132,7 +132,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   fileSuffix, // NOVO PROP
   generateClasseIIMemoriaCalculo = defaultGenerateClasseIIMemoriaCalculo, // FORNECER DEFAULT
   generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
-  generateClasseVMemoriaCalculo = defaultGenerateClasseVMemoriaCalculo, // NOVO: DESESTRUTURANDO E USANDO DEFAULT
+  generateClasseVMemoriaCalculo = defaultGenerateVMemoriaCalculo, // NOVO: DESESTRUTURANDO E USANDO DEFAULT
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -505,8 +505,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   }
                   
               } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                  // NOVO: Usar função específica para Classe V
-                  rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
+                  // CORREÇÃO AQUI: Formato CLASSE V - CATEGORIA em uma linha
+                  rowData.despesasValue = `${classeLabel} - ${categoriaDetalhe.toUpperCase()}`;
                   rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
               } else {
                   // Outras classes (VI, VII, VIII, IX) mantêm a quebra de linha
@@ -1051,11 +1051,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             }
                             
                         } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                            // NOVO: Usar função específica para Classe V
-                            rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
+                            // CORREÇÃO AQUI: Formato CLASSE V - CATEGORIA em uma linha
+                            rowData.despesasValue = `${classeLabel} - ${categoriaDetalhe.toUpperCase()}`;
                             rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
                         } else {
-                            // Outras classes (V, VI, VII, VIII, IX) mantêm a quebra de linha
+                            // Outras classes (VI, VII, VIII, IX) mantêm a quebra de linha
                             rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
                         }
                         
