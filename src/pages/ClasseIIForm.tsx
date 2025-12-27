@@ -1461,7 +1461,7 @@ const ClasseIIForm = () => {
                                             <div className="pt-2 border-t mt-2">
                                                 <div className="flex justify-between text-xs">
                                                     <span className="text-muted-foreground">OM Destino:</span>
-                                                    <span className="font-medium text-foreground">
+                                                    <span className="font-medium text-blue-600">
                                                         {registro.organizacao} ({formatCodug(registro.ug)})
                                                     </span>
                                                 </div>
@@ -1515,18 +1515,30 @@ const ClasseIIForm = () => {
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
                   const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                   
+                  // Verifica se a OM Detentora é diferente da OM de Destino
+                  const isDifferentOm = omDetentora !== registro.organizacao;
+
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                       
                       {/* Container para H4 e Botões */}
-                      <div className="flex items-start justify-between gap-4 mb-4">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <h4 className="text-base font-semibold text-foreground">
-                                OM Detentora: {omDetentora} (UG: {formatCodug(ugDetentora)})
-                              </h4>
-                              <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
-                                  {badgeStyle.label}
-                              </Badge>
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                          <div className="flex flex-col flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                  <h4 className="text-base font-semibold text-foreground">
+                                    OM Detentora: {omDetentora} (UG: {formatCodug(ugDetentora)})
+                                  </h4>
+                                  <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
+                                      {badgeStyle.label}
+                                  </Badge>
+                              </div>
+                              
+                              {isDifferentOm && (
+                                  <p className="text-sm text-red-600 font-medium mt-1 flex items-center gap-1">
+                                      <AlertCircle className="h-4 w-4 shrink-0" />
+                                      Recurso destinado à OM: {registro.organizacao}
+                                  </p>
+                              )}
                           </div>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
