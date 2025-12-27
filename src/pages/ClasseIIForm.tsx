@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
-import { formatFasesParaTexto, generateCategoryMemoriaCalculo, generateDetalhamento } from "@/lib/classeIIUtils";
+import { formatFasesParaTexto, generateClasseIIMemoriaCalculo, generateDetalhamento } from "@/lib/classeIIUtils";
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -1481,7 +1481,7 @@ const ClasseIIForm = () => {
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
                   // NOVO: Gera a memória automática com o rótulo padronizado
-                  const memoriaAutomatica = generateCategoryMemoriaCalculo(
+                  const memoriaAutomatica = generateClasseIIMemoriaCalculo(
                       registro.categoria as Categoria, 
                       registro.itens_equipamentos as ItemClasseII[], 
                       registro.dias_operacao, 

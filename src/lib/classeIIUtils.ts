@@ -66,7 +66,7 @@ const getCategoryArticle = (categoria: Categoria): 'do' | 'da' => {
  * Generates the detailed calculation memory for a specific Classe II category.
  * This is used for the editable memory field.
  */
-export const generateCategoryMemoriaCalculo = (
+export const generateClasseIIMemoriaCalculo = (
     categoria: Categoria, 
     itens: ItemClasseII[], 
     diasOperacao: number, 
@@ -115,13 +115,7 @@ export const generateCategoryMemoriaCalculo = (
     });
 
     // Montar a memória de cálculo simplificada
-    return `${header}
-
-Cálculo:
-Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias:
-${detalhamentoItens.trim()}
-
-Total: ${formatCurrency(totalValor)}.`;
+    return `${header}\n\nCálculo:\nFórmula: Nr Itens x Valor Mnt/Dia x Nr Dias:\n${detalhamentoItens.trim()}\n\nTotal: ${formatCurrency(totalValor)}.`;
 };
 
 /**

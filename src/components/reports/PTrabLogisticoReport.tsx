@@ -32,7 +32,6 @@ import {
   formatFasesParaTexto,
   getClasseIILabel,
   generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport, // Importar com alias
-  generateClasseIIMemoriaCalculo,
   generateClasseIXMemoriaCalculo,
   calculateItemTotalClasseIX,
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
@@ -62,6 +61,11 @@ interface PTrabLogisticoReportProps {
   handleConfirmCompleteStatus: () => void;
   handleCancelCompleteStatus: () => void;
   fileSuffix: string; // NOVO PROP
+  // NOVO: Importar a função de memória de cálculo da Classe II diretamente
+  generateClasseIIMemoriaCalculo: (
+    registro: any, // Usamos 'any' aqui pois o tipo completo está no Manager
+    isClasseII: boolean // Flag para diferenciar Classe II de outras classes
+  ) => string;
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe I
   generateClasseIMemoriaCalculo: (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP') => string;
 }
@@ -81,6 +85,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   handleConfirmCompleteStatus,
   handleCancelCompleteStatus,
   fileSuffix, // NOVO PROP
+  generateClasseIIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO DA CLASSE II
   generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
 }) => {
   const { toast } = useToast();
@@ -441,7 +446,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                 detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
             } else {
-                detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+                // Verifica se é Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
+                const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
+                detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
             }
             
           } else if ('tipo_equipamento' in linha.registro) { // Classe III Lubrificante
@@ -528,7 +535,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const row = worksheet.getRow(currentRow);
             
             // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
-            const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug_qs || '';
+            const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug || '';
             
             row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
             row.getCell('B').value = `${nomeRM}\n(${rmUg})`;
@@ -821,7 +828,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo]);
+  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo]);
 
   return (
     <div className="space-y-6">
@@ -957,7 +964,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                             rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
                         } else {
-                            rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro);
+                            // Verifica se é Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
+                            const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
+                            rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
                         }
                         
                     } else if (isLubrificante) { // Classe III Lubrificante
