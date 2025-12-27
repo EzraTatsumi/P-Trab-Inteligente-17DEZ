@@ -73,20 +73,9 @@ interface PTrabLogisticoReportProps {
 
 // Implementação padrão (fallback) para generateClasseIIMemoriaCalculo
 const defaultGenerateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolean): string => {
-    // 1. Se houver detalhamento customizado, use-o.
-    if (registro.detalhamento_customizado) {
-        return registro.detalhamento_customizado;
-    }
-    
-    // 2. Se for Classe IX, retorna o detalhamento padrão (já que a lógica de IX é separada no loop principal)
-    if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-        return registro.detalhamento || "Memória de cálculo não disponível.";
-    }
-    
-    // 3. Para todas as outras classes (II, V, VI, VII, VIII), use a função utilitária que agora faz o despacho correto.
-    if (registro.itens_equipamentos && registro.dias_operacao !== undefined) {
-        // A função generateClasseIIUtility (importada de classeIIUtils.ts) agora contém a lógica de despacho para Classe V
-        // e outras classes, usando os novos parâmetros (efetivo, ND 30/39).
+    // Verifica se é uma das categorias de Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
+    if (isClasseII && registro.itens_equipamentos && registro.efetivo !== undefined) {
+        // Usa a função utilitária detalhada para Classe II
         return generateClasseIIUtility(
             registro.categoria,
             registro.itens_equipamentos,
@@ -99,9 +88,8 @@ const defaultGenerateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolea
             registro.valor_nd_39
         );
     }
-    
-    // 4. Fallback final
-    return registro.detalhamento || "Memória de cálculo não disponível.";
+    // Para outras classes (V, VI, VII, VIII) ou se os dados estiverem incompletos, retorna o detalhamento armazenado
+    return registro.detalhamento_customizado || registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
 
@@ -407,12 +395,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               cell.fill = headerFillLaranja;
               cell.font = headerFontStyle; // Garante letra preta
           }
-          // Garante que a cor de fundo seja aplicada corretamente
-          if (col === 'C' || col === 'D' || col === 'E') {
-              cell.fill = headerFillAzul;
-          } else if (col === 'F' || col === 'G' || col === 'H') {
-              cell.fill = headerFillLaranja;
-          }
       });
       
       currentRow = headerRow2 + 1;
@@ -512,8 +494,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                   rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
               } else {
-                  // A função generateClasseIIMemoriaCalculo (que é a prop) agora lida com todas as classes (II, V, VI, VII, VIII)
-                  // e prioriza o detalhamento customizado se existir.
+                  // Verifica se é Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
                   const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                   rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
               }
@@ -991,7 +972,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     const rowData = {
                         despesasValue: '',
                         omValue: '',
-                        detalhamentoValue: '',
+                        detalhamentoValue: '', // Inicializado aqui
                         valorC: 0,
                         valorD: 0,
                         valorE: 0,
@@ -1055,8 +1036,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                             rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
                         } else {
-                            // A função generateClasseIIMemoriaCalculo (que é a prop) agora lida com todas as classes (II, V, VI, VII, VIII)
-                            // e prioriza o detalhamento customizado se existir.
+                            // Verifica se é Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
                             const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                             rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
                         }
@@ -1256,6 +1236,61 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           </div>
         </div>
       </div>
+
+      <style>{`
+        @page {
+          size: A4 landscape;
+          margin: 0.5cm;
+        }
+        @media print {
+          @page { size: landscape; margin: 0.5cm; }
+          body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
+          .ptrab-print-container { padding: 0 !important; margin: 0 !important; }
+          .ptrab-table thead { display: table-row-group; break-inside: avoid; break-after: auto; }
+          .ptrab-table thead tr { page-break-inside: avoid; page-break-after: auto; }
+          .ptrab-table tbody tr { page-break-inside: avoid; break-inside: avoid; }
+          .ptrab-table tr { page-break-inside: avoid; break-inside: avoid; }
+          
+          /* FORÇA BORDAS FINAS NA IMPRESSÃO */
+          .ptrab-table { border: 0.25pt solid #000 !important; }
+          .ptrab-table th, .ptrab-table td { border: 0.25pt solid #000 !important; }
+          
+          /* NOVO: Evita quebra de página antes do rodapé */
+          .print-avoid-break {
+            page-break-before: avoid !important;
+            page-break-inside: avoid !important;
+          }
+        }
+        .ptrab-print-container { max-width: 100%; margin: 0 auto; padding: 2rem 1rem; font-family: Arial, sans-serif; }
+        .ptrab-header { text-align: center; margin-bottom: 1.5rem; line-height: 1.4; }
+        .ptrab-info { margin-bottom: 0.3rem; font-size: 10pt; line-height: 1.3; }
+          .info-item { margin-bottom: 0.15rem; }
+        .ptrab-table-wrapper { margin-top: 0.2rem; margin-bottom: 2rem; overflow-x: auto; }
+        .ptrab-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid #000; line-height: 1.1; } /* ALTERADO: Borda externa para 1px */
+        .ptrab-table th, .ptrab-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; }
+        .ptrab-table thead th { background-color: #E8E8E8; font-weight: bold; text-align: center; font-size: 9pt; }
+        .col-despesas { width: 14%; text-align: left; }
+        .col-om { width: 9%; text-align: center; }
+        .col-natureza-header { background-color: #B4C7E7 !important; text-align: center; font-weight: bold; }
+        .col-natureza { background-color: #B4C7E7 !important; width: 8%; text-align: center; }
+        .col-nd { width: 8%; text-align: center; }
+        .col-combustivel-header { background-color: #F8CBAD !important; text-align: center; font-weight: bold; }
+        .col-combustivel { background-color: #F8CBAD !important; width: 6%; text-align: center; font-size: 8pt; }
+        .col-combustivel-data { background-color: #FFF; text-align: center; width: 6%; }
+        .col-valor-natureza { background-color: #B4C7E7 !important; text-align: center; padding: 6px 8px; }
+        .col-combustivel-data-filled { background-color: #F8CBAD !important; text-align: center; padding: 6px 8px; }
+        .col-detalhamento { width: 28%; text-align: left; }
+        .detalhamento-cell { font-size: 6.5pt; line-height: 1.2; }
+        .total-row { background-color: #FFFF99; font-weight: bold; }
+        .subtotal-row { background-color: #D3D3D3; font-weight: bold; border-top: 1px solid #000; } /* ALTERADO: Borda fina */
+        .subtotal-om-row { background-color: #E8E8E8; font-weight: bold; }
+        .total-geral-soma-row { background-color: #D3D3D3; font-weight: bold; border-top: 1px solid #000; } /* ALTERADO: Borda fina */
+        .total-geral-final-row { background-color: #E8E8E8; font-weight: bold; }
+        .total-geral-gnd-row { background-color: #E8E8E8; font-weight: bold; border-bottom: 1px solid #000; } /* ALTERADO: Borda fina */
+        .secao-header-row { background-color: #4A7C4E; color: white; font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000; } /* ALTERADO: Borda fina */
+        .ptrab-footer { margin-top: 3rem; text-align: center; }
+        .signature-block { margin-top: 4rem; }
+      `}</style>
 
       <AlertDialog open={showCompleteStatusDialog} onOpenChange={setShowCompleteStatusDialog}>
         <AlertDialogContent>
