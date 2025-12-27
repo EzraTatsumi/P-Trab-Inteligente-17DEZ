@@ -1,5 +1,9 @@
 import { formatCurrency, formatCodug } from "./formatUtils";
 import { getCategoryLabel } from "./badgeUtils";
+import { 
+    generateCategoryMemoriaCalculo as generateClasseVMemoria, 
+    formatFasesParaTexto as formatFasesClasseV 
+} from "./classeVUtils"; // Importar utilitário de Classe V
 
 // Tipos necessários (copiados do formulário para evitar dependência de tipos internos)
 interface ItemClasseII {
@@ -10,7 +14,7 @@ interface ItemClasseII {
   memoria_customizada?: string | null;
 }
 
-type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
+type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento' | 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN'; // Adicionado categorias de Classe V
 
 /**
  * Formats the activity phases from a semicolon-separated string into a readable text format.
@@ -77,6 +81,23 @@ export const generateClasseIIMemoriaCalculo = (
     valorND30: number, // NOVO: Valor ND 30
     valorND39: number // NOVO: Valor ND 39
 ): string => {
+    
+    // --- NOVO: Despacho para Classe V ---
+    if (['Armt L', 'Armt P', 'IODCT', 'DQBRN'].includes(categoria)) {
+        return generateClasseVMemoria(
+            categoria as 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN',
+            itens,
+            diasOperacao,
+            omDetentora,
+            ugDetentora,
+            faseAtividade,
+            efetivo,
+            valorND30,
+            valorND39
+        );
+    }
+    // --- FIM NOVO: Despacho para Classe V ---
+    
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
 
