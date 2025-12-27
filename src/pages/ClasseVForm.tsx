@@ -1393,6 +1393,12 @@ const ClasseVForm = () => {
                                             {/* Detalhes da Alocação */}
                                             <div className="pt-2 border-t mt-2">
                                                 <div className="flex justify-between text-xs">
+                                                    <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                    <span className="font-medium text-foreground">
+                                                        {registro.organizacao} ({formatCodug(registro.ug)})
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between text-xs">
                                                     <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
                                                     <span className="font-medium text-green-600">{formatCurrency(registro.valor_nd_30)}</span>
                                                 </div>
