@@ -47,7 +47,7 @@ const getOmArticle = (omName: string): string => {
 /**
  * Determina a concordância de gênero para o cabeçalho da categoria.
  * @param categoria A categoria da Classe V.
- * @returns 'do' ou 'da'.
+ * @returns 'do' ou 'da' ou 'de'.
  */
 const getCategoryArticle = (categoria: Categoria): 'do' | 'da' | 'de' => {
     switch (categoria) {

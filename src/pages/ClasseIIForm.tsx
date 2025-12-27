@@ -2,19 +2,45 @@ import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Package, Pencil, Trash2, XCircle, Check, ChevronDown, ChevronsUpDown, Sparkles, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Package,
+  Pencil,
+  Trash2,
+  XCircle,
+  Check,
+  ChevronDown,
+  ChevronsUpDown,
+  Sparkles,
+  AlertCircle,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
+import {
+  formatCurrency,
+  formatNumber,
+  parseInputToNumber,
+  formatNumberForInput,
+  formatInputWithThousands,
+  formatCurrencyInput,
+  numberToRawDigits,
+  formatCodug,
+} from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -25,10 +51,17 @@ import { defaultClasseIIConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
-import { formatFasesParaTexto, generateClasseIIMemoriaCalculo, generateDetalhamento } from "@/lib/classeIIUtils";
+import {
+  getCategoryBadgeStyle,
+  getCategoryLabel,
+} from "@/lib/badgeUtils";
+import {
+  formatFasesParaTexto,
+  generateClasseIIMemoriaCalculo,
+  generateDetalhamento,
+} from "@/lib/classeIIUtils";
 
-type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
+type Categoria = "Equipamento Individual" | "Proteção Balística" | "Material de Estacionamento";
 
 const CATEGORIAS: Categoria[] = [
   "Equipamento Individual",
@@ -161,7 +194,7 @@ const ClasseIIForm = () => {
   
   const { handleEnterToNextField } = useFormNavigation();
   const formRef = useRef<HTMLDivElement>(null);
-
+  
   // Helper function to check if a category is dirty (needs saving)
   const isCategoryAllocationDirty = useCallback((
       category: Categoria, 
@@ -210,6 +243,7 @@ const ClasseIIForm = () => {
       const savedAllocation = categoryAllocations[selectedTab];
       
       // 1. Sincronizar ND 39 Input (dígitos)
+      // O valor salvo em nd_39_input é uma string formatada (ex: "1.234,56"). Precisamos convertê-lo para dígitos brutos.
       const numericValue = parseInputToNumber(savedAllocation.nd_39_input);
       const digits = String(Math.round(numericValue * 100));
       
@@ -247,7 +281,7 @@ const ClasseIIForm = () => {
       }
       
   }, [selectedTab, categoryAllocations, form.organizacao, form.ug, form.selectedOmId]);
-
+  
   // Efeito para gerenciar a lista de itens da categoria atual
   useEffect(() => {
     // Só carrega se as diretrizes estiverem prontas e a OM estiver selecionada (para evitar resetar o form.itens)
@@ -747,7 +781,7 @@ const ClasseIIForm = () => {
     // 3. Fetch ALL records belonging to this specific OM Detentora/UG Detentora for this PTrab
     const { data: recordsForDetentora, error: fetchError } = await supabase
         .from("classe_ii_registros")
-        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo, om_detentora, ug_detentora, dias_operacao, fase_atividade")
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo, om_detentora, ug_detentora, dias_operacao, fase_atividade, organizacao, ug")
         .eq("p_trab_id", ptrabId)
         .eq("om_detentora", omDetentoraName) // Filtrar pela Detentora
         .eq("ug_detentora", ugDetentoraCode) // Filtrar pela Detentora
@@ -759,16 +793,16 @@ const ClasseIIForm = () => {
         return;
     }
     
-    // 4. Consolidar dados
+    // 4. Consolidar dados (Usando for...of para permitir await)
     let consolidatedItems: ItemClasseII[] = [];
     let newAllocations = { ...initialCategoryAllocations };
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
     let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
-    
-    (recordsForDetentora || []).forEach(r => {
+
+    for (const r of (recordsForDetentora || [])) {
         const category = r.categoria as Categoria;
-        
-        // CORREÇÃO APLICADA AQUI: Mapeamento explícito para garantir a estrutura ItemClasseII
+
+        // Mapeamento explícito para garantir a estrutura ItemClasseII
         const items: ItemClasseII[] = (r.itens_equipamentos as any[] || []).map(item => ({
             item: item.item,
             quantidade: Number(item.quantidade || 0),
@@ -776,64 +810,56 @@ const ClasseIIForm = () => {
             categoria: item.categoria,
             memoria_customizada: item.memoria_customizada || null,
         }));
-        
+
         // Adicionar itens ao array consolidado
         consolidatedItems = consolidatedItems.concat(items);
-        
-        // Preencher a alocação para a categoria
-        if (newAllocations[category]) {
-            // Usar globalDiasOperacao aqui para consistência
-            const currentDiasOperacao = globalDiasOperacao; 
-            const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * currentDiasOperacao), 0);
-            
-            newAllocations[category] = {
-                total_valor: totalValor,
-                // Usar formatNumberForInput para garantir que o formato seja 'X.XXX,XX'
-                nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2), 
-                nd_30_value: Number(r.valor_nd_30),
-                nd_39_value: Number(r.valor_nd_39),
-                om_destino_recurso: r.organizacao,
-                ug_destino_recurso: r.ug,
-                selectedOmDestinoId: undefined, // Será preenchido abaixo
-            };
-            
-            // Populate temporary input state with saved ND 39 value (in digits)
-            const savedND39Value = Number(r.valor_nd_39);
-            const savedDigits = String(Math.round(savedND39Value * 100));
-            tempND39Load[category] = savedDigits;
-            
-            // Populate temporary destination state
-            tempDestinationsLoad[category] = {
-                om: r.organizacao,
-                ug: r.ug,
-                id: undefined, // ID will be fetched later
-            };
-        }
-    });
-    
-    // 5. Buscar IDs das OMs de Destino
-    const categoriesToLoad = Object.keys(newAllocations) as Categoria[];
-    for (const cat of categoriesToLoad) {
-        const alloc = newAllocations[cat];
-        const tempDest = tempDestinationsLoad[cat];
-        
-        if (alloc.om_destino_recurso) {
+
+        // Buscar ID da OM de Destino para este registro (r.organizacao/r.ug)
+        let selectedOmDestinoId: string | undefined = undefined;
+        if (r.organizacao && r.ug) {
             try {
                 const { data: omData } = await supabase
                     .from('organizacoes_militares')
                     .select('id')
-                    .eq('nome_om', alloc.om_destino_recurso)
-                    .eq('codug_om', alloc.ug_destino_recurso)
+                    .eq('nome_om', r.organizacao)
+                    .eq('codug_om', r.ug)
                     .maybeSingle();
-                
-                // Update both saved allocation and temporary destination with the ID
-                alloc.selectedOmDestinoId = omData?.id;
-                tempDest.id = omData?.id;
-            } catch (e) { console.error(`Erro ao buscar OM Destino ID para ${cat}:`, e); }
+                selectedOmDestinoId = omData?.id;
+            } catch (e) { console.error(`Erro ao buscar OM Destino ID para ${category}:`, e); }
+        }
+
+        // Preencher a alocação para a categoria
+        if (newAllocations[category]) {
+            // Usar globalDiasOperacao aqui para consistência
+            const currentDiasOperacao = globalDiasOperacao;
+            const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * currentDiasOperacao), 0);
+
+            newAllocations[category] = {
+                total_valor: totalValor,
+                // Usar formatNumberForInput para garantir que o formato seja 'X.XXX,XX'
+                nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
+                nd_30_value: Number(r.valor_nd_30),
+                nd_39_value: Number(r.valor_nd_39),
+                om_destino_recurso: r.organizacao,
+                ug_destino_recurso: r.ug,
+                selectedOmDestinoId: selectedOmDestinoId, // AGORA PREENCHIDO
+            };
+
+            // Populate temporary input state with saved ND 39 value (in digits)
+            const savedND39Value = Number(r.valor_nd_39);
+            const savedDigits = String(Math.round(savedND39Value * 100));
+            tempND39Load[category] = savedDigits;
+
+            // Populate temporary destination state
+            tempDestinationsLoad[category] = {
+                om: r.organizacao,
+                ug: r.ug,
+                id: selectedOmDestinoId, // AGORA PREENCHIDO
+            };
         }
     }
     
-    // 6. Preencher o estado (Usando os valores globais extraídos no início)
+    // 5. Preencher o estado (Usando os valores globais extraídos no início)
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
@@ -848,7 +874,7 @@ const ClasseIIForm = () => {
     setTempND39Inputs(tempND39Load); 
     setTempDestinations(tempDestinationsLoad);
     
-    // 7. Preencher fases e aba
+    // 6. Preencher fases e aba
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
@@ -859,7 +885,7 @@ const ClasseIIForm = () => {
         setSelectedTab(CATEGORIAS[0]);
     }
     
-    // 8. Rolar para o topo do formulário
+    // 7. Rolar para o topo do formulário
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setLoading(false);
   };
@@ -1506,6 +1532,9 @@ const ClasseIIForm = () => {
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
+                  // Verifica se a OM Detentora é diferente da OM de Destino
+                  const isDifferentOm = omDetentora !== registro.organizacao;
+                  
                   // NOVO: Gera a memória automática com o rótulo padronizado
                   const memoriaAutomatica = generateClasseIIMemoriaCalculo(
                       registro.categoria as Categoria, 
@@ -1523,7 +1552,7 @@ const ClasseIIForm = () => {
                   const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                   
                   // Verifica se a OM Detentora é diferente da OM de Destino
-                  const isDifferentOm = omDetentora !== registro.organizacao;
+                  const isDifferentOmInView = omDetentora !== registro.organizacao;
 
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
@@ -1540,7 +1569,7 @@ const ClasseIIForm = () => {
                                   </Badge>
                               </div>
                               
-                              {isDifferentOm && (
+                              {isDifferentOmInView && (
                                   <div className="flex items-center gap-1 mt-1">
                                       <AlertCircle className="h-4 w-4 text-red-600" />
                                       <span className="text-sm font-medium text-red-600">

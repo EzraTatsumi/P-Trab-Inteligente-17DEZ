@@ -838,9 +838,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       // 5. Configurar célula I (Borda fina)
       valorTotalRow.getCell('I').border = cellBorder;
       
-      // 6. Configurar célula A (Mesclada A:F)
-      valorTotalRow.getCell('A').border = cellBorder;
-      
       currentRow++;
       
       const gndLabelRow = worksheet.getRow(currentRow);
