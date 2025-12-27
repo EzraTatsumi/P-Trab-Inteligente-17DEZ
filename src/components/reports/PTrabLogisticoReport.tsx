@@ -505,8 +505,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   }
                   
               } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                  // CORREÇÃO APLICADA AQUI: Forçar o prefixo 'CLASSE V'
+                  const omDetentora = registro.om_detentora || omDestinoRecurso;
+                  const isDifferentOm = omDetentora !== omDestinoRecurso;
+
+                  // 1. Define o prefixo CLASSE V
                   rowData.despesasValue = `CLASSE V - ${categoriaDetalhe.toUpperCase()}`;
+                  
+                  // 2. Adiciona a OM Detentora se for diferente da OM de Destino
+                  if (isDifferentOm) {
+                      rowData.despesasValue += `\n${omDetentora}`;
+                  }
+                  
                   rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
               } else {
                   // Outras classes (VI, VII, VIII, IX) mantêm a quebra de linha
@@ -1054,8 +1063,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             }
                             
                         } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                            // CORREÇÃO APLICADA AQUI: Forçar o prefixo 'CLASSE V'
+                            const omDetentora = registro.om_detentora || omDestinoRecurso;
+                            const isDifferentOm = omDetentora !== omDestinoRecurso;
+
+                            // 1. Define o prefixo CLASSE V
                             rowData.despesasValue = `CLASSE V - ${categoriaDetalhe.toUpperCase()}`;
+                            
+                            // 2. Adiciona a OM Detentora se for diferente da OM de Destino
+                            if (isDifferentOm) {
+                                rowData.despesasValue += `\n${omDetentora}`;
+                            }
+                            
                             rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
                         } else {
                             // Outras classes (VI, VII, VIII, IX) mantêm a quebra de linha
