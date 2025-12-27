@@ -462,7 +462,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 categoriaDetalhe = registro.animal_tipo;
             }
                 
-            despesasValue = `${classeLabel} - ${categoriaDetalhe.toUpperCase()}`;
+            // CORREÇÃO: Usar quebra de linha para separar CLASSE X e CATEGORIA
+            despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
             omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
             valorC = registro.valor_nd_30;
             valorD = registro.valor_nd_39;
@@ -981,8 +982,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             categoriaDetalhe = registro.animal_tipo;
                         }
                             
-                        // Ajuste para o formato solicitado: CLASSE X - CATEGORIA
-                        rowData.despesasValue = `${classeLabel} - ${categoriaDetalhe.toUpperCase()}`;
+                        // Ajuste para o formato solicitado: CLASSE X \n CATEGORIA
+                        rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
                         rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
                         rowData.valorC = registro.valor_nd_30;
                         rowData.valorD = registro.valor_nd_39;
