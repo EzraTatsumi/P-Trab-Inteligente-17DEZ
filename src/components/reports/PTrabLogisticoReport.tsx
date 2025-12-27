@@ -103,8 +103,8 @@ const defaultGenerateClasseVMemoriaCalculo = (registro: any): string => {
             registro.categoria,
             registro.itens_equipamentos,
             registro.dias_operacao,
-            registro.organizacao, // Para Classe V, a OM Detentora é a OM de Destino
-            registro.ug,
+            registro.om_detentora || registro.organizacao, // Para Classe V, a OM Detentora é a OM de Destino
+            registro.ug_detentora || registro.ug,
             registro.fase_atividade,
             registro.efetivo,
             registro.valor_nd_30,
@@ -132,7 +132,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   fileSuffix, // NOVO PROP
   generateClasseIIMemoriaCalculo = defaultGenerateClasseIIMemoriaCalculo, // FORNECER DEFAULT
   generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
-  generateClasseVMemoriaCalculo = defaultGenerateVMemoriaCalculo, // NOVO: DESESTRUTURANDO E USANDO DEFAULT
+  generateClasseVMemoriaCalculo = defaultGenerateClasseVMemoriaCalculo, // NOVO: DESESTRUTURANDO E USANDO DEFAULT
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -520,7 +520,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               
               if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                   rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
-              } else if (!CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+              } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                  // Já tratado acima, mas mantendo a estrutura de else if para clareza
+                  rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
+              } else {
                   // Se não for Classe V, usa a função genérica/Classe II
                   const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                   rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
@@ -869,7 +872,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow++;
       
       const cmtRow = worksheet.getRow(currentRow);
-      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment; // Centraliza
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
@@ -1066,7 +1069,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         
                         if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                             rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
-                        } else if (!CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                        } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                            // Se for Classe V, usa a função de memória de Classe V
+                            rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
+                        } else {
                             // Se não for Classe V, usa a função genérica/Classe II
                             const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                             rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
