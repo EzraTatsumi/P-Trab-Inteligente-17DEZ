@@ -48,7 +48,7 @@ import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
 import { defaultClasseIIConfig } from "@/data/classeIIData";
-import { cn } from "@/lib/utils";
+import { cn } => "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -1011,7 +1011,8 @@ const ClasseIIForm = () => {
                     selectedOmId={form.selectedOmId}
                     onChange={handleOMChange}
                     placeholder="Selecione a OM..."
-                    // REMOVIDO initialOmName e initialOmUg para confiar no selectedOmId
+                    initialOmName={form.organizacao} 
+                    initialOmUg={form.ug} 
                   />
                 </div>
 
