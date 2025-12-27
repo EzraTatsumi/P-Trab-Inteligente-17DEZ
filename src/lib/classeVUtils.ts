@@ -49,7 +49,7 @@ const getOmArticle = (omName: string): string => {
  * @param categoria A categoria da Classe V.
  * @returns 'do' ou 'da'.
  */
-const getCategoryArticle = (categoria: Categoria): 'do' | 'da' => {
+const getCategoryArticle = (categoria: Categoria): 'do' | 'da' | 'de' => {
     switch (categoria) {
         case 'Armt L':
         case 'Armt P':
@@ -57,7 +57,7 @@ const getCategoryArticle = (categoria: Categoria): 'do' | 'da' => {
         case 'IODCT':
             return 'do'; // Manutenção DO IODCT
         case 'DQBRN':
-            return 'da'; // Manutenção DA DQBRN
+            return 'de'; // Manutenção DE DQBRN (Ajuste para concordância correta)
         default:
             return 'do';
     }
@@ -96,6 +96,7 @@ export const generateCategoryMemoriaCalculo = (
 
     // 6. Montar o cabeçalho dinâmico
     const categoryLabel = getCategoryLabel(categoria);
+    // Se for 'de', não usamos o artigo 'o/a' no label, apenas 'de' + 'DQBRN'
     const header = `${ndPrefix} - Manutenção de componentes ${categoryArticle} ${categoryLabel} de ${efetivo} ${militarPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
     let detalhamentoItens = "";
