@@ -182,7 +182,7 @@ src/lib/ptrabNumberUtils.ts
 src/lib/errorUtils.ts
 src/lib/ptrabUtils.ts
 src/lib/utils.ts
-src/lib/formatUtils.ts
+
 src/lib/omUtils.ts
 src/lib/validationSchemas.ts
 # REMOVIDO: src/lib/classeIUtils.ts
