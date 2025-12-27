@@ -418,7 +418,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               cell.fill = headerFillLaranja;
               cell.font = headerFontStyle; // Garante letra preta
           }
-          
       });
       
       currentRow = headerRow2 + 1;
@@ -491,29 +490,23 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                   categoriaDetalhe = registro.animal_tipo;
               }
-              
-              // Determina a OM Detentora (se for Classe II, usa om_detentora, senão assume a OM principal do PTrab)
-              const omDetentora = registro.om_detentora || ptrabData.nome_om;
-              const isDifferentOm = omDetentora !== omDestinoRecurso;
                   
               // Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
               if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
                   
+                  const omDetentora = registro.om_detentora || omDestinoRecurso;
+                  const isDifferentOm = omDetentora !== omDestinoRecurso;
+                  
                   // NOVO: Adiciona a OM Detentora se for diferente da OM de Destino
                   rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
                   if (isDifferentOm) {
-                      rowData.despesasValue += `\nOM Detentora: ${omDetentora}`;
+                      // MODIFICAÇÃO AQUI: Simplificando o texto para apenas o nome da OM Detentora
+                      rowData.despesasValue += `\n${omDetentora}`;
                   }
                   
               } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                  // Lógica específica para Classe V (Armamento)
-                  rowData.despesasValue = `${classeLabel} - ${categoriaDetalhe.toUpperCase()}`;
-                  
-                  // Adiciona OM Detentora se for diferente da OM de Destino do Recurso
-                  if (isDifferentOm) {
-                      rowData.despesasValue += `\nOM Detentora: ${omDetentora}`;
-                  }
-                  
+                  // NOVO: Usar função específica para Classe V
+                  rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
                   rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
               } else {
                   // Outras classes (VI, VII, VIII, IX) mantêm a quebra de linha
@@ -1043,32 +1036,26 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                             categoriaDetalhe = registro.animal_tipo;
                         }
-                        
-                        // Determina a OM Detentora (se for Classe II, usa om_detentora, senão assume a OM principal do PTrab)
-                        const omDetentora = registro.om_detentora || ptrabData.nome_om;
-                        const isDifferentOm = omDetentora !== omDestinoRecurso;
                             
                         // Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
                         if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
                             
+                            const omDetentora = registro.om_detentora || omDestinoRecurso;
+                            const isDifferentOm = omDetentora !== omDestinoRecurso;
+                            
                             // NOVO: Adiciona a OM Detentora se for diferente da OM de Destino
                             rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
                             if (isDifferentOm) {
-                                rowData.despesasValue += `\nOM Detentora: ${omDetentora}`;
+                                // MODIFICAÇÃO AQUI: Simplificando o texto para apenas o nome da OM Detentora
+                                rowData.despesasValue += `\n${omDetentora}`;
                             }
                             
                         } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                            // Lógica específica para Classe V (Armamento)
-                            rowData.despesasValue = `${classeLabel} - ${categoriaDetalhe.toUpperCase()}`;
-                            
-                            // Adiciona OM Detentora se for diferente da OM de Destino do Recurso
-                            if (isDifferentOm) {
-                                rowData.despesasValue += `\nOM Detentora: ${omDetentora}`;
-                            }
-                            
+                            // NOVO: Usar função específica para Classe V
+                            rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
                             rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
                         } else {
-                            // Outras classes (VI, VII, VIII, IX) mantêm a quebra de linha
+                            // Outras classes (V, VI, VII, VIII, IX) mantêm a quebra de linha
                             rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
                         }
                         
