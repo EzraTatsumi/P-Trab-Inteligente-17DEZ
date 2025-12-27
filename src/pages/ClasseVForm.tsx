@@ -14,7 +14,14 @@ import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatCodug } from "@/lib/formatUtils";
+import { 
+    formatCurrency, 
+    formatNumber, 
+    parseInputToNumber, 
+    formatNumberForInput, 
+    formatCodug,
+    formatCurrencyInput // ADICIONADO
+} from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -466,6 +473,7 @@ const ClasseVForm = () => {
   const currentND39InputDigits = tempND39Inputs[selectedTab] || "";
   
   const nd39NumericValue = useMemo(() => {
+    // O erro estava aqui: formatCurrencyInput não estava importado.
     return formatCurrencyInput(currentND39InputDigits).numericValue;
   }, [currentND39InputDigits]);
   
