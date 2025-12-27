@@ -1394,9 +1394,7 @@ const ClasseIIForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
-                                                        <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
-                                                            {/* Removido: OM Destino: {registro.organizacao} */}
-                                                        </Badge>
+                                                        {/* REMOVIDO O BADGE VAZIO AQUI */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
