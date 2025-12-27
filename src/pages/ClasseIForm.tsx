@@ -133,6 +133,7 @@ export default function ClasseIForm() {
   const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
   const [memoriaQSEdit, setMemoriaQSEdit] = useState<string>("");
   const [memoriaQREdit, setMemoriaQREdit] = useState<string>("");
+  const [memoriaOpEdit, setMemoriaOpEdit] = useState<string>(""); // Adicionado para Ração Operacional
 
   const { handleEnterToNextField } = useFormNavigation();
 
@@ -630,8 +631,9 @@ export default function ClasseIForm() {
         let memoriaQRCustomizada = null;
         if (r.id) {
             const existingMemoria = registros.find(reg => reg.id === r.id);
-            memoriaQSCustomizada = existingMemoria?.memoriaQSCustomizada || null;
-            memoriaQRCustomizada = existingMemoria?.memoriaQRCustomizada || null;
+            // Para Ração Operacional, usamos memoria_calculo_qs_customizada para o texto customizado
+            memoriaQSCustomizada = existingMemoria?.memoriaQSCustomizada || null; 
+            memoriaQRCustomizada = null; // QR é sempre nulo para Ração Operacional
         }
         
         recordsToSave.push({
@@ -828,34 +830,59 @@ export default function ClasseIForm() {
   };
 
   const handleIniciarEdicaoMemoria = (registro: ClasseIRegistro) => {
-    if (registro.categoria !== 'RACAO_QUENTE') {
-        toast.warning("Memória de cálculo não aplicável para Ração Operacional.");
+    setEditingMemoriaId(registro.id);
+    
+    if (registro.categoria === 'RACAO_QUENTE') {
+        const { qs, qr } = generateRacaoQuenteMemoriaCalculo(registro);
+        setMemoriaQSEdit(registro.memoriaQSCustomizada || qs);
+        setMemoriaQREdit(registro.memoriaQRCustomizada || qr);
+        setMemoriaOpEdit(""); // Limpa estado de Ração Operacional
+    } else if (registro.categoria === 'RACAO_OPERACIONAL') {
+        const op = generateRacaoOperacionalMemoriaCalculo(registro);
+        // Ração Operacional usa memoriaQSCustomizada para customização
+        setMemoriaOpEdit(registro.memoriaQSCustomizada || op); 
+        setMemoriaQSEdit(""); // Limpa estados de Ração Quente
+        setMemoriaQREdit("");
+    } else {
+        toast.warning("Categoria de registro desconhecida.");
         return;
     }
-    
-    const { qs, qr } = generateRacaoQuenteMemoriaCalculo(registro);
-    
-    setEditingMemoriaId(registro.id);
-    setMemoriaQSEdit(registro.memoriaQSCustomizada || qs);
-    setMemoriaQREdit(registro.memoriaQRCustomizada || qr);
   };
 
   const handleCancelarEdicaoMemoria = () => {
     setEditingMemoriaId(null);
     setMemoriaQSEdit("");
     setMemoriaQREdit("");
+    setMemoriaOpEdit(""); // Limpa estado de Ração Operacional
   };
 
   const handleSalvarMemoriaCustomizada = async (registroId: string) => {
     try {
       setLoading(true);
       
+      const registro = registros.find(r => r.id === registroId);
+      if (!registro) throw new Error("Registro não encontrado.");
+      
+      let updateData: Partial<TablesInsert<'classe_i_registros'>>;
+      
+      if (registro.categoria === 'RACAO_QUENTE') {
+          updateData = {
+              memoria_calculo_qs_customizada: memoriaQSEdit,
+              memoria_calculo_qr_customizada: memoriaQREdit,
+          };
+      } else if (registro.categoria === 'RACAO_OPERACIONAL') {
+          // Usamos memoria_calculo_qs_customizada para Ração Operacional
+          updateData = {
+              memoria_calculo_qs_customizada: memoriaOpEdit,
+              memoria_calculo_qr_customizada: null, // Garantir que QR fique nulo
+          };
+      } else {
+          throw new Error("Categoria desconhecida.");
+      }
+      
       const { error } = await supabase
         .from("classe_i_registros")
-        .update({
-          memoria_calculo_qs_customizada: memoriaQSEdit,
-          memoria_calculo_qr_customizada: memoriaQREdit,
-        })
+        .update(updateData)
         .eq("id", registroId);
 
       if (error) throw error;
@@ -864,6 +891,7 @@ export default function ClasseIForm() {
       handleCancelarEdicaoMemoria();
       await loadRegistros(ptrabId!);
     } catch (error: any) {
+      console.error("Erro ao salvar memória customizada:", error);
       toast.error(sanitizeError(error));
     } finally {
       setLoading(false);
@@ -878,12 +906,28 @@ export default function ClasseIForm() {
     try {
       setLoading(true);
       
+      const registro = registros.find(r => r.id === registroId);
+      if (!registro) throw new Error("Registro não encontrado.");
+      
+      let updateData: Partial<TablesInsert<'classe_i_registros'>>;
+      
+      if (registro.categoria === 'RACAO_QUENTE') {
+          updateData = {
+              memoria_calculo_qs_customizada: null,
+              memoria_calculo_qr_customizada: null,
+          };
+      } else if (registro.categoria === 'RACAO_OPERACIONAL') {
+          // Apenas limpa o campo QS, que é usado para Ração Operacional
+          updateData = {
+              memoria_calculo_qs_customizada: null,
+          };
+      } else {
+          throw new Error("Categoria desconhecida.");
+      }
+      
       const { error } = await supabase
         .from("classe_i_registros")
-        .update({
-          memoria_calculo_qs_customizada: null,
-          memoria_calculo_qr_customizada: null,
-        })
+        .update(updateData)
         .eq("id", registroId);
 
       if (error) throw error;
@@ -1601,7 +1645,10 @@ export default function ClasseIForm() {
                   {registros.map((registro) => {
                     const isRacaoQuente = registro.categoria === 'RACAO_QUENTE';
                     const isEditing = editingMemoriaId === registro.id;
-                    const hasCustomMemoria = isRacaoQuente && !!(registro.memoriaQSCustomizada || registro.memoriaQRCustomizada);
+                    
+                    const hasCustomMemoria = isRacaoQuente 
+                        ? !!(registro.memoriaQSCustomizada || registro.memoriaQRCustomizada)
+                        : !!registro.memoriaQSCustomizada; // Ração Operacional usa memoriaQSCustomizada
                     
                     let memoriaQSFinal = "";
                     let memoriaQRFinal = "";
@@ -1612,7 +1659,8 @@ export default function ClasseIForm() {
                         memoriaQSFinal = isEditing ? memoriaQSEdit : (registro.memoriaQSCustomizada || qs);
                         memoriaQRFinal = isEditing ? memoriaQREdit : (registro.memoriaQRCustomizada || qr);
                     } else {
-                        memoriaOpFinal = generateRacaoOperacionalMemoriaCalculo(registro);
+                        const op = generateRacaoOperacionalMemoriaCalculo(registro);
+                        memoriaOpFinal = isEditing ? memoriaOpEdit : (registro.memoriaQSCustomizada || op);
                     }
                     
                     return (
@@ -1634,60 +1682,58 @@ export default function ClasseIForm() {
                             )}
                           </div>
                           
-                          {isRacaoQuente && (
-                            <div className="flex items-center justify-end gap-2">
-                              {!isEditing ? (
-                                <>
+                          <div className="flex items-center justify-end gap-2">
+                            {!isEditing ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleIniciarEdicaoMemoria(registro)}
+                                  disabled={loading}
+                                  className="gap-2"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                  Editar Memória
+                                </Button>
+                                
+                                {hasCustomMemoria && (
                                   <Button
                                     size="sm"
-                                    variant="outline"
-                                    onClick={() => handleIniciarEdicaoMemoria(registro)}
+                                    variant="ghost"
+                                    onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
                                     disabled={loading}
-                                    className="gap-2"
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                    Editar Memória
-                                  </Button>
-                                  
-                                  {hasCustomMemoria && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
-                                      disabled={loading}
-                                      className="gap-2 text-muted-foreground"
-                                    >
-                                      <XCircle className="h-4 w-4" />
-                                      Restaurar Automática
-                                    </Button>
-                                  )}
-                                </>
-                              ) : (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
-                                    disabled={loading}
-                                    className="gap-2"
-                                  >
-                                    <Check className="h-4 w-4" />
-                                    Salvar
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={handleCancelarEdicaoMemoria}
-                                    disabled={loading}
-                                    className="gap-2"
+                                    className="gap-2 text-muted-foreground"
                                   >
                                     <XCircle className="h-4 w-4" />
-                                    Cancelar
+                                    Restaurar Automática
                                   </Button>
-                                </>
-                              )}
-                            </div>
-                          )}
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                  disabled={loading}
+                                  className="gap-2"
+                                >
+                                  <Check className="h-4 w-4" />
+                                  Salvar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleCancelarEdicaoMemoria}
+                                  disabled={loading}
+                                  className="gap-2"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                  Cancelar
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
                         <div className="h-px bg-border my-4" /> 
                         
@@ -1734,9 +1780,13 @@ export default function ClasseIForm() {
                               <Card className="p-4 bg-background rounded-lg border">
                                 <Textarea
                                   value={memoriaOpFinal}
-                                  readOnly
+                                  onChange={(e) => isEditing && setMemoriaOpEdit(e.target.value)}
+                                  readOnly={!isEditing}
                                   rows={8}
-                                  className="font-mono text-xs whitespace-pre-wrap text-foreground"
+                                  className={cn(
+                                    "font-mono text-xs whitespace-pre-wrap text-foreground",
+                                    isEditing && "border-secondary focus:ring-2 focus:ring-secondary"
+                                  )}
                                 />
                               </Card>
                             </div>
