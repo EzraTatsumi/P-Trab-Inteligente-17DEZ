@@ -1011,8 +1011,7 @@ const ClasseIIForm = () => {
                     selectedOmId={form.selectedOmId}
                     onChange={handleOMChange}
                     placeholder="Selecione a OM..."
-                    initialOmName={form.organizacao} 
-                    initialOmUg={form.ug} 
+                    // REMOVIDO initialOmName e initialOmUg para confiar no selectedOmId
                   />
                 </div>
 
