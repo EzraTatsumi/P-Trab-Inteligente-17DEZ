@@ -1413,7 +1413,7 @@ const ClasseIIForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
-                                                        <Badge variant="outline" className="text-xs font-normal">
+                                                        <Badge variant="outline" className="text-xs font-semibold">
                                                             {fases}
                                                         </Badge>
                                                     </div>
