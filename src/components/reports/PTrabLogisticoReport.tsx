@@ -506,6 +506,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   
               } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
                   // AJUSTE AQUI: Formato CLASSE V - CATEGORIA em uma linha, tudo em caixa alta
+                  // GARANTINDO QUE NÃO HÁ QUEBRA DE LINHA AQUI
                   rowData.despesasValue = `${classeLabel} - ${categoriaDetalhe.toUpperCase()}`;
                   rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
               } else {
