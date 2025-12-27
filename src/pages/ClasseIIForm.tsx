@@ -61,6 +61,10 @@ interface ClasseIIRegistro {
   id: string;
   organizacao: string; // OM de Destino do Recurso (ND 30/39)
   ug: string; // UG de Destino do Recurso (ND 30/39)
+  // NOVOS CAMPOS DE DETENTORA
+  om_detentora?: string | null; // OM Detentora (Source)
+  ug_detentora?: string | null; // UG Detentora (Source)
+  // FIM NOVOS CAMPOS
   dias_operacao: number;
   categoria: string;
   itens_equipamentos: ItemClasseII[]; // Tipo corrigido
@@ -370,7 +374,7 @@ const ClasseIIForm = () => {
     
     const { data, error } = await supabase
       .from("classe_ii_registros")
-      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, efetivo")
+      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, efetivo, om_detentora, ug_detentora") // NOVO: Selecionar campos da Detentora
       .eq("p_trab_id", ptrabId)
       .in("categoria", CATEGORIAS) // FILTRO ADICIONADO AQUI
       .order("organizacao", { ascending: true }) // Ordenar por OM
@@ -385,13 +389,14 @@ const ClasseIIForm = () => {
     // A edição agora é feita por registro (que representa uma categoria)
     const uniqueRecordsMap = new Map<string, ClasseIIRegistro>();
     (data || []).forEach(r => {
-        const key = `${r.organizacao}-${r.ug}-${r.categoria}`; // Chave única por OM de destino E Categoria
+        // Chave única por OM de destino E Categoria
+        const key = `${r.organizacao}-${r.ug}-${r.categoria}`; 
         const record = {
             ...r,
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseII[],
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
-            efetivo: r.efetivo || 0, // Adicionado
+            efetivo: r.efetivo || 0, 
         } as ClasseIIRegistro;
         uniqueRecordsMap.set(key, record);
     });
@@ -513,8 +518,8 @@ const ClasseIIForm = () => {
 
   // NOVO HANDLER: Salva os itens da lista expandida para o form.itens principal
   const handleUpdateCategoryItems = () => {
-    if (!form.organizacao || form.dias_operacao <= 0) {
-        toast.error("Preencha a OM e os Dias de Operação antes de salvar itens.");
+    if (!form.organizacao || form.ug === "" || form.dias_operacao <= 0) {
+        toast.error("Preencha a OM Detentora e os Dias de Operação antes de salvar itens.");
         return;
     }
     
@@ -591,7 +596,7 @@ const ClasseIIForm = () => {
 
   const handleSalvarRegistros = async () => {
     if (!ptrabId) return;
-    if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
+    if (!form.organizacao || form.ug === "") { toast.error("Selecione uma OM detentora"); return; }
     if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
     if (form.efetivo <= 0) { toast.error("Efetivo deve ser maior que zero"); return; }
     if (form.itens.length === 0) { toast.error("Adicione pelo menos um item"); return; }
@@ -666,6 +671,8 @@ const ClasseIIForm = () => {
             p_trab_id: ptrabId,
             organizacao: allocation.om_destino_recurso, // OM de destino do recurso (ND 30/39)
             ug: allocation.ug_destino_recurso, // UG de destino do recurso
+            om_detentora: form.organizacao, // NOVO: OM Detentora
+            ug_detentora: form.ug, // NOVO: UG Detentora
             dias_operacao: form.dias_operacao,
             categoria: categoria, // Salvar a categoria como o tipo de registro
             itens_equipamentos: itens as any,
@@ -682,11 +689,14 @@ const ClasseIIForm = () => {
 
     try {
       // 3. Deletar APENAS registros de Classe II existentes para o PTrab
+      //    que pertencem à OM Detentora que está sendo salva/editada.
       const { error: deleteError } = await supabase
         .from("classe_ii_registros")
         .delete()
         .eq("p_trab_id", ptrabId)
-        .in("categoria", CATEGORIAS); // FILTRO ADICIONADO AQUI
+        .eq("om_detentora", form.organizacao) // FILTRAR PELA OM DETENTORA
+        .eq("ug_detentora", form.ug)         // FILTRAR PELA UG DETENTORA
+        .in("categoria", CATEGORIAS); 
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
       // 4. Inserir os novos registros (um por categoria ativa)
@@ -709,28 +719,36 @@ const ClasseIIForm = () => {
     setLoading(true);
     resetFormFields();
     
-    // 1. Buscar TODOS os registros de CLASSE II para este PTrab
-    const { data: allRecords, error: fetchAllError } = await supabase
+    // 1. Determine the scope of the edit (OM Detentora)
+    // Use os novos campos, com fallback para os campos antigos (organizacao/ug) para compatibilidade com dados antigos
+    const omDetentoraName = registro.om_detentora || registro.organizacao;
+    const ugDetentoraCode = registro.ug_detentora || registro.ug;
+    
+    // 2. Fetch ALL records belonging to this specific OM Detentora/UG Detentora for this PTrab
+    const { data: recordsForDetentora, error: fetchError } = await supabase
         .from("classe_ii_registros")
-        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo") // Incluindo 'efetivo'
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo, om_detentora, ug_detentora")
         .eq("p_trab_id", ptrabId)
-        .in("categoria", CATEGORIAS); // FILTRO ADICIONADO AQUI
+        .eq("om_detentora", omDetentoraName) // Filtrar pela Detentora
+        .eq("ug_detentora", ugDetentoraCode) // Filtrar pela Detentora
+        .in("categoria", CATEGORIAS);
         
-    if (fetchAllError) {
+    if (fetchError) {
         toast.error("Erro ao carregar todos os registros para edição.");
         setLoading(false);
         return;
     }
     
-    // 2. Consolidar todos os itens em um único array (form.itens)
+    // 3. Consolidar todos os itens em um único array (form.itens)
     let consolidatedItems: ItemClasseII[] = [];
     let newAllocations = { ...initialCategoryAllocations };
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
     let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
-    let firstOmDetentora: { nome: string, ug: string } | null = null;
-    let firstEfetivo: number = 0; // Variável para armazenar o efetivo
+    let firstEfetivo: number = 0; 
+    let diasOperacao: number = 0;
+    let fasesSalvas: string[] = [];
     
-    (allRecords || []).forEach(r => {
+    (recordsForDetentora || []).forEach(r => {
         const category = r.categoria as Categoria;
         const items = (r.itens_equipamentos || []) as ItemClasseII[];
         
@@ -764,42 +782,45 @@ const ClasseIIForm = () => {
             };
         }
         
-        // Capturar a OM Detentora e o Efetivo (assumindo que são os mesmos em todos os registros)
-        if (!firstOmDetentora) {
-            firstOmDetentora = { nome: r.organizacao, ug: r.ug };
-        }
+        // Capturar dados globais (devem ser os mesmos em todos os registros do grupo)
         if (r.efetivo) {
-            firstEfetivo = r.efetivo; // Captura o efetivo
+            firstEfetivo = r.efetivo; 
+        }
+        if (r.dias_operacao) {
+            diasOperacao = r.dias_operacao;
+        }
+        if (r.fase_atividade) {
+            fasesSalvas = r.fase_atividade.split(';').map(f => f.trim()).filter(f => f);
         }
     });
     
-    // 3. Buscar IDs das OMs de Destino e Detentora
+    // 4. Buscar IDs das OMs de Destino e Detentora
     let selectedOmIdForEdit: string | undefined = undefined;
     
-    if (firstOmDetentora) {
+    if (omDetentoraName) {
         try {
             const { data: omData } = await supabase
                 .from('organizacoes_militares')
                 .select('id')
-                .eq('nome_om', firstOmDetentora.nome)
-                .eq('codug_om', firstOmDetentora.ug)
+                .eq('nome_om', omDetentoraName)
+                .eq('codug_om', ugDetentoraCode)
                 .maybeSingle();
             selectedOmIdForEdit = omData?.id;
         } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
     }
     
-    // 4. Preencher o formulário principal
+    // 5. Preencher o formulário principal
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
-      organizacao: firstOmDetentora?.nome || "",
-      ug: firstOmDetentora?.ug || "",
-      efetivo: firstEfetivo, // RECUPERANDO O EFETIVO AQUI
-      dias_operacao: registro.dias_operacao,
+      organizacao: omDetentoraName,
+      ug: ugDetentoraCode,
+      efetivo: firstEfetivo, 
+      dias_operacao: diasOperacao,
       itens: consolidatedItems,
     });
     
-    // 5. Preencher o estado de alocação e buscar IDs de destino
+    // 6. Preencher o estado de alocação e buscar IDs de destino
     const categoriesToLoad = Object.keys(newAllocations) as Categoria[];
     for (const cat of categoriesToLoad) {
         const alloc = newAllocations[cat];
@@ -824,8 +845,7 @@ const ClasseIIForm = () => {
     setTempND39Inputs(tempND39Load); 
     setTempDestinations(tempDestinationsLoad);
     
-    // 6. Preencher fases e aba
-    const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+    // 7. Preencher fases e aba
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
@@ -842,7 +862,11 @@ const ClasseIIForm = () => {
   // NOVO MEMO: Agrupa os registros por OM de Destino
   const registrosAgrupadosPorOM = useMemo(() => {
     return registros.reduce((acc, registro) => {
-        const key = `${registro.organizacao} (${registro.ug})`;
+        // Usamos a OM Detentora como chave de agrupamento principal para a visualização
+        const omDetentora = registro.om_detentora || registro.organizacao;
+        const ugDetentora = registro.ug_detentora || registro.ug;
+        const key = `${omDetentora} (${ugDetentora})`;
+        
         if (!acc[key]) {
             acc[key] = [];
         }
@@ -1043,7 +1067,7 @@ const ClasseIIForm = () => {
             </div>
 
             {/* 2. Adicionar Itens por Categoria (Aba) - REESTRUTURADO PARA TABELA */}
-            {form.organizacao && form.dias_operacao > 0 && (
+            {form.organizacao && form.ug !== "" && form.dias_operacao > 0 && (
               <div className="space-y-4 border-b pb-4" ref={formRef}>
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
@@ -1194,7 +1218,7 @@ const ClasseIIForm = () => {
                                 type="button" 
                                 onClick={handleUpdateCategoryItems} 
                                 className="w-full md:w-auto" 
-                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && !tempDestinations[cat].om)}
+                                disabled={!form.organizacao || form.ug === "" || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && (!tempDestinations[cat].om || tempDestinations[cat].ug === ""))}
                             >
                                 Salvar Itens da Categoria
                             </Button>
@@ -1317,7 +1341,7 @@ const ClasseIIForm = () => {
                   <Button 
                     type="button" 
                     onClick={handleSalvarRegistros} 
-                    disabled={loading || !form.organizacao || form.itens.length === 0 || !isTotalAlocadoCorrect}
+                    disabled={loading || !form.organizacao || form.ug === "" || form.itens.length === 0 || !isTotalAlocadoCorrect}
                   >
                     {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")}
                   </Button>
@@ -1345,7 +1369,7 @@ const ClasseIIForm = () => {
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h3 className="font-bold text-lg text-primary">
-                                    {omName} (UG: {formatCodug(ug)})
+                                    OM Detentora: {omName} (UG: {formatCodug(ug)})
                                 </h3>
                                 <span className="font-extrabold text-xl text-primary">
                                     {formatCurrency(totalOM)}
@@ -1370,7 +1394,9 @@ const ClasseIIForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
-                                                        {/* REMOVIDO O BADGE DUPLICADO AQUI */}
+                                                        <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
+                                                            OM Destino: {registro.organizacao}
+                                                        </Badge>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
@@ -1443,8 +1469,10 @@ const ClasseIIForm = () => {
                 </h3>
                 
                 {registros.map(registro => {
-                  const om = registro.organizacao;
-                  const ug = registro.ug;
+                  // OM Detentora (Source)
+                  const omDetentora = registro.om_detentora || registro.organizacao;
+                  const ugDetentora = registro.ug_detentora || registro.ug;
+                  
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
@@ -1453,12 +1481,12 @@ const ClasseIIForm = () => {
                       registro.categoria as Categoria, 
                       registro.itens_equipamentos as ItemClasseII[], 
                       registro.dias_operacao, 
-                      registro.organizacao, 
-                      registro.ug, 
+                      omDetentora, // Passando a Detentora
+                      ugDetentora, // Passando a UG Detentora
                       registro.fase_atividade,
-                      registro.efetivo, // PASSANDO O EFETIVO
-                      registro.valor_nd_30, // PASSANDO ND 30
-                      registro.valor_nd_39 // PASSANDO ND 39
+                      registro.efetivo, 
+                      registro.valor_nd_30, 
+                      registro.valor_nd_39 
                   );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
@@ -1471,7 +1499,7 @@ const ClasseIIForm = () => {
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                               <h4 className="text-base font-semibold text-foreground">
-                                OM Destino: {om} (UG: {formatCodug(ug)})
+                                OM Detentora: {omDetentora} (UG: {formatCodug(ugDetentora)})
                               </h4>
                               <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
                                   {badgeStyle.label}

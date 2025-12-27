@@ -54,8 +54,8 @@ export const generateCategoryMemoriaCalculo = (
     categoria: Categoria, 
     itens: ItemClasseII[], 
     diasOperacao: number, 
-    organizacao: string, // OM Detentora
-    ug: string, // UG Detentora
+    omDetentora: string, // OM Detentora (Source)
+    ugDetentora: string, // UG Detentora (Source)
     faseAtividade: string | null | undefined,
     efetivo: number, // NOVO: Efetivo Empregado
     valorND30: number, // NOVO: Valor ND 30
@@ -81,13 +81,13 @@ export const generateCategoryMemoriaCalculo = (
     const militarPlural = efetivo === 1 ? "militar" : "militares";
     
     // 3. Determinar o artigo 'do/da'
-    const omArticle = getOmArticle(organizacao);
+    const omArticle = getOmArticle(omDetentora);
     
     // 4. Determinar singular/plural de 'dia'
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
 
     // 5. Montar o cabeçalho dinâmico
-    const header = `${ndPrefix} - Manutenção de componente de ${getCategoryLabel(categoria)} de ${efetivo} ${militarPlural} ${omArticle} ${organizacao}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
+    const header = `${ndPrefix} - Manutenção de componente de ${getCategoryLabel(categoria)} de ${efetivo} ${militarPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
     let detalhamentoItens = "";
     itens.forEach(item => {
@@ -98,7 +98,7 @@ export const generateCategoryMemoriaCalculo = (
     // Montar a memória de cálculo
     return `${header}
 
-OM Detentora: ${organizacao} (UG: ${formatCodug(ug)})
+OM Detentora: ${omDetentora} (UG: ${formatCodug(ugDetentora)})
 Total de Itens na Categoria: ${totalQuantidade}
 
 Detalhes dos Itens (Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias):
@@ -114,8 +114,8 @@ Valor Total da Categoria: ${formatCurrency(totalValor)}.`;
 export const generateDetalhamento = (
     itens: ItemClasseII[], 
     diasOperacao: number, 
-    organizacao: string, // OM Detentora
-    ug: string, // UG Detentora
+    omDetentora: string, // OM Detentora (Source)
+    ugDetentora: string, // UG Detentora (Source)
     faseAtividade: string, 
     omDestino: string, // OM de Destino do Recurso
     ugDestino: string, // UG de Destino do Recurso
@@ -143,13 +143,13 @@ export const generateDetalhamento = (
     const militarPlural = efetivo === 1 ? "militar" : "militares";
     
     // 3. Determinar o artigo 'do/da'
-    const omArticle = getOmArticle(organizacao);
+    const omArticle = getOmArticle(omDetentora);
     
     // 4. Determinar singular/plural de 'dia'
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
 
     // 5. Montar o cabeçalho dinâmico (usando OM Detentora)
-    const header = `${ndPrefix} - Manutenção de componente de Material de Intendência (Diversos) de ${efetivo} ${militarPlural} ${omArticle} ${organizacao}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
+    const header = `${ndPrefix} - Manutenção de componente de Material de Intendência (Diversos) de ${efetivo} ${militarPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
 
     // 6. Agrupar itens por categoria que possuem quantidade > 0
@@ -191,7 +191,7 @@ export const generateDetalhamento = (
     // Cabeçalho padronizado
     return `${header}
 
-OM Detentora: ${organizacao} (UG: ${formatCodug(ug)})
+OM Detentora: ${omDetentora} (UG: ${formatCodug(ugDetentora)})
 OM Destino Recurso: ${omDestino} (UG: ${formatCodug(ugDestino)})
 Total de Itens: ${totalItens}
 
