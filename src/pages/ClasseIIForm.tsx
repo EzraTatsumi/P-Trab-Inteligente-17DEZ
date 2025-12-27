@@ -1405,6 +1405,10 @@ const ClasseIIForm = () => {
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
                                     const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
                                     
+                                    // Verifica se a OM Detentora é diferente da OM de Destino
+                                    const omDetentora = registro.om_detentora || registro.organizacao;
+                                    const isDifferentOm = omDetentora !== registro.organizacao;
+
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
                                             <div className="flex items-center justify-between">
@@ -1461,7 +1465,7 @@ const ClasseIIForm = () => {
                                             <div className="pt-2 border-t mt-2">
                                                 <div className="flex justify-between text-xs">
                                                     <span className="text-muted-foreground">OM Destino:</span>
-                                                    <span className="font-medium text-blue-600">
+                                                    <span className={cn("font-medium", isDifferentOm ? "text-red-600 font-bold" : "text-foreground")}>
                                                         {registro.organizacao} ({formatCodug(registro.ug)})
                                                     </span>
                                                 </div>
@@ -1534,10 +1538,11 @@ const ClasseIIForm = () => {
                               </div>
                               
                               {isDifferentOm && (
-                                  <p className="text-sm text-red-600 font-medium mt-1 flex items-center gap-1">
-                                      <AlertCircle className="h-4 w-4 shrink-0" />
-                                      Recurso destinado à OM: {registro.organizacao}
-                                  </p>
+                                  <div className="mt-1">
+                                      <Badge variant="destructive" className="text-sm font-medium">
+                                          Recurso Destinado à OM: {registro.organizacao}
+                                      </Badge>
+                                  </div>
                               )}
                           </div>
                           
