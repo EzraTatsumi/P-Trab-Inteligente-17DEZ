@@ -382,15 +382,21 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
     return "Memória de cálculo não encontrada.";
 };
 
+/**
+ * Função para gerar a memória de cálculo da Classe II/V/VI/VII/VIII, priorizando o customizado.
+ */
 export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro): string => {
+    // 1. Prioriza o detalhamento customizado
     if (registro.detalhamento_customizado) {
       return registro.detalhamento_customizado;
     }
     
+    // 2. Se for Classe IX, usa a função específica
     if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
         return generateClasseIXMemoriaCalculo(registro);
     }
     
+    // 3. Caso contrário, usa o detalhamento consolidado (gerado pelo formulário)
     return registro.detalhamento;
 };
 
