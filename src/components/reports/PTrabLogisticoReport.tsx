@@ -872,7 +872,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow++;
       
       const cmtRow = worksheet.getRow(currentRow);
-      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'';
+      // CORREÇÃO AQUI: Removendo a aspa simples extra no final da string
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment; // Centraliza
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
