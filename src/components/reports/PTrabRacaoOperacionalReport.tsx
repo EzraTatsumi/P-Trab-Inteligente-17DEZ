@@ -3,7 +3,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
 import { useToast } from "@/hooks/use-toast";
-import { formatNumber, formatDateDDMMMAA } from "@/lib/formatUtils";
+import { formatNumber, formatDateDDMMMAA, formatCodug } from "@/lib/formatUtils";
 import { FileSpreadsheet, Printer, Download, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -307,7 +307,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         row.getCell('A').alignment = leftMiddleAlignment;
         
         // B: OM (UGE) CODUG
-        row.getCell('B').value = `${linha.om}\n(${linha.ug})`;
+        row.getCell('B').value = `${linha.om}\n(${formatCodug(linha.ug)})`; // APLICANDO formatCodug
         row.getCell('B').alignment = centerMiddleAlignment;
         
         // C: QUANTIDADE (Total R2 + R3)
@@ -472,7 +472,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
                   </td>
                   <td className="col-om-op">
                     <div>{linha.om}</div>
-                    <div>({linha.ug})</div>
+                    <div>({formatCodug(linha.ug)})</div>
                   </td>
                   <td className="col-quantidade-op">{formatNumber(linha.total_unidades)}</td>
                   <td className="col-detalhamento-op" style={{ fontSize: '6.5pt' }}>
