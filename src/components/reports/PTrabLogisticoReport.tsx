@@ -505,9 +505,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   }
                   
               } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                  // AJUSTE AQUI: Formato CLASSE V - CATEGORIA em uma linha, tudo em caixa alta
-                  // GARANTINDO QUE NÃO HÁ QUEBRA DE LINHA AQUI
-                  rowData.despesasValue = `${classeLabel} - ${categoriaDetalhe.toUpperCase()}`;
+                  // CORREÇÃO APLICADA AQUI: Forçar o prefixo 'CLASSE V'
+                  rowData.despesasValue = `CLASSE V - ${categoriaDetalhe.toUpperCase()}`;
                   rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
               } else {
                   // Outras classes (VI, VII, VIII, IX) mantêm a quebra de linha
@@ -1055,8 +1054,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             }
                             
                         } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                            // AJUSTE AQUI: Formato CLASSE V - CATEGORIA em uma linha, tudo em caixa alta
-                            rowData.despesasValue = `${classeLabel} - ${categoriaDetalhe.toUpperCase()}`;
+                            // CORREÇÃO APLICADA AQUI: Forçar o prefixo 'CLASSE V'
+                            rowData.despesasValue = `CLASSE V - ${categoriaDetalhe.toUpperCase()}`;
                             rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
                         } else {
                             // Outras classes (VI, VII, VIII, IX) mantêm a quebra de linha
