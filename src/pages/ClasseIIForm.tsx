@@ -25,7 +25,7 @@ import { defaultClasseIIConfig } from "@/data/classeIIData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { getCategoryLabel } from "@/lib/badgeUtils";
+import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -65,7 +65,7 @@ interface ClasseIIRegistro {
   valor_total: number;
   detalhamento: string;
   detalhamento_customizado?: string | null;
-  fase_atividade?: string | null;
+  fase_atividade?: string;
   // NOVOS CAMPOS DO DB
   valor_nd_30: number;
   valor_nd_39: number;
@@ -136,23 +136,19 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-/**
- * NOVO: Gera a memória de cálculo detalhada para uma categoria (usada no formulário e no detalhamento automático).
- */
+// NOVO: Gera a memória de cálculo detalhada para uma categoria
 const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
+    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
 
     let detalhamentoItens = "";
-    let totalQuantidade = 0;
-    
     itens.forEach(item => {
         const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        totalQuantidade += item.quantidade;
         detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
     });
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (${getCategoryLabel(categoria)})
+    return `33.90.30 - Aquisição de Material de Intendência (${getCategoryLabel(categoria)})
 OM de Destino: ${organizacao} (UG: ${formatCodug(ug)})
 Período: ${diasOperacao} dias de ${faseFormatada}
 Total de Itens na Categoria: ${totalQuantidade}
@@ -166,69 +162,59 @@ ${detalhamentoItens.trim()}
 Valor Total da Categoria: ${formatCurrency(totalValor)}.`;
 };
 
-/**
- * Gera o detalhamento completo para ser salvo no campo 'detalhamento' do DB.
- * Este detalhamento consolida todas as categorias salvas no formulário.
- */
-const generateDetalhamento = (
-    itens: ItemClasseII[], 
-    diasOperacao: number, 
-    omDetentora: string, 
-    ugDetentora: string, 
-    faseAtividade: string, 
-    categoryAllocations: Record<Categoria, CategoryAllocation>
-): string => {
+const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const valorTotalForm = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
-    const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_30_value, 0);
-    const totalND39Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_39_value, 0);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
+    const valorTotal = valorND30 + valorND39;
 
-    // 1. Agrupar itens por categoria que foram salvos no formulário
+    // 1. Agrupar itens por categoria e calcular o subtotal de valor por categoria
     const gruposPorCategoria = itens.reduce((acc, item) => {
         const categoria = item.categoria as Categoria;
+        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
+        
         if (!acc[categoria]) {
-            acc[categoria] = [];
+            acc[categoria] = {
+                totalValor: 0,
+                totalQuantidade: 0,
+                detalhes: [],
+            };
         }
-        acc[categoria].push(item);
+        
+        acc[categoria].totalValor += valorItem;
+        acc[categoria].totalQuantidade += item.quantidade;
+        acc[categoria].detalhes.push(
+            `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.`
+        );
+        
         return acc;
-    }, {} as Record<Categoria, ItemClasseII[]>);
+    }, {} as Record<Categoria, { totalValor: number, totalQuantidade: number, detalhes: string[] }>);
 
-    let detalhamentoCategorias = "";
+    let detalhamentoItens = "";
     
     // 2. Formatar a seção de cálculo agrupada
-    Object.entries(gruposPorCategoria).forEach(([categoria, itensCategoria]) => {
-        const alloc = categoryAllocations[categoria as Categoria];
-        const totalCategoria = itensCategoria.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
-        
-        if (totalCategoria > 0) {
-            detalhamentoCategorias += `\n==================================================\n`;
-            detalhamentoCategorias += `CATEGORIA: ${getCategoryLabel(categoria).toUpperCase()}\n`;
-            detalhamentoCategorias += `OM DESTINO RECURSO: ${alloc.om_destino_recurso} (UG: ${formatCodug(alloc.ug_destino_recurso)})\n`;
-            detalhamentoCategorias += `VALOR TOTAL: ${formatCurrency(totalCategoria)}\n`;
-            detalhamentoCategorias += `ND 30: ${formatCurrency(alloc.nd_30_value)} | ND 39: ${formatCurrency(alloc.nd_39_value)}\n`;
-            detalhamentoCategorias += `==================================================\n`;
-            
-            itensCategoria.forEach(item => {
-                const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-                detalhamentoCategorias += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
-            });
-        }
+    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
+        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`; // USANDO getCategoryLabel
+        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
+        detalhamentoItens += `Detalhes:\n`;
+        detalhamentoItens += grupo.detalhes.join('\n');
+        detalhamentoItens += `\n`;
     });
     
-    detalhamentoCategorias = detalhamentoCategorias.trim();
+    detalhamentoItens = detalhamentoItens.trim();
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${omDetentora}.
-OM Detentora do PTrab: ${omDetentora} (UG: ${formatCodug(ugDetentora)})
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+Recurso destinado à OM proprietária: ${omDestino} (UG: ${formatCodug(ugDestino)})
 
-Alocação Consolidada:
-- ND 33.90.30 (Material): ${formatCurrency(totalND30Final)}
-- ND 33.90.39 (Serviço): ${formatCurrency(totalND39Final)}
+Alocação:
+- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
+- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
-Valor Total da Classe II: ${formatCurrency(valorTotalForm)}.
+Cálculo:
+Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
 
---- DETALHAMENTO POR CATEGORIA ---
-${detalhamentoCategorias}`;
+${detalhamentoItens}
+
+Valor Total: ${formatCurrency(valorTotal)}.`;
   };
 
 
@@ -764,17 +750,18 @@ const ClasseIIForm = () => {
             return;
         }
         
-        // O detalhamento agora é o detalhamento CONSOLIDADO de TODA a Classe II
         const detalhamento = generateDetalhamento(
-            form.itens, 
+            itens, 
             form.dias_operacao, 
             form.organizacao, // OM Detentora
             form.ug, // UG Detentora
             faseFinalString,
-            categoryAllocations
+            allocation.om_destino_recurso, // OM de Destino do Recurso (ND 30/39)
+            allocation.ug_destino_recurso, // UG de Destino do Recurso (ND 30/39)
+            allocation.nd_30_value,
+            allocation.nd_39_value
         );
         
-        // O registro salvo no DB é por CATEGORIA, mas o detalhamento é o mesmo para todos
         const registro: TablesInsert<'classe_ii_registros'> = {
             p_trab_id: ptrabId,
             organizacao: allocation.om_destino_recurso, // OM de destino do recurso (ND 30/39)
@@ -783,7 +770,7 @@ const ClasseIIForm = () => {
             categoria: categoria, // Salvar a categoria como o tipo de registro
             itens_equipamentos: itens as any,
             valor_total: valorTotalCategoria,
-            detalhamento: detalhamento, // Detalhamento completo (igual para todos os registros)
+            detalhamento: detalhamento,
             fase_atividade: faseFinalString,
             detalhamento_customizado: null,
             valor_nd_30: allocation.nd_30_value,
@@ -962,25 +949,7 @@ const ClasseIIForm = () => {
 
   const handleIniciarEdicaoMemoria = (registro: ClasseIIRegistro) => {
     setEditingMemoriaId(registro.id);
-    
-    // Se houver customização, usa ela. Senão, gera a automática para edição.
-    if (registro.detalhamento_customizado) {
-        setMemoriaEdit(registro.detalhamento_customizado);
-    } else {
-        // 1. Encontrar os itens específicos desta categoria no registro
-        const itensCategoria = registro.itens_equipamentos as ItemClasseII[];
-        
-        // 2. Gerar a memória automática para esta categoria
-        const memoriaAuto = generateCategoryMemoriaCalculo(
-            registro.categoria as Categoria, 
-            itensCategoria, 
-            registro.dias_operacao, 
-            registro.organizacao, 
-            registro.ug, 
-            registro.fase_atividade
-        );
-        setMemoriaEdit(memoriaAuto);
-    }
+    setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento || "");
   };
 
   const handleCancelarEdicaoMemoria = () => {
@@ -1465,6 +1434,7 @@ const ClasseIIForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1474,6 +1444,7 @@ const ClasseIIForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
+                                                        {/* REMOVIDO O BADGE DUPLICADO AQUI */}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Dias: {registro.dias_operacao} | Fases: {fases}
@@ -1562,6 +1533,7 @@ const ClasseIIForm = () => {
                   );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
+                  const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                   
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
@@ -1570,8 +1542,11 @@ const ClasseIIForm = () => {
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                               <h4 className="text-base font-semibold text-foreground">
-                                OM Destino: {om} (UG: {formatCodug(ug)}) - {getCategoryLabel(registro.categoria)}
+                                OM Destino: {om} (UG: {formatCodug(ug)})
                               </h4>
+                              <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
+                                  {badgeStyle.label}
+                              </Badge>
                           </div>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">

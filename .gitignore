@@ -81,44 +81,18 @@ src/hooks/useFormNavigation.ts
 src/hooks/use-mobile.tsx
 src/lib/creditUtils.ts
 
-# NOVAS EXCLUSÕES PARA ECONOMIA DE CONTEXTO (Arquivos que foram restaurados)
-src/components/Benefits.tsx
-src/components/Features.tsx
-src/components/Process.tsx
-src/components/Stakeholders.tsx
-src/components/Footer.tsx
-src/components/Hero.tsx
-src/components/ScrollIndicatorButton.tsx
-src/pages/Index.tsx
-src/pages/NotFound.tsx
-src/components/OmUploadConfirmDialog.tsx
-src/pages/OmBulkUploadPage.tsx
-src/components/ConsolidationNumberDialog.tsx
-src/components/UnlinkPTrabDialog.tsx
-src/components/ShareLinkDialog.tsx
-src/components/LinkPTrabDialog.tsx
-src/components/ManageSharingDialog.tsx
-src/components/FeedbackDialog.tsx
-src/components/ForgotPasswordDialog.tsx
-src/components/EmailVerificationDialog.tsx
-src/components/SignupDialog.tsx
-src/components/SignupSuccessDialog.tsx
-src/components/EmailConfirmationDialog.tsx
-src/pages/ResetPasswordPage.tsx
-src/pages/Login.tsx
-src/pages/SharePage.tsx
-src/components/AIChatDrawer.tsx
-src/components/CurrencyInput.tsx
-src/components/RefLPCFormSection.tsx
-src/pages/OmConfigPage.tsx
-src/components/PTrabCostSummary.tsx
-src/lib/classeIIIBadgeUtils.ts
-src/lib/classeIXUtils.ts
-src/lib/badgeUtils.ts
-src/hooks/useMilitaryOrganizations.ts
-src/types/diretrizesClasseII.ts
-src/types/diretrizesClasseIX.ts
-src/data/classeIXData.ts
+# NOVAS EXCLUSÕES PARA ECONOMIA DE CONTEXTO
+src/pages/UserProfilePage.tsx
+src/components/reports/PTrabLogisticoReport.tsx1
+src/components/reports/PTrabRacaoOperacionalReport.tsx1
+src/pages/ClasseIForm.tsx
+src/pages/ClasseIIForm.tsx1
+src/pages/ClasseIIIForm.tsx
+src/pages/ClasseVForm.tsx
+src/pages/ClasseVIForm.tsx
+src/pages/ClasseVIIForm.tsx
+src/pages/ClasseVIIIForm.tsx
+src/pages/ClasseIXForm.tsx
 
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
 # src/lib/formatUtils.ts
