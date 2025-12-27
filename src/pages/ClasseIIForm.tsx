@@ -22,7 +22,7 @@ import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
 import { defaultClasseIIConfig } from "@/data/classeIIData";
-import { cn } from "@/lib/utils";
+import { cn } => "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
@@ -148,7 +148,7 @@ const ClasseIIForm = () => {
   const [tempND39Inputs, setTempND39Inputs] = useState<Record<Categoria, string>>(initialTempND39Inputs);
   // Rastreia a OM de destino temporária por categoria
   const [tempDestinations, setTempDestinations] = useState<Record<Categoria, TempDestination>>(initialTempDestinations);
-  // --- FIM NOVOS ESTADOS TEMPORÁRIOS ---
+  // --- FIM NOVOS TIPOS TEMPORÁRIOS ---
   
   const [fasesAtividade, setFasesAtividade] = useState<string[]>(["Execução"]);
   const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
@@ -1257,7 +1257,7 @@ const ClasseIIForm = () => {
                             <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
                               <span className="font-medium">{item.item}</span>
                               <span className="text-right">
-                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
+                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia x {form.dias_operacao} dias = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
                               </span>
                             </div>
                           ))}
