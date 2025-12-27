@@ -771,7 +771,9 @@ const ClasseIIForm = () => {
         
         // Preencher a alocação para a categoria
         if (newAllocations[category]) {
-            const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * r.dias_operacao), 0);
+            // Garantir que dias_operacao seja um número para o cálculo
+            const currentDiasOperacao = Number(r.dias_operacao || 0);
+            const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * currentDiasOperacao), 0);
             
             newAllocations[category] = {
                 total_valor: totalValor,
@@ -797,11 +799,12 @@ const ClasseIIForm = () => {
         }
         
         // Capturar dados globais (devem ser os mesmos em todos os registros do grupo)
-        if (r.efetivo) {
-            firstEfetivo = r.efetivo; 
+        // Explicitamente converter para número para garantir que as condições de renderização sejam atendidas
+        if (r.efetivo !== null && r.efetivo !== undefined) {
+            firstEfetivo = Number(r.efetivo); 
         }
-        if (r.dias_operacao) {
-            diasOperacao = r.dias_operacao;
+        if (r.dias_operacao !== null && r.dias_operacao !== undefined) {
+            diasOperacao = Number(r.dias_operacao);
         }
         if (r.fase_atividade) {
             fasesSalvas = r.fase_atividade.split(';').map(f => f.trim()).filter(f => f);
