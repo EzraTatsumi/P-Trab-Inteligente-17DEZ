@@ -130,7 +130,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   handleConfirmCompleteStatus,
   handleCancelCompleteStatus,
   fileSuffix, // NOVO PROP
-  generateClasseIIMemoriaCalculo = defaultGenerateClasseIIMemoriaCalculo, // FORNECER DEFAULT
+  generateClasseIIMemoriaCalculo = defaultGenerateIIMemoriaCalculo, // FORNECER DEFAULT
   generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
   generateClasseVMemoriaCalculo = defaultGenerateClasseVMemoriaCalculo, // NOVO: DESESTRUTURANDO E USANDO DEFAULT
 }) => {
@@ -1093,8 +1093,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     return (
                       <tr key={isClasseI ? `${linha.registro.id}-${linha.tipo}` : isLubrificante ? `lub-${linha.registro.id}` : `classe-ii-${linha.registro.id}`}>
                         <td className="col-despesas">
-                          {/* Renderiza a string. Se houver \n, cria divs separados. */}
-                          {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
+                          {/* Renderiza a string. Se for Classe V, renderiza como uma única linha. Caso contrário, usa quebra de linha. */}
+                          {CLASSE_V_CATEGORIES.includes(linha.registro.categoria) ? (
+                              <div>{rowData.despesasValue}</div>
+                          ) : (
+                              rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)
+                          )}
                         </td>
                         <td className="col-om">
                           {rowData.omValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
