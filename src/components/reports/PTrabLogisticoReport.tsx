@@ -467,7 +467,16 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   
               // Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
               if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
+                  
+                  const omDetentora = registro.om_detentora || omDestinoRecurso;
+                  const isDifferentOm = omDetentora !== omDestinoRecurso;
+                  
+                  // NOVO: Adiciona a OM Detentora se for diferente da OM de Destino
                   rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
+                  if (isDifferentOm) {
+                      rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
+                  }
+                  
               } else {
                   // Outras classes (V, VI, VII, VIII, IX) mantêm a quebra de linha
                   rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
@@ -500,19 +509,19 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           
           const row = worksheet.getRow(currentRow);
           
-          row.getCell('A').value = despesasValue;
-          row.getCell('B').value = omValue;
+          row.getCell('A').value = rowData.despesasValue;
+          row.getCell('B').value = rowData.omValue;
           
           // Colunas Natureza de Despesa (Azul)
-          row.getCell('C').value = valorC > 0 ? valorC : '';
+          row.getCell('C').value = rowData.valorC > 0 ? rowData.valorC : '';
           row.getCell('C').numFmt = 'R$ #,##0.00';
           row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
           
-          row.getCell('D').value = valorD > 0 ? valorD : '';
+          row.getCell('D').value = rowData.valorD > 0 ? rowData.valorD : '';
           row.getCell('D').numFmt = 'R$ #,##0.00';
           row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
           
-          row.getCell('E').value = valorE > 0 ? valorE : '';
+          row.getCell('E').value = rowData.valorE > 0 ? rowData.valorE : '';
           row.getCell('E').numFmt = 'R$ #,##0.00';
           row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
           
@@ -524,7 +533,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           row.getCell('H').value = '';
           row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
           
-          row.getCell('I').value = detalhamentoValue;
+          row.getCell('I').value = rowData.detalhamentoValue;
           row.getCell('I').font = { name: 'Arial', size: 6.5 };
           
           // GARANTIA DE BORDA SIMPLES PARA LINHAS DE DADOS
@@ -940,12 +949,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     ...grupo.linhasQS,
                     ...grupo.linhasQR,
                     ...grupo.linhasClasseII,
-                    ...grupo.linhasLubrificante, // Classe III Lubrificante
+                    ...grupo.linhasLubrificante,
                     ...grupo.linhasClasseV,
                     ...grupo.linhasClasseVI,
                     ...grupo.linhasClasseVII,
                     ...grupo.linhasClasseVIII,
-                    ...grupo.linhasClasseIX, // NOVO
+                    ...grupo.linhasClasseIX,
                 ];
                 
                 return [
@@ -995,7 +1004,16 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             
                         // Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
                         if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
+                            
+                            const omDetentora = registro.om_detentora || omDestinoRecurso;
+                            const isDifferentOm = omDetentora !== omDestinoRecurso;
+                            
+                            // NOVO: Adiciona a OM Detentora se for diferente da OM de Destino
                             rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
+                            if (isDifferentOm) {
+                                rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
+                            }
+                            
                         } else {
                             // Outras classes (V, VI, VII, VIII, IX) mantêm a quebra de linha
                             rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
@@ -1029,7 +1047,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     return (
                       <tr key={isClasseI ? `${linha.registro.id}-${linha.tipo}` : isLubrificante ? `lub-${linha.registro.id}` : `classe-ii-${linha.registro.id}`}>
                         <td className="col-despesas">
-                          {/* Renderiza a string. Se não houver \n (como no caso da Classe II), será um único div. */}
+                          {/* Renderiza a string. Se houver \n, cria divs separados. */}
                           {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
                         </td>
                         <td className="col-om">
