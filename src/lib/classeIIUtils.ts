@@ -47,6 +47,22 @@ const getOmArticle = (omName: string): string => {
 };
 
 /**
+ * Determina a concordância de gênero para o cabeçalho da categoria.
+ * @param categoria A categoria da Classe II.
+ * @returns 'do' ou 'da'.
+ */
+const getCategoryArticle = (categoria: Categoria): 'do' | 'da' => {
+    switch (categoria) {
+        case 'Proteção Balística':
+            return 'da'; // Manutenção de componentes DA Proteção Balística
+        case 'Equipamento Individual':
+        case 'Material de Estacionamento':
+        default:
+            return 'do'; // Manutenção de componentes DO Equipamento Individual / DO Material de Estacionamento
+    }
+};
+
+/**
  * Generates the detailed calculation memory for a specific Classe II category.
  * This is used for the editable memory field.
  */
@@ -80,14 +96,18 @@ export const generateCategoryMemoriaCalculo = (
     // 2. Determinar singular/plural do efetivo
     const militarPlural = efetivo === 1 ? "militar" : "militares";
     
-    // 3. Determinar o artigo 'do/da'
+    // 3. Determinar o artigo 'do/da' da OM
     const omArticle = getOmArticle(omDetentora);
     
-    // 4. Determinar singular/plural de 'dia'
+    // 4. Determinar o artigo 'do/da' da Categoria (NOVO)
+    const categoryArticle = getCategoryArticle(categoria);
+    
+    // 5. Determinar singular/plural de 'dia'
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
 
-    // 5. Montar o cabeçalho dinâmico
-    const header = `${ndPrefix} - Manutenção de componente de ${getCategoryLabel(categoria)} de ${efetivo} ${militarPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
+    // 6. Montar o cabeçalho dinâmico
+    const categoryLabel = getCategoryLabel(categoria);
+    const header = `${ndPrefix} - Manutenção de componentes ${categoryArticle} ${categoryLabel} de ${efetivo} ${militarPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
     let detalhamentoItens = "";
     itens.forEach(item => {
@@ -149,6 +169,7 @@ export const generateDetalhamento = (
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
 
     // 5. Montar o cabeçalho dinâmico (usando OM Detentora)
+    // Nota: Aqui usamos uma descrição genérica 'Material de Intendência (Diversos)'
     const header = `${ndPrefix} - Manutenção de componente de Material de Intendência (Diversos) de ${efetivo} ${militarPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
 
