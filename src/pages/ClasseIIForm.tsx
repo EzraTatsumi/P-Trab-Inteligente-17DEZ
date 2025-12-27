@@ -720,11 +720,24 @@ const ClasseIIForm = () => {
     resetFormFields();
     
     // 1. Determine the scope of the edit (OM Detentora)
-    // Use os novos campos, com fallback para os campos antigos (organizacao/ug) para compatibilidade com dados antigos
     const omDetentoraName = registro.om_detentora || registro.organizacao;
     const ugDetentoraCode = registro.ug_detentora || registro.ug;
     
-    // 2. Fetch ALL records belonging to this specific OM Detentora/UG Detentora for this PTrab
+    // 2. Fetch OM Detentora ID first
+    let selectedOmIdForEdit: string | undefined = undefined;
+    if (omDetentoraName) {
+        try {
+            const { data: omData } = await supabase
+                .from('organizacoes_militares')
+                .select('id')
+                .eq('nome_om', omDetentoraName)
+                .eq('codug_om', ugDetentoraCode)
+                .maybeSingle();
+            selectedOmIdForEdit = omData?.id;
+        } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
+    }
+    
+    // 3. Fetch ALL records belonging to this specific OM Detentora/UG Detentora for this PTrab
     const { data: recordsForDetentora, error: fetchError } = await supabase
         .from("classe_ii_registros")
         .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo, om_detentora, ug_detentora")
@@ -739,7 +752,7 @@ const ClasseIIForm = () => {
         return;
     }
     
-    // 3. Consolidar todos os itens em um único array (form.itens)
+    // 4. Consolidar dados
     let consolidatedItems: ItemClasseII[] = [];
     let newAllocations = { ...initialCategoryAllocations };
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
@@ -748,6 +761,7 @@ const ClasseIIForm = () => {
     let diasOperacao: number = 0;
     let fasesSalvas: string[] = [];
     
+    const recordsMap = new Map<string, ClasseIIRegistro>();
     (recordsForDetentora || []).forEach(r => {
         const category = r.categoria as Categoria;
         const items = (r.itens_equipamentos || []) as ItemClasseII[];
@@ -792,35 +806,11 @@ const ClasseIIForm = () => {
         if (r.fase_atividade) {
             fasesSalvas = r.fase_atividade.split(';').map(f => f.trim()).filter(f => f);
         }
+        
+        recordsMap.set(category, r as ClasseIIRegistro);
     });
     
-    // 4. Buscar IDs das OMs de Destino e Detentora
-    let selectedOmIdForEdit: string | undefined = undefined;
-    
-    if (omDetentoraName) {
-        try {
-            const { data: omData } = await supabase
-                .from('organizacoes_militares')
-                .select('id')
-                .eq('nome_om', omDetentoraName)
-                .eq('codug_om', ugDetentoraCode)
-                .maybeSingle();
-            selectedOmIdForEdit = omData?.id;
-        } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
-    }
-    
-    // 5. Preencher o formulário principal
-    setEditingId(registro.id); 
-    setForm({
-      selectedOmId: selectedOmIdForEdit,
-      organizacao: omDetentoraName,
-      ug: ugDetentoraCode,
-      efetivo: firstEfetivo, 
-      dias_operacao: diasOperacao,
-      itens: consolidatedItems,
-    });
-    
-    // 6. Preencher o estado de alocação e buscar IDs de destino
+    // 5. Buscar IDs das OMs de Destino
     const categoriesToLoad = Object.keys(newAllocations) as Categoria[];
     for (const cat of categoriesToLoad) {
         const alloc = newAllocations[cat];
@@ -841,6 +831,18 @@ const ClasseIIForm = () => {
             } catch (e) { console.error(`Erro ao buscar OM Destino ID para ${cat}:`, e); }
         }
     }
+    
+    // 6. Preencher o estado
+    setEditingId(registro.id); 
+    setForm({
+      selectedOmId: selectedOmIdForEdit,
+      organizacao: omDetentoraName,
+      ug: ugDetentoraCode,
+      efetivo: firstEfetivo, 
+      dias_operacao: diasOperacao,
+      itens: consolidatedItems,
+    });
+    
     setCategoryAllocations(newAllocations);
     setTempND39Inputs(tempND39Load); 
     setTempDestinations(tempDestinationsLoad);
@@ -850,11 +852,13 @@ const ClasseIIForm = () => {
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
     if (consolidatedItems.length > 0) {
+        // Define a aba ativa para a categoria do primeiro item encontrado
         setSelectedTab(consolidatedItems[0].categoria as Categoria);
     } else {
         setSelectedTab(CATEGORIAS[0]);
     }
     
+    // 8. Rolar para o topo do formulário
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setLoading(false);
   };
