@@ -505,7 +505,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   }
                   
               } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                  // CORREÇÃO AQUI: Formato CLASSE V - CATEGORIA em uma linha
+                  // AJUSTE AQUI: Formato CLASSE V - CATEGORIA em uma linha, tudo em caixa alta
                   rowData.despesasValue = `${classeLabel} - ${categoriaDetalhe.toUpperCase()}`;
                   rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
               } else {
@@ -521,7 +521,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                   rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
               } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                  // Já tratado acima, mas mantendo a estrutura de else if para clareza
+                  // Se for Classe V, usa a função de memória de Classe V
                   rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
               } else {
                   // Se não for Classe V, usa a função genérica/Classe II
@@ -872,7 +872,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow++;
       
       const cmtRow = worksheet.getRow(currentRow);
-      // CORREÇÃO AQUI: Removendo a aspa simples extra no final da string
       cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment; // Centraliza
@@ -1055,7 +1054,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             }
                             
                         } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                            // CORREÇÃO AQUI: Formato CLASSE V - CATEGORIA em uma linha
+                            // AJUSTE AQUI: Formato CLASSE V - CATEGORIA em uma linha, tudo em caixa alta
                             rowData.despesasValue = `${classeLabel} - ${categoriaDetalhe.toUpperCase()}`;
                             rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
                         } else {
