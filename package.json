@@ -46,6 +46,7 @@
     "@supabase/supabase-js": "^2.83.0",
     "@tanstack/react-query": "^5.83.0",
     "class-variance-authority": "^0.7.1",
+    "classeIIUtils": "link:lib\\classeIIUtils",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "crypto-js": "^4.2.0",

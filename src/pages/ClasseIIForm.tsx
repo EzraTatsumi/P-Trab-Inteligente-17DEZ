@@ -51,6 +51,7 @@ interface FormDataClasseII {
   selectedOmId?: string;
   organizacao: string; // OM Detentora (Global)
   ug: string; // UG Detentora (Global)
+  efetivo: number; // NOVO CAMPO
   dias_operacao: number; // Global
   itens: ItemClasseII[]; // All items across all categories
   fase_atividade?: string; // Global
@@ -131,6 +132,7 @@ const ClasseIIForm = () => {
     selectedOmId: undefined,
     organizacao: "",
     ug: "",
+    efetivo: 0, // NOVO: Inicialização
     dias_operacao: 0,
     itens: [],
   });
@@ -401,6 +403,7 @@ const ClasseIIForm = () => {
       selectedOmId: undefined,
       organizacao: "",
       ug: "",
+      efetivo: 0, // NOVO: Reset
       dias_operacao: 0,
       itens: [],
     });
@@ -588,6 +591,7 @@ const ClasseIIForm = () => {
     if (!ptrabId) return;
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
     if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
+    if (form.efetivo <= 0) { toast.error("Efetivo deve ser maior que zero"); return; }
     if (form.itens.length === 0) { toast.error("Adicione pelo menos um item"); return; }
     
     let fasesFinais = [...fasesAtividade];
@@ -668,6 +672,7 @@ const ClasseIIForm = () => {
             detalhamento_customizado: null,
             valor_nd_30: allocation.nd_30_value,
             valor_nd_39: allocation.nd_39_value,
+            // O campo 'efetivo' não existe na tabela classe_ii_registros, então não o incluímos aqui.
         };
         registrosParaSalvar.push(registro);
     }
@@ -784,6 +789,7 @@ const ClasseIIForm = () => {
       selectedOmId: selectedOmIdForEdit,
       organizacao: firstOmDetentora?.nome || "",
       ug: firstOmDetentora?.ug || "",
+      efetivo: 0, // Não temos como recuperar o efetivo salvo, pois ele não está no DB. Mantemos 0 ou pedimos para o usuário preencher.
       dias_operacao: registro.dias_operacao,
       itens: consolidatedItems,
     });
@@ -931,6 +937,7 @@ const ClasseIIForm = () => {
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
               
+              {/* PRIMEIRA LINHA: OM Detentora, UG Detentora, Efetivo */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>OM Detentora do Equipamento *</Label>
@@ -949,6 +956,22 @@ const ClasseIIForm = () => {
                 </div>
                 
                 <div className="space-y-2">
+                  <Label>Efetivo Empregado *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
+                    value={form.efetivo || ""}
+                    onChange={(e) => setForm({ ...form, efetivo: parseInt(e.target.value) || 0 })}
+                    placeholder="Ex: 100"
+                    onKeyDown={handleEnterToNextField}
+                  />
+                </div>
+              </div>
+              
+              {/* SEGUNDA LINHA: Dias de Atividade, Fase da Atividade (2 colunas) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
                   <Label>Dias de Atividade *</Label>
                   <Input
                     type="number"
@@ -960,10 +983,8 @@ const ClasseIIForm = () => {
                     onKeyDown={handleEnterToNextField}
                   />
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                
+                <div className="space-y-2 col-span-2">
                   <Label>Fase da Atividade *</Label>
                   <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                     <PopoverTrigger asChild>
