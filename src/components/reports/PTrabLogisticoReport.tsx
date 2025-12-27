@@ -435,6 +435,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           if ('tipo' in linha) { // Classe I (QS/QR)
             const registro = linha.registro as ClasseIRegistro;
             if (linha.tipo === 'QS') {
+              // Ajuste para Classe I QS: Linha 1: CLASSE I - SUBSISTÊNCIA, Linha 2: OM
               despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
               omValue = `${registro.om_qs}\n(${registro.ug_qs})`;
               valorC = registro.total_qs;
@@ -442,7 +443,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               // USANDO A FUNÇÃO UNIFICADA
               detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
             } else { // QR
-              despesasValue = `CLASSE I - SUBSISTÊNCIA`;
+              // Ajuste para Classe I QR: Linha 1: CLASSE I - SUBSISTÊNCIA, Linha 2: OM
+              despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
               omValue = `${registro.organizacao}\n(${registro.ug})`;
               valorC = registro.total_qr;
               valorE = registro.total_qr;
@@ -570,7 +572,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             row.getCell('C').value = ''; 
             row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
             row.getCell('D').value = ''; 
-            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzb } };
             row.getCell('E').value = ''; 
             row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
             
@@ -956,6 +958,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     if (isClasseI) { // Classe I (QS/QR)
                         const registro = linha.registro as ClasseIRegistro;
                         if (linha.tipo === 'QS') {
+                            // Linha 1: CLASSE I - SUBSISTÊNCIA, Linha 2: OM
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                             rowData.omValue = `${registro.om_qs}\n(${registro.ug_qs})`;
                             rowData.valorC = registro.total_qs;
@@ -963,7 +966,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                         } else { // QR
-                            rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
+                            // Linha 1: CLASSE I - SUBSISTÊNCIA, Linha 2: OM
+                            rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                             rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
                             rowData.valorC = registro.total_qr;
                             rowData.valorE = registro.total_qr;
@@ -1013,8 +1017,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     return (
                       <tr key={isClasseI ? `${linha.registro.id}-${linha.tipo}` : isLubrificante ? `lub-${linha.registro.id}` : `classe-ii-${linha.registro.id}`}>
                         <td className="col-despesas">
-                          {/* Renderiza o valor da despesa sem quebra de linha, conforme o novo formato */}
-                          {rowData.despesasValue}
+                          {/* Renderiza o valor da despesa mapeando as quebras de linha para divs */}
+                          {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
                         </td>
                         <td className="col-om">
                           {rowData.omValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
