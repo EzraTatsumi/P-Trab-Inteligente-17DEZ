@@ -130,7 +130,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   handleConfirmCompleteStatus,
   handleCancelCompleteStatus,
   fileSuffix, // NOVO PROP
-  generateClasseIIMemoriaCalculo = defaultGenerateIIMemoriaCalculo, // FORNECER DEFAULT
+  generateClasseIIMemoriaCalculo = defaultGenerateClasseIIMemoriaCalculo, // CORRIGIDO: Usando o nome correto da função de fallback
   generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
   generateClasseVMemoriaCalculo = defaultGenerateClasseVMemoriaCalculo, // NOVO: DESESTRUTURANDO E USANDO DEFAULT
 }) => {
@@ -1146,7 +1146,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     return (
                       <tr key={`classe-iii-${registro.id}`}>
                         <td className="col-despesas">
-                          <div>CLASSE III - {getTipoCombustivelLabel(registro.tipo_combustivel)}</div>
+                          <div>CLASSE III - {getTipoEquipamentoLabel(registro.tipo_combustivel)}</div>
                           <div>{getTipoEquipamentoLabel(registro.tipo_equipamento)}</div>
                           <div>{registro.organizacao}</div>
                         </td>
