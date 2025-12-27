@@ -174,7 +174,7 @@ function useToast() {
         listeners.splice(index, 1);
       }
     };
-  }, [state]);
+  }, []); // Dependência removida para evitar re-renderização infinita
 
   return {
     ...state,
