@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
+import { formatFasesParaTexto, generateCategoryMemoriaCalculo, generateDetalhamento } from "@/lib/classeIIUtils";
 
 type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
 
@@ -109,111 +110,6 @@ const getTempND39NumericValue = (category: Categoria, tempInputs: Record<Categor
     const digits = tempInputs[category] || "";
     return formatCurrencyInput(digits).numericValue;
 };
-
-// Helper para agrupar itens de um registro por categoria
-const groupRecordItemsByCategory = (items: ItemClasseII[]) => {
-    return items.reduce((acc, item) => {
-        if (!acc[item.categoria]) {
-            acc[item.categoria] = [];
-        }
-        acc[item.categoria].push(item);
-        return acc;
-    }, {} as Record<Categoria, ItemClasseII[]>);
-};
-
-// Função para formatar fases (MOVIDA PARA O TOPO)
-const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
-  if (!faseCSV) return 'operação';
-  
-  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
-  
-  if (fases.length === 0) return 'operação';
-  if (fases.length === 1) return fases[0];
-  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
-  
-  const ultimaFase = fases[fases.length - 1];
-  const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFases}`;
-};
-
-// NOVO: Gera a memória de cálculo detalhada para uma categoria
-const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
-
-    let detalhamentoItens = "";
-    itens.forEach(item => {
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
-    });
-
-    return `33.90.30 - Aquisição de Material de Intendência (${getCategoryLabel(categoria)})
-OM de Destino: ${organizacao} (UG: ${formatCodug(ug)})
-Período: ${diasOperacao} dias de ${faseFormatada}
-Total de Itens Solicitados: ${totalQuantidade}
-
-Detalhes do Custeio (Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias):
-${detalhamentoItens.trim()}
-
-Valor Total da Categoria: ${formatCurrency(totalValor)}.`;
-};
-
-const generateDetalhamento = (itens: ItemClasseII[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const valorTotal = valorND30 + valorND39;
-
-    // 1. Agrupar itens por categoria que possuem quantidade > 0
-    const gruposPorCategoria = itens.reduce((acc, item) => {
-        const categoria = item.categoria as Categoria;
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        
-        if (!acc[categoria]) {
-            acc[categoria] = {
-                totalValor: 0,
-                totalQuantidade: 0,
-                detalhes: [],
-            };
-        }
-        
-        acc[categoria].totalValor += valorItem;
-        acc[categoria].totalQuantidade += item.quantidade;
-        acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.`
-        );
-        
-        return acc;
-    }, {} as Record<Categoria, { totalValor: number, totalQuantidade: number, detalhes: string[] }>);
-
-    let detalhamentoItens = "";
-    
-    // 2. Formatar a seção de cálculo agrupada
-    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`; // USANDO getCategoryLabel
-        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
-        detalhamentoItens += `Detalhes:\n`;
-        detalhamentoItens += grupo.detalhes.join('\n');
-        detalhamentoItens += `\n`;
-    });
-    
-    detalhamentoItens = detalhamentoItens.trim();
-
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Intendência (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
-Recurso destinado à OM proprietária: ${omDestino} (UG: ${formatCodug(ugDestino)})
-
-Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
-
-Cálculo:
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
-
-${detalhamentoItens}
-
-Valor Total: ${formatCurrency(valorTotal)}.`;
-  };
-
 
 const ClasseIIForm = () => {
   const navigate = useNavigate();
@@ -404,7 +300,7 @@ const ClasseIIForm = () => {
 
   const loadDiretrizes = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } = {} } = await supabase.auth.getUser();
       if (!user) return;
 
       let anoReferencia: number | null = null;
