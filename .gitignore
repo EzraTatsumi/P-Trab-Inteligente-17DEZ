@@ -48,7 +48,7 @@ src/assets/
 # src/components/EmailVerificationDialog.tsx
 # src/components/SignupDialog.tsx
 # src/components/EmailConfirmationDialog.tsx
-
+src/components/SignupDialog.tsx
 src/pages/DiretrizesCusteioPage.tsx
 src/components/YearManagementDialog.tsx
 src/pages/PTrabExportImportPage.tsx
