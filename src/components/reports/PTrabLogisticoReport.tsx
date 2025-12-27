@@ -469,18 +469,27 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   categoriaDetalhe = registro.animal_tipo;
               }
                   
-              // Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
+              // Lógica para construir a primeira linha (Classe X - Categoria)
+              let primeiraLinhaDespesa: string;
               if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
-                  rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
+                  primeiraLinhaDespesa = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
               } else {
-                  // Outras classes (V, VI, VII, VIII, IX) mantêm a quebra de linha
-                  rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
+                  // Outras classes (V, VI, VII, VIII, IX)
+                  primeiraLinhaDespesa = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
               }
               
               // ADICIONAR A OM DETENTORA NA SEGUNDA LINHA DA COLUNA A (DESPESAS)
-              // Se a OM Detentora for diferente da OM de Destino, ou se for a OM Detentora padrão (mesmo que seja igual)
-              // Para manter a consistência, vamos sempre adicionar a OM Detentora aqui.
-              rowData.despesasValue += `\n${omDetentora}`;
+              // Se a primeira linha já tem quebra (V, VI, VII, VIII, IX), a OM Detentora será a terceira linha.
+              // Se a primeira linha não tem quebra (Classe II), a OM Detentora será a segunda linha.
+              // Para manter o layout de 2 linhas para Classe II e 3 linhas para as demais, vamos forçar a OM Detentora a ser a última linha.
+              
+              // Se for Classe II, a primeira linha é 'CLASSE II - CATEGORIA'
+              if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
+                  rowData.despesasValue = `${primeiraLinhaDespesa}\n${omDetentora}`;
+              } else {
+                  // Para as demais classes (V, VI, VII, VIII, IX), a primeira linha já tem quebra, então a OM Detentora é a terceira.
+                  rowData.despesasValue = `${primeiraLinhaDespesa}\n${omDetentora}`;
+              }
               
               // A coluna B (OM/UGE) deve continuar mostrando a OM de Destino do Recurso (ND 30/39)
               rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
@@ -1008,16 +1017,24 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             categoriaDetalhe = registro.animal_tipo;
                         }
                             
-                        // Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
+                        // Lógica para construir a primeira linha (Classe X - Categoria)
+                        let primeiraLinhaDespesa: string;
                         if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
-                            rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
+                            primeiraLinhaDespesa = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
                         } else {
-                            // Outras classes (V, VI, VII, VIII, IX) mantêm a quebra de linha
-                            rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
+                            // Outras classes (V, VI, VII, VIII, IX)
+                            primeiraLinhaDespesa = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
                         }
                         
                         // ADICIONAR A OM DETENTORA NA SEGUNDA LINHA DA COLUNA A (DESPESAS)
-                        rowData.despesasValue += `\n${omDetentora}`;
+                        // Se for Classe II, a primeira linha é 'CLASSE II - CATEGORIA' (sem quebra interna)
+                        if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
+                            rowData.despesasValue = `${primeiraLinhaDespesa}\n${omDetentora}`;
+                        } else {
+                            // Para as demais classes (V, VI, VII, VIII, IX), a primeira linha já tem quebra, então a OM Detentora é a terceira.
+                            // Mantemos o formato anterior (Classe X\nCategoria\nOM Detentora)
+                            rowData.despesasValue = `${primeiraLinhaDespesa}\n${omDetentora}`;
+                        }
                         
                         // A coluna B (OM/UGE) deve continuar mostrando a OM de Destino do Recurso (ND 30/39)
                         rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
