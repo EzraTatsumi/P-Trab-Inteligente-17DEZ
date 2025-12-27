@@ -20,7 +20,7 @@ import {
     parseInputToNumber, 
     formatNumberForInput, 
     formatCodug,
-    formatCurrencyInput // ADICIONADO
+    formatCurrencyInput
 } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,7 +37,7 @@ import {
     formatFasesParaTexto, 
     generateCategoryMemoriaCalculo, 
     generateDetalhamento 
-} from "@/lib/classeVUtils"; // USANDO NOVO UTILS
+} from "@/lib/classeVUtils";
 
 type Categoria = 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN';
 
@@ -63,6 +63,7 @@ interface FormDataClasseV {
   selectedOmId?: string;
   organizacao: string; // OM Detentora (Global)
   ug: string; // UG Detentora (Global)
+  efetivo: number; // NOVO CAMPO
   dias_operacao: number; // Global
   itens: ItemClasseV[]; // All items across all categories
   fase_atividade?: string; // Global
@@ -81,6 +82,7 @@ interface ClasseVRegistro {
   fase_atividade?: string;
   valor_nd_30: number;
   valor_nd_39: number;
+  efetivo: number; // NOVO CAMPO
 }
 
 interface CategoryAllocation {
@@ -141,6 +143,7 @@ const ClasseVForm = () => {
     selectedOmId: undefined,
     organizacao: "",
     ug: "",
+    efetivo: 0, // NOVO: Inicialização
     dias_operacao: 0,
     itens: [],
   });
@@ -365,7 +368,7 @@ const ClasseVForm = () => {
     
     const { data, error } = await supabase
       .from("classe_v_registros")
-      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
+      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, efetivo") // NOVO: Selecionar efetivo
       .eq("p_trab_id", ptrabId)
       .in("categoria", CATEGORIAS)
       .order("organizacao", { ascending: true })
@@ -385,6 +388,7 @@ const ClasseVForm = () => {
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseV[],
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
+            efetivo: r.efetivo || 0, // NOVO: Carregar efetivo
         } as ClasseVRegistro;
         uniqueRecordsMap.set(key, record);
     });
@@ -398,6 +402,7 @@ const ClasseVForm = () => {
       selectedOmId: undefined,
       organizacao: "",
       ug: "",
+      efetivo: 0, // NOVO: Reset
       dias_operacao: 0,
       itens: [],
     });
@@ -473,7 +478,6 @@ const ClasseVForm = () => {
   const currentND39InputDigits = tempND39Inputs[selectedTab] || "";
   
   const nd39NumericValue = useMemo(() => {
-    // O erro estava aqui: formatCurrencyInput não estava importado.
     return formatCurrencyInput(currentND39InputDigits).numericValue;
   }, [currentND39InputDigits]);
   
@@ -571,6 +575,7 @@ const ClasseVForm = () => {
     if (!ptrabId) return;
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
     if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
+    if (form.efetivo <= 0) { toast.error("Efetivo deve ser maior que zero"); return; } // NOVO: Validação
     if (form.itens.length === 0) { toast.error("Adicione pelo menos um item"); return; }
     
     let fasesFinais = [...fasesAtividade];
@@ -632,7 +637,8 @@ const ClasseVForm = () => {
             allocation.om_destino_recurso, // OM de Destino do Recurso (ND 30/39)
             allocation.ug_destino_recurso, // UG de Destino do Recurso (ND 30/39)
             allocation.nd_30_value,
-            allocation.nd_39_value
+            allocation.nd_39_value,
+            form.efetivo // NOVO: Passando o efetivo
         );
         
         const registro: TablesInsert<'classe_v_registros'> = {
@@ -648,6 +654,7 @@ const ClasseVForm = () => {
             detalhamento_customizado: null,
             valor_nd_30: allocation.nd_30_value,
             valor_nd_39: allocation.nd_39_value,
+            efetivo: form.efetivo, // NOVO: Salvando o efetivo
         };
         registrosParaSalvar.push(registro);
     }
@@ -682,10 +689,9 @@ const ClasseVForm = () => {
     resetFormFields();
     
     // 1. Buscar TODOS os registros de CLASSE V para este PTrab (na tabela correta)
-    // Para Classe V, todos os registros pertencem à mesma OM Detentora/Destino
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_v_registros")
-        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo") // NOVO: Selecionar efetivo
         .eq("p_trab_id", ptrabId)
         .in("categoria", CATEGORIAS);
         
@@ -700,6 +706,7 @@ const ClasseVForm = () => {
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
     let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
     let firstOm: { nome: string, ug: string } | null = null;
+    let firstEfetivo: number = 0; // NOVO: Variável para armazenar o efetivo
     
     (allRecords || []).forEach(r => {
         const category = r.categoria as Categoria;
@@ -734,6 +741,9 @@ const ClasseVForm = () => {
         if (!firstOm) {
             firstOm = { nome: r.organizacao, ug: r.ug };
         }
+        if (r.efetivo) {
+            firstEfetivo = r.efetivo; // Capturar o efetivo (deve ser o mesmo para todos os registros do PTrab)
+        }
     });
     
     let selectedOmIdForEdit: string | undefined = undefined;
@@ -756,6 +766,7 @@ const ClasseVForm = () => {
       selectedOmId: selectedOmIdForEdit,
       organizacao: firstOm?.nome || "",
       ug: firstOm?.ug || "",
+      efetivo: firstEfetivo, // NOVO: Preencher efetivo
       dias_operacao: registro.dias_operacao,
       itens: consolidatedItems,
     });
@@ -820,7 +831,8 @@ const ClasseVForm = () => {
         registro.dias_operacao, 
         registro.organizacao, 
         registro.ug, 
-        registro.fase_atividade
+        registro.fase_atividade,
+        registro.efetivo // NOVO: Passando o efetivo
     );
     
     // 2. Usar a customizada se existir, senão usar a automática recém-gerada
@@ -913,6 +925,7 @@ const ClasseVForm = () => {
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
               
+              {/* PRIMEIRA LINHA: OM Detentora, UG Detentora, Efetivo */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>OM Detentora do Equipamento *</Label>
@@ -931,6 +944,22 @@ const ClasseVForm = () => {
                 </div>
                 
                 <div className="space-y-2">
+                  <Label>Efetivo Empregado *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
+                    value={form.efetivo || ""}
+                    onChange={(e) => setForm({ ...form, efetivo: parseInt(e.target.value) || 0 })}
+                    placeholder="Ex: 100"
+                    onKeyDown={handleEnterToNextField}
+                  />
+                </div>
+              </div>
+              
+              {/* SEGUNDA LINHA: Dias de Atividade, Fase da Atividade (2 colunas) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
                   <Label>Dias de Atividade *</Label>
                   <Input
                     type="number"
@@ -942,10 +971,8 @@ const ClasseVForm = () => {
                     onKeyDown={handleEnterToNextField}
                   />
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                
+                <div className="space-y-2 col-span-2">
                   <Label>Fase da Atividade *</Label>
                   <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                     <PopoverTrigger asChild>
@@ -1284,6 +1311,9 @@ const ClasseVForm = () => {
                     const omName = omKey.split(' (')[0];
                     const ugFormatted = omKey.split(' (')[1].replace(')', '');
                     
+                    // Assumindo que o efetivo é o mesmo para todos os registros agrupados
+                    const efetivo = omRegistros[0].efetivo; 
+                    
                     return (
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
@@ -1314,7 +1344,7 @@ const ClasseVForm = () => {
                                                         </Badge>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Dias: {registro.dias_operacao}
+                                                        Efetivo: {efetivo} | Dias: {registro.dias_operacao}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -1395,7 +1425,8 @@ const ClasseVForm = () => {
                       registro.dias_operacao, 
                       registro.organizacao, 
                       registro.ug, 
-                      registro.fase_atividade
+                      registro.fase_atividade,
+                      registro.efetivo
                   );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);

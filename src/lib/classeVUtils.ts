@@ -65,20 +65,21 @@ export const generateCategoryMemoriaCalculo = (
     diasOperacao: number, 
     omDestino: string, 
     ugDestino: string, 
-    faseAtividade: string | null | undefined
+    faseAtividade: string | null | undefined,
+    efetivo: number = 0 // NOVO: Adicionado efetivo
 ): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
 
-    // Assume que a alocação de ND será feita no formulário, mas a memória deve ser genérica
     const ndPrefix = "33.90.30 / 33.90.39";
     
     const categoryArticle = getCategoryArticle(categoria);
     const categoryLabel = getCategoryLabel(categoria);
     
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
+    const efetivoString = efetivo > 0 ? ` para um efetivo de ${efetivo} militares` : "";
 
-    const header = `${ndPrefix} - Manutenção de componentes ${categoryArticle} ${categoryLabel} da OM ${omDestino}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
+    const header = `${ndPrefix} - Manutenção de componentes ${categoryArticle} ${categoryLabel} da OM ${omDestino}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}${efetivoString}.`;
 
     let detalhamentoItens = "";
     itens.forEach(item => {
@@ -101,7 +102,8 @@ export const generateDetalhamento = (
     omDestino: string, 
     ugDestino: string, 
     valorND30: number, 
-    valorND39: number
+    valorND39: number,
+    efetivo: number = 0 // NOVO: Adicionado efetivo
 ): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
@@ -119,9 +121,10 @@ export const generateDetalhamento = (
     }
     
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
+    const efetivoString = efetivo > 0 ? ` (Efetivo: ${efetivo})` : "";
 
     // Cabeçalho padronizado
-    const header = `${ndPrefix} - Manutenção de componente de Armamento (Diversos) da OM ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
+    const header = `${ndPrefix} - Manutenção de componente de Armamento (Diversos) da OM ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}${efetivoString}.`;
 
     // Agrupar itens por categoria que possuem quantidade > 0
     const gruposPorCategoria = itens.reduce((acc, item) => {
