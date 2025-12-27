@@ -71,6 +71,7 @@ interface ClasseIIRegistro {
   // NOVOS CAMPOS DO DB
   valor_nd_30: number;
   valor_nd_39: number;
+  efetivo: number; // Adicionado para refletir o DB
 }
 
 interface CategoryAllocation {
@@ -369,7 +370,7 @@ const ClasseIIForm = () => {
     
     const { data, error } = await supabase
       .from("classe_ii_registros")
-      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
+      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, efetivo")
       .eq("p_trab_id", ptrabId)
       .in("categoria", CATEGORIAS) // FILTRO ADICIONADO AQUI
       .order("organizacao", { ascending: true }) // Ordenar por OM
@@ -390,6 +391,7 @@ const ClasseIIForm = () => {
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseII[],
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
+            efetivo: r.efetivo || 0, // Adicionado
         } as ClasseIIRegistro;
         uniqueRecordsMap.set(key, record);
     });
@@ -672,7 +674,7 @@ const ClasseIIForm = () => {
             detalhamento_customizado: null,
             valor_nd_30: allocation.nd_30_value,
             valor_nd_39: allocation.nd_39_value,
-            // O campo 'efetivo' não existe na tabela classe_ii_registros, então não o incluímos aqui.
+            efetivo: form.efetivo, // INCLUINDO O EFETIVO AQUI
         };
         registrosParaSalvar.push(registro);
     }
@@ -709,7 +711,7 @@ const ClasseIIForm = () => {
     // 1. Buscar TODOS os registros de CLASSE II para este PTrab
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_ii_registros")
-        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo") // Incluindo 'efetivo'
         .eq("p_trab_id", ptrabId)
         .in("categoria", CATEGORIAS); // FILTRO ADICIONADO AQUI
         
@@ -725,6 +727,7 @@ const ClasseIIForm = () => {
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
     let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
     let firstOmDetentora: { nome: string, ug: string } | null = null;
+    let firstEfetivo: number = 0; // Variável para armazenar o efetivo
     
     (allRecords || []).forEach(r => {
         const category = r.categoria as Categoria;
@@ -760,11 +763,12 @@ const ClasseIIForm = () => {
             };
         }
         
-        // Capturar a OM Detentora (assumindo que é a mesma que a OM de Destino do Recurso)
+        // Capturar a OM Detentora e o Efetivo (assumindo que são os mesmos em todos os registros)
         if (!firstOmDetentora) {
-            // Nota: O campo 'organizacao' no DB é a OM de Destino do Recurso.
-            // Para fins de edição, assumimos que a OM Detentora é a mesma que a OM de Destino do Recurso (organizacao/ug)
             firstOmDetentora = { nome: r.organizacao, ug: r.ug };
+        }
+        if (r.efetivo) {
+            firstEfetivo = r.efetivo; // Captura o efetivo
         }
     });
     
@@ -789,7 +793,7 @@ const ClasseIIForm = () => {
       selectedOmId: selectedOmIdForEdit,
       organizacao: firstOmDetentora?.nome || "",
       ug: firstOmDetentora?.ug || "",
-      efetivo: 0, // Não temos como recuperar o efetivo salvo, pois ele não está no DB. Mantemos 0 ou pedimos para o usuário preencher.
+      efetivo: firstEfetivo, // RECUPERANDO O EFETIVO AQUI
       dias_operacao: registro.dias_operacao,
       itens: consolidatedItems,
     });
@@ -1333,6 +1337,9 @@ const ClasseIIForm = () => {
                     const omName = omKey.split(' (')[0];
                     const ug = omKey.split(' (')[1].replace(')', '');
                     
+                    // Assumindo que o efetivo é o mesmo para todos os registros agrupados
+                    const efetivo = omRegistros[0].efetivo; 
+                    
                     return (
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
@@ -1343,6 +1350,10 @@ const ClasseIIForm = () => {
                                     {formatCurrency(totalOM)}
                                 </span>
                             </div>
+                            
+                            <p className="text-sm text-muted-foreground mb-3">
+                                Efetivo Empregado: {efetivo} militares
+                            </p>
                             
                             <div className="space-y-3">
                                 {omRegistros.map((registro) => {
