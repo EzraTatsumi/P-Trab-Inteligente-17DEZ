@@ -94,7 +94,7 @@ src/pages/ClasseVIIIForm.tsx
 src/pages/ClasseIXForm.tsx
 
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
-# src/lib/formatUtils.ts
+# src/lib/formatUtils.ts <--- REMOVIDO PARA GARANTIR RASTREABILIDADE
 # src/lib/omUtils.ts
 # src/lib/ptrabUtils.ts
 # src/lib/validationSchemas.ts
