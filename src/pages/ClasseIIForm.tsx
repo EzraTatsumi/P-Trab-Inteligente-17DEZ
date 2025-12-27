@@ -877,7 +877,26 @@ const ClasseIIForm = () => {
 
   const handleIniciarEdicaoMemoria = (registro: ClasseIIRegistro) => {
     setEditingMemoriaId(registro.id);
-    setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento || "");
+    
+    // OM Detentora (Source)
+    const omDetentora = registro.om_detentora || registro.organizacao;
+    const ugDetentora = registro.ug_detentora || registro.ug;
+    
+    // 1. Gerar a memória automática mais recente
+    const memoriaAutomatica = generateClasseIIMemoriaCalculo(
+        registro.categoria as Categoria, 
+        registro.itens_equipamentos as ItemClasseII[], 
+        registro.dias_operacao, 
+        omDetentora, 
+        ugDetentora, 
+        registro.fase_atividade,
+        registro.efetivo, 
+        registro.valor_nd_30, 
+        registro.valor_nd_39 
+    );
+    
+    // 2. Usar a customizada se existir, senão usar a automática recém-gerada
+    setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
   };
 
   const handleCancelarEdicaoMemoria = () => {
