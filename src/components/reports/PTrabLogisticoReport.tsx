@@ -423,76 +423,82 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         ];
         
         linhasDespesaOrdenadas.forEach((linha) => {
-          const row = worksheet.getRow(currentRow);
+          const isClasseI = 'tipo' in linha;
+          const isClasseII_IX = 'categoria' in linha.registro;
+          const isLubrificante = 'tipo_equipamento' in linha.registro;
           
-          let despesasValue = '';
-          let omValue = '';
-          let detalhamentoValue = '';
-          let valorC = 0;
-          let valorD = 0;
-          let valorE = 0;
+          const rowData = {
+              despesasValue: '',
+              omValue: '',
+              detalhamentoValue: '',
+              valorC: 0,
+              valorD: 0,
+              valorE: 0,
+          };
           
-          if ('tipo' in linha) { // Classe I (QS/QR)
-            const registro = linha.registro as ClasseIRegistro;
-            if (linha.tipo === 'QS') {
-              despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
-              omValue = `${registro.om_qs}\n(${registro.ug_qs})`;
-              valorC = registro.total_qs;
-              valorE = registro.total_qs;
-              // USANDO A FUNÇÃO UNIFICADA
-              detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
-            } else { // QR
-              despesasValue = `CLASSE I - SUBSISTÊNCIA`;
-              omValue = `${registro.organizacao}\n(${registro.ug})`;
-              valorC = registro.total_qr;
-              valorE = registro.total_qr;
-              // USANDO A FUNÇÃO UNIFICADA
-              detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
-            }
-          } else if ('categoria' in linha.registro) { // Classe II, V, VI, VII, VIII, IX
-            const registro = linha.registro as ClasseIIRegistro;
-            const omDestinoRecurso = registro.organizacao;
-            const ugDestinoRecurso = registro.ug;
-            
-            const classeLabel = getClasseIILabel(registro.categoria); // Ex: CLASSE II, CLASSE V, etc.
-            let categoriaDetalhe = registro.categoria;
-            
-            if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
-                categoriaDetalhe = registro.animal_tipo;
-            }
-                
-            // NOVO: Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
-            if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
-                despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
-            } else {
-                // Outras classes (V, VI, VII, VIII, IX) mantêm a quebra de linha
-                despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
-            }
-            
-            omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
-            valorC = registro.valor_nd_30;
-            valorD = registro.valor_nd_39;
-            valorE = registro.valor_nd_30 + registro.valor_nd_39;
-            
-            if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
-            } else {
-                // Verifica se é Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
-                const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
-                detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
-            }
-            
-          } else if ('tipo_equipamento' in linha.registro) { // Classe III Lubrificante
-            const registro = linha.registro as ClasseIIIRegistro;
-            // const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
-            
-            let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
-            despesasValue = despesasLubValue;
-            omValue = `${registro.organizacao}\n(${registro.ug})`;
-            valorC = registro.valor_total;
-            valorE = registro.valor_total;
-            detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
+          if (isClasseI) { // Classe I (QS/QR)
+              const registro = linha.registro as ClasseIRegistro;
+              if (linha.tipo === 'QS') {
+                  rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
+                  rowData.omValue = `${registro.om_qs}\n(${registro.ug_qs})`;
+                  rowData.valorC = registro.total_qs;
+                  rowData.valorE = registro.total_qs;
+                  // USANDO A FUNÇÃO UNIFICADA
+                  rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
+              } else { // QR
+                  rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
+                  rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
+                  rowData.valorC = registro.total_qr;
+                  rowData.valorE = registro.total_qr;
+                  // USANDO A FUNÇÃO UNIFICADA
+                  rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
+              }
+          } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
+              const registro = linha.registro as ClasseIIRegistro;
+              const omDestinoRecurso = registro.organizacao;
+              const ugDestinoRecurso = registro.ug;
+              
+              const classeLabel = getClasseIILabel(registro.categoria); // Ex: CLASSE II, CLASSE V, etc.
+              let categoriaDetalhe = registro.categoria;
+              
+              if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
+                  categoriaDetalhe = registro.animal_tipo;
+              }
+                  
+              // Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
+              if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
+                  rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
+              } else {
+                  // Outras classes (V, VI, VII, VIII, IX) mantêm a quebra de linha
+                  rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
+              }
+              
+              rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
+              rowData.valorC = registro.valor_nd_30;
+              rowData.valorD = registro.valor_nd_39;
+              rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
+              
+              if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+                  rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
+              } else {
+                  // Verifica se é Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
+                  const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
+                  rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
+              }
+              
+          } else if (isLubrificante) { // Classe III Lubrificante
+              const registro = linha.registro as ClasseIIIRegistro;
+              // const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
+              
+              let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
+              rowData.despesasValue = despesasLubValue;
+              rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
+              rowData.valorC = registro.valor_total;
+              rowData.valorE = registro.valor_total;
+              rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
           }
+          
+          const row = worksheet.getRow(currentRow);
           
           row.getCell('A').value = despesasValue;
           row.getCell('B').value = omValue;
@@ -952,7 +958,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     const rowData = {
                         despesasValue: '',
                         omValue: '',
-                        detalhamentoValue: '',
+                        detalhamentoValue: '', // Inicializado aqui
                         valorC: 0,
                         valorD: 0,
                         valorE: 0,
