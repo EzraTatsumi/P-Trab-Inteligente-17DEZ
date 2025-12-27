@@ -740,7 +740,7 @@ const ClasseIIForm = () => {
     // 3. Fetch ALL records belonging to this specific OM Detentora/UG Detentora for this PTrab
     const { data: recordsForDetentora, error: fetchError } = await supabase
         .from("classe_ii_registros")
-        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo, om_detentora, ug_detentora")
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo, om_detentora, ug_detentora, dias_operacao, fase_atividade")
         .eq("p_trab_id", ptrabId)
         .eq("om_detentora", omDetentoraName) // Filtrar pela Detentora
         .eq("ug_detentora", ugDetentoraCode) // Filtrar pela Detentora
@@ -800,7 +800,6 @@ const ClasseIIForm = () => {
         }
         
         // Capturar dados globais (devem ser os mesmos em todos os registros do grupo)
-        // Explicitamente converter para número para garantir que as condições de renderização sejam atendidas
         if (r.efetivo !== null && r.efetivo !== undefined) {
             firstEfetivo = Number(r.efetivo); 
         }
@@ -836,7 +835,7 @@ const ClasseIIForm = () => {
         }
     }
     
-    // 6. Preencher o estado
+    // 6. Preencher o estado (Garantindo que os números sejam definidos)
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
