@@ -1538,11 +1538,12 @@ const ClasseIIForm = () => {
                               </div>
                               
                               {isDifferentOm && (
-                                  <div className="mt-1">
-                                      <Badge variant="destructive" className="text-sm font-medium">
-                                          Recurso Destinado à OM: {registro.organizacao}
-                                      </Badge>
-                                  </div>
+                                  <Alert className="mt-1 p-2 border-red-300">
+                                      <AlertCircle className="h-4 w-4 text-red-600" />
+                                      <AlertDescription className="text-xs font-medium text-red-600">
+                                          Recurso Destinado à OM: {registro.organizacao} ({formatCodug(registro.ug)})
+                                      </AlertDescription>
+                                  </Alert>
                               )}
                           </div>
                           
