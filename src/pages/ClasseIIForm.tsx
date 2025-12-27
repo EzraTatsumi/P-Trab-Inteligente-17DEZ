@@ -723,6 +723,12 @@ const ClasseIIForm = () => {
     const omDetentoraName = registro.om_detentora || registro.organizacao;
     const ugDetentoraCode = registro.ug_detentora || registro.ug;
     
+    // --- Extract Global Parameters from the input record ---
+    const globalEfetivo = Number(registro.efetivo || 0);
+    const globalDiasOperacao = Number(registro.dias_operacao || 0);
+    const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+    // -------------------------------------------------------
+    
     // 2. Fetch OM Detentora ID first
     let selectedOmIdForEdit: string | undefined = undefined;
     if (omDetentoraName) {
@@ -757,11 +763,7 @@ const ClasseIIForm = () => {
     let newAllocations = { ...initialCategoryAllocations };
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
     let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
-    let firstEfetivo: number = 0; 
-    let diasOperacao: number = 0;
-    let fasesSalvas: string[] = [];
     
-    const recordsMap = new Map<string, ClasseIIRegistro>();
     (recordsForDetentora || []).forEach(r => {
         const category = r.categoria as Categoria;
         const items = (r.itens_equipamentos || []) as ItemClasseII[];
@@ -771,8 +773,8 @@ const ClasseIIForm = () => {
         
         // Preencher a alocação para a categoria
         if (newAllocations[category]) {
-            // Garantir que dias_operacao seja um número para o cálculo
-            const currentDiasOperacao = Number(r.dias_operacao || 0);
+            // Usar globalDiasOperacao aqui para consistência
+            const currentDiasOperacao = globalDiasOperacao; 
             const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * currentDiasOperacao), 0);
             
             newAllocations[category] = {
@@ -798,19 +800,6 @@ const ClasseIIForm = () => {
                 id: undefined, // ID will be fetched later
             };
         }
-        
-        // Capturar dados globais (devem ser os mesmos em todos os registros do grupo)
-        if (r.efetivo !== null && r.efetivo !== undefined) {
-            firstEfetivo = Number(r.efetivo); 
-        }
-        if (r.dias_operacao !== null && r.dias_operacao !== undefined) {
-            diasOperacao = Number(r.dias_operacao);
-        }
-        if (r.fase_atividade) {
-            fasesSalvas = r.fase_atividade.split(';').map(f => f.trim()).filter(f => f);
-        }
-        
-        recordsMap.set(category, r as ClasseIIRegistro);
     });
     
     // 5. Buscar IDs das OMs de Destino
@@ -835,14 +824,14 @@ const ClasseIIForm = () => {
         }
     }
     
-    // 6. Preencher o estado (Garantindo que os números sejam definidos)
+    // 6. Preencher o estado (Usando os valores globais extraídos no início)
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
       organizacao: omDetentoraName,
       ug: ugDetentoraCode,
-      efetivo: firstEfetivo || 0, // Garantir que seja 0 se for null/undefined
-      dias_operacao: diasOperacao || 0, // Garantir que seja 0 se for null/undefined
+      efetivo: globalEfetivo, 
+      dias_operacao: globalDiasOperacao,
       itens: consolidatedItems,
     });
     
@@ -1093,7 +1082,7 @@ const ClasseIIForm = () => {
             </div>
 
             {/* 2. Adicionar Itens por Categoria (Aba) - REESTRUTURADO PARA TABELA */}
-            {form.organizacao && form.ug !== "" && form.dias_operacao > 0 && (
+            {form.organizacao && form.ug !== "" && form.dias_operacao > 0 && form.efetivo > 0 && (
               <div className="space-y-4 border-b pb-4" ref={formRef}>
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
@@ -1244,7 +1233,7 @@ const ClasseIIForm = () => {
                                 type="button" 
                                 onClick={handleUpdateCategoryItems} 
                                 className="w-full md:w-auto" 
-                                disabled={!form.organizacao || form.ug === "" || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && (!tempDestinations[cat].om || tempDestinations[cat].ug === ""))}
+                                disabled={!form.organizacao || form.ug === "" || form.dias_operacao <= 0 || form.efetivo <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && (!tempDestinations[cat].om || tempDestinations[cat].ug === ""))}
                             >
                                 Salvar Itens da Categoria
                             </Button>
