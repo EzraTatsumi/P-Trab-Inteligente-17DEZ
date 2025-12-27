@@ -987,7 +987,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             categoriaDetalhe = registro.animal_tipo;
                         }
                             
-                        // NOVO: Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
+                        // Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
                         if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
                             rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
                         } else {
@@ -1001,11 +1001,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
                         
                         if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                            detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
+                            rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
                         } else {
                             // Verifica se é Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
                             const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
-                            detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
+                            rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
                         }
                         
                     } else if (isLubrificante) { // Classe III Lubrificante
