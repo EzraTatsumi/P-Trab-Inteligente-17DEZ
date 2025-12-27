@@ -454,7 +454,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const omDestinoRecurso = registro.organizacao;
             const ugDestinoRecurso = registro.ug;
             
-            // Lógica de exibição da Despesa (Ajustada)
             const classeLabel = getClasseIILabel(registro.categoria); // Ex: CLASSE II, CLASSE V, etc.
             let categoriaDetalhe = registro.categoria;
             
@@ -462,8 +461,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 categoriaDetalhe = registro.animal_tipo;
             }
                 
-            // CORREÇÃO: Usar quebra de linha para separar CLASSE X e CATEGORIA
-            despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
+            // NOVO: Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
+            if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
+                despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
+            } else {
+                // Outras classes (V, VI, VII, VIII, IX) mantêm a quebra de linha
+                despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
+            }
+            
             omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
             valorC = registro.valor_nd_30;
             valorD = registro.valor_nd_39;
@@ -982,19 +987,25 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             categoriaDetalhe = registro.animal_tipo;
                         }
                             
-                        // Ajuste para o formato solicitado: CLASSE X \n CATEGORIA
-                        rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
+                        // NOVO: Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
+                        if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
+                            rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
+                        } else {
+                            // Outras classes (V, VI, VII, VIII, IX) mantêm a quebra de linha
+                            rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
+                        }
+                        
                         rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
                         rowData.valorC = registro.valor_nd_30;
                         rowData.valorD = registro.valor_nd_39;
                         rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
                         
                         if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                            rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
+                            detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
                         } else {
                             // Verifica se é Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
                             const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
-                            rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
+                            detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
                         }
                         
                     } else if (isLubrificante) { // Classe III Lubrificante
@@ -1012,6 +1023,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     return (
                       <tr key={isClasseI ? `${linha.registro.id}-${linha.tipo}` : isLubrificante ? `lub-${linha.registro.id}` : `classe-ii-${linha.registro.id}`}>
                         <td className="col-despesas">
+                          {/* Renderiza a string. Se não houver \n (como no caso da Classe II), será um único div. */}
                           {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
                         </td>
                         <td className="col-om">
