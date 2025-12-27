@@ -72,20 +72,23 @@ export const formatFormula = (
     valorFinal: number
 ): string => {
     const E = efetivo;
-    const D = diasOperacao;
     const R = nrRefInt;
     const V = valorEtapa;
     const DES = diasEtapaSolicitada;
+    
+    // Determinar singular/plural de 'dia'
+    const diaPlural = diasOperacao === 1 ? 'dia' : 'dias';
     
     let formulaString = "";
     
     if (tipo === 'complemento') {
         // Fórmula: Efetivo x min(Ref. Int., 3) x (Valor Etapa / 3) x Dias de Atividade
         const minR = Math.min(R, 3);
-        formulaString = `${formatNumber(E)} mil. x ${formatNumber(minR)} ref. int. x (${formatCurrency(V)} / 3) x ${formatNumber(D)} dias`;
+        formulaString = `${formatNumber(E)} mil. x ${formatNumber(minR)} ref. int. x (${formatCurrency(V)} / 3) x ${formatNumber(diasOperacao)} ${diaPlural}`;
     } else {
         // Fórmula: Efetivo x Valor Etapa x Dias de Etapa Solicitada
-        formulaString = `${formatNumber(E)} mil. x ${formatCurrency(V)} x ${formatNumber(DES)} dias`;
+        const diasEtapaPlural = DES === 1 ? 'dia' : 'dias';
+        formulaString = `${formatNumber(E)} mil. x ${formatCurrency(V)} x ${formatNumber(DES)} ${diasEtapaPlural}`;
     }
     
     return `${formulaString} = ${formatCurrency(valorFinal)}`;
@@ -201,12 +204,13 @@ export const generateRacaoQuenteMemoriaCalculo = (registro: ClasseIRegistro): { 
   
   // Lógica de pluralização
   const militarPlural = E === 1 ? 'militar' : 'militares';
+  const diaPlural = D === 1 ? 'dia' : 'dias'; // <-- CORREÇÃO APLICADA AQUI
   
   // Lógica de preposição
   const preposition = getOmPreposition(organizacao);
   
   // Memória QS (Quantitativo de Subsistência)
-  const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} dias de ${faseFormatada}.
+  const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} ${diaPlural} de ${faseFormatada}.
 
 Cálculo:
 - Valor da Etapa (QS): ${formatCurrency(VQS)}.
@@ -223,7 +227,7 @@ Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicita
 Total QS: ${formatCurrency(calculos.totalQS)}.`;
 
   // Memória QR (Quantitativo de Reforço)
-  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} dias de ${faseFormatada}.
+  const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} ${diaPlural} de ${faseFormatada}.
 
 Cálculo:
 - Valor da Etapa (QR): ${formatCurrency(VQR)}.
