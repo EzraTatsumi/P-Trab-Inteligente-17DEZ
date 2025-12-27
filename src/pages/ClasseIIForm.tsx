@@ -841,8 +841,8 @@ const ClasseIIForm = () => {
       selectedOmId: selectedOmIdForEdit,
       organizacao: omDetentoraName,
       ug: ugDetentoraCode,
-      efetivo: firstEfetivo, 
-      dias_operacao: diasOperacao,
+      efetivo: firstEfetivo || 0, // Garantir que seja 0 se for null/undefined
+      dias_operacao: diasOperacao || 0, // Garantir que seja 0 se for null/undefined
       itens: consolidatedItems,
     });
     
