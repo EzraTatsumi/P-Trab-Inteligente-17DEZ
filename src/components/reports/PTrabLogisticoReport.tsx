@@ -36,6 +36,7 @@ import {
   calculateItemTotalClasseIX,
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils"; // NOVO: Importar utilitário de Classe V
 
 interface PTrabLogisticoReportProps {
   ptrabData: PTrabData;
@@ -69,6 +70,8 @@ interface PTrabLogisticoReportProps {
   ) => string;
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe I
   generateClasseIMemoriaCalculo: (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP') => string;
+  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe V
+  generateClasseVMemoriaCalculo: (registro: any) => string;
 }
 
 // Implementação padrão (fallback) para generateClasseIIMemoriaCalculo
@@ -92,6 +95,25 @@ const defaultGenerateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolea
     return registro.detalhamento_customizado || registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
+// Implementação padrão (fallback) para generateClasseVMemoriaCalculo
+const defaultGenerateClasseVMemoriaCalculo = (registro: any): string => {
+    if (CLASSE_V_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos && registro.efetivo !== undefined) {
+        // Usa a função utilitária detalhada para Classe V
+        return generateClasseVUtility(
+            registro.categoria,
+            registro.itens_equipamentos,
+            registro.dias_operacao,
+            registro.organizacao, // Para Classe V, a OM Detentora é a OM de Destino
+            registro.ug,
+            registro.fase_atividade,
+            registro.efetivo,
+            registro.valor_nd_30,
+            registro.valor_nd_39
+        );
+    }
+    return registro.detalhamento_customizado || registro.detalhamento || "Memória de cálculo não disponível.";
+};
+
 
 const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   ptrabData,
@@ -110,6 +132,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   fileSuffix, // NOVO PROP
   generateClasseIIMemoriaCalculo = defaultGenerateClasseIIMemoriaCalculo, // FORNECER DEFAULT
   generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
+  generateClasseVMemoriaCalculo = defaultGenerateClasseVMemoriaCalculo, // NOVO: DESESTRUTURANDO E USANDO DEFAULT
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -481,8 +504,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       rowData.despesasValue += `\n${omDetentora}`;
                   }
                   
+              } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                  // NOVO: Usar função específica para Classe V
+                  rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
+                  rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
               } else {
-                  // Outras classes (V, VI, VII, VIII, IX) mantêm a quebra de linha
+                  // Outras classes (VI, VII, VIII, IX) mantêm a quebra de linha
                   rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
               }
               
@@ -493,8 +520,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               
               if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                   rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
-              } else {
-                  // Verifica se é Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
+              } else if (!CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                  // Se não for Classe V, usa a função genérica/Classe II
                   const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                   rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
               }
@@ -879,7 +906,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo]);
+  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo]);
 
   return (
     <div className="space-y-6">
@@ -1023,6 +1050,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                                 rowData.despesasValue += `\n${omDetentora}`;
                             }
                             
+                        } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                            // NOVO: Usar função específica para Classe V
+                            rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
+                            rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
                         } else {
                             // Outras classes (V, VI, VII, VIII, IX) mantêm a quebra de linha
                             rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
@@ -1035,8 +1066,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         
                         if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                             rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
-                        } else {
-                            // Verifica se é Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
+                        } else if (!CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                            // Se não for Classe V, usa a função genérica/Classe II
                             const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                             rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
                         }
