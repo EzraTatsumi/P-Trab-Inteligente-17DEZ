@@ -1566,7 +1566,7 @@ export default function ClasseIForm() {
                                                             <h4 className="font-semibold text-base text-foreground">
                                                                 {isRacaoQuente ? 'Ração Quente (R1)' : 'Ração Operacional (R2/R3)'}
                                                             </h4>
-                                                            <Badge variant="outline" className="text-xs">
+                                                            <Badge variant="outline" className="text-xs font-normal">
                                                                 {fases}
                                                             </Badge>
                                                         </div>
@@ -1658,9 +1658,12 @@ export default function ClasseIForm() {
                         const { qs, qr } = generateRacaoQuenteMemoriaCalculo(registro);
                         memoriaQSFinal = isEditing ? memoriaQSEdit : (registro.memoriaQSCustomizada || qs);
                         memoriaQRFinal = isEditing ? memoriaQREdit : (registro.memoriaQRCustomizada || qr);
+                        setMemoriaOpEdit(""); // Limpa estado de Ração Operacional
                     } else {
                         const op = generateRacaoOperacionalMemoriaCalculo(registro);
                         memoriaOpFinal = isEditing ? memoriaOpEdit : (registro.memoriaQSCustomizada || op);
+                        setMemoriaQSEdit(""); // Limpa estados de Ração Quente
+                        setMemoriaQREdit("");
                     }
                     
                     return (
@@ -1682,7 +1685,7 @@ export default function ClasseIForm() {
                             )}
                           </div>
                           
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-2 shrink-0">
                             {!isEditing ? (
                               <>
                                 <Button
