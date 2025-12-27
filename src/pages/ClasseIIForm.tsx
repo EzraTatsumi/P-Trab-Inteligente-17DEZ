@@ -767,7 +767,15 @@ const ClasseIIForm = () => {
     
     (recordsForDetentora || []).forEach(r => {
         const category = r.categoria as Categoria;
-        const items = (r.itens_equipamentos || []) as ItemClasseII[];
+        
+        // CORREÇÃO APLICADA AQUI: Mapeamento explícito para garantir a estrutura ItemClasseII
+        const items: ItemClasseII[] = (r.itens_equipamentos as any[] || []).map(item => ({
+            item: item.item,
+            quantidade: Number(item.quantidade || 0),
+            valor_mnt_dia: Number(item.valor_mnt_dia || 0),
+            categoria: item.categoria,
+            memoria_customizada: item.memoria_customizada || null,
+        }));
         
         // Adicionar itens ao array consolidado
         consolidatedItems = consolidatedItems.concat(items);
