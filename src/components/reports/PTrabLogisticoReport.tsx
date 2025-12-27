@@ -3,7 +3,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency, formatNumber, formatDateDDMMMAA } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, formatDateDDMMMAA, formatCodug } from "@/lib/formatUtils";
 import { FileSpreadsheet, Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -438,16 +438,19 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           
           if (isClasseI) { // Classe I (QS/QR)
               const registro = linha.registro as ClasseIRegistro;
+              const ug_qs_formatted = formatCodug(registro.ug_qs);
+              const ug_qr_formatted = formatCodug(registro.ug);
+
               if (linha.tipo === 'QS') {
                   rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
-                  rowData.omValue = `${registro.om_qs}\n(${registro.ug_qs})`;
+                  rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                   rowData.valorC = registro.total_qs;
                   rowData.valorE = registro.total_qs;
                   // USANDO A FUNÇÃO UNIFICADA
                   rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
               } else { // QR
                   rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
-                  rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
+                  rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
                   rowData.valorC = registro.total_qr;
                   rowData.valorE = registro.total_qr;
                   // USANDO A FUNÇÃO UNIFICADA
@@ -456,7 +459,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
               const registro = linha.registro as ClasseIIRegistro;
               const omDestinoRecurso = registro.organizacao;
-              const ugDestinoRecurso = registro.ug;
+              const ugDestinoRecurso = formatCodug(registro.ug);
               
               const classeLabel = getClasseIILabel(registro.categoria); // Ex: CLASSE II, CLASSE V, etc.
               let categoriaDetalhe = registro.categoria;
@@ -502,7 +505,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               
               let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
               rowData.despesasValue = despesasLubValue;
-              rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
+              rowData.omValue = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
               rowData.valorC = registro.valor_total;
               rowData.valorE = registro.valor_total;
               rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
@@ -583,9 +586,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             
             // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
             const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug || '';
+            const rmUgFormatted = formatCodug(rmUg);
             
             row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
-            row.getCell('B').value = `${nomeRM}\n(${rmUg})`;
+            row.getCell('B').value = `${nomeRM}\n(${rmUgFormatted})`;
             
             // Colunas azuis (C, D, E) - Vazias para Combustível
             row.getCell('C').value = ''; 
@@ -976,16 +980,19 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     
                     if (isClasseI) { // Classe I (QS/QR)
                         const registro = linha.registro as ClasseIRegistro;
+                        const ug_qs_formatted = formatCodug(registro.ug_qs);
+                        const ug_qr_formatted = formatCodug(registro.ug);
+
                         if (linha.tipo === 'QS') {
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
-                            rowData.omValue = `${registro.om_qs}\n(${registro.ug_qs})`;
+                            rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                             rowData.valorC = registro.total_qs;
                             rowData.valorE = registro.total_qs;
                             // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                         } else { // QR
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
-                            rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
+                            rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
                             rowData.valorC = registro.total_qr;
                             rowData.valorE = registro.total_qr;
                             // USANDO A FUNÇÃO UNIFICADA
@@ -994,7 +1001,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
                         const registro = linha.registro as ClasseIIRegistro;
                         const omDestinoRecurso = registro.organizacao;
-                        const ugDestinoRecurso = registro.ug;
+                        const ugDestinoRecurso = formatCodug(registro.ug);
                         
                         const classeLabel = getClasseIILabel(registro.categoria); // Ex: CLASSE II, CLASSE V, etc.
                         let categoriaDetalhe = registro.categoria;
@@ -1040,7 +1047,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         
                         let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
                         rowData.despesasValue = despesasLubValue;
-                        rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
+                        rowData.omValue = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
                         rowData.valorC = registro.valor_total;
                         rowData.valorE = registro.valor_total;
                         rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
@@ -1091,6 +1098,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       return tipo;
                     };
 
+                    // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
+                    const rmUg = gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || gruposPorOM[nomeRM]?.linhasQR[0]?.registro.ug || '';
+                    const rmUgFormatted = formatCodug(rmUg);
+
                     return (
                       <tr key={`classe-iii-${registro.id}`}>
                         <td className="col-despesas">
@@ -1100,7 +1111,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         </td>
                         <td className="col-om">
                           <div>{nomeRM}</div>
-                          <div>({gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || gruposPorOM[nomeRM]?.linhasQR[0]?.registro.ug || 'UG'})</div>
+                          <div>({rmUgFormatted})</div>
                         </td>
                         <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* 33.90.30 (Vazio) */}
                         <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* 33.90.39 (Vazio) */}
