@@ -474,7 +474,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   // NOVO: Adiciona a OM Detentora se for diferente da OM de Destino
                   rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
                   if (isDifferentOm) {
-                      rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
+                      // MODIFICAÇÃO AQUI: Simplificando o texto para apenas o nome da OM Detentora
+                      rowData.despesasValue += `\n${omDetentora}`;
                   }
                   
               } else {
@@ -1011,7 +1012,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             // NOVO: Adiciona a OM Detentora se for diferente da OM de Destino
                             rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
                             if (isDifferentOm) {
-                                rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
+                                // MODIFICAÇÃO AQUI: Simplificando o texto para apenas o nome da OM Detentora
+                                rowData.despesasValue += `\n${omDetentora}`;
                             }
                             
                         } else {
@@ -1290,6 +1292,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           <AlertDialogFooter>
             <AlertDialogAction onClick={handleConfirmCompleteStatus}>Sim, arquivar</AlertDialogAction>
             <AlertDialogCancel onClick={handleCancelCompleteStatus}>Não, manter status atual</AlertDialogCancel>
+          </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
