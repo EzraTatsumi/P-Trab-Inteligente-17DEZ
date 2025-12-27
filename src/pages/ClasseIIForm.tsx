@@ -777,7 +777,8 @@ const ClasseIIForm = () => {
             
             newAllocations[category] = {
                 total_valor: totalValor,
-                nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
+                // Usar formatNumberForInput para garantir que o formato seja 'X.XXX,XX'
+                nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2), 
                 nd_30_value: Number(r.valor_nd_30),
                 nd_39_value: Number(r.valor_nd_39),
                 om_destino_recurso: r.organizacao,
@@ -894,8 +895,8 @@ const ClasseIIForm = () => {
         registro.categoria as Categoria, 
         registro.itens_equipamentos as ItemClasseII[], 
         registro.dias_operacao, 
-        omDetentora, 
-        ugDetentora, 
+        omDetentora, // Passando a Detentora
+        ugDetentora, // Passando a UG Detentora
         registro.fase_atividade,
         registro.efetivo, 
         registro.valor_nd_30, 
