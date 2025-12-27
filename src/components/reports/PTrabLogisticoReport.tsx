@@ -35,6 +35,7 @@ import {
   generateClasseIXMemoriaCalculo,
   calculateItemTotalClasseIX,
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
+import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 
 interface PTrabLogisticoReportProps {
   ptrabData: PTrabData;
@@ -70,6 +71,28 @@ interface PTrabLogisticoReportProps {
   generateClasseIMemoriaCalculo: (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP') => string;
 }
 
+// Implementação padrão (fallback) para generateClasseIIMemoriaCalculo
+const defaultGenerateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolean): string => {
+    // Verifica se é uma das categorias de Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
+    if (isClasseII && registro.itens_equipamentos && registro.efetivo !== undefined) {
+        // Usa a função utilitária detalhada para Classe II
+        return generateClasseIIUtility(
+            registro.categoria,
+            registro.itens_equipamentos,
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
+            registro.efetivo,
+            registro.valor_nd_30,
+            registro.valor_nd_39
+        );
+    }
+    // Para outras classes (V, VI, VII, VIII) ou se os dados estiverem incompletos, retorna o detalhamento armazenado
+    return registro.detalhamento_customizado || registro.detalhamento || "Memória de cálculo não disponível.";
+};
+
+
 const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   ptrabData,
   registrosClasseI,
@@ -85,7 +108,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   handleConfirmCompleteStatus,
   handleCancelCompleteStatus,
   fileSuffix, // NOVO PROP
-  generateClasseIIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO DA CLASSE II
+  generateClasseIIMemoriaCalculo = defaultGenerateClasseIIMemoriaCalculo, // FORNECER DEFAULT
   generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
 }) => {
   const { toast } = useToast();
@@ -791,7 +814,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow++;
       
       const cmtRow = worksheet.getRow(currentRow);
-      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment; // Centraliza
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
