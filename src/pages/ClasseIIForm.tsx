@@ -284,8 +284,8 @@ const ClasseIIForm = () => {
   
   // Efeito para gerenciar a lista de itens da categoria atual
   useEffect(() => {
-    // Só carrega se as diretrizes estiverem prontas e a OM estiver selecionada (para evitar resetar o form.itens)
-    if (diretrizes.length > 0 && form.organizacao) {
+    // Só carrega se as diretrizes estiverem prontas E (a OM estiver selecionada OU estivermos em modo de visualização/sem OM)
+    if (diretrizes.length > 0) {
         // 1. Obter todos os itens disponíveis para a aba atual
         const availableItems = diretrizes
             .filter(d => d.categoria === selectedTab)
@@ -310,22 +310,10 @@ const ClasseIIForm = () => {
         });
 
         setCurrentCategoryItems(mergedItems);
-    } else if (diretrizes.length > 0 && !form.organizacao) {
-        // Se a OM não estiver selecionada, apenas mostra os itens disponíveis com quantidade 0
-        const availableItems = diretrizes
-            .filter(d => d.categoria === selectedTab)
-            .map(d => ({
-                item: d.item,
-                quantidade: 0,
-                valor_mnt_dia: Number(d.valor_mnt_dia),
-                categoria: d.categoria as Categoria,
-                memoria_customizada: null,
-            }));
-        setCurrentCategoryItems(availableItems);
     } else {
         setCurrentCategoryItems([]);
     }
-  }, [selectedTab, diretrizes, form.itens, form.organizacao, form.dias_operacao, form.efetivo]); // ADICIONADO form.efetivo
+  }, [selectedTab, diretrizes, form.itens, form.organizacao, form.dias_operacao, form.efetivo]);
 
   // MEMO: Agrupa os itens do formulário por categoria para exibição consolidada
   const itensAgrupadosPorCategoria = useMemo(() => {
@@ -758,7 +746,6 @@ const ClasseIIForm = () => {
     const ugDetentoraCode = registro.ug_detentora || registro.ug;
     
     // --- Extract Global Parameters from the input record ---
-    // Usamos os valores do registro clicado como base, pois todos os registros do grupo devem ter os mesmos valores globais
     const globalEfetivo = Number(registro.efetivo || 0);
     const globalDiasOperacao = Number(registro.dias_operacao || 0);
     const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
@@ -830,19 +817,17 @@ const ClasseIIForm = () => {
 
         // Preencher a alocação para a categoria
         if (newAllocations[category]) {
-            // Usar globalDiasOperacao aqui para consistência
             const currentDiasOperacao = globalDiasOperacao;
             const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * currentDiasOperacao), 0);
 
             newAllocations[category] = {
                 total_valor: totalValor,
-                // Usar formatNumberForInput para garantir que o formato seja 'X.XXX,XX'
                 nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
                 nd_30_value: Number(r.valor_nd_30),
                 nd_39_value: Number(r.valor_nd_39),
                 om_destino_recurso: r.organizacao,
                 ug_destino_recurso: r.ug,
-                selectedOmDestinoId: selectedOmDestinoId, // AGORA PREENCHIDO
+                selectedOmDestinoId: selectedOmDestinoId,
             };
 
             // Populate temporary input state with saved ND 39 value (in digits)
@@ -854,7 +839,7 @@ const ClasseIIForm = () => {
             tempDestinationsLoad[category] = {
                 om: r.organizacao,
                 ug: r.ug,
-                id: selectedOmDestinoId, // AGORA PREENCHIDO
+                id: selectedOmDestinoId,
             };
         }
     }
@@ -867,7 +852,7 @@ const ClasseIIForm = () => {
       ug: ugDetentoraCode,
       efetivo: globalEfetivo, 
       dias_operacao: globalDiasOperacao, 
-      itens: consolidatedItems,
+      itens: consolidatedItems, // CHAVE: Preencher form.itens com todos os itens consolidados
     });
     
     setCategoryAllocations(newAllocations);
@@ -879,8 +864,8 @@ const ClasseIIForm = () => {
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
     if (consolidatedItems.length > 0) {
-        // Define a aba ativa para a categoria do primeiro item encontrado
-        setSelectedTab(consolidatedItems[0].categoria as Categoria);
+        // Define a aba ativa para a categoria do registro clicado
+        setSelectedTab(registro.categoria as Categoria);
     } else {
         setSelectedTab(CATEGORIAS[0]);
     }
