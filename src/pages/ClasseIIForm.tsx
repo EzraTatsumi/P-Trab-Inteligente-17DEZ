@@ -658,7 +658,8 @@ const ClasseIIForm = () => {
             allocation.om_destino_recurso, // OM de Destino do Recurso (ND 30/39)
             allocation.ug_destino_recurso, // UG de Destino do Recurso (ND 30/39)
             allocation.nd_30_value,
-            allocation.nd_39_value
+            allocation.nd_39_value,
+            form.efetivo // PASSANDO O EFETIVO
         );
         
         const registro: TablesInsert<'classe_ii_registros'> = {
@@ -1454,7 +1455,10 @@ const ClasseIIForm = () => {
                       registro.dias_operacao, 
                       registro.organizacao, 
                       registro.ug, 
-                      registro.fase_atividade
+                      registro.fase_atividade,
+                      registro.efetivo, // PASSANDO O EFETIVO
+                      registro.valor_nd_30, // PASSANDO ND 30
+                      registro.valor_nd_39 // PASSANDO ND 39
                   );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
