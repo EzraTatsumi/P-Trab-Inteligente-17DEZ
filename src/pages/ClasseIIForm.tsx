@@ -1395,7 +1395,7 @@ const ClasseIIForm = () => {
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
                                                         <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
-                                                            OM Destino: {registro.organizacao}
+                                                            {/* Removido: OM Destino: {registro.organizacao} */}
                                                         </Badge>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
@@ -1442,6 +1442,12 @@ const ClasseIIForm = () => {
                                             
                                             {/* Detalhes da Alocação */}
                                             <div className="pt-2 border-t mt-2">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-muted-foreground">OM Destino:</span>
+                                                    <span className="font-medium text-foreground">
+                                                        {registro.organizacao} ({formatCodug(registro.ug)})
+                                                    </span>
+                                                </div>
                                                 <div className="flex justify-between text-xs">
                                                     <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
                                                     <span className="font-medium text-green-600">{formatCurrency(registro.valor_nd_30)}</span>
