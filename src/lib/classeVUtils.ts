@@ -31,16 +31,23 @@ export const formatFasesParaTexto = (faseCSV: string | null | undefined): string
 
 /**
  * Helper function to determine 'do' or 'da' based on OM name.
+ * Assumes 'da' if the OM name contains 'ª' (indicating feminine ordinal number).
+ * @param omName The name of the Military Organization (OM).
+ * @returns 'do' or 'da'.
  */
 const getOmArticle = (omName: string): string => {
+    // Verifica se a OM contém 'ª' (ex: 23ª Bda Inf Sl)
     if (omName.includes('ª')) {
         return 'da';
     }
+    // Caso contrário, usa o padrão 'do'
     return 'do';
 };
 
 /**
  * Determina a concordância de gênero para o cabeçalho da categoria.
+ * @param categoria A categoria da Classe V.
+ * @returns 'do' ou 'da'.
  */
 const getCategoryArticle = (categoria: Categoria): 'do' | 'da' => {
     switch (categoria) {
@@ -58,28 +65,38 @@ const getCategoryArticle = (categoria: Categoria): 'do' | 'da' => {
 
 /**
  * Generates the detailed calculation memory for a specific Classe V category.
+ * This is used for the editable memory field.
  */
 export const generateCategoryMemoriaCalculo = (
     categoria: Categoria, 
     itens: ItemClasseV[], 
     diasOperacao: number, 
-    omDestino: string, 
-    ugDestino: string, 
+    omDetentora: string, // OM Detentora (Source)
+    ugDetentora: string, // UG Detentora (Source)
     faseAtividade: string | null | undefined,
     efetivo: number = 0 // NOVO: Adicionado efetivo
 ): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
 
-    const ndPrefix = "33.90.30 / 33.90.39";
+    // 1. Determinar o prefixo ND (REMOVIDO 'ND ')
+    const ndPrefix = "33.90.30 / 33.90.39"; // Classe V sempre usa 30/39
     
+    // 2. Determinar singular/plural do efetivo
+    const militarPlural = efetivo === 1 ? "militar" : "militares";
+    
+    // 3. Determinar o artigo 'do/da' da OM
+    const omArticle = getOmArticle(omDetentora);
+    
+    // 4. Determinar o artigo 'do/da' da Categoria
     const categoryArticle = getCategoryArticle(categoria);
-    const categoryLabel = getCategoryLabel(categoria);
     
+    // 5. Determinar singular/plural de 'dia'
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
-    const efetivoString = efetivo > 0 ? ` para um efetivo de ${efetivo} militares` : "";
 
-    const header = `${ndPrefix} - Manutenção de componentes ${categoryArticle} ${categoryLabel} da OM ${omDestino}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}${efetivoString}.`;
+    // 6. Montar o cabeçalho dinâmico
+    const categoryLabel = getCategoryLabel(categoria);
+    const header = `${ndPrefix} - Manutenção de componentes ${categoryArticle} ${categoryLabel} de ${efetivo} ${militarPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
     let detalhamentoItens = "";
     itens.forEach(item => {
@@ -92,15 +109,16 @@ export const generateCategoryMemoriaCalculo = (
 
 /**
  * Generates the final, consolidated detailing string for the database record.
+ * This includes the ND split and the OM of resource destination.
  */
 export const generateDetalhamento = (
     itens: ItemClasseV[], 
     diasOperacao: number, 
-    omDetentora: string, // Para Classe V, a Detentora é a mesma que a Destino
-    ugDetentora: string, 
+    omDetentora: string, // OM Detentora (Source)
+    ugDetentora: string, // UG Detentora (Source)
     faseAtividade: string, 
-    omDestino: string, 
-    ugDestino: string, 
+    omDestino: string, // OM de Destino do Recurso (ND 30/39)
+    ugDestino: string, // UG de Destino do Recurso (ND 30/39)
     valorND30: number, 
     valorND39: number,
     efetivo: number = 0 // NOVO: Adicionado efetivo
@@ -109,6 +127,7 @@ export const generateDetalhamento = (
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const valorTotal = valorND30 + valorND39;
     
+    // 1. Determinar o prefixo ND (REMOVIDO 'ND ')
     let ndPrefix = "";
     if (valorND30 > 0 && valorND39 > 0) {
         ndPrefix += "33.90.30 / 33.90.39";
@@ -120,13 +139,19 @@ export const generateDetalhamento = (
         ndPrefix = "(Não Alocado)";
     }
     
+    // 2. Determinar singular/plural do efetivo
+    const militarPlural = efetivo === 1 ? "militar" : "militares";
+    
+    // 3. Determinar o artigo 'do/da' da OM Detentora
+    const omArticle = getOmArticle(omDetentora);
+    
+    // 4. Determinar singular/plural de 'dia'
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
-    const efetivoString = efetivo > 0 ? ` (Efetivo: ${efetivo})` : "";
 
-    // Cabeçalho padronizado
-    const header = `${ndPrefix} - Manutenção de componente de Armamento (Diversos) da OM ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}${efetivoString}.`;
+    // 5. Montar o cabeçalho dinâmico (usando OM Detentora)
+    const header = `${ndPrefix} - Manutenção de componente de Armamento (Diversos) de ${efetivo} ${militarPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
-    // Agrupar itens por categoria que possuem quantidade > 0
+    // 6. Agrupar itens por categoria que possuem quantidade > 0
     const gruposPorCategoria = itens.reduce((acc, item) => {
         const categoria = item.categoria as Categoria;
         const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
@@ -150,6 +175,7 @@ export const generateDetalhamento = (
 
     let detalhamentoItens = "";
     
+    // 7. Formatar a seção de cálculo agrupada
     Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
         detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`;
         detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
@@ -160,9 +186,11 @@ export const generateDetalhamento = (
     
     detalhamentoItens = detalhamentoItens.trim();
 
+    // Cabeçalho padronizado
     return `${header}
 
-OM Detentora/Destino Recurso: ${omDestino} (UG: ${formatCodug(ugDestino)})
+OM Detentora: ${omDetentora} (UG: ${formatCodug(ugDetentora)})
+OM Destino Recurso: ${omDestino} (UG: ${formatCodug(ugDestino)})
 Total de Itens: ${totalItens}
 
 Alocação:
