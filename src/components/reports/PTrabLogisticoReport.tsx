@@ -1292,7 +1292,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           <AlertDialogFooter>
             <AlertDialogAction onClick={handleConfirmCompleteStatus}>Sim, arquivar</AlertDialogAction>
             <AlertDialogCancel onClick={handleCancelCompleteStatus}>Não, manter status atual</AlertDialogCancel>
-          </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
