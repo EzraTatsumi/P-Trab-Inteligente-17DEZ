@@ -471,7 +471,7 @@ const ClasseIIForm = () => {
 
   const handleFaseChange = (fase: string, checked: boolean) => {
     if (checked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase]));
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
@@ -1395,10 +1395,6 @@ const ClasseIIForm = () => {
                                 </span>
                             </div>
                             
-                            <p className="text-sm text-muted-foreground mb-3">
-                                Efetivo Empregado: {efetivo} militares
-                            </p>
-                            
                             <div className="space-y-3">
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
@@ -1417,10 +1413,12 @@ const ClasseIIForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
-                                                        {/* REMOVIDO O BADGE VAZIO AQUI */}
+                                                        <Badge variant="secondary" className="text-xs font-normal">
+                                                            {fases}
+                                                        </Badge>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Dias: {registro.dias_operacao} | Fases: {fases}
+                                                        Efetivo: {efetivo} | Dias: {registro.dias_operacao}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
