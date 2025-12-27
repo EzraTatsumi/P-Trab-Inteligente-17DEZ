@@ -454,13 +454,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const omDestinoRecurso = registro.organizacao;
             const ugDestinoRecurso = registro.ug;
             
-            let secondDivContent = registro.categoria.toUpperCase();
+            // Lógica de exibição da Despesa (Ajustada)
+            const classeLabel = getClasseIILabel(registro.categoria); // Ex: CLASSE II, CLASSE V, etc.
+            let categoriaDetalhe = registro.categoria;
             
             if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
-                secondDivContent = registro.animal_tipo.toUpperCase();
+                categoriaDetalhe = registro.animal_tipo;
             }
                 
-            despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
+            despesasValue = `${classeLabel} - ${categoriaDetalhe.toUpperCase()}`;
             omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
             valorC = registro.valor_nd_30;
             valorD = registro.valor_nd_39;
@@ -814,7 +816,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow++;
       
       const cmtRow = worksheet.getRow(currentRow);
-      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'; // CORRIGIDO: Removida a aspa extra
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment; // Centraliza
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
@@ -972,13 +974,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         const omDestinoRecurso = registro.organizacao;
                         const ugDestinoRecurso = registro.ug;
                         
-                        let secondDivContent = registro.categoria.toUpperCase();
+                        const classeLabel = getClasseIILabel(registro.categoria); // Ex: CLASSE II, CLASSE V, etc.
+                        let categoriaDetalhe = registro.categoria;
                         
                         if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
-                            secondDivContent = registro.animal_tipo.toUpperCase();
+                            categoriaDetalhe = registro.animal_tipo;
                         }
                             
-                        rowData.despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
+                        // Ajuste para o formato solicitado: CLASSE X - CATEGORIA
+                        rowData.despesasValue = `${classeLabel} - ${categoriaDetalhe.toUpperCase()}`;
                         rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
                         rowData.valorC = registro.valor_nd_30;
                         rowData.valorD = registro.valor_nd_39;
