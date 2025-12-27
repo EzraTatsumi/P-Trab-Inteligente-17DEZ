@@ -1102,7 +1102,8 @@ const ClasseIIForm = () => {
             </div>
 
             {/* 2. Adicionar Itens por Categoria (Aba) - REESTRUTURADO PARA TABELA */}
-            {form.organizacao && form.ug !== "" && form.dias_operacao > 0 && form.efetivo > 0 && (
+            {/* REMOVIDA A CONDIÇÃO form.efetivo > 0 PARA PERMITIR EDIÇÃO MESMO QUE O EFETIVO ESTEJA ZERADO */}
+            {form.organizacao && form.ug !== "" && form.dias_operacao > 0 && (
               <div className="space-y-4 border-b pb-4" ref={formRef}>
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
