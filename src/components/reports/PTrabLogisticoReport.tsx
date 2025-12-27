@@ -1093,12 +1093,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     return (
                       <tr key={isClasseI ? `${linha.registro.id}-${linha.tipo}` : isLubrificante ? `lub-${linha.registro.id}` : `classe-ii-${linha.registro.id}`}>
                         <td className="col-despesas">
-                          {/* Renderiza a string. Se for Classe V, renderiza como uma única linha. Caso contrário, usa quebra de linha. */}
-                          {CLASSE_V_CATEGORIES.includes(linha.registro.categoria) ? (
-                              <div>{rowData.despesasValue}</div>
-                          ) : (
-                              rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)
-                          )}
+                          {/* Renderiza a string. Se contiver '\n', divide em divs. Se não, renderiza como um bloco único. */}
+                          {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
                         </td>
                         <td className="col-om">
                           {rowData.omValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
@@ -1146,7 +1142,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     return (
                       <tr key={`classe-iii-${registro.id}`}>
                         <td className="col-despesas">
-                          <div>CLASSE III - {getTipoEquipamentoLabel(registro.tipo_combustivel)}</div>
+                          <div>CLASSE III - {getTipoCombustivelLabel(registro.tipo_combustivel)}</div>
                           <div>{getTipoEquipamentoLabel(registro.tipo_equipamento)}</div>
                           <div>{registro.organizacao}</div>
                         </td>
