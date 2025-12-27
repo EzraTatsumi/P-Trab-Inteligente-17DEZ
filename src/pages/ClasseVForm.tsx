@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,25 +7,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, Trash2, XCircle, Check, ChevronDown, ChevronsUpDown, Sparkles, AlertCircle } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, XCircle, Check, ChevronsUpDown, Sparkles, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatCodug } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
-import { defaultClasseVConfig } from "@/data/classeIIData";
+import { defaultClasseVConfig } from "@/data/classeVData";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
+import { 
+    formatFasesParaTexto, 
+    generateCategoryMemoriaCalculo, 
+    generateDetalhamento 
+} from "@/lib/classeVUtils"; // USANDO NOVO UTILS
 
 type Categoria = 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN';
 
@@ -56,7 +61,6 @@ interface FormDataClasseV {
   fase_atividade?: string; // Global
 }
 
-// MUDANÇA: ClasseVRegistro agora usa a tabela classe_v_registros
 interface ClasseVRegistro {
   id: string;
   organizacao: string; // OM de Destino do Recurso (ND 30/39)
@@ -104,101 +108,11 @@ const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
     return Math.abs(a - b) < tolerance;
 };
 
-const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
-  if (!faseCSV) return 'operação';
-  
-  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
-  
-  if (fases.length === 0) return 'operação';
-  if (fases.length === 1) return fases[0];
-  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
-  
-  const ultimaFase = fases[fases.length - 1];
-  const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFase}`;
+// Helper function to get the numeric ND 39 value from the temporary input digits
+const getTempND39NumericValue = (category: Categoria, tempInputs: Record<Categoria, string>): number => {
+    const digits = tempInputs[category] || "";
+    return formatCurrencyInput(digits).numericValue;
 };
-
-const generateDetalhamento = (itens: ItemClasseV[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const valorTotal = valorND30 + valorND39;
-
-    // 1. Agrupar itens por categoria e calcular o subtotal de valor por categoria
-    const gruposPorCategoria = itens.reduce((acc, item) => {
-        const categoria = item.categoria as Categoria;
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        
-        if (!acc[categoria]) {
-            acc[categoria] = {
-                totalValor: 0,
-                totalQuantidade: 0,
-                detalhes: [],
-            };
-        }
-        
-        acc[categoria].totalValor += valorItem;
-        acc[categoria].totalQuantidade += item.quantidade;
-        acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.`
-        );
-        
-        return acc;
-    }, {} as Record<Categoria, { totalValor: number, totalQuantidade: number, detalhes: string[] }>);
-
-    let detalhamentoItens = "";
-    
-    // 2. Formatar a seção de cálculo agrupada
-    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`; // USANDO getCategoryLabel
-        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
-        detalhamentoItens += `Detalhes:\n`;
-        detalhamentoItens += grupo.detalhes.join('\n');
-        detalhamentoItens += `\n`;
-    });
-    
-    detalhamentoItens = detalhamentoItens.trim();
-
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Armamento (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
-Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
-
-Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
-
-Cálculo:
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
-
-${detalhamentoItens}
-
-Valor Total: ${formatCurrency(valorTotal)}.`;
-  };
-
-// NOVO: Gera a memória de cálculo detalhada para uma categoria
-const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseV[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
-
-    let detalhamentoItens = "";
-    itens.forEach(item => {
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
-    });
-
-    return `33.90.30 - Aquisição de Material de Armamento (${getCategoryLabel(categoria)})
-OM de Destino: ${organizacao} (UG: ${ug})
-Período: ${diasOperacao} dias de ${faseFormatada}
-Total de Itens na Categoria: ${totalQuantidade}
-
-Cálculo:
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
-
-Detalhes dos Itens:
-${detalhamentoItens.trim()}
-
-Valor Total da Categoria: ${formatCurrency(totalValor)}.`;
-};
-
 
 const ClasseVForm = () => {
   const navigate = useNavigate();
@@ -240,11 +154,37 @@ const ClasseVForm = () => {
   const { handleEnterToNextField } = useFormNavigation();
   const formRef = useRef<HTMLDivElement>(null);
 
-  // Helper para converter string formatada (ex: "1.234,56") de volta para dígitos brutos ("123456")
-  const formattedToRawDigits = (formatted: string): string => {
-    const numericValue = parseInputToNumber(formatted);
-    return numberToRawDigits(numericValue);
-  };
+  // Helper function to check if a category is dirty (needs saving)
+  const isCategoryAllocationDirty = useCallback((
+      category: Categoria, 
+      currentTotal: number, // Total calculated from the items being checked (either saved or current tab items)
+      allocation: CategoryAllocation, 
+      tempInputs: Record<Categoria, string>, 
+      tempDestinations: Record<Categoria, TempDestination>
+  ): boolean => {
+      // 1. Check for quantity/item change (total value mismatch)
+      if (!areNumbersEqual(allocation.total_valor, currentTotal)) {
+          return true;
+      }
+      
+      // 2. Check for ND 39 allocation change
+      const tempND39Value = getTempND39NumericValue(category, tempInputs);
+      if (!areNumbersEqual(tempND39Value, allocation.nd_39_value)) {
+          return true;
+      }
+      
+      // 3. Check for Destination OM change
+      const tempDest = tempDestinations[category];
+      if (allocation.om_destino_recurso !== tempDest.om || allocation.ug_destino_recurso !== tempDest.ug) {
+          // Only consider it dirty if the category has items (i.e., total > 0)
+          if (currentTotal > 0) {
+              return true;
+          }
+      }
+      
+      return false;
+  }, []);
+
 
   useEffect(() => {
     if (!ptrabId) {
@@ -262,6 +202,7 @@ const ClasseVForm = () => {
       const savedAllocation = categoryAllocations[selectedTab];
       
       // 1. Sincronizar ND 39 Input (dígitos)
+      // O valor salvo em nd_39_input é uma string formatada (ex: "1.234,56"). Precisamos convertê-lo para dígitos brutos.
       const numericValue = parseInputToNumber(savedAllocation.nd_39_input);
       const digits = String(Math.round(numericValue * 100));
       
@@ -387,13 +328,14 @@ const ClasseVForm = () => {
         return;
       }
 
+      // Buscar diretrizes de Classe II (que armazena as diretrizes de Classe V)
       const { data: classeVData, error } = await supabase
         .from("diretrizes_classe_ii")
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", anoReferencia)
         .eq("ativo", true)
-        .in("categoria", CATEGORIAS); // Filtrar apenas categorias da Classe V
+        .in("categoria", CATEGORIAS);
 
       if (error) throw error;
 
@@ -414,12 +356,11 @@ const ClasseVForm = () => {
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
-    // MUDANÇA: Usar a nova tabela classe_v_registros
     const { data, error } = await supabase
       .from("classe_v_registros")
       .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
       .eq("p_trab_id", ptrabId)
-      .in("categoria", CATEGORIAS) // FILTRO ADICIONADO AQUI
+      .in("categoria", CATEGORIAS)
       .order("organizacao", { ascending: true })
       .order("categoria", { ascending: true });
 
@@ -455,8 +396,8 @@ const ClasseVForm = () => {
     });
     
     setCategoryAllocations(initialCategoryAllocations);
-    setTempND39Inputs(initialTempND39Inputs); // Reset temporary ND 39 inputs
-    setTempDestinations(initialTempDestinations); // Reset temporary destination OMs
+    setTempND39Inputs(initialTempND39Inputs);
+    setTempDestinations(initialTempDestinations);
     
     setCurrentCategoryItems([]);
     
@@ -473,7 +414,7 @@ const ClasseVForm = () => {
         ug: omData.codug_om,
       });
       
-      // Initialize temporary destination OM for all categories to the OM Detentora
+      // Para Classe V, a OM Detentora é a mesma que a OM de Destino padrão
       const newTempDestinations = CATEGORIAS.reduce((acc, cat) => {
           acc[cat] = {
               om: omData.nome_om,
@@ -492,7 +433,6 @@ const ClasseVForm = () => {
         ug: "",
       });
       
-      // Clear temporary destination OM for all categories
       setTempDestinations(initialTempDestinations);
     }
   };
@@ -536,7 +476,6 @@ const ClasseVForm = () => {
   const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = e.target.value;
       const { digits } = formatCurrencyInput(rawValue);
-      // Update temporary state for the selected tab
       setTempND39Inputs(prev => ({
           ...prev,
           [selectedTab]: digits
@@ -544,7 +483,6 @@ const ClasseVForm = () => {
   };
 
   const handleND39InputBlur = () => {
-      // Use the calculated final value (nd39ValueTemp) and convert it back to digits for storage
       const finalDigits = String(Math.round(nd39ValueTemp * 100));
       setTempND39Inputs(prev => ({
           ...prev,
@@ -556,8 +494,8 @@ const ClasseVForm = () => {
 
 
   const handleUpdateCategoryItems = () => {
-    if (!form.organizacao || form.dias_operacao <= 0) {
-        toast.error("Preencha a OM e os Dias de Operação antes de salvar itens.");
+    if (!form.organizacao || form.ug === "" || form.dias_operacao <= 0) {
+        toast.error("Preencha a OM Detentora e os Dias de Operação antes de salvar itens.");
         return;
     }
     
@@ -580,7 +518,6 @@ const ClasseVForm = () => {
 
     const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
 
-    // FIX: Filtra APENAS os itens da categoria atual (selectedTab) para removê-los, mantendo todos os outros itens (de outras categorias ou classes).
     const itemsFromOtherCategories = form.itens.filter(item => item.categoria !== selectedTab);
 
     const newFormItems = [...itemsFromOtherCategories, ...itemsToKeep];
@@ -591,7 +528,7 @@ const ClasseVForm = () => {
         [selectedTab]: {
             ...prev[selectedTab],
             total_valor: categoryTotalValue,
-            nd_39_input: formatNumberForInput(finalND39Value, 2), // Store the final formatted input (for DB consistency)
+            nd_39_input: formatNumberForInput(finalND39Value, 2), // Salva o valor formatado
             nd_30_value: finalND30Value,
             nd_39_value: finalND39Value,
             // Save temporary destination OM/UG
@@ -658,7 +595,7 @@ const ClasseVForm = () => {
         return;
     }
     
-    const registrosParaSalvar: TablesInsert<'classe_v_registros'>[] = []; // MUDANÇA: Usar a nova tabela
+    const registrosParaSalvar: TablesInsert<'classe_v_registros'>[] = [];
     
     for (const categoria of categoriesToSave) {
         const itens = itemsByActiveCategory[categoria];
@@ -681,21 +618,21 @@ const ClasseVForm = () => {
         const detalhamento = generateDetalhamento(
             itens, 
             form.dias_operacao, 
-            form.organizacao,
-            form.ug,
+            form.organizacao, // OM Detentora (que é a mesma que a Destino para Classe V)
+            form.ug, // UG Detentora
             faseFinalString,
-            allocation.om_destino_recurso,
-            allocation.ug_destino_recurso,
+            allocation.om_destino_recurso, // OM de Destino do Recurso (ND 30/39)
+            allocation.ug_destino_recurso, // UG de Destino do Recurso (ND 30/39)
             allocation.nd_30_value,
             allocation.nd_39_value
         );
         
-        const registro: TablesInsert<'classe_v_registros'> = { // MUDANÇA: Usar a nova tabela
+        const registro: TablesInsert<'classe_v_registros'> = {
             p_trab_id: ptrabId,
-            organizacao: allocation.om_destino_recurso,
-            ug: allocation.ug_destino_recurso,
+            organizacao: allocation.om_destino_recurso, // OM de destino do recurso (ND 30/39)
+            ug: allocation.ug_destino_recurso, // UG de destino do recurso
             dias_operacao: form.dias_operacao,
-            categoria: categoria,
+            categoria: categoria, // Salvar a categoria como o tipo de registro
             itens_equipamentos: itens as any,
             valor_total: valorTotalCategoria,
             detalhamento: detalhamento,
@@ -708,15 +645,15 @@ const ClasseVForm = () => {
     }
 
     try {
-      // MUDANÇA: Deletar APENAS registros de Classe V existentes para o PTrab na tabela correta E nas categorias desta classe
+      // 3. Deletar TODOS os registros de Classe V existentes para este PTrab
       const { error: deleteError } = await supabase
         .from("classe_v_registros")
         .delete()
         .eq("p_trab_id", ptrabId)
-        .in("categoria", CATEGORIAS);
+        .in("categoria", CATEGORIAS); 
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
-      // MUDANÇA: Inserir os novos registros na tabela correta
+      // 4. Inserir os novos registros (um por categoria ativa)
       const { error: insertError } = await supabase.from("classe_v_registros").insert(registrosParaSalvar);
       if (insertError) throw insertError;
       
@@ -737,11 +674,12 @@ const ClasseVForm = () => {
     resetFormFields();
     
     // 1. Buscar TODOS os registros de CLASSE V para este PTrab (na tabela correta)
+    // Para Classe V, todos os registros pertencem à mesma OM Detentora/Destino
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_v_registros")
         .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
         .eq("p_trab_id", ptrabId)
-        .in("categoria", CATEGORIAS); // FILTRO ADICIONADO AQUI
+        .in("categoria", CATEGORIAS);
         
     if (fetchAllError) {
         toast.error("Erro ao carregar todos os registros para edição.");
@@ -753,7 +691,7 @@ const ClasseVForm = () => {
     let newAllocations = { ...initialCategoryAllocations };
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
     let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
-    let firstOmDetentora: { nome: string, ug: string } | null = null;
+    let firstOm: { nome: string, ug: string } | null = null;
     
     (allRecords || []).forEach(r => {
         const category = r.categoria as Categoria;
@@ -774,33 +712,31 @@ const ClasseVForm = () => {
                 selectedOmDestinoId: undefined,
             };
             
-            // Populate temporary input state with saved ND 39 value (in digits)
             const savedND39Value = Number(r.valor_nd_39);
             const savedDigits = String(Math.round(savedND39Value * 100));
             tempND39Load[category] = savedDigits;
             
-            // Populate temporary destination state
             tempDestinationsLoad[category] = {
                 om: r.organizacao,
                 ug: r.ug,
-                id: undefined, // ID will be fetched later
+                id: undefined,
             };
         }
         
-        if (!firstOmDetentora) {
-            firstOmDetentora = { nome: r.organizacao, ug: r.ug };
+        if (!firstOm) {
+            firstOm = { nome: r.organizacao, ug: r.ug };
         }
     });
     
     let selectedOmIdForEdit: string | undefined = undefined;
     
-    if (firstOmDetentora) {
+    if (firstOm) {
         try {
             const { data: omData } = await supabase
                 .from('organizacoes_militares')
                 .select('id')
-                .eq('nome_om', firstOmDetentora.nome)
-                .eq('codug_om', firstOmDetentora.ug)
+                .eq('nome_om', firstOm.nome)
+                .eq('codug_om', firstOm.ug)
                 .maybeSingle();
             selectedOmIdForEdit = omData?.id;
         } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
@@ -810,8 +746,8 @@ const ClasseVForm = () => {
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
-      organizacao: firstOmDetentora?.nome || "",
-      ug: firstOmDetentora?.ug || "",
+      organizacao: firstOm?.nome || "",
+      ug: firstOm?.ug || "",
       dias_operacao: registro.dias_operacao,
       itens: consolidatedItems,
     });
@@ -831,7 +767,6 @@ const ClasseVForm = () => {
                     .eq('codug_om', alloc.ug_destino_recurso)
                     .maybeSingle();
                 
-                // Update both saved allocation and temporary destination with the ID
                 alloc.selectedOmDestinoId = omData?.id;
                 tempDest.id = omData?.id;
             } catch (e) { console.error(`Erro ao buscar OM Destino ID para ${cat}:`, e); }
@@ -858,7 +793,7 @@ const ClasseVForm = () => {
   
   const registrosAgrupadosPorOM = useMemo(() => {
     return registros.reduce((acc, registro) => {
-        const key = `${registro.organizacao} (${registro.ug})`;
+        const key = `${registro.organizacao} (${formatCodug(registro.ug)})`;
         if (!acc[key]) {
             acc[key] = [];
         }
@@ -869,7 +804,19 @@ const ClasseVForm = () => {
 
   const handleIniciarEdicaoMemoria = (registro: ClasseVRegistro) => {
     setEditingMemoriaId(registro.id);
-    setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento || "");
+    
+    // 1. Gerar a memória automática mais recente
+    const memoriaAutomatica = generateCategoryMemoriaCalculo(
+        registro.categoria as Categoria, 
+        registro.itens_equipamentos as ItemClasseV[], 
+        registro.dias_operacao, 
+        registro.organizacao, 
+        registro.ug, 
+        registro.fase_atividade
+    );
+    
+    // 2. Usar a customizada se existir, senão usar a automática recém-gerada
+    setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
   };
 
   const handleCancelarEdicaoMemoria = () => {
@@ -880,7 +827,6 @@ const ClasseVForm = () => {
   const handleSalvarMemoriaCustomizada = async (registroId: string) => {
     setLoading(true);
     try {
-      // MUDANÇA: Usar a nova tabela classe_v_registros
       const { error } = await supabase
         .from("classe_v_registros")
         .update({
@@ -908,7 +854,6 @@ const ClasseVForm = () => {
     
     setLoading(true);
     try {
-      // MUDANÇA: Usar a nova tabela classe_v_registros
       const { error } = await supabase
         .from("classe_v_registros")
         .update({
@@ -931,38 +876,6 @@ const ClasseVForm = () => {
   const displayFases = useMemo(() => {
     return [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
   }, [fasesAtividade, customFaseAtividade]);
-  
-  // Helper function to get the numeric ND 39 value from the temporary input digits
-  const getTempND39NumericValue = (category: Categoria, tempInputs: Record<Categoria, string>): number => {
-      const digits = tempInputs[category] || "";
-      return formatCurrencyInput(digits).numericValue;
-  };
-
-  // Helper function to check if a category is dirty (needs saving)
-  const isCategoryAllocationDirty = (category: Categoria, currentTotal: number, allocation: CategoryAllocation, tempInputs: Record<Categoria, string>, tempDestinations: Record<Categoria, TempDestination>): boolean => {
-      // 1. Check for quantity/item change (total value mismatch)
-      // currentTotal agora é o valor calculado a partir dos itens ATUAIS (currentItemsForCheck)
-      if (!areNumbersEqual(allocation.total_valor, currentTotal)) {
-          return true;
-      }
-      
-      // 2. Check for ND 39 allocation change
-      const tempND39Value = getTempND39NumericValue(category, tempInputs);
-      if (!areNumbersEqual(tempND39Value, allocation.nd_39_value)) {
-          return true;
-      }
-      
-      // 3. Check for Destination OM change
-      const tempDest = tempDestinations[category];
-      if (allocation.om_destino_recurso !== tempDest.om || allocation.ug_destino_recurso !== tempDest.ug) {
-          // Only consider it dirty if the category has items (i.e., total > 0)
-          if (currentTotal > 0) {
-              return true;
-          }
-      }
-      
-      return false;
-  };
 
 
   return (
@@ -999,14 +912,14 @@ const ClasseVForm = () => {
                     selectedOmId={form.selectedOmId}
                     onChange={handleOMChange}
                     placeholder="Selecione a OM..."
-                    initialOmName={form.organizacao} // NOVO: Exibe o nome da OM no modo edição
-                    initialOmUg={form.ug} // NOVO: Exibe a UG no modo edição
+                    initialOmName={form.organizacao}
+                    initialOmUg={form.ug}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label>UG Detentora</Label>
-                  <Input value={form.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
+                  <Input value={formatCodug(form.ug)} readOnly disabled onKeyDown={handleEnterToNextField} />
                 </div>
                 
                 <div className="space-y-2">
@@ -1164,12 +1077,12 @@ const ClasseVForm = () => {
                                         onChange={handleOMDestinoChange}
                                         placeholder="Selecione a OM que receberá o recurso..."
                                         disabled={!form.organizacao} 
-                                        initialOmName={tempDestinations[cat].om} // NOVO: Exibe o nome da OM temporária
-                                        initialOmUg={tempDestinations[cat].ug} // NOVO: Exibe a UG temporária
+                                        initialOmName={tempDestinations[cat].om}
+                                        initialOmUg={tempDestinations[cat].ug}
                                     />
                                     {tempDestinations[cat].ug && (
                                         <p className="text-xs text-muted-foreground">
-                                            UG de Destino: {tempDestinations[cat].ug}
+                                            UG de Destino: {formatCodug(tempDestinations[cat].ug)}
                                         </p>
                                     )}
                                 </div>
@@ -1229,7 +1142,7 @@ const ClasseVForm = () => {
                                 type="button" 
                                 onClick={handleUpdateCategoryItems} 
                                 className="w-full md:w-auto" 
-                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && !tempDestinations[cat].om)}
+                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && (!tempDestinations[cat].om || tempDestinations[cat].ug === ""))}
                             >
                                 Salvar Itens da Categoria
                             </Button>
@@ -1264,14 +1177,12 @@ const ClasseVForm = () => {
                     
                     const allocation = categoryAllocations[categoria as Categoria];
                     
-                    // NOVO CÁLCULO: Obtém o total atual (base value) para a categoria, usando os itens não salvos se for a aba ativa
                     const currentItemsForCheck = categoria === selectedTab ? currentCategoryItems : itens;
                     const currentTotalForCheck = currentItemsForCheck.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
                     
-                    // NOVO: Verifica se a categoria está "suja" (itens ou alocação alterados)
                     const isDirty = isCategoryAllocationDirty(
                         categoria as Categoria, 
-                        currentTotalForCheck, // Passa o total atual (base value)
+                        currentTotalForCheck,
                         allocation, 
                         tempND39Inputs, 
                         tempDestinations
@@ -1289,7 +1200,7 @@ const ClasseVForm = () => {
                             <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
                               <span className="font-medium">{item.item}</span>
                               <span className="text-right">
-                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
+                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia x {form.dias_operacao} dias = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
                               </span>
                             </div>
                           ))}
@@ -1299,7 +1210,7 @@ const ClasseVForm = () => {
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
                                 <span className="font-medium text-foreground">
-                                    {allocation.om_destino_recurso} ({allocation.ug_destino_recurso})
+                                    {allocation.om_destino_recurso} ({formatCodug(allocation.ug_destino_recurso)})
                                 </span>
                             </div>
                             <div className="flex justify-between text-xs">
@@ -1363,13 +1274,13 @@ const ClasseVForm = () => {
                 {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
                     const totalOM = omRegistros.reduce((sum, r) => sum + r.valor_total, 0);
                     const omName = omKey.split(' (')[0];
-                    const ug = omKey.split(' (')[1].replace(')', '');
+                    const ugFormatted = omKey.split(' (')[1].replace(')', '');
                     
                     return (
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h3 className="font-bold text-lg text-primary">
-                                    {omName} (UG: {ug})
+                                    {omName} (UG: {ugFormatted})
                                 </h3>
                                 <span className="font-extrabold text-xl text-primary">
                                     {formatCurrency(totalOM)}
@@ -1390,9 +1301,12 @@ const ClasseVForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
+                                                        <Badge variant="outline" className="text-xs font-semibold">
+                                                            {fases}
+                                                        </Badge>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Dias: {registro.dias_operacao} | Fases: {fases}
+                                                        Dias: {registro.dias_operacao}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -1413,7 +1327,6 @@ const ClasseVForm = () => {
                                                             size="icon"
                                                             onClick={() => {
                                                                 if (confirm(`Deseja realmente deletar o registro de Classe V para ${omName} (${registro.categoria})?`)) {
-                                                                    // MUDANÇA: Deletar da tabela correta
                                                                     supabase.from("classe_v_registros")
                                                                         .delete()
                                                                         .eq("id", registro.id)
@@ -1468,7 +1381,6 @@ const ClasseVForm = () => {
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
-                  // NOVO: Gera a memória automática com o rótulo padronizado
                   const memoriaAutomatica = generateCategoryMemoriaCalculo(
                       registro.categoria as Categoria, 
                       registro.itens_equipamentos as ItemClasseV[], 
@@ -1488,9 +1400,8 @@ const ClasseVForm = () => {
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                               <h4 className="text-base font-semibold text-foreground">
-                                OM Destino: {om} ({ug})
+                                OM Destino: {om} ({formatCodug(ug)})
                               </h4>
-                              {/* Badge da Categoria movido para o lado esquerdo, junto ao h4 */}
                               <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
                                   {badgeStyle.label}
                               </Badge>
