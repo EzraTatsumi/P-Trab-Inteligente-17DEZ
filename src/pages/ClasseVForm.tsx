@@ -73,6 +73,8 @@ interface ClasseVRegistro {
   id: string;
   organizacao: string; // OM de Destino do Recurso (ND 30/39)
   ug: string; // UG de Destino do Recurso (ND 30/39)
+  om_detentora: string; // NOVO: OM Detentora
+  ug_detentora: string; // NOVO: UG Detentora
   dias_operacao: number;
   categoria: string;
   itens_equipamentos: ItemClasseV[]; // Tipo corrigido
@@ -366,12 +368,13 @@ const ClasseVForm = () => {
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
+    // NOVO: Adicionar om_detentora e ug_detentora na seleção
     const { data, error } = await supabase
       .from("classe_v_registros")
-      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, efetivo") // NOVO: Selecionar efetivo
+      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, efetivo, om_detentora, ug_detentora") 
       .eq("p_trab_id", ptrabId)
       .in("categoria", CATEGORIAS)
-      .order("organizacao", { ascending: true })
+      .order("om_detentora", { ascending: true }) // Ordenar pela OM Detentora
       .order("categoria", { ascending: true });
 
     if (error) {
@@ -382,14 +385,16 @@ const ClasseVForm = () => {
 
     const uniqueRecordsMap = new Map<string, ClasseVRegistro>();
     (data || []).forEach(r => {
-        // A chave de unicidade deve ser OM + UG + Categoria
-        const key = `${r.organizacao}-${r.ug}-${r.categoria}`;
+        // A chave de unicidade deve ser OM Detentora + UG Detentora + Categoria
+        const key = `${r.om_detentora}-${r.ug_detentora}-${r.categoria}`;
         const record = {
             ...r,
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseV[],
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
-            efetivo: r.efetivo || 0, // NOVO: Carregar efetivo
+            efetivo: r.efetivo || 0, 
+            om_detentora: r.om_detentora || r.organizacao, // Fallback caso o campo seja nulo (registros antigos)
+            ug_detentora: r.ug_detentora || r.ug, // Fallback caso o campo seja nulo
         } as ClasseVRegistro;
         uniqueRecordsMap.set(key, record);
     });
@@ -401,9 +406,9 @@ const ClasseVForm = () => {
     setEditingId(null);
     setForm({
       selectedOmId: undefined,
-      organizacao: "",
-      ug: "",
-      efetivo: 0, // NOVO: Reset
+      organizacao: "", // OM Detentora
+      ug: "", // UG Detentora
+      efetivo: 0, 
       dias_operacao: 0,
       itens: [],
     });
@@ -423,8 +428,8 @@ const ClasseVForm = () => {
       setForm({ 
         ...form, 
         selectedOmId: omData.id, 
-        organizacao: omData.nome_om, 
-        ug: omData.codug_om,
+        organizacao: omData.nome_om, // OM Detentora
+        ug: omData.codug_om, // UG Detentora
       });
       
       // Para Classe V, a OM Detentora é a mesma que a OM de Destino padrão
@@ -632,7 +637,7 @@ const ClasseVForm = () => {
         const detalhamento = generateDetalhamento(
             itens, 
             form.dias_operacao, 
-            form.organizacao, // OM Detentora (que é a mesma que a Destino para Classe V)
+            form.organizacao, // OM Detentora
             form.ug, // UG Detentora
             faseFinalString,
             allocation.om_destino_recurso, // OM de Destino do Recurso (ND 30/39)
@@ -646,6 +651,8 @@ const ClasseVForm = () => {
             p_trab_id: ptrabId,
             organizacao: allocation.om_destino_recurso, // OM de destino do recurso (ND 30/39)
             ug: allocation.ug_destino_recurso, // UG de destino do recurso
+            om_detentora: form.organizacao, // NOVO: Salvando OM Detentora
+            ug_detentora: form.ug, // NOVO: Salvando UG Detentora
             dias_operacao: form.dias_operacao,
             categoria: categoria, // Salvar a categoria como o tipo de registro
             itens_equipamentos: itens as any,
@@ -662,14 +669,13 @@ const ClasseVForm = () => {
 
     try {
       // 3. Deletar TODOS os registros de Classe V existentes para este PTrab E ESTA OM DETENTORA
-      // Como a OM Detentora (form.organizacao/form.ug) é a mesma que a OM de Destino (organizacao/ug) para Classe V,
-      // usamos esses campos para filtrar o que deve ser deletado.
+      // O filtro de deleção deve usar a OM Detentora, que é a OM que está sendo editada no formulário.
       const { error: deleteError } = await supabase
         .from("classe_v_registros")
         .delete()
         .eq("p_trab_id", ptrabId)
-        .eq("organizacao", form.organizacao) // Filtra pela OM de Destino (que é a Detentora no formulário)
-        .eq("ug", form.ug) // Filtra pela UG de Destino
+        .eq("om_detentora", form.organizacao) // Filtra pela OM Detentora
+        .eq("ug_detentora", form.ug) // Filtra pela UG Detentora
         .in("categoria", CATEGORIAS); 
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
@@ -693,18 +699,17 @@ const ClasseVForm = () => {
     setLoading(true);
     resetFormFields();
     
-    // 1. Usar a OM e UG do registro clicado como filtro para carregar todos os registros relacionados
-    // Para Classe V, a OM Detentora é a OM de Destino do Recurso (organizacao/ug)
-    const omToEdit = registro.organizacao;
-    const ugToEdit = registro.ug;
+    // 1. Usar a OM Detentora do registro clicado como filtro para carregar todos os registros relacionados
+    const omDetentoraToEdit = registro.om_detentora;
+    const ugDetentoraToEdit = registro.ug_detentora;
     
-    // 2. Buscar TODOS os registros de CLASSE V para este PTrab E ESTA OM/UG ESPECÍFICA
+    // 2. Buscar TODOS os registros de CLASSE V para este PTrab E ESTA OM/UG DETENTORA ESPECÍFICA
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_v_registros")
-        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo, dias_operacao, fase_atividade")
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo, dias_operacao, fase_atividade, organizacao, ug")
         .eq("p_trab_id", ptrabId)
-        .eq("organizacao", omToEdit) // FILTRO CHAVE: Apenas registros desta OM
-        .eq("ug", ugToEdit) // FILTRO CHAVE: Apenas registros desta UG
+        .eq("om_detentora", omDetentoraToEdit) // FILTRO CHAVE: Apenas registros desta OM Detentora
+        .eq("ug_detentora", ugDetentoraToEdit) // FILTRO CHAVE: Apenas registros desta UG Detentora
         .in("categoria", CATEGORIAS);
         
     if (fetchAllError) {
@@ -730,14 +735,14 @@ const ClasseVForm = () => {
     const efetivo = firstRecord.efetivo || 0;
     const faseAtividade = firstRecord.fase_atividade;
     
-    // 3. Buscar ID da OM Detentora (que é a OM de Destino do Recurso neste contexto de edição)
+    // 3. Buscar ID da OM Detentora
     let selectedOmIdForEdit: string | undefined = undefined;
     try {
         const { data: omData } = await supabase
             .from('organizacoes_militares')
             .select('id')
-            .eq('nome_om', omToEdit)
-            .eq('codug_om', ugToEdit)
+            .eq('nome_om', omDetentoraToEdit)
+            .eq('codug_om', ugDetentoraToEdit)
             .maybeSingle();
         selectedOmIdForEdit = omData?.id;
     } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
@@ -764,8 +769,8 @@ const ClasseVForm = () => {
                 nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
                 nd_30_value: Number(r.valor_nd_30),
                 nd_39_value: Number(r.valor_nd_39),
-                om_destino_recurso: r.organizacao,
-                ug_destino_recurso: r.ug,
+                om_destino_recurso: r.organizacao, // OM de Destino (campo 'organizacao' do DB)
+                ug_destino_recurso: r.ug, // UG de Destino (campo 'ug' do DB)
                 selectedOmDestinoId: selectedOmIdForEdit, // Usamos o ID da OM Detentora/Destino
             };
             
@@ -773,20 +778,35 @@ const ClasseVForm = () => {
             const savedDigits = String(Math.round(savedND39Value * 100));
             tempND39Load[category] = savedDigits;
             
+            // Para carregar o seletor de OM Destino na aba correta, precisamos do ID da OM de Destino
+            let selectedOmDestinoId: string | undefined = undefined;
+            if (r.organizacao && r.ug) {
+                // Tenta buscar o ID da OM de Destino (r.organizacao/r.ug)
+                try {
+                    const { data: omDestinoData } = await supabase
+                        .from('organizacoes_militares')
+                        .select('id')
+                        .eq('nome_om', r.organizacao)
+                        .eq('codug_om', r.ug)
+                        .maybeSingle();
+                    selectedOmDestinoId = omDestinoData?.id;
+                } catch (e) { console.error("Erro ao buscar OM Destino ID:", e); }
+            }
+            
             tempDestinationsLoad[category] = {
                 om: r.organizacao,
                 ug: r.ug,
-                id: selectedOmIdForEdit, // Usamos o ID da OM Detentora/Destino
+                id: selectedOmDestinoId,
             };
         }
     });
     
-    // 4. Preencher o formulário principal
+    // 4. Preencher o formulário principal com a OM Detentora
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
-      organizacao: omToEdit,
-      ug: ugToEdit,
+      organizacao: omDetentoraToEdit, // OM Detentora
+      ug: ugDetentoraToEdit, // UG Detentora
       efetivo: efetivo, 
       dias_operacao: diasOperacao,
       itens: consolidatedItems,
@@ -809,9 +829,11 @@ const ClasseVForm = () => {
     setLoading(false);
   };
   
+  // NOVO AGRUPAMENTO: Agrupa pela OM Detentora
   const registrosAgrupadosPorOM = useMemo(() => {
     return registros.reduce((acc, registro) => {
-        const key = `${registro.organizacao} (${formatCodug(registro.ug)})`;
+        // Chave de agrupamento é a OM Detentora
+        const key = `${registro.om_detentora} (${formatCodug(registro.ug_detentora)})`;
         if (!acc[key]) {
             acc[key] = [];
         }
@@ -828,8 +850,8 @@ const ClasseVForm = () => {
         registro.categoria as Categoria, 
         registro.itens_equipamentos as ItemClasseV[], 
         registro.dias_operacao, 
-        registro.organizacao, // OM Destino Recurso (que é a Detentora no formulário)
-        registro.ug, // UG Destino Recurso
+        registro.om_detentora, // OM Detentora
+        registro.ug_detentora, // UG Detentora
         registro.fase_atividade,
         registro.efetivo, // Passando o efetivo
         registro.valor_nd_30, // PASSANDO ND 30
@@ -1323,7 +1345,7 @@ const ClasseVForm = () => {
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h3 className="font-bold text-lg text-primary">
-                                    {omName} (UG: {ugFormatted})
+                                    OM Detentora: {omName} (UG: {ugFormatted})
                                 </h3>
                                 <span className="font-extrabold text-xl text-primary">
                                     {formatCurrency(totalOM)}
@@ -1425,8 +1447,8 @@ const ClasseVForm = () => {
                 </h3>
                 
                 {registros.map(registro => {
-                  const om = registro.organizacao;
-                  const ug = registro.ug;
+                  const om = registro.om_detentora; // Usar OM Detentora para o título da memória
+                  const ug = registro.ug_detentora;
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
@@ -1434,8 +1456,8 @@ const ClasseVForm = () => {
                       registro.categoria as Categoria, 
                       registro.itens_equipamentos as ItemClasseV[], 
                       registro.dias_operacao, 
-                      registro.organizacao, // OM Destino Recurso (que é a Detentora no formulário)
-                      registro.ug, // UG Destino Recurso
+                      registro.om_detentora, // OM Detentora
+                      registro.ug_detentora, // UG Detentora
                       registro.fase_atividade,
                       registro.efetivo,
                       registro.valor_nd_30, // PASSANDO ND 30
@@ -1452,7 +1474,7 @@ const ClasseVForm = () => {
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                               <h4 className="text-base font-semibold text-foreground">
-                                OM Destino: {om} (UG: {formatCodug(ug)})
+                                OM Detentora: {om} (UG: {formatCodug(ug)})
                               </h4>
                               <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
                                   {badgeStyle.label}
