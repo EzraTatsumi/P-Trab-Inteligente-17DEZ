@@ -1455,6 +1455,9 @@ const ClasseVForm = () => {
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
+                  // Verifica se a OM Detentora é diferente da OM de Destino
+                  const isDifferentOm = registro.om_detentora !== registro.organizacao;
+                  
                   const memoriaAutomatica = generateCategoryMemoriaCalculo(
                       registro.categoria as Categoria, 
                       registro.itens_equipamentos as ItemClasseV[], 
@@ -1474,14 +1477,20 @@ const ClasseVForm = () => {
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                       
                       {/* Container para H4 e Botões */}
-                      <div className="flex items-start justify-between gap-4 mb-4">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <h4 className="text-base font-semibold text-foreground">
-                                OM Detentora: {om} (UG: {formatCodug(ug)})
-                              </h4>
-                              <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
-                                  {badgeStyle.label}
-                              </Badge>
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                          <div className="flex flex-col flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                  <h4 className="text-base font-semibold text-foreground">
+                                    OM Detentora: {om} (UG: {formatCodug(ug)})
+                                  </h4>
+                                  <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
+                                      {badgeStyle.label}
+                                  </Badge>
+                              </div>
+                              {/* NOVO AVISO DE OM DESTINO */}
+                              <p className={cn("text-xs mt-1", isDifferentOm ? "text-red-600 font-bold" : "text-muted-foreground")}>
+                                  OM Destino Recurso: {registro.organizacao} ({formatCodug(registro.ug)})
+                              </p>
                           </div>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
