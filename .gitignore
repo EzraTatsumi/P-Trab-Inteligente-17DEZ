@@ -1,12 +1,3 @@
-` apenas modifica o arquivo `.gitignore` do seu projeto. O objetivo disso é **retirar esses arquivos do contexto** que eu, como IA, leio em interações futuras, mas **sem excluir os arquivos do seu projeto**.
-
-No entanto, para que a redução de contexto seja efetiva *nesta resposta*, eu preciso garantir que o `.gitignore` que eu escrevi seja o que está em vigor.
-
-Eu cometi um erro ao incluir o conteúdo do `.gitignore` duas vezes na minha resposta anterior. Vou corrigir isso e garantir que o `.gitignore` final contenha todas as exclusões que propus para reduzir o contexto, mantendo todos os arquivos no seu projeto.
-
-Aqui está o arquivo `.gitignore` atualizado, que instrui o sistema a ignorar os arquivos de UI, dados estáticos e páginas de configuração que não são essenciais para a lógica de negócio atual, reduzindo o consumo de tokens:
-
-<dyad-write path=".gitignore" description="Atualizando o .gitignore para excluir arquivos de UI, dados estáticos e páginas de configuração estáveis do contexto de IA, sem deletá-los do projeto.">
 # Logs
 logs
 *.log
@@ -191,8 +182,8 @@ src/docs/SecurityCompliance.md
 src/lib/ptrabNumberUtils.ts
 src/lib/errorUtils.ts
 src/lib/ptrabUtils.ts
-src/lib/classeIUtils.ts
 src/lib/utils.ts
 src/lib/formatUtils.ts
 src/lib/omUtils.ts
 src/lib/validationSchemas.ts
+# REMOVIDO: src/lib/classeIUtils.ts
