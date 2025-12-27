@@ -73,15 +73,20 @@ interface PTrabLogisticoReportProps {
 
 // Implementação padrão (fallback) para generateClasseIIMemoriaCalculo
 const defaultGenerateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolean): string => {
-    // Se houver detalhamento customizado, use-o.
+    // 1. Se houver detalhamento customizado, use-o.
     if (registro.detalhamento_customizado) {
         return registro.detalhamento_customizado;
     }
     
-    // Para Classe II, V, VI, VII, VIII, usamos a função utilitária que agora faz o despacho correto.
-    // O parâmetro isClasseII é ignorado aqui, pois a função utilitária em classeIIUtils.ts
-    // agora verifica a categoria internamente e despacha para a lógica de Classe V se necessário.
+    // 2. Se for Classe IX, retorna o detalhamento padrão (já que a lógica de IX é separada no loop principal)
+    if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+        return registro.detalhamento || "Memória de cálculo não disponível.";
+    }
+    
+    // 3. Para todas as outras classes (II, V, VI, VII, VIII), use a função utilitária que agora faz o despacho correto.
     if (registro.itens_equipamentos && registro.dias_operacao !== undefined) {
+        // A função generateClasseIIUtility (importada de classeIIUtils.ts) agora contém a lógica de despacho para Classe V
+        // e outras classes, usando os novos parâmetros (efetivo, ND 30/39).
         return generateClasseIIUtility(
             registro.categoria,
             registro.itens_equipamentos,
@@ -95,7 +100,7 @@ const defaultGenerateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolea
         );
     }
     
-    // Se não for possível gerar a memória automática, retorna o detalhamento antigo (fallback final)
+    // 4. Fallback final
     return registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
@@ -986,7 +991,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     const rowData = {
                         despesasValue: '',
                         omValue: '',
-                        detalhamentoValue: '', // Inicializado aqui
+                        detalhamentoValue: '',
                         valorC: 0,
                         valorD: 0,
                         valorE: 0,
