@@ -463,7 +463,7 @@ const ClasseVForm = () => {
 
   const handleFaseChange = (fase: string, checked: boolean) => {
     if (checked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase]));
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
@@ -694,6 +694,7 @@ const ClasseVForm = () => {
     resetFormFields();
     
     // 1. Usar a OM e UG do registro clicado como filtro para carregar todos os registros relacionados
+    // Para Classe V, a OM Detentora é a OM de Destino do Recurso (organizacao/ug)
     const omToEdit = registro.organizacao;
     const ugToEdit = registro.ug;
     
@@ -729,9 +730,28 @@ const ClasseVForm = () => {
     const efetivo = firstRecord.efetivo || 0;
     const faseAtividade = firstRecord.fase_atividade;
     
+    // 3. Buscar ID da OM Detentora (que é a OM de Destino do Recurso neste contexto de edição)
+    let selectedOmIdForEdit: string | undefined = undefined;
+    try {
+        const { data: omData } = await supabase
+            .from('organizacoes_militares')
+            .select('id')
+            .eq('nome_om', omToEdit)
+            .eq('codug_om', ugToEdit)
+            .maybeSingle();
+        selectedOmIdForEdit = omData?.id;
+    } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
+    
     (allRecords || []).forEach(r => {
         const category = r.categoria as Categoria;
-        const items = (r.itens_equipamentos || []) as ItemClasseV[];
+        // CORREÇÃO: Garantir que itens_equipamentos seja tratado como array de ItemClasseV
+        const items = (r.itens_equipamentos as any[] || []).map(item => ({
+            item: item.item,
+            quantidade: Number(item.quantidade || 0),
+            valor_mnt_dia: Number(item.valor_mnt_dia || 0),
+            categoria: item.categoria,
+            memoria_customizada: item.memoria_customizada || null,
+        })) as ItemClasseV[];
         
         consolidatedItems = consolidatedItems.concat(items);
         
@@ -746,7 +766,7 @@ const ClasseVForm = () => {
                 nd_39_value: Number(r.valor_nd_39),
                 om_destino_recurso: r.organizacao,
                 ug_destino_recurso: r.ug,
-                selectedOmDestinoId: undefined, // Será preenchido abaixo
+                selectedOmDestinoId: selectedOmIdForEdit, // Usamos o ID da OM Detentora/Destino
             };
             
             const savedND39Value = Number(r.valor_nd_39);
@@ -756,22 +776,10 @@ const ClasseVForm = () => {
             tempDestinationsLoad[category] = {
                 om: r.organizacao,
                 ug: r.ug,
-                id: undefined, // Será preenchido abaixo
+                id: selectedOmIdForEdit, // Usamos o ID da OM Detentora/Destino
             };
         }
     });
-    
-    // 3. Buscar ID da OM Detentora (que é a OM de Destino do Recurso neste contexto de edição)
-    let selectedOmIdForEdit: string | undefined = undefined;
-    try {
-        const { data: omData } = await supabase
-            .from('organizacoes_militares')
-            .select('id')
-            .eq('nome_om', omToEdit)
-            .eq('codug_om', ugToEdit)
-            .maybeSingle();
-        selectedOmIdForEdit = omData?.id;
-    } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
     
     // 4. Preencher o formulário principal
     setEditingId(registro.id); 
@@ -784,28 +792,7 @@ const ClasseVForm = () => {
       itens: consolidatedItems,
     });
     
-    // 5. Preencher o estado de alocação e buscar IDs de destino
-    const categoriesToLoad = Object.keys(newAllocations) as Categoria[];
-    for (const cat of categoriesToLoad) {
-        const alloc = newAllocations[cat];
-        const tempDest = tempDestinationsLoad[cat];
-        
-        // A OM de destino do recurso é a mesma OM Detentora neste caso (omToEdit/ugToEdit)
-        // Mas precisamos garantir que o ID da OM de destino esteja correto para o OmSelector
-        if (alloc.om_destino_recurso) {
-            try {
-                const { data: omData } = await supabase
-                    .from('organizacoes_militares')
-                    .select('id')
-                    .eq('nome_om', alloc.om_destino_recurso)
-                    .eq('codug_om', alloc.ug_destino_recurso)
-                    .maybeSingle();
-                
-                alloc.selectedOmDestinoId = omData?.id;
-                tempDest.id = omData?.id;
-            } catch (e) { console.error(`Erro ao buscar OM Destino ID para ${cat}:`, e); }
-        }
-    }
+    // 5. Preencher o estado de alocação e IDs de destino
     setCategoryAllocations(newAllocations);
     setTempND39Inputs(tempND39Load); 
     setTempDestinations(tempDestinationsLoad);
