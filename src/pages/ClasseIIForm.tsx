@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
-import { useFormNavigation } => "@/hooks/useFormNavigation";
+import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
 import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
@@ -1541,7 +1541,7 @@ const ClasseIIForm = () => {
                                   <div className="flex items-center gap-1 mt-1">
                                       <AlertCircle className="h-4 w-4 text-red-600" />
                                       <span className="text-sm font-medium text-red-600">
-                                          Recurso destinado à OM: {registro.organizacao}
+                                          Recurso destinado à OM: {registro.organizacao} ({formatCodug(registro.ug)})
                                       </span>
                                   </div>
                               )}
