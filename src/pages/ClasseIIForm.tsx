@@ -291,7 +291,7 @@ const ClasseIIForm = () => {
     } else {
         setCurrentCategoryItems([]);
     }
-  }, [selectedTab, diretrizes, form.itens, form.organizacao, form.dias_operacao]);
+  }, [selectedTab, diretrizes, form.itens, form.organizacao, form.dias_operacao, form.efetivo]); // ADICIONADO form.efetivo
 
   // MEMO: Agrupa os itens do formulário por categoria para exibição consolidada
   const itensAgrupadosPorCategoria = useMemo(() => {
@@ -724,6 +724,7 @@ const ClasseIIForm = () => {
     const ugDetentoraCode = registro.ug_detentora || registro.ug;
     
     // --- Extract Global Parameters from the input record ---
+    // Usamos os valores do registro clicado como base, pois todos os registros do grupo devem ter os mesmos valores globais
     const globalEfetivo = Number(registro.efetivo || 0);
     const globalDiasOperacao = Number(registro.dias_operacao || 0);
     const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
@@ -831,7 +832,7 @@ const ClasseIIForm = () => {
       organizacao: omDetentoraName,
       ug: ugDetentoraCode,
       efetivo: globalEfetivo, 
-      dias_operacao: globalDiasOperacao,
+      dias_operacao: globalDiasOperacao, 
       itens: consolidatedItems,
     });
     
