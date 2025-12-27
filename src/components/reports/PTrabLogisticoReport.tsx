@@ -435,7 +435,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           if ('tipo' in linha) { // Classe I (QS/QR)
             const registro = linha.registro as ClasseIRegistro;
             if (linha.tipo === 'QS') {
-              // Ajuste para Classe I QS: Linha 1: CLASSE I - SUBSISTÊNCIA, Linha 2: OM
               despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
               omValue = `${registro.om_qs}\n(${registro.ug_qs})`;
               valorC = registro.total_qs;
@@ -443,8 +442,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               // USANDO A FUNÇÃO UNIFICADA
               detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
             } else { // QR
-              // Ajuste para Classe I QR: Linha 1: CLASSE I - SUBSISTÊNCIA, Linha 2: OM
-              despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
+              despesasValue = `CLASSE I - SUBSISTÊNCIA`;
               omValue = `${registro.organizacao}\n(${registro.ug})`;
               valorC = registro.total_qr;
               valorE = registro.total_qr;
@@ -461,11 +459,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                 secondDivContent = registro.animal_tipo.toUpperCase();
             }
-            
-            // NOVO FORMATO: CLASSE <ROMANA> - <CATEGORIA>
-            const classeLabel = getClasseIILabel(registro.categoria).split(' - ')[0]; // Ex: "CLASSE II"
-            despesasValue = `${classeLabel} - ${secondDivContent}`;
-            
+                
+            despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
             omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
             valorC = registro.valor_nd_30;
             valorD = registro.valor_nd_39;
@@ -572,7 +567,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             row.getCell('C').value = ''; 
             row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
             row.getCell('D').value = ''; 
-            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzb } };
+            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
             row.getCell('E').value = ''; 
             row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
             
@@ -819,7 +814,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow++;
       
       const cmtRow = worksheet.getRow(currentRow);
-      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'; // CORRIGIDO: Removida a aspa extra
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment; // Centraliza
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
@@ -958,7 +953,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     if (isClasseI) { // Classe I (QS/QR)
                         const registro = linha.registro as ClasseIRegistro;
                         if (linha.tipo === 'QS') {
-                            // Linha 1: CLASSE I - SUBSISTÊNCIA, Linha 2: OM
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                             rowData.omValue = `${registro.om_qs}\n(${registro.ug_qs})`;
                             rowData.valorC = registro.total_qs;
@@ -966,8 +960,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                         } else { // QR
-                            // Linha 1: CLASSE I - SUBSISTÊNCIA, Linha 2: OM
-                            rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
+                            rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                             rowData.omValue = `${registro.organizacao}\n(${registro.ug})`;
                             rowData.valorC = registro.total_qr;
                             rowData.valorE = registro.total_qr;
@@ -984,11 +977,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                             secondDivContent = registro.animal_tipo.toUpperCase();
                         }
-                        
-                        // NOVO FORMATO: CLASSE <ROMANA> - <CATEGORIA>
-                        const classeLabel = getClasseIILabel(registro.categoria).split(' - ')[0]; // Ex: "CLASSE II"
-                        rowData.despesasValue = `${classeLabel} - ${secondDivContent}`;
                             
+                        rowData.despesasValue = `${getClasseIILabel(registro.categoria)}\n${secondDivContent}`;
                         rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
                         rowData.valorC = registro.valor_nd_30;
                         rowData.valorD = registro.valor_nd_39;
@@ -1017,7 +1007,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     return (
                       <tr key={isClasseI ? `${linha.registro.id}-${linha.tipo}` : isLubrificante ? `lub-${linha.registro.id}` : `classe-ii-${linha.registro.id}`}>
                         <td className="col-despesas">
-                          {/* Renderiza o valor da despesa mapeando as quebras de linha para divs */}
                           {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
                         </td>
                         <td className="col-om">
