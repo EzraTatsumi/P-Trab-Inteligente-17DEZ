@@ -80,8 +80,8 @@ export const generateCategoryMemoriaCalculo = (
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
 
-    // 1. Determinar o prefixo ND
-    let ndPrefix = "ND ";
+    // 1. Determinar o prefixo ND (REMOVIDO 'ND ')
+    let ndPrefix = "";
     if (valorND30 > 0 && valorND39 > 0) {
         ndPrefix += "33.90.30 / 33.90.39";
     } else if (valorND30 > 0) {
@@ -89,7 +89,7 @@ export const generateCategoryMemoriaCalculo = (
     } else if (valorND39 > 0) {
         ndPrefix += "33.90.39";
     } else {
-        ndPrefix = "ND (Não Alocado)";
+        ndPrefix = "(Não Alocado)";
     }
     
     // 2. Determinar singular/plural do efetivo
@@ -144,8 +144,8 @@ export const generateDetalhamento = (
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const valorTotal = valorND30 + valorND39;
     
-    // 1. Determinar o prefixo ND
-    let ndPrefix = "ND ";
+    // 1. Determinar o prefixo ND (REMOVIDO 'ND ')
+    let ndPrefix = "";
     if (valorND30 > 0 && valorND39 > 0) {
         ndPrefix += "33.90.30 / 33.90.39";
     } else if (valorND30 > 0) {
@@ -153,7 +153,7 @@ export const generateDetalhamento = (
     } else if (valorND39 > 0) {
         ndPrefix += "33.90.39";
     } else {
-        ndPrefix = "ND (Não Alocado)";
+        ndPrefix = "(Não Alocado)";
     }
     
     // 2. Determinar singular/plural do efetivo
