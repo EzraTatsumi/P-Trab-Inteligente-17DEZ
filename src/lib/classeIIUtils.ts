@@ -82,9 +82,12 @@ export const generateCategoryMemoriaCalculo = (
     
     // 3. Determinar o artigo 'do/da'
     const omArticle = getOmArticle(organizacao);
+    
+    // 4. Determinar singular/plural de 'dia'
+    const diaPlural = diasOperacao === 1 ? "dia" : "dias";
 
-    // 4. Montar o cabeçalho dinâmico
-    const header = `${ndPrefix} - Manutenção de componente de ${getCategoryLabel(categoria)} de ${efetivo} ${militarPlural} ${omArticle} ${organizacao}, durante ${diasOperacao} dia(s) de ${faseFormatada}.`;
+    // 5. Montar o cabeçalho dinâmico
+    const header = `${ndPrefix} - Manutenção de componente de ${getCategoryLabel(categoria)} de ${efetivo} ${militarPlural} ${omArticle} ${organizacao}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
     let detalhamentoItens = "";
     itens.forEach(item => {
@@ -141,12 +144,15 @@ export const generateDetalhamento = (
     
     // 3. Determinar o artigo 'do/da'
     const omArticle = getOmArticle(organizacao);
+    
+    // 4. Determinar singular/plural de 'dia'
+    const diaPlural = diasOperacao === 1 ? "dia" : "dias";
 
-    // 4. Montar o cabeçalho dinâmico (usando OM Detentora)
-    const header = `${ndPrefix} - Manutenção de componente de Material de Intendência (Diversos) de ${efetivo} ${militarPlural} ${omArticle} ${organizacao}, durante ${diasOperacao} dia(s) de ${faseFormatada}.`;
+    // 5. Montar o cabeçalho dinâmico (usando OM Detentora)
+    const header = `${ndPrefix} - Manutenção de componente de Material de Intendência (Diversos) de ${efetivo} ${militarPlural} ${omArticle} ${organizacao}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
 
-    // 5. Agrupar itens por categoria que possuem quantidade > 0
+    // 6. Agrupar itens por categoria que possuem quantidade > 0
     const gruposPorCategoria = itens.reduce((acc, item) => {
         const categoria = item.categoria as Categoria;
         const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
@@ -161,6 +167,7 @@ export const generateDetalhamento = (
         
         acc[categoria].totalValor += valorItem;
         acc[categoria].totalQuantidade += item.quantidade;
+        // Nota: Mantemos 'dias' no detalhamento interno para consistência com a fórmula
         acc[categoria].detalhes.push(
             `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.`
         );
@@ -170,7 +177,7 @@ export const generateDetalhamento = (
 
     let detalhamentoItens = "";
     
-    // 6. Formatar a seção de cálculo agrupada
+    // 7. Formatar a seção de cálculo agrupada
     Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
         detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`;
         detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
