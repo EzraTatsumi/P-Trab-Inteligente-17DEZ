@@ -962,7 +962,6 @@ const ClasseIIForm = () => {
       if (error) throw error;
 
       toast.success("Memória de cálculo restaurada!");
-      handleCancelarEdicaoMemoria();
       await fetchRegistros();
     } catch (error) {
       console.error("Erro ao restaurar memória:", error);
@@ -1060,7 +1059,6 @@ const ClasseIIForm = () => {
                         role="combobox"
                         type="button"
                         className="w-full justify-between"
-                        onKeyDown={handleEnterToNextField}
                       >
                         <span className="truncate">
                           {displayFases || "Selecione a(s) fase(s)..."}
@@ -1212,7 +1210,6 @@ const ClasseIIForm = () => {
                                                 readOnly
                                                 disabled
                                                 className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
-                                                onKeyDown={handleEnterToNextField}
                                             />
                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                         </div>

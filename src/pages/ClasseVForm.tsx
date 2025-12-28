@@ -1004,7 +1004,6 @@ const ClasseVForm = () => {
                         role="combobox"
                         type="button"
                         className="w-full justify-between"
-                        onKeyDown={handleEnterToNextField}
                       >
                         <span className="truncate">
                           {displayFases || "Selecione a(s) fase(s)..."}
@@ -1156,7 +1155,6 @@ const ClasseVForm = () => {
                                                 readOnly
                                                 disabled
                                                 className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
-                                                onKeyDown={handleEnterToNextField}
                                             />
                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                         </div>
@@ -1338,7 +1336,7 @@ const ClasseVForm = () => {
                 {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
                     const totalOM = omRegistros.reduce((sum, r) => sum + r.valor_total, 0);
                     const omName = omKey.split(' (')[0];
-                    const ug = omKey.split(' (')[1].replace(')', '');
+                    const ugFormatted = omKey.split(' (')[1].replace(')', '');
                     
                     // Assumindo que o efetivo é o mesmo para todos os registros agrupados
                     const efetivo = omRegistros[0].efetivo; 
@@ -1347,7 +1345,7 @@ const ClasseVForm = () => {
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h3 className="font-bold text-lg text-primary">
-                                    OM Detentora: {omName} (UG: {formatCodug(ug)})
+                                    OM Detentora: {omName} (UG: {ugFormatted})
                                 </h3>
                                 <span className="font-extrabold text-xl text-primary">
                                     {formatCurrency(totalOM)}
@@ -1358,11 +1356,10 @@ const ClasseVForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                                     
                                     // Verifica se a OM Detentora é diferente da OM de Destino
-                                    const omDetentora = registro.om_detentora || registro.organizacao;
-                                    const isDifferentOm = omDetentora !== registro.organizacao;
+                                    const isDifferentOm = registro.om_detentora !== registro.organizacao;
 
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
