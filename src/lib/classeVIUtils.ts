@@ -145,8 +145,8 @@ export const generateCategoryMemoriaCalculo = (
         const valorItemBase = item.quantidade * item.valor_mnt_dia * diasOperacao;
         const valorItemComMargem = valorItemBase * (1 + MARGEM_RESERVA);
         
-        // NOVO FORMATO DE DETALHAMENTO POR ITEM
-        detalhamentoItens += `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias de Atividade + (10% Margem) = ${formatCurrency(valorItemComMargem)}.\n`;
+        // NOVO FORMATO DE DETALHAMENTO POR ITEM (REMOVENDO O PONTO FINAL)
+        detalhamentoItens += `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias de Atividade + (10% Margem) = ${formatCurrency(valorItemComMargem)}\n`;
     });
 
     // Montar a memória de cálculo completa
@@ -226,7 +226,8 @@ export const generateDetalhamento = (
         const valorItemComMargem = valorItem * (1 + MARGEM_RESERVA);
 
         acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias (+10% Margem) = ${formatCurrency(valorItemComMargem)}.`
+            // NOVO FORMATO: - <Item>: <Qtd Item> Un. x <Mnt/Dia> x <Qtd Dias Atividade> = <Total> (sem ponto final)
+            `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias (+10% Margem) = ${formatCurrency(valorItemComMargem)}`
         );
         
         return acc;
