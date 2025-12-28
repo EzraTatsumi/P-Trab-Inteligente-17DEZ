@@ -126,7 +126,7 @@ src/pages/SharePage.tsx
 src/pages/Login.tsx
 src/pages/PTrabManager.tsx
 src/pages/PTrabForm.tsx
-src/pages/PTrabReportManager.tsx
+# REMOVIDO: src/pages/PTrabReportManager.tsx
 src/components/OmSelector.tsx
 src/components/SessionContextProvider.tsx
 src/hooks/useMilitaryOrganizations.ts

@@ -27,6 +27,10 @@ import {
   calculateClasseICalculations,
   ClasseIRegistro as ClasseIRegistroType, // Importando o tipo correto
 } from "@/lib/classeIUtils"; // Importando as funções de utilidade
+import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils";
+
 
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
@@ -84,6 +88,9 @@ export interface ClasseIIRegistro {
   animal_tipo?: 'Equino' | 'Canino';
   quantidade_animais?: number;
   itens_motomecanizacao?: ItemClasseIX[];
+  om_detentora?: string | null;
+  ug_detentora?: string | null;
+  efetivo?: number;
 }
 
 export interface ClasseIIIRegistro {
@@ -133,7 +140,7 @@ export interface GrupoOM {
 }
 
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
-export const CLASSE_VI_CATEGORIES = ["Embarcação", "Equipamento de Engenharia"];
+export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"]; // CORRIGIDO: Usando as categorias corretas
 export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
 export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
 export const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
@@ -177,6 +184,7 @@ export const getClasseIILabel = (category: string): string => {
         case 'Armt P': return 'Armamento Pesado';
         case 'IODCT': return 'IODCT';
         case 'DQBRN': return 'DQBRN';
+        case 'Gerador': return 'Gerador';
         case 'Embarcação': return 'Embarcação';
         case 'Equipamento de Engenharia': return 'Eqp Engenharia';
         case 'Comunicações': return 'Comunicações';
@@ -264,7 +272,7 @@ export const generateClasseIXMemoriaCalculo = (registro: ClasseIIRegistro): stri
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe IX (Motomecanização) para ${totalItens} viaturas, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe IX (Motomecanização) para ${totalItens} viaturas, durante ${diasOperacao} dias de ${faseFormatada}, para ${registro.om_detentora || organizacao}.
 Recurso destinado à OM proprietária: ${organizacao} (UG: ${ug})
 
 Alocação:
@@ -382,7 +390,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
     return "Memória de cálculo não encontrada.";
 };
 
-export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro): string => {
+export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isClasseII: boolean): string => {
     if (registro.detalhamento_customizado) {
       return registro.detalhamento_customizado;
     }
@@ -391,6 +399,54 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro): stri
         return generateClasseIXMemoriaCalculo(registro);
     }
     
+    if (isClasseII) {
+        // Se for Classe II (Intendência), usa o utilitário atualizado
+        return generateClasseIIUtility(
+            registro.categoria,
+            registro.itens_equipamentos,
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
+            registro.efetivo || 0,
+            registro.valor_nd_30,
+            registro.valor_nd_39
+        );
+    }
+    
+    // Para outras classes (V, VI, VII, VIII) que não são IX, usamos o detalhamento salvo (que deve ser o formato antigo)
+    // OU, se o relatório estiver passando a função de utilidade correta, ela será usada.
+    // Aqui, para garantir que o relatório use a versão mais recente, vamos usar o utilitário para V e VI também,
+    // pois eles foram atualizados no passo anterior.
+    if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+        return generateClasseVUtility(
+            registro.categoria,
+            registro.itens_equipamentos,
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
+            registro.efetivo || 0,
+            registro.valor_nd_30,
+            registro.valor_nd_39
+        );
+    }
+    
+    if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
+        return generateClasseVIUtility(
+            registro.categoria,
+            registro.itens_equipamentos,
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
+            registro.efetivo || 0,
+            registro.valor_nd_30,
+            registro.valor_nd_39
+        );
+    }
+    
+    // Para Classe VII e VIII, que não tiveram utilitários de memória criados, retorna o detalhamento salvo
     return registro.detalhamento;
 };
 
@@ -480,24 +536,24 @@ const PTrabReportManager = () => {
         { data: classeIXData },
         { data: classeIIIData },
       ] = await Promise.all([
-        supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39').eq('p_trab_id', ptrabId),
-        supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39').eq('p_trab_id', ptrabId),
-        supabase.from('classe_vi_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39').eq('p_trab_id', ptrabId),
-        supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39').eq('p_trab_id', ptrabId),
-        supabase.from('classe_viii_saude_registros').select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39').eq('p_trab_id', ptrabId),
-        supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais').eq('p_trab_id', ptrabId),
-        supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39').eq('p_trab_id', ptrabId),
+        supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
+        supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
+        supabase.from('classe_vi_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
+        supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
+        supabase.from('classe_viii_saude_registros').select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
+        supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
+        supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from('classe_iii_registros').select('*, detalhamento_customizado').eq('p_trab_id', ptrabId),
       ]);
 
       const allClasseItems = [
-        ...(classeIIData || []),
-        ...(classeVData || []),
-        ...(classeVIData || []),
-        ...(classeVIIData || []),
-        ...(classeVIIISaudeData || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde' })),
-        ...(classeVIIIRemontaData || []).map(r => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais })),
-        ...(classeIXData || []).map(r => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria })),
+        ...(classeIIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
+        ...(classeVData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
+        ...(classeVIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
+        ...(classeVIIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
+        ...(classeVIIISaudeData || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
+        ...(classeVIIIRemontaData || []).map(r => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
+        ...(classeIXData || []).map(r => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
       ];
 
       setPtrabData(ptrab as PTrabData); // Casting para incluir updated_at
@@ -581,14 +637,16 @@ const PTrabReportManager = () => {
 
     // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
     registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
-        initializeGroup(registro.om_qs);
-        grupos[registro.om_qs].linhasQS.push({ registro, tipo: 'QS' });
-        initializeGroup(registro.organizacao);
+        initializeGroup(registro.om_qs || registro.organizacao); // Usa OM QS como chave de destino
+        grupos[registro.om_qs || registro.organizacao].linhasQS.push({ registro, tipo: 'QS' });
+        
+        initializeGroup(registro.organizacao); // Usa OM de destino (QR) como chave de destino
         grupos[registro.organizacao].linhasQR.push({ registro, tipo: 'QR' });
     });
     
     // 2. Processar Classes II, V, VI, VII, VIII, IX
     registrosClasseII.forEach((registro) => {
+        // A chave de agrupamento é a OM de DESTINO do recurso (campo 'organizacao' no DB)
         initializeGroup(registro.organizacao);
         const omGroup = grupos[registro.organizacao];
         
@@ -727,6 +785,9 @@ const PTrabReportManager = () => {
             handleCancelCompleteStatus={handleCancelCompleteStatus}
             fileSuffix={fileSuffix}
             generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // USANDO A FUNÇÃO UNIFICADA
+            generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo} // USANDO A FUNÇÃO UNIFICADA
+            generateClasseVMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
+            generateClasseVIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
           />
         );
       case 'racao_operacional':
