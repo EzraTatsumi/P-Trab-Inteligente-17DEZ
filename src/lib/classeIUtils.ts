@@ -108,7 +108,7 @@ export const formatFasesParaTexto = (faseCSV: string | undefined | null): string
   
   const ultimaFase = fases[fases.length - 1];
   const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFase}`;
+  return `${demaisFases} e ${ultimaFases}`;
 };
 
 /**
@@ -272,8 +272,8 @@ export const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro
     // Lógica de preposição
     const preposition = getOmPreposition(organizacao);
 
-    // NOVO CABEÇALHO AJUSTADO COM 33.90.30
-    const header = `33.90.30 - Fornecimento de Ração Operacional para atender ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizada/afastadas de instalações militares.`;
+    // CORREÇÃO AQUI: 'atividades descentralizadas/afastadas'
+    const header = `33.90.30 - Fornecimento de Ração Operacional para atender ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizadas/afastadas de instalações militares.`;
 
     // Lógica de concordância para a linha final
     const racaoPlural = totalRacoes === 1 ? 'Ração Operacional' : 'Rações Operacionais';
