@@ -34,7 +34,7 @@ import {
   generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport, // Importar com alias
   generateClasseIXMemoriaCalculo,
   calculateItemTotalClasseIX,
-} from "@/lib/ptrabReportUtils"; // Importar tipos e funções auxiliares do Manager
+} from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils"; // NOVO: Importar utilitário de Classe V
 import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils"; // NOVO: Importar utilitário de Classe VI
@@ -490,15 +490,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               if (linha.tipo === 'QS') {
                   rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                   rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
-                  rowData.valorC = registro.calculos.totalQS;
-                  rowData.valorE = registro.calculos.totalQS;
+                  rowData.valorC = registro.total_qs;
+                  rowData.valorE = registro.total_qs;
                   // USANDO A FUNÇÃO UNIFICADA
                   rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
               } else { // QR
                   rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                   rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
-                  rowData.valorC = registro.calculos.totalQR;
-                  rowData.valorE = registro.calculos.totalQR;
+                  rowData.valorC = registro.total_qr;
+                  rowData.valorE = registro.total_qr;
                   // USANDO A FUNÇÃO UNIFICADA
                   rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
               }
@@ -1048,7 +1048,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     const rowData = {
                         despesasValue: '',
                         omValue: '',
-                        detalhamentoValue: '',
+                        detalhamentoValue: '', // Inicializado aqui
                         valorC: 0,
                         valorD: 0,
                         valorE: 0,
@@ -1062,15 +1062,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         if (linha.tipo === 'QS') {
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                             rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
-                            rowData.valorC = registro.calculos.totalQS;
-                            rowData.valorE = registro.calculos.totalQS;
+                            rowData.valorC = registro.total_qs;
+                            rowData.valorE = registro.total_qs;
                             // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                         } else { // QR
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                             rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
-                            rowData.valorC = registro.calculos.totalQR;
-                            rowData.valorE = registro.calculos.totalQR;
+                            rowData.valorC = registro.total_qr;
+                            rowData.valorE = registro.total_qr;
                             // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                         }
