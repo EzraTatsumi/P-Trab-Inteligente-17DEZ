@@ -275,10 +275,14 @@ export const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro
     // NOVO CABEÇALHO AJUSTADO COM 33.90.30
     const header = `33.90.30 - Fornecimento de Ração Operacional para atender ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizada/afastadas de instalações militares.`;
 
+    // Lógica de concordância para a linha final
+    const racaoPlural = totalRacoes === 1 ? 'Ração Operacional' : 'Rações Operacionais';
+    const unidadePlural = totalRacoes === 1 ? 'unidade' : 'unidades';
+
     return `${header}
 
 Quantitativo R2 (24h): ${formatNumber(R2)} un.
 Quantitativo R3 (12h): ${formatNumber(R3)} un.
 
-Total de Rções Operacionais: ${formatNumber(totalRacoes)} unidades.`;
+Total de ${racaoPlural}: ${formatNumber(totalRacoes)} ${unidadePlural}.`;
 };
