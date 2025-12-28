@@ -35,6 +35,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
 import { defaultClasseVIConfig } from "@/data/classeVIData";
 
+// NOVO: Importar as funções de utilidade da Classe VI
+import { 
+    generateCategoryMemoriaCalculo as generateClasseVIMemoriaCalculo, 
+    generateDetalhamento as generateClasseVIDetalhamento 
+} from "@/lib/classeVIUtils";
+
+
 type Categoria = 'Gerador' | 'Embarcação' | 'Equipamento de Engenharia'; // Categorias corretas para Classe VI
 
 const CATEGORIAS: Categoria[] = [
@@ -137,12 +144,6 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   const demaisFases = fases.slice(0, -1).join(', ');
   return `${demaisFases} e ${ultimaFase}`;
 };
-
-// NOVO: Importar as funções de utilidade da Classe VI
-import { 
-    generateCategoryMemoriaCalculo as generateClasseVIMemoriaCalculo, 
-    generateDetalhamento as generateClasseVIDetalhamento 
-} from "@/lib/classeVIUtils";
 
 
 const ClasseVIForm = () => {
@@ -1531,6 +1532,12 @@ const ClasseVIForm = () => {
                                   <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
                                       {badgeStyle.label}
                                   </Badge>
+                                  {/* NOVO BADGE DE MEMÓRIA CUSTOMIZADA */}
+                                  {hasCustomMemoria && !isEditing && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Editada manualmente
+                                    </Badge>
+                                  )}
                               </div>
                               {/* NOVO AVISO DE OM DESTINO */}
                               {isDifferentOm ? (
