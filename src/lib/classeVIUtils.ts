@@ -15,6 +15,9 @@ interface ItemClasseVI {
   memoria_customizada?: string | null;
 }
 
+// Tolerância para comparação de valores monetários
+const ND_TOLERANCE = 0.01;
+
 /**
  * Formats the activity phases from a semicolon-separated string into a readable text format.
  * @param faseCSV The semicolon-separated string of phases.
@@ -87,13 +90,16 @@ export const generateCategoryMemoriaCalculo = (
     const totalValorComMargem = totalValorSemMargem * (1 + MARGEM_RESERVA);
     const valorMargem = totalValorComMargem - totalValorSemMargem;
 
-    // 1. Determinar o prefixo ND baseado nos valores
+    // 1. Determinar o prefixo ND baseado nos valores (usando tolerância)
+    const isND30Active = valorND30 > ND_TOLERANCE;
+    const isND39Active = valorND39 > ND_TOLERANCE;
+    
     let ndPrefix = "";
-    if (valorND30 > 0 && valorND39 > 0) {
+    if (isND30Active && isND39Active) {
         ndPrefix += "33.90.30 / 33.90.39";
-    } else if (valorND30 > 0) {
+    } else if (isND30Active) {
         ndPrefix += "33.90.30";
-    } else if (valorND39 > 0) {
+    } else if (isND39Active) {
         ndPrefix += "33.90.39";
     } else {
         ndPrefix = "(Não Alocado)";
@@ -167,13 +173,16 @@ export const generateDetalhamento = (
     const valorTotalSemMargem = valorTotalComMargem / (1 + MARGEM_RESERVA);
     const valorMargem = valorTotalComMargem - valorTotalSemMargem;
 
-    // 1. Determinar o prefixo ND (REMOVIDO 'ND ')
+    // 1. Determinar o prefixo ND (usando tolerância)
+    const isND30Active = valorND30 > ND_TOLERANCE;
+    const isND39Active = valorND39 > ND_TOLERANCE;
+    
     let ndPrefix = "";
-    if (valorND30 > 0 && valorND39 > 0) {
+    if (isND30Active && isND39Active) {
         ndPrefix += "33.90.30 / 33.90.39";
-    } else if (valorND30 > 0) {
+    } else if (isND30Active) {
         ndPrefix += "33.90.30";
-    } else if (valorND39 > 0) {
+    } else if (isND39Active) {
         ndPrefix += "33.90.39";
     } else {
         ndPrefix = "(Não Alocado)";
