@@ -1639,11 +1639,7 @@ const ClasseVIForm = () => {
                                           Recurso destinado à OM: {registro.organizacao} ({formatCodug(registro.ug)})
                                       </span>
                                   </div>
-                              ) : (
-                                  <p className="text-xs mt-1 text-muted-foreground">
-                                      OM Destino Recurso: {registro.organizacao} ({formatCodug(registro.ug)})
-                                  </p>
-                              )}
+                              ) : null}
                           </div>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
