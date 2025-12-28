@@ -101,7 +101,7 @@ export const generateClasseIIMemoriaCalculo = (
     // 4. Determinar o artigo 'do/da' da Categoria
     const categoryArticle = getCategoryArticle(categoria);
     
-    // 5. Determinar singular/plural de 'dia'
+    // 5. Determinar singular/plural de 'dia' (para o cabeçalho)
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
 
     // 6. Montar o cabeçalho dinâmico
