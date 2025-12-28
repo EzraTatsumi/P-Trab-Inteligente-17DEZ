@@ -256,12 +256,7 @@ export const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro
         return "Memória não aplicável para Ração Quente.";
     }
     
-    // NOVO: Prioriza a memória customizada (armazenada em memoriaQSCustomizada para Ração Operacional)
-    if (registro.memoriaQSCustomizada) {
-        return registro.memoriaQSCustomizada;
-    }
-    
-    const { organizacao, efetivo, diasOperacao, quantidadeR2, quantidadeR3, faseAtividade } = registro; 
+    const { organizacao, efetivo, diasOperacao, quantidadeR2, quantidadeR3, faseAtividade, ug } = registro; // Adicionado ug
     
     const E = efetivo || 0;
     const D = diasOperacao || 0;
@@ -277,8 +272,9 @@ export const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro
     // Lógica de preposição
     const preposition = getOmPreposition(organizacao);
 
-    // NOVO CABEÇALHO AJUSTADO COM 33.90.30 (Linha de destino removida)
-    const header = `33.90.30 - Fornecimento de Ração Operacional para atender ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizada/afastadas de instalações militares.`;
+    // NOVO CABEÇALHO AJUSTADO COM 33.90.30
+    const header = `33.90.30 - Fornecimento de Ração Operacional para atender ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizada/afastadas de instalações militares.
+Recurso destinado à OM: ${organizacao} (UG: ${formatCodug(ug)})`;
 
     return `${header}
 
