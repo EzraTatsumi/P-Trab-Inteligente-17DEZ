@@ -1,26 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, FileText, Package, Utensils, Briefcase, HardHat, Plane, ClipboardList } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import ExcelJS from 'exceljs';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
-import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
 import { 
   generateRacaoQuenteMemoriaCalculo, 
   generateRacaoOperacionalMemoriaCalculo,
@@ -30,6 +8,7 @@ import {
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils";
+import { generateClasseIXMemoriaCalculo } from "@/lib/classeIXUtils";
 
 
 // =================================================================

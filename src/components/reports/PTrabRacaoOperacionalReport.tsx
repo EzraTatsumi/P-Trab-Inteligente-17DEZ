@@ -14,7 +14,7 @@ import {
   formatDate,
   formatFasesParaTexto,
   generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport, // Importar com alias
-} from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
+} from "@/lib/ptrabReportUtils"; // Importar tipos e funções auxiliares do Manager
 
 interface PTrabRacaoOperacionalReportProps {
   ptrabData: PTrabData;
