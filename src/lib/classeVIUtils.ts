@@ -113,7 +113,7 @@ export const generateCategoryMemoriaCalculo = (
     const totalValorComMargem = totalValorSemMargem * (1 + MARGEM_RESERVA);
     const valorMargem = totalValorComMargem - totalValorSemMargem;
 
-    // 1. Determinar o prefixo ND baseado nos valores (usando tolerância)
+    // 1. Determinar o prefixo ND (usando tolerância)
     const isND30Active = valorND30 > ND_TOLERANCE;
     const isND39Active = valorND39 > ND_TOLERANCE;
     
@@ -145,8 +145,11 @@ export const generateCategoryMemoriaCalculo = (
         const valorItemBase = item.quantidade * item.valor_mnt_dia * diasOperacao;
         const valorItemComMargem = valorItemBase * (1 + MARGEM_RESERVA);
         
+        // APLICANDO CONCORDÂNCIA AQUI:
+        const diasPluralFormula = diasOperacao === 1 ? "dia" : "dias";
+        
         // NOVO FORMATO DE DETALHAMENTO POR ITEM (REMOVENDO O PONTO FINAL)
-        detalhamentoItens += `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias de Atividade + (10% Margem) = ${formatCurrency(valorItemComMargem)}\n`;
+        detalhamentoItens += `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diasPluralFormula} de Atividade + (10% Margem) = ${formatCurrency(valorItemComMargem)}\n`;
     });
 
     // Montar a memória de cálculo completa
@@ -224,10 +227,13 @@ export const generateDetalhamento = (
         
         // Valor do item com margem
         const valorItemComMargem = valorItem * (1 + MARGEM_RESERVA);
+        
+        // APLICANDO CONCORDÂNCIA AQUI:
+        const diasPluralFormula = diasOperacao === 1 ? "dia" : "dias";
 
         acc[categoria].detalhes.push(
             // NOVO FORMATO: - <Item>: <Qtd Item> Un. x <Mnt/Dia> x <Qtd Dias Atividade> = <Total> (sem ponto final)
-            `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias (+10% Margem) = ${formatCurrency(valorItemComMargem)}`
+            `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diasPluralFormula} (+10% Margem) = ${formatCurrency(valorItemComMargem)}`
         );
         
         return acc;

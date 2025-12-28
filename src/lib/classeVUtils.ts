@@ -114,8 +114,9 @@ export const generateCategoryMemoriaCalculo = (
     let detalhamentoItens = "";
     itens.forEach(item => {
         const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        // NOVO FORMATO: - <Item>: <Qtd Item> Un. x <Mnt/Dia> x <Qtd Dias Atividade> = <Total> (sem ponto final)
-        detalhamentoItens += `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}\n`;
+        // APLICANDO CONCORDÂNCIA AQUI:
+        const diasPluralFormula = diasOperacao === 1 ? "dia" : "dias";
+        detalhamentoItens += `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diasPluralFormula} = ${formatCurrency(valorItem)}\n`;
     });
 
     return `${header}\n\nCálculo:\nFórmula: Nr Itens x Valor Mnt/Dia x Nr Dias:\n${detalhamentoItens.trim()}\n\nTotal: ${formatCurrency(totalValor)}.`;
@@ -180,9 +181,13 @@ export const generateDetalhamento = (
         
         acc[categoria].totalValor += valorItem;
         acc[categoria].totalQuantidade += item.quantidade;
+        
+        // APLICANDO CONCORDÂNCIA AQUI:
+        const diasPluralFormula = diasOperacao === 1 ? "dia" : "dias";
+        
         acc[categoria].detalhes.push(
             // NOVO FORMATO: - <Item>: <Qtd Item> Un. x <Mnt/Dia> x <Qtd Dias Atividade> = <Total> (sem ponto final)
-            `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}`
+            `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diasPluralFormula} = ${formatCurrency(valorItem)}`
         );
         
         return acc;

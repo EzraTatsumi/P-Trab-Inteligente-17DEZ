@@ -112,7 +112,9 @@ export const generateClasseIIMemoriaCalculo = (
     itens.forEach(item => {
         const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
         // NOVO FORMATO: - <Item>: <Qtd Item> Un. x <Mnt/Dia> x <Qtd Dias Atividade> = <Total>
-        detalhamentoItens += `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}\n`;
+        // APLICANDO CONCORDÂNCIA AQUI:
+        const diasPluralFormula = diasOperacao === 1 ? "dia" : "dias";
+        detalhamentoItens += `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diasPluralFormula} = ${formatCurrency(valorItem)}\n`;
     });
 
     // Montar a memória de cálculo simplificada
@@ -180,10 +182,13 @@ export const generateDetalhamento = (
         
         acc[categoria].totalValor += valorItem;
         acc[categoria].totalQuantidade += item.quantidade;
-        // Nota: Mantemos 'dias' no detalhamento interno para consistência com a fórmula
+        
+        // APLICANDO CONCORDÂNCIA AQUI:
+        const diasPluralFormula = diasOperacao === 1 ? "dia" : "dias";
+        
         acc[categoria].detalhes.push(
             // NOVO FORMATO: - <Item>: <Qtd Item> Un. x <Mnt/Dia> x <Qtd Dias Atividade> = <Total> (sem ponto final)
-            `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}`
+            `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diasPluralFormula} = ${formatCurrency(valorItem)}`
         );
         
         return acc;
