@@ -134,7 +134,7 @@ export const generateCategoryMemoriaCalculo = (
     // 3. Determinar o artigo 'do/da' da OM
     const omArticle = getOmArticle(omDetentora);
 
-    // 4. Montar o cabeçalho dinâmico conforme solicitado:
+    // 4. Montar o cabeçalho dinâmico:
     const pluralizedCategory = getPluralizedCategory(categoria, totalQuantidade);
     
     // Cabeçalho
@@ -142,17 +142,19 @@ export const generateCategoryMemoriaCalculo = (
 
     let detalhamentoItens = "";
     itens.forEach(item => {
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
+        const valorItemBase = item.quantidade * item.valor_mnt_dia * diasOperacao;
+        const valorItemComMargem = valorItemBase * (1 + MARGEM_RESERVA);
+        
+        // NOVO FORMATO DE DETALHAMENTO POR ITEM
+        detalhamentoItens += `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias de Atividade + (10% Margem) = ${formatCurrency(valorItemComMargem)}.\n`;
     });
 
     // Montar a memória de cálculo completa
     return `${header}
 
 Cálculo:
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
+Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias de Atividade + (10% Margem).
 
-Detalhes dos Itens (Valor Base):
 ${detalhamentoItens.trim()}
 
 Valor Total Base: ${formatCurrency(totalValorSemMargem)}.
