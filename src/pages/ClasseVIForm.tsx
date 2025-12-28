@@ -1098,9 +1098,9 @@ const ClasseVIForm = () => {
               </div>
               
               {/* SEGUNDA LINHA: Fase da Atividade (Colunas 1 e 2) */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2">
                   <Label>Fase da Atividade *</Label>
                   <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                     <PopoverTrigger asChild>
@@ -1151,7 +1151,7 @@ const ClasseVIForm = () => {
                   </Popover>
                 </div>
                 
-                {/* Coluna vazia para manter o layout de 3 colunas */}
+                {/* Coluna vazia para manter o layout de 2 colunas */}
                 <div className="space-y-2">
                     {/* Este espaço é intencionalmente vazio */}
                 </div>
