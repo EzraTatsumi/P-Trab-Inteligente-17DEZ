@@ -49,7 +49,6 @@ src/assets/
 # src/components/SignupDialog.tsx
 # src/components/EmailConfirmationDialog.tsx
 
-src/pages/DiretrizesCusteioPage.tsx
 src/components/YearManagementDialog.tsx
 src/pages/PTrabExportImportPage.tsx
 src/components/ExportPasswordDialog.tsx
@@ -129,6 +128,7 @@ src/pages/Login.tsx
 src/pages/PTrabManager.tsx
 src/pages/PTrabForm.tsx
 src/pages/PTrabReportManager.tsx
+src/pages/DiretrizesCusteioPage.tsx
 src/components/OmSelector.tsx
 src/components/SessionContextProvider.tsx
 src/hooks/useMilitaryOrganizations.ts
@@ -164,12 +164,6 @@ src/vite-env.d.ts
 .env
 public/robots.txt
 public/placeholder.svg
-supabase/config.toml
-supabase_migration_add_nome_om_constraint.sql
-supabase_migration_drop_constraint.sql
-public/favicon.ico
-public/favicon.png
-public/og-image.png
 supabase/functions/chat-ai/index.ts
 supabase/functions/delete-user/index.ts
 supabase/functions/email-exists/index.ts
