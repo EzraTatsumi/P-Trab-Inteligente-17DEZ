@@ -128,7 +128,6 @@ src/pages/Login.tsx
 src/pages/PTrabManager.tsx
 src/pages/PTrabForm.tsx
 src/pages/PTrabReportManager.tsx
-src/pages/DiretrizesCusteioPage.tsx
 src/components/OmSelector.tsx
 src/components/SessionContextProvider.tsx
 src/hooks/useMilitaryOrganizations.ts

@@ -98,6 +98,7 @@ const CATEGORIAS_CLASSE_V = [
 const CATEGORIAS_CLASSE_VI = [
   "Embarcação",
   "Equipamento de Engenharia",
+  "Gerador", // NOVO: Adicionado 'Gerador'
 ];
 
 const CATEGORIAS_CLASSE_VII = [
@@ -399,7 +400,7 @@ const DiretrizesCusteioPage = () => {
       const { data: classeIXData, error: classeIXError } = await supabase
         .from("diretrizes_classe_ix")
         .select("categoria, item, valor_mnt_dia, valor_acionamento_mensal")
-        .eq("user_id", user.id)
+        .eq("user.id", user.id)
         .eq("ano_referencia", year)
         .eq("ativo", true);
         
@@ -1405,7 +1406,7 @@ const DiretrizesCusteioPage = () => {
                   <Card>
                     <CardContent className="pt-4">
                       <Tabs value={selectedClasseVITab} onValueChange={setSelectedClasseVITab}>
-                        <TabsList className="grid w-full grid-cols-2">
+                        <TabsList className="grid w-full grid-cols-3">
                           {CATEGORIAS_CLASSE_VI.map(cat => (
                             <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
                           ))}
