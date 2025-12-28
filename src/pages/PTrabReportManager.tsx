@@ -617,7 +617,7 @@ const PTrabReportManager = () => {
           quantidadeR2: r.quantidade_r2 || 0,
           quantidadeR3: r.quantidade_r3 || 0,
         }
-      }) as ClasseIRegistro[];
+      }) as ClasseIRegistro[] // Removendo o ponto e vírgula aqui
       
       setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
       setRegistrosClasseIII(classeIIIData || []);
@@ -841,7 +841,7 @@ const PTrabReportManager = () => {
             handleConfirmCompleteStatus={handleConfirmCompleteStatus}
             handleCancelCompleteStatus={handleCancelCompleteStatus}
             fileSuffix={fileSuffix}
-            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculadaUnificada} // USANDO A FUNÇÃO UNIFICADA
+            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // USANDO A FUNÇÃO UNIFICADA
             generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo} // USANDO A FUNÇÃO UNIFICADA
             generateClasseVMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
             generateClasseVIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
@@ -854,7 +854,7 @@ const PTrabReportManager = () => {
             registrosClasseI={registrosClasseI}
             onExportSuccess={handleExportSuccess}
             fileSuffix={fileSuffix}
-            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculadaUnificada} // USANDO A FUNÇÃO UNIFICADA
+            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // USANDO A FUNÇÃO UNIFICADA
           />
         );
       case 'operacional':
