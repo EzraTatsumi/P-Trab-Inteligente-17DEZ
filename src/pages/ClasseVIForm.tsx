@@ -186,6 +186,15 @@ const ClasseVIForm = () => {
   
   const { handleEnterToNextField } = useFormNavigation();
   const formRef = useRef<HTMLDivElement>(null);
+  
+  // NOVO: Função para desativar setas e manter navegação por Enter
+  const handleNumberInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+    }
+    // Chama a função de navegação para a tecla Enter
+    handleEnterToNextField(e);
+  };
 
   // Helper function to check if a category is dirty (needs saving)
   const isCategoryAllocationDirty = useCallback((
@@ -240,6 +249,7 @@ const ClasseVIForm = () => {
       const savedAllocation = categoryAllocations[selectedTab];
       
       // 1. Sincronizar ND 39 Input (dígitos)
+      // O valor salvo em nd_39_input é uma string formatada (ex: "1.234,56"). Precisamos convertê-lo para dígitos brutos.
       const numericValue = parseInputToNumber(savedAllocation.nd_39_input);
       const digits = String(Math.round(numericValue * 100));
       
@@ -1004,7 +1014,7 @@ const ClasseVIForm = () => {
                     value={form.dias_operacao || ""}
                     onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value) || 0 })}
                     placeholder="Ex: 7"
-                    onKeyDown={handleEnterToNextField}
+                    onKeyDown={handleNumberInputKeyDown}
                   />
                 </div>
               </div>
@@ -1123,7 +1133,7 @@ const ClasseVIForm = () => {
                                                             value={item.quantidade === 0 ? "" : item.quantidade.toString()}
                                                             onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
                                                             placeholder="0"
-                                                            onKeyDown={handleEnterToNextField}
+                                                            onKeyDown={handleNumberInputKeyDown}
                                                         />
                                                     </TableCell>
                                                     <TableCell className="text-right font-semibold text-sm py-1">

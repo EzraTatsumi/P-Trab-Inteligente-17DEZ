@@ -143,8 +143,8 @@ const ClasseVForm = () => {
   
   const [form, setForm] = useState<FormDataClasseV>({
     selectedOmId: undefined,
-    organizacao: "",
-    ug: "",
+    organizacao: "", // OM Detentora (Global)
+    ug: "", // UG Detentora (Global)
     efetivo: 0, // NOVO: Inicialização
     dias_operacao: 0,
     itens: [],
@@ -171,9 +171,9 @@ const ClasseVForm = () => {
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
     }
+    // Chama a função de navegação para a tecla Enter
     handleEnterToNextField(e);
   };
-
 
   // Helper function to check if a category is dirty (needs saving)
   const isCategoryAllocationDirty = useCallback((
@@ -712,6 +712,12 @@ const ClasseVForm = () => {
     const omDetentoraToEdit = registro.om_detentora;
     const ugDetentoraToEdit = registro.ug_detentora;
     
+    // --- Extract Global Parameters from the input record ---
+    const globalEfetivo = Number(registro.efetivo || 0);
+    const globalDiasOperacao = Number(registro.dias_operacao || 0);
+    const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+    // -------------------------------------------------------
+    
     // 2. Buscar TODOS os registros de CLASSE V para este PTrab E ESTA OM/UG DETENTORA ESPECÍFICA
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_v_registros")
@@ -773,24 +779,9 @@ const ClasseVForm = () => {
             // Recalcula o total com base nos itens e dias carregados
             const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
             
-            newAllocations[category] = {
-                total_valor: totalValor,
-                nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
-                nd_30_value: Number(r.valor_nd_30),
-                nd_39_value: Number(r.valor_nd_39),
-                om_destino_recurso: r.organizacao, // OM de Destino (campo 'organizacao' do DB)
-                ug_destino_recurso: r.ug, // UG de Destino (campo 'ug' do DB)
-                selectedOmDestinoId: selectedOmIdForEdit, // Usamos o ID da OM Detentora/Destino
-            };
-            
-            const savedND39Value = Number(r.valor_nd_39);
-            const savedDigits = String(Math.round(savedND39Value * 100));
-            tempND39Load[category] = savedDigits;
-            
-            // Para carregar o seletor de OM Destino na aba correta, precisamos do ID da OM de Destino
+            // Tenta buscar o ID da OM de Destino (r.organizacao/r.ug)
             let selectedOmDestinoId: string | undefined = undefined;
             if (r.organizacao && r.ug) {
-                // Tenta buscar o ID da OM de Destino (r.organizacao/r.ug)
                 try {
                     const { data: omDestinoData } = await supabase
                         .from('organizacoes_militares')
@@ -801,6 +792,20 @@ const ClasseVForm = () => {
                     selectedOmDestinoId = omDestinoData?.id;
                 } catch (e) { console.error("Erro ao buscar OM Destino ID:", e); }
             }
+            
+            newAllocations[category] = {
+                total_valor: totalValor,
+                nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
+                nd_30_value: Number(r.valor_nd_30),
+                nd_39_value: Number(r.valor_nd_39),
+                om_destino_recurso: r.organizacao, // OM de Destino (campo 'organizacao' do DB)
+                ug_destino_recurso: r.ug, // UG de Destino (campo 'ug' do DB)
+                selectedOmDestinoId: selectedOmDestinoId, // Usamos o ID da OM Detentora/Destino
+            };
+            
+            const savedND39Value = Number(r.valor_nd_39);
+            const savedDigits = String(Math.round(savedND39Value * 100));
+            tempND39Load[category] = savedDigits;
             
             tempDestinationsLoad[category] = {
                 om: r.organizacao,
@@ -827,7 +832,6 @@ const ClasseVForm = () => {
     setTempDestinations(tempDestinationsLoad);
     
     // 6. Preencher fases e aba
-    const fasesSalvas = (faseAtividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
     setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
     
@@ -1365,11 +1369,10 @@ const ClasseVForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                                     
                                     // Verifica se a OM Detentora é diferente da OM de Destino
-                                    const omDetentora = registro.om_detentora || registro.organizacao;
-                                    const isDifferentOm = omDetentora !== registro.organizacao;
+                                    const isDifferentOm = registro.om_detentora !== registro.organizacao;
 
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1456,7 +1459,7 @@ const ClasseVForm = () => {
             {registros.length > 0 && (
               <div className="space-y-4 mt-8">
                 <h3 className="text-xl font-bold flex items-center gap-2">
-                  📋 Memórias de Cálculo Detalhadas
+                  📋 Memórias de Cálculos Detalhadas
                 </h3>
                 
                 {registros.map(registro => {
