@@ -117,7 +117,7 @@ const defaultGenerateClasseVMemoriaCalculo = (registro: any): string => {
 
 // NOVO: Implementação padrão (fallback) para generateClasseVIMemoriaCalculo
 const defaultGenerateClasseVIMemoriaCalculo = (registro: any): string => {
-    if (CLASSE_VI_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos && registro.efetivo !== undefined) {
+    if (CLASSE_VI_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos) {
         // Usa a função utilitária detalhada para Classe VI
         return generateClasseVIUtility(
             registro.itens_equipamentos,

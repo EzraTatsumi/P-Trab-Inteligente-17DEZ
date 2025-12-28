@@ -60,7 +60,7 @@ interface FormDataClasseVI {
   selectedOmId?: string;
   organizacao: string; // OM Detentora (Global)
   ug: string; // UG Detentora (Global)
-  efetivo: number; // NOVO CAMPO
+  // efetivo: number; // REMOVIDO
   dias_operacao: number; // Global
   itens: ItemClasseVI[]; // All items across all categories
   fase_atividade?: string; // Global
@@ -81,7 +81,7 @@ interface ClasseVIRegistro {
   fase_atividade?: string;
   valor_nd_30: number;
   valor_nd_39: number;
-  efetivo: number; // NOVO CAMPO
+  // efetivo: number; // REMOVIDO
 }
 
 interface CategoryAllocation {
@@ -254,7 +254,7 @@ const ClasseVIForm = () => {
     selectedOmId: undefined,
     organizacao: "", // OM Detentora
     ug: "", // UG Detentora
-    efetivo: 0, 
+    // efetivo: 0, // REMOVIDO
     dias_operacao: 0,
     itens: [],
   });
@@ -483,7 +483,7 @@ const ClasseVIForm = () => {
     // NOVO: Selecionar os novos campos om_detentora e ug_detentora
     const { data, error } = await supabase
       .from("classe_vi_registros")
-      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, efetivo, om_detentora, ug_detentora")
+      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, om_detentora, ug_detentora")
       .eq("p_trab_id", ptrabId)
       .order("organizacao", { ascending: true })
       .order("categoria", { ascending: true });
@@ -506,7 +506,7 @@ const ClasseVIForm = () => {
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseVI[],
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
-            efetivo: r.efetivo || 0, 
+            // efetivo: r.efetivo || 0, // REMOVIDO
             om_detentora: omDetentora, // Garantir que o campo esteja preenchido
             ug_detentora: ugDetentora, // Garantir que o campo esteja preenchido
         } as ClasseVIRegistro;
@@ -522,7 +522,7 @@ const ClasseVIForm = () => {
       selectedOmId: undefined,
       organizacao: "", // OM Detentora
       ug: "", // UG Detentora
-      efetivo: 0, 
+      // efetivo: 0, // REMOVIDO
       dias_operacao: 0,
       itens: [],
     });
@@ -701,7 +701,7 @@ const ClasseVIForm = () => {
     if (!ptrabId) return;
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
     if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
-    if (form.efetivo <= 0) { toast.error("Efetivo deve ser maior que zero"); return; } // NOVO: Validação
+    // if (form.efetivo <= 0) { toast.error("Efetivo deve ser maior que zero"); return; } // REMOVIDO: Validação
     if (form.itens.length === 0) { toast.error("Adicione pelo menos um item"); return; }
     
     let fasesFinais = [...fasesAtividade];
@@ -781,7 +781,7 @@ const ClasseVIForm = () => {
             detalhamento_customizado: null,
             valor_nd_30: allocation.nd_30_value,
             valor_nd_39: allocation.nd_39_value,
-            efetivo: form.efetivo, // NOVO: Salvando efetivo
+            // efetivo: form.efetivo, // REMOVIDO
         };
         registrosParaSalvar.push(registro);
     }
@@ -822,7 +822,7 @@ const ClasseVIForm = () => {
     // 2. Buscar TODOS os registros de CLASSE VI para este PTrab E ESTA OM/UG DETENTORA ESPECÍFICA
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_vi_registros")
-        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, dias_operacao, fase_atividade, organizacao, ug, efetivo, om_detentora, ug_detentora")
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, dias_operacao, fase_atividade, organizacao, ug, om_detentora, ug_detentora")
         .eq("p_trab_id", ptrabId)
         .eq("om_detentora", omDetentoraToEdit) // FILTRO CHAVE: Apenas registros desta OM Detentora
         .eq("ug_detentora", ugDetentoraToEdit); // FILTRO CHAVE: Apenas registros desta UG Detentora
@@ -844,11 +844,11 @@ const ClasseVIForm = () => {
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
     let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
     
-    // Os dados globais (dias, fases, efetivo) devem ser consistentes entre os registros.
+    // Os dados globais (dias, fases) devem ser consistentes entre os registros.
     const firstRecord = allRecords[0];
     const diasOperacao = firstRecord.dias_operacao;
     const faseAtividade = firstRecord.fase_atividade;
-    const efetivo = firstRecord.efetivo || 0; // NOVO: Carregar efetivo
+    // const efetivo = firstRecord.efetivo || 0; // REMOVIDO
     
     // 3. Buscar ID da OM Detentora
     let selectedOmIdForEdit: string | undefined = undefined;
@@ -922,7 +922,7 @@ const ClasseVIForm = () => {
       selectedOmId: selectedOmIdForEdit,
       organizacao: omDetentoraToEdit, // OM Detentora
       ug: ugDetentoraToEdit, // UG Detentora
-      efetivo: efetivo, // NOVO: Carregar efetivo
+      // efetivo: efetivo, // REMOVIDO
       dias_operacao: diasOperacao,
       itens: consolidatedItems,
     });
@@ -1065,7 +1065,7 @@ const ClasseVIForm = () => {
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
               
-              {/* PRIMEIRA LINHA: OM Detentora, UG Detentora, Efetivo */}
+              {/* PRIMEIRA LINHA: OM Detentora, UG Detentora */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>OM Detentora do Equipamento *</Label>
@@ -1083,22 +1083,7 @@ const ClasseVIForm = () => {
                   <Input value={formatCodug(form.ug)} readOnly disabled onKeyDown={handleEnterToNextField} />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label>Efetivo Empregado *</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
-                    value={form.efetivo || ""}
-                    onChange={(e) => setForm({ ...form, efetivo: parseInt(e.target.value) || 0 })}
-                    placeholder="Ex: 100"
-                    onKeyDown={handleEnterToNextField}
-                  />
-                </div>
-              </div>
-              
-              {/* SEGUNDA LINHA: Dias de Atividade, Fase da Atividade (2 colunas) */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Espaço vazio para manter o layout de 3 colunas */}
                 <div className="space-y-2">
                   <Label>Dias de Atividade *</Label>
                   <Input
@@ -1110,6 +1095,15 @@ const ClasseVIForm = () => {
                     placeholder="Ex: 7"
                     onKeyDown={handleEnterToNextField}
                   />
+                </div>
+              </div>
+              
+              {/* SEGUNDA LINHA: Dias de Atividade, Fase da Atividade (2 colunas) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                
+                {/* Coluna vazia para layout */}
+                <div className="space-y-2">
+                    {/* Este espaço é intencionalmente vazio para alinhar a Fase da Atividade */}
                 </div>
                 
                 <div className="space-y-2 col-span-2">
@@ -1478,7 +1472,7 @@ const ClasseVIForm = () => {
                     const ug = omKey.split(' (')[1].replace(')', '');
                     
                     // Assumindo que o efetivo é o mesmo para todos os registros agrupados
-                    const efetivo = omRegistros[0].efetivo; 
+                    // const efetivo = omRegistros[0].efetivo; // REMOVIDO
                     
                     // Verifica se a OM Detentora é diferente da OM de Destino (apenas para o primeiro registro do grupo)
                     const isDifferentOm = omRegistros[0].om_detentora !== omRegistros[0].organizacao;
@@ -1517,7 +1511,7 @@ const ClasseVIForm = () => {
                                                         </Badge>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Efetivo: {efetivo} | Dias: {registro.dias_operacao}
+                                                        Dias: {registro.dias_operacao}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
