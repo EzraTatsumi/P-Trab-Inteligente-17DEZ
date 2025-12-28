@@ -70,6 +70,8 @@ interface ClasseVIRegistro {
   id: string;
   organizacao: string; // OM de Destino do Recurso (ND 30/39)
   ug: string; // UG de Destino do Recurso (ND 30/39)
+  om_detentora: string; // NOVO CAMPO
+  ug_detentora: string; // NOVO CAMPO
   dias_operacao: number;
   categoria: string;
   itens_equipamentos: ItemClasseVI[]; // Tipo corrigido
@@ -165,7 +167,7 @@ Valor Total Solicitado (Com Margem): ${formatCurrency(totalValorComMargem)}.`;
 };
 
 
-const generateDetalhamento = (itens: ItemClasseVI[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
+const generateDetalhamento = (itens: ItemClasseVI[], diasOperacao: number, omDetentora: string, ugDetentora: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const valorTotalComMargem = valorND30 + valorND39;
@@ -213,8 +215,9 @@ const generateDetalhamento = (itens: ItemClasseVI[], diasOperacao: number, organ
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe VI (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
-Recurso destinado à OM proprietária: ${omDestino} (UG: ${formatCodug(ugDestino)})
+    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe VI (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${omDetentora}.
+OM Detentora: ${omDetentora} (UG: ${formatCodug(ugDetentora)})
+Recurso destinado à OM: ${omDestino} (UG: ${formatCodug(ugDestino)})
 
 Cálculo Base (Sem Margem): ${formatCurrency(valorTotalSemMargem)}.
 Margem de Reserva (${MARGEM_RESERVA * 100}%): ${formatCurrency(valorMargem)}.
@@ -249,9 +252,9 @@ const ClasseVIForm = () => {
   
   const [form, setForm] = useState<FormDataClasseVI>({
     selectedOmId: undefined,
-    organizacao: "",
-    ug: "",
-    efetivo: 0, // NOVO: Inicialização
+    organizacao: "", // OM Detentora
+    ug: "", // UG Detentora
+    efetivo: 0, 
     dias_operacao: 0,
     itens: [],
   });
@@ -477,10 +480,10 @@ const ClasseVIForm = () => {
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
-    // NOVO: Selecionar o campo 'efetivo'
+    // NOVO: Selecionar os novos campos om_detentora e ug_detentora
     const { data, error } = await supabase
       .from("classe_vi_registros")
-      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, efetivo")
+      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, efetivo, om_detentora, ug_detentora")
       .eq("p_trab_id", ptrabId)
       .order("organizacao", { ascending: true })
       .order("categoria", { ascending: true });
@@ -493,13 +496,19 @@ const ClasseVIForm = () => {
 
     const uniqueRecordsMap = new Map<string, ClasseVIRegistro>();
     (data || []).forEach(r => {
-        const key = `${r.organizacao}-${r.ug}-${r.categoria}`;
+        // A chave de unicidade deve ser OM Detentora + UG Detentora + Categoria
+        const omDetentora = r.om_detentora || r.organizacao; // Fallback para compatibilidade
+        const ugDetentora = r.ug_detentora || r.ug; // Fallback para compatibilidade
+        const key = `${omDetentora}-${ugDetentora}-${r.categoria}`;
+        
         const record = {
             ...r,
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseVI[],
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
-            efetivo: r.efetivo || 0, // NOVO: Carregar efetivo
+            efetivo: r.efetivo || 0, 
+            om_detentora: omDetentora, // Garantir que o campo esteja preenchido
+            ug_detentora: ugDetentora, // Garantir que o campo esteja preenchido
         } as ClasseVIRegistro;
         uniqueRecordsMap.set(key, record);
     });
@@ -511,9 +520,9 @@ const ClasseVIForm = () => {
     setEditingId(null);
     setForm({
       selectedOmId: undefined,
-      organizacao: "",
-      ug: "",
-      efetivo: 0, // NOVO: Reset
+      organizacao: "", // OM Detentora
+      ug: "", // UG Detentora
+      efetivo: 0, 
       dias_operacao: 0,
       itens: [],
     });
@@ -533,11 +542,11 @@ const ClasseVIForm = () => {
       setForm({ 
         ...form, 
         selectedOmId: omData.id, 
-        organizacao: omData.nome_om, 
-        ug: omData.codug_om,
+        organizacao: omData.nome_om, // OM Detentora
+        ug: omData.codug_om, // UG Detentora
       });
       
-      // Initialize temporary destination OM for all categories to the OM Detentora
+      // Initialize temporary destination OM for all categories to the OM Detentora (padrão)
       const newTempDestinations = CATEGORIAS.reduce((acc, cat) => {
           acc[cat] = {
               om: omData.nome_om,
@@ -623,8 +632,8 @@ const ClasseVIForm = () => {
   const { formatted: formattedND39Value } = formatCurrencyInput(currentND39InputDigits);
 
   const handleUpdateCategoryItems = () => {
-    if (!form.organizacao || form.dias_operacao <= 0) {
-        toast.error("Preencha a OM e os Dias de Operação antes de salvar itens.");
+    if (!form.organizacao || form.ug === "" || form.dias_operacao <= 0) {
+        toast.error("Preencha a OM Detentora e os Dias de Operação antes de salvar itens.");
         return;
     }
     
@@ -748,8 +757,8 @@ const ClasseVIForm = () => {
         const detalhamento = generateDetalhamento(
             itens, 
             form.dias_operacao, 
-            form.organizacao,
-            form.ug,
+            form.organizacao, // OM Detentora
+            form.ug, // UG Detentora
             faseFinalString,
             allocation.om_destino_recurso,
             allocation.ug_destino_recurso,
@@ -759,8 +768,10 @@ const ClasseVIForm = () => {
         
         const registro: TablesInsert<'classe_vi_registros'> = {
             p_trab_id: ptrabId,
-            organizacao: allocation.om_destino_recurso,
-            ug: allocation.ug_destino_recurso,
+            organizacao: allocation.om_destino_recurso, // OM de Destino do Recurso
+            ug: allocation.ug_destino_recurso, // UG de Destino do Recurso
+            om_detentora: form.organizacao, // NOVO: OM Detentora
+            ug_detentora: form.ug, // NOVO: UG Detentora
             dias_operacao: form.dias_operacao,
             categoria: categoria,
             itens_equipamentos: itens as any,
@@ -776,14 +787,13 @@ const ClasseVIForm = () => {
     }
 
     try {
-      // CORREÇÃO: Deletar APENAS os registros de Classe VI existentes para este PTrab E ESTA OM DETENTORA/DESTINO
-      // Isso permite que registros de outras OMs coexistam.
+      // CORREÇÃO: Deletar APENAS os registros de Classe VI existentes para este PTrab E ESTA OM DETENTORA/UG DETENTORA
       const { error: deleteError } = await supabase
         .from("classe_vi_registros")
         .delete()
         .eq("p_trab_id", ptrabId)
-        .eq("organizacao", form.organizacao) // Filtra pela OM de Destino (que é a Detentora neste caso)
-        .eq("ug", form.ug); // Filtra pela UG de Destino
+        .eq("om_detentora", form.organizacao) // Filtra pela OM Detentora
+        .eq("ug_detentora", form.ug); // Filtra pela UG Detentora
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
       const { error: insertError } = await supabase.from("classe_vi_registros").insert(registrosParaSalvar);
@@ -805,15 +815,17 @@ const ClasseVIForm = () => {
     setLoading(true);
     resetFormFields();
     
-    // Para Classe VI, a OM Detentora é a OM de Destino (organizacao/ug)
-    const omDetentoraToEdit = registro.organizacao;
-    const ugDetentoraToEdit = registro.ug;
+    // 1. Usar a OM Detentora do registro clicado como filtro para carregar todos os registros relacionados
+    const omDetentoraToEdit = registro.om_detentora;
+    const ugDetentoraToEdit = registro.ug_detentora;
     
-    // 2. Buscar TODOS os registros de CLASSE VI para este PTrab (não precisa filtrar por OM Detentora, pois só há uma)
+    // 2. Buscar TODOS os registros de CLASSE VI para este PTrab E ESTA OM/UG DETENTORA ESPECÍFICA
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_vi_registros")
-        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, dias_operacao, fase_atividade, organizacao, ug, efetivo")
-        .eq("p_trab_id", ptrabId);
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, dias_operacao, fase_atividade, organizacao, ug, efetivo, om_detentora, ug_detentora")
+        .eq("p_trab_id", ptrabId)
+        .eq("om_detentora", omDetentoraToEdit) // FILTRO CHAVE: Apenas registros desta OM Detentora
+        .eq("ug_detentora", ugDetentoraToEdit); // FILTRO CHAVE: Apenas registros desta UG Detentora
         
     if (fetchAllError) {
         toast.error("Erro ao carregar todos os registros para edição.");
@@ -934,8 +946,11 @@ const ClasseVIForm = () => {
   
   const registrosAgrupadosPorOM = useMemo(() => {
     return registros.reduce((acc, registro) => {
-        // Para Classe VI, a OM Detentora é a OM de Destino (organizacao/ug)
-        const key = `${registro.organizacao} (${formatCodug(registro.ug)})`;
+        // Chave de agrupamento é a OM Detentora
+        const omDetentora = registro.om_detentora;
+        const ugDetentora = registro.ug_detentora;
+        const key = `${omDetentora} (${formatCodug(ugDetentora)})`;
+        
         if (!acc[key]) {
             acc[key] = [];
         }
@@ -951,11 +966,11 @@ const ClasseVIForm = () => {
     const memoriaAutomatica = generateDetalhamento(
         registro.itens_equipamentos as ItemClasseVI[], 
         registro.dias_operacao, 
-        registro.organizacao, 
-        registro.ug, 
+        registro.om_detentora, // OM Detentora
+        registro.ug_detentora, // UG Detentora
         registro.fase_atividade || '', 
-        registro.organizacao, 
-        registro.ug, 
+        registro.organizacao, // OM Destino
+        registro.ug, // UG Destino
         registro.valor_nd_30, 
         registro.valor_nd_39
     );
@@ -1058,8 +1073,8 @@ const ClasseVIForm = () => {
                     selectedOmId={form.selectedOmId}
                     onChange={handleOMChange}
                     placeholder="Selecione a OM..."
-                    initialOmName={form.organizacao} // NOVO: Exibe o nome da OM no modo edição
-                    initialOmUg={form.ug} // NOVO: Exibe a UG no modo edição
+                    initialOmName={form.organizacao} // OM Detentora
+                    initialOmUg={form.ug} // UG Detentora
                   />
                 </div>
 
@@ -1464,12 +1479,15 @@ const ClasseVIForm = () => {
                     
                     // Assumindo que o efetivo é o mesmo para todos os registros agrupados
                     const efetivo = omRegistros[0].efetivo; 
+                    
+                    // Verifica se a OM Detentora é diferente da OM de Destino (apenas para o primeiro registro do grupo)
+                    const isDifferentOm = omRegistros[0].om_detentora !== omRegistros[0].organizacao;
 
                     return (
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h3 className="font-bold text-lg text-primary">
-                                    {omName} (UG: {formatCodug(ug)})
+                                    OM Detentora: {omName} (UG: {formatCodug(ug)})
                                 </h3>
                                 <span className="font-extrabold text-xl text-primary">
                                     {formatCurrency(totalOM)}
@@ -1481,6 +1499,9 @@ const ClasseVIForm = () => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
                                     const badgeStyle = getCategoryBadgeStyle(registro.categoria);
+                                    
+                                    // Verifica se a OM Detentora é diferente da OM de Destino
+                                    const isDifferentOmRegistro = registro.om_detentora !== registro.organizacao;
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1541,7 +1562,7 @@ const ClasseVIForm = () => {
                                             <div className="pt-2 border-t mt-2">
                                                 <div className="flex justify-between text-xs">
                                                     <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                                    <span className="font-medium text-foreground">
+                                                    <span className={cn("font-medium", isDifferentOmRegistro ? "text-red-600 font-bold" : "text-foreground")}>
                                                         {registro.organizacao} ({formatCodug(registro.ug)})
                                                     </span>
                                                 </div>
@@ -1572,19 +1593,22 @@ const ClasseVIForm = () => {
                 </h3>
                 
                 {registros.map(registro => {
-                  const om = registro.organizacao;
-                  const ug = registro.ug;
+                  const omDetentora = registro.om_detentora;
+                  const ugDetentora = registro.ug_detentora;
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
+                  
+                  // Verifica se a OM Detentora é diferente da OM de Destino
+                  const isDifferentOm = omDetentora !== registro.organizacao;
                   
                   const memoriaAutomatica = generateDetalhamento(
                       registro.itens_equipamentos as ItemClasseVI[], 
                       registro.dias_operacao, 
-                      registro.organizacao, 
-                      registro.ug, 
+                      omDetentora, // OM Detentora
+                      ugDetentora, // UG Detentora
                       registro.fase_atividade || '', 
-                      registro.organizacao, 
-                      registro.ug, 
+                      registro.organizacao, // OM Destino
+                      registro.ug, // UG Destino
                       registro.valor_nd_30, 
                       registro.valor_nd_39
                   );
@@ -1597,14 +1621,29 @@ const ClasseVIForm = () => {
                       
                       {/* Container para H4 e Botões */}
                       <div className="flex items-start justify-between gap-4 mb-4">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <h4 className="text-base font-semibold text-foreground">
-                                OM Destino: {om} (UG: {formatCodug(ug)})
-                              </h4>
-                              {/* Badge da Categoria movido para o lado esquerdo, junto ao h4 */}
-                              <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
-                                  {badgeStyle.label}
-                              </Badge>
+                          <div className="flex flex-col flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                  <h4 className="text-base font-semibold text-foreground">
+                                    OM Detentora: {omDetentora} (UG: {formatCodug(ugDetentora)})
+                                  </h4>
+                                  {/* Badge da Categoria movido para o lado esquerdo, junto ao h4 */}
+                                  <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
+                                      {badgeStyle.label}
+                                  </Badge>
+                              </div>
+                              {/* NOVO AVISO DE OM DESTINO */}
+                              {isDifferentOm ? (
+                                  <div className="flex items-center gap-1 mt-1">
+                                      <AlertCircle className="h-4 w-4 text-red-600" />
+                                      <span className="text-sm font-medium text-red-600">
+                                          Recurso destinado à OM: {registro.organizacao} ({formatCodug(registro.ug)})
+                                      </span>
+                                  </div>
+                              ) : (
+                                  <p className="text-xs mt-1 text-muted-foreground">
+                                      OM Destino Recurso: {registro.organizacao} ({formatCodug(registro.ug)})
+                                  </p>
+                              )}
                           </div>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">

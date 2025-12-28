@@ -37,6 +37,7 @@ import {
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils"; // NOVO: Importar utilitário de Classe V
+import { generateDetalhamento as generateClasseVIUtility } from "@/lib/classeVIUtils"; // NOVO: Importar utilitário de Classe VI
 
 interface PTrabLogisticoReportProps {
   ptrabData: PTrabData;
@@ -107,6 +108,25 @@ const defaultGenerateClasseVMemoriaCalculo = (registro: any): string => {
             registro.ug_detentora || registro.ug,
             registro.fase_atividade,
             registro.efetivo,
+            registro.valor_nd_30,
+            registro.valor_nd_39
+        );
+    }
+    return registro.detalhamento_customizado || registro.detalhamento || "Memória de cálculo não disponível.";
+};
+
+// NOVO: Implementação padrão (fallback) para generateClasseVIMemoriaCalculo
+const defaultGenerateClasseVIMemoriaCalculo = (registro: any): string => {
+    if (CLASSE_VI_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos && registro.efetivo !== undefined) {
+        // Usa a função utilitária detalhada para Classe VI
+        return generateClasseVIUtility(
+            registro.itens_equipamentos,
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao, // OM Detentora
+            registro.ug_detentora || registro.ug, // UG Detentora
+            registro.fase_atividade,
+            registro.organizacao, // OM Destino
+            registro.ug, // UG Destino
             registro.valor_nd_30,
             registro.valor_nd_39
         );
@@ -517,9 +537,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   }
                   
                   rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
-              } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) { // NOVO: CLASSE VI
-                  const omDetentora = registro.organizacao; // Para Classe VI, a OM Detentora é a OM de Destino
-                  const isDifferentOm = false; // Não há OM Detentora separada no DB para Classe VI (ainda)
+              } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) { // CLASSE VI
+                  const omDetentora = registro.om_detentora || omDestinoRecurso;
+                  const isDifferentOm = omDetentora !== omDestinoRecurso;
 
                   // 1. Define o prefixo CLASSE VI
                   rowData.despesasValue = `CLASSE VI - ${categoriaDetalhe.toUpperCase()}`;
@@ -529,9 +549,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       rowData.despesasValue += `\n${omDetentora}`;
                   }
                   
-                  // Usa a função genérica/Classe II para gerar a memória (que será atualizada no próximo passo)
-                  const isClasseII = false;
-                  rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
+                  // Usa a função utilitária de Classe VI
+                  rowData.detalhamentoValue = defaultGenerateClasseVIMemoriaCalculo(registro);
               } else {
                   // Outras classes (VII, VIII, IX) mantêm a quebra de linha
                   rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
@@ -547,8 +566,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
                   // Se for Classe V, usa a função de memória de Classe V
                   rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
+              } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
+                  // Se for Classe VI, usa a função de memória de Classe VI
+                  rowData.detalhamentoValue = defaultGenerateClasseVIMemoriaCalculo(registro);
               } else {
-                  // Se não for Classe V, usa a função genérica/Classe II
+                  // Se não for Classe V ou VI, usa a função genérica/Classe II
                   const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                   rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
               }
@@ -1087,9 +1109,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             }
                             
                             rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
-                        } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) { // NOVO: CLASSE VI
-                            const omDetentora = registro.organizacao; // Para Classe VI, a OM Detentora é a OM de Destino
-                            const isDifferentOm = false; // Não há OM Detentora separada no DB para Classe VI (ainda)
+                        } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) { // CLASSE VI
+                            const omDetentora = registro.om_detentora || omDestinoRecurso;
+                            const isDifferentOm = omDetentora !== omDestinoRecurso;
 
                             // 1. Define o prefixo CLASSE VI
                             rowData.despesasValue = `CLASSE VI - ${categoriaDetalhe.toUpperCase()}`;
@@ -1099,9 +1121,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                                 rowData.despesasValue += `\n${omDetentora}`;
                             }
                             
-                            // Usa a função genérica/Classe II para gerar a memória (que será atualizada no próximo passo)
-                            const isClasseII = false;
-                            rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
+                            // Usa a função utilitária de Classe VI
+                            rowData.detalhamentoValue = defaultGenerateClasseVIMemoriaCalculo(registro);
                         } else {
                             // Outras classes (VII, VIII, IX) mantêm a quebra de linha
                             rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
@@ -1117,8 +1138,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
                             // Se for Classe V, usa a função de memória de Classe V
                             rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
+                        } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
+                            // Se for Classe VI, usa a função de memória de Classe VI
+                            rowData.detalhamentoValue = defaultGenerateClasseVIMemoriaCalculo(registro);
                         } else {
-                            // Se não for Classe V, usa a função genérica/Classe II
+                            // Se não for Classe V ou VI, usa a função genérica/Classe II
                             const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                             rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
                         }
