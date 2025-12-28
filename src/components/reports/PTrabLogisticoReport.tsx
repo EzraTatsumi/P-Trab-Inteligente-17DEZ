@@ -510,7 +510,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                   categoriaDetalhe = registro.animal_tipo;
               }
-                  
+                            
               // Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
               if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
                   
@@ -661,7 +661,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const row = worksheet.getRow(currentRow);
             
             // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
-            const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug || '';
+            const rmUg = gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || gruposPorOM[nomeRM]?.linhasQR[0]?.registro.ug || '';
             const rmUgFormatted = formatCodug(rmUg);
             
             row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
