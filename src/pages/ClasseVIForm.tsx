@@ -1065,7 +1065,7 @@ const ClasseVIForm = () => {
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
               
-              {/* PRIMEIRA LINHA: OM Detentora, UG Detentora */}
+              {/* PRIMEIRA LINHA: OM Detentora, UG Detentora, Dias de Atividade */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>OM Detentora do Equipamento *</Label>
@@ -1083,7 +1083,6 @@ const ClasseVIForm = () => {
                   <Input value={formatCodug(form.ug)} readOnly disabled onKeyDown={handleEnterToNextField} />
                 </div>
                 
-                {/* Espaço vazio para manter o layout de 3 colunas */}
                 <div className="space-y-2">
                   <Label>Dias de Atividade *</Label>
                   <Input
@@ -1098,13 +1097,8 @@ const ClasseVIForm = () => {
                 </div>
               </div>
               
-              {/* SEGUNDA LINHA: Dias de Atividade, Fase da Atividade (2 colunas) */}
+              {/* SEGUNDA LINHA: Fase da Atividade (Colunas 1 e 2) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                
-                {/* Coluna vazia para layout */}
-                <div className="space-y-2">
-                    {/* Este espaço é intencionalmente vazio para alinhar a Fase da Atividade */}
-                </div>
                 
                 <div className="space-y-2 col-span-2">
                   <Label>Fase da Atividade *</Label>
@@ -1155,6 +1149,11 @@ const ClasseVIForm = () => {
                       </Command>
                     </PopoverContent>
                   </Popover>
+                </div>
+                
+                {/* Coluna vazia para manter o layout de 3 colunas */}
+                <div className="space-y-2">
+                    {/* Este espaço é intencionalmente vazio */}
                 </div>
               </div>
             </div>
@@ -1470,9 +1469,6 @@ const ClasseVIForm = () => {
                     const totalOM = omRegistros.reduce((sum, r) => sum + r.valor_total, 0);
                     const omName = omKey.split(' (')[0];
                     const ug = omKey.split(' (')[1].replace(')', '');
-                    
-                    // Assumindo que o efetivo é o mesmo para todos os registros agrupados
-                    // const efetivo = omRegistros[0].efetivo; // REMOVIDO
                     
                     // Verifica se a OM Detentora é diferente da OM de Destino (apenas para o primeiro registro do grupo)
                     const isDifferentOm = omRegistros[0].om_detentora !== omRegistros[0].organizacao;
