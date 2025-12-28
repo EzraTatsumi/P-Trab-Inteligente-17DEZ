@@ -69,6 +69,29 @@ const getCategoryArticle = (categoria: Categoria): 'do' | 'da' | 'de' => {
 };
 
 /**
+ * Helper function to get the pluralized category name.
+ */
+const getPluralizedCategory = (categoria: Categoria, quantidade: number): string => {
+    const label = getCategoryLabel(categoria); // Assumes this returns the base label
+    
+    if (quantidade <= 1) {
+        return label;
+    }
+    
+    switch (categoria) {
+        case 'Gerador':
+            return 'Geradores';
+        case 'Embarcação':
+            return 'Embarcações';
+        case 'Equipamento de Engenharia':
+            return 'Equipamentos de Engenharia'; // Correct plural form
+        default:
+            return `${label}s`;
+    }
+};
+
+
+/**
  * Gera a memória de cálculo detalhada para uma categoria (usada para edição).
  * Esta função agora inclui ND 30/39 e efetivo, seguindo a estrutura da Classe V,
  * mas mantendo a lógica de margem de 10%.
@@ -105,23 +128,17 @@ export const generateCategoryMemoriaCalculo = (
         ndPrefix = "(Não Alocado)";
     }
     
-    // 2. Determinar o artigo 'do/da' da Categoria (Não usado no cabeçalho final, mas mantido)
-    // const categoryArticle = getCategoryArticle(categoria);
-    
-    // 3. Determinar singular/plural de 'dia'
+    // 2. Determinar singular/plural de 'dia'
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
     
-    // 4. Determinar o artigo 'do/da' da OM
+    // 3. Determinar o artigo 'do/da' da OM
     const omArticle = getOmArticle(omDetentora);
 
-    // 5. Montar o cabeçalho dinâmico conforme solicitado:
-    const categoryLabel = getCategoryLabel(categoria);
-    
-    // Concordância de número para a categoria (ex: 1 Gerador, 2 Geradores)
-    const itemPlural = totalQuantidade === 1 ? categoryLabel : `${categoryLabel}s`;
+    // 4. Montar o cabeçalho dinâmico conforme solicitado:
+    const pluralizedCategory = getPluralizedCategory(categoria, totalQuantidade);
     
     // Novo cabeçalho: ND 30/39 - Manutenção de componente de <Qtd Total Itens> <Categoria Plural/Singular> <do/da> <Nome da OM>, durante <Qtd Dias Atividade> <dia/dias> de <Fases Atividades>.
-    const header = `${ndPrefix} - Manutenção de componente de ${totalQuantidade} ${itemPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
+    const header = `${ndPrefix} - Manutenção de componente de ${totalQuantidade} ${pluralizedCategory} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
     let detalhamentoItens = "";
     itens.forEach(item => {
