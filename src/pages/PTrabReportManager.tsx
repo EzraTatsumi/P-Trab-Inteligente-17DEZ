@@ -617,7 +617,7 @@ const PTrabReportManager = () => {
           quantidadeR2: r.quantidade_r2 || 0,
           quantidadeR3: r.quantidade_r3 || 0,
         }
-      }) as ClasseIRegistro[] // Removendo o ponto e vírgula aqui
+      }) as ClasseIRegistro[]; // Adicionando o ponto e vírgula aqui
       
       setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
       setRegistrosClasseIII(classeIIIData || []);
