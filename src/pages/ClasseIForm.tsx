@@ -1101,7 +1101,7 @@ export default function ClasseIForm() {
                         </Command>
                       </PopoverContent>
                     </Popover>
-                  </div>
+                  </Popover>
                 </div>
               </div>
             </div>
@@ -1522,7 +1522,7 @@ export default function ClasseIForm() {
                     {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
                         const totalMonetarioOM = omRegistros
                             .filter(r => r.categoria === 'RACAO_QUENTE')
-                            .reduce((sum, r) => sum + (r.calculos.totalQS + r.calculos.totalQR), 0);
+                            .reduce((sum, r) => sum + r.calculos.totalQS + r.calculos.totalQR, 0);
                         const totalUnidadesOM = omRegistros
                             .filter(r => r.categoria === 'RACAO_OPERACIONAL')
                             .reduce((sum, r) => sum + (r.quantidadeR2 || 0) + (r.quantidadeR3 || 0), 0);
@@ -1558,6 +1558,11 @@ export default function ClasseIForm() {
                                             : ((registro.quantidadeR2 || 0) + (registro.quantidadeR3 || 0));
                                         const fases = formatFasesParaTexto(registro.faseAtividade);
                                         
+                                        // Lógica do Badge de Customização
+                                        const hasCustomMemoria = isRacaoQuente 
+                                            ? !!(registro.memoriaQSCustomizada || registro.memoriaQRCustomizada)
+                                            : !!registro.memoriaQSCustomizada; // Ração Operacional usa memoriaQSCustomizada
+                                        
                                         return (
                                             <Card key={registro.id} className="p-3 bg-background border">
                                                 <div className="flex items-center justify-between">
@@ -1569,6 +1574,12 @@ export default function ClasseIForm() {
                                                             <Badge variant="outline" className="text-xs">
                                                                 {fases}
                                                             </Badge>
+                                                            {/* NOVO: Badge de Memória Customizada */}
+                                                            {hasCustomMemoria && (
+                                                                <Badge variant="secondary" className="text-xs font-semibold bg-yellow-100 text-yellow-800 border-yellow-300">
+                                                                    Editada manualmente
+                                                                </Badge>
+                                                            )}
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">
                                                             Efetivo: {registro.efetivo} | Dias: {registro.diasOperacao}
@@ -1658,9 +1669,12 @@ export default function ClasseIForm() {
                         const { qs, qr } = generateRacaoQuenteMemoriaCalculo(registro);
                         memoriaQSFinal = isEditing ? memoriaQSEdit : (registro.memoriaQSCustomizada || qs);
                         memoriaQRFinal = isEditing ? memoriaQREdit : (registro.memoriaQRCustomizada || qr);
+                        setMemoriaOpEdit(""); // Limpa estado de Ração Operacional
                     } else {
                         const op = generateRacaoOperacionalMemoriaCalculo(registro);
                         memoriaOpFinal = isEditing ? memoriaOpEdit : (registro.memoriaQSCustomizada || op);
+                        setMemoriaQSEdit(""); // Limpa estados de Ração Quente
+                        setMemoriaQREdit("");
                     }
                     
                     return (
@@ -1682,7 +1696,7 @@ export default function ClasseIForm() {
                             )}
                           </div>
                           
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-2 shrink-0">
                             {!isEditing ? (
                               <>
                                 <Button

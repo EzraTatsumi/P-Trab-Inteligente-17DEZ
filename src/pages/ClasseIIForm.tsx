@@ -1311,6 +1311,10 @@ const ClasseIIForm = () => {
                         tempDestinations
                     );
                     
+                    // 4. Verificar se há memória customizada
+                    const hasCustomMemoria = itens.some(item => !!item.memoria_customizada) || 
+                                             registros.find(r => r.categoria === categoria)?.detalhamento_customizado;
+                    
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
@@ -1352,6 +1356,11 @@ const ClasseIIForm = () => {
                                         A quantidade de itens, a alocação de ND ou a OM de destino foi alterada. Clique em "Salvar Itens da Categoria" na aba "{getCategoryLabel(categoria)}" para atualizar.
                                     </AlertDescription>
                                 </Alert>
+                            )}
+                            {hasCustomMemoria && (
+                                <Badge variant="secondary" className="text-xs font-semibold bg-yellow-100 text-yellow-800 border-yellow-300 mt-2">
+                                    Memória editada manualmente
+                                </Badge>
                             )}
                         </div>
                       </Card>
@@ -1422,6 +1431,9 @@ const ClasseIIForm = () => {
                                     // Verifica se a OM Detentora é diferente da OM de Destino
                                     const omDetentora = registro.om_detentora || registro.organizacao;
                                     const isDifferentOm = omDetentora !== registro.organizacao;
+                                    
+                                    // Verifica se há memória customizada
+                                    const hasCustomMemoria = !!registro.detalhamento_customizado;
 
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1434,6 +1446,11 @@ const ClasseIIForm = () => {
                                                         <Badge variant="outline" className="text-xs font-semibold">
                                                             {fases}
                                                         </Badge>
+                                                        {hasCustomMemoria && (
+                                                            <Badge variant="secondary" className="text-xs font-semibold bg-yellow-100 text-yellow-800 border-yellow-300">
+                                                                Editada manualmente
+                                                            </Badge>
+                                                        )}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Efetivo: {efetivo} | Dias: {registro.dias_operacao}

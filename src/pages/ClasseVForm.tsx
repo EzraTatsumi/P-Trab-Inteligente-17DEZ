@@ -19,7 +19,6 @@ import {
     formatNumber, 
     parseInputToNumber, 
     formatNumberForInput, 
-    formatCodug,
     formatCurrencyInput
 } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
@@ -1200,7 +1199,7 @@ const ClasseVForm = () => {
                                 type="button" 
                                 onClick={handleUpdateCategoryItems} 
                                 className="w-full md:w-auto" 
-                                disabled={!form.organizacao || form.dias_operacao <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && (!tempDestinations[cat].om || tempDestinations[cat].ug === ""))}
+                                disabled={!form.organizacao || form.itens.length === 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && (!tempDestinations[cat].om || tempDestinations[cat].ug === ""))}
                             >
                                 Salvar Itens da Categoria
                             </Button>
@@ -1250,6 +1249,10 @@ const ClasseVForm = () => {
                         tempDestinations
                     );
                     
+                    // 4. Verificar se há memória customizada
+                    const hasCustomMemoria = itens.some(item => !!item.memoria_customizada) || 
+                                             registros.find(r => r.categoria === categoria)?.detalhamento_customizado;
+                    
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
@@ -1291,6 +1294,11 @@ const ClasseVForm = () => {
                                         A quantidade de itens, a alocação de ND ou a OM de destino foi alterada. Clique em "Salvar Itens da Categoria" na aba "{getCategoryLabel(categoria)}" para atualizar.
                                     </AlertDescription>
                                 </Alert>
+                            )}
+                            {hasCustomMemoria && (
+                                <Badge variant="secondary" className="text-xs font-semibold bg-yellow-100 text-yellow-800 border-yellow-300 mt-2">
+                                    Memória editada manualmente
+                                </Badge>
                             )}
                         </div>
                       </Card>
@@ -1336,7 +1344,7 @@ const ClasseVForm = () => {
                 {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
                     const totalOM = omRegistros.reduce((sum, r) => sum + r.valor_total, 0);
                     const omName = omKey.split(' (')[0];
-                    const ugFormatted = omKey.split(' (')[1].replace(')', '');
+                    const ug = omKey.split(' (')[1].replace(')', '');
                     
                     // Assumindo que o efetivo é o mesmo para todos os registros agrupados
                     const efetivo = omRegistros[0].efetivo; 
@@ -1345,7 +1353,7 @@ const ClasseVForm = () => {
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h3 className="font-bold text-lg text-primary">
-                                    OM Detentora: {omName} (UG: {ugFormatted})
+                                    OM Detentora: {omName} (UG: {formatCodug(ug)})
                                 </h3>
                                 <span className="font-extrabold text-xl text-primary">
                                     {formatCurrency(totalOM)}
@@ -1356,10 +1364,14 @@ const ClasseVForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
                                     
                                     // Verifica se a OM Detentora é diferente da OM de Destino
-                                    const isDifferentOm = registro.om_detentora !== registro.organizacao;
+                                    const omDetentora = registro.om_detentora || registro.organizacao;
+                                    const isDifferentOm = omDetentora !== registro.organizacao;
+                                    
+                                    // Verifica se há memória customizada
+                                    const hasCustomMemoria = !!registro.detalhamento_customizado;
 
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1372,6 +1384,11 @@ const ClasseVForm = () => {
                                                         <Badge variant="outline" className="text-xs font-semibold">
                                                             {fases}
                                                         </Badge>
+                                                        {hasCustomMemoria && (
+                                                            <Badge variant="secondary" className="text-xs font-semibold bg-yellow-100 text-yellow-800 border-yellow-300">
+                                                                Editada manualmente
+                                                            </Badge>
+                                                        )}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Efetivo: {efetivo} | Dias: {registro.dias_operacao}
@@ -1394,8 +1411,8 @@ const ClasseVForm = () => {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => {
-                                                                if (confirm(`Deseja realmente deletar o registro de Classe V para ${omName} (${registro.categoria})?`)) {
-                                                                    supabase.from("classe_v_registros")
+                                                                if (confirm(`Deseja realmente deletar o registro de Classe II para ${omName} (${registro.categoria})?`)) {
+                                                                    supabase.from("classe_ii_registros")
                                                                         .delete()
                                                                         .eq("id", registro.id)
                                                                         .then(() => {
@@ -1418,7 +1435,7 @@ const ClasseVForm = () => {
                                             {/* Detalhes da Alocação */}
                                             <div className="pt-2 border-t mt-2">
                                                 <div className="flex justify-between text-xs">
-                                                    <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                    <span className="text-muted-foreground">OM Destino:</span>
                                                     <span className={cn("font-medium", isDifferentOm ? "text-red-600 font-bold" : "text-foreground")}>
                                                         {registro.organizacao} ({formatCodug(registro.ug)})
                                                     </span>
@@ -1450,29 +1467,35 @@ const ClasseVForm = () => {
                 </h3>
                 
                 {registros.map(registro => {
-                  const om = registro.om_detentora; // Usar OM Detentora para o título da memória
-                  const ug = registro.ug_detentora;
+                  // OM Detentora (Source)
+                  const omDetentora = registro.om_detentora || registro.organizacao;
+                  const ugDetentora = registro.ug_detentora || registro.ug;
+                  
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
                   // Verifica se a OM Detentora é diferente da OM de Destino
-                  const isDifferentOm = registro.om_detentora !== registro.organizacao;
+                  const isDifferentOm = omDetentora !== registro.organizacao;
                   
-                  const memoriaAutomatica = generateCategoryMemoriaCalculo(
+                  // NOVO: Gera a memória automática com o rótulo padronizado
+                  const memoriaAutomatica = generateClasseIIMemoriaCalculo(
                       registro.categoria as Categoria, 
-                      registro.itens_equipamentos as ItemClasseV[], 
+                      registro.itens_equipamentos as ItemClasseII[], 
                       registro.dias_operacao, 
-                      registro.om_detentora, // OM Detentora
-                      registro.ug_detentora, // UG Detentora
+                      omDetentora, // Passando a Detentora
+                      ugDetentora, // Passando a UG Detentora
                       registro.fase_atividade,
-                      registro.efetivo,
-                      registro.valor_nd_30, // PASSANDO ND 30
-                      registro.valor_nd_39 // PASSANDO ND 39
+                      registro.efetivo, 
+                      registro.valor_nd_30, 
+                      registro.valor_nd_39 
                   );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
                   const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                   
+                  // Verifica se a OM Detentora é diferente da OM de Destino
+                  const isDifferentOmInView = omDetentora !== registro.organizacao;
+
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                       
@@ -1481,29 +1504,24 @@ const ClasseVForm = () => {
                           <div className="flex flex-col flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                   <h4 className="text-base font-semibold text-foreground">
-                                    OM Detentora: {om} (UG: {formatCodug(ug)})
+                                    OM Detentora: {omDetentora} (UG: {formatCodug(ugDetentora)})
                                   </h4>
-                                  <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
+                                  <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
                                       {badgeStyle.label}
                                   </Badge>
                               </div>
-                              {/* NOVO AVISO DE OM DESTINO */}
-                              {isDifferentOm ? (
+                              
+                              {isDifferentOmInView && (
                                   <div className="flex items-center gap-1 mt-1">
                                       <AlertCircle className="h-4 w-4 text-red-600" />
                                       <span className="text-sm font-medium text-red-600">
                                           Recurso destinado à OM: {registro.organizacao} ({formatCodug(registro.ug)})
                                       </span>
                                   </div>
-                              ) : (
-                                  <p className="text-xs mt-1 text-muted-foreground">
-                                      OM Destino Recurso: {registro.organizacao} ({formatCodug(registro.ug)})
-                                  </p>
                               )}
                           </div>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
-                              
                               {!isEditing ? (
                                 <>
                                   <Button
@@ -1583,4 +1601,4 @@ const ClasseVForm = () => {
   );
 }
 
-export default ClasseVForm;
+export default ClasseIIForm;
