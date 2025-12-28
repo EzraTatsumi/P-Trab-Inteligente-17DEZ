@@ -165,6 +165,15 @@ const ClasseVForm = () => {
   
   const { handleEnterToNextField } = useFormNavigation();
   const formRef = useRef<HTMLDivElement>(null);
+  
+  // NOVO: Função para desativar setas e manter navegação por Enter
+  const handleNumberInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+    }
+    handleEnterToNextField(e);
+  };
+
 
   // Helper function to check if a category is dirty (needs saving)
   const isCategoryAllocationDirty = useCallback((
@@ -975,7 +984,7 @@ const ClasseVForm = () => {
                     value={form.efetivo || ""}
                     onChange={(e) => setForm({ ...form, efetivo: parseInt(e.target.value) || 0 })}
                     placeholder="Ex: 100"
-                    onKeyDown={handleEnterToNextField}
+                    onKeyDown={handleNumberInputKeyDown}
                   />
                 </div>
               </div>
@@ -991,7 +1000,7 @@ const ClasseVForm = () => {
                     value={form.dias_operacao || ""}
                     onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value) || 0 })}
                     placeholder="Ex: 7"
-                    onKeyDown={handleEnterToNextField}
+                    onKeyDown={handleNumberInputKeyDown}
                   />
                 </div>
                 
@@ -1101,7 +1110,7 @@ const ClasseVForm = () => {
                                                             value={item.quantidade === 0 ? "" : item.quantidade.toString()}
                                                             onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
                                                             placeholder="0"
-                                                            onKeyDown={handleEnterToNextField}
+                                                            onKeyDown={handleNumberInputKeyDown}
                                                         />
                                                     </TableCell>
                                                     <TableCell className="text-right font-semibold text-sm py-1">
@@ -1336,7 +1345,7 @@ const ClasseVForm = () => {
                 {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
                     const totalOM = omRegistros.reduce((sum, r) => sum + r.valor_total, 0);
                     const omName = omKey.split(' (')[0];
-                    const ugFormatted = omKey.split(' (')[1].replace(')', '');
+                    const ug = omKey.split(' (')[1].replace(')', '');
                     
                     // Assumindo que o efetivo é o mesmo para todos os registros agrupados
                     const efetivo = omRegistros[0].efetivo; 
@@ -1345,7 +1354,7 @@ const ClasseVForm = () => {
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h3 className="font-bold text-lg text-primary">
-                                    OM Detentora: {omName} (UG: {ugFormatted})
+                                    OM Detentora: {omName} (UG: {formatCodug(ug)})
                                 </h3>
                                 <span className="font-extrabold text-xl text-primary">
                                     {formatCurrency(totalOM)}
@@ -1356,10 +1365,11 @@ const ClasseVForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
                                     
                                     // Verifica se a OM Detentora é diferente da OM de Destino
-                                    const isDifferentOm = registro.om_detentora !== registro.organizacao;
+                                    const omDetentora = registro.om_detentora || registro.organizacao;
+                                    const isDifferentOm = omDetentora !== registro.organizacao;
 
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1446,7 +1456,7 @@ const ClasseVForm = () => {
             {registros.length > 0 && (
               <div className="space-y-4 mt-8">
                 <h3 className="text-xl font-bold flex items-center gap-2">
-                  📋 Memórias de Cálculos Detalhadas
+                  📋 Memórias de Cálculo Detalhadas
                 </h3>
                 
                 {registros.map(registro => {
@@ -1465,7 +1475,7 @@ const ClasseVForm = () => {
                       registro.om_detentora, // OM Detentora
                       registro.ug_detentora, // UG Detentora
                       registro.fase_atividade,
-                      registro.efetivo,
+                      registro.efetivo, // Passando o efetivo
                       registro.valor_nd_30, // PASSANDO ND 30
                       registro.valor_nd_39 // PASSANDO ND 39
                   );
