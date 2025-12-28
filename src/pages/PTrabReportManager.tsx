@@ -24,9 +24,9 @@ import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacio
 import { 
   generateRacaoQuenteMemoriaCalculo, 
   generateRacaoOperacionalMemoriaCalculo,
-  calculateClasseICalculations,
-  ClasseIRegistro as ClasseIRegistroType, // Importando o tipo correto
-} from "@/lib/classeIUtils"; // Importando as funções de utilidade
+  calculateClasseICalculations, // Importado para uso no mapeamento
+  ClasseIRegistro as ClasseIRegistroType,
+} from "@/lib/classeIUtils";
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils";
@@ -526,9 +526,10 @@ const PTrabReportManager = () => {
 
       if (ptrabError || !ptrab) throw new Error("Não foi possível carregar o P Trab");
 
+      // Selecionar todos os campos necessários para reconstruir o objeto ClasseIRegistro
       const { data: classeIData } = await supabase
         .from('classe_i_registros')
-        .select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3')
+        .select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3, total_qs, total_qr, complemento_qs, etapa_qs, complemento_qr, etapa_qr, efetivo, dias_operacao, nr_ref_int, valor_qs, valor_qr')
         .eq('p_trab_id', ptrabId);
       
       const [
@@ -562,12 +563,52 @@ const PTrabReportManager = () => {
       ];
 
       setPtrabData(ptrab as PTrabData); // Casting para incluir updated_at
-      setRegistrosClasseI((classeIData || []).map(r => ({
-          ...r,
-          categoria: (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL',
-          quantidade_r2: r.quantidade_r2 || 0,
-          quantidade_r3: r.quantidade_r3 || 0,
-      })) as ClasseIRegistro[]);
+      
+      // CORREÇÃO: Mapear dados da Classe I para o formato ClasseIRegistro (incluindo o objeto 'calculos')
+      setRegistrosClasseI((classeIData || []).map(r => {
+          // Recalcula os campos derivados para garantir que estejam corretos, embora os valores monetários venham do DB
+          const baseCalculations = calculateClasseICalculations(
+              r.efetivo,
+              r.dias_operacao,
+              r.nr_ref_int || 1,
+              Number(r.valor_qs || 0),
+              Number(r.valor_qr || 0)
+          );
+
+          return {
+              id: r.id,
+              organizacao: r.organizacao,
+              ug: r.ug,
+              diasOperacao: r.dias_operacao,
+              faseAtividade: r.fase_atividade,
+              omQS: r.om_qs,
+              ugQS: r.ug_qs,
+              efetivo: r.efetivo,
+              nrRefInt: r.nr_ref_int,
+              valorQS: Number(r.valor_qs || 0),
+              valorQR: Number(r.valor_qr || 0),
+              memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
+              memoriaQRCustomizada: r.memoria_calculo_qr_customizada,
+              categoria: (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL',
+              quantidadeR2: r.quantidade_r2 || 0,
+              quantidadeR3: r.quantidade_r3 || 0,
+              
+              // Popula o objeto 'calculos' usando os valores salvos no DB
+              calculos: {
+                  totalQS: Number(r.total_qs || 0),
+                  totalQR: Number(r.total_qr || 0),
+                  nrCiclos: baseCalculations.nrCiclos,
+                  diasEtapaPaga: baseCalculations.diasEtapaPaga,
+                  diasEtapaSolicitada: baseCalculations.diasEtapaSolicitada,
+                  totalEtapas: baseCalculations.totalEtapas,
+                  complementoQS: Number(r.complemento_qs || 0),
+                  etapaQS: Number(r.etapa_qs || 0),
+                  complementoQR: Number(r.complemento_qr || 0),
+                  etapaQR: Number(r.etapa_qr || 0),
+              },
+          };
+      }) as ClasseIRegistro[]);
+      
       setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
       setRegistrosClasseIII(classeIIIData || []);
       
@@ -642,8 +683,8 @@ const PTrabReportManager = () => {
 
     // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
     registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
-        initializeGroup(registro.om_qs || registro.organizacao); // Usa OM QS como chave de destino
-        grupos[registro.om_qs || registro.organizacao].linhasQS.push({ registro, tipo: 'QS' });
+        initializeGroup(registro.omQS || registro.organizacao); // Usa OM QS como chave de destino
+        grupos[registro.omQS || registro.organizacao].linhasQS.push({ registro, tipo: 'QS' });
         
         initializeGroup(registro.organizacao); // Usa OM de destino (QR) como chave de destino
         grupos[registro.organizacao].linhasQR.push({ registro, tipo: 'QR' });
@@ -698,8 +739,9 @@ const PTrabReportManager = () => {
   }, [gruposPorOM]);
   
   const calcularTotaisPorOM = useCallback((grupo: GrupoOM, nomeOM: string) => {
-    const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.total_qs, 0);
-    const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + linha.registro.total_qr, 0);
+    // CORREÇÃO: Acessar totalQS/totalQR através do objeto 'calculos'
+    const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + (linha.registro.calculos?.totalQS || 0), 0);
+    const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + (linha.registro.calculos?.totalQR || 0), 0);
     
     const totalClasseII_ND30 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
     const totalClasseII_ND39 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
