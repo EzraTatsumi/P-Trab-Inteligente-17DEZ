@@ -1382,7 +1382,7 @@ const ClasseVIForm = () => {
                               <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
                                 <span className="font-medium">{item.item}</span>
                                 <span className="text-right">
-                                  {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia (+10% Margem) = {formatCurrency(itemTotalComMargem)}
+                                  {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia x {form.dias_operacao} dias (+10% Margem) = {formatCurrency(itemTotalComMargem)}
                                 </span>
                               </div>
                             );
