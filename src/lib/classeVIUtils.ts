@@ -137,7 +137,7 @@ export const generateCategoryMemoriaCalculo = (
     // 4. Montar o cabeçalho dinâmico conforme solicitado:
     const pluralizedCategory = getPluralizedCategory(categoria, totalQuantidade);
     
-    // CORREÇÃO AQUI: Usando "componentes" no plural
+    // Cabeçalho
     const header = `${ndPrefix} - Manutenção de componentes de ${totalQuantidade} ${pluralizedCategory} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
     let detalhamentoItens = "";
@@ -148,9 +148,6 @@ export const generateCategoryMemoriaCalculo = (
 
     // Montar a memória de cálculo completa
     return `${header}
-
-OM Detentora: ${omDetentora} (UG: ${formatCodug(ugDetentora)})
-Total de Itens na Categoria: ${totalQuantidade}
 
 Cálculo:
 Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
@@ -212,7 +209,7 @@ export const generateDetalhamento = (
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
     
     // 4. Montar o cabeçalho dinâmico (usando OM Detentora)
-    // CORREÇÃO AQUI: Usando "componentes" no plural
+    // Nota: Removido o efetivo, pois Classe VI não o utiliza.
     const header = `${ndPrefix} - Aquisição de Material de Classe VI (Diversos) para ${totalItens} itens, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}, para ${omDetentora}.`;
 
     // 5. Agrupar itens por categoria que possuem quantidade > 0
