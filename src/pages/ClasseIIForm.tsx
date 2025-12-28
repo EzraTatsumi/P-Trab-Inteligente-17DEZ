@@ -1554,6 +1554,12 @@ const ClasseIIForm = () => {
                                   <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
                                       {badgeStyle.label}
                                   </Badge>
+                                  {/* NOVO BADGE DE MEMÓRIA CUSTOMIZADA */}
+                                  {hasCustomMemoria && !isEditing && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Editada manualmente
+                                    </Badge>
+                                  )}
                               </div>
                               
                               {isDifferentOmInView && (
