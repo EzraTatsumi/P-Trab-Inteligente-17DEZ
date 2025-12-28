@@ -293,16 +293,21 @@ Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
 export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP'): string => {
     if (registro.categoria === 'RACAO_OPERACIONAL') {
         if (tipo === 'OP') {
-            // Para Ração Operacional, sempre gera a memória automática (não há customização no DB para OP)
+            // NOVO: Prioriza o texto customizado para Ração Operacional
+            if (registro.memoriaQSCustomizada) {
+                return registro.memoriaQSCustomizada;
+            }
+            
+            // Se não houver customização, gera a memória automática
             return generateRacaoOperacionalMemoriaCalculo({
                 id: registro.id,
                 organizacao: registro.organizacao,
                 ug: registro.ug,
-                diasOperacao: registro.dias_operacao,
-                faseAtividade: registro.fase_atividade,
+                diasOperacao: registro.diasOperacao,
+                faseAtividade: registro.faseAtividade,
                 efetivo: registro.efetivo,
-                quantidadeR2: registro.quantidade_r2,
-                quantidadeR3: registro.quantidade_r3,
+                quantidadeR2: registro.quantidadeR2,
+                quantidadeR3: registro.quantidadeR3,
                 // Campos não utilizados na memória OP, mas necessários para a interface
                 omQS: null, ugQS: null, nrRefInt: null, valorQS: null, valorQR: null,
                 memoriaQSCustomizada: null, memoriaQRCustomizada: null,
@@ -318,32 +323,32 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
 
     // Lógica para Ração Quente (QS/QR)
     if (tipo === 'QS') {
-        if (registro.memoria_calculo_qs_customizada) {
-            return registro.memoria_calculo_qs_customizada;
+        if (registro.memoriaQSCustomizada) {
+            return registro.memoriaQSCustomizada;
         }
         const { qs } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
             organizacao: registro.organizacao,
             ug: registro.ug,
-            diasOperacao: registro.dias_operacao,
-            faseAtividade: registro.fase_atividade,
-            omQS: registro.om_qs,
-            ugQS: registro.ug_qs,
+            diasOperacao: registro.diasOperacao,
+            faseAtividade: registro.faseAtividade,
+            omQS: registro.omQS,
+            ugQS: registro.ugQS,
             efetivo: registro.efetivo,
-            nrRefInt: registro.nr_ref_int,
-            valorQS: registro.valor_qs,
-            valorQR: registro.valor_qr,
+            nrRefInt: registro.nrRefInt,
+            valorQS: registro.valorQS,
+            valorQR: registro.valorQR,
             calculos: {
-                totalQS: registro.total_qs,
-                totalQR: registro.total_qr,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int, registro.valor_qs, registro.valor_qr).nrCiclos,
+                totalQS: registro.calculos.totalQS,
+                totalQR: registro.calculos.totalQR,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 1, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
                 diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int, registro.valor_qs, registro.valor_qr).diasEtapaSolicitada,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 1, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
                 totalEtapas: 0,
-                complementoQS: registro.complemento_qs,
-                etapaQS: registro.etapa_qs,
-                complementoQR: registro.complemento_qr,
-                etapaQR: registro.etapa_qr,
+                complementoQS: registro.calculos.complementoQS,
+                etapaQS: registro.calculos.etapaQS,
+                complementoQR: registro.calculos.complementoQR,
+                etapaQR: registro.calculos.etapaQR,
             },
             quantidadeR2: 0,
             quantidadeR3: 0,
@@ -353,32 +358,32 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
     }
 
     if (tipo === 'QR') {
-        if (registro.memoria_calculo_qr_customizada) {
-            return registro.memoria_calculo_qr_customizada;
+        if (registro.memoriaQRCustomizada) {
+            return registro.memoriaQRCustomizada;
         }
         const { qr } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
             organizacao: registro.organizacao,
             ug: registro.ug,
-            diasOperacao: registro.dias_operacao,
-            faseAtividade: registro.fase_atividade,
-            omQS: registro.om_qs,
-            ugQS: registro.ug_qs,
+            diasOperacao: registro.diasOperacao,
+            faseAtividade: registro.faseAtividade,
+            omQS: registro.omQS,
+            ugQS: registro.ugQS,
             efetivo: registro.efetivo,
-            nrRefInt: registro.nr_ref_int,
-            valorQS: registro.valor_qs,
-            valorQR: registro.valor_qr,
+            nrRefInt: registro.nrRefInt,
+            valorQS: registro.valorQS,
+            valorQR: registro.valorQR,
             calculos: {
-                totalQS: registro.total_qs,
-                totalQR: registro.total_qr,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int, registro.valor_qs, registro.valor_qr).nrCiclos,
+                totalQS: registro.calculos.totalQS,
+                totalQR: registro.calculos.totalQR,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 1, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
                 diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int, registro.valor_qs, registro.valor_qr).diasEtapaSolicitada,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 1, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
                 totalEtapas: 0,
-                complementoQS: registro.complemento_qs,
-                etapaQS: registro.etapa_qs,
-                complementoQR: registro.complemento_qr,
-                etapaQR: registro.etapa_qr,
+                complementoQS: registro.calculos.complementoQS,
+                etapaQS: registro.calculos.etapaQS,
+                complementoQR: registro.calculos.complementoQR,
+                etapaQR: registro.calculos.etapaQR,
             },
             quantidadeR2: 0,
             quantidadeR3: 0,
@@ -402,8 +407,8 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     if (isClasseII) {
         // Se for Classe II (Intendência), usa o utilitário atualizado
         return generateClasseIIUtility(
-            registro.categoria,
-            registro.itens_equipamentos,
+            registro.categoria as 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento',
+            registro.itens_equipamentos as ItemClasseII[],
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -420,8 +425,8 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     // pois eles foram atualizados no passo anterior.
     if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVUtility(
-            registro.categoria,
-            registro.itens_equipamentos,
+            registro.categoria as 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN',
+            registro.itens_equipamentos as ItemClasseII[],
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -434,8 +439,8 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     
     if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVIUtility(
-            registro.categoria,
-            registro.itens_equipamentos,
+            registro.categoria as 'Gerador' | 'Embarcação' | 'Equipamento de Engenharia',
+            registro.itens_equipamentos as ItemClasseII[],
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
