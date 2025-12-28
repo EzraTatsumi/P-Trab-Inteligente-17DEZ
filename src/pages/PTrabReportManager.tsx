@@ -290,7 +290,7 @@ Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
  * Função unificada para gerar a memória de cálculo da Classe I, priorizando o customizado.
  * Esta função é a única responsável por gerar a memória de cálculo de Classe I para relatórios.
  */
-export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP'): string => {
+export const generateClasseIMemoriaCalculo = (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP'): string => {
     if (registro.categoria === 'RACAO_OPERACIONAL') {
         if (tipo === 'OP') {
             // CORREÇÃO AQUI: Se houver customização, retorna a customização.
