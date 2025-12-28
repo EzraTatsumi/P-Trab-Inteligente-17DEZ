@@ -273,8 +273,7 @@ export const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro
     const preposition = getOmPreposition(organizacao);
 
     // NOVO CABEÇALHO AJUSTADO COM 33.90.30
-    const header = `33.90.30 - Fornecimento de Ração Operacional para atender ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizada/afastadas de instalações militares.
-Recurso destinado à OM: ${organizacao} (UG: ${formatCodug(ug)})`;
+    const header = `33.90.30 - Fornecimento de Ração Operacional para atender ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizada/afastadas de instalações militares.`;
 
     return `${header}
 
