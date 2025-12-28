@@ -1486,6 +1486,12 @@ const ClasseVForm = () => {
                                   <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
                                       {badgeStyle.label}
                                   </Badge>
+                                  {/* NOVO BADGE DE MEMÓRIA CUSTOMIZADA */}
+                                  {hasCustomMemoria && !isEditing && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Editada manualmente
+                                    </Badge>
+                                  )}
                               </div>
                               {/* NOVO AVISO DE OM DESTINO */}
                               {isDifferentOm ? (
