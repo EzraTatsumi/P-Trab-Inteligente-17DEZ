@@ -1031,7 +1031,12 @@ export default function ClasseIForm() {
                       value={efetivo === 0 ? "" : efetivo.toString()}
                       onChange={(e) => setEfetivo(Number(e.target.value))}
                       placeholder="Ex: 246"
-                      onKeyDown={handleEnterToNextField}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                          e.preventDefault();
+                        }
+                        handleEnterToNextField(e);
+                      }}
                       disabled={!organizacao}
                     />
                   </div>
@@ -1046,7 +1051,12 @@ export default function ClasseIForm() {
                       value={diasOperacao === 0 ? "" : diasOperacao.toString()}
                       onChange={(e) => setDiasOperacao(Number(e.target.value))}
                       placeholder="Ex: 30"
-                      onKeyDown={handleEnterToNextField}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                          e.preventDefault();
+                        }
+                        handleEnterToNextField(e);
+                      }}
                       disabled={!organizacao}
                     />
                   </div>
@@ -1256,7 +1266,12 @@ export default function ClasseIForm() {
                                     value={quantidadeR2 === 0 ? "" : quantidadeR2.toString()}
                                     onChange={(e) => setQuantidadeR2(Number(e.target.value))}
                                     placeholder="0"
-                                    onKeyDown={handleEnterToNextField}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                        e.preventDefault();
+                                      }
+                                      handleEnterToNextField(e);
+                                    }}
                                   />
                                 </TableCell>
                               </TableRow>
@@ -1274,7 +1289,12 @@ export default function ClasseIForm() {
                                     value={quantidadeR3 === 0 ? "" : quantidadeR3.toString()}
                                     onChange={(e) => setQuantidadeR3(Number(e.target.value))}
                                     placeholder="0"
-                                    onKeyDown={handleEnterToNextField}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                        e.preventDefault();
+                                      }
+                                      handleEnterToNextField(e);
+                                    }}
                                   />
                                 </TableCell>
                               </TableRow>
@@ -1658,9 +1678,12 @@ export default function ClasseIForm() {
                         const { qs, qr } = generateRacaoQuenteMemoriaCalculo(registro);
                         memoriaQSFinal = isEditing ? memoriaQSEdit : (registro.memoriaQSCustomizada || qs);
                         memoriaQRFinal = isEditing ? memoriaQREdit : (registro.memoriaQRCustomizada || qr);
+                        setMemoriaOpEdit(""); // Limpa estado de Ração Operacional
                     } else {
                         const op = generateRacaoOperacionalMemoriaCalculo(registro);
                         memoriaOpFinal = isEditing ? memoriaOpEdit : (registro.memoriaQSCustomizada || op);
+                        setMemoriaQSEdit(""); // Limpa estados de Ração Quente
+                        setMemoriaQREdit("");
                     }
                     
                     return (
