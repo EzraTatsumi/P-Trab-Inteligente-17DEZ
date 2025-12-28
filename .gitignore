@@ -35,7 +35,6 @@ src/components/ui/
 
 # Excluir arquivos de dados estáticos e assets
 src/data/classeIIData.ts
-# REMOVIDO: src/data/classeVIData.ts
 src/data/classeVIIData.ts
 src/data/classeVIIIData.ts
 src/data/classeIIIData.ts
@@ -128,7 +127,6 @@ src/pages/Login.tsx
 src/pages/PTrabManager.tsx
 src/pages/PTrabForm.tsx
 src/pages/PTrabReportManager.tsx
-src/pages/DiretrizesCusteioPage.tsx
 src/components/OmSelector.tsx
 src/components/SessionContextProvider.tsx
 src/hooks/useMilitaryOrganizations.ts
