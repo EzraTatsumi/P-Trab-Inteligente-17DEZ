@@ -137,8 +137,8 @@ export const generateCategoryMemoriaCalculo = (
     // 4. Montar o cabeçalho dinâmico conforme solicitado:
     const pluralizedCategory = getPluralizedCategory(categoria, totalQuantidade);
     
-    // Novo cabeçalho: ND 30/39 - Manutenção de componente de <Qtd Total Itens> <Categoria Plural/Singular> <do/da> <Nome da OM>, durante <Qtd Dias Atividade> <dia/dias> de <Fases Atividades>.
-    const header = `${ndPrefix} - Manutenção de componente de ${totalQuantidade} ${pluralizedCategory} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
+    // CORREÇÃO AQUI: Usando "componentes" no plural
+    const header = `${ndPrefix} - Manutenção de componentes de ${totalQuantidade} ${pluralizedCategory} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
     let detalhamentoItens = "";
     itens.forEach(item => {
@@ -212,7 +212,7 @@ export const generateDetalhamento = (
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
     
     // 4. Montar o cabeçalho dinâmico (usando OM Detentora)
-    // Nota: Removido o efetivo, pois Classe VI não o utiliza.
+    // CORREÇÃO AQUI: Usando "componentes" no plural
     const header = `${ndPrefix} - Aquisição de Material de Classe VI (Diversos) para ${totalItens} itens, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}, para ${omDetentora}.`;
 
     // 5. Agrupar itens por categoria que possuem quantidade > 0
