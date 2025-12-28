@@ -1487,9 +1487,13 @@ const ClasseVIForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
+                                                        {/* NOVO: Badge de Fases adicionado aqui */}
+                                                        <Badge variant="outline" className="text-xs font-semibold">
+                                                            {fases}
+                                                        </Badge>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Efetivo: {efetivo} | Dias: {registro.dias_operacao} | Fases: {fases}
+                                                        Efetivo: {efetivo} | Dias: {registro.dias_operacao}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
