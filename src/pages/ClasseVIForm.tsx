@@ -14,7 +14,15 @@ import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { 
+    formatCurrency, 
+    formatNumber, 
+    parseInputToNumber, 
+    formatNumberForInput, 
+    formatCurrencyInput, 
+    numberToRawDigits,
+    formatCodug // IMPORTADO
+} from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -138,7 +146,7 @@ const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseV
     });
 
     return `33.90.30 - Aquisição de Material de Classe VI (${getCategoryLabel(categoria)})
-OM de Destino: ${organizacao} (UG: ${ug})
+OM de Destino: ${organizacao} (UG: ${formatCodug(ug)})
 Período: ${diasOperacao} dias de ${faseFormatada}
 Total de Itens na Categoria: ${totalQuantidade}
 
@@ -204,7 +212,7 @@ const generateDetalhamento = (itens: ItemClasseVI[], diasOperacao: number, organ
     detalhamentoItens = detalhamentoItens.trim();
 
     return `33.90.30 / 33.90.39 - Aquisição de Material de Classe VI (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
-Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
+Recurso destinado à OM proprietária: ${omDestino} (UG: ${formatCodug(ugDestino)})
 
 Cálculo Base (Sem Margem): ${formatCurrency(valorTotalSemMargem)}.
 Margem de Reserva (${MARGEM_RESERVA * 100}%): ${formatCurrency(valorMargem)}.
@@ -760,6 +768,7 @@ const ClasseVIForm = () => {
     }
 
     try {
+      // Para Classe VI, a OM Detentora é a OM de Destino, então deletamos todos os registros do PTrab
       const { error: deleteError } = await supabase
         .from("classe_vi_registros")
         .delete()
@@ -785,9 +794,14 @@ const ClasseVIForm = () => {
     setLoading(true);
     resetFormFields();
     
+    // Para Classe VI, a OM Detentora é a OM de Destino (organizacao/ug)
+    const omDetentoraToEdit = registro.organizacao;
+    const ugDetentoraToEdit = registro.ug;
+    
+    // 2. Buscar TODOS os registros de CLASSE VI para este PTrab (não precisa filtrar por OM Detentora, pois só há uma)
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_vi_registros")
-        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, dias_operacao, fase_atividade, organizacao, ug")
         .eq("p_trab_id", ptrabId);
         
     if (fetchAllError) {
@@ -796,21 +810,64 @@ const ClasseVIForm = () => {
         return;
     }
     
+    if (!allRecords || allRecords.length === 0) {
+        toast.error("Nenhum registro encontrado para esta OM.");
+        setLoading(false);
+        return;
+    }
+    
     let consolidatedItems: ItemClasseVI[] = [];
     let newAllocations = { ...initialCategoryAllocations };
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
     let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
-    let firstOmDetentora: { nome: string, ug: string } | null = null;
     
-    (allRecords || []).forEach(r => {
+    // Os dados globais (dias, fases) devem ser consistentes entre os registros.
+    const firstRecord = allRecords[0];
+    const diasOperacao = firstRecord.dias_operacao;
+    const faseAtividade = firstRecord.fase_atividade;
+    
+    // 3. Buscar ID da OM Detentora
+    let selectedOmIdForEdit: string | undefined = undefined;
+    try {
+        const { data: omData } = await supabase
+            .from('organizacoes_militares')
+            .select('id')
+            .eq('nome_om', omDetentoraToEdit)
+            .eq('codug_om', ugDetentoraToEdit)
+            .maybeSingle();
+        selectedOmIdForEdit = omData?.id;
+    } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
+    
+    for (const r of (allRecords || [])) {
         const category = r.categoria as Categoria;
-        const items = (r.itens_equipamentos || []) as ItemClasseVI[];
+        // CORREÇÃO: Garantir que itens_equipamentos seja tratado como array de ItemClasseVI
+        const items = (r.itens_equipamentos as any[] || []).map(item => ({
+            item: item.item,
+            quantidade: Number(item.quantidade || 0),
+            valor_mnt_dia: Number(item.valor_mnt_dia || 0),
+            categoria: item.categoria,
+            memoria_customizada: item.memoria_customizada || null,
+        })) as ItemClasseVI[];
         
         consolidatedItems = consolidatedItems.concat(items);
         
         if (newAllocations[category]) {
-            const totalValorBase = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * r.dias_operacao), 0);
+            const totalValorBase = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
             const totalValorComMargem = totalValorBase * (1 + MARGEM_RESERVA);
+            
+            // Tenta buscar o ID da OM de Destino (r.organizacao/r.ug)
+            let selectedOmDestinoId: string | undefined = undefined;
+            if (r.organizacao && r.ug) {
+                try {
+                    const { data: omDestinoData } = await supabase
+                        .from('organizacoes_militares')
+                        .select('id')
+                        .eq('nome_om', r.organizacao)
+                        .eq('codug_om', r.ug)
+                        .maybeSingle();
+                    selectedOmDestinoId = omDestinoData?.id;
+                } catch (e) { console.error("Erro ao buscar OM Destino ID:", e); }
+            }
             
             newAllocations[category] = {
                 total_valor: totalValorBase,
@@ -818,81 +875,45 @@ const ClasseVIForm = () => {
                 nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
                 nd_30_value: Number(r.valor_nd_30),
                 nd_39_value: Number(r.valor_nd_39),
-                om_destino_recurso: r.organizacao,
-                ug_destino_recurso: r.ug,
-                selectedOmDestinoId: undefined,
+                om_destino_recurso: r.organizacao, // OM de Destino (campo 'organizacao' do DB)
+                ug_destino_recurso: r.ug, // UG de Destino (campo 'ug' do DB)
+                selectedOmDestinoId: selectedOmDestinoId,
             };
             
-            // Populate temporary input state with saved ND 39 value (in digits)
             const savedND39Value = Number(r.valor_nd_39);
             const savedDigits = String(Math.round(savedND39Value * 100));
             tempND39Load[category] = savedDigits;
             
-            // Populate temporary destination state
             tempDestinationsLoad[category] = {
                 om: r.organizacao,
                 ug: r.ug,
-                id: undefined, // ID will be fetched later
+                id: selectedOmDestinoId,
             };
         }
-        
-        if (!firstOmDetentora) {
-            firstOmDetentora = { nome: r.organizacao, ug: r.ug };
-        }
-    });
-    
-    let selectedOmIdForEdit: string | undefined = undefined;
-    
-    if (firstOmDetentora) {
-        try {
-            const { data: omData } = await supabase
-                .from('organizacoes_militares')
-                .select('id')
-                .eq('nome_om', firstOmDetentora.nome)
-                .eq('codug_om', firstOmDetentora.ug)
-                .maybeSingle();
-            selectedOmIdForEdit = omData?.id;
-        } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
     }
     
+    // 4. Preencher o formulário principal com a OM Detentora
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
-      organizacao: firstOmDetentora?.nome || "",
-      ug: firstOmDetentora?.ug || "",
-      dias_operacao: registro.dias_operacao,
+      organizacao: omDetentoraToEdit, // OM Detentora
+      ug: ugDetentoraToEdit, // UG Detentora
+      dias_operacao: diasOperacao,
       itens: consolidatedItems,
     });
     
-    const categoriesToLoad = Object.keys(newAllocations) as Categoria[];
-    for (const cat of categoriesToLoad) {
-        const alloc = newAllocations[cat];
-        const tempDest = tempDestinationsLoad[cat];
-        
-        if (alloc.om_destino_recurso) {
-            try {
-                const { data: omData } = await supabase
-                    .from('organizacoes_militares')
-                    .select('id')
-                    .eq('nome_om', alloc.om_destino_recurso)
-                    .eq('codug_om', alloc.ug_destino_recurso)
-                    .maybeSingle();
-                
-                // Update both saved allocation and temporary destination with the ID
-                alloc.selectedOmDestinoId = omData?.id;
-                tempDest.id = omData?.id;
-            } catch (e) { console.error(`Erro ao buscar OM Destino ID para ${cat}:`, e); }
-        }
-    }
+    // 5. Preencher o estado de alocação e IDs de destino
     setCategoryAllocations(newAllocations);
     setTempND39Inputs(tempND39Load); 
     setTempDestinations(tempDestinationsLoad);
     
-    if (consolidatedItems.length > 0) {
-        setSelectedTab(consolidatedItems[0].categoria as Categoria);
-    } else {
-        setSelectedTab(CATEGORIAS[0]);
-    }
+    // 6. Preencher fases e aba
+    const fasesSalvas = (faseAtividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+    setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
+    setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
+    
+    // 7. Selecionar a aba do registro clicado
+    setSelectedTab(registro.categoria as Categoria);
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setLoading(false);
@@ -900,7 +921,8 @@ const ClasseVIForm = () => {
   
   const registrosAgrupadosPorOM = useMemo(() => {
     return registros.reduce((acc, registro) => {
-        const key = `${registro.organizacao} (${registro.ug})`;
+        // Para Classe VI, a OM Detentora é a OM de Destino (organizacao/ug)
+        const key = `${registro.organizacao} (${formatCodug(registro.ug)})`;
         if (!acc[key]) {
             acc[key] = [];
         }
@@ -911,7 +933,22 @@ const ClasseVIForm = () => {
 
   const handleIniciarEdicaoMemoria = (registro: ClasseVIRegistro) => {
     setEditingMemoriaId(registro.id);
-    setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento || "");
+    
+    // 1. Gerar a memória automática mais recente
+    const memoriaAutomatica = generateDetalhamento(
+        registro.itens_equipamentos as ItemClasseVI[], 
+        registro.dias_operacao, 
+        registro.organizacao, 
+        registro.ug, 
+        registro.fase_atividade || '', 
+        registro.organizacao, 
+        registro.ug, 
+        registro.valor_nd_30, 
+        registro.valor_nd_39
+    );
+    
+    // 2. Usar a customizada se existir, senão usar a automática recém-gerada
+    setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
   };
 
   const handleCancelarEdicaoMemoria = () => {
@@ -1014,7 +1051,7 @@ const ClasseVIForm = () => {
 
                 <div className="space-y-2">
                   <Label>UG Detentora</Label>
-                  <Input value={form.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
+                  <Input value={formatCodug(form.ug)} readOnly disabled onKeyDown={handleEnterToNextField} />
                 </div>
                 
                 <div className="space-y-2">
@@ -1192,7 +1229,7 @@ const ClasseVIForm = () => {
                                     />
                                     {tempDestinations[cat].ug && (
                                         <p className="text-xs text-muted-foreground">
-                                            UG de Destino: {tempDestinations[cat].ug}
+                                            UG de Destino: {formatCodug(tempDestinations[cat].ug)}
                                         </p>
                                     )}
                                 </div>
@@ -1331,7 +1368,7 @@ const ClasseVIForm = () => {
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
                                 <span className="font-medium text-foreground">
-                                    {allocation.om_destino_recurso} ({allocation.ug_destino_recurso})
+                                    {allocation.om_destino_recurso} ({formatCodug(allocation.ug_destino_recurso)})
                                 </span>
                             </div>
                             <div className="flex justify-between text-xs">
@@ -1401,7 +1438,7 @@ const ClasseVIForm = () => {
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h3 className="font-bold text-lg text-primary">
-                                    {omName} (UG: {ug})
+                                    {omName} (UG: {formatCodug(ug)})
                                 </h3>
                                 <span className="font-extrabold text-xl text-primary">
                                     {formatCurrency(totalOM)}
@@ -1521,7 +1558,7 @@ const ClasseVIForm = () => {
                       <div className="flex items-start justify-between gap-4 mb-4">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                               <h4 className="text-base font-semibold text-foreground">
-                                OM Destino: {om} ({ug})
+                                OM Destino: {om} (UG: {formatCodug(ug)})
                               </h4>
                               {/* Badge da Categoria movido para o lado esquerdo, junto ao h4 */}
                               <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>

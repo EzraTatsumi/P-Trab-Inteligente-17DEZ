@@ -342,7 +342,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       
       addInfoRow('1. NOME DA OPERAÇÃO:', ptrabData.nome_operacao);
       addInfoRow('2. PERÍODO:', `de ${formatDate(ptrabData.periodo_inicio)} a ${formatDate(ptrabData.periodo_fim)} - Nr Dias: ${diasOperacao}`);
-      addInfoRow('3. EFETIVO EMPREGADO:', `${ptrabData.efetivo_empregado} militares`);
+      addInfoRow('3. EFETIVO EMPREGADO:', `${ptrabData.efetivo_empregado} militares do Exército Brasileiro`);
       addInfoRow('4. AÇÕES:', ptrabData.acoes || '');
       
       const despesasRow = worksheet.getRow(currentRow);
@@ -517,8 +517,23 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   }
                   
                   rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
+              } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) { // NOVO: CLASSE VI
+                  const omDetentora = registro.organizacao; // Para Classe VI, a OM Detentora é a OM de Destino
+                  const isDifferentOm = false; // Não há OM Detentora separada no DB para Classe VI (ainda)
+
+                  // 1. Define o prefixo CLASSE VI
+                  rowData.despesasValue = `CLASSE VI - ${categoriaDetalhe.toUpperCase()}`;
+                  
+                  // 2. Adiciona a OM Detentora se for diferente da OM de Destino
+                  if (isDifferentOm) {
+                      rowData.despesasValue += `\n${omDetentora}`;
+                  }
+                  
+                  // Usa a função genérica/Classe II para gerar a memória (que será atualizada no próximo passo)
+                  const isClasseII = false;
+                  rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
               } else {
-                  // Outras classes (VI, VII, VIII, IX) mantêm a quebra de linha
+                  // Outras classes (VII, VIII, IX) mantêm a quebra de linha
                   rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
               }
               
@@ -1072,8 +1087,23 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             }
                             
                             rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
+                        } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) { // NOVO: CLASSE VI
+                            const omDetentora = registro.organizacao; // Para Classe VI, a OM Detentora é a OM de Destino
+                            const isDifferentOm = false; // Não há OM Detentora separada no DB para Classe VI (ainda)
+
+                            // 1. Define o prefixo CLASSE VI
+                            rowData.despesasValue = `CLASSE VI - ${categoriaDetalhe.toUpperCase()}`;
+                            
+                            // 2. Adiciona a OM Detentora se for diferente da OM de Destino
+                            if (isDifferentOm) {
+                                rowData.despesasValue += `\n${omDetentora}`;
+                            }
+                            
+                            // Usa a função genérica/Classe II para gerar a memória (que será atualizada no próximo passo)
+                            const isClasseII = false;
+                            rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
                         } else {
-                            // Outras classes (VI, VII, VIII, IX) mantêm a quebra de linha
+                            // Outras classes (VII, VIII, IX) mantêm a quebra de linha
                             rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
                         }
                         

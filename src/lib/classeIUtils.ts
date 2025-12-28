@@ -1,4 +1,4 @@
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, formatCodug } from "@/lib/formatUtils"; // Adicionado formatCodug
 
 // Interface para o registro carregado do DB (simplificada para utilitário)
 export interface ClasseIRegistro {
@@ -187,7 +187,7 @@ export const calculateClasseICalculations = (
  * Gera a memória de cálculo formatada para Ração Quente (QS/QR).
  */
 export const generateRacaoQuenteMemoriaCalculo = (registro: ClasseIRegistro): { qs: string, qr: string } => {
-  const { organizacao, efetivo, diasOperacao, nrRefInt, valorQS, valorQR, calculos, faseAtividade } = registro;
+  const { organizacao, efetivo, diasOperacao, nrRefInt, valorQS, valorQR, calculos, faseAtividade, ug, omQS, ugQS } = registro; // Adicionado ug, omQS, ugQS
   
   if (registro.categoria !== 'RACAO_QUENTE' || efetivo === null || valorQS === null || valorQR === null || nrRefInt === null) {
       return { qs: "Memória não aplicável.", qr: "" };
@@ -204,13 +204,14 @@ export const generateRacaoQuenteMemoriaCalculo = (registro: ClasseIRegistro): { 
   
   // Lógica de pluralização
   const militarPlural = E === 1 ? 'militar' : 'militares';
-  const diaPlural = D === 1 ? 'dia' : 'dias'; // <-- CORREÇÃO APLICADA AQUI
+  const diaPlural = D === 1 ? 'dia' : 'dias';
   
   // Lógica de preposição
   const preposition = getOmPreposition(organizacao);
   
   // Memória QS (Quantitativo de Subsistência)
   const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} ${diaPlural} de ${faseFormatada}.
+Recurso destinado à OM: ${omQS} (UG: ${formatCodug(ugQS)})
 
 Cálculo:
 - Valor da Etapa (QS): ${formatCurrency(VQS)}.
@@ -228,6 +229,7 @@ Total QS: ${formatCurrency(calculos.totalQS)}.`;
 
   // Memória QR (Quantitativo de Reforço)
   const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} ${diaPlural} de ${faseFormatada}.
+Recurso destinado à OM: ${organizacao} (UG: ${formatCodug(ug)})
 
 Cálculo:
 - Valor da Etapa (QR): ${formatCurrency(VQR)}.
@@ -254,7 +256,7 @@ export const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro
         return "Memória não aplicável para Ração Quente.";
     }
     
-    const { organizacao, efetivo, diasOperacao, quantidadeR2, quantidadeR3, faseAtividade } = registro;
+    const { organizacao, efetivo, diasOperacao, quantidadeR2, quantidadeR3, faseAtividade, ug } = registro; // Adicionado ug
     
     const E = efetivo || 0;
     const D = diasOperacao || 0;
@@ -271,7 +273,8 @@ export const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro
     const preposition = getOmPreposition(organizacao);
 
     // NOVO CABEÇALHO AJUSTADO COM 33.90.30
-    const header = `33.90.30 - Fornecimento de Ração Operacional para atender ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizada/afastadas de instalações militares.`;
+    const header = `33.90.30 - Fornecimento de Ração Operacional para atender ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizada/afastadas de instalações militares.
+Recurso destinado à OM: ${organizacao} (UG: ${formatCodug(ug)})`;
 
     return `${header}
 
