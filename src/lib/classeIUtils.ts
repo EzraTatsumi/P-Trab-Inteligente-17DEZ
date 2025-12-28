@@ -205,20 +205,20 @@ export const generateRacaoQuenteMemoriaCalculo = (registro: ClasseIRegistro): { 
   // Lógica de pluralização
   const militarPlural = E === 1 ? 'militar' : 'militares';
   const diaPlural = D === 1 ? 'dia' : 'dias'; // Pluralização para diasOperacao (D)
-  const diasEtapaPlural = diasEtapaSolicitada === 1 ? 'dia' : 'dias'; // NOVO: Pluralização para diasEtapaSolicitada
+  const diasEtapaSolicitadaPlural = diasEtapaSolicitada === 1 ? 'dia' : 'dias'; // NOVO: Pluralização para diasEtapaSolicitada
+  const diasComplementoPlural = D === 1 ? 'dia' : 'dias'; // NOVO: Pluralização para diasOperacao (D)
   
   // Lógica de preposição
   const preposition = getOmPreposition(organizacao);
   
   // Memória QS (Quantitativo de Subsistência)
   const memoriaQS = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} ${diaPlural} de ${faseFormatada}.
-Recurso destinado à OM: ${omQS} (UG: ${formatCodug(ugQS)})
 
 Cálculo:
 - Valor da Etapa (QS): ${formatCurrency(VQS)}.
 - Nr Refeições Intermediárias: ${R}.
-- Dias de Etapa Solicitada: ${formatNumber(diasEtapaSolicitada)} ${diasEtapaPlural}.
-- Dias de Complemento de Etapa: ${formatNumber(D)} ${diaPlural}.
+- Dias de Etapa Solicitada: ${formatNumber(diasEtapaSolicitada)} ${diasEtapaSolicitadaPlural}.
+- Dias de Complemento de Etapa: ${formatNumber(D)} ${diasComplementoPlural}.
 
 Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 3) x Valor da Etapa/3 x Dias de Complemento de Etapa]
 Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
@@ -230,13 +230,12 @@ Total QS: ${formatCurrency(calculos.totalQS)}.`;
 
   // Memória QR (Quantitativo de Reforço)
   const memoriaQR = `33.90.30 - Aquisição de Gêneros Alimentícios (QR) destinados à complementação de alimentação de ${E} ${militarPlural} ${preposition} ${organizacao}, durante ${D} ${diaPlural} de ${faseFormatada}.
-Recurso destinado à OM: ${organizacao} (UG: ${formatCodug(ug)})
 
 Cálculo:
 - Valor da Etapa (QR): ${formatCurrency(VQR)}.
 - Nr Refeições Intermediárias: ${R}.
-- Dias de Etapa Solicitada: ${formatNumber(diasEtapaSolicitada)} ${diasEtapaPlural}.
-- Dias de Complemento de Etapa: ${formatNumber(D)} ${diaPlural}.
+- Dias de Etapa Solicitada: ${formatNumber(diasEtapaSolicitada)} ${diasEtapaSolicitadaPlural}.
+- Dias de Complemento de Etapa: ${formatNumber(D)} ${diasComplementoPlural}.
 
 Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 3) x Valor da Etapa/3 x Dias de Complemento de Etapa]
 Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
