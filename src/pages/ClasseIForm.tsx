@@ -1115,7 +1115,7 @@ export default function ClasseIForm() {
                         </Command>
                       </PopoverContent>
                     </Popover>
-                  </Popover>
+                  </div>
                 </div>
               </div>
             </div>
