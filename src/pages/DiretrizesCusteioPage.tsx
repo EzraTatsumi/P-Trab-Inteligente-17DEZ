@@ -96,9 +96,9 @@ const CATEGORIAS_CLASSE_V = [
 ];
 
 const CATEGORIAS_CLASSE_VI = [
+  "Gerador",
   "Embarcação",
   "Equipamento de Engenharia",
-  "Gerador", // Mantido 'Gerador' aqui
 ];
 
 const CATEGORIAS_CLASSE_VII = [
@@ -400,7 +400,7 @@ const DiretrizesCusteioPage = () => {
       const { data: classeIXData, error: classeIXError } = await supabase
         .from("diretrizes_classe_ix")
         .select("categoria, item, valor_mnt_dia, valor_acionamento_mensal")
-        .eq("user_id", user.id)
+        .eq("user.id", user.id)
         .eq("ano_referencia", year)
         .eq("ativo", true);
         
