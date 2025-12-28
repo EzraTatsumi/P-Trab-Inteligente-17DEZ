@@ -136,6 +136,15 @@ export default function ClasseIForm() {
   const [memoriaOpEdit, setMemoriaOpEdit] = useState<string>(""); // Adicionado para Ração Operacional
 
   const { handleEnterToNextField } = useFormNavigation();
+  
+  // NOVO: Função para desativar setas e manter navegação por Enter
+  const handleNumberInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+    }
+    // Chama a função de navegação para a tecla Enter
+    handleEnterToNextField(e);
+  };
 
   useEffect(() => {
     checkAuthAndLoadData();
@@ -1031,7 +1040,7 @@ export default function ClasseIForm() {
                       value={efetivo === 0 ? "" : efetivo.toString()}
                       onChange={(e) => setEfetivo(Number(e.target.value))}
                       placeholder="Ex: 246"
-                      onKeyDown={handleEnterToNextField}
+                      onKeyDown={handleNumberInputKeyDown} {/* MODIFICADO */}
                       disabled={!organizacao}
                     />
                   </div>
@@ -1046,7 +1055,7 @@ export default function ClasseIForm() {
                       value={diasOperacao === 0 ? "" : diasOperacao.toString()}
                       onChange={(e) => setDiasOperacao(Number(e.target.value))}
                       placeholder="Ex: 30"
-                      onKeyDown={handleEnterToNextField}
+                      onKeyDown={handleNumberInputKeyDown} {/* MODIFICADO */}
                       disabled={!organizacao}
                     />
                   </div>
@@ -1256,7 +1265,7 @@ export default function ClasseIForm() {
                                     value={quantidadeR2 === 0 ? "" : quantidadeR2.toString()}
                                     onChange={(e) => setQuantidadeR2(Number(e.target.value))}
                                     placeholder="0"
-                                    onKeyDown={handleEnterToNextField}
+                                    onKeyDown={handleNumberInputKeyDown} {/* MODIFICADO */}
                                   />
                                 </TableCell>
                               </TableRow>
@@ -1274,7 +1283,7 @@ export default function ClasseIForm() {
                                     value={quantidadeR3 === 0 ? "" : quantidadeR3.toString()}
                                     onChange={(e) => setQuantidadeR3(Number(e.target.value))}
                                     placeholder="0"
-                                    onKeyDown={handleEnterToNextField}
+                                    onKeyDown={handleNumberInputKeyDown} {/* MODIFICADO */}
                                   />
                                 </TableCell>
                               </TableRow>
@@ -1522,7 +1531,7 @@ export default function ClasseIForm() {
                     {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
                         const totalMonetarioOM = omRegistros
                             .filter(r => r.categoria === 'RACAO_QUENTE')
-                            .reduce((sum, r) => sum + (r.calculos.totalQS + r.calculos.totalQR), 0);
+                            .reduce((sum, r) => sum + r.calculos.totalQS + r.calculos.totalQR, 0);
                         const totalUnidadesOM = omRegistros
                             .filter(r => r.categoria === 'RACAO_OPERACIONAL')
                             .reduce((sum, r) => sum + (r.quantidadeR2 || 0) + (r.quantidadeR3 || 0), 0);
