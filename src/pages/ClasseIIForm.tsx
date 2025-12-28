@@ -195,6 +195,14 @@ const ClasseIIForm = () => {
   const { handleEnterToNextField } = useFormNavigation();
   const formRef = useRef<HTMLDivElement>(null);
   
+  // NOVO: Função para desativar setas e manter navegação por Enter
+  const handleNumberInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+    }
+    handleEnterToNextField(e);
+  };
+  
   // Helper function to check if a category is dirty (needs saving)
   const isCategoryAllocationDirty = useCallback((
       category: Categoria, 
@@ -1030,7 +1038,7 @@ const ClasseIIForm = () => {
                     value={form.efetivo || ""}
                     onChange={(e) => setForm({ ...form, efetivo: parseInt(e.target.value) || 0 })}
                     placeholder="Ex: 100"
-                    onKeyDown={handleEnterToNextField}
+                    onKeyDown={handleNumberInputKeyDown}
                   />
                 </div>
               </div>
@@ -1046,7 +1054,7 @@ const ClasseIIForm = () => {
                     value={form.dias_operacao || ""}
                     onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value) || 0 })}
                     placeholder="Ex: 7"
-                    onKeyDown={handleEnterToNextField}
+                    onKeyDown={handleNumberInputKeyDown}
                   />
                 </div>
                 
@@ -1156,7 +1164,7 @@ const ClasseIIForm = () => {
                                                             value={item.quantidade === 0 ? "" : item.quantidade.toString()}
                                                             onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
                                                             placeholder="0"
-                                                            onKeyDown={handleEnterToNextField}
+                                                            onKeyDown={handleNumberInputKeyDown}
                                                         />
                                                     </TableCell>
                                                     <TableCell className="text-right font-semibold text-sm py-1">
