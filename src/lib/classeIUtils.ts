@@ -76,7 +76,7 @@ export const formatFormula = (
     const V = valorEtapa;
     const DES = diasEtapaSolicitada;
     
-    // Determinar singular/plural de 'dia'
+    // Determinar singular/plural de 'dia' para o complemento (usa diasOperacao)
     const diaPlural = diasOperacao === 1 ? 'dia' : 'dias';
     
     let formulaString = "";
@@ -204,7 +204,8 @@ export const generateRacaoQuenteMemoriaCalculo = (registro: ClasseIRegistro): { 
   
   // Lógica de pluralização
   const militarPlural = E === 1 ? 'militar' : 'militares';
-  const diaPlural = D === 1 ? 'dia' : 'dias';
+  const diaPlural = D === 1 ? 'dia' : 'dias'; // Pluralização para diasOperacao (D)
+  const diasEtapaPlural = diasEtapaSolicitada === 1 ? 'dia' : 'dias'; // NOVO: Pluralização para diasEtapaSolicitada
   
   // Lógica de preposição
   const preposition = getOmPreposition(organizacao);
@@ -216,8 +217,8 @@ Recurso destinado à OM: ${omQS} (UG: ${formatCodug(ugQS)})
 Cálculo:
 - Valor da Etapa (QS): ${formatCurrency(VQS)}.
 - Nr Refeições Intermediárias: ${R}.
-- Dias de Etapa Solicitada: ${formatNumber(diasEtapaSolicitada)} dias.
-- Dias de Complemento de Etapa: ${formatNumber(D)} dias.
+- Dias de Etapa Solicitada: ${formatNumber(diasEtapaSolicitada)} ${diasEtapaPlural}.
+- Dias de Complemento de Etapa: ${formatNumber(D)} ${diaPlural}.
 
 Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 3) x Valor da Etapa/3 x Dias de Complemento de Etapa]
 Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
@@ -234,8 +235,8 @@ Recurso destinado à OM: ${organizacao} (UG: ${formatCodug(ug)})
 Cálculo:
 - Valor da Etapa (QR): ${formatCurrency(VQR)}.
 - Nr Refeições Intermediárias: ${R}.
-- Dias de Etapa Solicitada: ${formatNumber(diasEtapaSolicitada)} dias.
-- Dias de Complemento de Etapa: ${formatNumber(D)} dias.
+- Dias de Etapa Solicitada: ${formatNumber(diasEtapaSolicitada)} ${diasEtapaPlural}.
+- Dias de Complemento de Etapa: ${formatNumber(D)} ${diaPlural}.
 
 Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 3) x Valor da Etapa/3 x Dias de Complemento de Etapa]
 Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
