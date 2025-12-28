@@ -77,7 +77,7 @@ export const generateCategoryMemoriaCalculo = (
     omDetentora: string, // OM Detentora (Source)
     ugDetentora: string, // UG Detentora (Source)
     faseAtividade: string | null | undefined,
-    efetivo: number = 0, // NOVO: Adicionado efetivo (embora não usado no cálculo, é usado no detalhamento)
+    efetivo: number = 0, // Adicionado efetivo (embora não usado no cálculo, é usado no detalhamento)
     valorND30: number = 0, // NOVO: Valor ND 30
     valorND39: number = 0 // NOVO: Valor ND 39
 ): string => {
@@ -99,8 +99,8 @@ export const generateCategoryMemoriaCalculo = (
         ndPrefix = "(Não Alocado)";
     }
     
-    // 2. Determinar o artigo 'do/da' da Categoria
-    const categoryArticle = getCategoryArticle(categoria);
+    // 2. Determinar o artigo 'do/da' da Categoria (Não usado no cabeçalho final, mas mantido)
+    // const categoryArticle = getCategoryArticle(categoria);
     
     // 3. Determinar singular/plural de 'dia'
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
@@ -109,13 +109,12 @@ export const generateCategoryMemoriaCalculo = (
     const omArticle = getOmArticle(omDetentora);
 
     // 5. Montar o cabeçalho dinâmico conforme solicitado:
-    // ND 30/39 - Manutenção de componente de <Qtd Total Itens> <Categoria>, durante <Qtd Dias Atividade> de <Fases Atividades>.
     const categoryLabel = getCategoryLabel(categoria);
     
     // Concordância de número para a categoria (ex: 1 Gerador, 2 Geradores)
     const itemPlural = totalQuantidade === 1 ? categoryLabel : `${categoryLabel}s`;
     
-    // Novo cabeçalho
+    // Novo cabeçalho: ND 30/39 - Manutenção de componente de <Qtd Total Itens> <Categoria Plural/Singular> <do/da> <Nome da OM>, durante <Qtd Dias Atividade> <dia/dias> de <Fases Atividades>.
     const header = `${ndPrefix} - Manutenção de componente de ${totalQuantidade} ${itemPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
     let detalhamentoItens = "";
