@@ -73,6 +73,8 @@ interface PTrabLogisticoReportProps {
   generateClasseIMemoriaCalculo: (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP') => string;
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe V
   generateClasseVMemoriaCalculo: (registro: any) => string;
+  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe VI
+  generateClasseVIMemoriaCalculo: (registro: any) => string; // ADICIONADO
 }
 
 // Implementação padrão (fallback) para generateClasseIIMemoriaCalculo
@@ -153,6 +155,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   generateClasseIIMemoriaCalculo = defaultGenerateClasseIIMemoriaCalculo, // CORRIGIDO: Usando o nome correto da função de fallback
   generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
   generateClasseVMemoriaCalculo = defaultGenerateClasseVMemoriaCalculo, // NOVO: DESESTRUTURANDO E USANDO DEFAULT
+  generateClasseVIMemoriaCalculo = defaultGenerateClasseVIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VI
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -550,7 +553,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   }
                   
                   // Usa a função utilitária de Classe VI
-                  rowData.detalhamentoValue = defaultGenerateClasseVIMemoriaCalculo(registro);
+                  rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
               } else {
                   // Outras classes (VII, VIII, IX) mantêm a quebra de linha
                   rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
@@ -568,7 +571,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
               } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
                   // Se for Classe VI, usa a função de memória de Classe VI
-                  rowData.detalhamentoValue = defaultGenerateClasseVIMemoriaCalculo(registro);
+                  rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
               } else {
                   // Se não for Classe V ou VI, usa a função genérica/Classe II
                   const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
@@ -952,7 +955,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo]);
+  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo]);
 
   return (
     <div className="space-y-6">
@@ -1122,7 +1125,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             }
                             
                             // Usa a função utilitária de Classe VI
-                            rowData.detalhamentoValue = defaultGenerateClasseVIMemoriaCalculo(registro);
+                            rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
                         } else {
                             // Outras classes (VII, VIII, IX) mantêm a quebra de linha
                             rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
@@ -1140,7 +1143,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
                         } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
                             // Se for Classe VI, usa a função de memória de Classe VI
-                            rowData.detalhamentoValue = defaultGenerateClasseVIMemoriaCalculo(registro);
+                            rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
                         } else {
                             // Se não for Classe V ou VI, usa a função genérica/Classe II
                             const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
