@@ -256,6 +256,11 @@ export const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro
         return "Memória não aplicável para Ração Quente.";
     }
     
+    // NOVO: Prioriza a memória customizada (armazenada em memoriaQSCustomizada para Ração Operacional)
+    if (registro.memoriaQSCustomizada) {
+        return registro.memoriaQSCustomizada;
+    }
+    
     const { organizacao, efetivo, diasOperacao, quantidadeR2, quantidadeR3, faseAtividade } = registro; 
     
     const E = efetivo || 0;

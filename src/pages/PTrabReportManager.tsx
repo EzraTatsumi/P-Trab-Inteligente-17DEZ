@@ -293,7 +293,12 @@ Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
 export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP'): string => {
     if (registro.categoria === 'RACAO_OPERACIONAL') {
         if (tipo === 'OP') {
-            // Para Ração Operacional, sempre gera a memória automática (não há customização no DB para OP)
+            // 1. Verifica se há memória customizada para Ração Operacional (armazenada em memoriaQSCustomizada)
+            if (registro.memoriaQSCustomizada) {
+                return registro.memoriaQSCustomizada;
+            }
+            
+            // 2. Se não houver customização, gera a memória automática
             return generateRacaoOperacionalMemoriaCalculo({
                 id: registro.id,
                 organizacao: registro.organizacao,
@@ -318,8 +323,8 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
 
     // Lógica para Ração Quente (QS/QR)
     if (tipo === 'QS') {
-        if (registro.memoria_calculo_qs_customizada) {
-            return registro.memoria_calculo_qs_customizada;
+        if (registro.memoriaQSCustomizada) {
+            return registro.memoriaQSCustomizada;
         }
         const { qs } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
@@ -353,8 +358,8 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
     }
 
     if (tipo === 'QR') {
-        if (registro.memoria_calculo_qr_customizada) {
-            return registro.memoria_calculo_qr_customizada;
+        if (registro.memoriaQRCustomizada) {
+            return registro.memoriaQRCustomizada;
         }
         const { qr } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
