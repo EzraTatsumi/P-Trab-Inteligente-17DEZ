@@ -776,11 +776,14 @@ const ClasseVIForm = () => {
     }
 
     try {
-      // Para Classe VI, a OM Detentora é a OM de Destino, então deletamos todos os registros do PTrab
+      // CORREÇÃO: Deletar APENAS os registros de Classe VI existentes para este PTrab E ESTA OM DETENTORA/DESTINO
+      // Isso permite que registros de outras OMs coexistam.
       const { error: deleteError } = await supabase
         .from("classe_vi_registros")
         .delete()
-        .eq("p_trab_id", ptrabId);
+        .eq("p_trab_id", ptrabId)
+        .eq("organizacao", form.organizacao) // Filtra pela OM de Destino (que é a Detentora neste caso)
+        .eq("ug", form.ug); // Filtra pela UG de Destino
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
       const { error: insertError } = await supabase.from("classe_vi_registros").insert(registrosParaSalvar);
