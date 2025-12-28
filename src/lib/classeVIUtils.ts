@@ -104,10 +104,19 @@ export const generateCategoryMemoriaCalculo = (
     
     // 3. Determinar singular/plural de 'dia'
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
+    
+    // 4. Determinar o artigo 'do/da' da OM
+    const omArticle = getOmArticle(omDetentora);
 
-    // 4. Montar o cabeçalho dinâmico
+    // 5. Montar o cabeçalho dinâmico conforme solicitado:
+    // ND 30/39 - Manutenção de componente de <Qtd Total Itens> <Categoria>, durante <Qtd Dias Atividade> de <Fases Atividades>.
     const categoryLabel = getCategoryLabel(categoria);
-    const header = `${ndPrefix} - Manutenção de componentes ${categoryArticle} ${categoryLabel} da ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
+    
+    // Concordância de número para a categoria (ex: 1 Gerador, 2 Geradores)
+    const itemPlural = totalQuantidade === 1 ? categoryLabel : `${categoryLabel}s`;
+    
+    // Novo cabeçalho
+    const header = `${ndPrefix} - Manutenção de componente de ${totalQuantidade} ${itemPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
     let detalhamentoItens = "";
     itens.forEach(item => {
@@ -176,7 +185,7 @@ export const generateDetalhamento = (
     
     // 3. Determinar singular/plural de 'dia'
     const diaPlural = diasOperacao === 1 ? "dia" : "dias";
-
+    
     // 4. Montar o cabeçalho dinâmico (usando OM Detentora)
     // Nota: Removido o efetivo, pois Classe VI não o utiliza.
     const header = `${ndPrefix} - Aquisição de Material de Classe VI (Diversos) para ${totalItens} itens, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}, para ${omDetentora}.`;
