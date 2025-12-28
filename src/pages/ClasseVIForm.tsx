@@ -35,9 +35,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
 import { defaultClasseVIConfig } from "@/data/classeVIData";
 
-type Categoria = 'Embarcação' | 'Equipamento de Engenharia'; // Categorias corretas para Classe VI
+type Categoria = 'Gerador' | 'Embarcação' | 'Equipamento de Engenharia'; // Categorias corretas para Classe VI
 
 const CATEGORIAS: Categoria[] = [
+  "Gerador",
   "Embarcação",
   "Equipamento de Engenharia",
 ];
@@ -107,6 +108,7 @@ const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc,
 
 
 const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
+    'Gerador': { total_valor: 0, total_valor_com_margem: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
     'Embarcação': { total_valor: 0, total_valor_com_margem: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
     'Equipamento de Engenharia': { total_valor: 0, total_valor_com_margem: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
 };
@@ -1008,7 +1010,7 @@ const ClasseVIForm = () => {
   };
 
   const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
-    if (!confirm("Deseja restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
+    if (!confirm("Deseja realmente restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
       return;
     }
     
@@ -1164,7 +1166,7 @@ const ClasseVIForm = () => {
                 <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
                 
                 <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as Categoria)}>
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-3">
                     {CATEGORIAS.map(cat => (
                       <TabsTrigger key={cat} value={cat}>{getCategoryLabel(cat)}</TabsTrigger>
                     ))}
