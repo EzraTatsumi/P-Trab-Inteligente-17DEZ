@@ -37,7 +37,7 @@ import {
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils"; // NOVO: Importar utilitário de Classe V
-import { generateDetalhamento as generateClasseVIUtility } from "@/lib/classeVIUtils"; // NOVO: Importar utilitário de Classe VI
+import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils"; // NOVO: Importar utilitário de Classe VI
 
 interface PTrabLogisticoReportProps {
   ptrabData: PTrabData;
@@ -120,13 +120,13 @@ const defaultGenerateClasseVIMemoriaCalculo = (registro: any): string => {
     if (CLASSE_VI_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos) {
         // Usa a função utilitária detalhada para Classe VI
         return generateClasseVIUtility(
+            registro.categoria, // Categoria é o primeiro argumento
             registro.itens_equipamentos,
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao, // OM Detentora
             registro.ug_detentora || registro.ug, // UG Detentora
             registro.fase_atividade,
-            registro.organizacao, // OM Destino
-            registro.ug, // UG Destino
+            registro.efetivo || 0, // Efetivo (embora não usado no cálculo, é necessário para a assinatura)
             registro.valor_nd_30,
             registro.valor_nd_39
         );
@@ -459,7 +459,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             ...grupo.linhasClasseII,
             ...grupo.linhasLubrificante,
             ...grupo.linhasClasseV,
-            ...grupo.linhasClasseVI,
+            ...grupo.linhasClasseVI, // INCLUINDO CLASSE VI AQUI
             ...grupo.linhasClasseVII,
             ...grupo.linhasClasseVIII,
             ...grupo.linhasClasseIX,
