@@ -293,24 +293,19 @@ Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
 export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP'): string => {
     if (registro.categoria === 'RACAO_OPERACIONAL') {
         if (tipo === 'OP') {
-            // NOVO: Prioriza a nova coluna de customização
-            if (registro.memoriaOpCustomizada) {
-                return registro.memoriaOpCustomizada;
-            }
-            
-            // Se não houver customização, gera a memória automática
+            // Para Ração Operacional, sempre gera a memória automática (não há customização no DB para OP)
             return generateRacaoOperacionalMemoriaCalculo({
                 id: registro.id,
                 organizacao: registro.organizacao,
                 ug: registro.ug,
-                diasOperacao: registro.diasOperacao,
-                faseAtividade: registro.faseAtividade,
+                diasOperacao: registro.dias_operacao,
+                faseAtividade: registro.fase_atividade,
                 efetivo: registro.efetivo,
                 quantidadeR2: registro.quantidade_r2,
                 quantidadeR3: registro.quantidade_r3,
                 // Campos não utilizados na memória OP, mas necessários para a interface
                 omQS: null, ugQS: null, nrRefInt: null, valorQS: null, valorQR: null,
-                memoriaQSCustomizada: null, memoriaQRCustomizada: null, memoriaOpCustomizada: null,
+                memoriaQSCustomizada: null, memoriaQRCustomizada: null,
                 calculos: {
                     totalQS: 0, totalQR: 0, nrCiclos: 0, diasEtapaPaga: 0, diasEtapaSolicitada: 0, totalEtapas: 0,
                     complementoQS: 0, etapaQS: 0, complementoQR: 0, etapaQR: 0,
@@ -323,32 +318,32 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
 
     // Lógica para Ração Quente (QS/QR)
     if (tipo === 'QS') {
-        if (registro.memoriaQSCustomizada) {
-            return registro.memoriaQSCustomizada;
+        if (registro.memoria_calculo_qs_customizada) {
+            return registro.memoria_calculo_qs_customizada;
         }
         const { qs } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
             organizacao: registro.organizacao,
             ug: registro.ug,
-            diasOperacao: registro.diasOperacao,
-            faseAtividade: registro.faseAtividade,
-            omQS: registro.omQS,
-            ugQS: registro.ugQS,
+            diasOperacao: registro.dias_operacao,
+            faseAtividade: registro.fase_atividade,
+            omQS: registro.om_qs,
+            ugQS: registro.ug_qs,
             efetivo: registro.efetivo,
-            nrRefInt: registro.nrRefInt,
-            valorQS: registro.valorQS,
-            valorQR: registro.valorQR,
+            nrRefInt: registro.nr_ref_int,
+            valorQS: registro.valor_qs,
+            valorQR: registro.valor_qr,
             calculos: {
-                totalQS: registro.calculos.totalQS,
-                totalQR: registro.calculos.totalQR,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 1, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
+                totalQS: registro.total_qs,
+                totalQR: registro.total_qr,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int, registro.valor_qs, registro.valor_qr).nrCiclos,
                 diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 1, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int, registro.valor_qs, registro.valor_qr).diasEtapaSolicitada,
                 totalEtapas: 0,
-                complementoQS: registro.calculos.complementoQS,
-                etapaQS: registro.calculos.etapaQS,
-                complementoQR: registro.calculos.complementoQR,
-                etapaQR: registro.calculos.etapaQR,
+                complementoQS: registro.complemento_qs,
+                etapaQS: registro.etapa_qs,
+                complementoQR: registro.complemento_qr,
+                etapaQR: registro.etapa_qr,
             },
             quantidadeR2: 0,
             quantidadeR3: 0,
@@ -358,32 +353,32 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
     }
 
     if (tipo === 'QR') {
-        if (registro.memoriaQRCustomizada) {
-            return registro.memoriaQRCustomizada;
+        if (registro.memoria_calculo_qr_customizada) {
+            return registro.memoria_calculo_qr_customizada;
         }
         const { qr } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
             organizacao: registro.organizacao,
             ug: registro.ug,
-            diasOperacao: registro.diasOperacao,
-            faseAtividade: registro.faseAtividade,
-            omQS: registro.omQS,
-            ugQS: registro.ugQS,
+            diasOperacao: registro.dias_operacao,
+            faseAtividade: registro.fase_atividade,
+            omQS: registro.om_qs,
+            ugQS: registro.ug_qs,
             efetivo: registro.efetivo,
-            nrRefInt: registro.nrRefInt,
-            valorQS: registro.valorQS,
-            valorQR: registro.valorQR,
+            nrRefInt: registro.nr_ref_int,
+            valorQS: registro.valor_qs,
+            valorQR: registro.valor_qr,
             calculos: {
-                totalQS: registro.calculos.totalQS,
-                totalQR: registro.calculos.totalQR,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 1, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
+                totalQS: registro.total_qs,
+                totalQR: registro.total_qr,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int, registro.valor_qs, registro.valor_qr).nrCiclos,
                 diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 1, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int, registro.valor_qs, registro.valor_qr).diasEtapaSolicitada,
                 totalEtapas: 0,
-                complementoQS: registro.calculos.complementoQS,
-                etapaQS: registro.calculos.etapaQS,
-                complementoQR: registro.calculos.complementoQR,
-                etapaQR: registro.calculos.etapaQR,
+                complementoQS: registro.complemento_qs,
+                etapaQS: registro.etapa_qs,
+                complementoQR: registro.complemento_qr,
+                etapaQR: registro.etapa_qr,
             },
             quantidadeR2: 0,
             quantidadeR3: 0,
@@ -528,7 +523,7 @@ const PTrabReportManager = () => {
 
       const { data: classeIData } = await supabase
         .from('classe_i_registros')
-        .select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3') // NOVO: Selecionar nova coluna
+        .select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3')
         .eq('p_trab_id', ptrabId);
       
       const [
@@ -562,63 +557,12 @@ const PTrabReportManager = () => {
       ];
 
       setPtrabData(ptrab as PTrabData); // Casting para incluir updated_at
-      setRegistrosClasseI((classeIData || []).map(r => {
-        const categoria = (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL';
-        
-        const currentValorQS = r.valor_qs ? Number(r.valor_qs) : 9.0;
-        const currentValorQR = r.valor_qr ? Number(r.valor_qr) : 6.0;
-
-        const isRacaoQuenteValid = categoria === 'RACAO_QUENTE' && r.efetivo && r.nr_ref_int;
-        
-        const derivedCalculations = isRacaoQuenteValid
-          ? calculateClasseICalculations(
-              r.efetivo,
-              r.dias_operacao,
-              r.nr_ref_int!,
-              currentValorQS,
-              currentValorQR
-            )
-          : {
-              nrCiclos: 0, diasEtapaPaga: 0, diasEtapaSolicitada: 0, totalEtapas: 0,
-              complementoQS: 0, etapaQS: 0, totalQS: 0, complementoQR: 0, etapaQR: 0, totalQR: 0,
-            };
-
-        return {
-          id: r.id,
-          categoria: categoria,
-          organizacao: r.organizacao,
-          ug: r.ug,
-          diasOperacao: r.dias_operacao,
-          faseAtividade: r.fase_atividade,
-          
-          omQS: r.om_qs,
-          ugQS: r.ug_qs,
-          efetivo: r.efetivo,
-          nrRefInt: r.nr_ref_int,
-          valorQS: currentValorQS,
-          valorQR: currentValorQR,
-          memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
-          memoriaQRCustomizada: r.memoria_calculo_qr_customizada,
-          memoriaOpCustomizada: r.memoria_calculo_op_customizada, // NOVO: Carregar nova coluna
-          
-          calculos: {
-            totalQS: Number(r.total_qs || 0),
-            totalQR: Number(r.total_qr || 0),
-            nrCiclos: derivedCalculations.nrCiclos,
-            diasEtapaPaga: derivedCalculations.diasEtapaPaga,
-            diasEtapaSolicitada: derivedCalculations.diasEtapaSolicitada,
-            totalEtapas: derivedCalculations.totalEtapas,
-            complementoQS: Number(r.complemento_qs || 0),
-            etapaQS: Number(r.etapa_qs || 0),
-            complementoQR: Number(r.complemento_qr || 0),
-            etapaQR: Number(r.etapa_qr || 0),
-          },
-          
-          quantidadeR2: r.quantidade_r2 || 0,
-          quantidadeR3: r.quantidade_r3 || 0,
-        }
-      }) as ClasseIRegistro[]; // Adicionando o ponto e vírgula aqui
-      
+      setRegistrosClasseI((classeIData || []).map(r => ({
+          ...r,
+          categoria: (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL',
+          quantidade_r2: r.quantidade_r2 || 0,
+          quantidade_r3: r.quantidade_r3 || 0,
+      })) as ClasseIRegistro[]);
       setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
       setRegistrosClasseIII(classeIIIData || []);
       
@@ -693,8 +637,8 @@ const PTrabReportManager = () => {
 
     // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
     registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
-        initializeGroup(registro.omQS || registro.organizacao); // Usa OM QS como chave de destino
-        grupos[registro.omQS || registro.organizacao].linhasQS.push({ registro, tipo: 'QS' });
+        initializeGroup(registro.om_qs || registro.organizacao); // Usa OM QS como chave de destino
+        grupos[registro.om_qs || registro.organizacao].linhasQS.push({ registro, tipo: 'QS' });
         
         initializeGroup(registro.organizacao); // Usa OM de destino (QR) como chave de destino
         grupos[registro.organizacao].linhasQR.push({ registro, tipo: 'QR' });
@@ -749,9 +693,8 @@ const PTrabReportManager = () => {
   }, [gruposPorOM]);
   
   const calcularTotaisPorOM = useCallback((grupo: GrupoOM, nomeOM: string) => {
-    // CORREÇÃO: Acessar totalQS e totalQR via 'calculos'
-    const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.calculos.totalQS, 0);
-    const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + linha.registro.calculos.totalQR, 0);
+    const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.total_qs, 0);
+    const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + linha.registro.total_qr, 0);
     
     const totalClasseII_ND30 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
     const totalClasseII_ND39 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);

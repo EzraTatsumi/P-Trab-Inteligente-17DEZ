@@ -16,7 +16,6 @@ export interface ClasseIRegistro {
   valorQR: number | null;
   memoriaQSCustomizada?: string | null;
   memoriaQRCustomizada?: string | null;
-  memoriaOpCustomizada?: string | null; // NOVO CAMPO
   
   calculos: {
     totalQS: number;
