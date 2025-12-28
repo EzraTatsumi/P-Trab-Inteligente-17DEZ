@@ -60,6 +60,7 @@ interface FormDataClasseVI {
   selectedOmId?: string;
   organizacao: string; // OM Detentora (Global)
   ug: string; // UG Detentora (Global)
+  efetivo: number; // NOVO CAMPO
   dias_operacao: number; // Global
   itens: ItemClasseVI[]; // All items across all categories
   fase_atividade?: string; // Global
@@ -78,6 +79,7 @@ interface ClasseVIRegistro {
   fase_atividade?: string;
   valor_nd_30: number;
   valor_nd_39: number;
+  efetivo: number; // NOVO CAMPO
 }
 
 interface CategoryAllocation {
@@ -249,6 +251,7 @@ const ClasseVIForm = () => {
     selectedOmId: undefined,
     organizacao: "",
     ug: "",
+    efetivo: 0, // NOVO: Inicialização
     dias_operacao: 0,
     itens: [],
   });
@@ -474,9 +477,10 @@ const ClasseVIForm = () => {
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
+    // NOVO: Selecionar o campo 'efetivo'
     const { data, error } = await supabase
       .from("classe_vi_registros")
-      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
+      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, efetivo")
       .eq("p_trab_id", ptrabId)
       .order("organizacao", { ascending: true })
       .order("categoria", { ascending: true });
@@ -495,6 +499,7 @@ const ClasseVIForm = () => {
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseVI[],
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
+            efetivo: r.efetivo || 0, // NOVO: Carregar efetivo
         } as ClasseVIRegistro;
         uniqueRecordsMap.set(key, record);
     });
@@ -508,6 +513,7 @@ const ClasseVIForm = () => {
       selectedOmId: undefined,
       organizacao: "",
       ug: "",
+      efetivo: 0, // NOVO: Reset
       dias_operacao: 0,
       itens: [],
     });
@@ -686,6 +692,7 @@ const ClasseVIForm = () => {
     if (!ptrabId) return;
     if (!form.organizacao || !form.ug) { toast.error("Selecione uma OM detentora"); return; }
     if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
+    if (form.efetivo <= 0) { toast.error("Efetivo deve ser maior que zero"); return; } // NOVO: Validação
     if (form.itens.length === 0) { toast.error("Adicione pelo menos um item"); return; }
     
     let fasesFinais = [...fasesAtividade];
@@ -763,6 +770,7 @@ const ClasseVIForm = () => {
             detalhamento_customizado: null,
             valor_nd_30: allocation.nd_30_value,
             valor_nd_39: allocation.nd_39_value,
+            efetivo: form.efetivo, // NOVO: Salvando efetivo
         };
         registrosParaSalvar.push(registro);
     }
@@ -801,7 +809,7 @@ const ClasseVIForm = () => {
     // 2. Buscar TODOS os registros de CLASSE VI para este PTrab (não precisa filtrar por OM Detentora, pois só há uma)
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_vi_registros")
-        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, dias_operacao, fase_atividade, organizacao, ug")
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, dias_operacao, fase_atividade, organizacao, ug, efetivo")
         .eq("p_trab_id", ptrabId);
         
     if (fetchAllError) {
@@ -821,10 +829,11 @@ const ClasseVIForm = () => {
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
     let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
     
-    // Os dados globais (dias, fases) devem ser consistentes entre os registros.
+    // Os dados globais (dias, fases, efetivo) devem ser consistentes entre os registros.
     const firstRecord = allRecords[0];
     const diasOperacao = firstRecord.dias_operacao;
     const faseAtividade = firstRecord.fase_atividade;
+    const efetivo = firstRecord.efetivo || 0; // NOVO: Carregar efetivo
     
     // 3. Buscar ID da OM Detentora
     let selectedOmIdForEdit: string | undefined = undefined;
@@ -898,6 +907,7 @@ const ClasseVIForm = () => {
       selectedOmId: selectedOmIdForEdit,
       organizacao: omDetentoraToEdit, // OM Detentora
       ug: ugDetentoraToEdit, // UG Detentora
+      efetivo: efetivo, // NOVO: Carregar efetivo
       dias_operacao: diasOperacao,
       itens: consolidatedItems,
     });
@@ -1037,6 +1047,7 @@ const ClasseVIForm = () => {
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
               
+              {/* PRIMEIRA LINHA: OM Detentora, UG Detentora, Efetivo */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>OM Detentora do Equipamento *</Label>
@@ -1055,6 +1066,22 @@ const ClasseVIForm = () => {
                 </div>
                 
                 <div className="space-y-2">
+                  <Label>Efetivo Empregado *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
+                    value={form.efetivo || ""}
+                    onChange={(e) => setForm({ ...form, efetivo: parseInt(e.target.value) || 0 })}
+                    placeholder="Ex: 100"
+                    onKeyDown={handleEnterToNextField}
+                  />
+                </div>
+              </div>
+              
+              {/* SEGUNDA LINHA: Dias de Atividade, Fase da Atividade (2 colunas) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
                   <Label>Dias de Atividade *</Label>
                   <Input
                     type="number"
@@ -1066,10 +1093,8 @@ const ClasseVIForm = () => {
                     onKeyDown={handleEnterToNextField}
                   />
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                
+                <div className="space-y-2 col-span-2">
                   <Label>Fase da Atividade *</Label>
                   <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                     <PopoverTrigger asChild>
@@ -1434,6 +1459,9 @@ const ClasseVIForm = () => {
                     const omName = omKey.split(' (')[0];
                     const ug = omKey.split(' (')[1].replace(')', '');
                     
+                    // Assumindo que o efetivo é o mesmo para todos os registros agrupados
+                    const efetivo = omRegistros[0].efetivo; 
+
                     return (
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
@@ -1461,7 +1489,7 @@ const ClasseVIForm = () => {
                                                         </h4>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Dias: {registro.dias_operacao} | Fases: {fases}
+                                                        Efetivo: {efetivo} | Dias: {registro.dias_operacao} | Fases: {fases}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
