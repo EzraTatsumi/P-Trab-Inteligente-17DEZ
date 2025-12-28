@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,36 +9,57 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  Package,
   Pencil,
   Trash2,
+  XCircle,
+  Check,
+  ChevronDown,
+  ChevronsUpDown,
   Sparkles,
+  AlertCircle,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
+import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
 import {
   formatCurrency,
+  formatNumber,
   parseInputToNumber,
   formatNumberForInput,
+  formatInputWithThousands,
   formatCurrencyInput,
   numberToRawDigits,
   formatCodug,
 } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Checkbox } from "@/components/ui/checkbox";
 import { TablesInsert } from "@/integrations/supabase/types";
 import { defaultClasseIIConfig } from "@/data/classeIIData";
+import { cn } from "@/lib/utils";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
+  getCategoryBadgeStyle,
+  getCategoryLabel,
+} from "@/lib/badgeUtils";
+import {
+  formatFasesParaTexto,
   generateClasseIIMemoriaCalculo,
   generateDetalhamento,
 } from "@/lib/classeIIUtils";
-import { ClasseIIFormHeader } from "@/components/classeII/ClasseIIFormHeader";
-import { ClasseIICategoryItems } from "@/components/classeII/ClasseIICategoryItems";
-import { ClasseIIFormSummary } from "@/components/classeII/ClasseIIFormSummary";
-import { ClasseIIMemoriaViewer } from "@/components/classeII/ClasseIIMemoriaViewer";
 
 type Categoria = "Equipamento Individual" | "Proteção Balística" | "Material de Estacionamento";
 
@@ -48,6 +69,9 @@ const CATEGORIAS: Categoria[] = [
   "Material de Estacionamento",
 ];
 
+// Opções fixas de fase de atividade
+const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
+
 interface ItemClasseII {
   item: string;
   quantidade: number;
@@ -56,39 +80,58 @@ interface ItemClasseII {
   memoria_customizada?: string | null;
 }
 
+interface FormDataClasseII {
+  selectedOmId?: string;
+  organizacao: string; // OM Detentora (Global)
+  ug: string; // UG Detentora (Global)
+  efetivo: number; // NOVO CAMPO
+  dias_operacao: number; // Global
+  itens: ItemClasseII[]; // All items across all categories
+  fase_atividade?: string; // Global
+}
+
 interface ClasseIIRegistro {
   id: string;
   organizacao: string; // OM de Destino do Recurso (ND 30/39)
   ug: string; // UG de Destino do Recurso (ND 30/39)
-  om_detentora: string; // OM Detentora (Source)
-  ug_detentora: string; // UG Detentora (Source)
+  // NOVOS CAMPOS DE DETENTORA
+  om_detentora?: string | null; // OM Detentora (Source)
+  ug_detentora?: string | null; // UG Detentora (Source)
+  // FIM NOVOS CAMPOS
   dias_operacao: number;
   categoria: string;
-  itens_equipamentos: ItemClasseII[];
+  itens_equipamentos: ItemClasseII[]; // Tipo corrigido
   valor_total: number;
   detalhamento: string;
   detalhamento_customizado?: string | null;
   fase_atividade?: string | null;
+  // NOVOS CAMPOS DO DB
   valor_nd_30: number;
   valor_nd_39: number;
-  efetivo: number;
+  efetivo: number; // Adicionado para refletir o DB
 }
 
 interface CategoryAllocation {
   total_valor: number;
-  nd_39_input: string;
-  nd_30_value: number;
-  nd_39_value: number;
+  nd_39_input: string; // User input string for ND 39 (Now stores formatted string for DB consistency)
+  nd_30_value: number; // Calculated ND 30 value
+  nd_39_value: number; // Calculated ND 39 value
+  // Destination fields (Per Category) - SAVED STATE
   om_destino_recurso: string;
   ug_destino_recurso: string;
   selectedOmDestinoId?: string;
 }
 
+// --- NOVOS TIPOS TEMPORÁRIOS (UNSAVED CHANGES) ---
 interface TempDestination {
     om: string;
     ug: string;
     id?: string;
 }
+const initialTempDestinations: Record<Categoria, TempDestination> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: { om: "", ug: "", id: undefined } }), {} as Record<Categoria, TempDestination>);
+const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, string>);
+// --- FIM NOVOS TIPOS TEMPORÁRIOS ---
+
 
 const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
     'Equipamento Individual': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
@@ -96,13 +139,12 @@ const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
     'Material de Estacionamento': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
 };
 
-const initialTempDestinations: Record<Categoria, TempDestination> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: { om: "", ug: "", id: undefined } }), {} as Record<Categoria, TempDestination>);
-const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, string>);
-
+// Função para comparar números de ponto flutuante com tolerância
 const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
     return Math.abs(a - b) < tolerance;
 };
 
+// Helper function to get the numeric ND 39 value from the temporary input digits
 const getTempND39NumericValue = (category: Categoria, tempInputs: Record<Categoria, string>): number => {
     const digits = tempInputs[category] || "";
     return formatCurrencyInput(digits).numericValue;
@@ -120,195 +162,62 @@ const ClasseIIForm = () => {
   
   const [editingId, setEditingId] = useState<string | null>(null);
   
-  // --- Global Form State (OM Detentora, Dias, Efetivo, Itens Consolidados) ---
-  const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
-  const [organizacao, setOrganizacao] = useState<string>("");
-  const [ug, setUg] = useState<string>("");
-  const [efetivo, setEfetivo] = useState<number>(0);
-  const [diasOperacao, setDiasOperacao] = useState<number>(0);
-  const [formItems, setFormItems] = useState<ItemClasseII[]>([]);
+  // Estados para edição de memória de cálculo
+  const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
+  const [memoriaEdit, setMemoriaEdit] = useState<string>("");
   
-  // --- Header State ---
+  const [form, setForm] = useState<FormDataClasseII>({
+    selectedOmId: undefined,
+    organizacao: "",
+    ug: "",
+    efetivo: 0, // NOVO: Inicialização
+    dias_operacao: 0,
+    itens: [],
+  });
+  
+  // NOVO ESTADO: Rastreia a alocação de ND por categoria (SAVED STATE)
+  const [categoryAllocations, setCategoryAllocations] = useState<Record<Categoria, CategoryAllocation>>(initialCategoryAllocations);
+  
+  // NOVO ESTADO: Lista de itens da categoria atual com quantidades editáveis
+  const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemClasseII[]>([]);
+  
+  // --- NOVOS ESTADOS TEMPORÁRIOS (UNSAVED CHANGES) ---
+  // Rastreia o input ND 39 (dígitos) temporário por categoria
+  const [tempND39Inputs, setTempND39Inputs] = useState<Record<Categoria, string>>(initialTempND39Inputs);
+  // Rastreia a OM de destino temporária por categoria
+  const [tempDestinations, setTempDestinations] = useState<Record<Categoria, TempDestination>>(initialTempDestinations);
+  // --- FIM NOVOS TIPOS TEMPORÁRIOS ---
+  
   const [fasesAtividade, setFasesAtividade] = useState<string[]>(["Execução"]);
   const [customFaseAtividade, setCustomFaseAtividade] = useState<string>("");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
-  // --- Allocation State (Saved) ---
-  const [categoryAllocations, setCategoryAllocations] = useState<Record<Categoria, CategoryAllocation>>(initialCategoryAllocations);
+  const { handleEnterToNextField } = useFormNavigation();
+  const formRef = useRef<HTMLDivElement>(null);
   
-  // --- Allocation State (Temporary/Unsaved) ---
-  const [tempND39Inputs, setTempND39Inputs] = useState<Record<Categoria, string>>(initialTempND39Inputs);
-  const [tempDestinations, setTempDestinations] = useState<Record<Categoria, TempDestination>>(initialTempDestinations);
-  
-  // --- Current Tab State ---
-  const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemClasseII[]>([]);
-
-  // --- Handlers for Header Component ---
-  const handleFaseChange = (fase: string, checked: boolean) => {
-    if (checked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
-    } else {
-      setFasesAtividade(prev => prev.filter(f => f !== fase));
-    }
-  };
-  
-  const handleOMChange = (omData: OMData | undefined) => {
-    if (omData) {
-      setSelectedOmId(omData.id);
-      setOrganizacao(omData.nome_om);
-      setUg(omData.codug_om);
-      
-      // Initialize temporary destination OM for all categories to the OM Detentora
-      const newTempDestinations = CATEGORIAS.reduce((acc, cat) => {
-          acc[cat] = {
-              om: omData.nome_om,
-              ug: omData.codug_om,
-              id: omData.id,
-          };
-          return acc;
-      }, {} as Record<Categoria, TempDestination>);
-      setTempDestinations(newTempDestinations);
-      
-    } else {
-      setSelectedOmId(undefined);
-      setOrganizacao("");
-      setUg("");
-      setTempDestinations(initialTempDestinations);
-    }
-  };
-  // --- End Handlers for Header Component ---
-
-  // --- Handlers for Category Items Component ---
-  const handleQuantityChange = (itemIndex: number, quantity: number) => {
-    const newItems = [...currentCategoryItems];
-    newItems[itemIndex].quantidade = Math.max(0, quantity);
-    setCurrentCategoryItems(newItems);
-  };
-  
-  const handleOMDestinoChange = (omData: OMData | undefined) => {
-    setTempDestinations(prev => ({
-        ...prev,
-        [selectedTab]: {
-            om: omData?.nome_om || "",
-            ug: omData?.codug_om || "",
-            id: omData?.id,
-        }
-    }));
-  };
-  
-  const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const rawValue = e.target.value;
-      const { digits } = formatCurrencyInput(rawValue);
-      setTempND39Inputs(prev => ({
-          ...prev,
-          [selectedTab]: digits
-      }));
-  };
-
-  const handleND39InputBlur = () => {
-      const numericInput = getTempND39NumericValue(selectedTab, tempND39Inputs);
-      const currentCategoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
-      const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, numericInput));
-      
-      const finalDigits = String(Math.round(nd39ValueTemp * 100));
-      setTempND39Inputs(prev => ({
-          ...prev,
-          [selectedTab]: finalDigits
-      }));
-  };
-  
-  const handleUpdateCategoryItems = () => {
-    if (!organizacao || ug === "" || diasOperacao <= 0) {
-        toast.error("Preencha a OM Detentora e os Dias de Operação antes de salvar itens.");
-        return;
-    }
-    
-    const categoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
-
-    const numericInput = getTempND39NumericValue(selectedTab, tempND39Inputs);
-    const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
-    const finalND30Value = categoryTotalValue - finalND39Value;
-    
-    if (categoryTotalValue > 0 && !areNumbersEqual(finalND30Value + finalND39Value, categoryTotalValue)) {
-        toast.error("Erro de cálculo: A soma de ND 30 e ND 39 deve ser igual ao Total da Categoria.");
-        return;
-    }
-    
-    const currentTempDest = tempDestinations[selectedTab];
-    if (categoryTotalValue > 0 && (!currentTempDest.om || !currentTempDest.ug)) {
-        toast.error("Selecione a OM de destino do recurso antes de salvar a alocação.");
-        return;
-    }
-
-    const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
-    const itemsFromOtherCategories = formItems.filter(item => item.categoria !== selectedTab);
-    const newFormItems = [...itemsFromOtherCategories, ...itemsToKeep];
-
-    setCategoryAllocations(prev => ({
-        ...prev,
-        [selectedTab]: {
-            ...prev[selectedTab],
-            total_valor: categoryTotalValue,
-            nd_39_input: formatNumberForInput(finalND39Value, 2),
-            nd_30_value: finalND30Value,
-            nd_39_value: finalND39Value,
-            om_destino_recurso: currentTempDest.om,
-            ug_destino_recurso: currentTempDest.ug,
-            selectedOmDestinoId: currentTempDest.id,
-        }
-    }));
-
-    const finalDigits = String(Math.round(finalND39Value * 100));
-    setTempND39Inputs(prev => ({
-        ...prev,
-        [selectedTab]: finalDigits
-    }));
-
-    setFormItems(newFormItems);
-    toast.success(`Itens e alocação de ND para ${getCategoryLabel(selectedTab)} atualizados!`);
-  };
-  // --- End Handlers for Category Items Component ---
-
-  // --- Global Calculations ---
-  const currentCategoryTotalValue = useMemo(() => {
-      return currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
-  }, [currentCategoryItems, diasOperacao]);
-  
-  const nd39NumericValue = useMemo(() => getTempND39NumericValue(selectedTab, tempND39Inputs), [selectedTab, tempND39Inputs]);
-  const nd39ValueTemp = useMemo(() => {
-      return Math.min(currentCategoryTotalValue, Math.max(0, nd39NumericValue));
-  }, [currentCategoryTotalValue, nd39NumericValue]);
-  const nd30ValueTemp = useMemo(() => currentCategoryTotalValue - nd39ValueTemp, [currentCategoryTotalValue, nd39ValueTemp]);
-  
-  const formattedND39Value = useMemo(() => {
-      const digits = tempND39Inputs[selectedTab] || "";
-      return formatCurrencyInput(digits).formatted;
-  }, [selectedTab, tempND39Inputs]);
-  
-  const getCurrentFaseFinalString = useMemo(() => {
-    let fasesFinais = [...fasesAtividade];
-    if (customFaseAtividade.trim()) { fasesFinais = [...fasesFinais, customFaseAtividade.trim()]; }
-    return fasesFinais.filter(f => f).join('; ');
-  }, [fasesAtividade, customFaseAtividade]);
-  
+  // Helper function to check if a category is dirty (needs saving)
   const isCategoryAllocationDirty = useCallback((
       category: Categoria, 
-      currentTotal: number, 
+      currentTotal: number, // Total calculated from the items being checked (either saved or current tab items)
       allocation: CategoryAllocation, 
       tempInputs: Record<Categoria, string>, 
       tempDestinations: Record<Categoria, TempDestination>
   ): boolean => {
+      // 1. Check for quantity/item change (total value mismatch)
       if (!areNumbersEqual(allocation.total_valor, currentTotal)) {
           return true;
       }
       
+      // 2. Check for ND 39 allocation change
       const tempND39Value = getTempND39NumericValue(category, tempInputs);
       if (!areNumbersEqual(tempND39Value, allocation.nd_39_value)) {
           return true;
       }
       
+      // 3. Check for Destination OM change
       const tempDest = tempDestinations[category];
       if (allocation.om_destino_recurso !== tempDest.om || allocation.ug_destino_recurso !== tempDest.ug) {
+          // Only consider it dirty if the category has items (i.e., total > 0)
           if (currentTotal > 0) {
               return true;
           }
@@ -316,15 +225,118 @@ const ClasseIIForm = () => {
       
       return false;
   }, []);
-  // --- End Global Calculations ---
 
-  // --- Data Fetching and Initialization ---
+
+  useEffect(() => {
+    if (!ptrabId) {
+      toast.error("ID do P Trab não encontrado");
+      navigate("/ptrab");
+      return;
+    }
+    loadDiretrizes();
+    fetchRegistros();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [ptrabId]);
+  
+  // Efeito para sincronizar os estados temporários (ND 39 Input e OM Destino) ao mudar de aba ou carregar/resetar o formulário.
+  useEffect(() => {
+      const savedAllocation = categoryAllocations[selectedTab];
+      
+      // 1. Sincronizar ND 39 Input (dígitos)
+      // O valor salvo em nd_39_input é uma string formatada (ex: "1.234,56"). Precisamos convertê-lo para dígitos brutos.
+      const numericValue = parseInputToNumber(savedAllocation.nd_39_input);
+      const digits = String(Math.round(numericValue * 100));
+      
+      setTempND39Inputs(prev => ({
+          ...prev,
+          [selectedTab]: digits
+      }));
+      
+      // 2. Sincronizar OM Destino
+      if (savedAllocation.om_destino_recurso) {
+          setTempDestinations(prev => ({
+              ...prev,
+              [selectedTab]: {
+                  om: savedAllocation.om_destino_recurso,
+                  ug: savedAllocation.ug_destino_recurso,
+                  id: savedAllocation.selectedOmDestinoId,
+              }
+          }));
+      } else if (form.organizacao) {
+          // Se não houver alocação salva, mas houver OM Detentora, use a Detentora como padrão temporário
+          setTempDestinations(prev => ({
+              ...prev,
+              [selectedTab]: {
+                  om: form.organizacao,
+                  ug: form.ug,
+                  id: form.selectedOmId,
+              }
+          }));
+      } else {
+          // Se não houver OM Detentora, limpa o temporário
+          setTempDestinations(prev => ({
+              ...prev,
+              [selectedTab]: { om: "", ug: "", id: undefined }
+          }));
+      }
+      
+  }, [selectedTab, categoryAllocations, form.organizacao, form.ug, form.selectedOmId]);
+  
+  // Efeito para gerenciar a lista de itens da categoria atual
+  useEffect(() => {
+    // Só carrega se as diretrizes estiverem prontas E (a OM estiver selecionada OU estivermos em modo de visualização/sem OM)
+    if (diretrizes.length > 0) {
+        // 1. Obter todos os itens disponíveis para a aba atual
+        const availableItems = diretrizes
+            .filter(d => d.categoria === selectedTab)
+            .map(d => ({
+                item: d.item,
+                quantidade: 0, // Quantidade padrão
+                valor_mnt_dia: Number(d.valor_mnt_dia),
+                categoria: d.categoria as Categoria,
+                memoria_customizada: null,
+            }));
+
+        // 2. Mapear itens existentes no formulário principal para a categoria atual
+        const existingItemsMap = new Map<string, ItemClasseII>();
+        // Filtra os itens do form.itens que pertencem à aba atual
+        form.itens.filter(i => i.categoria === selectedTab).forEach(item => {
+            existingItemsMap.set(item.item, item);
+        });
+
+        // 3. Mesclar: usar o item existente (com quantidade e memória) ou o item disponível (com quantidade 0)
+        const mergedItems = availableItems.map(availableItem => {
+            const existing = existingItemsMap.get(availableItem.item);
+            // Se existir, retorna o item com a quantidade e dados do DB. Se não, retorna o item da diretriz (quantidade 0).
+            return existing || availableItem;
+        });
+
+        setCurrentCategoryItems(mergedItems);
+    } else {
+        setCurrentCategoryItems([]);
+    }
+  }, [selectedTab, diretrizes, form.itens, form.organizacao, form.dias_operacao, form.efetivo]);
+
+  // MEMO: Agrupa os itens do formulário por categoria para exibição consolidada
+  const itensAgrupadosPorCategoria = useMemo(() => {
+    return form.itens.reduce((acc, item) => {
+      if (!acc[item.categoria]) {
+        acc[item.categoria] = [];
+      }
+      acc[item.categoria].push(item);
+      return acc;
+    }, {} as Record<Categoria, ItemClasseII[]>);
+  }, [form.itens]);
+  
+
   const loadDiretrizes = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } = {} } = await supabase.auth.getUser();
       if (!user) return;
 
       let anoReferencia: number | null = null;
+
+      // 1. Tentar buscar o ano padrão do perfil do usuário
       const { data: profileData } = await supabase
         .from("profiles")
         .select("default_diretriz_year")
@@ -335,6 +347,7 @@ const ClasseIIForm = () => {
           anoReferencia = profileData.default_diretriz_year;
       }
 
+      // 2. Se não houver ano padrão, buscar o ano mais recente na tabela de diretrizes
       if (!anoReferencia) {
           const { data: diretrizCusteio } = await supabase
             .from("diretrizes_custeio")
@@ -350,17 +363,19 @@ const ClasseIIForm = () => {
       }
       
       if (!anoReferencia) {
+        toast.warning(`Diretriz de Custeio não encontrada. Usando valores padrão.`);
         setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
         return;
       }
 
+      // 3. Buscar diretrizes de Classe II usando o ano de referência encontrado
       const { data: classeIIData, error } = await supabase
         .from("diretrizes_classe_ii")
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", anoReferencia)
         .eq("ativo", true)
-        .in("categoria", CATEGORIAS);
+        .in("categoria", CATEGORIAS); // FILTRO ADICIONADO AQUI
 
       if (error) throw error;
 
@@ -368,11 +383,13 @@ const ClasseIIForm = () => {
         setDiretrizes((classeIIData || []) as DiretrizClasseII[]);
       } else {
         setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
+        toast.warning(`Itens de Classe II não configurados para o ano ${anoReferencia}. Usando valores padrão.`);
       }
       
     } catch (error) {
       console.error("Erro ao carregar diretrizes:", error);
       setDiretrizes(defaultClasseIIConfig as DiretrizClasseII[]);
+      toast.error("Erro ao carregar diretrizes. Usando valores padrão.");
     }
   };
 
@@ -381,11 +398,11 @@ const ClasseIIForm = () => {
     
     const { data, error } = await supabase
       .from("classe_ii_registros")
-      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, efetivo, om_detentora, ug_detentora")
+      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, efetivo, om_detentora, ug_detentora") // NOVO: Selecionar campos da Detentora
       .eq("p_trab_id", ptrabId)
-      .in("categoria", CATEGORIAS)
-      .order("om_detentora", { ascending: true })
-      .order("categoria", { ascending: true });
+      .in("categoria", CATEGORIAS) // FILTRO ADICIONADO AQUI
+      .order("organizacao", { ascending: true }) // Ordenar por OM
+      .order("categoria", { ascending: true }); // E depois por categoria
 
     if (error) {
       toast.error("Erro ao carregar registros");
@@ -393,19 +410,17 @@ const ClasseIIForm = () => {
       return;
     }
 
+    // A edição agora é feita por registro (que representa uma categoria)
     const uniqueRecordsMap = new Map<string, ClasseIIRegistro>();
     (data || []).forEach(r => {
-        const omDetentora = r.om_detentora || r.organizacao;
-        const ugDetentora = r.ug_detentora || r.ug;
-        const key = `${omDetentora}-${ugDetentora}-${r.categoria}`; 
+        // Chave única por OM de destino E Categoria
+        const key = `${r.organizacao}-${r.ug}-${r.categoria}`; 
         const record = {
             ...r,
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseII[],
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
             efetivo: r.efetivo || 0, 
-            om_detentora: omDetentora,
-            ug_detentora: ugDetentora,
         } as ClasseIIRegistro;
         uniqueRecordsMap.set(key, record);
     });
@@ -413,243 +428,218 @@ const ClasseIIForm = () => {
     setRegistros(Array.from(uniqueRecordsMap.values()));
   };
 
-  useEffect(() => {
-    if (!ptrabId) {
-      toast.error("ID do P Trab não encontrado");
-      navigate("/ptrab");
-      return;
-    }
-    loadDiretrizes();
-    fetchRegistros();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [ptrabId]);
-  
-  // Efeito para sincronizar itens da aba atual e alocações temporárias
-  useEffect(() => {
-    // 1. Sincronizar itens da aba atual
-    if (diretrizes.length > 0) {
-        const availableItems = diretrizes
-            .filter(d => d.categoria === selectedTab)
-            .map(d => ({
-                item: d.item,
-                quantidade: 0,
-                valor_mnt_dia: Number(d.valor_mnt_dia),
-                categoria: d.categoria as Categoria,
-                memoria_customizada: null,
-            }));
-
-        const existingItemsMap = new Map<string, ItemClasseII>();
-        formItems.filter(i => i.categoria === selectedTab).forEach(item => {
-            existingItemsMap.set(item.item, item);
-        });
-
-        const mergedItems = availableItems.map(availableItem => {
-            const existing = existingItemsMap.get(availableItem.item);
-            return existing || availableItem;
-        });
-
-        setCurrentCategoryItems(mergedItems);
-    } else {
-        setCurrentCategoryItems([]);
-    }
-    
-    // 2. Sincronizar alocações temporárias (ND 39 Input e OM Destino)
-    const savedAllocation = categoryAllocations[selectedTab];
-    
-    const numericValue = parseInputToNumber(savedAllocation.nd_39_input);
-    const digits = String(Math.round(numericValue * 100));
-    
-    setTempND39Inputs(prev => ({
-        ...prev,
-        [selectedTab]: digits
-    }));
-    
-    if (savedAllocation.om_destino_recurso) {
-        setTempDestinations(prev => ({
-            ...prev,
-            [selectedTab]: {
-                om: savedAllocation.om_destino_recurso,
-                ug: savedAllocation.ug_destino_recurso,
-                id: savedAllocation.selectedOmDestinoId,
-            }
-        }));
-    } else if (organizacao) {
-        setTempDestinations(prev => ({
-            ...prev,
-            [selectedTab]: {
-                om: organizacao,
-                ug: ug,
-                id: selectedOmId,
-            }
-        }));
-    } else {
-        setTempDestinations(prev => ({
-            ...prev,
-            [selectedTab]: { om: "", ug: "", id: undefined }
-        }));
-    }
-      
-  }, [selectedTab, diretrizes, formItems, categoryAllocations, organizacao, ug, selectedOmId]);
-  // --- End Data Fetching and Initialization ---
-
-  // --- Form Actions ---
   const resetFormFields = () => {
     setEditingId(null);
-    setSelectedOmId(undefined);
-    setOrganizacao("");
-    setUg("");
-    setEfetivo(0);
-    setDiasOperacao(0);
-    setFormItems([]);
-    setCategoryAllocations(initialCategoryAllocations);
-    setTempND39Inputs(initialTempND39Inputs);
-    setTempDestinations(initialTempDestinations);
+    setForm({
+      selectedOmId: undefined,
+      organizacao: "",
+      ug: "",
+      efetivo: 0, // NOVO: Reset
+      dias_operacao: 0,
+      itens: [],
+    });
+    
+    setCategoryAllocations(initialCategoryAllocations); // Reset allocations
+    setTempND39Inputs(initialTempND39Inputs); // Reset temporary ND 39 inputs
+    setTempDestinations(initialTempDestinations); // Reset temporary destination OMs
+    
     setCurrentCategoryItems([]);
+    
     setFasesAtividade(["Execução"]);
     setCustomFaseAtividade("");
   };
 
-  const handleEditarRegistro = async (registro: ClasseIIRegistro) => {
-    setLoading(true);
-    resetFormFields();
-    
-    const omDetentoraToEdit = registro.om_detentora;
-    const ugDetentoraToEdit = registro.ug_detentora;
-    const globalEfetivo = Number(registro.efetivo || 0);
-    const globalDiasOperacao = Number(registro.dias_operacao || 0);
-    const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
-    
-    let selectedOmIdForEdit: string | undefined = undefined;
-    try {
-        const { data: omData } = await supabase
-            .from('organizacoes_militares')
-            .select('id')
-            .eq('nome_om', omDetentoraToEdit)
-            .eq('codug_om', ugDetentoraToEdit)
-            .maybeSingle();
-        selectedOmIdForEdit = omData?.id;
-    } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
-    
-    const { data: recordsForDetentora, error: fetchError } = await supabase
-        .from("classe_ii_registros")
-        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo, om_detentora, ug_detentora, dias_operacao, fase_atividade, organizacao, ug")
-        .eq("p_trab_id", ptrabId)
-        .eq("om_detentora", omDetentoraToEdit)
-        .eq("ug_detentora", ugDetentoraToEdit)
-        .in("categoria", CATEGORIAS);
-        
-    if (fetchError) {
-        toast.error("Erro ao carregar todos os registros para edição.");
-        setLoading(false);
+  const handleOMChange = (omData: OMData | undefined) => {
+    if (omData) {
+      setForm({ 
+        ...form, 
+        selectedOmId: omData.id, 
+        organizacao: omData.nome_om, 
+        ug: omData.codug_om,
+      });
+      
+      // Initialize temporary destination OM for all categories to the OM Detentora
+      const newTempDestinations = CATEGORIAS.reduce((acc, cat) => {
+          acc[cat] = {
+              om: omData.nome_om,
+              ug: omData.codug_om,
+              id: omData.id,
+          };
+          return acc;
+      }, {} as Record<Categoria, TempDestination>);
+      setTempDestinations(newTempDestinations);
+      
+    } else {
+      setForm({ 
+        ...form, 
+        selectedOmId: undefined, 
+        organizacao: "", 
+        ug: "",
+      });
+      
+      // Clear temporary destination OM for all categories
+      setTempDestinations(initialTempDestinations);
+    }
+  };
+  
+  const handleOMDestinoChange = (omData: OMData | undefined) => {
+    setTempDestinations(prev => ({
+        ...prev,
+        [selectedTab]: {
+            om: omData?.nome_om || "",
+            ug: omData?.codug_om || "",
+            id: omData?.id,
+        }
+    }));
+  };
+
+  const handleFaseChange = (fase: string, checked: boolean) => {
+    if (checked) {
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
+    } else {
+      setFasesAtividade(prev => prev.filter(f => f !== fase));
+    }
+  };
+
+  // NOVO HANDLER: Atualiza a quantidade de um item na lista expandida
+  const handleQuantityChange = (itemIndex: number, quantity: number) => {
+    const newItems = [...currentCategoryItems];
+    // Garante que a quantidade não seja negativa
+    newItems[itemIndex].quantidade = Math.max(0, quantity);
+    setCurrentCategoryItems(newItems);
+  };
+
+  // MEMO: Calcula o valor numérico do ND 39 a partir do input de dígitos
+  const currentND39InputDigits = tempND39Inputs[selectedTab] || ""; // Use temporary state for current tab
+  
+  const nd39NumericValue = useMemo(() => {
+    return formatCurrencyInput(currentND39InputDigits).numericValue;
+  }, [currentND39InputDigits]);
+  
+  // ND Calculation and Input Handlers (Temporary for current tab)
+  const currentCategoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+  const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, nd39NumericValue));
+  const nd30ValueTemp = currentCategoryTotalValue - nd39ValueTemp;
+
+  const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const rawValue = e.target.value;
+      const { digits } = formatCurrencyInput(rawValue);
+      // Update temporary state for the selected tab
+      setTempND39Inputs(prev => ({
+          ...prev,
+          [selectedTab]: digits
+      }));
+  };
+
+  const handleND39InputBlur = () => {
+      // Use the calculated final value (nd39ValueTemp) and convert it back to digits for storage
+      const finalDigits = String(Math.round(nd39ValueTemp * 100));
+      setTempND39Inputs(prev => ({
+          ...prev,
+          [selectedTab]: finalDigits
+      }));
+  };
+
+  // NOVO HANDLER: Salva os itens da lista expandida para o form.itens principal
+  const handleUpdateCategoryItems = () => {
+    if (!form.organizacao || form.ug === "" || form.dias_operacao <= 0) {
+        toast.error("Preencha a OM Detentora e os Dias de Operação antes de salvar itens.");
         return;
     }
     
-    let consolidatedItems: ItemClasseII[] = [];
-    let newAllocations = { ...initialCategoryAllocations };
-    let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
-    let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
+    // 1. Calculate total value for items currently in the tab
+    const categoryTotalValue = currentCategoryTotalValue;
 
-    for (const r of (recordsForDetentora || [])) {
-        const category = r.categoria as Categoria;
-
-        const items: ItemClasseII[] = (r.itens_equipamentos as any[] || []).map(item => ({
-            item: item.item,
-            quantidade: Number(item.quantidade || 0),
-            valor_mnt_dia: Number(item.valor_mnt_dia || 0),
-            categoria: item.categoria,
-            memoria_customizada: item.memoria_customizada || null,
-        }));
-
-        consolidatedItems = consolidatedItems.concat(items);
-
-        let selectedOmDestinoId: string | undefined = undefined;
-        if (r.organizacao && r.ug) {
-            try {
-                const { data: omData } = await supabase
-                    .from('organizacoes_militares')
-                    .select('id')
-                    .eq('nome_om', r.organizacao)
-                    .eq('codug_om', r.ug)
-                    .maybeSingle();
-                selectedOmDestinoId = omData?.id;
-            } catch (e) { console.error(`Erro ao buscar OM Destino ID para ${category}:`, e); }
-        }
-
-        if (newAllocations[category]) {
-            const currentDiasOperacao = globalDiasOperacao;
-            const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * currentDiasOperacao), 0);
-
-            newAllocations[category] = {
-                total_valor: totalValor,
-                nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
-                nd_30_value: Number(r.valor_nd_30),
-                nd_39_value: Number(r.valor_nd_39),
-                om_destino_recurso: r.organizacao,
-                ug_destino_recurso: r.ug,
-                selectedOmDestinoId: selectedOmDestinoId,
-            };
-
-            const savedND39Value = Number(r.valor_nd_39);
-            const savedDigits = String(Math.round(savedND39Value * 100));
-            tempND39Load[category] = savedDigits;
-
-            tempDestinationsLoad[category] = {
-                om: r.organizacao,
-                ug: r.ug,
-                id: selectedOmDestinoId,
-            };
-        }
+    // 2. Calculate final ND split for this category based on current input
+    const numericInput = nd39NumericValue; // Usa o valor numérico do input
+    const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
+    const finalND30Value = categoryTotalValue - finalND39Value;
+    
+    if (categoryTotalValue > 0 && !areNumbersEqual(finalND30Value + finalND39Value, categoryTotalValue)) {
+        toast.error("Erro de cálculo: A soma de ND 30 e ND 39 deve ser igual ao Total da Categoria.");
+        return;
     }
     
-    setEditingId(registro.id); 
-    setSelectedOmId(selectedOmIdForEdit);
-    setOrganizacao(omDetentoraToEdit);
-    setUg(ugDetentoraToEdit);
-    setEfetivo(globalEfetivo); 
-    setDiasOperacao(globalDiasOperacao); 
-    setFormItems(consolidatedItems);
-    
-    setCategoryAllocations(newAllocations);
-    setTempND39Inputs(tempND39Load); 
-    setTempDestinations(tempDestinationsLoad);
-    
-    setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
-    setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
-    
-    if (consolidatedItems.length > 0) {
-        setSelectedTab(registro.categoria as Categoria);
-    } else {
-        setSelectedTab(CATEGORIAS[0]);
+    // Check against temporary destination state
+    const currentTempDest = tempDestinations[selectedTab];
+    if (categoryTotalValue > 0 && (!currentTempDest.om || !currentTempDest.ug)) {
+        toast.error("Selecione a OM de destino do recurso antes de salvar a alocação.");
+        return;
     }
-    
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setLoading(false);
+
+    // 3. Itens válidos da categoria atual (quantidade > 0)
+    const itemsToKeep = currentCategoryItems.filter(item => item.quantidade > 0);
+
+    // 4. Itens de outras categorias no formulário principal
+    // CORREÇÃO AQUI: Filtra APENAS os itens da categoria atual (selectedTab) para removê-los, mantendo todos os outros itens (de outras categorias ou classes).
+    const itemsFromOtherCategories = form.itens.filter(item => item.categoria !== selectedTab);
+
+    // 5. Mesclar as listas
+    const newFormItems = [...itemsFromOtherCategories, ...itemsToKeep];
+
+    // 6. Update allocation state for the current category (SAVED state)
+    setCategoryAllocations(prev => ({
+        ...prev,
+        [selectedTab]: {
+            ...prev[selectedTab], // Keep existing destination fields
+            total_valor: categoryTotalValue,
+            nd_39_input: formatNumberForInput(finalND39Value, 2), // Store the final formatted input (for DB consistency)
+            nd_30_value: finalND30Value,
+            nd_39_value: finalND39Value,
+            // Save temporary destination OM/UG
+            om_destino_recurso: currentTempDest.om,
+            ug_destino_recurso: currentTempDest.ug,
+            selectedOmDestinoId: currentTempDest.id,
+        }
+    }));
+
+    // 7. Ensure the temporary input state is synchronized with the saved value after saving
+    const finalDigits = String(Math.round(finalND39Value * 100));
+    setTempND39Inputs(prev => ({
+        ...prev,
+        [selectedTab]: finalDigits
+    }));
+
+    setForm({ ...form, itens: newFormItems });
+    toast.success(`Itens e alocação de ND para ${getCategoryLabel(selectedTab)} atualizados!`);
   };
+  
+  // Lógica de cálculo de alocação (Global Totals)
+  const valorTotalForm = form.itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+
+  const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_30_value, 0);
+  const totalND39Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_39_value, 0);
+
+  const totalAlocado = totalND30Final + totalND39Final;
+  
+  const isTotalAlocadoCorrect = areNumbersEqual(valorTotalForm, totalAlocado);
+  
+  // Calcula o valor formatado para exibição do ND 39
+  const { formatted: formattedND39Value } = formatCurrencyInput(currentND39InputDigits);
+
 
   const handleSalvarRegistros = async () => {
     if (!ptrabId) return;
-    if (!organizacao || ug === "") { toast.error("Selecione uma OM detentora"); return; }
-    if (diasOperacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
-    if (efetivo <= 0) { toast.error("Efetivo deve ser maior que zero"); return; }
-    if (formItems.length === 0) { toast.error("Adicione pelo menos um item"); return; }
+    if (!form.organizacao || form.ug === "") { toast.error("Selecione uma OM detentora"); return; }
+    if (form.dias_operacao <= 0) { toast.error("Dias de operação deve ser maior que zero"); return; }
+    if (form.efetivo <= 0) { toast.error("Efetivo deve ser maior que zero"); return; }
+    if (form.itens.length === 0) { toast.error("Adicione pelo menos um item"); return; }
     
-    const faseFinalString = getCurrentFaseFinalString;
+    let fasesFinais = [...fasesAtividade];
+    if (customFaseAtividade.trim()) { fasesFinais = [...fasesFinais, customFaseAtividade.trim()]; }
+    const faseFinalString = fasesFinais.filter(f => f).join('; ');
     if (!faseFinalString) { toast.error("Selecione ou digite pelo menos uma Fase da Atividade."); return; }
     
-    const valorTotalForm = formItems.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
-    const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_30_value, 0);
-    const totalND39Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_39_value, 0);
-    const totalAlocado = totalND30Final + totalND39Final;
-    
-    if (!areNumbersEqual(valorTotalForm, totalAlocado)) {
+    if (!isTotalAlocadoCorrect) {
         toast.error("O valor total dos itens não corresponde ao total alocado. Clique em 'Salvar Itens da Categoria' em todas as abas ativas.");
         return;
     }
 
     setLoading(true);
     
-    const itemsByActiveCategory = formItems.reduce((acc, item) => {
-        if (item.quantidade > 0 && CATEGORIAS.includes(item.categoria as Categoria)) {
+    // 1. Agrupar itens por categoria que possuem quantidade > 0
+    const itemsByActiveCategory = form.itens.reduce((acc, item) => {
+        if (item.quantidade > 0 && CATEGORIAS.includes(item.categoria as Categoria)) { // FILTRO ADICIONADO AQUI
             if (!acc[item.categoria]) {
                 acc[item.categoria] = [];
             }
@@ -668,6 +658,7 @@ const ClasseIIForm = () => {
     
     const registrosParaSalvar: TablesInsert<'classe_ii_registros'>[] = [];
     
+    // 2. Iterar sobre as categorias ativas e criar um registro para cada
     for (const categoria of categoriesToSave) {
         const itens = itemsByActiveCategory[categoria];
         const allocation = categoryAllocations[categoria];
@@ -678,8 +669,9 @@ const ClasseIIForm = () => {
             return;
         }
         
-        const valorTotalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
+        const valorTotalCategoria = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
         
+        // Final check: Ensure total allocated matches total calculated value for this category
         if (!areNumbersEqual(valorTotalCategoria, (allocation.nd_30_value + allocation.nd_39_value))) {
             toast.error(`Erro de alocação na categoria ${getCategoryLabel(categoria)}: O valor total dos itens (${formatCurrency(valorTotalCategoria)}) não corresponde ao total alocado (${formatCurrency(allocation.nd_30_value + allocation.nd_39_value)}). Salve a categoria novamente.`);
             setLoading(false);
@@ -688,25 +680,25 @@ const ClasseIIForm = () => {
         
         const detalhamento = generateDetalhamento(
             itens, 
-            diasOperacao, 
-            organizacao,
-            ug,
+            form.dias_operacao, 
+            form.organizacao, // OM Detentora
+            form.ug, // UG Detentora
             faseFinalString,
-            allocation.om_destino_recurso,
-            allocation.ug_destino_recurso,
+            allocation.om_destino_recurso, // OM de Destino do Recurso (ND 30/39)
+            allocation.ug_destino_recurso, // UG de Destino do Recurso (ND 30/39)
             allocation.nd_30_value,
             allocation.nd_39_value,
-            efetivo
+            form.efetivo // PASSANDO O EFETIVO
         );
         
         const registro: TablesInsert<'classe_ii_registros'> = {
             p_trab_id: ptrabId,
-            organizacao: allocation.om_destino_recurso,
-            ug: allocation.ug_destino_recurso,
-            om_detentora: organizacao,
-            ug_detentora: ug,
-            dias_operacao: diasOperacao,
-            categoria: categoria,
+            organizacao: allocation.om_destino_recurso, // OM de destino do recurso (ND 30/39)
+            ug: allocation.ug_destino_recurso, // UG de destino do recurso
+            om_detentora: form.organizacao, // NOVO: OM Detentora
+            ug_detentora: form.ug, // NOVO: UG Detentora
+            dias_operacao: form.dias_operacao,
+            categoria: categoria, // Salvar a categoria como o tipo de registro
             itens_equipamentos: itens as any,
             valor_total: valorTotalCategoria,
             detalhamento: detalhamento,
@@ -714,21 +706,24 @@ const ClasseIIForm = () => {
             detalhamento_customizado: null,
             valor_nd_30: allocation.nd_30_value,
             valor_nd_39: allocation.nd_39_value,
-            efetivo: efetivo,
+            efetivo: form.efetivo, // INCLUINDO O EFETIVO AQUI
         };
         registrosParaSalvar.push(registro);
     }
 
     try {
+      // 3. Deletar APENAS registros de Classe II existentes para o PTrab
+      //    que pertencem à OM Detentora que está sendo salva/editada.
       const { error: deleteError } = await supabase
         .from("classe_ii_registros")
         .delete()
         .eq("p_trab_id", ptrabId)
-        .eq("om_detentora", organizacao)
-        .eq("ug_detentora", ug)
+        .eq("om_detentora", form.organizacao) // FILTRAR PELA OM DETENTORA
+        .eq("ug_detentora", form.ug)         // FILTRAR PELA UG DETENTORA
         .in("categoria", CATEGORIAS); 
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
+      // 4. Inserir os novos registros (um por categoria ativa)
       const { error: insertError } = await supabase.from("classe_ii_registros").insert(registrosParaSalvar);
       if (insertError) throw insertError;
       
@@ -744,18 +739,203 @@ const ClasseIIForm = () => {
     }
   };
 
-  const handleSalvarMemoriaCustomizada = async (registroId: string, memoria: string) => {
+  const handleEditarRegistro = async (registro: ClasseIIRegistro) => {
+    setLoading(true);
+    resetFormFields();
+    
+    // 1. Determine the scope of the edit (OM Detentora)
+    const omDetentoraName = registro.om_detentora || registro.organizacao;
+    const ugDetentoraCode = registro.ug_detentora || registro.ug;
+    
+    // --- Extract Global Parameters from the input record ---
+    const globalEfetivo = Number(registro.efetivo || 0);
+    const globalDiasOperacao = Number(registro.dias_operacao || 0);
+    const fasesSalvas = (registro.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+    // -------------------------------------------------------
+    
+    // 2. Fetch OM Detentora ID first
+    let selectedOmIdForEdit: string | undefined = undefined;
+    if (omDetentoraName) {
+        try {
+            const { data: omData } = await supabase
+                .from('organizacoes_militares')
+                .select('id')
+                .eq('nome_om', omDetentoraName)
+                .eq('codug_om', ugDetentoraCode)
+                .maybeSingle();
+            selectedOmIdForEdit = omData?.id;
+        } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
+    }
+    
+    // 3. Fetch ALL records belonging to this specific OM Detentora/UG Detentora for this PTrab
+    const { data: recordsForDetentora, error: fetchError } = await supabase
+        .from("classe_ii_registros")
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, efetivo, om_detentora, ug_detentora, dias_operacao, fase_atividade, organizacao, ug")
+        .eq("p_trab_id", ptrabId)
+        .eq("om_detentora", omDetentoraName) // Filtrar pela Detentora
+        .eq("ug_detentora", ugDetentoraCode) // Filtrar pela Detentora
+        .in("categoria", CATEGORIAS);
+        
+    if (fetchError) {
+        toast.error("Erro ao carregar todos os registros para edição.");
+        setLoading(false);
+        return;
+    }
+    
+    // 4. Consolidar dados (Usando for...of para permitir await)
+    let consolidatedItems: ItemClasseII[] = [];
+    let newAllocations = { ...initialCategoryAllocations };
+    let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
+    let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
+
+    for (const r of (recordsForDetentora || [])) {
+        const category = r.categoria as Categoria;
+
+        // Mapeamento explícito para garantir a estrutura ItemClasseII
+        const items: ItemClasseII[] = (r.itens_equipamentos as any[] || []).map(item => ({
+            item: item.item,
+            quantidade: Number(item.quantidade || 0),
+            valor_mnt_dia: Number(item.valor_mnt_dia || 0),
+            categoria: item.categoria,
+            memoria_customizada: item.memoria_customizada || null,
+        }));
+
+        // Adicionar itens ao array consolidado
+        consolidatedItems = consolidatedItems.concat(items);
+
+        // Buscar ID da OM de Destino para este registro (r.organizacao/r.ug)
+        let selectedOmDestinoId: string | undefined = undefined;
+        if (r.organizacao && r.ug) {
+            try {
+                const { data: omData } = await supabase
+                    .from('organizacoes_militares')
+                    .select('id')
+                    .eq('nome_om', r.organizacao)
+                    .eq('codug_om', r.ug)
+                    .maybeSingle();
+                selectedOmDestinoId = omData?.id;
+            } catch (e) { console.error(`Erro ao buscar OM Destino ID para ${category}:`, e); }
+        }
+
+        // Preencher a alocação para a categoria
+        if (newAllocations[category]) {
+            const currentDiasOperacao = globalDiasOperacao;
+            const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * currentDiasOperacao), 0);
+
+            newAllocations[category] = {
+                total_valor: totalValor,
+                nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
+                nd_30_value: Number(r.valor_nd_30),
+                nd_39_value: Number(r.valor_nd_39),
+                om_destino_recurso: r.organizacao,
+                ug_destino_recurso: r.ug,
+                selectedOmDestinoId: selectedOmDestinoId,
+            };
+
+            // Populate temporary input state with saved ND 39 value (in digits)
+            const savedND39Value = Number(r.valor_nd_39);
+            const savedDigits = String(Math.round(savedND39Value * 100));
+            tempND39Load[category] = savedDigits;
+
+            // Populate temporary destination state
+            tempDestinationsLoad[category] = {
+                om: r.organizacao,
+                ug: r.ug,
+                id: selectedOmDestinoId,
+            };
+        }
+    }
+    
+    // 5. Preencher o estado (Usando os valores globais extraídos no início)
+    setEditingId(registro.id); 
+    setForm({
+      selectedOmId: selectedOmIdForEdit,
+      organizacao: omDetentoraName,
+      ug: ugDetentoraCode,
+      efetivo: globalEfetivo, 
+      dias_operacao: globalDiasOperacao, 
+      itens: consolidatedItems, // CHAVE: Preencher form.itens com todos os itens consolidados
+    });
+    
+    setCategoryAllocations(newAllocations);
+    setTempND39Inputs(tempND39Load); 
+    setTempDestinations(tempDestinationsLoad);
+    
+    // 6. Preencher fases e aba
+    setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
+    setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
+    
+    if (consolidatedItems.length > 0) {
+        // Define a aba ativa para a categoria do registro clicado
+        setSelectedTab(registro.categoria as Categoria);
+    } else {
+        setSelectedTab(CATEGORIAS[0]);
+    }
+    
+    // 7. Rolar para o topo do formulário
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setLoading(false);
+  };
+  
+  // NOVO MEMO: Agrupa os registros por OM de Destino
+  const registrosAgrupadosPorOM = useMemo(() => {
+    return registros.reduce((acc, registro) => {
+        // Usamos a OM Detentora como chave de agrupamento principal para a visualização
+        const omDetentora = registro.om_detentora || registro.organizacao;
+        const ugDetentora = registro.ug_detentora || registro.ug;
+        const key = `${omDetentora} (${ugDetentora})`;
+        
+        if (!acc[key]) {
+            acc[key] = [];
+        }
+        acc[key].push(registro);
+        return acc;
+    }, {} as Record<string, ClasseIIRegistro[]>);
+  }, [registros]);
+
+  const handleIniciarEdicaoMemoria = (registro: ClasseIIRegistro) => {
+    setEditingMemoriaId(registro.id);
+    
+    // OM Detentora (Source)
+    const omDetentora = registro.om_detentora || registro.organizacao;
+    const ugDetentora = registro.ug_detentora || registro.ug;
+    
+    // 1. Gerar a memória automática mais recente
+    const memoriaAutomatica = generateClasseIIMemoriaCalculo(
+        registro.categoria as Categoria, 
+        registro.itens_equipamentos as ItemClasseII[], 
+        registro.dias_operacao, 
+        omDetentora, // Passando a Detentora
+        ugDetentora, // Passando a UG Detentora
+        registro.fase_atividade,
+        registro.efetivo, 
+        registro.valor_nd_30, 
+        registro.valor_nd_39 
+    );
+    
+    // 2. Usar a customizada se existir, senão usar a automática recém-gerada
+    setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
+  };
+
+  const handleCancelarEdicaoMemoria = () => {
+    setEditingMemoriaId(null);
+    setMemoriaEdit("");
+  };
+
+  const handleSalvarMemoriaCustomizada = async (registroId: string) => {
     setLoading(true);
     try {
       const { error } = await supabase
         .from("classe_ii_registros")
         .update({
-          detalhamento_customizado: memoria.trim() || null,
+          detalhamento_customizado: memoriaEdit.trim() || null,
         })
         .eq("id", registroId);
 
       if (error) throw error;
+
       toast.success("Memória de cálculo atualizada com sucesso!");
+      handleCancelarEdicaoMemoria();
       await fetchRegistros();
     } catch (error) {
       console.error("Erro ao salvar memória:", error);
@@ -780,6 +960,7 @@ const ClasseIIForm = () => {
         .eq("id", registroId);
 
       if (error) throw error;
+
       toast.success("Memória de cálculo restaurada!");
       await fetchRegistros();
     } catch (error) {
@@ -790,19 +971,9 @@ const ClasseIIForm = () => {
     }
   };
   
-  const registrosAgrupadosPorOM = useMemo(() => {
-    return registros.reduce((acc, registro) => {
-        const omDetentora = registro.om_detentora;
-        const ugDetentora = registro.ug_detentora;
-        const key = `${omDetentora} (${ugDetentora})`;
-        
-        if (!acc[key]) {
-            acc[key] = [];
-        }
-        acc[key].push(registro);
-        return acc;
-    }, {} as Record<string, ClasseIIRegistro[]>);
-  }, [registros]);
+  const displayFases = useMemo(() => {
+    return [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
+  }, [fasesAtividade, customFaseAtividade]);
 
 
   return (
@@ -829,64 +1000,390 @@ const ClasseIIForm = () => {
           <CardContent className="space-y-6">
             
             {/* 1. Dados da Organização e Dias */}
-            <ClasseIIFormHeader
-                selectedOmId={selectedOmId}
-                organizacao={organizacao}
-                ug={ug}
-                efetivo={efetivo}
-                dias_operacao={diasOperacao}
-                fasesAtividade={fasesAtividade}
-                customFaseAtividade={customFaseAtividade}
-                isPopoverOpen={isPopoverOpen}
-                onOMChange={handleOMChange}
-                onEfetivoChange={setEfetivo}
-                onDiasOperacaoChange={setDiasOperacao}
-                onFaseChange={handleFaseChange}
-                onCustomFaseChange={setCustomFaseAtividade}
-                onPopoverOpenChange={setIsPopoverOpen}
-            />
+            <div className="space-y-3 border-b pb-4">
+              <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
+              
+              {/* PRIMEIRA LINHA: OM Detentora, UG Detentora, Efetivo */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>OM Detentora do Equipamento *</Label>
+                  <OmSelector
+                    selectedOmId={form.selectedOmId}
+                    onChange={handleOMChange}
+                    placeholder="Selecione a OM..."
+                    initialOmName={form.organizacao} 
+                    initialOmUg={form.ug} 
+                  />
+                </div>
 
-            {/* 2. Adicionar Itens por Categoria (Aba) */}
-            {organizacao && diasOperacao > 0 && efetivo > 0 && (
-              <ClasseIICategoryItems
-                diasOperacao={diasOperacao}
-                selectedTab={selectedTab}
-                currentCategoryItems={currentCategoryItems}
-                currentCategoryTotalValue={currentCategoryTotalValue}
-                nd30ValueTemp={nd30ValueTemp}
-                nd39ValueTemp={nd39ValueTemp}
-                formattedND39Value={formattedND39Value}
-                tempDestinations={tempDestinations}
-                organizacaoDetentora={organizacao}
-                onTabChange={setSelectedTab}
-                onQuantityChange={handleQuantityChange}
-                onND39InputChange={handleND39InputChange}
-                onND39InputBlur={handleND39InputBlur}
-                onOMDestinoChange={handleOMDestinoChange}
-                onUpdateCategoryItems={handleUpdateCategoryItems}
-              />
+                <div className="space-y-2">
+                  <Label>UG Detentora</Label>
+                  <Input value={formatCodug(form.ug)} readOnly disabled onKeyDown={handleEnterToNextField} />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Efetivo Empregado *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
+                    value={form.efetivo || ""}
+                    onChange={(e) => setForm({ ...form, efetivo: parseInt(e.target.value) || 0 })}
+                    placeholder="Ex: 100"
+                    onKeyDown={handleEnterToNextField}
+                  />
+                </div>
+              </div>
+              
+              {/* SEGUNDA LINHA: Dias de Atividade, Fase da Atividade (2 colunas) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Dias de Atividade *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none max-w-xs"
+                    value={form.dias_operacao || ""}
+                    onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value) || 0 })}
+                    placeholder="Ex: 7"
+                    onKeyDown={handleEnterToNextField}
+                  />
+                </div>
+                
+                <div className="space-y-2 col-span-2">
+                  <Label>Fase da Atividade *</Label>
+                  <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        type="button"
+                        className="w-full justify-between"
+                      >
+                        <span className="truncate">
+                          {displayFases || "Selecione a(s) fase(s)..."}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0" align="start">
+                      <Command>
+                        <CommandGroup>
+                          {FASES_PADRAO.map((fase) => (
+                            <CommandItem
+                              key={fase}
+                              value={fase}
+                              onSelect={() => handleFaseChange(fase, !fasesAtividade.includes(fase))}
+                              className="flex items-center justify-between cursor-pointer"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <Checkbox
+                                  checked={fasesAtividade.includes(fase)}
+                                  onCheckedChange={(checked) => handleFaseChange(fase, !!checked)}
+                                />
+                                <Label>{fase}</Label>
+                              </div>
+                              {fasesAtividade.includes(fase) && <Check className="ml-auto h-4 w-4" />}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                        <div className="p-2 border-t">
+                          <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade (Opcional)</Label>
+                          <Input
+                            value={customFaseAtividade}
+                            onChange={(e) => setCustomFaseAtividade(e.target.value)}
+                            placeholder="Ex: Patrulhamento"
+                            onKeyDown={handleEnterToNextField}
+                          />
+                        </div>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Adicionar Itens por Categoria (Aba) - REESTRUTURADO PARA TABELA */}
+            {form.organizacao && form.ug !== "" && form.dias_operacao > 0 && (
+              <div className="space-y-4 border-b pb-4" ref={formRef}>
+                <h3 className="text-lg font-semibold">2. Configurar Itens por Categoria</h3>
+                
+                <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as Categoria)}>
+                  <TabsList className="grid w-full grid-cols-3">
+                    {CATEGORIAS.map(cat => (
+                      <TabsTrigger key={cat} value={cat}>{getCategoryLabel(cat)}</TabsTrigger>
+                    ))}
+                  </TabsList>
+                  
+                  {CATEGORIAS.map(cat => (
+                    <TabsContent key={cat} value={cat} className="mt-4">
+                      <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                        
+                        <div className="max-h-[400px] overflow-y-auto rounded-md border">
+                            <Table className="w-full">
+                                <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                                    <TableRow>
+                                        <TableHead className="w-[50%]">Item</TableHead>
+                                        <TableHead className="w-[20%] text-right">Valor/Dia</TableHead>
+                                        <TableHead className="w-[15%] text-center">Quantidade</TableHead>
+                                        <TableHead className="w-[15%] text-right">Total</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {currentCategoryItems.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                                Nenhum item de diretriz encontrado para esta categoria.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        currentCategoryItems.map((item, index) => {
+                                            const itemTotal = item.quantidade * item.valor_mnt_dia * form.dias_operacao;
+                                            
+                                            return (
+                                                <TableRow key={item.item} className="h-12">
+                                                    <TableCell className="font-medium text-sm py-1">
+                                                        {item.item}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-xs text-muted-foreground py-1">
+                                                        {formatCurrency(item.valor_mnt_dia)}
+                                                    </TableCell>
+                                                    <TableCell className="py-1">
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none h-8 text-center"
+                                                            value={item.quantidade === 0 ? "" : item.quantidade.toString()}
+                                                            onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
+                                                            placeholder="0"
+                                                            onKeyDown={handleEnterToNextField}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-semibold text-sm py-1">
+                                                        {formatCurrency(itemTotal)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                        
+                        <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
+                            <span className="font-bold text-sm">TOTAL DA CATEGORIA</span>
+                            <span className="font-extrabold text-lg text-primary">
+                                {formatCurrency(currentCategoryTotalValue)}
+                            </span>
+                        </div>
+                        
+                        {/* NOVO BLOCO DE ALOCAÇÃO ND 30/39 */}
+                        {currentCategoryTotalValue > 0 && (
+                            <div className="space-y-4 p-4 border rounded-lg bg-background">
+                                <h4 className="font-semibold text-sm">Alocação de Recursos para {getCategoryLabel(cat)}</h4>
+                                
+                                {/* CAMPO: OM de Destino do Recurso */}
+                                <div className="space-y-2">
+                                    <Label>OM de Destino do Recurso *</Label>
+                                    <OmSelector
+                                        selectedOmId={tempDestinations[cat].id}
+                                        onChange={handleOMDestinoChange}
+                                        placeholder="Selecione a OM que receberá o recurso..."
+                                        disabled={!form.organizacao} 
+                                        initialOmName={tempDestinations[cat].om} 
+                                        initialOmUg={tempDestinations[cat].ug} 
+                                    />
+                                    {tempDestinations[cat].ug && (
+                                        <p className="text-xs text-muted-foreground">
+                                            UG de Destino: {formatCodug(tempDestinations[cat].ug)}
+                                        </p>
+                                    )}
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* ND 30 (Material) - ESQUERDA */}
+                                    <div className="space-y-2">
+                                        <Label>ND 33.90.30 (Material)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                value={formatNumberForInput(nd30ValueTemp, 2)}
+                                                readOnly
+                                                disabled
+                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100"
+                                            />
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Calculado por diferença (Total - ND 39).
+                                        </p>
+                                    </div>
+                                    {/* ND 39 (Serviço) - DIREITA */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nd39-input">ND 33.90.39 (Serviço)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                id="nd39-input"
+                                                type="text"
+                                                inputMode="decimal"
+                                                value={formattedND39Value}
+                                                onChange={handleND39InputChange}
+                                                onBlur={handleND39InputBlur}
+                                                placeholder="0,00"
+                                                className="pl-12 text-lg"
+                                                disabled={currentCategoryTotalValue === 0}
+                                                onKeyDown={handleEnterToNextField}
+                                            />
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Valor alocado para contratação de serviço.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between text-sm font-bold border-t pt-2">
+                                    <span>TOTAL ALOCADO:</span>
+                                    <span className={cn(areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) ? "text-primary" : "text-destructive")}>
+                                        {formatCurrency(nd30ValueTemp + nd39ValueTemp)}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                        {/* FIM NOVO BLOCO DE ALOCAÇÃO */}
+
+                        <div className="flex justify-end">
+                            <Button 
+                                type="button" 
+                                onClick={handleUpdateCategoryItems} 
+                                className="w-full md:w-auto" 
+                                disabled={!form.organizacao || form.ug === "" || form.dias_operacao <= 0 || form.efetivo <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && (!tempDestinations[cat].om || tempDestinations[cat].ug === ""))}
+                            >
+                                Salvar Itens da Categoria
+                            </Button>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              </div>
             )}
 
             {/* 3. Itens Adicionados e Consolidação */}
-            {formItems.length > 0 && (
-              <ClasseIIFormSummary
-                loading={loading}
-                editingId={editingId}
-                organizacaoDetentora={organizacao}
-                ugDetentora={ug}
-                diasOperacao={diasOperacao}
-                efetivo={efetivo}
-                formItems={formItems}
-                categoryAllocations={categoryAllocations}
-                selectedTab={selectedTab}
-                onFinalSave={handleSalvarRegistros}
-                onResetForm={resetFormFields}
-                isCategoryAllocationDirty={isCategoryAllocationDirty}
-                tempND39Inputs={tempND39Inputs}
-                tempDestinations={tempDestinations}
-                currentCategoryItems={currentCategoryItems}
-                currentCategoryTotalValue={currentCategoryTotalValue}
-              />
+            {form.itens.length > 0 && (
+              <div className="space-y-4 border-b pb-4">
+                <h3 className="text-lg font-semibold">3. Itens Adicionados ({form.itens.length})</h3>
+                
+                {/* Alerta de Validação Final */}
+                {!isTotalAlocadoCorrect && (
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="font-medium">
+                            Atenção: O Custo Total dos Itens ({formatCurrency(valorTotalForm)}) não corresponde ao Total Alocado ({formatCurrency(totalAlocado)}). 
+                            Clique em "Salvar Itens da Categoria" em todas as abas ativas.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
+                <div className="space-y-4">
+                  {Object.entries(itensAgrupadosPorCategoria).map(([categoria, itens]) => {
+                    
+                    // Total calculado a partir dos itens SALVOS (form.itens)
+                    const totalCategoriaSaved = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    
+                    // 1. Determinar qual lista de itens usar para a verificação de sujeira:
+                    // Se a categoria for a aba ativa, usa os itens não salvos (currentCategoryItems)
+                    const itemsForDirtyCheck = categoria === selectedTab 
+                        ? currentCategoryItems.filter(i => i.quantidade > 0) 
+                        : itens;
+                    
+                    // 2. Calcular o total a partir da lista de verificação
+                    const currentTotalForCheck = itemsForDirtyCheck.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * form.dias_operacao), 0);
+                    
+                    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
+                    
+                    const allocation = categoryAllocations[categoria as Categoria];
+                    
+                    // 3. Realizar a verificação de sujeira usando o total atual
+                    const isDirty = isCategoryAllocationDirty(
+                        categoria as Categoria, 
+                        currentTotalForCheck, 
+                        allocation, 
+                        tempND39Inputs, 
+                        tempDestinations
+                    );
+                    
+                    return (
+                      <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
+                        <div className="flex items-center justify-between mb-3 border-b pb-2">
+                          <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} itens)</h4>
+                          <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoriaSaved)}</span>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {itens.map((item, index) => (
+                            <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
+                              <span className="font-medium">{item.item}</span>
+                              <span className="text-right">
+                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia x {form.dias_operacao} dias = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <div className="pt-2 border-t mt-2">
+                            <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                <span className="font-medium text-foreground">
+                                    {allocation.om_destino_recurso} ({formatCodug(allocation.ug_destino_recurso)})
+                                </span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
+                                <span className="font-medium text-green-600">{formatCurrency(allocation.nd_30_value)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
+                                <span className="font-medium text-blue-600">{formatCurrency(allocation.nd_39_value)}</span>
+                            </div>
+                            {isDirty && (
+                                <Alert variant="destructive" className="mt-2 p-2">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertTitle className="text-xs font-semibold">Valores Desatualizados</AlertTitle>
+                                    <AlertDescription className="text-xs">
+                                        A quantidade de itens, a alocação de ND ou a OM de destino foi alterada. Clique em "Salvar Itens da Categoria" na aba "{getCategoryLabel(categoria)}" para atualizar.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+                
+                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
+                  <span className="font-bold text-base text-primary">VALOR TOTAL DA OM</span>
+                  <span className="font-extrabold text-xl text-primary">
+                    {formatCurrency(valorTotalForm)}
+                  </span>
+                </div>
+                
+                <div className="flex gap-3 pt-4 justify-end">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={resetFormFields}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Limpar Formulário
+                  </Button>
+                  <Button 
+                    type="button" 
+                    onClick={handleSalvarRegistros} 
+                    disabled={loading || !form.organizacao || form.ug === "" || form.itens.length === 0 || !isTotalAlocadoCorrect}
+                  >
+                    {loading ? "Aguarde..." : (editingId ? "Atualizar Registros" : "Salvar Registros")}
+                  </Button>
+                </div>
+              </div>
             )}
 
             {/* 4. Registros Salvos (OMs Cadastradas) - SUMMARY SECTION */}
@@ -901,6 +1398,8 @@ const ClasseIIForm = () => {
                     const totalOM = omRegistros.reduce((sum, r) => sum + r.valor_total, 0);
                     const omName = omKey.split(' (')[0];
                     const ug = omKey.split(' (')[1].replace(')', '');
+                    
+                    // Assumindo que o efetivo é o mesmo para todos os registros agrupados
                     const efetivo = omRegistros[0].efetivo; 
                     
                     return (
@@ -918,7 +1417,11 @@ const ClasseIIForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const isDifferentOm = registro.om_detentora !== registro.organizacao;
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria); // USANDO UTIL
+                                    
+                                    // Verifica se a OM Detentora é diferente da OM de Destino
+                                    const omDetentora = registro.om_detentora || registro.organizacao;
+                                    const isDifferentOm = omDetentora !== registro.organizacao;
 
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1003,12 +1506,144 @@ const ClasseIIForm = () => {
 
             {/* 5. Memórias de Cálculos Detalhadas */}
             {registros.length > 0 && (
-              <ClasseIIMemoriaViewer
-                registros={registros}
-                loading={loading}
-                onSalvarMemoriaCustomizada={handleSalvarMemoriaCustomizada}
-                onRestaurarMemoriaAutomatica={handleRestaurarMemoriaAutomatica}
-              />
+              <div className="space-y-4 mt-8">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  📋 Memórias de Cálculos Detalhadas
+                </h3>
+                
+                {registros.map(registro => {
+                  // OM Detentora (Source)
+                  const omDetentora = registro.om_detentora || registro.organizacao;
+                  const ugDetentora = registro.ug_detentora || registro.ug;
+                  
+                  const isEditing = editingMemoriaId === registro.id;
+                  const hasCustomMemoria = !!registro.detalhamento_customizado;
+                  
+                  // Verifica se a OM Detentora é diferente da OM de Destino
+                  const isDifferentOm = omDetentora !== registro.organizacao;
+                  
+                  // NOVO: Gera a memória automática com o rótulo padronizado
+                  const memoriaAutomatica = generateClasseIIMemoriaCalculo(
+                      registro.categoria as Categoria, 
+                      registro.itens_equipamentos as ItemClasseII[], 
+                      registro.dias_operacao, 
+                      omDetentora, // Passando a Detentora
+                      ugDetentora, // Passando a UG Detentora
+                      registro.fase_atividade,
+                      registro.efetivo, 
+                      registro.valor_nd_30, 
+                      registro.valor_nd_39 
+                  );
+                  
+                  const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
+                  const badgeStyle = getCategoryBadgeStyle(registro.categoria);
+                  
+                  // Verifica se a OM Detentora é diferente da OM de Destino
+                  const isDifferentOmInView = omDetentora !== registro.organizacao;
+
+                  return (
+                    <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
+                      
+                      {/* Container para H4 e Botões */}
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                          <div className="flex flex-col flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                  <h4 className="text-base font-semibold text-foreground">
+                                    OM Detentora: {omDetentora} (UG: {formatCodug(ugDetentora)})
+                                  </h4>
+                                  <Badge variant="default" className={cn("w-fit", badgeStyle.className)}>
+                                      {badgeStyle.label}
+                                  </Badge>
+                                  {/* NOVO BADGE DE MEMÓRIA CUSTOMIZADA */}
+                                  {hasCustomMemoria && !isEditing && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Editada manualmente
+                                    </Badge>
+                                  )}
+                              </div>
+                              
+                              {isDifferentOmInView && (
+                                  <div className="flex items-center gap-1 mt-1">
+                                      <AlertCircle className="h-4 w-4 text-red-600" />
+                                      <span className="text-sm font-medium text-red-600">
+                                          Recurso destinado à OM: {registro.organizacao} ({formatCodug(registro.ug)})
+                                      </span>
+                                  </div>
+                              )}
+                          </div>
+                          
+                          <div className="flex items-center justify-end gap-2 shrink-0">
+                              {!isEditing ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleIniciarEdicaoMemoria(registro)}
+                                    disabled={loading}
+                                    className="gap-2"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                    Editar Memória
+                                  </Button>
+                                  
+                                  {hasCustomMemoria && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                                      disabled={loading}
+                                      className="gap-2 text-muted-foreground"
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                      Restaurar Automática
+                                    </Button>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                    disabled={loading}
+                                    className="gap-2"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                    Salvar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleCancelarEdicaoMemoria}
+                                    disabled={loading}
+                                    className="gap-2"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                    Cancelar
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                      </div>
+                      
+                      <Card className="p-4 bg-background rounded-lg border">
+                        {isEditing ? (
+                          <Textarea
+                            value={memoriaEdit}
+                            onChange={(e) => setMemoriaEdit(e.target.value)}
+                            className="min-h-[300px] font-mono text-sm"
+                            placeholder="Digite a memória de cálculo..."
+                          />
+                        ) : (
+                          <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
+                            {memoriaExibida}
+                          </pre>
+                        )}
+                      </Card>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </CardContent>
         </Card>
