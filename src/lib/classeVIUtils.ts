@@ -154,17 +154,9 @@ export const generateCategoryMemoriaCalculo = (
 
 Cálculo:
 Fórmula: Nr Itens x Valor Mnt/Dia x Nr Dias de Atividade + (10% Margem).
-
 ${detalhamentoItens.trim()}
 
-Valor Total Base: ${formatCurrency(totalValorSemMargem)}.
-Margem de Reserva (${MARGEM_RESERVA * 100}%): ${formatCurrency(valorMargem)}.
-
-Alocação (Com Margem):
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
-
-Valor Total Solicitado (Com Margem): ${formatCurrency(totalValorComMargem)}.`;
+Total: ${formatCurrency(totalValorComMargem)}.`;
 };
 
 
