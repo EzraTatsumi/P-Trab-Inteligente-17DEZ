@@ -2,7 +2,7 @@ import { formatCurrency, formatCodug } from "./formatUtils";
 import { getCategoryLabel } from "./badgeUtils";
 
 // Tipos necessários (copiados do formulário para evitar dependência de tipos internos)
-type Categoria = 'Embarcação' | 'Equipamento de Engenharia'; // Categorias corretas para Classe VI
+type Categoria = 'Gerador' | 'Embarcação' | 'Equipamento de Engenharia'; // Categorias corretas para Classe VI
 
 // CONSTANTE DA MARGEM DE RESERVA
 const MARGEM_RESERVA = 0.10; // 10%
@@ -50,8 +50,25 @@ const getOmArticle = (omName: string): string => {
 };
 
 /**
+ * Determina a concordância de gênero para o cabeçalho da categoria.
+ * @param categoria A categoria da Classe VI.
+ * @returns 'do' ou 'da' ou 'de'.
+ */
+const getCategoryArticle = (categoria: Categoria): 'do' | 'da' | 'de' => {
+    switch (categoria) {
+        case 'Embarcação':
+            return 'da'; // Manutenção DE Embarcação
+        case 'Equipamento de Engenharia':
+        case 'Gerador':
+        default:
+            return 'do'; // Manutenção DO Equipamento de Engenharia / DO Gerador
+    }
+};
+
+/**
  * Gera a memória de cálculo detalhada para uma categoria (usada para edição).
- * Esta função não inclui a alocação ND 30/39, apenas o cálculo base.
+ * Esta função agora inclui ND 30/39 e efetivo, seguindo a estrutura da Classe V,
+ * mas mantendo a lógica de margem de 10%.
  */
 export const generateCategoryMemoriaCalculo = (
     categoria: Categoria, 
@@ -59,12 +76,38 @@ export const generateCategoryMemoriaCalculo = (
     diasOperacao: number, 
     omDetentora: string, // OM Detentora (Source)
     ugDetentora: string, // UG Detentora (Source)
-    faseAtividade: string | null | undefined
+    faseAtividade: string | null | undefined,
+    efetivo: number = 0, // NOVO: Adicionado efetivo (embora não usado no cálculo, é usado no detalhamento)
+    valorND30: number = 0, // NOVO: Valor ND 30
+    valorND39: number = 0 // NOVO: Valor ND 39
 ): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const totalValorSemMargem = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
     const totalValorComMargem = totalValorSemMargem * (1 + MARGEM_RESERVA);
+    const valorMargem = totalValorComMargem - totalValorSemMargem;
+
+    // 1. Determinar o prefixo ND baseado nos valores
+    let ndPrefix = "";
+    if (valorND30 > 0 && valorND39 > 0) {
+        ndPrefix += "33.90.30 / 33.90.39";
+    } else if (valorND30 > 0) {
+        ndPrefix += "33.90.30";
+    } else if (valorND39 > 0) {
+        ndPrefix += "33.90.39";
+    } else {
+        ndPrefix = "(Não Alocado)";
+    }
+    
+    // 2. Determinar o artigo 'do/da' da Categoria
+    const categoryArticle = getCategoryArticle(categoria);
+    
+    // 3. Determinar singular/plural de 'dia'
+    const diaPlural = diasOperacao === 1 ? "dia" : "dias";
+
+    // 4. Montar o cabeçalho dinâmico
+    const categoryLabel = getCategoryLabel(categoria);
+    const header = `${ndPrefix} - Manutenção de componentes ${categoryArticle} ${categoryLabel} da ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
 
     let detalhamentoItens = "";
     itens.forEach(item => {
@@ -72,9 +115,10 @@ export const generateCategoryMemoriaCalculo = (
         detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
     });
 
-    return `33.90.30 - Aquisição de Material de Classe VI (${getCategoryLabel(categoria)})
+    // Montar a memória de cálculo completa
+    return `${header}
+
 OM Detentora: ${omDetentora} (UG: ${formatCodug(ugDetentora)})
-Período: ${diasOperacao} dias de ${faseFormatada}
 Total de Itens na Categoria: ${totalQuantidade}
 
 Cálculo:
@@ -84,7 +128,11 @@ Detalhes dos Itens (Valor Base):
 ${detalhamentoItens.trim()}
 
 Valor Total Base: ${formatCurrency(totalValorSemMargem)}.
-Margem de Reserva (${MARGEM_RESERVA * 100}%): ${formatCurrency(totalValorComMargem - totalValorSemMargem)}.
+Margem de Reserva (${MARGEM_RESERVA * 100}%): ${formatCurrency(valorMargem)}.
+
+Alocação (Com Margem):
+- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
+- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
 Valor Total Solicitado (Com Margem): ${formatCurrency(totalValorComMargem)}.`;
 };
@@ -111,6 +159,29 @@ export const generateDetalhamento = (
     const valorTotalSemMargem = valorTotalComMargem / (1 + MARGEM_RESERVA);
     const valorMargem = valorTotalComMargem - valorTotalSemMargem;
 
+    // 1. Determinar o prefixo ND (REMOVIDO 'ND ')
+    let ndPrefix = "";
+    if (valorND30 > 0 && valorND39 > 0) {
+        ndPrefix += "33.90.30 / 33.90.39";
+    } else if (valorND30 > 0) {
+        ndPrefix += "33.90.30";
+    } else if (valorND39 > 0) {
+        ndPrefix += "33.90.39";
+    } else {
+        ndPrefix = "(Não Alocado)";
+    }
+    
+    // 2. Determinar o artigo 'do/da' da OM Detentora
+    const omArticle = getOmArticle(omDetentora);
+    
+    // 3. Determinar singular/plural de 'dia'
+    const diaPlural = diasOperacao === 1 ? "dia" : "dias";
+
+    // 4. Montar o cabeçalho dinâmico (usando OM Detentora)
+    // Nota: Removido o efetivo, pois Classe VI não o utiliza.
+    const header = `${ndPrefix} - Aquisição de Material de Classe VI (Diversos) para ${totalItens} itens, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}, para ${omDetentora}.`;
+
+    // 5. Agrupar itens por categoria que possuem quantidade > 0
     const gruposPorCategoria = itens.reduce((acc, item) => {
         const categoria = item.categoria as Categoria;
         const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
@@ -138,6 +209,7 @@ export const generateDetalhamento = (
 
     let detalhamentoItens = "";
     
+    // 6. Formatar a seção de cálculo agrupada
     Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
         // O valor total base aqui é o valor SEM margem, mas o detalhamento abaixo usa o valor COM margem
         const totalCategoriaComMargem = grupo.totalValor * (1 + MARGEM_RESERVA);
@@ -152,9 +224,12 @@ export const generateDetalhamento = (
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe VI (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${omDetentora}.
+    // Cabeçalho padronizado
+    return `${header}
+
 OM Detentora: ${omDetentora} (UG: ${formatCodug(ugDetentora)})
 Recurso destinado à OM: ${omDestino} (UG: ${formatCodug(ugDestino)})
+Total de Itens: ${totalItens}
 
 Cálculo Base (Sem Margem): ${formatCurrency(valorTotalSemMargem)}.
 Margem de Reserva (${MARGEM_RESERVA * 100}%): ${formatCurrency(valorMargem)}.

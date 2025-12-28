@@ -138,102 +138,11 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-// NOVO: Gera a memória de cálculo detalhada para uma categoria
-const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseVI[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const totalValorSemMargem = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
-    const totalValorComMargem = totalValorSemMargem * (1 + MARGEM_RESERVA);
-
-    let detalhamentoItens = "";
-    itens.forEach(item => {
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        detalhamentoItens += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.\n`;
-    });
-
-    return `33.90.30 - Aquisição de Material de Classe VI (${getCategoryLabel(categoria)})
-OM de Destino: ${organizacao} (UG: ${formatCodug(ug)})
-Período: ${diasOperacao} dias de ${faseFormatada}
-Total de Itens na Categoria: ${totalQuantidade}
-
-Cálculo:
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
-
-Detalhes dos Itens (Valor Base):
-${detalhamentoItens.trim()}
-
-Valor Total Base: ${formatCurrency(totalValorSemMargem)}.
-Margem de Reserva (${MARGEM_RESERVA * 100}%): ${formatCurrency(totalValorComMargem - totalValorSemMargem)}.
-
-Valor Total Solicitado (Com Margem): ${formatCurrency(totalValorComMargem)}.`;
-};
-
-
-const generateDetalhamento = (itens: ItemClasseVI[], diasOperacao: number, omDetentora: string, ugDetentora: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const valorTotalComMargem = valorND30 + valorND39;
-    const valorTotalSemMargem = valorTotalComMargem / (1 + MARGEM_RESERVA);
-    const valorMargem = valorTotalComMargem - valorTotalSemMargem;
-
-    const gruposPorCategoria = itens.reduce((acc, item) => {
-        const categoria = item.categoria as Categoria;
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        
-        if (!acc[categoria]) {
-            acc[categoria] = {
-                totalValor: 0,
-                totalQuantidade: 0,
-                detalhes: [],
-            };
-        }
-        
-        acc[categoria].totalValor += valorItem;
-        acc[categoria].totalQuantidade += item.quantidade;
-        
-        // Valor do item com margem
-        const valorItemComMargem = valorItem * (1 + MARGEM_RESERVA);
-
-        acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias (+10% Margem) = ${formatCurrency(valorItemComMargem)}.`
-        );
-        
-        return acc;
-    }, {} as Record<Categoria, { totalValor: number, totalQuantidade: number, detalhes: string[] }>);
-
-    let detalhamentoItens = "";
-    
-    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        // O valor total base aqui é o valor SEM margem, mas o detalhamento abaixo usa o valor COM margem
-        const totalCategoriaComMargem = grupo.totalValor * (1 + MARGEM_RESERVA);
-
-        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`;
-        detalhamentoItens += `Valor Total Base Categoria: ${formatCurrency(grupo.totalValor)}\n`;
-        detalhamentoItens += `Valor Total Categoria (C/ Margem): ${formatCurrency(totalCategoriaComMargem)}\n`;
-        detalhamentoItens += `Detalhes (Valores já incluem 10% de Margem):\n`;
-        detalhamentoItens += grupo.detalhes.join('\n');
-        detalhamentoItens += `\n`;
-    });
-    
-    detalhamentoItens = detalhamentoItens.trim();
-
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe VI (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${omDetentora}.
-OM Detentora: ${omDetentora} (UG: ${formatCodug(ugDetentora)})
-Recurso destinado à OM: ${omDestino} (UG: ${formatCodug(ugDestino)})
-
-Cálculo Base (Sem Margem): ${formatCurrency(valorTotalSemMargem)}.
-Margem de Reserva (${MARGEM_RESERVA * 100}%): ${formatCurrency(valorMargem)}.
-
-Alocação (Com Margem):
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
-
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
-
-${detalhamentoItens}
-
-Valor Total Solicitado (Com Margem): ${formatCurrency(valorTotalComMargem)}.`;
-  };
+// NOVO: Importar as funções de utilidade da Classe VI
+import { 
+    generateCategoryMemoriaCalculo as generateClasseVIMemoriaCalculo, 
+    generateDetalhamento as generateClasseVIDetalhamento 
+} from "@/lib/classeVIUtils";
 
 
 const ClasseVIForm = () => {
@@ -756,7 +665,7 @@ const ClasseVIForm = () => {
             return;
         }
         
-        const detalhamento = generateDetalhamento(
+        const detalhamento = generateClasseVIDetalhamento(
             itens, 
             form.dias_operacao, 
             form.organizacao, // OM Detentora
@@ -965,14 +874,14 @@ const ClasseVIForm = () => {
     setEditingMemoriaId(registro.id);
     
     // 1. Gerar a memória automática mais recente
-    const memoriaAutomatica = generateDetalhamento(
+    const memoriaAutomatica = generateClasseVIMemoriaCalculo(
+        registro.categoria as Categoria, 
         registro.itens_equipamentos as ItemClasseVI[], 
         registro.dias_operacao, 
         registro.om_detentora, // OM Detentora
         registro.ug_detentora, // UG Detentora
         registro.fase_atividade || '', 
-        registro.organizacao, // OM Destino
-        registro.ug, // UG Destino
+        0, // Efetivo (não usado na Classe VI)
         registro.valor_nd_30, 
         registro.valor_nd_39
     );
@@ -1593,14 +1502,14 @@ const ClasseVIForm = () => {
                   // Verifica se a OM Detentora é diferente da OM de Destino
                   const isDifferentOm = omDetentora !== registro.organizacao;
                   
-                  const memoriaAutomatica = generateDetalhamento(
+                  const memoriaAutomatica = generateClasseVIMemoriaCalculo(
+                      registro.categoria as Categoria, 
                       registro.itens_equipamentos as ItemClasseVI[], 
                       registro.dias_operacao, 
                       omDetentora, // OM Detentora
                       ugDetentora, // UG Detentora
                       registro.fase_atividade || '', 
-                      registro.organizacao, // OM Destino
-                      registro.ug, // UG Destino
+                      0, // Efetivo (não usado na Classe VI)
                       registro.valor_nd_30, 
                       registro.valor_nd_39
                   );
