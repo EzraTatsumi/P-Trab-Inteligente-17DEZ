@@ -68,9 +68,9 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
                 r2_quantidade: 0,
                 r3_quantidade: 0,
                 total_unidades: 0,
-                fase_atividade: r.fase_atividade || 'operação',
+                fase_atividade: r.faseAtividade || 'operação',
                 efetivo: r.efetivo || 0,
-                dias_operacao: r.dias_operacao,
+                dias_operacao: r.diasOperacao,
                 registroOriginal: r, // Armazena o registro original
             };
         }
@@ -82,8 +82,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         
         // Atualiza campos globais (embora em teoria devam ser os mesmos)
         grupos[key].efetivo = r.efetivo || 0;
-        grupos[key].dias_operacao = r.dias_operacao;
-        grupos[key].fase_atividade = r.fase_atividade || 'operação';
+        grupos[key].dias_operacao = r.diasOperacao;
+        grupos[key].fase_atividade = r.faseAtividade || 'operação';
     });
     
     return Object.values(grupos).sort((a, b) => a.om.localeCompare(b.om));

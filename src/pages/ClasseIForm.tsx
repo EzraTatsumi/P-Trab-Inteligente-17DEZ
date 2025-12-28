@@ -266,7 +266,7 @@ export default function ClasseIForm() {
       setLoading(true);
       const { data, error } = await supabase
         .from("classe_i_registros")
-        .select("*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3")
+        .select("*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3") // NOVO: Selecionar nova coluna
         .eq("p_trab_id", ptrabId)
         .order("organizacao", { ascending: true })
         .order("categoria", { ascending: true });
@@ -310,6 +310,7 @@ export default function ClasseIForm() {
           valorQR: currentValorQR,
           memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
           memoriaQRCustomizada: r.memoria_calculo_qr_customizada,
+          memoriaOpCustomizada: r.memoria_calculo_op_customizada, // NOVO: Carregar nova coluna
           
           calculos: {
             totalQS: Number(r.total_qs || 0),
@@ -597,10 +598,12 @@ export default function ClasseIForm() {
         // Se estiver editando, buscamos a memória customizada do registro original
         let memoriaQSCustomizada = null;
         let memoriaQRCustomizada = null;
+        let memoriaOpCustomizada = null; // NOVO: Buscar memória OP
         if (r.id) {
             const existingMemoria = registros.find(reg => reg.id === r.id);
             memoriaQSCustomizada = existingMemoria?.memoriaQSCustomizada || null;
             memoriaQRCustomizada = existingMemoria?.memoriaQRCustomizada || null;
+            memoriaOpCustomizada = existingMemoria?.memoriaOpCustomizada || null; // NOVO: Manter memória OP
         }
         
         recordsToSave.push({
@@ -627,6 +630,7 @@ export default function ClasseIForm() {
             quantidade_r3: 0,
             memoria_calculo_qs_customizada: memoriaQSCustomizada,
             memoria_calculo_qr_customizada: memoriaQRCustomizada,
+            memoria_calculo_op_customizada: memoriaOpCustomizada, // NOVO: Manter memória OP
             id: r.id, // ID será usado para UPDATE se existir, ou undefined para INSERT
         });
     }
@@ -636,13 +640,11 @@ export default function ClasseIForm() {
         const r = currentOMConsolidatedData.RACAO_OPERACIONAL;
         
         // Se estiver editando, buscamos a memória customizada do registro original
-        let memoriaQSCustomizada = null;
-        let memoriaQRCustomizada = null;
+        let memoriaOpCustomizada = null;
         if (r.id) {
             const existingMemoria = registros.find(reg => reg.id === r.id);
-            // Para Ração Operacional, usamos memoria_calculo_qs_customizada para o texto customizado
-            memoriaQSCustomizada = existingMemoria?.memoriaQSCustomizada || null; 
-            memoriaQRCustomizada = null; // QR é sempre nulo para Ração Operacional
+            // AGORA USAMOS A NOVA COLUNA
+            memoriaOpCustomizada = existingMemoria?.memoriaOpCustomizada || null; 
         }
         
         recordsToSave.push({
@@ -662,8 +664,9 @@ export default function ClasseIForm() {
             valor_qs: 0, 
             valor_qr: 0,
             complemento_qs: 0, etapa_qs: 0, total_qs: 0, complemento_qr: 0, etapa_qr: 0, total_qr: 0, total_geral: 0,
-            memoria_calculo_qs_customizada: memoriaQSCustomizada,
-            memoria_calculo_qr_customizada: memoriaQRCustomizada,
+            memoria_calculo_qs_customizada: null, // Limpar QS customizada
+            memoria_calculo_qr_customizada: null, // Limpar QR customizada
+            memoria_calculo_op_customizada: memoriaOpCustomizada, // NOVO: Salvar na coluna correta
             id: r.id, // ID será usado para UPDATE se existir, ou undefined para INSERT
         });
     }
@@ -848,8 +851,8 @@ export default function ClasseIForm() {
         setMemoriaOpEdit(""); // Limpa estado de Ração Operacional
     } else if (registro.categoria === 'RACAO_OPERACIONAL') {
         const op = generateRacaoOperacionalMemoriaCalculo(registro);
-        // Ração Operacional usa memoriaQSCustomizada para customização
-        setMemoriaOpEdit(registro.memoriaQSCustomizada || op); 
+        // AGORA USAMOS A NOVA COLUNA
+        setMemoriaOpEdit(registro.memoriaOpCustomizada || op); 
         setMemoriaQSEdit(""); // Limpa estados de Ração Quente
         setMemoriaQREdit("");
     } else {
@@ -878,12 +881,14 @@ export default function ClasseIForm() {
           updateData = {
               memoria_calculo_qs_customizada: memoriaQSEdit,
               memoria_calculo_qr_customizada: memoriaQREdit,
+              memoria_calculo_op_customizada: null, // Garantir que a coluna OP seja nula
           };
       } else if (registro.categoria === 'RACAO_OPERACIONAL') {
-          // Usamos memoria_calculo_qs_customizada para Ração Operacional
+          // AGORA USAMOS A NOVA COLUNA
           updateData = {
-              memoria_calculo_qs_customizada: memoriaOpEdit,
-              memoria_calculo_qr_customizada: null, // Garantir que QR fique nulo
+              memoria_calculo_op_customizada: memoriaOpEdit,
+              memoria_calculo_qs_customizada: null, // Limpar QS customizada
+              memoria_calculo_qr_customizada: null, // Limpar QR customizada
           };
       } else {
           throw new Error("Categoria desconhecida.");
@@ -926,9 +931,9 @@ export default function ClasseIForm() {
               memoria_calculo_qr_customizada: null,
           };
       } else if (registro.categoria === 'RACAO_OPERACIONAL') {
-          // Apenas limpa o campo QS, que é usado para Ração Operacional
+          // AGORA LIMPA A NOVA COLUNA
           updateData = {
-              memoria_calculo_qs_customizada: null,
+              memoria_calculo_op_customizada: null,
           };
       } else {
           throw new Error("Categoria desconhecida.");
@@ -1110,7 +1115,7 @@ export default function ClasseIForm() {
                         </Command>
                       </PopoverContent>
                     </Popover>
-                  </div>
+                  </Popover>
                 </div>
               </div>
             </div>
@@ -1657,7 +1662,7 @@ export default function ClasseIForm() {
                     
                     const hasCustomMemoria = isRacaoQuente 
                         ? !!(registro.memoriaQSCustomizada || registro.memoriaQRCustomizada)
-                        : !!registro.memoriaQSCustomizada; // Ração Operacional usa memoriaQSCustomizada
+                        : !!registro.memoriaOpCustomizada; // NOVO: Checa a nova coluna
                     
                     let memoriaQSFinal = "";
                     let memoriaQRFinal = "";
@@ -1669,7 +1674,8 @@ export default function ClasseIForm() {
                         memoriaQRFinal = isEditing ? memoriaQREdit : (registro.memoriaQRCustomizada || qr);
                     } else {
                         const op = generateRacaoOperacionalMemoriaCalculo(registro);
-                        memoriaOpFinal = isEditing ? memoriaOpEdit : (registro.memoriaQSCustomizada || op);
+                        // NOVO: Usa a nova coluna para customização
+                        memoriaOpFinal = isEditing ? memoriaOpEdit : (registro.memoriaOpCustomizada || op);
                     }
                     
                     return (
