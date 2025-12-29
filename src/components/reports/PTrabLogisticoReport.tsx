@@ -36,9 +36,10 @@ import {
   calculateItemTotalClasseIX,
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
-import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils"; // NOVO: Importar utilitário de Classe V
-import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils"; // NOVO: Importar utilitário de Classe VI
-import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils"; // Importando utilitário de Classe VII
+import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils"; 
+import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils"; 
+import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils"; 
+import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils"; // NOVO: Importando utilitário de Classe VIII
 
 interface PTrabLogisticoReportProps {
   ptrabData: PTrabData;
@@ -65,19 +66,21 @@ interface PTrabLogisticoReportProps {
   handleConfirmCompleteStatus: () => void;
   handleCancelCompleteStatus: () => void;
   fileSuffix: string; // NOVO PROP
-  // NOVO: Importar a função de memória de cálculo da Classe II diretamente
-  generateClasseIIMemoriaCalculo: (
-    registro: any, // Usamos 'any' aqui pois o tipo completo está no Manager
-    isClasseII: boolean // Flag para diferenciar Classe II de outras classes
-  ) => string;
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe I
   generateClasseIMemoriaCalculo: (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP') => string;
+  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe II/V/VI/VII/VIII/IX
+  generateClasseIIMemoriaCalculo: (
+    registro: ClasseIIRegistro, 
+    isClasseII: boolean
+  ) => string;
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe V
   generateClasseVMemoriaCalculo: (registro: any) => string;
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe VI
   generateClasseVIMemoriaCalculo: (registro: any) => string;
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe VII
-  generateClasseVIIMemoriaCalculo: (registro: any) => string; // ADICIONADO
+  generateClasseVIIMemoriaCalculo: (registro: any) => string;
+  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe VIII
+  generateClasseVIIIMemoriaCalculo: (registro: any) => string; // ADICIONADO
 }
 
 // Implementação padrão (fallback) para generateClasseIIMemoriaCalculo
@@ -152,7 +155,7 @@ const defaultGenerateClasseVIMemoriaCalculo = (registro: any): string => {
     return registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
-// NOVO: Implementação padrão (fallback) para generateClasseVIIMemoriaCalculo
+// Implementação padrão (fallback) para generateClasseVIIMemoriaCalculo
 const defaultGenerateClasseVIIMemoriaCalculo = (registro: any): string => {
     if (registro.detalhamento_customizado) {
         return registro.detalhamento_customizado;
@@ -174,6 +177,33 @@ const defaultGenerateClasseVIIMemoriaCalculo = (registro: any): string => {
     }
     return registro.detalhamento || "Memória de cálculo não disponível.";
 };
+
+// NOVO: Implementação padrão (fallback) para generateClasseVIIIMemoriaCalculo
+const defaultGenerateClasseVIIIMemoriaCalculo = (registro: any): string => {
+    if (registro.detalhamento_customizado) {
+        return registro.detalhamento_customizado;
+    }
+    
+    if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+        // Para Classe VIII, os itens estão em itens_saude ou itens_remonta
+        const itens = registro.categoria === 'Saúde' ? registro.itens_saude : registro.itens_remonta;
+        
+        return generateClasseVIIIUtility(
+            registro.categoria,
+            itens,
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
+            registro.efetivo || 0,
+            registro.valor_nd_30,
+            registro.valor_nd_39,
+            registro.animal_tipo
+        );
+    }
+    return registro.detalhamento || "Memória de cálculo não disponível.";
+};
+
 
 // =================================================================
 // FUNÇÕES AUXILIARES DE RÓTULO (MOVIDAS PARA FORA DO COMPONENTE)
@@ -222,6 +252,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   generateClasseVMemoriaCalculo = defaultGenerateClasseVMemoriaCalculo, // NOVO: DESESTRUTURANDO E USANDO DEFAULT
   generateClasseVIMemoriaCalculo = defaultGenerateClasseVIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VI
   generateClasseVIIMemoriaCalculo = defaultGenerateClasseVIIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VII
+  generateClasseVIIIMemoriaCalculo = defaultGenerateClasseVIIIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VIII
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -317,7 +348,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, onExportSuccess, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIMemoriaCalculo]);
+  }, [ptrabData, onExportSuccess, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo]);
 
   // NOVO: Função para abrir o diálogo de impressão do navegador
   const handlePrint = () => {
@@ -522,6 +553,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           return;
         }
         
+        // Array de todas as linhas de despesa, ordenadas pela sequência romana:
         const linhasDespesaOrdenadas = [
             ...grupo.linhasQS,
             ...grupo.linhasQR,
@@ -529,8 +561,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             ...grupo.linhasLubrificante,
             ...grupo.linhasClasseV,
             ...grupo.linhasClasseVI,
-            ...grupo.linhasClasseVII, // INCLUINDO CLASSE VII AQUI
-            ...grupo.linhasClasseVIII,
+            ...grupo.linhasClasseVII, 
+            ...grupo.linhasClasseVIII, // NOVO: Incluindo Classe VIII
             ...grupo.linhasClasseIX,
         ];
         
@@ -580,64 +612,30 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   categoriaDetalhe = registro.animal_tipo;
               }
                   
-              // Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
-              if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
-                  
-                  const omDetentora = registro.om_detentora || omDestinoRecurso;
-                  const isDifferentOm = omDetentora !== omDestinoRecurso;
-                  
-                  // NOVO: Adiciona a OM Detentora se for diferente da OM de Destino
-                  rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
-                  if (isDifferentOm) {
-                      // MODIFICAÇÃO AQUI: Simplificando o texto para apenas o nome da OM Detentora
-                      rowData.despesasValue += `\n${omDetentora}`;
-                  }
-                  
-              } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                  const omDetentora = registro.om_detentora || omDestinoRecurso;
-                  const isDifferentOm = omDetentora !== omDestinoRecurso;
-
-                  // 1. Define o prefixo CLASSE V
-                  rowData.despesasValue = `CLASSE V - ${categoriaDetalhe.toUpperCase()}`;
-                  
-                  // 2. Adiciona a OM Detentora se for diferente da OM de Destino
-                  if (isDifferentOm) {
-                      rowData.despesasValue += `\n${omDetentora}`;
-                  }
-                  
-                  // 3. Prioriza o detalhamento customizado
-                  rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseVMemoriaCalculo(registro);
-              } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) { // CLASSE VI
-                  const omDetentora = registro.om_detentora || omDestinoRecurso;
-                  const isDifferentOm = omDetentora !== omDestinoRecurso;
-
-                  // 1. Define o prefixo CLASSE VI
-                  rowData.despesasValue = `CLASSE VI - ${categoriaDetalhe.toUpperCase()}`;
-                  
-                  // 2. Adiciona a OM Detentora se for diferente da OM de Destino
-                  if (isDifferentOm) {
-                      rowData.despesasValue += `\n${omDetentora}`;
-                  }
-                  
-                  // 3. Prioriza o detalhamento customizado
-                  rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseVIMemoriaCalculo(registro);
-              } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) { // CLASSE VII
-                  const omDetentora = registro.om_detentora || omDestinoRecurso;
-                  const isDifferentOm = omDetentora !== omDestinoRecurso;
-
-                  // 1. Define o prefixo CLASSE VII
-                  rowData.despesasValue = `CLASSE VII - ${categoriaDetalhe.toUpperCase()}`;
-                  
-                  // 2. Adiciona a OM Detentora se for diferente da OM de Destino
-                  if (isDifferentOm) {
-                      rowData.despesasValue += `\n${omDetentora}`;
-                  }
-                  
-                  // 3. Prioriza o detalhamento customizado
-                  rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseVIIMemoriaCalculo(registro);
+              const omDetentora = registro.om_detentora || omDestinoRecurso;
+              const isDifferentOm = omDetentora !== omDestinoRecurso;
+              
+              // 1. Define o prefixo CLASSE X
+              let prefixoClasse = '';
+              if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                  prefixoClasse = 'CLASSE V';
+              } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
+                  prefixoClasse = 'CLASSE VI';
+              } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
+                  prefixoClasse = 'CLASSE VII';
+              } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+                  prefixoClasse = 'CLASSE VIII';
+              } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+                  prefixoClasse = 'CLASSE IX';
               } else {
-                  // Outras classes (VIII, IX) mantêm a quebra de linha
-                  rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
+                  prefixoClasse = 'CLASSE II';
+              }
+              
+              rowData.despesasValue = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
+              
+              // 2. Adiciona a OM Detentora se for diferente da OM de Destino
+              if (isDifferentOm) {
+                  rowData.despesasValue += `\n${omDetentora}`;
               }
               
               rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
@@ -645,23 +643,26 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               rowData.valorD = registro.valor_nd_39;
               rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
               
-              if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                  rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseIXMemoriaCalculo(registro);
+              // 3. Prioriza o detalhamento customizado ou usa a função de memória unificada
+              if (registro.detalhamento_customizado) {
+                  rowData.detalhamentoValue = registro.detalhamento_customizado;
+              } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+                  rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
               } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                  // Já tratado acima
+                  rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
               } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
-                  // Já tratado acima
+                  rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
               } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
-                  // Já tratado acima
+                  rowData.detalhamentoValue = generateClasseVIIMemoriaCalculo(registro);
+              } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+                  rowData.detalhamentoValue = generateClasseVIIIMemoriaCalculo(registro); // NOVO
               } else {
-                  // Se não for Classe V, VI ou VII, usa a função genérica/Classe II
                   const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                   rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
               }
               
           } else if (isLubrificante) { // Classe III Lubrificante
               const registro = linha.registro as ClasseIIIRegistro;
-              // const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
               
               let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
               rowData.despesasValue = despesasLubValue;
@@ -1018,7 +1019,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo]);
+  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo]);
 
   return (
     <div className="space-y-6">
@@ -1097,7 +1098,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     ...grupo.linhasClasseV,
                     ...grupo.linhasClasseVI,
                     ...grupo.linhasClasseVII,
-                    ...grupo.linhasClasseVIII,
+                    ...grupo.linhasClasseVIII, // NOVO: Incluindo Classe VIII
                     ...grupo.linhasClasseIX,
                 ];
                 
@@ -1137,76 +1138,41 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                         }
-                    } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
+                    } else if (isClasseII_IX) { // Classes II, V, VI, VII, VIII, IX
                         const registro = linha.registro as ClasseIIRegistro;
                         const omDestinoRecurso = registro.organizacao;
                         const ugDestinoRecurso = formatCodug(registro.ug);
                         
-                        const classeLabel = getClasseIILabel(registro.categoria); // Ex: CLASSE II, CLASSE V, etc.
                         let categoriaDetalhe = registro.categoria;
                         
                         if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                             categoriaDetalhe = registro.animal_tipo;
                         }
                             
-                        // Lógica para forçar o formato CLASSE X - CATEGORIA (em uma linha) para Classe II
-                        if (['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria)) {
-                            
-                            const omDetentora = registro.om_detentora || omDestinoRecurso;
-                            const isDifferentOm = omDetentora !== omDestinoRecurso;
-                            
-                            // NOVO: Adiciona a OM Detentora se for diferente da OM de Destino
-                            rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
-                            if (isDifferentOm) {
-                                // MODIFICAÇÃO AQUI: Simplificando o texto para apenas o nome da OM Detentora
-                                rowData.despesasValue += `\n${omDetentora}`;
-                            }
-                            
-                        } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                            const omDetentora = registro.om_detentora || omDestinoRecurso;
-                            const isDifferentOm = omDetentora !== omDestinoRecurso;
-
-                            // 1. Define o prefixo CLASSE V
-                            rowData.despesasValue = `CLASSE V - ${categoriaDetalhe.toUpperCase()}`;
-                            
-                            // 2. Adiciona a OM Detentora se for diferente da OM de Destino
-                            if (isDifferentOm) {
-                                rowData.despesasValue += `\n${omDetentora}`;
-                            }
-                            
-                            // 3. Prioriza o detalhamento customizado
-                            rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseVMemoriaCalculo(registro);
-                        } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) { // CLASSE VI
-                            const omDetentora = registro.om_detentora || omDestinoRecurso;
-                            const isDifferentOm = omDetentora !== omDestinoRecurso;
-
-                            // 1. Define o prefixo CLASSE VI
-                            rowData.despesasValue = `CLASSE VI - ${categoriaDetalhe.toUpperCase()}`;
-                            
-                            // 2. Adiciona a OM Detentora se for diferente da OM de Destino
-                            if (isDifferentOm) {
-                                rowData.despesasValue += `\n${omDetentora}`;
-                            }
-                            
-                            // 3. Prioriza o detalhamento customizado
-                            rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseVIMemoriaCalculo(registro);
-                        } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) { // CLASSE VII
-                            const omDetentora = registro.om_detentora || omDestinoRecurso;
-                            const isDifferentOm = omDetentora !== omDestinoRecurso;
-
-                            // 1. Define o prefixo CLASSE VII
-                            rowData.despesasValue = `CLASSE VII - ${categoriaDetalhe.toUpperCase()}`;
-                            
-                            // 2. Adiciona a OM Detentora se for diferente da OM de Destino
-                            if (isDifferentOm) {
-                                rowData.despesasValue += `\n${omDetentora}`;
-                            }
-                            
-                            // 3. Prioriza o detalhamento customizado
-                            rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseVIIMemoriaCalculo(registro);
+                        const omDetentora = registro.om_detentora || omDestinoRecurso;
+                        const isDifferentOm = omDetentora !== omDestinoRecurso;
+                        
+                        // 1. Define o prefixo CLASSE X
+                        let prefixoClasse = '';
+                        if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                            prefixoClasse = 'CLASSE V';
+                        } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
+                            prefixoClasse = 'CLASSE VI';
+                        } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
+                            prefixoClasse = 'CLASSE VII';
+                        } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+                            prefixoClasse = 'CLASSE VIII';
+                        } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+                            prefixoClasse = 'CLASSE IX';
                         } else {
-                            // Outras classes (VIII, IX) mantêm a quebra de linha
-                            rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
+                            prefixoClasse = 'CLASSE II';
+                        }
+                        
+                        rowData.despesasValue = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
+                        
+                        // 2. Adiciona a OM Detentora se for diferente da OM de Destino
+                        if (isDifferentOm) {
+                            rowData.despesasValue += `\n${omDetentora}`;
                         }
                         
                         rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
@@ -1214,23 +1180,26 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         rowData.valorD = registro.valor_nd_39;
                         rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
                         
-                        if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                            rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseIXMemoriaCalculo(registro);
+                        // 3. Prioriza o detalhamento customizado ou usa a função de memória unificada
+                        if (registro.detalhamento_customizado) {
+                            rowData.detalhamentoValue = registro.detalhamento_customizado;
+                        } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+                            rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
                         } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                            // Já tratado acima
+                            rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
                         } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
-                            // Já tratado acima
+                            rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
                         } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
-                            // Já tratado acima
+                            rowData.detalhamentoValue = generateClasseVIIMemoriaCalculo(registro);
+                        } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+                            rowData.detalhamentoValue = generateClasseVIIIMemoriaCalculo(registro); // NOVO
                         } else {
-                            // Se não for Classe V, VI ou VII, usa a função genérica/Classe II
                             const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                             rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
                         }
                         
                     } else if (isLubrificante) { // Classe III Lubrificante
                         const registro = linha.registro as ClasseIIIRegistro;
-                        // const tipoEquipamento = registro.tipo_equipamento === 'LUBRIFICANTE_GERADOR' ? 'GERADOR' : 'EMBARCAÇÃO';
                         
                         let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
                         rowData.despesasValue = despesasLubValue;

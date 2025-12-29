@@ -30,7 +30,8 @@ import {
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils";
-import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils"; // Importando utilitário de Classe VII
+import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils"; // NOVO: Importando utilitário de Classe VIII
 
 
 // =================================================================
@@ -88,6 +89,8 @@ export interface ClasseIIRegistro {
   valor_nd_39: number;
   animal_tipo?: 'Equino' | 'Canino';
   quantidade_animais?: number;
+  itens_remonta?: any; // Usado para Classe VIII Remonta
+  itens_saude?: any; // Usado para Classe VIII Saúde
   itens_motomecanizacao?: ItemClasseIX[];
   om_detentora?: string | null;
   ug_detentora?: string | null;
@@ -141,7 +144,7 @@ export interface GrupoOM {
 }
 
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
-export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"]; // CORRIGIDO: Usando as categorias corretas
+export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"];
 export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
 export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
 export const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
@@ -448,7 +451,6 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         );
     }
     
-    // --- NEW LOGIC FOR CLASSE VII ---
     if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVIIUtility(
             registro.categoria,
@@ -462,9 +464,25 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
             registro.valor_nd_39
         );
     }
-    // --- END NEW LOGIC ---
     
-    // Para Classe VIII, que não teve utilitários de memória criados, retorna o detalhamento salvo
+    // NOVO: Lógica para Classe VIII
+    if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+        const itens = registro.categoria === 'Saúde' ? registro.itens_saude : registro.itens_remonta;
+        
+        return generateClasseVIIIUtility(
+            registro.categoria as 'Saúde' | 'Remonta/Veterinária',
+            itens,
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
+            registro.efetivo || 0,
+            registro.valor_nd_30,
+            registro.valor_nd_39,
+            registro.animal_tipo
+        );
+    }
+    
     return registro.detalhamento;
 };
 
@@ -569,7 +587,9 @@ const PTrabReportManager = () => {
         ...(classeVData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
         ...(classeVIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
         ...(classeVIIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
+        // Mapeamento de Classe VIII Saúde: itens_saude -> itens_equipamentos
         ...(classeVIIISaudeData || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
+        // Mapeamento de Classe VIII Remonta: itens_remonta -> itens_equipamentos
         ...(classeVIIIRemontaData || []).map(r => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
         ...(classeIXData || []).map(r => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
       ];
@@ -578,7 +598,6 @@ const PTrabReportManager = () => {
       setRegistrosClasseI((classeIData || []).map(r => ({
           ...r,
           // Mapeamento explícito de campos do DB (snake_case) para o tipo TS (camelCase)
-          // Isso é crucial para que a função generateClasseIMemoriaCalculoUnificada encontre os valores customizados.
           id: r.id,
           organizacao: r.organizacao,
           ug: r.ug,

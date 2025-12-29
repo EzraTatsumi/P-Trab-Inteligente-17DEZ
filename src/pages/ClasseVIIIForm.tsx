@@ -14,7 +14,7 @@ import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { formatCurrency, parseInputToNumber, formatNumberForInput, formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -26,6 +26,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
 import { defaultClasseVIIISaudeConfig, defaultClasseVIIIRemontaConfig } from "@/data/classeVIIIData";
+import { 
+    calculateSaudeItemTotal, 
+    calculateRemontaItemTotal, 
+    calculateTotalForAnimalType,
+    generateCategoryMemoriaCalculo,
+    generateDetalhamento,
+    formatFasesParaTexto,
+} from "@/lib/classeVIIIUtils"; // Importando utilitários da Classe VIII
 
 type Categoria = 'Saúde' | 'Remonta/Veterinária';
 
@@ -37,7 +45,7 @@ const CATEGORIAS: Categoria[] = [
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
 
-// --- NOVOS TIPOS TEMPORÁRIOS (UNSAVED CHANGES) ---
+// --- TIPOS TEMPORÁRIOS (UNSAVED CHANGES) ---
 interface TempDestination {
     om: string;
     ug: string;
@@ -45,7 +53,7 @@ interface TempDestination {
 }
 const initialTempDestinations: Record<Categoria, TempDestination> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: { om: "", ug: "", id: undefined } }), {} as Record<Categoria, TempDestination>);
 const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, string>);
-// --- FIM NOVOS TIPOS TEMPORÁRIOS ---
+// --- FIM TIPOS TEMPORÁRIOS ---
 
 interface ItemSaude {
   item: string;
@@ -62,6 +70,8 @@ interface ItemRemonta {
   categoria: 'Remonta/Veterinária';
 }
 
+type ItemClasseVIII = ItemSaude | ItemRemonta;
+
 interface FormDataClasseVIII {
   selectedOmId?: string;
   organizacao: string; // OM Detentora (Global)
@@ -74,8 +84,10 @@ interface FormDataClasseVIII {
 
 interface ClasseVIIIRegistro {
   id: string;
-  organizacao: string;
-  ug: string;
+  organizacao: string; // OM de Destino do Recurso (ND 30/39)
+  ug: string; // UG de Destino do Recurso (ND 30/39)
+  om_detentora: string; // NOVO CAMPO
+  ug_detentora: string; // NOVO CAMPO
   dias_operacao: number;
   categoria: string;
   valor_total: number;
@@ -109,221 +121,10 @@ const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
     return Math.abs(a - b) < tolerance;
 };
 
-const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
-  if (!faseCSV) return 'operação';
-  
-  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
-  
-  if (fases.length === 0) return 'operação';
-  if (fases.length === 1) return fases[0];
-  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
-  
-  const ultimaFase = fases[fases.length - 1];
-  const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFase}`;
-};
-
 // NOVO: Helper function to get the numeric ND 39 value from the temporary input digits
 const getTempND39NumericValue = (category: Categoria, tempInputs: Record<Categoria, string>): number => {
     const digits = tempInputs[category] || "";
     return formatCurrencyInput(digits).numericValue;
-};
-
-// --- Lógica de Cálculo Remonta/Veterinária ---
-
-const calculateRemontaItemTotal = (item: ItemRemonta): number => {
-    const baseValue = item.valor_mnt_dia;
-    const nrAnimais = item.quantidade_animais;
-    const diasOperacao = item.dias_operacao_item;
-    
-    if (diasOperacao <= 0 || nrAnimais <= 0) return 0;
-
-    let total = 0;
-    
-    if (item.item.includes('(Anual)')) {
-        // Item B, D, E (Annual): Nr Animais x Item Valor x ceil(diasOperacao / 365)
-        const multiplier = Math.ceil(diasOperacao / 365);
-        total = baseValue * multiplier * nrAnimais;
-        
-    } else if (item.item.includes('(Mensal)')) {
-        // Item C (Monthly): [Nr Animais x (Item C / 30 dias) x Nr dias]
-        // Formula: Nr Animais x Item C x (diasOperacao / 30)
-        total = nrAnimais * (baseValue / 30) * diasOperacao;
-        
-    } else {
-        // Item G (Daily): Nr Animais x Item Valor x diasOperacao
-        total = baseValue * diasOperacao * nrAnimais;
-    }
-    
-    return total;
-};
-
-const calculateSaudeItemTotal = (item: ItemSaude): number => {
-    return item.valor_mnt_dia * item.quantidade;
-};
-
-// New helper function to calculate the total cost for a specific animal type (Equino/Canino)
-const calculateTotalForAnimalType = (
-    animalItem: ItemRemonta, 
-    allDirectives: DiretrizClasseII[]
-): number => {
-    const animalType = animalItem.item;
-    const nrAnimais = animalItem.quantidade_animais;
-    const diasOperacao = animalItem.dias_operacao_item;
-    
-    if (nrAnimais <= 0 || diasOperacao <= 0) return 0;
-    
-    const relatedDirectives = allDirectives.filter(d => d.item.includes(animalType));
-    
-    const directivesAsItems: ItemRemonta[] = relatedDirectives.map(d => ({
-        item: d.item,
-        quantidade_animais: nrAnimais,
-        dias_operacao_item: diasOperacao,
-        valor_mnt_dia: Number(d.valor_mnt_dia),
-        categoria: 'Remonta/Veterinária',
-    }));
-    
-    return directivesAsItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
-};
-
-// --- Geração de Memória de Cálculo ---
-
-const generateRemontaMemoriaCalculo = (
-    animalTipo: 'Equino' | 'Canino',
-    itens: ItemRemonta[],
-    diasOperacaoGlobal: number, // Dias globais do PTrab (para o cabeçalho)
-    organizacao: string,
-    ug: string,
-    faseAtividade: string,
-    omDestino: string,
-    ugDestino: string,
-    valorND30: number,
-    valorND39: number
-): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const valorTotal = valorND30 + valorND39;
-    
-    // Agrupar itens por tipo de animal (Equino ou Canino)
-    const itensPorAnimal = itens.filter(i => i.item.includes(animalTipo));
-    
-    if (itensPorAnimal.length === 0) return "";
-    
-    // Usamos o primeiro item para pegar a quantidade de animais e dias de operação específicos
-    const nrAnimais = itensPorAnimal[0].quantidade_animais;
-    const diasOperacaoItem = itensPorAnimal[0].dias_operacao_item;
-    
-    // Group items by Item Type (B, C, D, E, G)
-    const groupedItems: Record<string, ItemRemonta[]> = itensPorAnimal.reduce((acc, item) => {
-        const itemTypeMatch = item.item.match(/-\s([A-G]):/);
-        if (itemTypeMatch) {
-            const type = itemTypeMatch[1];
-            if (!acc[type]) acc[type] = [];
-            acc[type].push(item);
-        }
-        return acc;
-    }, {} as Record<string, ItemRemonta[]>);
-    
-    // Calculate totals and build formula components
-    let formulaComponents: string[] = [];
-    let calculationComponents: string[] = [];
-    let totalBrutoCalculado = 0;
-    
-    // Detailed Item Breakdown for the memory (Cálculo:)
-    let detailedItems = "Cálculo:\n";
-    
-    // Iterate over item types B, C, D, E, G in order
-    ['B', 'C', 'D', 'E', 'G'].forEach(type => {
-        const itemsOfType = groupedItems[type] || [];
-        
-        itemsOfType.forEach(item => {
-            const baseValue = item.valor_mnt_dia;
-            const itemTotal = calculateRemontaItemTotal(item);
-            totalBrutoCalculado += itemTotal;
-            
-            const itemDescription = item.item.split(/-\s[A-G]:\s/)[1].trim();
-            const itemUnit = item.item.includes('(Anual)') ? 'ano' : item.item.includes('(Mensal)') ? 'mês' : 'dia';
-            
-            detailedItems += `- Item ${type} (${itemDescription}): ${formatCurrency(baseValue)} / ${animalTipo.toLowerCase()} / ${itemUnit}.\n`;
-            
-            if (item.item.includes('(Mensal)')) {
-                // Item C: [Nr Animais x (Item C / 30 dias) x Nr dias]
-                formulaComponents.push(`[Nr ${animalTipo}s x (Item C / 30 dias) x Nr dias]`);
-                calculationComponents.push(`(${nrAnimais} x (${formatCurrency(baseValue)} / 30 dias) x ${diasOperacaoItem} dias)`);
-            } else if (item.item.includes('(Diário)')) {
-                // Item G: (Nr Animais x Item G x Nr dias)
-                formulaComponents.push(`(Nr ${animalTipo}s x Item G x Nr dias)`);
-                calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${diasOperacaoItem} dias)`);
-            } else {
-                // Item B, D, E (Annual): (Nr Animais x Item X)
-                // Nota: O cálculo anual usa Math.ceil(diasOperacaoItem / 365) como multiplicador, mas a fórmula simplificada na memória é (Nr Animais x Item X)
-                formulaComponents.push(`(Nr ${animalTipo}s x Item ${type})`);
-                
-                const multiplier = Math.ceil(diasOperacaoItem / 365);
-                if (multiplier > 1) {
-                    calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${multiplier} anos)`);
-                } else {
-                    calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)})`);
-                }
-            }
-        });
-    });
-    
-    const formulaString = formulaComponents.join(' + ');
-    const calculationString = calculationComponents.join(' + ');
-    
-    let memoria = `33.90.30 / 33.90.39 - Aquisição meios ou contratação de serviços para a manutenção de ${nrAnimais} ${animalTipo.toLowerCase()}(s) do ${organizacao}, durante ${diasOperacaoItem} dias de ${faseFormatada}.
-Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
-
-Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
-
-${detailedItems.trim()}
-
-Fórmula: ${formulaString} = ${formatCurrency(valorTotal)}.
-Cálculo Detalhado: ${calculationString} = ${formatCurrency(totalBrutoCalculado)}.
-
-Total: ${formatCurrency(valorTotal)}.`;
-
-    return memoria;
-};
-
-const generateSaudeMemoriaCalculo = (
-    itens: ItemSaude[],
-    diasOperacao: number,
-    organizacao: string,
-    ug: string,
-    faseAtividade: string,
-    omDestino: string,
-    ugDestino: string,
-    valorND30: number,
-    valorND39: number
-): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalKits = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const valorTotal = valorND30 + valorND39;
-    
-    let detalhamentoCalculo = "";
-    
-    itens.forEach(item => {
-        const itemTotal = calculateSaudeItemTotal(item);
-        detalhamentoCalculo += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)} = ${formatCurrency(itemTotal)}.\n`;
-    });
-    
-    return `33.90.30 / 33.90.39 - Aquisição de KPSI/KPSC e KPT para utilização por ${totalKits} kits do ${organizacao}, durante ${diasOperacao} dias de ${faseFormatada}.
-Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
-
-Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
-
-Cálculo:
-Fórmula: Nr KPSC/KPT x valor do item
-
-Detalhes:
-${detalhamentoCalculo.trim()}
-
-Total: ${formatCurrency(valorTotal)}.`;
 };
 
 
@@ -367,55 +168,6 @@ const ClasseVIIIForm = () => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
   const { handleEnterToNextField } = useFormNavigation();
-
-  // Helper para converter string formatada (ex: "1.234,56") de volta para dígitos brutos ("123456")
-  const formattedToRawDigits = (formatted: string): string => {
-    const numericValue = parseInputToNumber(formatted);
-    return numberToRawDigits(numericValue);
-  };
-  
-  // NOVO: Efeito para sincronizar os estados temporários (ND 39 Input e OM Destino) ao mudar de aba ou carregar/resetar o formulário.
-  useEffect(() => {
-      const savedAllocation = categoryAllocations[selectedTab];
-      
-      // 1. Sincronizar ND 39 Input (dígitos)
-      const numericValue = parseInputToNumber(savedAllocation.nd_39_input);
-      const digits = String(Math.round(numericValue * 100));
-      
-      setTempND39Inputs(prev => ({
-          ...prev,
-          [selectedTab]: digits
-      }));
-      
-      // 2. Sincronizar OM Destino
-      if (savedAllocation.om_destino_recurso) {
-          setTempDestinations(prev => ({
-              ...prev,
-              [selectedTab]: {
-                  om: savedAllocation.om_destino_recurso,
-                  ug: savedAllocation.ug_destino_recurso,
-                  id: savedAllocation.selectedOmDestinoId,
-              }
-          }));
-      } else if (form.organizacao) {
-          // Se não houver alocação salva, mas houver OM Detentora, use a Detentora como padrão temporário
-          setTempDestinations(prev => ({
-              ...prev,
-              [selectedTab]: {
-                  om: form.organizacao,
-                  ug: form.ug,
-                  id: form.selectedOmId,
-              }
-          }));
-      } else {
-          // Se não houver OM Detentora, limpa o temporário
-          setTempDestinations(prev => ({
-              ...prev,
-              [selectedTab]: { om: "", ug: "", id: undefined }
-          }));
-      }
-      
-  }, [selectedTab, categoryAllocations, form.organizacao, form.ug, form.selectedOmId]);
 
   // NOVO: Dirty Check Logic
   const isCategoryAllocationDirty = useCallback((
@@ -461,6 +213,49 @@ const ClasseVIIIForm = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId, navigate]);
   
+  // Efeito para sincronizar os estados temporários (ND 39 Input e OM Destino) ao mudar de aba ou carregar/resetar o formulário.
+  useEffect(() => {
+      const savedAllocation = categoryAllocations[selectedTab];
+      
+      // 1. Sincronizar ND 39 Input (dígitos)
+      const numericValue = parseInputToNumber(savedAllocation.nd_39_input);
+      const digits = String(Math.round(numericValue * 100));
+      
+      setTempND39Inputs(prev => ({
+          ...prev,
+          [selectedTab]: digits
+      }));
+      
+      // 2. Sincronizar OM Destino
+      if (savedAllocation.om_destino_recurso) {
+          setTempDestinations(prev => ({
+              ...prev,
+              [selectedTab]: {
+                  om: savedAllocation.om_destino_recurso,
+                  ug: savedAllocation.ug_destino_recurso,
+                  id: savedAllocation.selectedOmDestinoId,
+              }
+          }));
+      } else if (form.organizacao) {
+          // Se não houver alocação salva, mas houver OM Detentora, use a Detentora como padrão temporário
+          setTempDestinations(prev => ({
+              ...prev,
+              [selectedTab]: {
+                  om: form.organizacao,
+                  ug: form.ug,
+                  id: form.selectedOmId,
+              }
+          }));
+      } else {
+          // Se não houver OM Detentora, limpa o temporário
+          setTempDestinations(prev => ({
+              ...prev,
+              [selectedTab]: { om: "", ug: "", id: undefined }
+          }));
+      }
+      
+  }, [selectedTab, categoryAllocations, form.organizacao, form.ug, form.selectedOmId]);
+
   // Efeito para gerenciar a lista de itens da categoria atual
   useEffect(() => {
     const isSaude = selectedTab === 'Saúde';
@@ -593,11 +388,11 @@ const ClasseVIIIForm = () => {
     ] = await Promise.all([
         supabase
             .from("classe_viii_saude_registros")
-            .select("*, itens_saude, detalhamento_customizado, valor_nd_30, valor_nd_39")
+            .select("*, itens_saude, detalhamento_customizado, valor_nd_30, valor_nd_39, om_detentora, ug_detentora")
             .eq("p_trab_id", ptrabId),
         supabase
             .from("classe_viii_remonta_registros")
-            .select("*, itens_remonta, detalhamento_customizado, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais")
+            .select("*, itens_remonta, detalhamento_customizado, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora")
             .eq("p_trab_id", ptrabId),
     ]);
 
@@ -606,11 +401,15 @@ const ClasseVIIIForm = () => {
 
     const newSaudeRecords = (saudeData || []).map(r => ({
         ...r,
-        categoria: 'Saúde - KPSI/KPT', // Normaliza a categoria para exibição
+        categoria: 'Saúde', // Normaliza a categoria para exibição
+        om_detentora: r.om_detentora || r.organizacao,
+        ug_detentora: r.ug_detentora || r.ug,
     })) as ClasseVIIIRegistro[];
     const newRemontaRecords = (remontaData || []).map(r => ({
         ...r,
         categoria: 'Remonta/Veterinária', // Normaliza a categoria para exibição
+        om_detentora: r.om_detentora || r.organizacao,
+        ug_detentora: r.ug_detentora || r.ug,
     })) as ClasseVIIIRegistro[];
 
     setRegistrosSaude(newSaudeRecords);
@@ -627,12 +426,12 @@ const ClasseVIIIForm = () => {
         return;
     }
 
-    // Ao editar, usamos o primeiro registro para preencher os dados globais (OM, UG, Dias)
+    // Ao editar, usamos o primeiro registro para preencher os dados globais (OM Detentora, UG Detentora, Dias)
     const firstRecord = allRecords[0];
     
-    // 1. Extract global data
-    const omName = firstRecord.organizacao;
-    const ug = firstRecord.ug;
+    // 1. Extract global data (OM Detentora)
+    const omDetentora = firstRecord.om_detentora;
+    const ugDetentora = firstRecord.ug_detentora;
     const diasOperacao = firstRecord.dias_operacao;
     const fasesSalvas = (firstRecord.fase_atividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
     const fasesPadrao = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
@@ -658,7 +457,7 @@ const ClasseVIIIForm = () => {
     
     // Process Saúde
     if (saudeRecords.length > 0) {
-        const r = saudeRecords[0]; // Apenas um registro por categoria é esperado
+        const r = saudeRecords[0]; // Apenas um registro por OM Detentora/UG Detentora/Categoria é esperado
         const sanitizedItems = (r.itens_saude || []).map(item => ({
             ...item,
             quantidade: Number((item as ItemSaude).quantidade || 0),
@@ -672,17 +471,15 @@ const ClasseVIIIForm = () => {
             nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
             nd_30_value: Number(r.valor_nd_30),
             nd_39_value: Number(r.valor_nd_39),
-            om_destino_recurso: r.organizacao,
-            ug_destino_recurso: r.ug,
+            om_destino_recurso: r.organizacao, // OM de Destino
+            ug_destino_recurso: r.ug, // UG de Destino
             selectedOmDestinoId: undefined,
         };
     }
     
     // Process Remonta
     if (remontaRecords.length > 0) {
-        const r = remontaRecords[0]; // Apenas um registro por OM/UG é esperado, mas pode ter Equino e Canino separados
-        
-        // Consolidar todos os itens de remonta em uma única lista
+        // Consolidar todos os itens de remonta em uma única lista (Equino + Canino)
         const allRemontaItems: ItemRemonta[] = remontaRecords.flatMap(record => 
             (record.itens_remonta || []).map(item => ({
                 ...item,
@@ -693,7 +490,17 @@ const ClasseVIIIForm = () => {
         
         consolidatedRemonta = allRemontaItems;
         
-        const totalValor = allRemontaItems.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+        // O cálculo do total deve ser feito usando a lógica de agregação por tipo de animal
+        let totalValor = 0;
+        const animalTypesInRecords = Array.from(new Set(remontaRecords.map(r => r.animal_tipo).filter(t => t))) as ('Equino' | 'Canino')[];
+        
+        animalTypesInRecords.forEach(animalType => {
+            // Encontra o item base (Equino ou Canino) para obter a quantidade e dias
+            const baseItem = allRemontaItems.find(item => item.item.includes(animalType));
+            if (baseItem) {
+                totalValor += calculateTotalForAnimalType(baseItem, diretrizesRemonta);
+            }
+        });
         
         // Usamos os dados de alocação do primeiro registro de remonta para preencher a alocação total da categoria
         const firstRemontaRecord = remontaRecords[0];
@@ -705,18 +512,18 @@ const ClasseVIIIForm = () => {
             nd_39_input: formatNumberForInput(totalND39, 2),
             nd_30_value: totalND30,
             nd_39_value: totalND39,
-            om_destino_recurso: firstRemontaRecord.organizacao,
-            ug_destino_recurso: firstRemontaRecord.ug,
+            om_destino_recurso: firstRemontaRecord.organizacao, // OM de Destino
+            ug_destino_recurso: firstRemontaRecord.ug, // UG de Destino
             selectedOmDestinoId: undefined,
         };
     }
     
     // Fetch OM IDs
-    selectedOmIdForEdit = await fetchOmId(omName, ug);
+    selectedOmIdForEdit = await fetchOmId(omDetentora, ugDetentora);
     
     for (const cat of CATEGORIAS) {
         const alloc = newAllocations[cat];
-        const tempDest = tempDestinations[cat]; // Usar o estado temporário para carregar a OM de destino
+        const tempDest = tempDestinations[cat]; 
         
         if (alloc.om_destino_recurso) {
             alloc.selectedOmDestinoId = await fetchOmId(alloc.om_destino_recurso, alloc.ug_destino_recurso);
@@ -730,8 +537,8 @@ const ClasseVIIIForm = () => {
     
     setForm({
       selectedOmId: selectedOmIdForEdit,
-      organizacao: omName,
-      ug: ug,
+      organizacao: omDetentora,
+      ug: ugDetentora,
       dias_operacao: diasOperacao,
       itensSaude: consolidatedSaude,
       itensRemonta: consolidatedRemonta,
@@ -1014,8 +821,8 @@ const ClasseVIIIForm = () => {
   };
   
   // --- Global Totals and Validation ---
-  const valorTotalSaude = form.itensSaude.reduce((sum, item) => sum + calculateSaudeItemTotal(item), 0);
-  const valorTotalRemonta = form.itensRemonta.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+  const valorTotalSaude = form.itensSaude.reduce((sum, item) => calculateSaudeItemTotal(item) + sum, 0);
+  const valorTotalRemonta = form.itensRemonta.reduce((sum, item) => calculateRemontaItemTotal(item) + sum, 0);
   const valorTotalForm = valorTotalSaude + valorTotalRemonta;
 
   const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_30_value, 0);
@@ -1049,13 +856,17 @@ const ClasseVIIIForm = () => {
         return;
     }
 
-    // Determine the target OM/UG for deletion/insertion
-    let targetOmDestino = "";
-    let targetUgDestino = "";
+    // Determine the target OM/UG for deletion/insertion (OM Detentora)
+    const omDetentora = form.organizacao;
+    const ugDetentora = form.ug;
+    
+    // Determine the OM/UG de Destino do Recurso (deve ser consistente se ambas as categorias estiverem ativas)
+    let omDestinoRecurso = "";
+    let ugDestinoRecurso = "";
     
     if (form.itensSaude.length > 0) {
-        targetOmDestino = categoryAllocations['Saúde'].om_destino_recurso;
-        targetUgDestino = categoryAllocations['Saúde'].ug_destino_recurso;
+        omDestinoRecurso = categoryAllocations['Saúde'].om_destino_recurso;
+        ugDestinoRecurso = categoryAllocations['Saúde'].ug_destino_recurso;
     }
     
     if (form.itensRemonta.length > 0) {
@@ -1063,19 +874,19 @@ const ClasseVIIIForm = () => {
         
         if (form.itensSaude.length > 0) {
             // Check consistency if both are present
-            if (targetOmDestino !== remontaAlloc.om_destino_recurso || targetUgDestino !== remontaAlloc.ug_destino_recurso) {
+            if (omDestinoRecurso !== remontaAlloc.om_destino_recurso || ugDestinoRecurso !== remontaAlloc.ug_destino_recurso) {
                 toast.error("Ao salvar Saúde e Remonta juntos, a OM de destino do recurso deve ser a mesma para ambas as categorias.");
                 setLoading(false);
                 return;
             }
         } else {
             // Only Remonta is present
-            targetOmDestino = remontaAlloc.om_destino_recurso;
-            targetUgDestino = remontaAlloc.ug_destino_recurso;
+            omDestinoRecurso = remontaAlloc.om_destino_recurso;
+            ugDestinoRecurso = remontaAlloc.ug_destino_recurso;
         }
     }
     
-    if (!targetOmDestino || !targetUgDestino) {
+    if (!omDestinoRecurso || !ugDestinoRecurso) {
         toast.error("OM de destino não definida."); 
         setLoading(false);
         return;
@@ -1084,40 +895,39 @@ const ClasseVIIIForm = () => {
     setLoading(true);
     
     try {
-      // 1. Deletar registros antigos APENAS para a OM/UG de destino atual (UPSERT logic)
+      // 1. Deletar registros antigos APENAS para a OM DETENTORA/UG DETENTORA atual
       
       // Delete existing Saúde records if we are saving new Saúde items
-      if (form.itensSaude.length > 0) {
-        await supabase.from("classe_viii_saude_registros")
-          .delete()
-          .eq("p_trab_id", ptrabId)
-          .eq("organizacao", targetOmDestino)
-          .eq("ug", targetUgDestino);
-      }
+      await supabase.from("classe_viii_saude_registros")
+        .delete()
+        .eq("p_trab_id", ptrabId)
+        .eq("om_detentora", omDetentora)
+        .eq("ug_detentora", ugDetentora);
       
       // Delete existing Remonta records if we are saving new Remonta items
-      if (form.itensRemonta.length > 0) {
-        await supabase.from("classe_viii_remonta_registros")
-          .delete()
-          .eq("p_trab_id", ptrabId)
-          .eq("organizacao", targetOmDestino)
-          .eq("ug", targetUgDestino);
-      }
+      await supabase.from("classe_viii_remonta_registros")
+        .delete()
+        .eq("p_trab_id", ptrabId)
+        .eq("om_detentora", omDetentora)
+        .eq("ug_detentora", ugDetentora);
       
       // 2. Inserir Saúde
       if (form.itensSaude.length > 0) {
         const allocation = categoryAllocations['Saúde'];
         const valorTotal = valorTotalSaude;
         
-        const detalhamento = generateSaudeMemoriaCalculo(
-            form.itensSaude, form.dias_operacao, form.organizacao, form.ug, faseFinalString,
-            allocation.om_destino_recurso, allocation.ug_destino_recurso, allocation.nd_30_value, allocation.nd_39_value
+        const detalhamento = generateDetalhamento(
+            form.itensSaude, form.dias_operacao, omDetentora, ugDetentora, faseFinalString,
+            allocation.om_destino_recurso, allocation.ug_destino_recurso, allocation.nd_30_value, allocation.nd_39_value,
+            'Saúde'
         );
         
         const registroSaude: TablesInsert<'classe_viii_saude_registros'> = {
             p_trab_id: ptrabId,
-            organizacao: allocation.om_destino_recurso,
-            ug: allocation.ug_destino_recurso,
+            organizacao: allocation.om_destino_recurso, // OM de Destino
+            ug: allocation.ug_destino_recurso, // UG de Destino
+            om_detentora: omDetentora, // OM Detentora
+            ug_detentora: ugDetentora, // UG Detentora
             dias_operacao: form.dias_operacao,
             categoria: 'Saúde - KPSI/KPT',
             itens_saude: form.itensSaude as any,
@@ -1166,16 +976,18 @@ const ClasseVIIIForm = () => {
             const equinoItems = remontaItemsGrouped['Equino'];
             const nrAnimaisEquino = equinoItems[0].quantidade_animais;
             
-            const detalhamentoEquino = generateRemontaMemoriaCalculo(
-                'Equino', equinoItems, form.dias_operacao, form.organizacao, form.ug, faseFinalString,
+            const detalhamentoEquino = generateDetalhamento(
+                equinoItems, form.dias_operacao, omDetentora, ugDetentora, faseFinalString,
                 allocation.om_destino_recurso, allocation.ug_destino_recurso, 
-                nd30Equino, nd39Equino
+                nd30Equino, nd39Equino, 'Remonta/Veterinária', 'Equino'
             );
             
             registrosParaInserir.push({
                 p_trab_id: ptrabId,
                 organizacao: allocation.om_destino_recurso,
                 ug: allocation.ug_destino_recurso,
+                om_detentora: omDetentora, // OM Detentora
+                ug_detentora: ugDetentora, // UG Detentora
                 dias_operacao: form.dias_operacao,
                 animal_tipo: 'Equino',
                 quantidade_animais: nrAnimaisEquino,
@@ -1193,16 +1005,18 @@ const ClasseVIIIForm = () => {
             const caninoItems = remontaItemsGrouped['Canino'];
             const nrAnimaisCanino = caninoItems[0].quantidade_animais;
             
-            const detalhamentoCanino = generateRemontaMemoriaCalculo(
-                'Canino', caninoItems, form.dias_operacao, form.organizacao, form.ug, faseFinalString,
+            const detalhamentoCanino = generateDetalhamento(
+                caninoItems, form.dias_operacao, omDetentora, ugDetentora, faseFinalString,
                 allocation.om_destino_recurso, allocation.ug_destino_recurso, 
-                nd30Canino, nd39Canino
+                nd30Canino, nd39Canino, 'Remonta/Veterinária', 'Canino'
             );
             
             registrosParaInserir.push({
                 p_trab_id: ptrabId,
                 organizacao: allocation.om_destino_recurso,
                 ug: allocation.ug_destino_recurso,
+                om_detentora: omDetentora, // OM Detentora
+                ug_detentora: ugDetentora, // UG Detentora
                 dias_operacao: form.dias_operacao,
                 animal_tipo: 'Canino',
                 quantidade_animais: nrAnimaisCanino,
@@ -1257,46 +1071,44 @@ const ClasseVIIIForm = () => {
     const { saude: saudeRecords, remonta: remontaRecords } = await fetchRegistros(); 
     
     // Reconstruir o estado do formulário com os dados carregados
-    // Filtramos os registros que pertencem à mesma OM/UG do registro clicado
-    const saudeToEdit = saudeRecords.filter(r => r.organizacao === registro.organizacao && r.ug === registro.ug);
-    const remontaToEdit = remontaRecords.filter(r => r.organizacao === registro.organizacao && r.ug === registro.ug);
+    // Filtramos os registros que pertencem à mesma OM Detentora/UG Detentora do registro clicado
+    const omDetentoraToEdit = registro.om_detentora;
+    const ugDetentoraToEdit = registro.ug_detentora;
+    
+    const saudeToEdit = saudeRecords.filter(r => r.om_detentora === omDetentoraToEdit && r.ug_detentora === ugDetentoraToEdit);
+    const remontaToEdit = remontaRecords.filter(r => r.om_detentora === omDetentoraToEdit && r.ug_detentora === ugDetentoraToEdit);
     
     reconstructFormState(saudeToEdit, remontaToEdit);
     
     // Define a aba correta para visualização
-    setSelectedTab(registro.categoria === 'Saúde - KPSI/KPT' ? 'Saúde' : 'Remonta/Veterinária');
+    setSelectedTab(registro.categoria === 'Saúde' ? 'Saúde' : 'Remonta/Veterinária');
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setLoading(false);
   };
   
   const handleDeletarRegistro = async (registro: ClasseVIIIRegistro) => {
-    if (!confirm(`Deseja realmente deletar o registro de ${registro.categoria} para ${registro.organizacao}?`)) return;
+    if (!confirm(`Deseja realmente deletar TODOS os registros de Classe VIII para a OM Detentora ${registro.om_detentora}?`)) return;
     
     setLoading(true);
     try {
-        // Ao deletar um registro de Remonta/Veterinária, precisamos deletar todos os registros (Equino/Canino)
-        // que compartilham a mesma OM/UG de destino, pois eles representam uma única entrada lógica.
-        if (registro.categoria !== 'Saúde - KPSI/KPT') {
-            // Deletar todos os registros de Remonta para esta OM/UG
-            const { error } = await supabase.from('classe_viii_remonta_registros')
-                .delete()
-                .eq("p_trab_id", ptrabId)
-                .eq("organizacao", registro.organizacao)
-                .eq("ug", registro.ug);
-            
-            if (error) throw error;
-            
-        } else {
-            // Deletar apenas o registro de Saúde
-            const { error } = await supabase.from('classe_viii_saude_registros')
-                .delete()
-                .eq("id", registro.id);
-            
-            if (error) throw error;
-        }
+        // Deletar todos os registros de Saúde e Remonta que compartilham a mesma OM Detentora/UG Detentora
         
-        toast.success("Registro excluído!");
+        // 1. Deletar Saúde
+        await supabase.from('classe_viii_saude_registros')
+            .delete()
+            .eq("p_trab_id", ptrabId)
+            .eq("om_detentora", registro.om_detentora)
+            .eq("ug_detentora", registro.ug_detentora);
+            
+        // 2. Deletar Remonta
+        await supabase.from('classe_viii_remonta_registros')
+            .delete()
+            .eq("p_trab_id", ptrabId)
+            .eq("om_detentora", registro.om_detentora)
+            .eq("ug_detentora", registro.ug_detentora);
+        
+        toast.success("Registros excluídos!");
         fetchRegistros();
     } catch (error) {
         console.error("Erro ao deletar registro:", error);
@@ -1308,7 +1120,26 @@ const ClasseVIIIForm = () => {
 
   const handleIniciarEdicaoMemoria = (registro: ClasseVIIIRegistro) => {
     setEditingMemoriaId(registro.id);
-    setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento || "");
+    
+    // 1. Gerar a memória automática mais recente
+    const isSaude = registro.categoria === 'Saúde';
+    const itensParaMemoria = isSaude ? registro.itens_saude as ItemSaude[] : registro.itens_remonta as ItemRemonta[];
+    
+    const memoriaAutomatica = generateCategoryMemoriaCalculo(
+        registro.categoria as Categoria, 
+        itensParaMemoria as ItemClasseVIII[], 
+        registro.dias_operacao, 
+        registro.om_detentora, 
+        registro.ug_detentora, 
+        registro.fase_atividade || '', 
+        0, 
+        registro.valor_nd_30, 
+        registro.valor_nd_39,
+        registro.animal_tipo
+    );
+    
+    // 2. Usar a customizada se existir, senão usar a automática recém-gerada
+    setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
   };
 
   const handleCancelarEdicaoMemoria = () => {
@@ -1319,7 +1150,7 @@ const ClasseVIIIForm = () => {
   const handleSalvarMemoriaCustomizada = async (registro: ClasseVIIIRegistro) => {
     setLoading(true);
     try {
-      const tableName = registro.categoria === 'Saúde - KPSI/KPT' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
+      const tableName = registro.categoria === 'Saúde' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
       
       const { error } = await supabase
         .from(tableName)
@@ -1348,7 +1179,7 @@ const ClasseVIIIForm = () => {
     
     setLoading(true);
     try {
-      const tableName = registro.categoria === 'Saúde - KPSI/KPT' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
+      const tableName = registro.categoria === 'Saúde' ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
       
       const { error } = await supabase
         .from(tableName)
@@ -1376,12 +1207,25 @@ const ClasseVIIIForm = () => {
   const allRegistros = [...registrosSaude, ...registrosRemonta];
   
   const registrosAgrupadosPorOM = useMemo(() => {
+    // Agrupa por OM Detentora
     return allRegistros.reduce((acc, registro) => {
-        const key = `${registro.organizacao} (${registro.ug})`;
+        const omDetentora = registro.om_detentora;
+        const ugDetentora = registro.ug_detentora;
+        const key = `${omDetentora} (${formatCodug(ugDetentora)})`;
+        
         if (!acc[key]) {
             acc[key] = [];
         }
-        acc[key].push(registro);
+        
+        // Adiciona apenas o registro de Saúde ou o registro de Remonta (Equino ou Canino)
+        // Se for Remonta, precisamos garantir que apenas um registro por OM Detentora/UG Detentora/Tipo de Animal apareça na lista de resumo.
+        if (registro.categoria === 'Saúde') {
+            acc[key].push(registro);
+        } else if (registro.categoria === 'Remonta/Veterinária') {
+            // Para Remonta, agrupamos por OM Detentora/UG Detentora, mas exibimos os registros individuais (Equino/Canino)
+            acc[key].push(registro);
+        }
+        
         return acc;
     }, {} as Record<string, ClasseVIIIRegistro[]>);
   }, [allRegistros]);
@@ -1431,14 +1275,14 @@ const ClasseVIIIForm = () => {
                     selectedOmId={form.selectedOmId}
                     onChange={handleOMChange}
                     placeholder="Selecione a OM..."
-                    initialOmName={form.organizacao} // NOVO
-                    initialOmUg={form.ug} // NOVO
+                    initialOmName={form.organizacao} 
+                    initialOmUg={form.ug} 
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label>UG Detentora</Label>
-                  <Input value={form.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
+                  <Input value={formatCodug(form.ug)} readOnly disabled onKeyDown={handleEnterToNextField} />
                 </div>
                 
                 <div className="space-y-2">
@@ -1559,7 +1403,7 @@ const ClasseVIIIForm = () => {
                                             
                                             const itemTotal = isSaude 
                                                 ? calculateSaudeItemTotal(itemSaude)
-                                                : calculateTotalForAnimalType(itemRemonta, diretrizesRemonta); // FIX: Usa a função correta para calcular o total do tipo de animal
+                                                : calculateTotalForAnimalType(itemRemonta, diretrizesRemonta); 
                                             
                                             const itemLabel = isSaude ? itemSaude.item : itemRemonta.item;
                                             
@@ -1651,12 +1495,12 @@ const ClasseVIIIForm = () => {
                                         onChange={handleOMDestinoChange}
                                         placeholder="Selecione a OM que receberá o recurso..."
                                         disabled={!form.organizacao} 
-                                        initialOmName={tempDestinations[cat].om} // NOVO
-                                        initialOmUg={tempDestinations[cat].ug} // NOVO
+                                        initialOmName={tempDestinations[cat].om} 
+                                        initialOmUg={tempDestinations[cat].ug} 
                                     />
                                     {tempDestinations[cat].ug && (
                                         <p className="text-xs text-muted-foreground">
-                                            UG de Destino: {tempDestinations[cat].ug}
+                                            UG de Destino: {formatCodug(tempDestinations[cat].ug)}
                                         </p>
                                     )}
                                 </div>
@@ -1766,6 +1610,9 @@ const ClasseVIIIForm = () => {
                         tempDestinations
                     );
                     
+                    // Verifica se a OM Detentora é diferente da OM de Destino
+                    const isDifferentOm = form.organizacao !== allocation.om_destino_recurso;
+                    
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
@@ -1819,8 +1666,8 @@ const ClasseVIIIForm = () => {
                         <div className="pt-2 border-t mt-2">
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                <span className="font-medium text-foreground">
-                                    {allocation.om_destino_recurso} ({allocation.ug_destino_recurso})
+                                <span className={cn("font-medium", isDifferentOm ? "text-red-600 font-bold" : "text-foreground")}>
+                                    {allocation.om_destino_recurso} ({formatCodug(allocation.ug_destino_recurso)})
                                 </span>
                             </div>
                             <div className="flex justify-between text-xs">
@@ -1881,27 +1728,52 @@ const ClasseVIIIForm = () => {
                   OMs Cadastradas
                 </h2>
                 
+                {/* Agrupamento por OM Detentora */}
                 {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+                    // Calcula o total para a OM Detentora (somando Saúde e Remonta)
                     const totalOM = omRegistros.reduce((sum, r) => sum + r.valor_total, 0);
                     const omName = omKey.split(' (')[0];
                     const ug = omKey.split(' (')[1].replace(')', '');
+                    
+                    // Filtra para exibir apenas um botão de edição/exclusão por OM Detentora
+                    const uniqueOmDetentoraRecord = omRegistros[0];
                     
                     return (
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h3 className="font-bold text-lg text-primary">
-                                    {omName} (UG: {ug})
+                                    OM Detentora: {omName} (UG: {formatCodug(ug)})
                                 </h3>
-                                <span className="font-extrabold text-xl text-primary">
-                                    {formatCurrency(totalOM)}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-extrabold text-xl text-primary">
+                                        {formatCurrency(totalOM)}
+                                    </span>
+                                    <div className="flex gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8"
+                                            onClick={() => handleEditarRegistro(uniqueOmDetentoraRecord)}
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleDeletarRegistro(uniqueOmDetentoraRecord)}
+                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
                             </div>
                             
                             <div className="space-y-3">
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const isSaude = registro.categoria === 'Saúde - KPSI/KPT';
+                                    const isSaude = registro.categoria === 'Saúde';
                                     
                                     let badgeStyle;
                                     if (isSaude) {
@@ -1909,6 +1781,9 @@ const ClasseVIIIForm = () => {
                                     } else {
                                         badgeStyle = getAnimalBadgeStyle(registro.animal_tipo || 'Equino');
                                     }
+                                    
+                                    // Verifica se a OM Detentora é diferente da OM de Destino
+                                    const isDifferentOmRegistro = registro.om_detentora !== registro.organizacao;
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1921,38 +1796,27 @@ const ClasseVIIIForm = () => {
                                                         <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
                                                             {badgeStyle.label}
                                                         </Badge>
+                                                        <Badge variant="outline" className="text-xs font-semibold">
+                                                            {fases}
+                                                        </Badge>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Dias: {registro.dias_operacao} | Fases: {fases}
+                                                        Dias: {registro.dias_operacao}
                                                     </p>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-lg text-primary/80">
-                                                        {formatCurrency(totalCategoria)}
-                                                    </span>
-                                                    <div className="flex gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8"
-                                                            onClick={() => handleEditarRegistro(registro)}
-                                                        >
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleDeletarRegistro(registro)}
-                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
+                                                <span className="font-bold text-lg text-primary/80">
+                                                    {formatCurrency(totalCategoria)}
+                                                </span>
                                             </div>
                                             
                                             {/* Detalhes da Alocação */}
                                             <div className="pt-2 border-t mt-2">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                    <span className={cn("font-medium", isDifferentOmRegistro ? "text-red-600 font-bold" : "text-foreground")}>
+                                                        {registro.organizacao} ({formatCodug(registro.ug)})
+                                                    </span>
+                                                </div>
                                                 <div className="flex justify-between text-xs">
                                                     <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
                                                     <span className="font-medium text-green-600">{formatCurrency(registro.valor_nd_30)}</span>
@@ -1980,21 +1844,29 @@ const ClasseVIIIForm = () => {
                 </h3>
                 
                 {allRegistros.map(registro => {
-                  const om = registro.organizacao;
-                  const ug = registro.ug;
+                  const omDetentora = registro.om_detentora;
+                  const ugDetentora = registro.ug_detentora;
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
-                  const isSaude = registro.categoria === 'Saúde - KPSI/KPT';
+                  const isSaude = registro.categoria === 'Saúde';
+                  
+                  // Verifica se a OM Detentora é diferente da OM de Destino
+                  const isDifferentOm = omDetentora !== registro.organizacao;
                   
                   const itensParaMemoria = isSaude ? registro.itens_saude as ItemSaude[] : registro.itens_remonta as ItemRemonta[];
                   
-                  const memoriaAutomatica = isSaude 
-                    ? generateSaudeMemoriaCalculo(
-                        itensParaMemoria as ItemSaude[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
-                      )
-                    : generateRemontaMemoriaCalculo(
-                        registro.animal_tipo || 'Equino', itensParaMemoria as ItemRemonta[], registro.dias_operacao, om, ug, registro.fase_atividade || '', om, ug, registro.valor_nd_30, registro.valor_nd_39
-                      );
+                  const memoriaAutomatica = generateCategoryMemoriaCalculo(
+                      registro.categoria as Categoria, 
+                      itensParaMemoria as ItemClasseVIII[], 
+                      registro.dias_operacao, 
+                      omDetentora, 
+                      ugDetentora, 
+                      registro.fase_atividade || '', 
+                      0, 
+                      registro.valor_nd_30, 
+                      registro.valor_nd_39,
+                      registro.animal_tipo
+                  );
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
                   
@@ -2009,13 +1881,28 @@ const ClasseVIIIForm = () => {
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                       
                       <div className="flex items-start justify-between gap-4 mb-4">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <h4 className="text-base font-semibold text-foreground">
-                                OM Destino: {om} ({ug})
-                              </h4>
-                              <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
-                                  {badgeStyle.label}
-                              </Badge>
+                          <div className="flex flex-col flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                  <h4 className="text-base font-semibold text-foreground">
+                                    OM Detentora: {omDetentora} (UG: {formatCodug(ugDetentora)})
+                                  </h4>
+                                  <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
+                                      {badgeStyle.label}
+                                  </Badge>
+                                  {hasCustomMemoria && !isEditing && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Editada manualmente
+                                    </Badge>
+                                  )}
+                              </div>
+                              {isDifferentOm ? (
+                                  <div className="flex items-center gap-1 mt-1">
+                                      <AlertCircle className="h-4 w-4 text-red-600" />
+                                      <span className="text-sm font-medium text-red-600">
+                                          Recurso destinado à OM: {registro.organizacao} ({formatCodug(registro.ug)})
+                                      </span>
+                                  </div>
+                              ) : null}
                           </div>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
