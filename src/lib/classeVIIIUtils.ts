@@ -57,6 +57,14 @@ const getOmArticle = (omName: string): string => {
     return 'do';
 };
 
+/**
+ * Helper function to get the pluralized animal name.
+ */
+const getAnimalPlural = (animalType: 'Equino' | 'Canino', count: number): string => {
+    const base = animalType.toLowerCase();
+    return count === 1 ? base : `${base}s`;
+};
+
 // --- Lógica de Cálculo Remonta/Veterinária ---
 
 export const calculateRemontaItemTotal = (item: ItemRemonta): number => {
@@ -205,7 +213,7 @@ Total: ${formatCurrency(totalValor)}.`;
         
         let formulaComponents: string[] = [];
         let calculationComponents: string[] = [];
-        let detailedItems = "Cálculo:\n";
+        let detailedItems = "";
         
         // Iterate over item types B, C, D, E, G in order
         ['B', 'C', 'D', 'E', 'G'].forEach(type => {
@@ -218,16 +226,16 @@ Total: ${formatCurrency(totalValor)}.`;
                 const itemDescription = item.item.split(/-\s[A-G]:\s/)[1].trim();
                 const itemUnit = item.item.includes('(Anual)') ? 'ano' : item.item.includes('(Mensal)') ? 'mês' : 'dia';
                 
-                detailedItems += `- Item ${type} (${itemDescription}): ${formatCurrency(baseValue)} / ${animalTipo?.toLowerCase()} / ${itemUnit}.\n`;
+                detailedItems += `- Item ${type} (${itemDescription}): ${formatCurrency(baseValue)} / ${getAnimalPlural(animalTipo!, 1)} / ${itemUnit}.\n`;
                 
                 if (item.item.includes('(Mensal)')) {
-                    formulaComponents.push(`[Nr ${animalTipo}s x (Item C / 30 dias) x Nr dias]`);
+                    formulaComponents.push(`[Nr ${getAnimalPlural(animalTipo!, nrAnimais)} x (Item C / 30 dias) x Nr dias]`);
                     calculationComponents.push(`(${nrAnimais} x (${formatCurrency(baseValue)} / 30 dias) x ${diasOperacaoItem} dias)`);
                 } else if (item.item.includes('(Diário)')) {
-                    formulaComponents.push(`(Nr ${animalTipo}s x Item G x Nr dias)`);
+                    formulaComponents.push(`(Nr ${getAnimalPlural(animalTipo!, nrAnimais)} x Item G x Nr dias)`);
                     calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${diasOperacaoItem} dias)`);
                 } else {
-                    formulaComponents.push(`(Nr ${animalTipo}s x Item ${type})`);
+                    formulaComponents.push(`(Nr ${getAnimalPlural(animalTipo!, nrAnimais)} x Item ${type})`);
                     
                     const multiplier = Math.ceil(diasOperacaoItem / 365);
                     if (multiplier > 1) {
@@ -242,18 +250,15 @@ Total: ${formatCurrency(totalValor)}.`;
         const formulaString = formulaComponents.join(' + ');
         const calculationString = calculationComponents.join(' + ');
         
-        // NOVO CABEÇALHO APLICADO AQUI
-        const animalPlural = nrAnimais === 1 ? animalTipo?.toLowerCase() : `${animalTipo?.toLowerCase()}(s)`;
+        // CABEÇALHO REMONTA (AJUSTADO)
+        const animalPlural = getAnimalPlural(animalTipo!, nrAnimais);
         const diaPlural = diasOperacaoItem === 1 ? 'dia' : 'dias';
         
         const header = `${ndPrefix} - Recomposição dos itens de Remonta/Veterinária de ${nrAnimais} ${animalPlural} ${omArticle} ${omDetentora}, durante ${diasOperacaoItem} ${diaPlural} de ${faseFormatada}.`;
 
         return `${header}
 
-Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
-
+Cálculo:
 ${detailedItems.trim()}
 
 Fórmula: ${formulaString} = ${formatCurrency(totalValor)}.
@@ -330,7 +335,7 @@ export const generateDetalhamento = (
         totalItens = nrAnimais;
         
         // CABEÇALHO REMONTA (AJUSTADO)
-        const animalPlural = nrAnimais === 1 ? animalTipo?.toLowerCase() : `${animalTipo?.toLowerCase()}(s)`;
+        const animalPlural = getAnimalPlural(animalTipo!, nrAnimais);
         const diaPlural = diasOperacaoItem === 1 ? 'dia' : 'dias';
         
         header = `${ndPrefix} - Recomposição dos itens de Remonta/Veterinária de ${nrAnimais} ${animalPlural} ${omArticle} ${omDetentora}, durante ${diasOperacaoItem} ${diaPlural} de ${faseFormatada}.`;
@@ -378,10 +383,6 @@ export const generateDetalhamento = (
 OM Detentora: ${omDetentora} (UG: ${formatCodug(ugDetentora)})
 Recurso destinado à OM: ${omDestino} (UG: ${formatCodug(ugDestino)})
 Total de Itens: ${totalItens}
-
-Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
 Cálculo Detalhado:
 ${detalhamentoCalculo.trim()}
