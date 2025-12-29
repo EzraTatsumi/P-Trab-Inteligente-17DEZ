@@ -200,53 +200,71 @@ Total: ${formatCurrency(totalValor)}.`;
         const diasOperacaoItem = itensPorAnimal[0].dias_operacao_item;
         const totalValor = itensPorAnimal.reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
         
-        // Group items by Item Type (B, C, D, E, G)
-        const groupedItems: Record<string, ItemRemonta[]> = itensPorAnimal.reduce((acc, item) => {
-            const itemTypeMatch = item.item.match(/-\s([A-G]):/);
-            if (itemTypeMatch) {
-                const type = itemTypeMatch[1];
-                if (!acc[type]) acc[type] = [];
-                acc[type].push(item);
-            }
-            return acc;
-        }, {} as Record<string, ItemRemonta[]>);
-        
         let formulaComponents: string[] = [];
         let calculationComponents: string[] = [];
         let detailedItemsList = ""; // Lista de itens detalhados
         
-        // Iterate over item types B, C, D, E, G in order
-        ['B', 'C', 'D', 'E', 'G'].forEach(type => {
-            const itemsOfType = groupedItems[type] || [];
+        // Agrupar itens por tipo (B, C, D, E, G) ou por item completo se não tiver prefixo
+        const groupedItems: Record<string, ItemRemonta[]> = itensPorAnimal.reduce((acc, item) => {
+            const itemTypeMatch = item.item.match(/-\s([A-G]):/);
+            const key = itemTypeMatch ? itemTypeMatch[1] : item.item; // Usa o item completo como chave se não houver prefixo
+            
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(item);
+            return acc;
+        }, {} as Record<string, ItemRemonta[]>);
+        
+        // Ordenar as chaves para garantir a ordem (B, C, D, E, G, e depois os demais)
+        const sortedKeys = Object.keys(groupedItems).sort((a, b) => {
+            const order = ['B', 'C', 'D', 'E', 'G'];
+            const indexA = order.indexOf(a);
+            const indexB = order.indexOf(b);
+            
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            return a.localeCompare(b);
+        });
+        
+        sortedKeys.forEach(key => {
+            const itemsOfType = groupedItems[key] || [];
             
             itemsOfType.forEach(item => {
                 const baseValue = item.valor_mnt_dia;
                 const itemTotal = calculateRemontaItemTotal(item);
                 
-                const itemDescription = item.item.split(/-\s[A-G]:\s/)[1].trim();
+                const itemTypeMatch = item.item.match(/-\s([A-G]):/);
+                const itemPrefix = itemTypeMatch ? `Item ${itemTypeMatch[1]}` : item.item;
+                const itemDescription = itemTypeMatch ? item.item.split(/-\s[A-G]:\s/)[1].trim() : item.item;
+                
                 const itemUnit = item.item.includes('(Anual)') ? 'ano' : item.item.includes('(Mensal)') ? 'mês' : 'dia';
                 
-                detailedItemsList += `- Item ${type} (${itemDescription}): ${formatCurrency(baseValue)} / ${getAnimalPlural(animalTipo!, 1)} / ${itemUnit}.\n`;
+                detailedItemsList += `- ${itemPrefix} (${itemDescription}): ${formatCurrency(baseValue)} / ${getAnimalPlural(animalTipo!, 1)} / ${itemUnit}.\n`;
                 
                 // Pluralização correta de dias
                 const diasPluralFormula = diasOperacaoItem === 1 ? 'dia' : 'dias';
                 const animalPluralFormula = getAnimalPlural(animalTipo!, nrAnimais);
                 
+                // Lógica para montar a fórmula (calculationComponents)
                 if (item.item.includes('(Mensal)')) {
                     formulaComponents.push(`[Nr ${animalPluralFormula} x (Item C / 30 dias) x Nr dias]`);
                     calculationComponents.push(`(${nrAnimais} x (${formatCurrency(baseValue)} / 30 dias) x ${diasOperacaoItem} ${diasPluralFormula})`);
                 } else if (item.item.includes('(Diário)')) {
                     formulaComponents.push(`(Nr ${animalPluralFormula} x Item G x Nr dias)`);
                     calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${diasOperacaoItem} ${diasPluralFormula})`);
-                } else {
-                    formulaComponents.push(`(Nr ${animalPluralFormula} x Item ${type})`);
-                    
+                } else if (item.item.includes('(Anual)')) {
+                    formulaComponents.push(`(Nr ${animalPluralFormula} x Item ${itemTypeMatch ? itemTypeMatch[1] : 'Anual'})`);
                     const multiplier = Math.ceil(diasOperacaoItem / 365);
                     if (multiplier > 1) {
                         calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${multiplier} anos)`);
                     } else {
                         calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)})`);
                     }
+                } else {
+                    // Novo item (Medicação, etc.) - Assume-se que é um custo por animal por dia/período
+                    // Se não tiver prefixo, assume-se que é um custo por animal por dia de operação
+                    formulaComponents.push(`(Nr ${animalPluralFormula} x ${itemDescription} x Nr dias)`);
+                    calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${diasOperacaoItem} ${diasPluralFormula})`);
                 }
             });
         });
@@ -260,7 +278,7 @@ Total: ${formatCurrency(totalValor)}.`;
         
         const header = `${ndPrefix} - Recomposição dos itens de Remonta/Veterinária de ${nrAnimais} ${animalPlural} ${omArticle} ${omDetentora}, durante ${diasOperacaoItem} ${diaPlural} de ${faseFormatada}.`;
 
-        // REORDENAMENTO AQUI:
+        // REORDENAMENTO FINAL:
         return `${header}
 
 Cálculo:
@@ -348,21 +366,32 @@ export const generateDetalhamento = (
         // Detalhamento de Remonta (usando a lógica de cálculo detalhada)
         const groupedItems: Record<string, ItemRemonta[]> = itensPorAnimal.reduce((acc, item) => {
             const itemTypeMatch = item.item.match(/-\s([A-G]):/);
-            if (itemTypeMatch) {
-                const type = itemTypeMatch[1];
-                if (!acc[type]) acc[type] = [];
-                acc[type].push(item);
-            }
+            const key = itemTypeMatch ? itemTypeMatch[1] : item.item; // Usa o item completo como chave se não houver prefixo
+            
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(item);
             return acc;
         }, {} as Record<string, ItemRemonta[]>);
         
         detalhamentoCalculo += `--- ${animalTipo?.toUpperCase()} (${nrAnimais} ANIMAIS) ---\n`;
         
-        ['B', 'C', 'D', 'E', 'G'].forEach(type => {
-            const itemsOfType = groupedItems[type] || [];
+        // Ordenar as chaves para garantir a ordem (B, C, D, E, G, e depois os demais)
+        const sortedKeys = Object.keys(groupedItems).sort((a, b) => {
+            const order = ['B', 'C', 'D', 'E', 'G'];
+            const indexA = order.indexOf(a);
+            const indexB = order.indexOf(b);
+            
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            return a.localeCompare(b);
+        });
+        
+        sortedKeys.forEach(key => {
+            const itemsOfType = groupedItems[key] || [];
             itemsOfType.forEach(item => {
                 const itemTotal = calculateRemontaItemTotal(item);
-                const itemDescription = item.item.split(/-\s[A-G]:\s/)[1].trim();
+                const itemDescription = item.item.split(/-\s[A-G]:\s/)[1]?.trim() || item.item;
                 const itemUnit = item.item.includes('(Anual)') ? 'ano' : item.item.includes('(Mensal)') ? 'mês' : 'dia';
                 
                 // Pluralização correta de dias
@@ -381,7 +410,7 @@ export const generateDetalhamento = (
                     }
                 }
                 
-                detalhamentoCalculo += `- Item ${type} (${itemDescription}): ${formulaDetail} = ${formatCurrency(itemTotal)}\n`;
+                detalhamentoCalculo += `- Item ${key} (${itemDescription}): ${formulaDetail} = ${formatCurrency(itemTotal)}\n`;
             });
         });
     }
