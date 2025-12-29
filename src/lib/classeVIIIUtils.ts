@@ -176,8 +176,6 @@ export const generateCategoryMemoriaCalculo = (
 
 Cálculo:
 Fórmula: Nr KPSC/KPT x valor do item
-
-Detalhes:
 ${detalhamentoCalculo.trim()}
 
 Total: ${formatCurrency(totalValor)}.`;
@@ -308,7 +306,6 @@ export const generateDetalhamento = (
         const diaPlural = diasOperacaoGlobal === 1 ? 'dia' : 'dias';
         
         // NOVO CABEÇALHO
-        // CORREÇÃO: Usar apenas ${omArticle} ${omDetentora}
         header = `${ndPrefix} - Recomposição de itens de ${totalItens} ${kitPlural} de Primeiros Socorros e Prescrição Tática ${omArticle} ${omDetentora}, durante ${diasOperacaoGlobal} ${diaPlural} de ${faseFormatada}.`;
         
         itensSaude.forEach(item => {
