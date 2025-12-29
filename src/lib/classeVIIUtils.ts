@@ -58,6 +58,7 @@ const getCategoryArticle = (categoria: Categoria): 'do' | 'da' | 'de' => {
 
 /**
  * Gera a memória de cálculo detalhada para uma categoria (usada para edição).
+ * Esta função é usada para preencher o campo de edição da memória.
  */
 export const generateCategoryMemoriaCalculo = (
     categoria: Categoria, 
@@ -126,7 +127,7 @@ Total: ${formatCurrency(totalValor)}.`;
 
 /**
  * Generates the final, consolidated detailing string for the database record.
- * This includes the ND split and the OM of resource destination.
+ * Esta função é usada para salvar no campo 'detalhamento' do DB e para o relatório final.
  */
 export const generateDetalhamento = (
     itens: ItemClasseVII[], 
