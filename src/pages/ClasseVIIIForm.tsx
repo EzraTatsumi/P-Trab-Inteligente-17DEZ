@@ -1248,8 +1248,8 @@ const ClasseVIIIForm = () => {
   const allRegistros = [...registrosSaude, ...registrosRemonta];
   
   const registrosAgrupadosPorOM = useMemo(() => {
-    // Agrupa por OM Detentora
-    return allRegistros.reduce((acc, registro) => {
+    // 1. Agrupa por OM Detentora
+    const groups = allRegistros.reduce((acc, registro) => {
         const omDetentora = registro.om_detentora;
         const ugDetentora = registro.ug_detentora;
         const key = `${omDetentora} (${formatCodug(ugDetentora)})`;
@@ -1257,11 +1257,21 @@ const ClasseVIIIForm = () => {
         if (!acc[key]) {
             acc[key] = [];
         }
-        
-        // Adiciona o registro de Saúde ou o registro de Remonta (Equino ou Canino)
-        // Nota: Para Remonta, como salvamos Equino e Canino separadamente, ambos aparecerão aqui.
         acc[key].push(registro);
-        
+        return acc;
+    }, {} as Record<string, ClasseVIIIRegistro[]>);
+
+    // 2. Ordena as chaves (nomes das OMs) alfabeticamente
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+        // Extrai apenas o nome da OM para comparação (ignora o CODUG entre parênteses)
+        const nameA = a.split(' (')[0];
+        const nameB = b.split(' (')[0];
+        return nameA.localeCompare(nameB);
+    });
+
+    // 3. Retorna o objeto ordenado
+    return sortedKeys.reduce((acc, key) => {
+        acc[key] = groups[key];
         return acc;
     }, {} as Record<string, ClasseVIIIRegistro[]>);
   }, [allRegistros]);
