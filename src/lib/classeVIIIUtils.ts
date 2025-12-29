@@ -213,7 +213,7 @@ Total: ${formatCurrency(totalValor)}.`;
         
         let formulaComponents: string[] = [];
         let calculationComponents: string[] = [];
-        let detailedItems = "";
+        let detailedItems = "Cálculo:\n";
         
         // Iterate over item types B, C, D, E, G in order
         ['B', 'C', 'D', 'E', 'G'].forEach(type => {
@@ -228,14 +228,18 @@ Total: ${formatCurrency(totalValor)}.`;
                 
                 detailedItems += `- Item ${type} (${itemDescription}): ${formatCurrency(baseValue)} / ${getAnimalPlural(animalTipo!, 1)} / ${itemUnit}.\n`;
                 
+                // Pluralização correta de dias
+                const diasPluralFormula = diasOperacaoItem === 1 ? 'dia' : 'dias';
+                const animalPluralFormula = getAnimalPlural(animalTipo!, nrAnimais);
+                
                 if (item.item.includes('(Mensal)')) {
-                    formulaComponents.push(`[Nr ${getAnimalPlural(animalTipo!, nrAnimais)} x (Item C / 30 dias) x Nr dias]`);
-                    calculationComponents.push(`(${nrAnimais} x (${formatCurrency(baseValue)} / 30 dias) x ${diasOperacaoItem} dias)`);
+                    formulaComponents.push(`[Nr ${animalPluralFormula} x (Item C / 30 dias) x Nr dias]`);
+                    calculationComponents.push(`(${nrAnimais} x (${formatCurrency(baseValue)} / 30 dias) x ${diasOperacaoItem} ${diasPluralFormula})`);
                 } else if (item.item.includes('(Diário)')) {
-                    formulaComponents.push(`(Nr ${getAnimalPlural(animalTipo!, nrAnimais)} x Item G x Nr dias)`);
-                    calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${diasOperacaoItem} dias)`);
+                    formulaComponents.push(`(Nr ${animalPluralFormula} x Item G x Nr dias)`);
+                    calculationComponents.push(`(${nrAnimais} x ${formatCurrency(baseValue)} x ${diasOperacaoItem} ${diasPluralFormula})`);
                 } else {
-                    formulaComponents.push(`(Nr ${getAnimalPlural(animalTipo!, nrAnimais)} x Item ${type})`);
+                    formulaComponents.push(`(Nr ${animalPluralFormula} x Item ${type})`);
                     
                     const multiplier = Math.ceil(diasOperacaoItem / 365);
                     if (multiplier > 1) {
@@ -262,7 +266,7 @@ Cálculo:
 ${detailedItems.trim()}
 
 Fórmula: ${formulaString} = ${formatCurrency(totalValor)}.
-Cálculo Detalhado: ${calculationString} = ${formatCurrency(totalValor)}.
+- ${calculationString} = ${formatCurrency(totalValor)}.
 
 Total: ${formatCurrency(totalValor)}.`;
     }
@@ -360,11 +364,15 @@ export const generateDetalhamento = (
                 const itemDescription = item.item.split(/-\s[A-G]:\s/)[1].trim();
                 const itemUnit = item.item.includes('(Anual)') ? 'ano' : item.item.includes('(Mensal)') ? 'mês' : 'dia';
                 
+                // Pluralização correta de dias
+                const diasPluralFormula = diasOperacaoItem === 1 ? 'dia' : 'dias';
+                const animalPluralFormula = getAnimalPlural(animalTipo!, nrAnimais);
+                
                 let formulaDetail = `${nrAnimais} un. x ${formatCurrency(item.valor_mnt_dia)} / ${itemUnit}`;
                 if (item.item.includes('(Mensal)')) {
-                    formulaDetail = `${nrAnimais} un. x (${formatCurrency(item.valor_mnt_dia)} / 30 dias) x ${diasOperacaoItem} dias`;
+                    formulaDetail = `${nrAnimais} un. x (${formatCurrency(item.valor_mnt_dia)} / 30 dias) x ${diasOperacaoItem} ${diasPluralFormula}`;
                 } else if (item.item.includes('(Diário)')) {
-                    formulaDetail = `${nrAnimais} un. x ${formatCurrency(item.valor_mnt_dia)} x ${diasOperacaoItem} dias`;
+                    formulaDetail = `${nrAnimais} un. x ${formatCurrency(item.valor_mnt_dia)} x ${diasOperacaoItem} ${diasPluralFormula}`;
                 } else if (item.item.includes('(Anual)')) {
                     const multiplier = Math.ceil(diasOperacaoItem / 365);
                     if (multiplier > 1) {

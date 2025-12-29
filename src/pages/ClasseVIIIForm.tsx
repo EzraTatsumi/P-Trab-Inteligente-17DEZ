@@ -66,7 +66,7 @@ interface ItemRemonta {
   item: string; // Ex: Equino, Canino
   quantidade_animais: number;
   dias_operacao_item: number; // Dias específicos de uso do animal
-  valor_mnt_dia: number; // Valor base (Anual/Mensal/Diário) - Usado apenas para cálculo interno
+  valor_mnt_dia: number; // Valor base (Anual/Mensal/Diário)
   categoria: 'Remonta/Veterinária';
 }
 
@@ -511,23 +511,37 @@ const ClasseVIIIForm = () => {
             }))
         );
         
-        consolidatedRemonta = allRemontaItems;
+        // Filtra para obter apenas os itens base (Equino e Canino) com os dados de quantidade/dias
+        const baseRemontaItems: ItemRemonta[] = [];
+        const animalTypes = ['Equino', 'Canino'];
+        
+        animalTypes.forEach(animalType => {
+            const relatedItems = allRemontaItems.filter(item => item.item.includes(animalType));
+            if (relatedItems.length > 0) {
+                // Pega o primeiro item para extrair a quantidade e dias (que devem ser consistentes)
+                const firstItem = relatedItems[0];
+                baseRemontaItems.push({
+                    item: animalType,
+                    quantidade_animais: firstItem.quantidade_animais,
+                    dias_operacao_item: firstItem.dias_operacao_item,
+                    valor_mnt_dia: 0, // Não usado para o item base
+                    categoria: 'Remonta/Veterinária',
+                });
+            }
+        });
+        
+        consolidatedRemonta = baseRemontaItems;
         
         // O cálculo do total deve ser feito usando a lógica de agregação por tipo de animal
         let totalValor = 0;
-        const animalTypesInRecords = Array.from(new Set(remontaRecords.map(r => r.animal_tipo).filter(t => t))) as ('Equino' | 'Canino')[];
         
         // Certifique-se de que diretrizesRemonta está carregado antes de calcular
         if (diretrizesRemonta.length === 0) {
             await loadDiretrizes(); // Recarrega diretrizes se necessário
         }
         
-        animalTypesInRecords.forEach(animalType => {
-            // Encontra o item base (Equino ou Canino) para obter a quantidade e dias
-            const baseItem = allRemontaItems.find(item => item.item.includes(animalType));
-            if (baseItem) {
-                totalValor += calculateTotalForAnimalType(baseItem, diretrizesRemonta);
-            }
+        baseRemontaItems.forEach(animalItem => {
+            totalValor += calculateTotalForAnimalType(animalItem, diretrizesRemonta);
         });
         
         // Usamos os dados de alocação do primeiro registro de remonta para preencher a alocação total da categoria
@@ -1698,9 +1712,11 @@ const ClasseVIIIForm = () => {
                             let calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} / ${unitLabel}`;
                             if (!isSaude) {
                                 if (itemRemonta.item.includes('(Mensal)')) {
-                                    calculationDetail = `${quantity} un. x (${formatCurrency(unitValue)} / 30 dias) x ${itemRemonta.dias_operacao_item} dias`;
+                                    const diasPlural = itemRemonta.dias_operacao_item === 1 ? 'dia' : 'dias';
+                                    calculationDetail = `${quantity} un. x (${formatCurrency(unitValue)} / 30 dias) x ${itemRemonta.dias_operacao_item} ${diasPlural}`;
                                 } else if (itemRemonta.item.includes('(Diário)')) {
-                                    calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} x ${itemRemonta.dias_operacao_item} dias`;
+                                    const diasPlural = itemRemonta.dias_operacao_item === 1 ? 'dia' : 'dias';
+                                    calculationDetail = `${quantity} un. x ${formatCurrency(unitValue)} x ${itemRemonta.dias_operacao_item} ${diasPlural}`;
                                 } else {
                                     const multiplier = Math.ceil(itemRemonta.dias_operacao_item / 365);
                                     if (multiplier > 1) {
