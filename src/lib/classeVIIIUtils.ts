@@ -213,7 +213,7 @@ Total: ${formatCurrency(totalValor)}.`;
         
         let formulaComponents: string[] = [];
         let calculationComponents: string[] = [];
-        let detailedItems = "";
+        let detailedItemsList = ""; // Lista de itens detalhados
         
         // Iterate over item types B, C, D, E, G in order
         ['B', 'C', 'D', 'E', 'G'].forEach(type => {
@@ -226,7 +226,7 @@ Total: ${formatCurrency(totalValor)}.`;
                 const itemDescription = item.item.split(/-\s[A-G]:\s/)[1].trim();
                 const itemUnit = item.item.includes('(Anual)') ? 'ano' : item.item.includes('(Mensal)') ? 'mês' : 'dia';
                 
-                detailedItems += `- Item ${type} (${itemDescription}): ${formatCurrency(baseValue)} / ${getAnimalPlural(animalTipo!, 1)} / ${itemUnit}.\n`;
+                detailedItemsList += `- Item ${type} (${itemDescription}): ${formatCurrency(baseValue)} / ${getAnimalPlural(animalTipo!, 1)} / ${itemUnit}.\n`;
                 
                 // Pluralização correta de dias
                 const diasPluralFormula = diasOperacaoItem === 1 ? 'dia' : 'dias';
@@ -260,12 +260,13 @@ Total: ${formatCurrency(totalValor)}.`;
         
         const header = `${ndPrefix} - Recomposição dos itens de Remonta/Veterinária de ${nrAnimais} ${animalPlural} ${omArticle} ${omDetentora}, durante ${diasOperacaoItem} ${diaPlural} de ${faseFormatada}.`;
 
+        // REORDENAMENTO AQUI:
         return `${header}
 
 Cálculo:
-Fórmula: ${formulaString} = ${formatCurrency(totalValor)}.
-${detailedItems.trim()}
+${detailedItemsList.trim()}
 
+Fórmula: ${formulaString} = ${formatCurrency(totalValor)}.
 - ${calculationString} = ${formatCurrency(totalValor)}.
 
 Total: ${formatCurrency(totalValor)}.`;
