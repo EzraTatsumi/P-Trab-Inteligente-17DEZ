@@ -556,7 +556,13 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               if (linha.tipo === 'QS') {
                   // CORREÇÃO: A despesa é para a OM de destino (QR), mas o recurso vai para a RM (QS)
                   rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n(Para OM: ${registro.organizacao})`;
-                  rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
+                  
+                  // FIX: Use RM name and CODUG, display CODUG only if available
+                  const om_qs_display = registro.om_qs || 'RM de Destino Não Informada';
+                  const ug_qs_display = registro.ug_qs ? `(${ug_qs_formatted})` : '';
+                  
+                  rowData.omValue = `${om_qs_display}\n${ug_qs_display}`;
+                  
                   rowData.valorC = registro.calculos.totalQS;
                   rowData.valorE = registro.calculos.totalQS;
                   // USANDO A FUNÇÃO UNIFICADA
@@ -1126,7 +1132,13 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         if (linha.tipo === 'QS') {
                             // CORREÇÃO: A despesa é para a OM de destino (QR), mas o recurso vai para a RM (QS)
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n(Para OM: ${registro.organizacao})`;
-                            rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
+                            
+                            // FIX: Use RM name and CODUG, display CODUG only if available
+                            const om_qs_display = registro.om_qs || 'RM de Destino Não Informada';
+                            const ug_qs_display = registro.ug_qs ? `(${ug_qs_formatted})` : '';
+                            
+                            rowData.omValue = `${om_qs_display}\n${ug_qs_display}`;
+                            
                             rowData.valorC = registro.calculos.totalQS;
                             rowData.valorE = registro.calculos.totalQS;
                             // USANDO A FUNÇÃO UNIFICADA
@@ -1269,7 +1281,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   // 2. Linhas Combustível (APENAS na RM) - Classe III Combustível
                   ...(nomeOM === nomeRM ? registrosClasseIII.filter(isCombustivel).map((registro) => {
                     
-                    // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
                     const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug || '';
                     const rmUgFormatted = formatCodug(rmUg);
 
