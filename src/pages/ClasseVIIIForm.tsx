@@ -1098,6 +1098,7 @@ const ClasseVIIIForm = () => {
     }
   };
 
+  // ALTERADO: Agora recebe um registro de categoria individual
   const handleEditarRegistro = async (registro: ClasseVIIIRegistro) => {
     setLoading(true);
     resetFormFields();
@@ -1105,13 +1106,22 @@ const ClasseVIIIForm = () => {
     // Garante que os dados mais recentes estão no estado
     const { saude: saudeRecords, remonta: remontaRecords } = await fetchRegistros(); 
     
-    // Reconstruir o estado do formulário com os dados carregados
+    // Reconstruir o estado do formulário usando APENAS o registro da categoria clicada
+    const isSaude = registro.categoria === 'Saúde';
+    
     // Filtramos os registros que pertencem à mesma OM Detentora/UG Detentora do registro clicado
     const omDetentoraToEdit = registro.om_detentora;
     const ugDetentoraToEdit = registro.ug_detentora;
     
-    const saudeToEdit = saudeRecords.filter(r => r.om_detentora === omDetentoraToEdit && r.ug_detentora === ugDetentoraToEdit);
-    const remontaToEdit = remontaRecords.filter(r => r.om_detentora === omDetentoraToEdit && r.ug_detentora === ugDetentoraToEdit);
+    // Se for Saúde, carregamos apenas o registro de Saúde para aquela OM Detentora
+    const saudeToEdit = isSaude 
+        ? saudeRecords.filter(r => r.om_detentora === omDetentoraToEdit && r.ug_detentora === ugDetentoraToEdit)
+        : [];
+        
+    // Se for Remonta, carregamos todos os registros de Remonta (Equino e Canino) para aquela OM Detentora
+    const remontaToEdit = !isSaude 
+        ? remontaRecords.filter(r => r.om_detentora === omDetentoraToEdit && r.ug_detentora === ugDetentoraToEdit)
+        : [];
     
     reconstructFormState(saudeToEdit, remontaToEdit);
     
@@ -1122,28 +1132,32 @@ const ClasseVIIIForm = () => {
     setLoading(false);
   };
   
+  // ALTERADO: Agora deleta apenas o registro da categoria específica
   const handleDeletarRegistro = async (registro: ClasseVIIIRegistro) => {
-    if (!confirm(`Deseja realmente deletar TODOS os registros de Classe VIII para a OM Detentora ${registro.om_detentora}?`)) return;
+    const isSaude = registro.categoria === 'Saúde';
+    const tableName = isSaude ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
+    const categoriaLabel = isSaude ? 'Saúde' : `Remonta/Veterinária (${registro.animal_tipo})`;
+    
+    if (!confirm(`Deseja realmente deletar o registro de ${categoriaLabel} para a OM Detentora ${registro.om_detentora}?`)) return;
     
     setLoading(true);
     try {
-        // Deletar todos os registros de Saúde e Remonta que compartilham a mesma OM Detentora/UG Detentora
+        // Se for Saúde, deletamos o registro único de Saúde para aquela OM Detentora
+        if (isSaude) {
+            await supabase.from(tableName)
+                .delete()
+                .eq("id", registro.id);
+        } else {
+            // Se for Remonta, deletamos TODOS os registros de Remonta (Equino e Canino) que compartilham a mesma OM Detentora/UG Detentora
+            // Isso é necessário porque Remonta é salva em múltiplos registros (um por animal_tipo) mas é editada como um bloco.
+            await supabase.from(tableName)
+                .delete()
+                .eq("p_trab_id", ptrabId)
+                .eq("om_detentora", registro.om_detentora)
+                .eq("ug_detentora", registro.ug_detentora);
+        }
         
-        // 1. Deletar Saúde
-        await supabase.from('classe_viii_saude_registros')
-            .delete()
-            .eq("p_trab_id", ptrabId)
-            .eq("om_detentora", registro.om_detentora)
-            .eq("ug_detentora", registro.ug_detentora);
-            
-        // 2. Deletar Remonta
-        await supabase.from('classe_viii_remonta_registros')
-            .delete()
-            .eq("p_trab_id", ptrabId)
-            .eq("om_detentora", registro.om_detentora)
-            .eq("ug_detentora", registro.ug_detentora);
-        
-        toast.success("Registros excluídos!");
+        toast.success(`Registro de ${categoriaLabel} excluído!`);
         fetchRegistros();
         resetFormFields(); // Limpa o formulário após a exclusão
     } catch (error) {
@@ -1253,14 +1267,9 @@ const ClasseVIIIForm = () => {
             acc[key] = [];
         }
         
-        // Adiciona apenas o registro de Saúde ou o registro de Remonta (Equino ou Canino)
-        // Se for Remonta, precisamos garantir que apenas um registro por OM Detentora/UG Detentora/Tipo de Animal apareça na lista de resumo.
-        if (registro.categoria === 'Saúde') {
-            acc[key].push(registro);
-        } else if (registro.categoria === 'Remonta/Veterinária') {
-            // Para Remonta, agrupamos por OM Detentora/UG Detentora, mas exibimos os registros individuais (Equino/Canino)
-            acc[key].push(registro);
-        }
+        // Adiciona o registro de Saúde ou o registro de Remonta (Equino ou Canino)
+        // Nota: Para Remonta, como salvamos Equino e Canino separadamente, ambos aparecerão aqui.
+        acc[key].push(registro);
         
         return acc;
     }, {} as Record<string, ClasseVIIIRegistro[]>);
@@ -1787,38 +1796,15 @@ const ClasseVIIIForm = () => {
                     const omName = omKey.split(' (')[0];
                     const ug = omKey.split(' (')[1].replace(')', '');
                     
-                    // Filtra para exibir apenas um botão de edição/exclusão por OM Detentora
-                    const uniqueOmDetentoraRecord = omRegistros[0];
-                    
                     return (
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h3 className="font-bold text-lg text-primary">
                                     OM Detentora: {omName} (UG: {formatCodug(ug)})
                                 </h3>
-                                <div className="flex items-center gap-2">
-                                    <span className="font-extrabold text-xl text-primary">
-                                        {formatCurrency(totalOM)}
-                                    </span>
-                                    <div className="flex gap-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8"
-                                            onClick={() => handleEditarRegistro(uniqueOmDetentoraRecord)}
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleDeletarRegistro(uniqueOmDetentoraRecord)}
-                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
+                                <span className="font-extrabold text-xl text-primary">
+                                    {formatCurrency(totalOM)}
+                                </span>
                             </div>
                             
                             <div className="space-y-3">
@@ -1856,9 +1842,30 @@ const ClasseVIIIForm = () => {
                                                         Dias: {registro.dias_operacao}
                                                     </p>
                                                 </div>
-                                                <span className="font-bold text-lg text-primary/80">
-                                                    {formatCurrency(totalCategoria)}
-                                                </span>
+                                                
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-lg text-primary/80">
+                                                        {formatCurrency(totalCategoria)}
+                                                    </span>
+                                                    <div className="flex gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            onClick={() => handleEditarRegistro(registro)}
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleDeletarRegistro(registro)}
+                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
                                             </div>
                                             
                                             {/* Detalhes da Alocação */}
