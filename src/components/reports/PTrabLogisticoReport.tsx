@@ -38,6 +38,7 @@ import {
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils"; // NOVO: Importar utilitário de Classe V
 import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils"; // NOVO: Importar utilitário de Classe VI
+import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils"; // Importando utilitário de Classe VII
 
 interface PTrabLogisticoReportProps {
   ptrabData: PTrabData;
@@ -510,7 +511,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               const ug_qr_formatted = formatCodug(registro.ug);
 
               if (linha.tipo === 'QS') {
-                  rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
+                  rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao`;
                   rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                   rowData.valorC = registro.total_qs;
                   rowData.valorE = registro.total_qs;
