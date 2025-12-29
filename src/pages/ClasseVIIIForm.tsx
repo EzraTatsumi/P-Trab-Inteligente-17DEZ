@@ -209,7 +209,25 @@ const ClasseVIIIForm = () => {
     }
     setLoading(true);
     loadDiretrizes();
-    fetchRegistros().then(() => setLoading(false)); // Initial load, but don't populate form
+    
+    // Carrega os registros e, se houver dados, tenta reconstruir o estado do formulário
+    fetchRegistros().then(({ saude, remonta }) => {
+        if (saude.length > 0 || remonta.length > 0) {
+            // Se houver registros, tenta carregar o primeiro grupo para edição
+            const firstRecord = saude[0] || remonta[0];
+            if (firstRecord) {
+                // Filtra todos os registros que pertencem à mesma OM Detentora/UG Detentora
+                const saudeToEdit = saude.filter(r => r.om_detentora === firstRecord.om_detentora && r.ug_detentora === firstRecord.ug_detentora);
+                const remontaToEdit = remonta.filter(r => r.om_detentora === firstRecord.om_detentora && r.ug_detentora === firstRecord.ug_detentora);
+                reconstructFormState(saudeToEdit, remontaToEdit);
+            } else {
+                setLoading(false);
+            }
+        } else {
+            setLoading(false);
+        }
+    });
+    
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [ptrabId, navigate]);
   
@@ -382,40 +400,46 @@ const ClasseVIIIForm = () => {
   const fetchRegistros = async (): Promise<{ saude: ClasseVIIIRegistro[], remonta: ClasseVIIIRegistro[] }> => {
     if (!ptrabId) return { saude: [], remonta: [] };
     
-    const [
-        { data: saudeData, error: saudeError },
-        { data: remontaData, error: remontaError },
-    ] = await Promise.all([
-        supabase
-            .from("classe_viii_saude_registros")
-            .select("*, itens_saude, detalhamento_customizado, valor_nd_30, valor_nd_39, om_detentora, ug_detentora")
-            .eq("p_trab_id", ptrabId),
-        supabase
-            .from("classe_viii_remonta_registros")
-            .select("*, itens_remonta, detalhamento_customizado, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora")
-            .eq("p_trab_id", ptrabId),
-    ]);
+    try {
+        const [
+            { data: saudeData, error: saudeError },
+            { data: remontaData, error: remontaError },
+        ] = await Promise.all([
+            supabase
+                .from("classe_viii_saude_registros")
+                .select("*, itens_saude, detalhamento_customizado, valor_nd_30, valor_nd_39, om_detentora, ug_detentora")
+                .eq("p_trab_id", ptrabId),
+            supabase
+                .from("classe_viii_remonta_registros")
+                .select("*, itens_remonta, detalhamento_customizado, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora")
+                .eq("p_trab_id", ptrabId),
+        ]);
 
-    if (saudeError) { console.error("Erro ao carregar Saúde:", saudeError); toast.error("Erro ao carregar registros de Saúde"); }
-    if (remontaError) { console.error("Erro ao carregar Remonta:", remontaError); toast.error("Erro ao carregar registros de Remonta"); }
+        if (saudeError) throw saudeError;
+        if (remontaError) throw remontaError;
 
-    const newSaudeRecords = (saudeData || []).map(r => ({
-        ...r,
-        categoria: 'Saúde', // Normaliza a categoria para exibição
-        om_detentora: r.om_detentora || r.organizacao,
-        ug_detentora: r.ug_detentora || r.ug,
-    })) as ClasseVIIIRegistro[];
-    const newRemontaRecords = (remontaData || []).map(r => ({
-        ...r,
-        categoria: 'Remonta/Veterinária', // Normaliza a categoria para exibição
-        om_detentora: r.om_detentora || r.organizacao,
-        ug_detentora: r.ug_detentora || r.ug,
-    })) as ClasseVIIIRegistro[];
+        const newSaudeRecords = (saudeData || []).map(r => ({
+            ...r,
+            categoria: 'Saúde', // Normaliza a categoria para exibição
+            om_detentora: r.om_detentora || r.organizacao,
+            ug_detentora: r.ug_detentora || r.ug,
+        })) as ClasseVIIIRegistro[];
+        const newRemontaRecords = (remontaData || []).map(r => ({
+            ...r,
+            categoria: 'Remonta/Veterinária', // Normaliza a categoria para exibição
+            om_detentora: r.om_detentora || r.organizacao,
+            ug_detentora: r.ug_detentora || r.ug,
+        })) as ClasseVIIIRegistro[];
 
-    setRegistrosSaude(newSaudeRecords);
-    setRegistrosRemonta(newRemontaRecords);
-    
-    return { saude: newSaudeRecords, remonta: newRemontaRecords };
+        setRegistrosSaude(newSaudeRecords);
+        setRegistrosRemonta(newRemontaRecords);
+        
+        return { saude: newSaudeRecords, remonta: newRemontaRecords };
+    } catch (error) {
+        console.error("Erro ao carregar registros de Classe VIII:", error);
+        toast.error("Erro ao carregar os registros de Saúde e Remonta.");
+        return { saude: [], remonta: [] };
+    }
   };
   
   const reconstructFormState = async (saudeRecords: ClasseVIIIRegistro[], remontaRecords: ClasseVIIIRegistro[]) => {
@@ -494,6 +518,11 @@ const ClasseVIIIForm = () => {
         let totalValor = 0;
         const animalTypesInRecords = Array.from(new Set(remontaRecords.map(r => r.animal_tipo).filter(t => t))) as ('Equino' | 'Canino')[];
         
+        // Certifique-se de que diretrizesRemonta está carregado antes de calcular
+        if (diretrizesRemonta.length === 0) {
+            await loadDiretrizes(); // Recarrega diretrizes se necessário
+        }
+        
         animalTypesInRecords.forEach(animalType => {
             // Encontra o item base (Equino ou Canino) para obter a quantidade e dias
             const baseItem = allRemontaItems.find(item => item.item.includes(animalType));
@@ -544,7 +573,16 @@ const ClasseVIIIForm = () => {
       itensRemonta: consolidatedRemonta,
     });
     setCategoryAllocations(newAllocations);
-    setTempND39Inputs(tempND39Inputs); // Atualiza o estado temporário de ND 39
+    setTempND39Inputs(prev => {
+        const newInputs = { ...prev };
+        if (newAllocations['Saúde'].nd_39_value > 0) {
+            newInputs['Saúde'] = numberToRawDigits(newAllocations['Saúde'].nd_39_value);
+        }
+        if (newAllocations['Remonta/Veterinária'].nd_39_value > 0) {
+            newInputs['Remonta/Veterinária'] = numberToRawDigits(newAllocations['Remonta/Veterinária'].nd_39_value);
+        }
+        return newInputs;
+    });
     setTempDestinations(tempDestinations); // Atualiza o estado temporário de destino
     
     if (saudeRecords.length > 0) {
