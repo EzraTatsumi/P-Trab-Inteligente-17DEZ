@@ -443,6 +443,8 @@ const ClasseVIIIForm = () => {
   
   const reconstructFormState = async (saudeRecords: ClasseVIIIRegistro[], remontaRecords: ClasseVIIIRegistro[]) => {
     setLoading(true);
+    
+    // 1. Consolidar todos os registros em um único array para facilitar a extração de dados globais
     const allRecords = [...saudeRecords, ...remontaRecords];
     if (allRecords.length === 0) {
         setLoading(false);
@@ -452,7 +454,7 @@ const ClasseVIIIForm = () => {
     // Ao editar, usamos o primeiro registro para preencher os dados globais (OM Detentora, UG Detentora, Dias)
     const firstRecord = allRecords[0];
     
-    // 1. Extract global data (OM Detentora)
+    // 2. Extract global data (OM Detentora)
     const omDetentora = firstRecord.om_detentora;
     const ugDetentora = firstRecord.ug_detentora;
     const diasOperacao = firstRecord.dias_operacao;
@@ -461,7 +463,7 @@ const ClasseVIIIForm = () => {
     setFasesAtividade(fasesSalvas.filter(f => fasesPadrao.includes(f)));
     setCustomFaseAtividade(fasesSalvas.find(f => !fasesPadrao.includes(f)) || "");
     
-    // 2. Consolidate items and allocations
+    // 3. Consolidate items and allocations
     let consolidatedSaude: ItemSaude[] = [];
     let consolidatedRemonta: ItemRemonta[] = [];
     let newAllocations = { ...initialCategoryAllocations };
@@ -478,12 +480,16 @@ const ClasseVIIIForm = () => {
         return data?.id;
     };
     
-    // Process Saúde
+    // Fetch OM Detentora ID
+    selectedOmIdForEdit = await fetchOmId(omDetentora, ugDetentora);
+    
+    // --- Process Saúde ---
     if (saudeRecords.length > 0) {
         const r = saudeRecords[0]; // Apenas um registro por OM Detentora/UG Detentora/Categoria é esperado
         const sanitizedItems = (r.itens_saude || []).map(item => ({
             ...item,
             quantidade: Number((item as ItemSaude).quantidade || 0),
+            valor_mnt_dia: Number((item as ItemSaude).valor_mnt_dia || 0),
         })) as ItemSaude[];
         
         consolidatedSaude = sanitizedItems;
@@ -496,22 +502,23 @@ const ClasseVIIIForm = () => {
             nd_39_value: Number(r.valor_nd_39),
             om_destino_recurso: r.organizacao, // OM de Destino
             ug_destino_recurso: r.ug, // UG de Destino
-            selectedOmDestinoId: undefined,
+            selectedOmDestinoId: undefined, // Será preenchido abaixo
         };
     }
     
-    // Process Remonta
+    // --- Process Remonta ---
     if (remontaRecords.length > 0) {
-        // Consolidar todos os itens de remonta em uma única lista (Equino + Canino)
+        // 3.1. Consolidar itens de Remonta (Equino e Canino) para o estado do formulário
         const allRemontaItems: ItemRemonta[] = remontaRecords.flatMap(record => 
             (record.itens_remonta || []).map(item => ({
                 ...item,
                 quantidade_animais: Number(item.quantidade_animais || 0),
                 dias_operacao_item: Number(item.dias_operacao_item || 0),
+                valor_mnt_dia: Number(item.valor_mnt_dia || 0),
             }))
         );
         
-        // Filtra para obter apenas os itens base (Equino e Canino) com os dados de quantidade/dias
+        // 3.2. Extrair os dados de quantidade/dias para os itens base (Equino e Canino)
         const baseRemontaItems: ItemRemonta[] = [];
         const animalTypes = ['Equino', 'Canino'];
         
@@ -532,22 +539,13 @@ const ClasseVIIIForm = () => {
         
         consolidatedRemonta = baseRemontaItems;
         
-        // O cálculo do total deve ser feito usando a lógica de agregação por tipo de animal
-        let totalValor = 0;
-        
-        // Certifique-se de que diretrizesRemonta está carregado antes de calcular
-        if (diretrizesRemonta.length === 0) {
-            await loadDiretrizes(); // Recarrega diretrizes se necessário
-        }
-        
-        baseRemontaItems.forEach(animalItem => {
-            totalValor += calculateTotalForAnimalType(animalItem, diretrizesRemonta);
-        });
-        
-        // Usamos os dados de alocação do primeiro registro de remonta para preencher a alocação total da categoria
-        const firstRemontaRecord = remontaRecords[0];
+        // 3.3. Consolidar Alocação ND 30/39 e Total Valor
         const totalND30 = remontaRecords.reduce((sum, r) => sum + Number(r.valor_nd_30), 0);
         const totalND39 = remontaRecords.reduce((sum, r) => sum + Number(r.valor_nd_39), 0);
+        const totalValor = remontaRecords.reduce((sum, r) => sum + Number(r.valor_total), 0);
+        
+        // O OM de destino deve ser o mesmo para todos os registros de Remonta
+        const firstRemontaRecord = remontaRecords[0];
         
         newAllocations['Remonta/Veterinária'] = {
             total_valor: totalValor,
@@ -556,27 +554,11 @@ const ClasseVIIIForm = () => {
             nd_39_value: totalND39,
             om_destino_recurso: firstRemontaRecord.organizacao, // OM de Destino
             ug_destino_recurso: firstRemontaRecord.ug, // UG de Destino
-            selectedOmDestinoId: undefined,
+            selectedOmDestinoId: undefined, // Será preenchido abaixo
         };
     }
     
-    // Fetch OM IDs
-    selectedOmIdForEdit = await fetchOmId(omDetentora, ugDetentora);
-    
-    for (const cat of CATEGORIAS) {
-        const alloc = newAllocations[cat];
-        const tempDest = tempDestinations[cat]; 
-        
-        if (alloc.om_destino_recurso) {
-            alloc.selectedOmDestinoId = await fetchOmId(alloc.om_destino_recurso, alloc.ug_destino_recurso);
-            
-            // Sincronizar o estado temporário de destino com o ID
-            tempDest.id = alloc.selectedOmDestinoId;
-            tempDest.om = alloc.om_destino_recurso;
-            tempDest.ug = alloc.ug_destino_recurso;
-        }
-    }
-    
+    // 4. Preencher o formulário principal com a OM Detentora
     setForm({
       selectedOmId: selectedOmIdForEdit,
       organizacao: omDetentora,
@@ -584,22 +566,44 @@ const ClasseVIIIForm = () => {
       dias_operacao: diasOperacao,
       itensSaude: consolidatedSaude,
       itensRemonta: consolidatedRemonta,
+      fase_atividade: firstRecord.fase_atividade,
     });
-    setCategoryAllocations(newAllocations);
-    setTempND39Inputs(prev => {
-        const newInputs = { ...prev };
-        if (newAllocations['Saúde'].nd_39_value > 0) {
-            newInputs['Saúde'] = numberToRawDigits(newAllocations['Saúde'].nd_39_value);
-        }
-        if (newAllocations['Remonta/Veterinária'].nd_39_value > 0) {
-            newInputs['Remonta/Veterinária'] = numberToRawDigits(newAllocations['Remonta/Veterinária'].nd_39_value);
-        }
-        return newInputs;
-    });
-    setTempDestinations(tempDestinations); // Atualiza o estado temporário de destino
     
-    // Não define a aba selecionada automaticamente para evitar confusão
-    // setSelectedTab(registro.categoria === 'Saúde' ? 'Saúde' : 'Remonta/Veterinária');
+    // 5. Preencher o estado de alocação e IDs de destino (e sincronizar temporários)
+    for (const cat of CATEGORIAS) {
+        const alloc = newAllocations[cat];
+        
+        if (alloc.om_destino_recurso) {
+            alloc.selectedOmDestinoId = await fetchOmId(alloc.om_destino_recurso, alloc.ug_destino_recurso);
+            
+            // Sincronizar o estado temporário de destino com o ID
+            setTempDestinations(prev => ({
+                ...prev,
+                [cat]: {
+                    om: alloc.om_destino_recurso,
+                    ug: alloc.ug_destino_recurso,
+                    id: alloc.selectedOmDestinoId,
+                }
+            }));
+            
+            // Sincronizar o estado temporário de ND 39
+            const savedND39Value = alloc.nd_39_value;
+            const savedDigits = String(Math.round(savedND39Value * 100));
+            setTempND39Inputs(prev => ({
+                ...prev,
+                [cat]: savedDigits
+            }));
+        }
+    }
+    
+    setCategoryAllocations(newAllocations);
+    
+    // 6. Selecionar a aba do primeiro registro encontrado (se houver)
+    if (saudeRecords.length > 0) {
+        setSelectedTab('Saúde');
+    } else if (remontaRecords.length > 0) {
+        setSelectedTab('Remonta/Veterinária');
+    }
     
     setLoading(false);
   };
@@ -1083,8 +1087,8 @@ const ClasseVIIIForm = () => {
             const totalND30 = allocation.nd_30_value;
             const totalND39 = allocation.nd_39_value;
             
-            const somaND30 = registrosParaInserir[0].valor_nd_30 + registrosParaInserir[1].valor_nd_30;
-            const somaND39 = registrosParaInserir[0].valor_nd_39 + registrosParaInserir[1].valor_nd_39;
+            const somaND30 = registrosParaInserir.reduce((sum, r) => sum + r.valor_nd_30, 0);
+            const somaND39 = registrosParaInserir.reduce((sum, r) => sum + r.valor_nd_39, 0);
             
             // Adiciona a diferença de arredondamento ao primeiro registro
             if (!areNumbersEqual(somaND30, totalND30)) {
@@ -1102,7 +1106,7 @@ const ClasseVIIIForm = () => {
       
       toast.success("Registros de Classe VIII salvos com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
-      resetFormFields(); // Resetar o formulário para permitir novo registro
+      resetFormFields(); // Limpa o formulário para permitir novo registro
       fetchRegistros(); // Recarregar a lista de registros salvos
     } catch (error) {
       console.error("Erro ao salvar registros de Classe VIII:", error);
