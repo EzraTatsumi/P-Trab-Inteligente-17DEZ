@@ -169,7 +169,7 @@ export const generateCategoryMemoriaCalculo = (
         const kitPlural = totalKits === 1 ? 'Kit' : 'Kits';
         const diaPlural = diasOperacaoGlobal === 1 ? 'dia' : 'dias';
         
-        // CORREÇÃO: Usar apenas ${omArticle} ${omDetentora}
+        // CABEÇALHO SAÚDE
         const header = `${ndPrefix} - Recomposição de itens de ${totalKits} ${kitPlural} de Primeiros Socorros e Prescrição Tática ${omArticle} ${omDetentora}, durante ${diasOperacaoGlobal} ${diaPlural} de ${faseFormatada}.`;
         
         return `${header}
@@ -205,7 +205,7 @@ Total: ${formatCurrency(totalValor)}.`;
         
         let formulaComponents: string[] = [];
         let calculationComponents: string[] = [];
-        let detailedItems = "Cálculo:\n";
+        let detailedItems = ""; // Removido o cabeçalho "Cálculo:" daqui
         
         // Iterate over item types B, C, D, E, G in order
         ['B', 'C', 'D', 'E', 'G'].forEach(type => {
@@ -242,7 +242,11 @@ Total: ${formatCurrency(totalValor)}.`;
         const formulaString = formulaComponents.join(' + ');
         const calculationString = calculationComponents.join(' + ');
         
-        const header = `${ndPrefix} - Aquisição meios ou contratação de serviços para a manutenção de ${nrAnimais} ${animalTipo?.toLowerCase()}(s) ${omArticle} ${omDetentora}, durante ${diasOperacaoItem} dias de ${faseFormatada}.`;
+        // CABEÇALHO REMONTA (AJUSTADO)
+        const animalPlural = nrAnimais === 1 ? animalTipo?.toLowerCase() : `${animalTipo?.toLowerCase()}(s)`;
+        const diaPlural = diasOperacaoItem === 1 ? 'dia' : 'dias';
+        
+        const header = `${ndPrefix} - Manutenção de ${nrAnimais} ${animalPlural} ${omArticle} ${omDetentora}, durante ${diasOperacaoItem} ${diaPlural} de ${faseFormatada}.`;
 
         return `${header}
 
@@ -250,6 +254,7 @@ Alocação:
 - ND 33.90.30 (Material): ${formatCurrency(valorND30)}
 - ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
+Cálculo:
 ${detailedItems.trim()}
 
 Fórmula: ${formulaString} = ${formatCurrency(totalValor)}.
@@ -325,7 +330,11 @@ export const generateDetalhamento = (
         const diasOperacaoItem = itensPorAnimal[0].dias_operacao_item;
         totalItens = nrAnimais;
         
-        header = `${ndPrefix} - Aquisição meios ou contratação de serviços para a manutenção de ${nrAnimais} ${animalTipo?.toLowerCase()}(s) ${omArticle} ${omDetentora}, durante ${diasOperacaoItem} dias de ${faseFormatada}.`;
+        // CABEÇALHO REMONTA (AJUSTADO)
+        const animalPlural = nrAnimais === 1 ? animalTipo?.toLowerCase() : `${animalTipo?.toLowerCase()}(s)`;
+        const diaPlural = diasOperacaoItem === 1 ? 'dia' : 'dias';
+        
+        header = `${ndPrefix} - Manutenção de ${nrAnimais} ${animalPlural} ${omArticle} ${omDetentora}, durante ${diasOperacaoItem} ${diaPlural} de ${faseFormatada}.`;
 
         // Detalhamento de Remonta (usando a lógica de cálculo detalhada)
         const groupedItems: Record<string, ItemRemonta[]> = itensPorAnimal.reduce((acc, item) => {
