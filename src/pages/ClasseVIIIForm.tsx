@@ -1775,15 +1775,7 @@ const ClasseVIIIForm = () => {
                       <Sparkles className="h-5 w-5 text-accent" />
                       OMs Cadastradas
                     </h2>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={resetFormFields}
-                        disabled={loading}
-                    >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Novo Registro
-                    </Button>
+                    {/* Botão 'Novo Registro' removido daqui */}
                 </div>
                 
                 {/* Agrupamento por OM Detentora */}
