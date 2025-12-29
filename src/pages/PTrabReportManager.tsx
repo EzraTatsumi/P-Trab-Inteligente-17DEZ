@@ -576,7 +576,7 @@ const PTrabReportManager = () => {
 
       setPtrabData(ptrab as PTrabData); // Casting para incluir updated_at
       
-      // Mapeamento detalhado para Classe I
+      // Mapeamento detalhado para Classe I//
       setRegistrosClasseI((classeIData || []).map(r => {
           const categoria = (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL';
           
