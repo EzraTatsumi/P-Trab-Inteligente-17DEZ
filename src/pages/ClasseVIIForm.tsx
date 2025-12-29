@@ -14,7 +14,7 @@ import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -134,6 +134,24 @@ const generateDetalhamento = (
     const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
     const valorTotal = valorND30 + valorND39;
 
+    // 1. Determinar o prefixo ND
+    let ndPrefix = "";
+    if (valorND30 > 0 && valorND39 > 0) {
+        ndPrefix += "33.90.30 / 33.90.39";
+    } else if (valorND30 > 0) {
+        ndPrefix += "33.90.30";
+    } else if (valorND39 > 0) {
+        ndPrefix += "33.90.39";
+    } else {
+        ndPrefix = "(Não Alocado)";
+    }
+    
+    // 2. Determinar singular/plural de 'dia'
+    const diaPlural = diasOperacao === 1 ? "dia" : "dias";
+
+    // 3. Montar o cabeçalho dinâmico
+    const header = `${ndPrefix} - Aquisição de Material de Classe VII (Diversos) para ${totalItens} itens, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}, para ${organizacao}.`;
+
     const gruposPorCategoria = itens.reduce((acc, item) => {
         const categoria = item.categoria as Categoria;
         // Acessando diasOperacao do argumento
@@ -149,8 +167,12 @@ const generateDetalhamento = (
         
         acc[categoria].totalValor += valorItem;
         acc[categoria].totalQuantidade += item.quantidade;
+        
+        // APLICANDO CONCORDÂNCIA AQUI:
+        const diasPluralFormula = diasOperacao === 1 ? "dia" : "dias";
+        
         acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(valorItem)}.`
+            `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diasPluralFormula} = ${formatCurrency(valorItem)}`
         );
         
         return acc;
@@ -168,16 +190,17 @@ const generateDetalhamento = (
     
     detalhamentoItens = detalhamentoItens.trim();
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe VII (Diversos) para ${totalItens} itens, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
-Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
+    return `${header}
+
+OM Detentora: ${organizacao} (UG: ${formatCodug(ug)})
+Recurso destinado à OM: ${omDestino} (UG: ${formatCodug(ugDestino)})
+Total de Itens: ${totalItens}
 
 Alocação:
 - ND 33.90.30 (Material): ${formatCurrency(valorND30)}
 - ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
-Cálculo:
-Fórmula Base: Nr Itens x Valor Mnt/Dia x Nr Dias de Operação.
-
+Cálculo Detalhado por Categoria:
 ${detalhamentoItens}
 
 Valor Total: ${formatCurrency(valorTotal)}.`;
@@ -425,7 +448,7 @@ const ClasseVIIForm = () => {
     
     const { data, error } = await supabase
       .from("classe_vii_registros")
-      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39")
+      .select("*, itens_equipamentos, detalhamento_customizado, valor_nd_30, valor_nd_39, om_detentora, ug_detentora")
       .eq("p_trab_id", ptrabId)
       .order("organizacao", { ascending: true })
       .order("categoria", { ascending: true });
@@ -438,12 +461,18 @@ const ClasseVIIForm = () => {
 
     const uniqueRecordsMap = new Map<string, ClasseVIRegistro>();
     (data || []).forEach(r => {
-        const key = `${r.organizacao}-${r.ug}-${r.categoria}`;
+        // Chave de unicidade deve ser OM Detentora + UG Detentora + Categoria
+        const omDetentora = r.om_detentora || r.organizacao;
+        const ugDetentora = r.ug_detentora || r.ug;
+        const key = `${omDetentora}-${ugDetentora}-${r.categoria}`;
+        
         const record = {
             ...r,
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseVII[],
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
+            om_detentora: omDetentora,
+            ug_detentora: ugDetentora,
         } as ClasseVIRegistro;
         uniqueRecordsMap.set(key, record);
     });
@@ -562,8 +591,8 @@ const ClasseVIIForm = () => {
   const { formatted: formattedND39Value } = formatCurrencyInput(currentND39InputDigits);
 
   const handleUpdateCategoryItems = () => {
-    if (!form.organizacao || form.dias_operacao <= 0) {
-        toast.error("Preencha a OM e os Dias de Operação antes de salvar itens.");
+    if (!form.organizacao || form.ug === "" || form.dias_operacao <= 0) {
+        toast.error("Preencha a OM Detentora e os Dias de Operação antes de salvar itens.");
         return;
     }
     
@@ -697,6 +726,8 @@ const ClasseVIIForm = () => {
             p_trab_id: ptrabId,
             organizacao: allocation.om_destino_recurso,
             ug: allocation.ug_destino_recurso,
+            om_detentora: form.organizacao, // NOVO: Salvando OM Detentora
+            ug_detentora: form.ug, // NOVO: Salvando UG Detentora
             dias_operacao: form.dias_operacao,
             categoria: categoria,
             itens_equipamentos: itens as any,
@@ -711,10 +742,13 @@ const ClasseVIIForm = () => {
     }
 
     try {
+      // Deletar APENAS os registros de Classe VII existentes para este PTrab E ESTA OM DETENTORA/UG DETENTORA
       const { error: deleteError } = await supabase
         .from("classe_vii_registros")
         .delete()
-        .eq("p_trab_id", ptrabId);
+        .eq("p_trab_id", ptrabId)
+        .eq("om_detentora", form.organizacao) // Filtra pela OM Detentora
+        .eq("ug_detentora", form.ug); // Filtra pela UG Detentora
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
       const { error: insertError } = await supabase.from("classe_vii_registros").insert(registrosParaSalvar);
@@ -736,13 +770,26 @@ const ClasseVIIForm = () => {
     setLoading(true);
     resetFormFields();
     
+    // 1. Usar a OM Detentora do registro clicado como filtro para carregar todos os registros relacionados
+    const omDetentoraToEdit = registro.om_detentora || registro.organizacao;
+    const ugDetentoraToEdit = registro.ug_detentora || registro.ug;
+    
+    // 2. Buscar TODOS os registros de CLASSE VII para este PTrab E ESTA OM/UG DETENTORA ESPECÍFICA
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_vii_registros")
-        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39")
-        .eq("p_trab_id", ptrabId);
+        .select("*, itens_equipamentos, valor_nd_30, valor_nd_39, dias_operacao, fase_atividade, organizacao, ug, om_detentora, ug_detentora")
+        .eq("p_trab_id", ptrabId)
+        .eq("om_detentora", omDetentoraToEdit) // FILTRO CHAVE: Apenas registros desta OM Detentora
+        .eq("ug_detentora", ugDetentoraToEdit); // FILTRO CHAVE: Apenas registros desta UG Detentora
         
     if (fetchAllError) {
         toast.error("Erro ao carregar todos os registros para edição.");
+        setLoading(false);
+        return;
+    }
+    
+    if (!allRecords || allRecords.length === 0) {
+        toast.error("Nenhum registro encontrado para esta OM.");
         setLoading(false);
         return;
     }
@@ -751,97 +798,97 @@ const ClasseVIIForm = () => {
     let newAllocations = { ...initialCategoryAllocations };
     let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
     let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
-    let firstOmDetentora: { nome: string, ug: string } | null = null;
     
-    (allRecords || []).forEach(r => {
+    // Os dados globais (dias, fases) devem ser consistentes entre os registros.
+    const firstRecord = allRecords[0];
+    const diasOperacao = firstRecord.dias_operacao;
+    const faseAtividade = firstRecord.fase_atividade;
+    
+    // 3. Buscar ID da OM Detentora
+    let selectedOmIdForEdit: string | undefined = undefined;
+    try {
+        const { data: omData } = await supabase
+            .from('organizacoes_militares')
+            .select('id')
+            .eq('nome_om', omDetentoraToEdit)
+            .eq('codug_om', ugDetentoraToEdit)
+            .maybeSingle();
+        selectedOmIdForEdit = omData?.id;
+    } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
+    
+    for (const r of (allRecords || [])) {
         const category = r.categoria as Categoria;
-        const items = (r.itens_equipamentos || []) as ItemClasseVII[];
+        const items = (r.itens_equipamentos as any[] || []).map(item => ({
+            item: item.item,
+            quantidade: Number(item.quantidade || 0),
+            valor_mnt_dia: Number(item.valor_mnt_dia || 0),
+            categoria: item.categoria,
+            memoria_customizada: item.memoria_customizada || null,
+        })) as ItemClasseVII[];
         
         consolidatedItems = consolidatedItems.concat(items);
         
         if (newAllocations[category]) {
-            const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * r.dias_operacao), 0);
+            const totalValor = items.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
+            
+            // Tenta buscar o ID da OM de Destino (r.organizacao/r.ug)
+            let selectedOmDestinoId: string | undefined = undefined;
+            if (r.organizacao && r.ug) {
+                try {
+                    const { data: omDestinoData } = await supabase
+                        .from('organizacoes_militares')
+                        .select('id')
+                        .eq('nome_om', r.organizacao)
+                        .eq('codug_om', r.ug)
+                        .maybeSingle();
+                    selectedOmDestinoId = omDestinoData?.id;
+                } catch (e) { console.error("Erro ao buscar OM Destino ID:", e); }
+            }
             
             newAllocations[category] = {
                 total_valor: totalValor,
                 nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
                 nd_30_value: Number(r.valor_nd_30),
                 nd_39_value: Number(r.valor_nd_39),
-                om_destino_recurso: r.organizacao,
-                ug_destino_recurso: r.ug,
-                selectedOmDestinoId: undefined,
+                om_destino_recurso: r.organizacao, // OM de Destino (campo 'organizacao' do DB)
+                ug_destino_recurso: r.ug, // UG de Destino (campo 'ug' do DB)
+                selectedOmDestinoId: selectedOmDestinoId,
             };
             
-            // Populate temporary input state with saved ND 39 value (in digits)
             const savedND39Value = Number(r.valor_nd_39);
             const savedDigits = String(Math.round(savedND39Value * 100));
             tempND39Load[category] = savedDigits;
             
-            // Populate temporary destination state
             tempDestinationsLoad[category] = {
                 om: r.organizacao,
                 ug: r.ug,
-                id: undefined, // ID will be fetched later
+                id: selectedOmDestinoId,
             };
         }
-        
-        if (!firstOmDetentora) {
-            firstOmDetentora = { nome: r.organizacao, ug: r.ug };
-        }
-    });
-    
-    let selectedOmIdForEdit: string | undefined = undefined;
-    
-    if (firstOmDetentora) {
-        try {
-            const { data: omData } = await supabase
-                .from('organizacoes_militares')
-                .select('id')
-                .eq('nome_om', firstOmDetentora.nome)
-                .eq('codug_om', firstOmDetentora.ug)
-                .maybeSingle();
-            selectedOmIdForEdit = omData?.id;
-        } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
     }
     
+    // 4. Preencher o formulário principal com a OM Detentora
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
-      organizacao: firstOmDetentora?.nome || "",
-      ug: firstOmDetentora?.ug || "",
-      dias_operacao: registro.dias_operacao,
+      organizacao: omDetentoraToEdit, // OM Detentora
+      ug: ugDetentoraToEdit, // UG Detentora
+      dias_operacao: diasOperacao,
       itens: consolidatedItems,
     });
     
-    const categoriesToLoad = Object.keys(newAllocations) as Categoria[];
-    for (const cat of categoriesToLoad) {
-        const alloc = newAllocations[cat];
-        const tempDest = tempDestinationsLoad[cat];
-        
-        if (alloc.om_destino_recurso) {
-            try {
-                const { data: omData } = await supabase
-                    .from('organizacoes_militares')
-                    .select('id')
-                    .eq('nome_om', alloc.om_destino_recurso)
-                    .eq('codug_om', alloc.ug_destino_recurso)
-                    .maybeSingle();
-                
-                // Update both saved allocation and temporary destination with the ID
-                alloc.selectedOmDestinoId = omData?.id;
-                tempDest.id = omData?.id;
-            } catch (e) { console.error(`Erro ao buscar OM Destino ID para ${cat}:`, e); }
-        }
-    }
+    // 5. Preencher o estado de alocação e IDs de destino
     setCategoryAllocations(newAllocations);
     setTempND39Inputs(tempND39Load); 
     setTempDestinations(tempDestinationsLoad);
     
-    if (consolidatedItems.length > 0) {
-        setSelectedTab(consolidatedItems[0].categoria as Categoria);
-    } else {
-        setSelectedTab(CATEGORIAS[0]);
-    }
+    // 6. Preencher fases e aba
+    const fasesSalvas = (faseAtividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+    setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
+    setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
+    
+    // 7. Selecionar a aba do registro clicado
+    setSelectedTab(registro.categoria as Categoria);
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setLoading(false);
@@ -849,7 +896,11 @@ const ClasseVIIForm = () => {
   
   const registrosAgrupadosPorOM = useMemo(() => {
     return registros.reduce((acc, registro) => {
-        const key = `${registro.organizacao} (${registro.ug})`;
+        // Chave de agrupamento é a OM Detentora
+        const omDetentora = registro.om_detentora || registro.organizacao;
+        const ugDetentora = registro.ug_detentora || registro.ug;
+        const key = `${omDetentora} (${formatCodug(ugDetentora)})`;
+        
         if (!acc[key]) {
             acc[key] = [];
         }
@@ -860,7 +911,22 @@ const ClasseVIIForm = () => {
 
   const handleIniciarEdicaoMemoria = (registro: ClasseVIRegistro) => {
     setEditingMemoriaId(registro.id);
-    setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento || "");
+    
+    // 1. Gerar a memória automática mais recente
+    const memoriaAutomatica = generateDetalhamento(
+        registro.itens_equipamentos as ItemClasseVII[], 
+        registro.dias_operacao, 
+        registro.om_detentora || registro.organizacao, // OM Detentora
+        registro.ug_detentora || registro.ug, // UG Detentora
+        registro.fase_atividade || '', 
+        registro.organizacao, // OM Destino
+        registro.ug, // UG Destino
+        registro.valor_nd_30, 
+        registro.valor_nd_39
+    );
+    
+    // 2. Usar a customizada se existir, senão usar a automática recém-gerada
+    setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
   };
 
   const handleCancelarEdicaoMemoria = () => {
@@ -962,7 +1028,7 @@ const ClasseVIIForm = () => {
 
                 <div className="space-y-2">
                   <Label>UG Detentora</Label>
-                  <Input value={form.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
+                  <Input value={formatCodug(form.ug)} readOnly disabled onKeyDown={handleEnterToNextField} />
                 </div>
                 
                 <div className="space-y-2">
@@ -1125,7 +1191,7 @@ const ClasseVIIForm = () => {
                                     />
                                     {tempDestinations[cat].ug && (
                                         <p className="text-xs text-muted-foreground">
-                                            UG de Destino: {tempDestinations[cat].ug}
+                                            UG de Destino: {formatCodug(tempDestinations[cat].ug)}
                                         </p>
                                     )}
                                 </div>
@@ -1233,6 +1299,9 @@ const ClasseVIIForm = () => {
                         tempDestinations
                     );
                     
+                    // Verifica se a OM Detentora é diferente da OM de Destino
+                    const isDifferentOm = form.organizacao !== allocation.om_destino_recurso;
+                    
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
@@ -1245,7 +1314,7 @@ const ClasseVIIForm = () => {
                             <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
                               <span className="font-medium">{item.item}</span>
                               <span className="text-right">
-                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
+                                {item.quantidade} un. x {formatCurrency(item.valor_mnt_dia)}/dia x {form.dias_operacao} dias = {formatCurrency(item.quantidade * item.valor_mnt_dia * form.dias_operacao)}
                               </span>
                             </div>
                           ))}
@@ -1254,8 +1323,8 @@ const ClasseVIIForm = () => {
                         <div className="pt-2 border-t mt-2">
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                <span className="font-medium text-foreground">
-                                    {allocation.om_destino_recurso} ({allocation.ug_destino_recurso})
+                                <span className={cn("font-medium", isDifferentOm ? "text-red-600 font-bold" : "text-foreground")}>
+                                    {allocation.om_destino_recurso} ({formatCodug(allocation.ug_destino_recurso)})
                                 </span>
                             </div>
                             <div className="flex justify-between text-xs">
@@ -1325,7 +1394,7 @@ const ClasseVIIForm = () => {
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h3 className="font-bold text-lg text-primary">
-                                    {omName} (UG: {ug})
+                                    OM Detentora: {omName} (UG: {ug})
                                 </h3>
                                 <span className="font-extrabold text-xl text-primary">
                                     {formatCurrency(totalOM)}
@@ -1338,6 +1407,9 @@ const ClasseVIIForm = () => {
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
                                     const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                                     
+                                    // Verifica se a OM Detentora é diferente da OM de Destino
+                                    const isDifferentOm = (registro.om_detentora || registro.organizacao) !== registro.organizacao;
+                                    
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
                                             <div className="flex items-center justify-between">
@@ -1346,9 +1418,12 @@ const ClasseVIIForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {fases}
+                                                        </Badge>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Dias: {registro.dias_operacao} | Fases: {fases}
+                                                        Dias: {registro.dias_operacao}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -1392,6 +1467,12 @@ const ClasseVIIForm = () => {
                                             {/* Detalhes da Alocação */}
                                             <div className="pt-2 border-t mt-2">
                                                 <div className="flex justify-between text-xs">
+                                                    <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                    <span className={cn("font-medium", isDifferentOm ? "text-red-600 font-bold" : "text-foreground")}>
+                                                        {registro.organizacao} ({formatCodug(registro.ug)})
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between text-xs">
                                                     <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
                                                     <span className="font-medium text-green-600">{formatCurrency(registro.valor_nd_30)}</span>
                                                 </div>
@@ -1418,16 +1499,19 @@ const ClasseVIIForm = () => {
                 </h3>
                 
                 {registros.map(registro => {
-                  const om = registro.organizacao;
-                  const ug = registro.ug;
+                  const omDetentora = registro.om_detentora || registro.organizacao;
+                  const ugDetentora = registro.ug_detentora || registro.ug;
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
+                  
+                  // Verifica se a OM Detentora é diferente da OM de Destino
+                  const isDifferentOm = omDetentora !== registro.organizacao;
                   
                   const memoriaAutomatica = generateDetalhamento(
                       registro.itens_equipamentos as ItemClasseVII[], 
                       registro.dias_operacao, 
-                      registro.organizacao, 
-                      registro.ug, 
+                      omDetentora, 
+                      ugDetentora, 
                       registro.fase_atividade || '', 
                       registro.organizacao, 
                       registro.ug, 
@@ -1443,14 +1527,35 @@ const ClasseVIIForm = () => {
                       
                       {/* Container para H4 e Botões */}
                       <div className="flex items-start justify-between gap-4 mb-4">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <h4 className="text-base font-semibold text-foreground">
-                                OM Destino: {om} ({ug})
-                              </h4>
-                              {/* Badge da Categoria movido para o lado esquerdo, junto ao h4 */}
-                              <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
-                                  {badgeStyle.label}
-                              </Badge>
+                          <div className="flex flex-col flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                  <h4 className="text-base font-semibold text-foreground">
+                                    OM Detentora: {omDetentora} (UG: {formatCodug(ugDetentora)})
+                                  </h4>
+                                  {/* Badge da Categoria movido para o lado esquerdo, junto ao h4 */}
+                                  <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
+                                      {badgeStyle.label}
+                                  </Badge>
+                                  {/* NOVO BADGE DE MEMÓRIA CUSTOMIZADA */}
+                                  {hasCustomMemoria && !isEditing && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Editada manualmente
+                                    </Badge>
+                                  )}
+                              </div>
+                              {/* NOVO AVISO DE OM DESTINO */}
+                              {isDifferentOm ? (
+                                  <div className="flex items-center gap-1 mt-1">
+                                      <AlertCircle className="h-4 w-4 text-red-600" />
+                                      <span className="text-sm font-medium text-red-600">
+                                          Recurso destinado à OM: {registro.organizacao} ({formatCodug(registro.ug)})
+                                      </span>
+                                  </div>
+                              ) : (
+                                  <p className="text-xs mt-1 text-muted-foreground">
+                                      OM Destino Recurso: {registro.organizacao} ({formatCodug(registro.ug)})
+                                  </p>
+                              )}
                           </div>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
