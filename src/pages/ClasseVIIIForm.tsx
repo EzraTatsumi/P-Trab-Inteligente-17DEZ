@@ -52,7 +52,7 @@ interface TempDestination {
     id?: string;
 }
 const initialTempDestinations: Record<Categoria, TempDestination> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: { om: "", ug: "", id: undefined } }), {} as Record<Categoria, TempDestination>);
-const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, string>);
+const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, TempDestination>);
 // --- FIM TIPOS TEMPORÁRIOS ---
 
 interface ItemSaude {
@@ -311,6 +311,8 @@ const ClasseVIIIForm = () => {
             const relatedDirectives = directives.filter(d => d.item.includes(animalType));
             
             if (relatedDirectives.length > 0) {
+                // Ao carregar, formItems contém a lista completa de itens de diretriz (Item B, C, D, etc.)
+                // Precisamos extrair a quantidade e dias do primeiro item relacionado para preencher o input base.
                 const existingRelatedItems = (formItems as ItemRemonta[]).filter(item => item.item.includes(animalType));
                 
                 // Se houver registros salvos, usamos a quantidade e dias do primeiro item relacionado
@@ -465,7 +467,8 @@ const ClasseVIIIForm = () => {
     
     // 3. Consolidate items and allocations
     let consolidatedSaude: ItemSaude[] = [];
-    let consolidatedRemonta: ItemRemonta[] = [];
+    let allRemontaItems: ItemRemonta[] = []; // Lista completa de itens de diretriz de Remonta
+    let baseRemontaItems: ItemRemonta[] = []; // Lista base (Equino, Canino) para preencher a aba de edição
     let newAllocations = { ...initialCategoryAllocations };
     let selectedOmIdForEdit: string | undefined = undefined;
     
@@ -508,8 +511,8 @@ const ClasseVIIIForm = () => {
     
     // --- Process Remonta ---
     if (remontaRecords.length > 0) {
-        // 3.1. Consolidar itens de Remonta (Equino e Canino) para o estado do formulário
-        const allRemontaItems: ItemRemonta[] = remontaRecords.flatMap(record => 
+        // 3.1. Consolidar TODOS os itens de diretriz de Remonta (Item B, C, D, E, G) de TODOS os registros (Equino e Canino)
+        allRemontaItems = remontaRecords.flatMap(record => 
             (record.itens_remonta || []).map(item => ({
                 ...item,
                 quantidade_animais: Number(item.quantidade_animais || 0),
@@ -519,10 +522,10 @@ const ClasseVIIIForm = () => {
         );
         
         // 3.2. Extrair os dados de quantidade/dias para os itens base (Equino e Canino)
-        const baseRemontaItems: ItemRemonta[] = [];
         const animalTypes = ['Equino', 'Canino'];
         
         animalTypes.forEach(animalType => {
+            // Filtra os itens de diretriz que pertencem a este tipo de animal
             const relatedItems = allRemontaItems.filter(item => item.item.includes(animalType));
             if (relatedItems.length > 0) {
                 // Pega o primeiro item para extrair a quantidade e dias (que devem ser consistentes)
@@ -537,9 +540,8 @@ const ClasseVIIIForm = () => {
             }
         });
         
-        consolidatedRemonta = baseRemontaItems;
-        
         // 3.3. Consolidar Alocação ND 30/39 e Total Valor
+        // Soma os valores de todos os registros de Remonta (Equino + Canino)
         const totalND30 = remontaRecords.reduce((sum, r) => sum + Number(r.valor_nd_30), 0);
         const totalND39 = remontaRecords.reduce((sum, r) => sum + Number(r.valor_nd_39), 0);
         const totalValor = remontaRecords.reduce((sum, r) => sum + Number(r.valor_total), 0);
@@ -565,7 +567,7 @@ const ClasseVIIIForm = () => {
       ug: ugDetentora,
       dias_operacao: diasOperacao,
       itensSaude: consolidatedSaude,
-      itensRemonta: consolidatedRemonta,
+      itensRemonta: allRemontaItems, // CORRIGIDO: Usar a lista completa de itens de diretriz para o cálculo na seção 3
       fase_atividade: firstRecord.fase_atividade,
     });
     
