@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
-import { useFormNavigation } from "@/hooks/useFormNavigation";
+import { useFormNavigation } => "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
 import { formatCurrency, parseInputToNumber, formatNumberForInput, formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
@@ -1106,22 +1106,13 @@ const ClasseVIIIForm = () => {
     // Garante que os dados mais recentes estão no estado
     const { saude: saudeRecords, remonta: remontaRecords } = await fetchRegistros(); 
     
-    // Reconstruir o estado do formulário usando APENAS o registro da categoria clicada
-    const isSaude = registro.categoria === 'Saúde';
-    
+    // Reconstruir o estado do formulário com os dados carregados
     // Filtramos os registros que pertencem à mesma OM Detentora/UG Detentora do registro clicado
     const omDetentoraToEdit = registro.om_detentora;
     const ugDetentoraToEdit = registro.ug_detentora;
     
-    // Se for Saúde, carregamos apenas o registro de Saúde para aquela OM Detentora
-    const saudeToEdit = isSaude 
-        ? saudeRecords.filter(r => r.om_detentora === omDetentoraToEdit && r.ug_detentora === ugDetentoraToEdit)
-        : [];
-        
-    // Se for Remonta, carregamos todos os registros de Remonta (Equino e Canino) para aquela OM Detentora
-    const remontaToEdit = !isSaude 
-        ? remontaRecords.filter(r => r.om_detentora === omDetentoraToEdit && r.ug_detentora === ugDetentoraToEdit)
-        : [];
+    const saudeToEdit = saudeRecords.filter(r => r.om_detentora === omDetentoraToEdit && r.ug_detentora === ugDetentoraToEdit);
+    const remontaToEdit = remontaRecords.filter(r => r.om_detentora === omDetentoraToEdit && r.ug_detentora === ugDetentoraToEdit);
     
     reconstructFormState(saudeToEdit, remontaToEdit);
     
@@ -1778,15 +1769,7 @@ const ClasseVIIIForm = () => {
                       <Sparkles className="h-5 w-5 text-accent" />
                       OMs Cadastradas
                     </h2>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={resetFormFields}
-                        disabled={loading}
-                    >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Novo Registro
-                    </Button>
+                    {/* Removido o botão 'Novo Registro' duplicado daqui */}
                 </div>
                 
                 {/* Agrupamento por OM Detentora */}
