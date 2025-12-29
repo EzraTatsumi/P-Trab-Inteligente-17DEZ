@@ -46,7 +46,12 @@ export const formatFasesParaTexto = (faseCSV: string | null | undefined): string
  * Helper function to determine 'do' or 'da' based on OM name.
  */
 const getOmArticle = (omName: string): string => {
+    // Verifica se a OM contém 'ª' (ex: 23ª Bda Inf Sl)
     if (omName.includes('ª')) {
+        return 'da';
+    }
+    // Verifica se a OM é uma Região Militar (RM)
+    if (omName.toUpperCase().includes('RM')) {
         return 'da';
     }
     return 'do';
@@ -160,7 +165,12 @@ export const generateCategoryMemoriaCalculo = (
             detalhamentoCalculo += `- ${item.quantidade} ${item.item} x ${formatCurrency(item.valor_mnt_dia)} = ${formatCurrency(itemTotal)}\n`;
         });
         
-        const header = `${ndPrefix} - Aquisição de KPSI/KPSC e KPT para utilização por ${totalKits} kits ${omArticle} ${omDetentora}, durante ${diasOperacaoGlobal} dias de ${faseFormatada}.`;
+        // Lógica de concordância para Kits e Dias
+        const kitPlural = totalKits === 1 ? 'Kit' : 'Kits';
+        const diaPlural = diasOperacaoGlobal === 1 ? 'dia' : 'dias';
+        
+        // NOVO CABEÇALHO
+        const header = `${ndPrefix} - Recomposição de itens de ${totalKits} ${kitPlural} de Primeiros Socorros e Prescrição Tática ${omArticle}${omArticle === 'do' ? '' : 'a'} ${omDetentora}, durante ${diasOperacaoGlobal} ${diaPlural} de ${faseFormatada}.`;
         
         return `${header}
 
@@ -293,7 +303,12 @@ export const generateDetalhamento = (
         const itensSaude = itens as ItemSaude[];
         totalItens = itensSaude.reduce((sum, item) => sum + item.quantidade, 0);
         
-        header = `${ndPrefix} - Aquisição de KPSI/KPSC e KPT para utilização por ${totalItens} kits ${omArticle} ${omDetentora}, durante ${diasOperacaoGlobal} dias de ${faseFormatada}.`;
+        // Lógica de concordância para Kits e Dias
+        const kitPlural = totalItens === 1 ? 'Kit' : 'Kits';
+        const diaPlural = diasOperacaoGlobal === 1 ? 'dia' : 'dias';
+        
+        // NOVO CABEÇALHO
+        header = `${ndPrefix} - Recomposição de itens de ${totalItens} ${kitPlural} de Primeiros Socorros e Prescrição Tática ${omArticle}${omArticle === 'do' ? '' : 'a'} ${omDetentora}, durante ${diasOperacaoGlobal} ${diaPlural} de ${faseFormatada}.`;
         
         itensSaude.forEach(item => {
             const itemTotal = calculateSaudeItemTotal(item);
