@@ -169,8 +169,8 @@ export const generateCategoryMemoriaCalculo = (
         const kitPlural = totalKits === 1 ? 'Kit' : 'Kits';
         const diaPlural = diasOperacaoGlobal === 1 ? 'dia' : 'dias';
         
-        // NOVO CABEÇALHO
-        const header = `${ndPrefix} - Recomposição de itens de ${totalKits} ${kitPlural} de Primeiros Socorros e Prescrição Tática ${omArticle}${omArticle === 'do' ? '' : 'a'} ${omDetentora}, durante ${diasOperacaoGlobal} ${diaPlural} de ${faseFormatada}.`;
+        // CORREÇÃO: Usar apenas ${omArticle} ${omDetentora}
+        const header = `${ndPrefix} - Recomposição de itens de ${totalKits} ${kitPlural} de Primeiros Socorros e Prescrição Tática ${omArticle} ${omDetentora}, durante ${diasOperacaoGlobal} ${diaPlural} de ${faseFormatada}.`;
         
         return `${header}
 
@@ -308,7 +308,8 @@ export const generateDetalhamento = (
         const diaPlural = diasOperacaoGlobal === 1 ? 'dia' : 'dias';
         
         // NOVO CABEÇALHO
-        header = `${ndPrefix} - Recomposição de itens de ${totalItens} ${kitPlural} de Primeiros Socorros e Prescrição Tática ${omArticle}${omArticle === 'do' ? '' : 'a'} ${omDetentora}, durante ${diasOperacaoGlobal} ${diaPlural} de ${faseFormatada}.`;
+        // CORREÇÃO: Usar apenas ${omArticle} ${omDetentora}
+        header = `${ndPrefix} - Recomposição de itens de ${totalItens} ${kitPlural} de Primeiros Socorros e Prescrição Tática ${omArticle} ${omDetentora}, durante ${diasOperacaoGlobal} ${diaPlural} de ${faseFormatada}.`;
         
         itensSaude.forEach(item => {
             const itemTotal = calculateSaudeItemTotal(item);
