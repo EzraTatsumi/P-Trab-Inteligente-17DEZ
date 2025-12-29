@@ -516,6 +516,7 @@ const PTrabReportManager = () => {
 
   const [showCompleteStatusDialog, setShowCompleteStatusDialog] = useState(false);
 
+  // Funções auxiliares que não dependem de nomeRM
   const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO' || r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
   const isCombustivel = (r: ClasseIIIRegistro) => !isLubrificante(r);
   
@@ -692,7 +693,20 @@ const PTrabReportManager = () => {
     navigate('/ptrab');
   };
   
-  // --- LÓGICA DE AGRUPAMENTO E CÁLCULO (Mantida no Manager para ser passada aos relatórios) ---
+  // 1. Determinar o nome da RM (Região Militar)
+  const nomeRM = useMemo(() => {
+    // Tenta encontrar a RM nos registros QS
+    const rmRegistro = registrosClasseI.find(r => r.categoria === 'RACAO_QUENTE' && (r.om_qs?.includes('RM') || r.om_qs?.includes('R M')));
+    if (rmRegistro && rmRegistro.om_qs) return rmRegistro.om_qs;
+    
+    // Fallback para o nome da OM principal do PTrab se for uma RM
+    if (ptrabData?.nome_om?.includes('RM') || ptrabData?.nome_om?.includes('R M')) return ptrabData.nome_om;
+    
+    // Se não encontrar, retorna o nome da OM principal (que pode ser a RM)
+    return ptrabData?.nome_om || '';
+  }, [registrosClasseI, ptrabData]);
+
+  // 2. Lógica de Agrupamento
   const gruposPorOM = useMemo(() => {
     const grupos: Record<string, GrupoOM> = {};
     const initializeGroup = (name: string) => {
@@ -707,10 +721,12 @@ const PTrabReportManager = () => {
 
     // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
     registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
-        // CHAVE DE AGRUPAMENTO PARA QS: Deve ser o nome da RM (om_qs)
-        const rmName = registro.om_qs || registro.organizacao; // Fallback para o nome da OM se RM não for preenchida
-        initializeGroup(rmName); 
-        grupos[rmName].linhasQS.push({ registro, tipo: 'QS' });
+        // CHAVE DE AGRUPAMENTO PARA QS: Deve ser o nome da RM (om_qs). Se om_qs for nulo, usamos nomeRM (que pode ser o nome da OM principal)
+        const rmNameKey = registro.om_qs || nomeRM;
+        if (rmNameKey) {
+            initializeGroup(rmNameKey); 
+            grupos[rmNameKey].linhasQS.push({ registro, tipo: 'QS' });
+        }
         
         // CHAVE DE AGRUPAMENTO PARA QR: Deve ser o nome da OM de destino (organizacao)
         initializeGroup(registro.organizacao); 
@@ -749,28 +765,20 @@ const PTrabReportManager = () => {
     // 4. Processar Classe III Combustível (Deve ser agrupado sob a RM)
     registrosClasseIII.forEach((registro) => {
         if (isCombustivel(registro)) {
-            // Encontra a RM que está recebendo QS (se houver) ou usa o nomeRM principal
-            const rmNameForCombustivel = nomeRM || registro.organizacao; // Usa nomeRM se existir, senão usa a OM do registro
-            initializeGroup(rmNameForCombustivel);
-            // Não adicionamos aqui, pois o Combustível é tratado separadamente na iteração de omsOrdenadas
+            // Garante que o grupo da RM seja inicializado para receber o combustível
+            if (nomeRM) {
+                initializeGroup(nomeRM);
+            } else {
+                // Fallback: se nomeRM não foi identificado, agrupa sob a OM do registro
+                initializeGroup(registro.organizacao);
+            }
         }
     });
     
     return grupos;
-  }, [registrosClasseI, registrosClasseII, registrosClasseIII, nomeRM]);
+  }, [registrosClasseI, registrosClasseII, registrosClasseIII, nomeRM, isLubrificante, isCombustivel]);
   
-  const nomeRM = useMemo(() => {
-    // Tenta encontrar a RM nos registros QS
-    const rmRegistro = registrosClasseI.find(r => r.categoria === 'RACAO_QUENTE' && (r.om_qs?.includes('RM') || r.om_qs?.includes('R M')));
-    if (rmRegistro && rmRegistro.om_qs) return rmRegistro.om_qs;
-    
-    // Fallback para o nome da OM principal do PTrab se for uma RM
-    if (ptrabData?.nome_om?.includes('RM') || ptrabData?.nome_om?.includes('R M')) return ptrabData.nome_om;
-    
-    // Se não encontrar, retorna o nome da OM principal (que pode ser a RM)
-    return ptrabData?.nome_om || '';
-  }, [registrosClasseI, ptrabData]);
-
+  // 3. OMs Ordenadas
   const omsOrdenadas = useMemo(() => {
     const allOMs = Object.keys(gruposPorOM);
     
@@ -784,6 +792,7 @@ const PTrabReportManager = () => {
     return [...rmGroup, ...otherOMs];
   }, [gruposPorOM, nomeRM]);
   
+  // 4. Cálculo de Totais (usa isCombustivel)
   const calcularTotaisPorOM = useCallback((grupo: GrupoOM, nomeOM: string) => {
     const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.calculos.totalQS, 0);
     const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + linha.registro.calculos.totalQR, 0);
