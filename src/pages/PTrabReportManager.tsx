@@ -294,7 +294,12 @@ Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
 export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP'): string => {
     if (registro.categoria === 'RACAO_OPERACIONAL') {
         if (tipo === 'OP') {
-            // Para Ração Operacional, sempre gera a memória automática (não há customização no DB para OP)
+            // Para Ração Operacional, prioriza o customizado (armazenado em memoria_calculo_qs_customizada)
+            if (registro.memoriaQSCustomizada) {
+                return registro.memoriaQSCustomizada;
+            }
+            
+            // Se não houver customizado, gera o automático
             return generateRacaoOperacionalMemoriaCalculo({
                 id: registro.id,
                 organizacao: registro.organizacao,
@@ -319,8 +324,8 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
 
     // Lógica para Ração Quente (QS/QR)
     if (tipo === 'QS') {
-        if (registro.memoria_calculo_qs_customizada) {
-            return registro.memoria_calculo_qs_customizada;
+        if (registro.memoriaQSCustomizada) {
+            return registro.memoriaQSCustomizada;
         }
         const { qs } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
@@ -354,8 +359,8 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
     }
 
     if (tipo === 'QR') {
-        if (registro.memoria_calculo_qr_customizada) {
-            return registro.memoria_calculo_qr_customizada;
+        if (registro.memoriaQRCustomizada) {
+            return registro.memoriaQRCustomizada;
         }
         const { qr } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
@@ -415,10 +420,6 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         );
     }
     
-    // Para outras classes (V, VI, VII, VIII) que não são IX, usamos o detalhamento salvo (que deve ser o formato antigo)
-    // OU, se o relatório estiver passando a função de utilidade correta, ela será usada.
-    // Aqui, para garantir que o relatório use a versão mais recente, vamos usar o utilitário para V e VI também,
-    // pois eles foram atualizados no passo anterior.
     if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVUtility(
             registro.categoria,
@@ -805,6 +806,7 @@ const PTrabReportManager = () => {
             generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo} // USANDO A FUNÇÃO UNIFICADA
             generateClasseVMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
             generateClasseVIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
+            generateClasseVIIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
           />
         );
       case 'racao_operacional':

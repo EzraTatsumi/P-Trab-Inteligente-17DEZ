@@ -82,7 +82,12 @@ interface PTrabLogisticoReportProps {
 
 // Implementação padrão (fallback) para generateClasseIIMemoriaCalculo
 const defaultGenerateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolean): string => {
-    // Verifica se é uma das categorias de Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
+    // Verifica se existe detalhamento customizado primeiro
+    if (registro.detalhamento_customizado) {
+        return registro.detalhamento_customizado;
+    }
+    
+    // Se for Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
     if (isClasseII && registro.itens_equipamentos && registro.efetivo !== undefined) {
         // Usa a função utilitária detalhada para Classe II
         return generateClasseIIUtility(
@@ -98,11 +103,15 @@ const defaultGenerateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolea
         );
     }
     // Para outras classes (V, VI, VII, VIII) ou se os dados estiverem incompletos, retorna o detalhamento armazenado
-    return registro.detalhamento_customizado || registro.detalhamento || "Memória de cálculo não disponível.";
+    return registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
 // Implementação padrão (fallback) para generateClasseVMemoriaCalculo
 const defaultGenerateClasseVMemoriaCalculo = (registro: any): string => {
+    if (registro.detalhamento_customizado) {
+        return registro.detalhamento_customizado;
+    }
+    
     if (CLASSE_V_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos && registro.efetivo !== undefined) {
         // Usa a função utilitária detalhada para Classe V
         return generateClasseVUtility(
@@ -117,11 +126,15 @@ const defaultGenerateClasseVMemoriaCalculo = (registro: any): string => {
             registro.valor_nd_39
         );
     }
-    return registro.detalhamento_customizado || registro.detalhamento || "Memória de cálculo não disponível.";
+    return registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
 // Implementação padrão (fallback) para generateClasseVIMemoriaCalculo
 const defaultGenerateClasseVIMemoriaCalculo = (registro: any): string => {
+    if (registro.detalhamento_customizado) {
+        return registro.detalhamento_customizado;
+    }
+    
     if (CLASSE_VI_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos) {
         // Usa a função utilitária detalhada para Classe VI
         return generateClasseVIUtility(
@@ -136,11 +149,15 @@ const defaultGenerateClasseVIMemoriaCalculo = (registro: any): string => {
             registro.valor_nd_39
         );
     }
-    return registro.detalhamento_customizado || registro.detalhamento || "Memória de cálculo não disponível.";
+    return registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
 // NOVO: Implementação padrão (fallback) para generateClasseVIIMemoriaCalculo
 const defaultGenerateClasseVIIMemoriaCalculo = (registro: any): string => {
+    if (registro.detalhamento_customizado) {
+        return registro.detalhamento_customizado;
+    }
+    
     if (CLASSE_VII_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos) {
         // Usa a função utilitária detalhada para Classe VII
         return generateClasseVIIUtility(
@@ -155,7 +172,7 @@ const defaultGenerateClasseVIIMemoriaCalculo = (registro: any): string => {
             registro.valor_nd_39
         );
     }
-    return registro.detalhamento_customizado || registro.detalhamento || "Memória de cálculo não disponível.";
+    return registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
 
@@ -562,7 +579,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       rowData.despesasValue += `\n${omDetentora}`;
                   }
                   
-                  rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
+                  // 3. Prioriza o detalhamento customizado
+                  rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseVMemoriaCalculo(registro);
               } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) { // CLASSE VI
                   const omDetentora = registro.om_detentora || omDestinoRecurso;
                   const isDifferentOm = omDetentora !== omDestinoRecurso;
@@ -575,8 +593,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       rowData.despesasValue += `\n${omDetentora}`;
                   }
                   
-                  // Usa a função utilitária de Classe VI
-                  rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
+                  // 3. Prioriza o detalhamento customizado
+                  rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseVIMemoriaCalculo(registro);
               } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) { // CLASSE VII
                   const omDetentora = registro.om_detentora || omDestinoRecurso;
                   const isDifferentOm = omDetentora !== omDestinoRecurso;
@@ -589,8 +607,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       rowData.despesasValue += `\n${omDetentora}`;
                   }
                   
-                  // Usa a função utilitária de Classe VII
-                  rowData.detalhamentoValue = generateClasseVIIMemoriaCalculo(registro);
+                  // 3. Prioriza o detalhamento customizado
+                  rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseVIIMemoriaCalculo(registro);
               } else {
                   // Outras classes (VIII, IX) mantêm a quebra de linha
                   rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
@@ -602,18 +620,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
               
               if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                  rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
+                  rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseIXMemoriaCalculo(registro);
               } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                  // Se for Classe V, usa a função de memória de Classe V
-                  rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
+                  // Já tratado acima
               } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
-                  // Se for Classe VI, usa a função de memória de Classe VI
-                  rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
+                  // Já tratado acima
               } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
-                  // Se for Classe VII, usa a função de memória de Classe VII
-                  rowData.detalhamentoValue = generateClasseVIIMemoriaCalculo(registro);
+                  // Já tratado acima
               } else {
-                  // Se não for Classe V, VI ou VII, usa a função genérica/Classe II
+                  // Se não for Classe V, VI, VII ou IX, usa a função genérica/Classe II
                   const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                   rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
               }
@@ -704,7 +719,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const row = worksheet.getRow(currentRow);
             
             // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
-            const rmUg = gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || gruposPorOM[nomeRM]?.linhasQR[0]?.registro.ug || '';
+            const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug || '';
             const rmUgFormatted = formatCodug(rmUg);
             
             row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
@@ -1151,7 +1166,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                                 rowData.despesasValue += `\n${omDetentora}`;
                             }
                             
-                            rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
+                            // 3. Prioriza o detalhamento customizado
+                            rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseVMemoriaCalculo(registro);
                         } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) { // CLASSE VI
                             const omDetentora = registro.om_detentora || omDestinoRecurso;
                             const isDifferentOm = omDetentora !== omDestinoRecurso;
@@ -1164,8 +1180,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                                 rowData.despesasValue += `\n${omDetentora}`;
                             }
                             
-                            // Usa a função utilitária de Classe VI
-                            rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
+                            // 3. Prioriza o detalhamento customizado
+                            rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseVIMemoriaCalculo(registro);
                         } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) { // CLASSE VII
                             const omDetentora = registro.om_detentora || omDestinoRecurso;
                             const isDifferentOm = omDetentora !== omDestinoRecurso;
@@ -1178,8 +1194,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                                 rowData.despesasValue += `\n${omDetentora}`;
                             }
                             
-                            // Usa a função utilitária de Classe VII
-                            rowData.detalhamentoValue = generateClasseVIIMemoriaCalculo(registro);
+                            // 3. Prioriza o detalhamento customizado
+                            rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseVIIMemoriaCalculo(registro);
                         } else {
                             // Outras classes (VIII, IX) mantêm a quebra de linha
                             rowData.despesasValue = `${classeLabel}\n${categoriaDetalhe.toUpperCase()}`;
@@ -1191,18 +1207,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
                         
                         if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                            rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
+                            rowData.detalhamentoValue = registro.detalhamento_customizado || generateClasseIXMemoriaCalculo(registro);
                         } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                            // Se for Classe V, usa a função de memória de Classe V
-                            rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
+                            // Já tratado acima
                         } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
-                            // Se for Classe VI, usa a função de memória de Classe VI
-                            rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
+                            // Já tratado acima
                         } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
-                            // Se for Classe VII, usa a função de memória de Classe VII
-                            rowData.detalhamentoValue = generateClasseVIIMemoriaCalculo(registro);
+                            // Já tratado acima
                         } else {
-                            // Se não for Classe V, VI ou VII, usa a função genérica/Classe II
+                            // Se não for Classe V, VI, VII ou IX, usa a função genérica/Classe II
                             const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                             rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
                         }
@@ -1264,34 +1277,58 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       return tipo;
                     };
 
+                    const row = worksheet.getRow(currentRow);
+                    
                     // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
-                    const rmUg = gruposPorOM[nomeRM]?.linhasQS[0]?.registro.ug_qs || gruposPorOM[nomeRM]?.linhasQR[0]?.registro.ug || '';
+                    const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug || '';
                     const rmUgFormatted = formatCodug(rmUg);
-
-                    return (
-                      <tr key={`classe-iii-${registro.id}`}>
-                        <td className="col-despesas">
-                          <div>CLASSE III - {getTipoCombustivelLabel(registro.tipo_combustivel)}</div>
-                          <div>{getTipoEquipamentoLabel(registro.tipo_equipamento)}</div>
-                          <div>{registro.organizacao}</div>
-                        </td>
-                        <td className="col-om">
-                          <div>{nomeRM}</div>
-                          <div>({rmUgFormatted})</div>
-                        </td>
-                        <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* 33.90.30 (Vazio) */}
-                        <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* 33.90.39 (Vazio) */}
-                        <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* TOTAL (Vazio) */}
-                        <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{formatNumber(registro.total_litros)} L</td>
-                        <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{formatCurrency(registro.preco_litro)}</td>
-                        <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{formatCurrency(registro.valor_total)}</td>
-                        <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
-                          <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                            {registro.detalhamento_customizado || registro.detalhamento || ''}
-                          </pre>
-                        </td>
-                      </tr>
-                    );
+                    
+                    row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
+                    row.getCell('B').value = `${nomeRM}\n(${rmUgFormatted})`;
+                    
+                    // Colunas azuis (C, D, E) - Vazias para Combustível
+                    row.getCell('C').value = ''; 
+                    row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+                    row.getCell('D').value = ''; 
+                    row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+                    row.getCell('E').value = ''; 
+                    row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+                    
+                    // Colunas Laranjas (F, G, H) permanecem preenchidas
+                    row.getCell('F').value = Math.round(registro.total_litros);
+                    row.getCell('F').numFmt = '#,##0 "L"';
+                    row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+                    
+                    row.getCell('G').value = registro.preco_litro;
+                    row.getCell('G').numFmt = 'R$ #,##0.00';
+                    row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+                    
+                    row.getCell('H').value = registro.valor_total;
+                    row.getCell('H').numFmt = 'R$ #,##0.00';
+                    row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+                    
+                    const detalhamentoCombustivel = registro.detalhamento_customizado || registro.detalhamento || '';
+                    
+                    row.getCell('I').value = detalhamentoCombustivel;
+                    row.getCell('I').font = { name: 'Arial', size: 6.5 };
+                    
+                    ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+                      row.getCell(col).border = cellBorder;
+                      row.getCell(col).font = baseFontStyle;
+                    });
+                    
+                    // Aplica alinhamentos específicos para dados de Combustível
+                    row.getCell('A').alignment = dataLeftMiddleAlignment; // Esquerda, Meio
+                    row.getCell('B').alignment = dataCenterMiddleAlignment; // Centro, Meio
+                    row.getCell('C').alignment = dataCenterMonetaryAlignment; // Centro, Meio (ND 30)
+                    row.getCell('D').alignment = dataCenterMonetaryAlignment; // Centro, Meio (ND 39)
+                    row.getCell('E').alignment = dataCenterMonetaryAlignment; // Centro, Meio (Total ND)
+                    row.getCell('F').alignment = dataCenterMiddleAlignment; // Centro, Meio (Litros)
+                    row.getCell('G').alignment = dataCenterMiddleAlignment; // Centro, Meio (Preço Unitário)
+                    row.getCell('H').alignment = dataCenterMonetaryAlignment; // Centro, Meio (Preço Total)
+                    row.getCell('I').alignment = dataTextStyle; // Detalhamento (Esquerda, Topo)
+                    
+                    currentRow++;
                   }) : []),
                   
                   // Subtotal da OM
