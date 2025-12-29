@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, Trash2, XCircle, Check, ChevronsUpDown, Sparkles, AlertCircle, HeartPulse, Activity } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, XCircle, Check, ChevronsUpDown, Sparkles, AlertCircle, HeartPulse, Activity, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
@@ -216,25 +216,15 @@ const ClasseVIIIForm = () => {
       navigate("/ptrab");
       return;
     }
-    setLoading(true);
+    
+    // 1. Carregar diretrizes
     loadDiretrizes();
     
-    // Carrega os registros e, se houver dados, tenta reconstruir o estado do formulário
-    fetchRegistros().then(({ saude, remonta }) => {
-        if (saude.length > 0 || remonta.length > 0) {
-            // Se houver registros, tenta carregar o primeiro grupo para edição
-            const firstRecord = saude[0] || remonta[0];
-            if (firstRecord) {
-                // Filtra todos os registros que pertencem à mesma OM Detentora/UG Detentora
-                const saudeToEdit = saude.filter(r => r.om_detentora === firstRecord.om_detentora && r.ug_detentora === firstRecord.ug_detentora);
-                const remontaToEdit = remonta.filter(r => r.om_detentora === firstRecord.om_detentora && r.ug_detentora === firstRecord.ug_detentora);
-                reconstructFormState(saudeToEdit, remontaToEdit);
-            } else {
-                setLoading(false);
-            }
-        } else {
-            setLoading(false);
-        }
+    // 2. Carregar registros salvos
+    fetchRegistros().finally(() => {
+        // 3. Garantir que o formulário comece limpo, a menos que o usuário clique em editar
+        resetFormFields();
+        setLoading(false);
     });
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -594,11 +584,9 @@ const ClasseVIIIForm = () => {
     });
     setTempDestinations(tempDestinations); // Atualiza o estado temporário de destino
     
-    if (saudeRecords.length > 0) {
-        setSelectedTab('Saúde');
-    } else if (remontaRecords.length > 0) {
-        setSelectedTab('Remonta/Veterinária');
-    }
+    // Não define a aba selecionada automaticamente para evitar confusão
+    // setSelectedTab(registro.categoria === 'Saúde' ? 'Saúde' : 'Remonta/Veterinária');
+    
     setLoading(false);
   };
 
@@ -1157,6 +1145,7 @@ const ClasseVIIIForm = () => {
         
         toast.success("Registros excluídos!");
         fetchRegistros();
+        resetFormFields(); // Limpa o formulário após a exclusão
     } catch (error) {
         console.error("Erro ao deletar registro:", error);
         toast.error(sanitizeError(error));
@@ -1775,10 +1764,21 @@ const ClasseVIIIForm = () => {
             {/* 4. Registros Salvos (OMs Cadastradas) - SUMMARY SECTION */}
             {allRegistros.length > 0 && (
               <div className="space-y-4 mt-6">
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-accent" />
-                  OMs Cadastradas
-                </h2>
+                <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-accent" />
+                      OMs Cadastradas
+                    </h2>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={resetFormFields}
+                        disabled={loading}
+                    >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Novo Registro
+                    </Button>
+                </div>
                 
                 {/* Agrupamento por OM Detentora */}
                 {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
