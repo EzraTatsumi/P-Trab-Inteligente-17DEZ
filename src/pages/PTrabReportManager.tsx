@@ -30,6 +30,7 @@ import {
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVIIMemoriaCalculoUtility } from "@/lib/classeVIIUtils"; // NOVO: Importar utilitário da Classe VII
 
 
 // =================================================================
@@ -141,7 +142,7 @@ export interface GrupoOM {
 
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"]; // CORRIGIDO: Usando as categorias corretas
-export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
+export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"]; // NOVO: Categorias Classe VII
 export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
 export const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
 
@@ -390,6 +391,10 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
     return "Memória de cálculo não encontrada.";
 };
 
+/**
+ * Função unificada para gerar a memória de cálculo de Classes II, V, VI, VII, VIII, IX.
+ * Prioriza o detalhamento customizado, senão usa o utilitário específico.
+ */
 export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isClasseII: boolean): string => {
     if (registro.detalhamento_customizado) {
       return registro.detalhamento_customizado;
@@ -399,8 +404,8 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         return generateClasseIXMemoriaCalculo(registro);
     }
     
+    // Classes II (Intendência)
     if (isClasseII) {
-        // Se for Classe II (Intendência), usa o utilitário atualizado
         return generateClasseIIUtility(
             registro.categoria,
             registro.itens_equipamentos,
@@ -414,10 +419,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         );
     }
     
-    // Para outras classes (V, VI, VII, VIII) que não são IX, usamos o detalhamento salvo (que deve ser o formato antigo)
-    // OU, se o relatório estiver passando a função de utilidade correta, ela será usada.
-    // Aqui, para garantir que o relatório use a versão mais recente, vamos usar o utilitário para V e VI também,
-    // pois eles foram atualizados no passo anterior.
+    // Classe V (Armamento)
     if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVUtility(
             registro.categoria,
@@ -432,6 +434,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         );
     }
     
+    // Classe VI (Engenharia)
     if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVIUtility(
             registro.categoria,
@@ -446,7 +449,22 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         );
     }
     
-    // Para Classe VII e VIII, que não tiveram utilitários de memória criados, retorna o detalhamento salvo
+    // NOVO: Classe VII (Comunicações/Informática)
+    if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
+        return generateClasseVIIMemoriaCalculoUtility(
+            registro.categoria as 'Comunicações' | 'Informática',
+            registro.itens_equipamentos,
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
+            registro.efetivo || 0,
+            registro.valor_nd_30,
+            registro.valor_nd_39
+        );
+    }
+    
+    // Para Classe VIII e outras, retorna o detalhamento salvo (que deve ser o formato antigo)
     return registro.detalhamento;
 };
 
