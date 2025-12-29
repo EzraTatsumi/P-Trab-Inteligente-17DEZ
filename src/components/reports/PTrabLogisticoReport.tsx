@@ -238,12 +238,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   
   const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
   
-  // NOVO: Função para buscar o CODUG da RM
-  const getRmCodug = useCallback((rmName: string) => {
-      const rmRegistro = registrosClasseI.find(r => r.categoria === 'RACAO_QUENTE' && r.om_qs === rmName);
-      return rmRegistro?.ugQS || '';
-  }, [registrosClasseI]);
-
   // NOVO: Função para gerar o nome do arquivo
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
@@ -323,7 +317,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, onExportSuccess, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIMemoriaCalculo, getRmCodug]);
+  }, [ptrabData, onExportSuccess, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIMemoriaCalculo]);
 
   // NOVO: Função para abrir o diálogo de impressão do navegador
   const handlePrint = () => {
@@ -535,7 +529,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             ...grupo.linhasLubrificante,
             ...grupo.linhasClasseV,
             ...grupo.linhasClasseVI,
-            ...grupo.linhasClasseVII,
+            ...grupo.linhasClasseVII, // INCLUINDO CLASSE VII AQUI
             ...grupo.linhasClasseVIII,
             ...grupo.linhasClasseIX,
         ];
@@ -556,26 +550,22 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           
           if (isClasseI) { // Classe I (QS/QR)
               const registro = linha.registro as ClasseIRegistro;
-              
+              const ug_qs_formatted = formatCodug(registro.ug_qs);
+              const ug_qr_formatted = formatCodug(registro.ug);
+
               if (linha.tipo === 'QS') {
-                  // OM/CODUG para QS: RM de Destino e seu CODUG
-                  const om_qs_display = registro.om_qs || 'RM de Destino Não Informada';
-                  const ug_qs_formatted = formatCodug(registro.ugQS); // Usa ugQS do registro
-                  const ug_qs_display = registro.ugQS ? `(${ug_qs_formatted})` : '';
-                  
-                  rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n(Para OM: ${registro.organizacao})`;
-                  rowData.omValue = `${om_qs_display}\n${ug_qs_display}`;
-                  
-                  rowData.valorC = registro.calculos.totalQS;
-                  rowData.valorE = registro.calculos.totalQS;
+                  rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
+                  rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
+                  rowData.valorC = registro.total_qs;
+                  rowData.valorE = registro.total_qs;
+                  // USANDO A FUNÇÃO UNIFICADA
                   rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
               } else { // QR
-                  // OM/CODUG para QR: OM de Destino e seu CODUG
-                  const ug_qr_formatted = formatCodug(registro.ug);
                   rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                   rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
-                  rowData.valorC = registro.calculos.totalQR;
-                  rowData.valorE = registro.calculos.totalQR;
+                  rowData.valorC = registro.total_qr;
+                  rowData.valorE = registro.total_qr;
+                  // USANDO A FUNÇÃO UNIFICADA
                   rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
               }
           } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
@@ -600,7 +590,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
                   if (isDifferentOm) {
                       // MODIFICAÇÃO AQUI: Simplificando o texto para apenas o nome da OM Detentora
-                      rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
+                      rowData.despesasValue += `\n${omDetentora}`;
                   }
                   
               } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
@@ -612,7 +602,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   
                   // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                   if (isDifferentOm) {
-                      rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
+                      rowData.despesasValue += `\n${omDetentora}`;
                   }
                   
                   // 3. Prioriza o detalhamento customizado
@@ -626,7 +616,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   
                   // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                   if (isDifferentOm) {
-                      rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
+                      rowData.despesasValue += `\n${omDetentora}`;
                   }
                   
                   // 3. Prioriza o detalhamento customizado
@@ -640,7 +630,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   
                   // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                   if (isDifferentOm) {
-                      rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
+                      rowData.despesasValue += `\n${omDetentora}`;
                   }
                   
                   // 3. Prioriza o detalhamento customizado
@@ -736,9 +726,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             
             const row = worksheet.getRow(currentRow);
             
-            // Tenta obter a UG da RM principal (nomeRM)
-            const rmUgFormatted = formatCodug(getRmCodug(nomeRM));
-
+            // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
+            const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug || '';
+            const rmUgFormatted = formatCodug(rmUg);
+            
             row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
             row.getCell('B').value = `${nomeRM}\n(${rmUgFormatted})`;
             
@@ -816,16 +807,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         subtotalRow.getCell('E').style = { ...subtotalRow.getCell('E').style, alignment: centerMiddleAlignment, border: cellBorder };
         
         // Colunas F, G, H (Combustível)
-        subtotalRow.getCell('F').value = nomeOM === nomeRM && totaisOM.totalDieselLitros > 0 
-          ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
-          : '';
+        subtotalRow.getCell('F').value = nomeOM === nomeRM && totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
         subtotalRow.getCell('F').font = { bold: true };
         subtotalRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         subtotalRow.getCell('F').style = { ...subtotalRow.getCell('F').style, alignment: centerMiddleAlignment, border: cellBorder };
         
-        subtotalRow.getCell('G').value = nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0 
-          ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` 
-          : '';
+        subtotalRow.getCell('G').value = nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
         subtotalRow.getCell('G').font = { bold: true };
         subtotalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         subtotalRow.getCell('G').style = { ...subtotalRow.getCell('G').style, alignment: centerMiddleAlignment, border: cellBorder };
@@ -1031,7 +1018,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, getRmCodug]);
+  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo]);
 
   return (
     <div className="space-y-6">
@@ -1132,26 +1119,22 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     
                     if (isClasseI) { // Classe I (QS/QR)
                         const registro = linha.registro as ClasseIRegistro;
-                        
+                        const ug_qs_formatted = formatCodug(registro.ug_qs);
+                        const ug_qr_formatted = formatCodug(registro.ug);
+
                         if (linha.tipo === 'QS') {
-                            // OM/CODUG para QS: RM de Destino e seu CODUG
-                            const om_qs_display = registro.om_qs || 'RM de Destino Não Informada';
-                            const ug_qs_formatted = formatCodug(registro.ugQS); // Usa ugQS do registro
-                            const ug_qs_display = registro.ugQS ? `(${ug_qs_formatted})` : '';
-                            
-                            rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n(Para OM: ${registro.organizacao})`;
-                            rowData.omValue = `${om_qs_display}\n${ug_qs_display}`;
-                            
-                            rowData.valorC = registro.calculos.totalQS;
-                            rowData.valorE = registro.calculos.totalQS;
+                            rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
+                            rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
+                            rowData.valorC = registro.total_qs;
+                            rowData.valorE = registro.total_qs;
+                            // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                         } else { // QR
-                            // OM/CODUG para QR: OM de Destino e seu CODUG
-                            const ug_qr_formatted = formatCodug(registro.ug);
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                             rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
-                            rowData.valorC = registro.calculos.totalQR;
-                            rowData.valorE = registro.calculos.totalQR;
+                            rowData.valorC = registro.total_qr;
+                            rowData.valorE = registro.total_qr;
+                            // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                         }
                     } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
@@ -1176,7 +1159,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
                             if (isDifferentOm) {
                                 // MODIFICAÇÃO AQUI: Simplificando o texto para apenas o nome da OM Detentora
-                                rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
+                                rowData.despesasValue += `\n${omDetentora}`;
                             }
                             
                         } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
@@ -1188,7 +1171,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             
                             // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                             if (isDifferentOm) {
-                                rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
+                                rowData.despesasValue += `\n${omDetentora}`;
                             }
                             
                             // 3. Prioriza o detalhamento customizado
@@ -1202,7 +1185,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             
                             // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                             if (isDifferentOm) {
-                                rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
+                                rowData.despesasValue += `\n${omDetentora}`;
                             }
                             
                             // 3. Prioriza o detalhamento customizado
@@ -1216,7 +1199,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             
                             // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                             if (isDifferentOm) {
-                                rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
+                                rowData.despesasValue += `\n${omDetentora}`;
                             }
                             
                             // 3. Prioriza o detalhamento customizado
@@ -1284,8 +1267,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   // 2. Linhas Combustível (APENAS na RM) - Classe III Combustível
                   ...(nomeOM === nomeRM ? registrosClasseIII.filter(isCombustivel).map((registro) => {
                     
-                    // Tenta obter a UG da RM principal (nomeRM)
-                    const rmUgFormatted = formatCodug(getRmCodug(nomeRM));
+                    // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
+                    const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug || '';
+                    const rmUgFormatted = formatCodug(rmUg);
 
                     return (
                       <tr key={`classe-iii-${registro.id}`}>
@@ -1434,7 +1418,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           .ptrab-table thead { display: table-row-group; break-inside: avoid; break-after: auto; }
           .ptrab-table thead tr { page-break-inside: avoid; page-break-after: auto; }
           .ptrab-table tbody tr { page-break-inside: avoid; break-inside: avoid; }
-          .ptrab-table tr { page-page-inside: avoid; break-inside: avoid; }
+          .ptrab-table tr { page-break-inside: avoid; break-inside: avoid; }
           
           /* FORÇA BORDAS FINAS NA IMPRESSÃO */
           .ptrab-table { border: 0.25pt solid #000 !important; }
