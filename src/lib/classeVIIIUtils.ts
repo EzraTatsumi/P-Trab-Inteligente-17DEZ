@@ -213,7 +213,7 @@ Total: ${formatCurrency(totalValor)}.`;
         
         let formulaComponents: string[] = [];
         let calculationComponents: string[] = [];
-        let detailedItems = "Cálculo:\n";
+        let detailedItems = "";
         
         // Iterate over item types B, C, D, E, G in order
         ['B', 'C', 'D', 'E', 'G'].forEach(type => {
@@ -223,12 +223,13 @@ Total: ${formatCurrency(totalValor)}.`;
                 const baseValue = item.valor_mnt_dia;
                 const itemTotal = calculateRemontaItemTotal(item);
                 
+                // 1. Formatação do Item (Removendo parênteses e usando hífen)
                 const itemDescription = item.item.split(/-\s[A-G]:\s/)[1].trim();
-                const itemUnit = item.item.includes('(Anual)') ? 'ano' : item.item.includes('(Mensal)') ? 'mês' : 'dia';
+                const itemUnit = item.item.includes('(Anual)') ? 'Anual' : item.item.includes('(Mensal)') ? 'Mensal' : 'Diário';
                 
-                detailedItems += `- Item ${type} (${itemDescription}): ${formatCurrency(baseValue)} / ${getAnimalPlural(animalTipo!, 1)} / ${itemUnit}.\n`;
+                detailedItems += `- Item ${type} (${itemDescription}) - ${itemUnit}: ${formatCurrency(baseValue)} / ${getAnimalPlural(animalTipo!, 1)} / ${itemUnit.toLowerCase()}.\n`;
                 
-                // Pluralização correta de dias
+                // 2. Pluralização correta de dias na aplicação da fórmula
                 const diasPluralFormula = diasOperacaoItem === 1 ? 'dia' : 'dias';
                 const animalPluralFormula = getAnimalPlural(animalTipo!, nrAnimais);
                 
@@ -262,7 +263,6 @@ Total: ${formatCurrency(totalValor)}.`;
 
         return `${header}
 
-Cálculo:
 ${detailedItems.trim()}
 
 Fórmula: ${formulaString} = ${formatCurrency(totalValor)}.
@@ -361,10 +361,12 @@ export const generateDetalhamento = (
             const itemsOfType = groupedItems[type] || [];
             itemsOfType.forEach(item => {
                 const itemTotal = calculateRemontaItemTotal(item);
-                const itemDescription = item.item.split(/-\s[A-G]:\s/)[1].trim();
-                const itemUnit = item.item.includes('(Anual)') ? 'ano' : item.item.includes('(Mensal)') ? 'mês' : 'dia';
                 
-                // Pluralização correta de dias
+                // 1. Formatação do Item (Removendo parênteses e usando hífen)
+                const itemDescription = item.item.split(/-\s[A-G]:\s/)[1].trim();
+                const itemUnit = item.item.includes('(Anual)') ? 'Anual' : item.item.includes('(Mensal)') ? 'Mensal' : 'Diário';
+                
+                // 2. Pluralização correta de dias
                 const diasPluralFormula = diasOperacaoItem === 1 ? 'dia' : 'dias';
                 const animalPluralFormula = getAnimalPlural(animalTipo!, nrAnimais);
                 
@@ -380,7 +382,7 @@ export const generateDetalhamento = (
                     }
                 }
                 
-                detalhamentoCalculo += `- Item ${type} (${itemDescription}): ${formulaDetail} = ${formatCurrency(itemTotal)}\n`;
+                detalhamentoCalculo += `- Item ${type} (${itemDescription}) - ${itemUnit}: ${formulaDetail} = ${formatCurrency(itemTotal)}\n`;
             });
         });
     }
