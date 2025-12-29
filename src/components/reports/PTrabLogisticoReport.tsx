@@ -175,6 +175,32 @@ const defaultGenerateClasseVIIMemoriaCalculo = (registro: any): string => {
     return registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
+// =================================================================
+// FUNÇÕES AUXILIARES DE RÓTULO (MOVIDAS PARA FORA DO COMPONENTE)
+// =================================================================
+
+const getTipoEquipamentoLabel = (tipo: string) => {
+    switch (tipo) {
+        case 'GERADOR': return 'GERADOR';
+        case 'EMBARCACAO': return 'EMBARCAÇÃO';
+        case 'EQUIPAMENTO_ENGENHARIA': return 'EQUIPAMENTO DE ENGENHARIA';
+        case 'MOTOMECANIZACAO': return 'MOTOMECANIZAÇÃO';
+        default: return tipo;
+    }
+};
+
+const getTipoCombustivelLabel = (tipo: string) => {
+    if (tipo === 'DIESEL' || tipo === 'OD') {
+        return 'ÓLEO DIESEL';
+    } else if (tipo === 'GASOLINA' || tipo === 'GAS') {
+        return 'GASOLINA';
+    }
+    return tipo;
+};
+
+// =================================================================
+// COMPONENTE PRINCIPAL
+// =================================================================
 
 const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   ptrabData,
@@ -628,7 +654,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
                   // Já tratado acima
               } else {
-                  // Se não for Classe V, VI, VII ou IX, usa a função genérica/Classe II
+                  // Se não for Classe V, VI ou VII, usa a função genérica/Classe II
                   const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                   rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
               }
@@ -697,25 +723,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         // 2. Linhas Combustível (APENAS na RM) - Classe III Combustível
         if (nomeOM === nomeRM) {
           registrosClasseIII.filter(isCombustivel).forEach((registro) => {
-            const getTipoEquipamentoLabel = (tipo: string) => {
-              switch (tipo) {
-                case 'GERADOR': return 'GERADOR';
-                case 'EMBARCACAO': return 'EMBARCAÇÃO';
-                case 'EQUIPAMENTO_ENGENHARIA': return 'EQUIPAMENTO DE ENGENHARIA';
-                case 'MOTOMECANIZACAO': return 'MOTOMECANIZAÇÃO';
-                default: return tipo;
-              }
-            };
-
-            const getTipoCombustivelLabel = (tipo: string) => {
-              if (tipo === 'DIESEL' || tipo === 'OD') {
-                return 'ÓLEO DIESEL';
-              } else if (tipo === 'GASOLINA' || tipo === 'GAS') {
-                return 'GASOLINA';
-              }
-              return tipo;
-            };
-
+            
             const row = worksheet.getRow(currentRow);
             
             // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
@@ -1215,7 +1223,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
                             // Já tratado acima
                         } else {
-                            // Se não for Classe V, VI, VII ou IX, usa a função genérica/Classe II
+                            // Se não for Classe V, VI ou VII, usa a função genérica/Classe II
                             const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                             rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
                         }
@@ -1258,77 +1266,35 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   
                   // 2. Linhas Combustível (APENAS na RM) - Classe III Combustível
                   ...(nomeOM === nomeRM ? registrosClasseIII.filter(isCombustivel).map((registro) => {
-                    const getTipoEquipamentoLabel = (tipo: string) => {
-                      switch (tipo) {
-                        case 'GERADOR': return 'GERADOR';
-                        case 'EMBARCACAO': return 'EMBARCAÇÃO';
-                        case 'EQUIPAMENTO_ENGENHARIA': return 'EQUIPAMENTO DE ENGENHARIA';
-                        case 'MOTOMECANIZACAO': return 'MOTOMECANIZAÇÃO';
-                        default: return tipo;
-                      }
-                    };
-
-                    const getTipoCombustivelLabel = (tipo: string) => {
-                      if (tipo === 'DIESEL' || tipo === 'OD') {
-                        return 'ÓLEO DIESEL';
-                      } else if (tipo === 'GASOLINA' || tipo === 'GAS') {
-                        return 'GASOLINA';
-                      }
-                      return tipo;
-                    };
-
-                    const row = worksheet.getRow(currentRow);
                     
                     // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
                     const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug || '';
                     const rmUgFormatted = formatCodug(rmUg);
-                    
-                    row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
-                    row.getCell('B').value = `${nomeRM}\n(${rmUgFormatted})`;
-                    
-                    // Colunas azuis (C, D, E) - Vazias para Combustível
-                    row.getCell('C').value = ''; 
-                    row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-                    row.getCell('D').value = ''; 
-                    row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-                    row.getCell('E').value = ''; 
-                    row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-                    
-                    // Colunas Laranjas (F, G, H) permanecem preenchidas
-                    row.getCell('F').value = Math.round(registro.total_litros);
-                    row.getCell('F').numFmt = '#,##0 "L"';
-                    row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-                    
-                    row.getCell('G').value = registro.preco_litro;
-                    row.getCell('G').numFmt = 'R$ #,##0.00';
-                    row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-                    
-                    row.getCell('H').value = registro.valor_total;
-                    row.getCell('H').numFmt = 'R$ #,##0.00';
-                    row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-                    
-                    const detalhamentoCombustivel = registro.detalhamento_customizado || registro.detalhamento || '';
-                    
-                    row.getCell('I').value = detalhamentoCombustivel;
-                    row.getCell('I').font = { name: 'Arial', size: 6.5 };
-                    
-                    ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
-                      row.getCell(col).border = cellBorder;
-                      row.getCell(col).font = baseFontStyle;
-                    });
-                    
-                    // Aplica alinhamentos específicos para dados de Combustível
-                    row.getCell('A').alignment = dataLeftMiddleAlignment; // Esquerda, Meio
-                    row.getCell('B').alignment = dataCenterMiddleAlignment; // Centro, Meio
-                    row.getCell('C').alignment = dataCenterMonetaryAlignment; // Centro, Meio (ND 30)
-                    row.getCell('D').alignment = dataCenterMonetaryAlignment; // Centro, Meio (ND 39)
-                    row.getCell('E').alignment = dataCenterMonetaryAlignment; // Centro, Meio (Total ND)
-                    row.getCell('F').alignment = dataCenterMiddleAlignment; // Centro, Meio (Litros)
-                    row.getCell('G').alignment = dataCenterMiddleAlignment; // Centro, Meio (Preço Unitário)
-                    row.getCell('H').alignment = dataCenterMonetaryAlignment; // Centro, Meio (Preço Total)
-                    row.getCell('I').alignment = dataTextStyle; // Detalhamento (Esquerda, Topo)
-                    
-                    currentRow++;
+
+                    return (
+                      <tr key={`classe-iii-${registro.id}`}>
+                        <td className="col-despesas">
+                          <div>CLASSE III - {getTipoCombustivelLabel(registro.tipo_combustivel)}</div>
+                          <div>{getTipoEquipamentoLabel(registro.tipo_equipamento)}</div>
+                          <div>{registro.organizacao}</div>
+                        </td>
+                        <td className="col-om">
+                          <div>{nomeRM}</div>
+                          <div>({rmUgFormatted})</div>
+                        </td>
+                        <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* 33.90.30 (Vazio) */}
+                        <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* 33.90.39 (Vazio) */}
+                        <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td> {/* TOTAL (Vazio) */}
+                        <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{formatNumber(registro.total_litros)} L</td>
+                        <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{formatCurrency(registro.preco_litro)}</td>
+                        <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{formatCurrency(registro.valor_total)}</td>
+                        <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
+                          <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                            {registro.detalhamento_customizado || registro.detalhamento || ''}
+                          </pre>
+                        </td>
+                      </tr>
+                    );
                   }) : []),
                   
                   // Subtotal da OM
