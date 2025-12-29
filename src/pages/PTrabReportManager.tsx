@@ -707,10 +707,13 @@ const PTrabReportManager = () => {
 
     // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
     registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
-        initializeGroup(registro.om_qs || registro.organizacao); // Usa OM QS como chave de destino
-        grupos[registro.om_qs || registro.organizacao].linhasQS.push({ registro, tipo: 'QS' });
+        // CHAVE DE AGRUPAMENTO PARA QS: Deve ser o nome da RM (om_qs)
+        const rmName = registro.om_qs || registro.organizacao; // Fallback para o nome da OM se RM não for preenchida
+        initializeGroup(rmName); 
+        grupos[rmName].linhasQS.push({ registro, tipo: 'QS' });
         
-        initializeGroup(registro.organizacao); // Usa OM de destino (QR) como chave de destino
+        // CHAVE DE AGRUPAMENTO PARA QR: Deve ser o nome da OM de destino (organizacao)
+        initializeGroup(registro.organizacao); 
         grupos[registro.organizacao].linhasQR.push({ registro, tipo: 'QR' });
     });
     
@@ -743,24 +746,43 @@ const PTrabReportManager = () => {
         }
     });
     
+    // 4. Processar Classe III Combustível (Deve ser agrupado sob a RM)
+    registrosClasseIII.forEach((registro) => {
+        if (isCombustivel(registro)) {
+            // Encontra a RM que está recebendo QS (se houver) ou usa o nomeRM principal
+            const rmNameForCombustivel = nomeRM || registro.organizacao; // Usa nomeRM se existir, senão usa a OM do registro
+            initializeGroup(rmNameForCombustivel);
+            // Não adicionamos aqui, pois o Combustível é tratado separadamente na iteração de omsOrdenadas
+        }
+    });
+    
     return grupos;
-  }, [registrosClasseI, registrosClasseII, registrosClasseIII]);
+  }, [registrosClasseI, registrosClasseII, registrosClasseIII, nomeRM]);
   
   const nomeRM = useMemo(() => {
-    const oms = Object.keys(gruposPorOM);
-    return oms.find(om => om.includes('RM') || om.includes('R M')) || ptrabData?.nome_om || '';
-  }, [gruposPorOM, ptrabData]);
+    // Tenta encontrar a RM nos registros QS
+    const rmRegistro = registrosClasseI.find(r => r.categoria === 'RACAO_QUENTE' && (r.om_qs?.includes('RM') || r.om_qs?.includes('R M')));
+    if (rmRegistro && rmRegistro.om_qs) return rmRegistro.om_qs;
+    
+    // Fallback para o nome da OM principal do PTrab se for uma RM
+    if (ptrabData?.nome_om?.includes('RM') || ptrabData?.nome_om?.includes('R M')) return ptrabData.nome_om;
+    
+    // Se não encontrar, retorna o nome da OM principal (que pode ser a RM)
+    return ptrabData?.nome_om || '';
+  }, [registrosClasseI, ptrabData]);
 
   const omsOrdenadas = useMemo(() => {
-    return Object.keys(gruposPorOM).sort((a, b) => {
-        const aTemRM = a.includes('RM') || a.includes('R M');
-        const bTemRM = b.includes('RM') || b.includes('R M');
-        
-        if (aTemRM && !bTemRM) return -1;
-        if (!aTemRM && bTemRM) return 1;
-        return a.localeCompare(b);
-    });
-  }, [gruposPorOM]);
+    const allOMs = Object.keys(gruposPorOM);
+    
+    // 1. Filtra a RM
+    const rmGroup = allOMs.filter(om => om === nomeRM);
+    
+    // 2. Filtra as demais OMs e ordena
+    const otherOMs = allOMs.filter(om => om !== nomeRM).sort((a, b) => a.localeCompare(b));
+    
+    // 3. Retorna a RM primeiro, seguida pelas demais OMs
+    return [...rmGroup, ...otherOMs];
+  }, [gruposPorOM, nomeRM]);
   
   const calcularTotaisPorOM = useCallback((grupo: GrupoOM, nomeOM: string) => {
     const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.calculos.totalQS, 0);
@@ -827,7 +849,7 @@ const PTrabReportManager = () => {
       valorDiesel,
       valorGasolina,
     };
-  }, [registrosClasseIII, nomeRM]);
+  }, [registrosClasseIII, nomeRM, isCombustivel]);
   // --- FIM LÓGICA DE AGRUPAMENTO E CÁLCULO ---
 
   const renderReport = () => {
