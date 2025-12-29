@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
-import { useFormNavigation } => "@/hooks/useFormNavigation";
+import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
 import { formatCurrency, parseInputToNumber, formatNumberForInput, formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
 import { DiretrizClasseII } from "@/types/diretrizesClasseII";
@@ -1769,7 +1769,7 @@ const ClasseVIIIForm = () => {
                       <Sparkles className="h-5 w-5 text-accent" />
                       OMs Cadastradas
                     </h2>
-                    {/* Removido o botão 'Novo Registro' duplicado daqui */}
+                    {/* Botão 'Novo Registro' removido daqui */}
                 </div>
                 
                 {/* Agrupamento por OM Detentora */}
