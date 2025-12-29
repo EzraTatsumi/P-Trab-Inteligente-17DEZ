@@ -168,6 +168,15 @@ const ClasseVIIIForm = () => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
   const { handleEnterToNextField } = useFormNavigation();
+  
+  // NOVO: Função para desativar setas e manter navegação por Enter
+  const handleNumberInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+    }
+    // Chama a função de navegação para a tecla Enter
+    handleEnterToNextField(e);
+  };
 
   // NOVO: Dirty Check Logic
   const isCategoryAllocationDirty = useCallback((
@@ -1332,7 +1341,7 @@ const ClasseVIIIForm = () => {
                     value={form.dias_operacao || ""}
                     onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value) || 0 })}
                     placeholder="Ex: 7"
-                    onKeyDown={handleEnterToNextField}
+                    onKeyDown={handleNumberInputKeyDown}
                   />
                 </div>
               </div>
@@ -1387,6 +1396,11 @@ const ClasseVIIIForm = () => {
                       </Command>
                     </PopoverContent>
                   </Popover>
+                </div>
+                
+                {/* Coluna vazia para manter o layout de 2 colunas */}
+                <div className="space-y-2">
+                    {/* Este espaço é intencionalmente vazio */}
                 </div>
               </div>
             </div>
@@ -1476,7 +1490,7 @@ const ClasseVIIIForm = () => {
                                                             onChange={(e) => handleQuantityChange(index, e.target.value)}
                                                             onBlur={() => handleQuantityBlur(index)}
                                                             placeholder="0"
-                                                            onKeyDown={handleEnterToNextField}
+                                                            onKeyDown={handleNumberInputKeyDown}
                                                         />
                                                         {itemLabel === 'Canino' && remontaValidationWarning && (
                                                             <p className="text-xs text-destructive mt-1">
@@ -1496,7 +1510,7 @@ const ClasseVIIIForm = () => {
                                                                 value={itemRemonta.dias_operacao_item || ""}
                                                                 onChange={(e) => handleDiasOperacaoChange(index, parseInt(e.target.value) || 0)}
                                                                 placeholder="0" 
-                                                                onKeyDown={handleEnterToNextField}
+                                                                onKeyDown={handleNumberInputKeyDown}
                                                             />
                                                         </TableCell>
                                                     )}
