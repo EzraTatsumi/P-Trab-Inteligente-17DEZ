@@ -52,7 +52,7 @@ interface TempDestination {
     id?: string;
 }
 const initialTempDestinations: Record<Categoria, TempDestination> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: { om: "", ug: "", id: undefined } }), {} as Record<Categoria, TempDestination>);
-const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, TempDestination>);
+const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, string>);
 // --- FIM TIPOS TEMPORÁRIOS ---
 
 interface ItemSaude {
@@ -915,38 +915,8 @@ const ClasseVIIIForm = () => {
     const omDetentora = form.organizacao;
     const ugDetentora = form.ug;
     
-    // Determine the OM/UG de Destino do Recurso (deve ser consistente se ambas as categorias estiverem ativas)
-    let omDestinoRecurso = "";
-    let ugDestinoRecurso = "";
+    // REMOVIDA A VALIDAÇÃO DE CONSISTÊNCIA DA OM DE DESTINO ENTRE CATEGORIAS.
     
-    if (form.itensSaude.length > 0) {
-        omDestinoRecurso = categoryAllocations['Saúde'].om_destino_recurso;
-        ugDestinoRecurso = categoryAllocations['Saúde'].ug_destino_recurso;
-    }
-    
-    if (form.itensRemonta.length > 0) {
-        const remontaAlloc = categoryAllocations['Remonta/Veterinária'];
-        
-        if (form.itensSaude.length > 0) {
-            // Check consistency if both are present
-            if (omDestinoRecurso !== remontaAlloc.om_destino_recurso || ugDestinoRecurso !== remontaAlloc.ug_destino_recurso) {
-                toast.error("Ao salvar Saúde e Remonta juntos, a OM de destino do recurso deve ser a mesma para ambas as categorias.");
-                setLoading(false);
-                return;
-            }
-        } else {
-            // Only Remonta is present
-            omDestinoRecurso = remontaAlloc.om_destino_recurso;
-            ugDestinoRecurso = remontaAlloc.ug_destino_recurso;
-        }
-    }
-    
-    if (!omDestinoRecurso || !ugDestinoRecurso) {
-        toast.error("OM de destino não definida."); 
-        setLoading(false);
-        return;
-    }
-
     setLoading(true);
     
     try {
@@ -969,6 +939,13 @@ const ClasseVIIIForm = () => {
       // 2. Inserir Saúde
       if (form.itensSaude.length > 0) {
         const allocation = categoryAllocations['Saúde'];
+        
+        if (!allocation.om_destino_recurso || !allocation.ug_destino_recurso) {
+            toast.error("Selecione a OM de destino do recurso para a categoria Saúde.");
+            setLoading(false);
+            return;
+        }
+        
         const valorTotal = valorTotalSaude;
         
         const detalhamento = generateDetalhamento(
@@ -998,6 +975,13 @@ const ClasseVIIIForm = () => {
       // 3. Inserir Remonta/Veterinária
       if (form.itensRemonta.length > 0) {
         const allocation = categoryAllocations['Remonta/Veterinária'];
+        
+        if (!allocation.om_destino_recurso || !allocation.ug_destino_recurso) {
+            toast.error("Selecione a OM de destino do recurso para a categoria Remonta/Veterinária.");
+            setLoading(false);
+            return;
+        }
+        
         const totalRemonta = valorTotalRemonta;
         
         // Agrupar itens por tipo de animal (Equino e Canino)
