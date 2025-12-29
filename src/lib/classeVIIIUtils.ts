@@ -205,7 +205,7 @@ Total: ${formatCurrency(totalValor)}.`;
         
         let formulaComponents: string[] = [];
         let calculationComponents: string[] = [];
-        let detailedItems = ""; // Removido o cabeçalho "Cálculo:" daqui
+        let detailedItems = "Cálculo:\n";
         
         // Iterate over item types B, C, D, E, G in order
         ['B', 'C', 'D', 'E', 'G'].forEach(type => {
@@ -242,11 +242,11 @@ Total: ${formatCurrency(totalValor)}.`;
         const formulaString = formulaComponents.join(' + ');
         const calculationString = calculationComponents.join(' + ');
         
-        // CABEÇALHO REMONTA (AJUSTADO)
+        // NOVO CABEÇALHO APLICADO AQUI
         const animalPlural = nrAnimais === 1 ? animalTipo?.toLowerCase() : `${animalTipo?.toLowerCase()}(s)`;
         const diaPlural = diasOperacaoItem === 1 ? 'dia' : 'dias';
         
-        const header = `${ndPrefix} - Manutenção de ${nrAnimais} ${animalPlural} ${omArticle} ${omDetentora}, durante ${diasOperacaoItem} ${diaPlural} de ${faseFormatada}.`;
+        const header = `${ndPrefix} - Recomposição dos itens de Remonta/Veterinária de ${nrAnimais} ${animalPlural} ${omArticle} ${omDetentora}, durante ${diasOperacaoItem} ${diaPlural} de ${faseFormatada}.`;
 
         return `${header}
 
@@ -254,7 +254,6 @@ Alocação:
 - ND 33.90.30 (Material): ${formatCurrency(valorND30)}
 - ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
-Cálculo:
 ${detailedItems.trim()}
 
 Fórmula: ${formulaString} = ${formatCurrency(totalValor)}.
@@ -334,7 +333,7 @@ export const generateDetalhamento = (
         const animalPlural = nrAnimais === 1 ? animalTipo?.toLowerCase() : `${animalTipo?.toLowerCase()}(s)`;
         const diaPlural = diasOperacaoItem === 1 ? 'dia' : 'dias';
         
-        header = `${ndPrefix} - Manutenção de ${nrAnimais} ${animalPlural} ${omArticle} ${omDetentora}, durante ${diasOperacaoItem} ${diaPlural} de ${faseFormatada}.`;
+        header = `${ndPrefix} - Recomposição dos itens de Remonta/Veterinária de ${nrAnimais} ${animalPlural} ${omArticle} ${omDetentora}, durante ${diasOperacaoItem} ${diaPlural} de ${faseFormatada}.`;
 
         // Detalhamento de Remonta (usando a lógica de cálculo detalhada)
         const groupedItems: Record<string, ItemRemonta[]> = itensPorAnimal.reduce((acc, item) => {
