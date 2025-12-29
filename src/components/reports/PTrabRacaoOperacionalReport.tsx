@@ -53,12 +53,13 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
   
   const racaoOperacionalConsolidada = useMemo(() => {
     // Filtra apenas registros de Ração Operacional com quantidade > 0
-    const registros = registrosClasseI.filter(r => r.categoria === 'RACAO_OPERACIONAL' && ((r.quantidade_r2 || 0) > 0 || (r.quantidade_r3 || 0) > 0));
+    const registros = registrosClasseI.filter(r => r.categoria === 'RACAO_OPERACIONAL' && ((r.quantidadeR2 || 0) > 0 || (r.quantidadeR3 || 0) > 0));
     
     // Agrupar por OM de destino (organizacao/ug)
     const grupos: Record<string, RacaoOpLinha> = {};
     
     registros.forEach(r => {
+        // A chave de agrupamento deve ser a OM de destino (organizacao/ug)
         const key = `${r.organizacao}-${r.ug}`;
         
         if (!grupos[key]) {
@@ -68,22 +69,22 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
                 r2_quantidade: 0,
                 r3_quantidade: 0,
                 total_unidades: 0,
-                fase_atividade: r.fase_atividade || 'operação',
+                fase_atividade: r.faseAtividade || 'operação',
                 efetivo: r.efetivo || 0,
-                dias_operacao: r.dias_operacao,
+                dias_operacao: r.diasOperacao,
                 registroOriginal: r, // Armazena o registro original
             };
         }
         
         // Consolida as quantidades
-        grupos[key].r2_quantidade += (r.quantidade_r2 || 0);
-        grupos[key].r3_quantidade += (r.quantidade_r3 || 0);
-        grupos[key].total_unidades += (r.quantidade_r2 || 0) + (r.quantidade_r3 || 0);
+        grupos[key].r2_quantidade += (r.quantidadeR2 || 0);
+        grupos[key].r3_quantidade += (r.quantidadeR3 || 0);
+        grupos[key].total_unidades += (r.quantidadeR2 || 0) + (r.quantidadeR3 || 0);
         
         // Atualiza campos globais (embora em teoria devam ser os mesmos)
         grupos[key].efetivo = r.efetivo || 0;
-        grupos[key].dias_operacao = r.dias_operacao;
-        grupos[key].fase_atividade = r.fase_atividade || 'operação';
+        grupos[key].dias_operacao = r.diasOperacao;
+        grupos[key].fase_atividade = r.faseAtividade || 'operação';
     });
     
     return Object.values(grupos).sort((a, b) => a.om.localeCompare(b.om));

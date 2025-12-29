@@ -529,7 +529,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             ...grupo.linhasLubrificante,
             ...grupo.linhasClasseV,
             ...grupo.linhasClasseVI,
-            ...grupo.linhasClasseVII, // INCLUINDO CLASSE VII AQUI
+            ...grupo.linhasClasseVII,
             ...grupo.linhasClasseVIII,
             ...grupo.linhasClasseIX,
         ];
@@ -554,17 +554,18 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               const ug_qr_formatted = formatCodug(registro.ug);
 
               if (linha.tipo === 'QS') {
-                  rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
+                  // CORREÇÃO: A despesa é para a OM de destino (QR), mas o recurso vai para a RM (QS)
+                  rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n(Para OM: ${registro.organizacao})`;
                   rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
-                  rowData.valorC = registro.total_qs;
-                  rowData.valorE = registro.total_qs;
+                  rowData.valorC = registro.calculos.totalQS;
+                  rowData.valorE = registro.calculos.totalQS;
                   // USANDO A FUNÇÃO UNIFICADA
                   rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
               } else { // QR
                   rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                   rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
-                  rowData.valorC = registro.total_qr;
-                  rowData.valorE = registro.total_qr;
+                  rowData.valorC = registro.calculos.totalQR;
+                  rowData.valorE = registro.calculos.totalQR;
                   // USANDO A FUNÇÃO UNIFICADA
                   rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
               }
@@ -590,7 +591,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
                   if (isDifferentOm) {
                       // MODIFICAÇÃO AQUI: Simplificando o texto para apenas o nome da OM Detentora
-                      rowData.despesasValue += `\n${omDetentora}`;
+                      rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
                   }
                   
               } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
@@ -602,7 +603,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   
                   // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                   if (isDifferentOm) {
-                      rowData.despesasValue += `\n${omDetentora}`;
+                      rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
                   }
                   
                   // 3. Prioriza o detalhamento customizado
@@ -616,7 +617,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   
                   // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                   if (isDifferentOm) {
-                      rowData.despesasValue += `\n${omDetentora}`;
+                      rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
                   }
                   
                   // 3. Prioriza o detalhamento customizado
@@ -630,7 +631,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   
                   // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                   if (isDifferentOm) {
-                      rowData.despesasValue += `\n${omDetentora}`;
+                      rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
                   }
                   
                   // 3. Prioriza o detalhamento customizado
@@ -1123,17 +1124,18 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         const ug_qr_formatted = formatCodug(registro.ug);
 
                         if (linha.tipo === 'QS') {
-                            rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
+                            // CORREÇÃO: A despesa é para a OM de destino (QR), mas o recurso vai para a RM (QS)
+                            rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n(Para OM: ${registro.organizacao})`;
                             rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
-                            rowData.valorC = registro.total_qs;
-                            rowData.valorE = registro.total_qs;
+                            rowData.valorC = registro.calculos.totalQS;
+                            rowData.valorE = registro.calculos.totalQS;
                             // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                         } else { // QR
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                             rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
-                            rowData.valorC = registro.total_qr;
-                            rowData.valorE = registro.total_qr;
+                            rowData.valorC = registro.calculos.totalQR;
+                            rowData.valorE = registro.calculos.totalQR;
                             // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                         }
@@ -1159,7 +1161,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             rowData.despesasValue = `CLASSE II - ${categoriaDetalhe.toUpperCase()}`;
                             if (isDifferentOm) {
                                 // MODIFICAÇÃO AQUI: Simplificando o texto para apenas o nome da OM Detentora
-                                rowData.despesasValue += `\n${omDetentora}`;
+                                rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
                             }
                             
                         } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
@@ -1171,7 +1173,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             
                             // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                             if (isDifferentOm) {
-                                rowData.despesasValue += `\n${omDetentora}`;
+                                rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
                             }
                             
                             // 3. Prioriza o detalhamento customizado
@@ -1185,7 +1187,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             
                             // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                             if (isDifferentOm) {
-                                rowData.despesasValue += `\n${omDetentora}`;
+                                rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
                             }
                             
                             // 3. Prioriza o detalhamento customizado
@@ -1199,7 +1201,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             
                             // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                             if (isDifferentOm) {
-                                rowData.despesasValue += `\n${omDetentora}`;
+                                rowData.despesasValue += `\n(Detentora: ${omDetentora})`;
                             }
                             
                             // 3. Prioriza o detalhamento customizado
