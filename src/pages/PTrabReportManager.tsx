@@ -30,6 +30,7 @@ import {
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils"; // Importando utilitário de Classe VII
 
 
 // =================================================================
@@ -446,7 +447,23 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         );
     }
     
-    // Para Classe VII e VIII, que não tiveram utilitários de memória criados, retorna o detalhamento salvo
+    // --- NEW LOGIC FOR CLASSE VII ---
+    if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
+        return generateClasseVIIUtility(
+            registro.categoria,
+            registro.itens_equipamentos,
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
+            registro.efetivo || 0,
+            registro.valor_nd_30,
+            registro.valor_nd_39
+        );
+    }
+    // --- END NEW LOGIC ---
+    
+    // Para Classe VIII, que não teve utilitários de memória criados, retorna o detalhamento salvo
     return registro.detalhamento;
 };
 
