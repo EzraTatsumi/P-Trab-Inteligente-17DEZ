@@ -1635,12 +1635,18 @@ const ClasseVIIIForm = () => {
                     const totalCategoria = isSaude ? valorTotalSaude : valorTotalRemonta;
                     const allocation = categoryAllocations[categoria as Categoria];
                     
-                    // NOVO CÁLCULO: Obtém o total atual (SEM MARGEM) para a categoria, usando os itens não salvos se for a aba ativa
-                    const currentItemsForCheck = isSaude ? (currentCategoryItems as ItemSaude[]).filter(i => i.quantidade > 0) : (currentCategoryItems as ItemRemonta[]).filter(i => i.quantidade_animais > 0);
+                    // NOVO CÁLCULO: Obtém o total atual (SEM MARGEM) para a categoria.
+                    const isCurrentTab = categoria === selectedTab;
+                    
+                    // Se for a aba atual, usamos os itens do estado temporário (currentCategoryItems).
+                    // Se não for a aba atual, usamos os itens já salvos/carregados (itens).
+                    const itemsToCalculateTotal = isCurrentTab 
+                        ? currentCategoryItems.filter(i => (i as any).quantidade > 0 || (i as any).quantidade_animais > 0)
+                        : itens;
                     
                     const currentTotalValueForCheck = isSaude 
-                        ? (currentItemsForCheck as ItemSaude[]).reduce((sum, item) => calculateSaudeItemTotal(item) + sum, 0)
-                        : (currentItemsForCheck as ItemRemonta[]).reduce((sum, item) => calculateTotalForAnimalType(item, diretrizesRemonta) + sum, 0);
+                        ? (itemsToCalculateTotal as ItemSaude[]).reduce((sum, item) => calculateSaudeItemTotal(item) + sum, 0)
+                        : (itemsToCalculateTotal as ItemRemonta[]).reduce((sum, item) => calculateTotalForAnimalType(item, diretrizesRemonta) + sum, 0);
                     
                     // NOVO: Verifica se a categoria está "suja" (itens ou alocação alterados)
                     const isDirty = isCategoryAllocationDirty(
@@ -1769,7 +1775,15 @@ const ClasseVIIIForm = () => {
                       <Sparkles className="h-5 w-5 text-accent" />
                       OMs Cadastradas
                     </h2>
-                    {/* Botão 'Novo Registro' removido daqui */}
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={resetFormFields}
+                        disabled={loading}
+                    >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Novo Registro
+                    </Button>
                 </div>
                 
                 {/* Agrupamento por OM Detentora */}
