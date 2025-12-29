@@ -417,7 +417,7 @@ const ClasseVForm = () => {
       selectedOmId: undefined,
       organizacao: "", // OM Detentora
       ug: "", // UG Detentora
-      efetivo: 0, 
+      efetivo: 0, // NOVO: Reset
       dias_operacao: 0,
       itens: [],
     });
@@ -1138,7 +1138,7 @@ const ClasseVForm = () => {
                         {/* BLOCO DE ALOCAÇÃO ND 30/39 */}
                         {currentCategoryTotalValue > 0 && (
                             <div className="space-y-4 p-4 border rounded-lg bg-background">
-                                <h4 className="font-semibold text-sm">Alocação de Recursos para {getCategoryLabel(cat)}</h4>
+                                <h4 className="font-semibold text-sm">Alocação de Recursos para {getCategoryLabel(cat)} (Valor Total: {formatCurrency(currentCategoryTotalValue)})</h4>
                                 
                                 {/* CAMPO: OM de Destino do Recurso */}
                                 <div className="space-y-2">

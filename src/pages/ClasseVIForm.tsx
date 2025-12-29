@@ -164,8 +164,8 @@ const ClasseVIForm = () => {
   
   const [form, setForm] = useState<FormDataClasseVI>({
     selectedOmId: undefined,
-    organizacao: "", // OM Detentora
-    ug: "", // UG Detentora
+    organizacao: "", // OM Detentora (Global)
+    ug: "", // UG Detentora (Global)
     // efetivo: 0, // REMOVIDO
     dias_operacao: 0,
     itens: [],
@@ -1392,9 +1392,6 @@ const ClasseVIForm = () => {
                     const omName = omKey.split(' (')[0];
                     const ug = omKey.split(' (')[1].replace(')', '');
                     
-                    // Verifica se a OM Detentora é diferente da OM de Destino (apenas para o primeiro registro do grupo)
-                    const isDifferentOm = omRegistros[0].om_detentora !== omRegistros[0].organizacao;
-
                     return (
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
