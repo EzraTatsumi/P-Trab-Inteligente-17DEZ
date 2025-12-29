@@ -238,6 +238,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   
   const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
   
+  // NOVO: Função para buscar o CODUG da RM
+  const getRmCodug = useCallback((rmName: string) => {
+      const rmRegistro = registrosClasseI.find(r => r.categoria === 'RACAO_QUENTE' && r.om_qs === rmName);
+      return rmRegistro?.ugQS || '';
+  }, [registrosClasseI]);
+
   // NOVO: Função para gerar o nome do arquivo
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
@@ -317,7 +323,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, onExportSuccess, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIMemoriaCalculo]);
+  }, [ptrabData, onExportSuccess, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIMemoriaCalculo, getRmCodug]);
 
   // NOVO: Função para abrir o diálogo de impressão do navegador
   const handlePrint = () => {
@@ -550,29 +556,26 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           
           if (isClasseI) { // Classe I (QS/QR)
               const registro = linha.registro as ClasseIRegistro;
-              const ug_qs_formatted = formatCodug(registro.ug_qs);
-              const ug_qr_formatted = formatCodug(registro.ug);
-
+              
               if (linha.tipo === 'QS') {
-                  // CORREÇÃO: A despesa é para a OM de destino (QR), mas o recurso vai para a RM (QS)
-                  rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n(Para OM: ${registro.organizacao})`;
-                  
-                  // FIX: Use RM name and CODUG, display CODUG only if available
+                  // OM/CODUG para QS: RM de Destino e seu CODUG
                   const om_qs_display = registro.om_qs || 'RM de Destino Não Informada';
-                  const ug_qs_display = registro.ug_qs ? `(${ug_qs_formatted})` : '';
+                  const ug_qs_formatted = formatCodug(registro.ugQS); // Usa ugQS do registro
+                  const ug_qs_display = registro.ugQS ? `(${ug_qs_formatted})` : '';
                   
+                  rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n(Para OM: ${registro.organizacao})`;
                   rowData.omValue = `${om_qs_display}\n${ug_qs_display}`;
                   
                   rowData.valorC = registro.calculos.totalQS;
                   rowData.valorE = registro.calculos.totalQS;
-                  // USANDO A FUNÇÃO UNIFICADA
                   rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
               } else { // QR
+                  // OM/CODUG para QR: OM de Destino e seu CODUG
+                  const ug_qr_formatted = formatCodug(registro.ug);
                   rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                   rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
                   rowData.valorC = registro.calculos.totalQR;
                   rowData.valorE = registro.calculos.totalQR;
-                  // USANDO A FUNÇÃO UNIFICADA
                   rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
               }
           } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
@@ -733,10 +736,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             
             const row = worksheet.getRow(currentRow);
             
-            // Tenta obter a UG da RM a partir de um registro de QS/QR, se existir
-            const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug || '';
-            const rmUgFormatted = formatCodug(rmUg);
-            
+            // Tenta obter a UG da RM principal (nomeRM)
+            const rmUgFormatted = formatCodug(getRmCodug(nomeRM));
+
             row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
             row.getCell('B').value = `${nomeRM}\n(${rmUgFormatted})`;
             
@@ -814,12 +816,16 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         subtotalRow.getCell('E').style = { ...subtotalRow.getCell('E').style, alignment: centerMiddleAlignment, border: cellBorder };
         
         // Colunas F, G, H (Combustível)
-        subtotalRow.getCell('F').value = nomeOM === nomeRM && totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
+        subtotalRow.getCell('F').value = nomeOM === nomeRM && totaisOM.totalDieselLitros > 0 
+          ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
+          : '';
         subtotalRow.getCell('F').font = { bold: true };
         subtotalRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         subtotalRow.getCell('F').style = { ...subtotalRow.getCell('F').style, alignment: centerMiddleAlignment, border: cellBorder };
         
-        subtotalRow.getCell('G').value = nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
+        subtotalRow.getCell('G').value = nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0 
+          ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` 
+          : '';
         subtotalRow.getCell('G').font = { bold: true };
         subtotalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         subtotalRow.getCell('G').style = { ...subtotalRow.getCell('G').style, alignment: centerMiddleAlignment, border: cellBorder };
@@ -1025,7 +1031,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo]);
+  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, getRmCodug]);
 
   return (
     <div className="space-y-6">
@@ -1126,29 +1132,26 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     
                     if (isClasseI) { // Classe I (QS/QR)
                         const registro = linha.registro as ClasseIRegistro;
-                        const ug_qs_formatted = formatCodug(registro.ug_qs);
-                        const ug_qr_formatted = formatCodug(registro.ug);
-
+                        
                         if (linha.tipo === 'QS') {
-                            // CORREÇÃO: A despesa é para a OM de destino (QR), mas o recurso vai para a RM (QS)
-                            rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n(Para OM: ${registro.organizacao})`;
-                            
-                            // FIX: Use RM name and CODUG, display CODUG only if available
+                            // OM/CODUG para QS: RM de Destino e seu CODUG
                             const om_qs_display = registro.om_qs || 'RM de Destino Não Informada';
-                            const ug_qs_display = registro.ug_qs ? `(${ug_qs_formatted})` : '';
+                            const ug_qs_formatted = formatCodug(registro.ugQS); // Usa ugQS do registro
+                            const ug_qs_display = registro.ugQS ? `(${ug_qs_formatted})` : '';
                             
+                            rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n(Para OM: ${registro.organizacao})`;
                             rowData.omValue = `${om_qs_display}\n${ug_qs_display}`;
                             
                             rowData.valorC = registro.calculos.totalQS;
                             rowData.valorE = registro.calculos.totalQS;
-                            // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                         } else { // QR
+                            // OM/CODUG para QR: OM de Destino e seu CODUG
+                            const ug_qr_formatted = formatCodug(registro.ug);
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                             rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
                             rowData.valorC = registro.calculos.totalQR;
                             rowData.valorE = registro.calculos.totalQR;
-                            // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                         }
                     } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
@@ -1281,8 +1284,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   // 2. Linhas Combustível (APENAS na RM) - Classe III Combustível
                   ...(nomeOM === nomeRM ? registrosClasseIII.filter(isCombustivel).map((registro) => {
                     
-                    const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug || '';
-                    const rmUgFormatted = formatCodug(rmUg);
+                    // Tenta obter a UG da RM principal (nomeRM)
+                    const rmUgFormatted = formatCodug(getRmCodug(nomeRM));
 
                     return (
                       <tr key={`classe-iii-${registro.id}`}>
@@ -1431,7 +1434,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           .ptrab-table thead { display: table-row-group; break-inside: avoid; break-after: auto; }
           .ptrab-table thead tr { page-break-inside: avoid; page-break-after: auto; }
           .ptrab-table tbody tr { page-break-inside: avoid; break-inside: avoid; }
-          .ptrab-table tr { page-break-inside: avoid; break-inside: avoid; }
+          .ptrab-table tr { page-page-inside: avoid; break-inside: avoid; }
           
           /* FORÇA BORDAS FINAS NA IMPRESSÃO */
           .ptrab-table { border: 0.25pt solid #000 !important; }
