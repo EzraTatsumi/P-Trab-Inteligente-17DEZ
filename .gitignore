@@ -83,12 +83,12 @@ src/lib/creditUtils.ts
 src/pages/UserProfilePage.tsx
 src/components/reports/PTrabLogisticoReport.tsx1
 src/components/reports/PTrabRacaoOperacionalReport.tsx1
-# REMOVIDO: src/pages/ClasseIIForm.tsx1
-# REMOVIDO: src/pages/ClasseIIIForm.tsx
-# REMOVIDO: src/pages/ClasseVForm.tsx1
+# src/pages/ClasseIIForm.tsx
+# src/pages/ClasseIIIForm.tsx
+# REMOVIDO: src/pages/ClasseVForm.tsx
 # REMOVIDO: src/pages/ClasseVIIForm.tsx
-# REMOVIDO: src/pages/ClasseVIIIForm.tsx
-# REMOVIDO: src/pages/ClasseIXForm.tsx
+# src/pages/ClasseVIIIForm.tsx
+# src/pages/ClasseIXForm.tsx
 
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
 
