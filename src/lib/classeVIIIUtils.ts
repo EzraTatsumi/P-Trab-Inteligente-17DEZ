@@ -213,7 +213,7 @@ Total: ${formatCurrency(totalValor)}.`;
         
         let formulaComponents: string[] = [];
         let calculationComponents: string[] = [];
-        let detailedItems = "Cálculo:\n";
+        let detailedItems = "";
         
         // Iterate over item types B, C, D, E, G in order
         ['B', 'C', 'D', 'E', 'G'].forEach(type => {
@@ -263,9 +263,9 @@ Total: ${formatCurrency(totalValor)}.`;
         return `${header}
 
 Cálculo:
+Fórmula: ${formulaString} = ${formatCurrency(totalValor)}.
 ${detailedItems.trim()}
 
-Fórmula: ${formulaString} = ${formatCurrency(totalValor)}.
 - ${calculationString} = ${formatCurrency(totalValor)}.
 
 Total: ${formatCurrency(totalValor)}.`;
