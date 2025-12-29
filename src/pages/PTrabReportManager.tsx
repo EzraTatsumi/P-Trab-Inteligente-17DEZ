@@ -27,7 +27,7 @@ import {
   calculateClasseICalculations,
   ClasseIRegistro as ClasseIRegistroType, // Importando o tipo correto
 } from "@/lib/classeIUtils"; // Importando as funções de utilidade
-import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
+import { generateDetalhamento as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIIMemoriaCalculoUtility } from "@/lib/classeVIIUtils"; // NOVO: Importar utilitário da Classe VII
@@ -396,10 +396,14 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
  * Prioriza o detalhamento customizado, senão usa o utilitário específico.
  */
 export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isClasseII: boolean): string => {
+    // 1. Priorizar o detalhamento customizado se existir
     if (registro.detalhamento_customizado) {
       return registro.detalhamento_customizado;
     }
     
+    // 2. Se não houver customização, gerar automaticamente
+    
+    // Classe IX (Motomecanização)
     if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
         return generateClasseIXMemoriaCalculo(registro);
     }
@@ -422,7 +426,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     // Classe V (Armamento)
     if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVUtility(
-            registro.categoria,
+            registro.categoria as 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN',
             registro.itens_equipamentos,
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
@@ -437,7 +441,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     // Classe VI (Engenharia)
     if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVIUtility(
-            registro.categoria,
+            registro.categoria as 'Gerador' | 'Embarcação' | 'Equipamento de Engenharia',
             registro.itens_equipamentos,
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
@@ -806,6 +810,7 @@ const PTrabReportManager = () => {
             generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo} // USANDO A FUNÇÃO UNIFICADA
             generateClasseVMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
             generateClasseVIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
+            generateClasseVIIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // NOVO: Reutiliza a função unificada
           />
         );
       case 'racao_operacional':
