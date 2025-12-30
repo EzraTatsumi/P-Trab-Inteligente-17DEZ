@@ -145,54 +145,24 @@ export const generateCategoryMemoriaCalculo = (registro: ClasseIXRegistro): stri
     const valorTotalFinal = valorND30 + valorND39;
 
     let totalItens = 0;
-    let totalValorBase = 0;
-    let totalValorAcionamento = 0;
+    let detalhamentoItens = "";
 
-    // 1. Calcular totais e agrupar detalhes
-    const gruposPorCategoria = itens.reduce((acc, item) => {
-        const categoria = item.categoria;
+    // 1. Calcular totais e formatar detalhes
+    itens.forEach(item => {
         const { base, acionamento, total } = calculateItemTotalClasseIX(item, diasOperacao);
-        
-        if (!acc[categoria]) {
-            acc[categoria] = {
-                totalValor: 0,
-                totalQuantidade: 0,
-                detalhes: [],
-            };
-        }
-        
-        acc[categoria].totalValor += total;
-        acc[categoria].totalQuantidade += item.quantidade;
         totalItens += item.quantidade;
-        totalValorBase += base;
-        totalValorAcionamento += acionamento;
         
         const nrMeses = Math.ceil(diasOperacao / 30);
         const diaPlural = diasOperacao === 1 ? 'dia' : 'dias';
         const mesPlural = nrMeses === 1 ? 'mês' : 'meses';
 
-        // Detalhamento por item
-        acc[categoria].detalhes.push(
-            `- ${item.item} (${item.quantidade} Vtr): Base (${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diaPlural}) + Acionamento (${formatCurrency(item.valor_acionamento_mensal)}/${mesPlural} x ${nrMeses} ${mesPlural}) = ${formatCurrency(total)}`
-        );
-        
-        return acc;
-    }, {} as Record<string, { totalValor: number, totalQuantidade: number, detalhes: string[] }>);
-
-    let detalhamentoItens = "";
-    
-    // 2. Formatar a seção de cálculo agrupada
-    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        detalhamentoItens += `\n--- ${getClasseIILabel(categoria).toUpperCase()} (${grupo.totalQuantidade} VTR) ---\n`;
-        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
-        detalhamentoItens += `Detalhes:\n`;
-        detalhamentoItens += grupo.detalhes.join('\n');
-        detalhamentoItens += `\n`;
+        // NOVO FORMATO DE DETALHAMENTO
+        detalhamentoItens += `- ${item.item}: (${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diaPlural}) + (${item.quantidade} Un. x ${formatCurrency(item.valor_acionamento_mensal)}/${mesPlural} x ${nrMeses} ${mesPlural}) = ${formatCurrency(total)}\n`;
     });
     
     detalhamentoItens = detalhamentoItens.trim();
     
-    // 3. Determinar o prefixo ND
+    // 2. Determinar o prefixo ND
     const isND30Active = valorND30 > ND_TOLERANCE;
     const isND39Active = valorND39 > ND_TOLERANCE;
     
@@ -214,14 +184,13 @@ export const generateCategoryMemoriaCalculo = (registro: ClasseIXRegistro): stri
     const categoriaLabel = registro.categoria;
     const itemPlural = getVehiclePluralization(categoriaLabel, totalItens);
     
-    // CABEÇALHO DE EDIÇÃO (Corrigido para remover redundância)
+    // CABEÇALHO DE EDIÇÃO
     const header = `${ndPrefix} - Manutenção de ${totalItens} ${itemPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPluralHeader} de ${faseFormatada}.`;
 
     return `${header}
 
 Cálculo:
 Fórmula: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
-
 ${detalhamentoItens}
 
 Total: ${formatCurrency(valorTotalFinal)}.`;
@@ -260,6 +229,7 @@ export const generateDetalhamento = (
     }
     
     let totalItens = 0;
+    let detalhamentoCalculo = "";
     
     // 2. Agrupar itens e calcular totais
     const gruposPorCategoria = itens.reduce((acc, item) => {
@@ -282,22 +252,18 @@ export const generateDetalhamento = (
         const diaPlural = diasOperacao === 1 ? 'dia' : 'dias';
         const mesPlural = nrMeses === 1 ? 'mês' : 'meses';
 
-        // Detalhamento por item
+        // Detalhamento por item (NOVO FORMATO)
         acc[categoria].detalhes.push(
-            `- ${item.item} (${item.quantidade} Vtr): Base (${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diaPlural}) + Acionamento (${formatCurrency(item.valor_acionamento_mensal)}/${mesPlural} x ${nrMeses} ${mesPlural}) = ${formatCurrency(total)}`
+            `- ${item.item}: (${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diaPlural}) + (${item.quantidade} Un. x ${formatCurrency(item.valor_acionamento_mensal)}/${mesPlural} x ${nrMeses} ${mesPlural}) = ${formatCurrency(total)}`
         );
         
         return acc;
     }, {} as Record<string, { totalValor: number, totalQuantidade: number, detalhes: string[] }>);
 
-    let detalhamentoCalculo = "";
-    
+    // 3. Formatar a seção de cálculo consolidada (sem cabeçalhos de categoria)
     Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        detalhamentoCalculo += `\n--- ${getClasseIILabel(categoria).toUpperCase()} (${grupo.totalQuantidade} VTR) ---\n`;
-        detalhamentoCalculo += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
-        detalhamentoCalculo += `Detalhes:\n`;
-        detalhamentoCalculo += grupo.detalhes.join('\n');
-        detalhamentoCalculo += `\n`;
+        // Apenas concatena os detalhes, sem o cabeçalho de categoria
+        detalhamentoCalculo += grupo.detalhes.join('\n') + '\n';
     });
     
     detalhamentoCalculo = detalhamentoCalculo.trim();
@@ -330,7 +296,8 @@ Alocação:
 - ND 33.90.30 (Material): ${formatCurrency(valorND30)}
 - ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
 
-Cálculo Detalhado por Categoria:
+Cálculo Detalhado:
+Fórmula: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
 ${detalhamentoCalculo}
 
 Valor Total: ${formatCurrency(valorTotal)}.`;
