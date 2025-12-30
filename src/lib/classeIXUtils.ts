@@ -80,6 +80,7 @@ export const calculateItemTotalClasseIX = (item: ItemClasseIX, diasOperacao: num
 
 /**
  * Generates the detailed calculation memory for a specific Classe IX category (used for editing).
+ * NOTE: This function is designed to be called for a single category (e.g., 'Vtr Administrativa')
  */
 export const generateCategoryMemoriaCalculo = (registro: ClasseIXRegistro): string => {
     if (registro.detalhamento_customizado) {
@@ -88,8 +89,8 @@ export const generateCategoryMemoriaCalculo = (registro: ClasseIXRegistro): stri
     
     const itens = (registro.itens_motomecanizacao || []) as ItemClasseIX[];
     const diasOperacao = registro.dias_operacao;
-    const organizacao = registro.organizacao;
-    const ug = registro.ug;
+    const organizacao = registro.organizacao; // OM de Destino (usada aqui como OM Detentora para simplificar o cabeçalho de edição)
+    const ug = registro.ug; // UG de Destino
     const faseAtividade = registro.fase_atividade;
     const valorND30 = registro.valor_nd_30;
     const valorND39 = registro.valor_nd_39;
@@ -100,60 +101,82 @@ export const generateCategoryMemoriaCalculo = (registro: ClasseIXRegistro): stri
     const valorTotalFinal = valorND30 + valorND39;
 
     let totalItens = 0;
+    let totalValorBase = 0;
+    let totalValorAcionamento = 0;
 
+    // 1. Calcular totais e agrupar detalhes
     const gruposPorCategoria = itens.reduce((acc, item) => {
         const categoria = item.categoria;
         const { base, acionamento, total } = calculateItemTotalClasseIX(item, diasOperacao);
         
         if (!acc[categoria]) {
             acc[categoria] = {
-                totalValorBase: 0,
-                totalValorAcionamento: 0,
+                totalValor: 0,
                 totalQuantidade: 0,
                 detalhes: [],
             };
         }
         
-        acc[categoria].totalValorBase += base;
-        acc[categoria].totalValorAcionamento += acionamento;
+        acc[categoria].totalValor += total;
         acc[categoria].totalQuantidade += item.quantidade;
         totalItens += item.quantidade;
+        totalValorBase += base;
+        totalValorAcionamento += acionamento;
         
         const nrMeses = Math.ceil(diasOperacao / 30);
+        const diaPlural = diasOperacao === 1 ? 'dia' : 'dias';
+        const mesPlural = nrMeses === 1 ? 'mês' : 'meses';
 
+        // Detalhamento por item
         acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} (Base: ${formatCurrency(base)}, Acionamento: ${formatCurrency(acionamento)} em ${nrMeses} meses) = ${formatCurrency(total)}`
+            `- ${item.item} (${item.quantidade} Vtr): Base (${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diaPlural}) + Acionamento (${formatCurrency(item.valor_acionamento_mensal)}/${mesPlural} x ${nrMeses} ${mesPlural}) = ${formatCurrency(total)}`
         );
         
         return acc;
-    }, {} as Record<string, { totalValorBase: number, totalValorAcionamento: number, totalQuantidade: number, detalhes: string[] }>);
+    }, {} as Record<string, { totalValor: number, totalQuantidade: number, detalhes: string[] }>);
 
     let detalhamentoItens = "";
     
+    // 2. Formatar a seção de cálculo agrupada
     Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        const totalCategoria = grupo.totalValorBase + grupo.totalValorAcionamento;
-
         detalhamentoItens += `\n--- ${getClasseIILabel(categoria).toUpperCase()} (${grupo.totalQuantidade} VTR) ---\n`;
-        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(totalCategoria)}\n`;
+        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
         detalhamentoItens += `Detalhes:\n`;
         detalhamentoItens += grupo.detalhes.join('\n');
         detalhamentoItens += `\n`;
     });
     
     detalhamentoItens = detalhamentoItens.trim();
+    
+    // 3. Determinar o prefixo ND
+    const isND30Active = valorND30 > ND_TOLERANCE;
+    const isND39Active = valorND39 > ND_TOLERANCE;
+    
+    let ndPrefix = "";
+    if (isND30Active && isND39Active) {
+        ndPrefix += "33.90.30 / 33.90.39";
+    } else if (isND30Active) {
+        ndPrefix += "33.90.30";
+    } else if (isND39Active) {
+        ndPrefix += "33.90.39";
+    } else {
+        ndPrefix = "(Não Alocado)";
+    }
+    
+    const diaPluralHeader = diasOperacao === 1 ? 'dia' : 'dias';
+    const omArticle = getOmArticle(omDetentora);
 
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe IX (Motomecanização) para ${totalItens} viaturas, durante ${diasOperacao} dias de ${faseFormatada}, para ${omDetentora}.
-Recurso destinado à OM proprietária: ${organizacao} (UG: ${formatCodug(ug)})
+    // CABEÇALHO PADRONIZADO (Classe VII/V/VI)
+    const header = `${ndPrefix} - Manutenção de ${totalItens} viaturas de Motomecanização ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPluralHeader} de ${faseFormatada}.`;
 
-Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
+    return `${header}
 
-Fórmula Base: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
+Cálculo:
+Fórmula: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
 
 ${detalhamentoItens}
 
-Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
+Total: ${formatCurrency(valorTotalFinal)}.`;
 };
 
 /**
@@ -208,9 +231,12 @@ export const generateDetalhamento = (
         totalItens += item.quantidade;
         
         const nrMeses = Math.ceil(diasOperacao / 30);
+        const diaPlural = diasOperacao === 1 ? 'dia' : 'dias';
+        const mesPlural = nrMeses === 1 ? 'mês' : 'meses';
 
+        // Detalhamento por item
         acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} (Base: ${formatCurrency(base)}, Acionamento: ${formatCurrency(acionamento)} em ${nrMeses} meses) = ${formatCurrency(total)}`
+            `- ${item.item} (${item.quantidade} Vtr): Base (${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diaPlural}) + Acionamento (${formatCurrency(item.valor_acionamento_mensal)}/${mesPlural} x ${nrMeses} ${mesPlural}) = ${formatCurrency(total)}`
         );
         
         return acc;
@@ -228,9 +254,10 @@ export const generateDetalhamento = (
     
     detalhamentoCalculo = detalhamentoCalculo.trim();
     
-    const diaPlural = diasOperacao === 1 ? 'dia' : 'dias';
+    const diaPluralHeader = diasOperacao === 1 ? 'dia' : 'dias';
+    const omArticle = getOmArticle(omDetentora);
 
-    const header = `${ndPrefix} - Aquisição de Material de Classe IX (Motomecanização) para ${totalItens} viaturas, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}, para ${omDetentora}.`;
+    const header = `${ndPrefix} - Aquisição de Material de Classe IX (Motomecanização) para ${totalItens} viaturas, durante ${diasOperacao} ${diaPluralHeader} de ${faseFormatada}, para ${omDetentora}.`;
 
     // Montar o detalhamento final
     return `${header}
