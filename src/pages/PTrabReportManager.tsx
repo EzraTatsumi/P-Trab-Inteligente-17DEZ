@@ -32,6 +32,7 @@ import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/
 import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils"; // NOVO: Importando utilitário de Classe VIII
+import { generateCategoryMemoriaCalculo as generateClasseIXUtility, calculateItemTotalClasseIX as calculateItemTotalClasseIXUtility } from "@/lib/classeIXUtils"; // NOVO: Importando utilitário de Classe IX
 
 
 // =================================================================
@@ -199,95 +200,17 @@ export const getClasseIILabel = (category: string): string => {
     }
 };
 
-export const calculateItemTotalClasseIX = (item: ItemClasseIX, diasOperacao: number): { base: number, acionamento: number, total: number } => {
-    const nrVtr = item.quantidade;
-    const valorDia = item.valor_mnt_dia;
-    const valorMensal = item.valor_acionamento_mensal;
-    
-    if (nrVtr <= 0 || diasOperacao <= 0) {
-        return { base: 0, acionamento: 0, total: 0 };
-    }
-    
-    const custoBase = nrVtr * valorDia * diasOperacao;
-    const nrMeses = Math.ceil(diasOperacao / 30);
-    const custoAcionamento = nrVtr * valorMensal * nrMeses;
-    
-    const total = custoBase + custoAcionamento;
-    
-    return { base: custoBase, acionamento: custoAcionamento, total };
-};
+// Exportando a função de cálculo de item da utilidade
+export const calculateItemTotalClasseIX = calculateItemTotalClasseIXUtility;
 
+// Função para gerar a memória de cálculo da Classe IX (agora usando o utilitário)
 export const generateClasseIXMemoriaCalculo = (registro: ClasseIIRegistro): string => {
     if (registro.detalhamento_customizado) {
       return registro.detalhamento_customizado;
     }
     
-    const itens = (registro.itens_motomecanizacao || []) as ItemClasseIX[];
-    const diasOperacao = registro.dias_operacao;
-    const organizacao = registro.organizacao;
-    const ug = registro.ug;
-    const faseAtividade = registro.fase_atividade;
-    const valorND30 = registro.valor_nd_30;
-    const valorND39 = registro.valor_nd_39;
-    
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const valorTotalFinal = valorND30 + valorND39;
-
-    let totalItens = 0;
-
-    const gruposPorCategoria = itens.reduce((acc, item) => {
-        const categoria = item.categoria;
-        const { base, acionamento, total } = calculateItemTotalClasseIX(item, diasOperacao);
-        
-        if (!acc[categoria]) {
-            acc[categoria] = {
-                totalValorBase: 0,
-                totalValorAcionamento: 0,
-                totalQuantidade: 0,
-                detalhes: [],
-            };
-        }
-        
-        acc[categoria].totalValorBase += base;
-        acc[categoria].totalValorAcionamento += acionamento;
-        acc[categoria].totalQuantidade += item.quantidade;
-        totalItens += item.quantidade;
-        
-        const nrMeses = Math.ceil(diasOperacao / 30);
-
-        acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} (Base: ${formatCurrency(base)}, Acionamento: ${formatCurrency(acionamento)} em ${nrMeses} meses) = ${formatCurrency(total)}.`
-        );
-        
-        return acc;
-    }, {} as Record<string, { totalValorBase: number, totalValorAcionamento: number, totalQuantidade: number, detalhes: string[] }>);
-
-    let detalhamentoItens = "";
-    
-    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        const totalCategoria = grupo.totalValorBase + grupo.totalValorAcionamento;
-
-        detalhamentoItens += `\n--- ${getClasseIILabel(categoria).toUpperCase()} (${grupo.totalQuantidade} VTR) ---\n`;
-        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(totalCategoria)}\n`;
-        detalhamentoItens += `Detalhes:\n`;
-        detalhamentoItens += grupo.detalhes.join('\n');
-        detalhamentoItens += `\n`;
-    });
-    
-    detalhamentoItens = detalhamentoItens.trim();
-
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe IX (Motomecanização) para ${totalItens} viaturas, durante ${diasOperacao} dias de ${faseFormatada}, para ${registro.om_detentora || organizacao}.
-Recurso destinado à OM proprietária: ${organizacao} (UG: ${ug})
-
-Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
-
-Fórmula Base: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
-
-${detalhamentoItens}
-
-Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
+    // Usa o utilitário importado
+    return generateClasseIXUtility(registro as any);
 };
 
 /**
@@ -844,11 +767,12 @@ const PTrabReportManager = () => {
             handleConfirmCompleteStatus={handleConfirmCompleteStatus}
             handleCancelCompleteStatus={handleCancelCompleteStatus}
             fileSuffix={fileSuffix}
-            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // USANDO A FUNÇÃO UNIFICADA
+            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculadaUnificada} // USANDO A FUNÇÃO UNIFICADA
             generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo} // USANDO A FUNÇÃO UNIFICADA
             generateClasseVMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
             generateClasseVIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
             generateClasseVIIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
+            generateClasseVIIIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
           />
         );
       case 'racao_operacional':
