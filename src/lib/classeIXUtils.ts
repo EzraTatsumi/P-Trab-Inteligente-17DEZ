@@ -1,4 +1,3 @@
-Viaturas Administrativas).">
 import { formatCurrency, formatCodug } from "./formatUtils";
 import { getClasseIILabel } from "./badgeUtils"; // Importação corrigida
 
@@ -301,7 +300,6 @@ export const generateDetalhamento = (
     const vtrPlural = totalItens === 1 ? 'viatura' : 'viaturas';
     
     // Obtém o rótulo da categoria principal (usando a categoria do primeiro item, se houver)
-    // Se houver mais de uma categoria, usamos 'Motomecanização'
     const categoriasAtivas = Object.keys(gruposPorCategoria);
     let categoriaLabel;
     if (categoriasAtivas.length === 1) {
