@@ -1,1 +1,8 @@
-project_id = "dinrpvzolfctecdpzfeq"
+# supabase/config.toml
+
+[auth]
+# ... outras configurações de auth ...
+
+[auth.password_hashing]
+# Habilita a verificação de senhas comprometidas usando o serviço HaveIBeenPwned.org
+check_if_email_is_compromised = true
