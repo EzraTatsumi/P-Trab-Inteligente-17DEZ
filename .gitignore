@@ -36,7 +36,7 @@ src/components/ui/
 # Excluir arquivos de dados estáticos e assets
 src/data/classeIIData.ts
 src/data/classeVIIData.ts
-#remover: src/data/classeVIIIData.ts
+src/data/classeVIIIData.ts
 src/data/classeIIIData.ts
 src/assets/
 
