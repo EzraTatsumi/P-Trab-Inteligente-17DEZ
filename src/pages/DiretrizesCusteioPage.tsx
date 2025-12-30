@@ -22,7 +22,7 @@ import { YearManagementDialog } from "@/components/YearManagementDialog";
 import { defaultClasseVIConfig } from "@/data/classeVIData";
 import { defaultClasseVIIConfig } from "@/data/classeVIIData";
 import { defaultClasseVIIISaudeConfig, defaultClasseVIIIRemontaConfig } from "@/data/classeVIIIData";
-import { defaultClasseIXConfig } from "@/data/classeIXData";
+import { defaultClasseIXConfig } from "@/data/classeIXData"; // IMPORTADO
 import { formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils"; // Import new utilities
 import { useSession } from "@/components/SessionContextProvider";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
@@ -159,7 +159,7 @@ const DiretrizesCusteioPage = () => {
   const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig);
   const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig);
   const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig);
-  const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIXForm[]>(defaultClasseIXConfig);
+  const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIXForm[]>(defaultClasseIXConfig); // USANDO A IMPORTAÇÃO
   
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -414,7 +414,7 @@ const DiretrizesCusteioPage = () => {
           valor_acionamento_mensal: Number(d.valor_acionamento_mensal),
         })));
       } else {
-        setClasseIXConfig(defaultClasseIXConfig);
+        setClasseIXConfig(defaultClasseIXConfig); // USANDO A LISTA COMPLETA IMPORTADA
       }
 
 
@@ -550,7 +550,7 @@ const DiretrizesCusteioPage = () => {
         ...classeIIConfig, 
         ...classeVConfig, 
         ...classeVIConfig, 
-        ...classeVIIConfig,
+        ...classeVIIConfig, 
         ...classeVIIISaudeConfig,
         ...classeVIIIRemontaConfig,
       ];
