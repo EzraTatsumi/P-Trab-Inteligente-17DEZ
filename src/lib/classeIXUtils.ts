@@ -165,9 +165,15 @@ export const generateCategoryMemoriaCalculo = (registro: ClasseIXRegistro): stri
     
     const diaPluralHeader = diasOperacao === 1 ? 'dia' : 'dias';
     const omArticle = getOmArticle(omDetentora);
+    
+    // Pluralização de Viatura(s)
+    const vtrPlural = totalItens === 1 ? 'viatura' : 'viaturas';
+    
+    // Obtém o rótulo da categoria principal (usando a categoria do registro, que é a chave do agrupamento)
+    const categoriaLabel = getClasseIILabel(registro.categoria);
 
     // CABEÇALHO PADRONIZADO (Classe VII/V/VI)
-    const header = `${ndPrefix} - Manutenção de ${totalItens} viaturas de Motomecanização ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPluralHeader} de ${faseFormatada}.`;
+    const header = `${ndPrefix} - Manutenção de ${totalItens} ${vtrPlural} de ${categoriaLabel} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPluralHeader} de ${faseFormatada}.`;
 
     return `${header}
 
@@ -256,8 +262,15 @@ export const generateDetalhamento = (
     
     const diaPluralHeader = diasOperacao === 1 ? 'dia' : 'dias';
     const omArticle = getOmArticle(omDetentora);
+    
+    // Pluralização de Viatura(s)
+    const vtrPlural = totalItens === 1 ? 'viatura' : 'viaturas';
+    
+    // Obtém o rótulo da categoria principal (usando a categoria do primeiro item, se houver)
+    const categoriaPrincipal = itens.length > 0 ? itens[0].categoria : 'Motomecanização';
+    const categoriaLabel = getClasseIILabel(categoriaPrincipal);
 
-    const header = `${ndPrefix} - Aquisição de Material de Classe IX (Motomecanização) para ${totalItens} viaturas, durante ${diasOperacao} ${diaPluralHeader} de ${faseFormatada}, para ${omDetentora}.`;
+    const header = `${ndPrefix} - Aquisição de Material de Classe IX (${categoriaLabel}) para ${totalItens} ${vtrPlural}, durante ${diasOperacao} ${diaPluralHeader} de ${faseAtividade}, para ${omDetentora}.`;
 
     // Montar o detalhamento final
     return `${header}
