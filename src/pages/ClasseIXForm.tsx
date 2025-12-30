@@ -1271,9 +1271,15 @@ const ClasseIXForm = () => {
                             
                             return (
                                 <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
-                                  <span className="font-medium">{item.item} ({item.quantidade} un.)</span>
-                                  <span className="text-right text-xs">
-                                    Base: {formatCurrency(base)} | Acionamento ({nrMeses} meses): {formatCurrency(acionamento)} = {formatCurrency(total)}
+                                  <span className="font-medium text-foreground">{item.item} ({item.quantidade} un.)</span>
+                                  <span className="text-right text-xs flex flex-col items-end">
+                                    <span className="font-bold text-sm text-primary/80">Total: {formatCurrency(total)}</span>
+                                    <span className="text-muted-foreground">
+                                        Base ({formatCurrency(item.valor_mnt_dia)}/dia x {form.dias_operacao}d): {formatCurrency(base)}
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                        Acionamento ({formatCurrency(item.valor_acionamento_mensal)}/mês x {nrMeses}m): {formatCurrency(acionamento)}
+                                    </span>
                                   </span>
                                 </div>
                             );
