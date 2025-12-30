@@ -79,6 +79,31 @@ export const calculateItemTotalClasseIX = (item: ItemClasseIX, diasOperacao: num
 };
 
 /**
+ * Helper function to get the correct pluralized vehicle name based on category.
+ */
+const getVehiclePluralization = (categoria: string, count: number): string => {
+    const label = getClasseIILabel(categoria); // Ex: Viatura Administrativa, Motocicleta
+    
+    if (categoria === 'Motocicleta') {
+        return count === 1 ? 'Motocicleta' : 'Motocicletas';
+    }
+    
+    // Para Viaturas (Vtr Administrativa, Vtr Operacional, Vtr Blindada)
+    if (count === 1) {
+        // Ex: 1 Viatura Administrativa
+        return label;
+    }
+    
+    // Plural para Viaturas
+    if (label.endsWith('a')) {
+        return label.slice(0, -1) + 'as'; // Ex: Viatura Administrativa -> Viaturas Administrativas
+    }
+    
+    return label; // Fallback (deve ser raro)
+};
+
+
+/**
  * Generates the detailed calculation memory for a specific Classe IX category (used for editing).
  * NOTE: This function is designed to be called for a single category (e.g., 'Vtr Administrativa')
  */
@@ -166,19 +191,14 @@ export const generateCategoryMemoriaCalculo = (registro: ClasseIXRegistro): stri
     const diaPluralHeader = diasOperacao === 1 ? 'dia' : 'dias';
     const omArticle = getOmArticle(omDetentora);
     
-    // Pluralização de Viatura(s)
-    const vtrPlural = totalItens === 1 ? 'viatura' : 'viaturas';
+    // Obtém o termo correto e pluralizado (ex: Motocicletas, Viatura Blindada)
+    const categoriaLabel = registro.categoria;
+    const itemPlural = getVehiclePluralization(categoriaLabel, totalItens);
     
-    // Obtém o rótulo da categoria específica (ex: Viatura Administrativa, Motocicleta)
-    const categoriaLabel = getClasseIILabel(registro.categoria);
-    
-    // Ajuste para Motocicleta: Se a categoria for Motocicleta, o plural deve ser 'Motocicletas'
-    const itemPlural = registro.categoria === 'Motocicleta' 
-        ? (totalItens === 1 ? 'Motocicleta' : 'Motocicletas')
-        : vtrPlural;
-    
-    // CABEÇALHO DE EDIÇÃO (Mais específico)
-    const header = `${ndPrefix} - Manutenção de ${totalItens} ${itemPlural} de ${categoriaLabel} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPluralHeader} de ${faseFormatada}.`;
+    // CABEÇALHO DE EDIÇÃO (Corrigido para remover redundância)
+    // Ex: Manutenção de 10 Motocicletas da 10ª Cia E Cmb
+    // Ex: Manutenção de 1 Viatura Blindada da 10ª Cia E Cmb
+    const header = `${ndPrefix} - Manutenção de ${totalItens} ${itemPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPluralHeader} de ${faseFormatada}.`;
 
     return `${header}
 
