@@ -1,3 +1,4 @@
+Operacionais).">
 import { formatCurrency, formatCodug } from "./formatUtils";
 import { getClasseIILabel } from "./badgeUtils"; // Importação corrigida
 
@@ -97,12 +98,22 @@ const getVehiclePluralization = (categoria: string, count: number): string => {
     // Para Viaturas (Vtr Administrativa, Vtr Operacional, Vtr Blindada)
     // O rótulo completo é "Viatura X". O plural deve ser "Viaturas X".
     if (label.startsWith('Viatura')) {
-        // Ex: Viatura Administrativa -> Viaturas Administrativas
-        // Ex: Viatura Blindada -> Viaturas Blindadas
         const parts = label.split(' ');
         if (parts.length >= 2) {
             const adjective = parts[1];
-            const pluralAdjective = adjective.endsWith('a') ? adjective.slice(0, -1) + 'as' : adjective + 's';
+            let pluralAdjective = adjective;
+
+            if (adjective.endsWith('al')) {
+                // Handles Operacional -> Operacionais
+                pluralAdjective = adjective.slice(0, -2) + 'ais';
+            } else if (adjective.endsWith('a')) {
+                // Handles Administrativa -> Administrativas, Blindada -> Blindadas
+                pluralAdjective = adjective.slice(0, -1) + 'as';
+            } else {
+                // Default pluralization (fallback)
+                pluralAdjective = adjective + 's';
+            }
+            
             return `Viaturas ${pluralAdjective}`;
         }
         return 'Viaturas'; // Fallback
@@ -200,12 +211,11 @@ export const generateCategoryMemoriaCalculo = (registro: ClasseIXRegistro): stri
     const diaPluralHeader = diasOperacao === 1 ? 'dia' : 'dias';
     const omArticle = getOmArticle(omDetentora);
     
-    // Obtém o termo correto e pluralizado (ex: Motocicletas, Viatura Blindada)
+    // Obtém o termo correto e pluralizado (ex: Motocicletas, Viaturas Operacionais)
     const categoriaLabel = registro.categoria;
     const itemPlural = getVehiclePluralization(categoriaLabel, totalItens);
     
     // CABEÇALHO DE EDIÇÃO (Corrigido para remover redundância)
-    // Ex: Manutenção de 10 Viaturas Administrativas da 10ª Cia E Cmb
     const header = `${ndPrefix} - Manutenção de ${totalItens} ${itemPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPluralHeader} de ${faseFormatada}.`;
 
     return `${header}
