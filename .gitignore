@@ -132,7 +132,7 @@ src/pages/PTrabForm.tsx
 src/components/OmSelector.tsx
 src/components/SessionContextProvider.tsx
 src/hooks/useMilitaryOrganizations.ts
-src/lib/badgeUtils.ts
+# REMOVIDO: src/lib/badgeUtils.ts
 src/lib/classeIIIBadgeUtils.ts
 src/lib/classeIXUtils.ts
 src/data/classeIXData.ts
