@@ -84,22 +84,23 @@ export const calculateItemTotalClasseIX = (item: ItemClasseIX, diasOperacao: num
 const getVehiclePluralization = (categoria: string, count: number): string => {
     const label = getClasseIILabel(categoria); // Ex: Viatura Administrativa, Motocicleta
     
-    if (categoria === 'Motocicleta') {
-        return count === 1 ? 'Motocicleta' : 'Motocicletas';
-    }
-    
-    // Para Viaturas (Vtr Administrativa, Vtr Operacional, Vtr Blindada)
     if (count === 1) {
-        // Ex: 1 Viatura Administrativa
+        // Singular: Viatura Administrativa, Motocicleta, Viatura Operacional, Viatura Blindada
         return label;
     }
     
-    // Plural para Viaturas
-    if (label.endsWith('a')) {
-        return label.slice(0, -1) + 'as'; // Ex: Viatura Administrativa -> Viaturas Administrativas
+    // Plural
+    if (categoria === 'Motocicleta') {
+        return 'Motocicletas';
     }
     
-    return label; // Fallback (deve ser raro)
+    // Para Viaturas (Vtr Administrativa, Vtr Operacional, Vtr Blindada)
+    // O rótulo completo é "Viatura X". O plural é "Viaturas X".
+    if (label.startsWith('Viatura')) {
+        return label.replace('Viatura', 'Viaturas');
+    }
+    
+    return label; // Fallback
 };
 
 
