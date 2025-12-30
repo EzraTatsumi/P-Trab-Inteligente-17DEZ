@@ -22,6 +22,7 @@ export const defaultClasseVIIIRemontaConfig: DiretrizClasseIIForm[] = [
   // Caninos (Itens detalhados)
   { categoria: "Remonta/Veterinária", item: "Canino - B: Material de Condução (Anual)", valor_mnt_dia: 500.00 },
   { categoria: "Remonta/Veterinária", item: "Canino - C: Alimentação (Mensal)", valor_mnt_dia: 99.00 },
+  { categoria: "Remonta/Veterinária", item: "Canino - C: Medicação (Mensal)", valor_mnt_dia: 60.00 },
   { categoria: "Remonta/Veterinária", item: "Canino - D: Valor de Mercado (Anual)", valor_mnt_dia: 1600.00 },
   { categoria: "Remonta/Veterinária", item: "Canino - E: Assistência Veterinária (Anual)", valor_mnt_dia: 400.00 },
   { categoria: "Remonta/Veterinária", item: "Canino - G: Custo Mnt/Dia Op (Diário)", valor_mnt_dia: 5.30 },
