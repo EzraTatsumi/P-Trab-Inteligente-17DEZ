@@ -319,7 +319,7 @@ const DiretrizesCusteioPage = () => {
         .select("categoria, item, valor_mnt_dia")
         .eq("user_id", user.id)
         .eq("ano_referencia", year)
-        .in("categoria", allClasseItemsCategories); // REMOVIDO: .eq("ativo", true)
+        .in("categoria", allClasseItemsCategories);
 
       const loadedItems = classeItemsData || [];
       
@@ -399,20 +399,44 @@ const DiretrizesCusteioPage = () => {
       const { data: classeIXData, error: classeIXError } = await supabase
         .from("diretrizes_classe_ix")
         .select("categoria, item, valor_mnt_dia, valor_acionamento_mensal")
-        .eq("user_id", user.id) // CORRIGIDO: user.id -> user_id
-        .eq("ano_referencia", year); // REMOVIDO: .eq("ativo", true)
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year);
         
       if (classeIXError) throw classeIXError;
       
-      if (classeIXData && classeIXData.length > 0) {
-        setClasseIXConfig(classeIXData.map(d => ({
-          categoria: d.categoria as DiretrizClasseIXForm['categoria'],
-          item: d.item,
-          valor_mnt_dia: Number(d.valor_mnt_dia),
-          valor_acionamento_mensal: Number(d.valor_acionamento_mensal),
-        })));
+      const loadedClasseIX = classeIXData || [];
+      
+      if (loadedClasseIX.length > 0) {
+        const loadedItemsMap = new Map<string, DiretrizClasseIXForm>();
+        loadedClasseIX.forEach(d => {
+            loadedItemsMap.set(d.item, {
+                categoria: d.categoria as DiretrizClasseIXForm['categoria'],
+                item: d.item,
+                valor_mnt_dia: Number(d.valor_mnt_dia),
+                valor_acionamento_mensal: Number(d.valor_acionamento_mensal),
+            });
+        });
+        
+        // Merge: Adiciona itens padrão que não estão na lista salva
+        const mergedClasseIX: DiretrizClasseIXForm[] = [...loadedItemsMap.values()];
+        
+        defaultClasseIXConfig.forEach(defaultItem => {
+            if (!loadedItemsMap.has(defaultItem.item)) {
+                mergedClasseIX.push(defaultItem);
+            }
+        });
+        
+        // Ordena a lista mesclada pela categoria e item
+        mergedClasseIX.sort((a, b) => {
+            if (a.categoria !== b.categoria) {
+                return CATEGORIAS_CLASSE_IX.indexOf(a.categoria) - CATEGORIAS_CLASSE_IX.indexOf(b.categoria);
+            }
+            return a.item.localeCompare(b.item);
+        });
+        
+        setClasseIXConfig(mergedClasseIX);
       } else {
-        setClasseIXConfig(defaultClasseIXConfig); // USANDO A LISTA COMPLETA IMPORTADA
+        setClasseIXConfig(defaultClasseIXConfig); // Se não houver nada salvo, usa o default completo
       }
 
 
@@ -423,7 +447,7 @@ const DiretrizesCusteioPage = () => {
           .select("*")
           .eq("user_id", user.id)
           .eq("ano_referencia", year)
-          .eq("categoria", categoria); // REMOVIDO: .eq("ativo", true)
+          .eq("categoria", categoria);
 
         if (equipamentosData && equipamentosData.length > 0) {
           setter(equipamentosData.map(eq => ({
