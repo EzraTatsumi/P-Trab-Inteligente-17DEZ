@@ -319,8 +319,7 @@ const DiretrizesCusteioPage = () => {
         .select("categoria, item, valor_mnt_dia")
         .eq("user_id", user.id)
         .eq("ano_referencia", year)
-        .eq("ativo", true)
-        .in("categoria", allClasseItemsCategories);
+        .in("categoria", allClasseItemsCategories); // REMOVIDO: .eq("ativo", true)
 
       const loadedItems = classeItemsData || [];
       
@@ -401,8 +400,7 @@ const DiretrizesCusteioPage = () => {
         .from("diretrizes_classe_ix")
         .select("categoria, item, valor_mnt_dia, valor_acionamento_mensal")
         .eq("user_id", user.id) // CORRIGIDO: user.id -> user_id
-        .eq("ano_referencia", year)
-        .eq("ativo", true);
+        .eq("ano_referencia", year); // REMOVIDO: .eq("ativo", true)
         
       if (classeIXError) throw classeIXError;
       
@@ -425,8 +423,7 @@ const DiretrizesCusteioPage = () => {
           .select("*")
           .eq("user_id", user.id)
           .eq("ano_referencia", year)
-          .eq("categoria", categoria)
-          .eq("ativo", true);
+          .eq("categoria", categoria); // REMOVIDO: .eq("ativo", true)
 
         if (equipamentosData && equipamentosData.length > 0) {
           setter(equipamentosData.map(eq => ({
@@ -527,6 +524,7 @@ const DiretrizesCusteioPage = () => {
             tipo_combustivel: g.tipo_combustivel,
             consumo: Number(g.consumo).toFixed(2), // Garantir precisão
             unidade: g.unidade,
+            ativo: true, // Garantir que o novo registro seja ativo
           }));
 
         if (equipamentosParaSalvar.length > 0) {
