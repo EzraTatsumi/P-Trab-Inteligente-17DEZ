@@ -1100,7 +1100,8 @@ const ClasseIXForm = () => {
                                                             value={item.quantidade === 0 ? "" : item.quantidade.toString()}
                                                             onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
                                                             placeholder="0"
-                                                            onKeyDown={handleNumberInputKeyDown}
+                                                            // APLICANDO A FUNÇÃO AQUI
+                                                            onKeyDown={handleNumberInputKeyDown} 
                                                         />
                                                     </TableCell>
                                                     <TableCell className="text-right font-semibold text-sm py-1">
