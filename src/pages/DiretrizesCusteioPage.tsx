@@ -400,7 +400,7 @@ const DiretrizesCusteioPage = () => {
       const { data: classeIXData, error: classeIXError } = await supabase
         .from("diretrizes_classe_ix")
         .select("categoria, item, valor_mnt_dia, valor_acionamento_mensal")
-        .eq("user.id", user.id)
+        .eq("user_id", user.id) // CORRIGIDO: user.id -> user_id
         .eq("ano_referencia", year)
         .eq("ativo", true);
         
