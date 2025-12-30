@@ -73,6 +73,7 @@ export interface ItemClasseIX {
   valor_mnt_dia: number;
   valor_acionamento_mensal: number;
   categoria: string;
+  memoria_customizada?: string | null;
 }
 
 export interface ClasseIIRegistro {
@@ -767,7 +768,7 @@ const PTrabReportManager = () => {
             handleConfirmCompleteStatus={handleConfirmCompleteStatus}
             handleCancelCompleteStatus={handleCancelCompleteStatus}
             fileSuffix={fileSuffix}
-            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculadaUnificada} // USANDO A FUNÇÃO UNIFICADA
+            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // CORRIGIDO
             generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo} // USANDO A FUNÇÃO UNIFICADA
             generateClasseVMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
             generateClasseVIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} // Reutiliza a função unificada
@@ -782,7 +783,7 @@ const PTrabReportManager = () => {
             registrosClasseI={registrosClasseI}
             onExportSuccess={handleExportSuccess}
             fileSuffix={fileSuffix}
-            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // USANDO A FUNÇÃO UNIFICADA
+            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // CORRIGIDO
           />
         );
       case 'operacional':
