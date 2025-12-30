@@ -134,7 +134,7 @@ src/components/SessionContextProvider.tsx
 src/hooks/useMilitaryOrganizations.ts
 # REMOVIDO: src/lib/badgeUtils.ts
 src/lib/classeIIIBadgeUtils.ts
-src/lib/classeIXUtils.ts
+# REMOVIDO: src/lib/classeIXUtils.ts
 src/data/classeIXData.ts
 src/types/diretrizesClasseII.ts
 src/types/diretrizesClasseIX.ts
