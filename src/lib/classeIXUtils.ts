@@ -1,4 +1,3 @@
-Operacionais).">
 import { formatCurrency, formatCodug } from "./formatUtils";
 import { getClasseIILabel } from "./badgeUtils"; // Importação corrigida
 
