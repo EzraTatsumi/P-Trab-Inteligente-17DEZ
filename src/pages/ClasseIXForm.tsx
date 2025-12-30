@@ -7,15 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, Trash2, XCircle, Check, ChevronsUpDown, Sparkles, AlertCircle, Truck } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, XCircle, Check, ChevronDown, ChevronsUpDown, Sparkles, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
-import { DiretrizClasseIX, DiretrizClasseIXForm } from "@/types/diretrizesClasseIX";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
+import { DiretrizClasseIX } from "@/types/diretrizesClasseIX";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
@@ -24,9 +24,13 @@ import { TablesInsert } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { getCategoryLabel } from "@/lib/badgeUtils";
-import { getClasseIXBadgeStyle } from "@/lib/classeIXUtils";
-import { defaultClasseIXConfig } from "@/data/classeIXData";
+import { getCategoryBadgeStyle, getCategoryLabel } from "@/lib/badgeUtils";
+import { 
+    generateCategoryMemoriaCalculo as generateClasseIXMemoriaCalculo, 
+    generateDetalhamento as generateClasseIXDetalhamento,
+    calculateItemTotalClasseIX,
+    formatFasesParaTexto,
+} from "@/lib/classeIXUtils"; // Importando utilitários da Classe IX
 
 type Categoria = 'Vtr Administrativa' | 'Vtr Operacional' | 'Motocicleta' | 'Vtr Blindada';
 
@@ -40,7 +44,7 @@ const CATEGORIAS: Categoria[] = [
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
 
-// --- NOVOS TIPOS TEMPORÁRIOS (UNSAVED CHANGES) ---
+// --- TIPOS TEMPORÁRIOS (UNSAVED CHANGES) ---
 interface TempDestination {
     om: string;
     ug: string;
@@ -48,7 +52,7 @@ interface TempDestination {
 }
 const initialTempDestinations: Record<Categoria, TempDestination> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: { om: "", ug: "", id: undefined } }), {} as Record<Categoria, TempDestination>);
 const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, string>);
-// --- FIM NOVOS TIPOS TEMPORÁRIOS ---
+// --- FIM TIPOS TEMPORÁRIOS ---
 
 interface ItemClasseIX {
   item: string;
@@ -56,6 +60,7 @@ interface ItemClasseIX {
   valor_mnt_dia: number;
   valor_acionamento_mensal: number;
   categoria: string;
+  memoria_customizada?: string | null;
 }
 
 interface FormDataClasseIX {
@@ -71,6 +76,8 @@ interface ClasseIXRegistro {
   id: string;
   organizacao: string; // OM de Destino do Recurso (ND 30/39)
   ug: string; // UG de Destino do Recurso (ND 30/39)
+  om_detentora: string; 
+  ug_detentora: string; 
   dias_operacao: number;
   categoria: string;
   itens_motomecanizacao: ItemClasseIX[]; // Tipo corrigido
@@ -83,7 +90,7 @@ interface ClasseIXRegistro {
 }
 
 interface CategoryAllocation {
-  total_valor: number; // Valor calculado (agora sem margem)
+  total_valor: number; // Valor calculado (C/ Acionamento)
   nd_39_input: string; // User input string for ND 39 (Formatted string for persistence)
   nd_30_value: number; // Calculated ND 30 value
   nd_39_value: number; // Calculated ND 39 value
@@ -92,153 +99,28 @@ interface CategoryAllocation {
   selectedOmDestinoId?: string;
 }
 
-const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = {
-    'Vtr Administrativa': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
-    'Vtr Operacional': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
-    'Motocicleta': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
-    'Vtr Blindada': { total_valor: 0, nd_39_input: "", nd_30_value: 0, nd_39_value: 0, om_destino_recurso: "", ug_destino_recurso: "", selectedOmDestinoId: undefined },
-};
+const initialCategoryAllocations: Record<Categoria, CategoryAllocation> = CATEGORIAS.reduce((acc, cat) => ({ 
+    ...acc, 
+    [cat]: { 
+        total_valor: 0, 
+        nd_39_input: "", 
+        nd_30_value: 0, 
+        nd_39_value: 0, 
+        om_destino_recurso: "", 
+        ug_destino_recurso: "", 
+        selectedOmDestinoId: undefined 
+    } 
+}), {} as Record<Categoria, CategoryAllocation>);
 
 const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
     return Math.abs(a - b) < tolerance;
 };
 
-const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
-  if (!faseCSV) return 'operação';
-  
-  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
-  
-  if (fases.length === 0) return 'operação';
-  if (fases.length === 1) return fases[0];
-  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
-  
-  const ultimaFase = fases[fases.length - 1];
-  const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFase}`;
+// Helper function to get the numeric ND 39 value from the temporary input digits
+const getTempND39NumericValue = (category: Categoria, tempInputs: Record<Categoria, string>): number => {
+    const digits = tempInputs[category] || "";
+    return formatCurrencyInput(digits).numericValue;
 };
-
-// Função de cálculo principal para Classe IX
-const calculateItemTotal = (item: ItemClasseIX, diasOperacao: number): { base: number, acionamento: number, total: number } => {
-    const nrVtr = item.quantidade;
-    const valorDia = item.valor_mnt_dia;
-    const valorMensal = item.valor_acionamento_mensal;
-    
-    if (nrVtr <= 0 || diasOperacao <= 0) {
-        return { base: 0, acionamento: 0, total: 0 };
-    }
-    
-    // 1. Custo Base (Diário)
-    const custoBase = nrVtr * valorDia * diasOperacao;
-    
-    // 2. Custo Acionamento Mensal
-    const nrMeses = Math.ceil(diasOperacao / 30);
-    const custoAcionamento = nrVtr * valorMensal * nrMeses;
-    
-    const total = custoBase + custoAcionamento;
-    
-    return { base: custoBase, acionamento: custoAcionamento, total };
-};
-
-// NOVO: Gera a memória de cálculo detalhada para uma categoria
-const generateCategoryMemoriaCalculo = (categoria: Categoria, itens: ItemClasseIX[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string | null | undefined): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    
-    let totalValorBase = 0;
-    let totalValorAcionamento = 0;
-    
-    let detalhamentoItens = "";
-    itens.forEach(item => {
-        const { base, acionamento, total } = calculateItemTotal(item, diasOperacao);
-        totalValorBase += base;
-        totalValorAcionamento += acionamento;
-        
-        const nrMeses = Math.ceil(diasOperacao / 30);
-        
-        detalhamentoItens += `- ${item.quantidade} ${item.item}:\n`;
-        detalhamentoItens += `  - Custo Diário: ${item.quantidade} un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} dias = ${formatCurrency(base)}.\n`;
-        detalhamentoItens += `  - Custo Acionamento: ${item.quantidade} un. x ${formatCurrency(item.valor_acionamento_mensal)}/mês x ${nrMeses} meses = ${formatCurrency(acionamento)}.\n`;
-        detalhamentoItens += `  - Total Item: ${formatCurrency(total)}.\n`;
-    });
-
-    const totalValorFinal = totalValorBase + totalValorAcionamento;
-
-    return `33.90.30 - Aquisição de Material de Classe IX (Motomecanização)
-OM de Destino: ${organizacao} (UG: ${ug})
-Período: ${diasOperacao} dias de ${faseFormatada}
-Total de Viaturas na Categoria: ${totalQuantidade}
-
-Cálculo:
-Fórmula Base: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
-
-Detalhes dos Itens:
-${detalhamentoItens.trim()}
-
-Valor Total Solicitado: ${formatCurrency(totalValorFinal)}.`;
-};
-
-
-const generateDetalhamento = (itens: ItemClasseIX[], diasOperacao: number, organizacao: string, ug: string, faseAtividade: string, omDestino: string, ugDestino: string, valorND30: number, valorND39: number): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalItens = itens.reduce((sum, item) => item.quantidade, 0);
-    const valorTotalFinal = valorND30 + valorND39;
-
-    let totalValorBase = 0;
-    let totalValorAcionamento = 0;
-
-    const gruposPorCategoria = itens.reduce((acc, item) => {
-        const categoria = item.categoria;
-        const { base, acionamento, total } = calculateItemTotal(item, diasOperacao);
-        
-        if (!acc[categoria]) {
-            acc[categoria] = {
-                totalValorBase: 0,
-                totalValorAcionamento: 0,
-                totalQuantidade: 0,
-                detalhes: [],
-            };
-        }
-        
-        acc[categoria].totalValorBase += base;
-        acc[categoria].totalValorAcionamento += acionamento;
-        acc[categoria].totalQuantidade += item.quantidade;
-        
-        const nrMeses = Math.ceil(diasOperacao / 30);
-
-        acc[categoria].detalhes.push(
-            `- ${item.quantidade} ${item.item} (Base: ${formatCurrency(base)}, Acionamento: ${formatCurrency(acionamento)} em ${nrMeses} meses) = ${formatCurrency(total)}.`
-        );
-        
-        return acc;
-    }, {} as Record<Categoria, { totalValorBase: number, totalValorAcionamento: number, totalQuantidade: number, detalhes: string[] }>);
-
-    let detalhamentoItens = "";
-    
-    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        const totalCategoria = grupo.totalValorBase + grupo.totalValorAcionamento;
-
-        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} VTR) ---\n`;
-        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(totalCategoria)}\n`;
-        detalhamentoItens += `Detalhes:\n`;
-        detalhamentoItens += grupo.detalhes.join('\n');
-        detalhamentoItens += `\n`;
-    });
-    
-    detalhamentoItens = detalhamentoItens.trim();
-
-    return `33.90.30 / 33.90.39 - Aquisição de Material de Classe IX (Motomecanização) para ${totalItens} viaturas, durante ${diasOperacao} dias de ${faseFormatada}, para ${organizacao}.
-Recurso destinado à OM proprietária: ${omDestino} (UG: ${ugDestino})
-
-Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
-
-Fórmula Base: (Nr Vtr x Valor Mnt/Dia x Nr Dias) + (Nr Vtr x Valor Acionamento/Mês x Nr Meses).
-
-${detalhamentoItens}
-
-Valor Total Solicitado: ${formatCurrency(valorTotalFinal)}.`;
-  };
 
 
 const ClasseIXForm = () => {
@@ -267,9 +149,9 @@ const ClasseIXForm = () => {
   
   const [categoryAllocations, setCategoryAllocations] = useState<Record<Categoria, CategoryAllocation>>(initialCategoryAllocations);
   
-  // NOVO ESTADO: Rastreia o input ND 39 (dígitos) temporário por categoria
+  // NOVOS ESTADOS: Rastreia o input ND 39 (dígitos) temporário por categoria
   const [tempND39Inputs, setTempND39Inputs] = useState<Record<Categoria, string>>(initialTempND39Inputs);
-  // NOVO ESTADO: Rastreia a OM de destino temporária por categoria
+  // NOVOS ESTADOS: Rastreia a OM de destino temporária por categoria
   const [tempDestinations, setTempDestinations] = useState<Record<Categoria, TempDestination>>(initialTempDestinations);
   
   const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemClasseIX[]>([]);
@@ -280,23 +162,19 @@ const ClasseIXForm = () => {
   
   const { handleEnterToNextField } = useFormNavigation();
   const formRef = useRef<HTMLDivElement>(null);
-
-  // Helper para converter string formatada (ex: "1.234,56") de volta para dígitos brutos ("123456")
-  const formattedToRawDigits = (formatted: string): string => {
-    const numericValue = parseInputToNumber(formatted);
-    return numberToRawDigits(numericValue);
-  };
   
-  // NOVO: Helper function to get the numeric ND 39 value from the temporary input digits
-  const getTempND39NumericValue = (category: Categoria, tempInputs: Record<Categoria, string>): number => {
-      const digits = tempInputs[category] || "";
-      return formatCurrencyInput(digits).numericValue;
+  // NOVO: Função para desativar setas e manter navegação por Enter
+  const handleNumberInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+    }
+    handleEnterToNextField(e);
   };
 
   // NOVO: Dirty Check Logic
   const isCategoryAllocationDirty = useCallback((
       category: Categoria, 
-      currentTotalValue: number, 
+      currentTotalValue: number, // Total calculated from the items being checked (C/ Acionamento)
       allocation: CategoryAllocation, 
       tempInputs: Record<Categoria, string>, 
       tempDestinations: Record<Categoria, TempDestination>
@@ -324,7 +202,6 @@ const ClasseIXForm = () => {
       return false;
   }, []);
 
-
   useEffect(() => {
     if (!ptrabId) {
       toast.error("ID do P Trab não encontrado");
@@ -334,9 +211,9 @@ const ClasseIXForm = () => {
     loadDiretrizes();
     fetchRegistros();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [ptrabId, navigate]);
+  }, [ptrabId]);
   
-  // NOVO: Efeito para sincronizar os estados temporários (ND 39 Input e OM Destino) ao mudar de aba ou carregar/resetar o formulário.
+  // Efeito para sincronizar os estados temporários (ND 39 Input e OM Destino)
   useEffect(() => {
       const savedAllocation = categoryAllocations[selectedTab];
       
@@ -389,6 +266,7 @@ const ClasseIXForm = () => {
                 valor_mnt_dia: Number(d.valor_mnt_dia),
                 valor_acionamento_mensal: Number(d.valor_acionamento_mensal),
                 categoria: d.categoria as Categoria,
+                memoria_customizada: null,
             }));
 
         const existingItemsMap = new Map<string, ItemClasseIX>();
@@ -411,6 +289,7 @@ const ClasseIXForm = () => {
                 valor_mnt_dia: Number(d.valor_mnt_dia),
                 valor_acionamento_mensal: Number(d.valor_acionamento_mensal),
                 categoria: d.categoria as Categoria,
+                memoria_customizada: null,
             }));
         setCurrentCategoryItems(availableItems);
     } else {
@@ -461,61 +340,67 @@ const ClasseIXForm = () => {
       }
       
       if (!anoReferencia) {
-        toast.warning(`Diretriz de Custeio não encontrada. Usando valores padrão.`);
-        setDiretrizes(defaultClasseIXConfig as DiretrizClasseIX[]);
+        // Se não houver ano de referência, não podemos carregar diretrizes personalizadas
+        setDiretrizes([]);
+        toast.warning(`Diretriz de Custeio não encontrada. Configure o ano de referência.`);
         return;
       }
 
-      // MUDANÇA: Buscar diretrizes da tabela 'diretrizes_classe_ix'
       const { data: classeIXData, error } = await supabase
         .from("diretrizes_classe_ix")
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", anoReferencia)
         .eq("ativo", true)
-        .in("categoria", CATEGORIAS);
+        .in("categoria", CATEGORIAS); 
 
       if (error) throw error;
 
       if (classeIXData && classeIXData.length > 0) {
         setDiretrizes((classeIXData || []) as DiretrizClasseIX[]);
       } else {
-        setDiretrizes(defaultClasseIXConfig as DiretrizClasseIX[]);
-        toast.warning(`Itens de Classe IX não configurados para o ano ${anoReferencia}. Usando valores padrão.`);
+        setDiretrizes([]);
+        toast.warning(`Itens de Classe IX não configurados para o ano ${anoReferencia}.`);
       }
       
     } catch (error) {
       console.error("Erro ao carregar diretrizes:", error);
-      setDiretrizes(defaultClasseIXConfig as DiretrizClasseIX[]);
-      toast.error("Erro ao carregar diretrizes. Usando valores padrão.");
+      setDiretrizes([]);
+      toast.error("Erro ao carregar diretrizes.");
     }
   };
 
   const fetchRegistros = async () => {
     if (!ptrabId) return;
     
-    // MUDANÇA: Usar a tabela classe_ix_registros
     const { data, error } = await supabase
       .from("classe_ix_registros")
-      .select("*, itens_motomecanizacao, detalhamento_customizado, valor_nd_30, valor_nd_39")
+      .select("*, itens_motomecanizacao, detalhamento_customizado, valor_nd_30, valor_nd_39, om_detentora, ug_detentora")
       .eq("p_trab_id", ptrabId)
       .order("organizacao", { ascending: true })
       .order("categoria", { ascending: true });
 
     if (error) {
-      toast.error("Erro ao carregar registros");
-      console.error(error);
+      // Adicionando tratamento de erro detalhado
+      console.error("Erro ao carregar registros de Classe IX:", error);
+      toast.error(`Erro ao carregar registros: ${sanitizeError(error)}`);
       return;
     }
 
     const uniqueRecordsMap = new Map<string, ClasseIXRegistro>();
     (data || []).forEach(r => {
-        const key = `${r.organizacao}-${r.ug}-${r.categoria}`;
+        // Chave de unicidade deve ser OM Detentora + UG Detentora + Categoria
+        const omDetentora = r.om_detentora || r.organizacao;
+        const ugDetentora = r.ug_detentora || r.ug;
+        const key = `${omDetentora}-${ugDetentora}-${r.categoria}`;
+        
         const record = {
             ...r,
             itens_motomecanizacao: (r.itens_motomecanizacao || []) as ItemClasseIX[],
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
+            om_detentora: omDetentora,
+            ug_detentora: ugDetentora,
         } as ClasseIXRegistro;
         uniqueRecordsMap.set(key, record);
     });
@@ -534,8 +419,6 @@ const ClasseIXForm = () => {
     });
     
     setCategoryAllocations(initialCategoryAllocations);
-    
-    // NOVO: Resetar estados temporários
     setTempND39Inputs(initialTempND39Inputs); 
     setTempDestinations(initialTempDestinations); 
     
@@ -546,42 +429,38 @@ const ClasseIXForm = () => {
   };
 
   const handleOMChange = (omData: OMData | undefined) => {
-    const omName = omData?.nome_om || "";
-    const ug = omData?.codug_om || "";
-    const omId = omData?.id;
-    
-    setForm(prev => ({ 
-      ...prev, 
-      selectedOmId: omId, 
-      organizacao: omName, 
-      ug: ug,
-    }));
-    
-    // NOVO: Ao mudar a OM detentora, resetamos a OM de destino para a nova OM detentora (no estado temporário)
-    const newTempDestinations = CATEGORIAS.reduce((acc, cat) => {
-        acc[cat] = {
-            om: omName,
-            ug: ug,
-            id: omId,
-        };
-        return acc;
-    }, {} as Record<Categoria, TempDestination>);
-    setTempDestinations(newTempDestinations);
-    
-    // Também atualiza o estado de alocação salva para refletir a nova OM detentora como padrão
-    const newAllocations = CATEGORIAS.reduce((acc, cat) => {
-        acc[cat] = {
-            ...categoryAllocations[cat],
-            om_destino_recurso: omName,
-            ug_destino_recurso: ug,
-            selectedOmDestinoId: omId,
-        };
-        return acc;
-    }, {} as Record<Categoria, CategoryAllocation>);
-    setCategoryAllocations(newAllocations);
+    if (omData) {
+      setForm({ 
+        ...form, 
+        selectedOmId: omData.id, 
+        organizacao: omData.nome_om, // OM Detentora
+        ug: omData.codug_om, // UG Detentora
+      });
+      
+      // Initialize temporary destination OM for all categories to the OM Detentora (padrão)
+      const newTempDestinations = CATEGORIAS.reduce((acc, cat) => {
+          acc[cat] = {
+              om: omData.nome_om,
+              ug: omData.codug_om,
+              id: omData.id,
+          };
+          return acc;
+      }, {} as Record<Categoria, TempDestination>);
+      setTempDestinations(newTempDestinations);
+      
+    } else {
+      setForm({ 
+        ...form, 
+        selectedOmId: undefined, 
+        organizacao: "", 
+        ug: "",
+      });
+      
+      // Clear temporary destination OM for all categories
+      setTempDestinations(initialTempDestinations);
+    }
   };
   
-  // NOVO: Handler para a OM de Destino (atualiza o estado temporário)
   const handleOMDestinoChange = (omData: OMData | undefined) => {
     setTempDestinations(prev => ({
         ...prev,
@@ -607,22 +486,25 @@ const ClasseIXForm = () => {
     setCurrentCategoryItems(newItems);
   };
 
-  // CÁLCULO BASE SEM MARGEM (VALOR FINAL)
-  const currentCategoryTotalValue = currentCategoryItems.reduce((sum, item) => sum + calculateItemTotal(item, form.dias_operacao).total, 0);
-  
-  // NOVO: Usa o estado temporário para ND 39
+  // CÁLCULO DA CATEGORIA ATUAL (Classe IX: Base + Acionamento)
+  const currentCategoryTotalValue = useMemo(() => {
+    if (form.dias_operacao <= 0) return 0;
+    return currentCategoryItems.reduce((sum, item) => {
+        const { total } = calculateItemTotalClasseIX(item, form.dias_operacao);
+        return sum + total;
+    }, 0);
+  }, [currentCategoryItems, form.dias_operacao]);
+
+  // ND Calculation and Input Handlers (Temporary for current tab)
   const currentND39InputDigits = tempND39Inputs[selectedTab] || "";
   
   const nd39NumericValue = useMemo(() => {
-      return formatCurrencyInput(currentND39InputDigits).numericValue;
-  }, [currentND39InputDigits]);
+    return getTempND39NumericValue(selectedTab, tempND39Inputs);
+  }, [currentND39InputDigits, selectedTab, tempND39Inputs]);
 
   const nd39ValueTemp = Math.min(currentCategoryTotalValue, Math.max(0, nd39NumericValue));
   const nd30ValueTemp = currentCategoryTotalValue - nd39ValueTemp;
-  
-  const { formatted: formattedND39Value } = formatCurrencyInput(currentND39InputDigits);
 
-  // ALTERADO: Usa formatCurrencyInput para processar o input e armazenar dígitos brutos
   const handleND39InputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = e.target.value;
       const { digits } = formatCurrencyInput(rawValue);
@@ -632,25 +514,24 @@ const ClasseIXForm = () => {
       }));
   };
 
-  // ALTERADO: Usa formatCurrencyInput para obter o valor numérico e armazena o valor final em dígitos brutos
   const handleND39InputBlur = () => {
-      // Usa o valor calculado final (nd39ValueTemp) e converte de volta para dígitos para armazenamento
       const finalDigits = String(Math.round(nd39ValueTemp * 100));
       setTempND39Inputs(prev => ({
           ...prev,
           [selectedTab]: finalDigits
       }));
   };
+  
+  const { formatted: formattedND39Value } = formatCurrencyInput(currentND39InputDigits);
 
   const handleUpdateCategoryItems = () => {
-    if (!form.organizacao || form.dias_operacao <= 0) {
-        toast.error("Preencha a OM e os Dias de Operação antes de salvar itens.");
+    if (!form.organizacao || form.ug === "" || form.dias_operacao <= 0) {
+        toast.error("Preencha a OM Detentora e os Dias de Operação antes de salvar itens.");
         return;
     }
     
     const categoryTotalValue = currentCategoryTotalValue;
 
-    // ALTERADO: Obtém o valor numérico dos dígitos brutos do estado temporário
     const numericInput = nd39NumericValue;
     const finalND39Value = Math.min(categoryTotalValue, Math.max(0, numericInput));
     const finalND30Value = categoryTotalValue - finalND39Value;
@@ -660,7 +541,6 @@ const ClasseIXForm = () => {
         return;
     }
     
-    // NOVO: Usa o estado temporário de destino
     const currentTempDest = tempDestinations[selectedTab];
     if (categoryTotalValue > 0 && (!currentTempDest.om || !currentTempDest.ug)) {
         toast.error("Selecione a OM de destino do recurso antes de salvar a alocação.");
@@ -677,23 +557,27 @@ const ClasseIXForm = () => {
         ...prev,
         [selectedTab]: {
             ...prev[selectedTab],
-            total_valor: categoryTotalValue, // Salva o valor final (sem margem)
-            // Salva o valor formatado para persistência
+            total_valor: categoryTotalValue,
             nd_39_input: formatNumberForInput(finalND39Value, 2),
             nd_30_value: finalND30Value,
             nd_39_value: finalND39Value,
-            // NOVO: Salva o destino do recurso do estado temporário
             om_destino_recurso: currentTempDest.om,
             ug_destino_recurso: currentTempDest.ug,
             selectedOmDestinoId: currentTempDest.id,
         }
     }));
 
+    const finalDigits = String(Math.round(finalND39Value * 100));
+    setTempND39Inputs(prev => ({
+        ...prev,
+        [selectedTab]: finalDigits
+    }));
+
     setForm({ ...form, itens: newFormItems });
     toast.success(`Itens e alocação de ND para ${getCategoryLabel(selectedTab)} atualizados!`);
   };
   
-  // CÁLCULO GLOBAL (USANDO VALORES SEM MARGEM)
+  // CÁLCULO GLOBAL
   const valorTotalForm = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.total_valor, 0);
 
   const totalND30Final = Object.values(categoryAllocations).reduce((sum, alloc) => sum + alloc.nd_30_value, 0);
@@ -740,40 +624,17 @@ const ClasseIXForm = () => {
         return;
     }
     
-    // Determine the target OM/UG for deletion/insertion and validate consistency
-    let targetOmDestino = "";
-    let targetUgDestino = "";
-    
-    for (const category of categoriesToSave) {
-        const allocation = categoryAllocations[category];
-        
-        if (!allocation.om_destino_recurso || !allocation.ug_destino_recurso) {
-            toast.error(`Selecione a OM de destino do recurso para a categoria: ${getCategoryLabel(category)}.`);
-            setLoading(false);
-            return;
-        }
-        
-        if (!targetOmDestino) {
-            targetOmDestino = allocation.om_destino_recurso;
-            targetUgDestino = allocation.ug_destino_recurso;
-        } else if (targetOmDestino !== allocation.om_destino_recurso || targetUgDestino !== allocation.ug_destino_recurso) {
-            toast.error("Todos os itens ativos em diferentes categorias devem ser alocados para a mesma OM de Destino em uma única submissão.");
-            setLoading(false);
-            return;
-        }
-    }
-    
-    if (!targetOmDestino || !targetUgDestino) {
-        toast.error("OM de destino não definida."); 
-        setLoading(false);
-        return;
-    }
-    
     const registrosParaSalvar: TablesInsert<'classe_ix_registros'>[] = [];
     
     for (const categoria of categoriesToSave) {
         const itens = itemsByActiveCategory[categoria];
         const allocation = categoryAllocations[categoria];
+        
+        if (!allocation.om_destino_recurso || !allocation.ug_destino_recurso) {
+            toast.error(`Selecione a OM de destino do recurso para a categoria: ${getCategoryLabel(categoria)}.`);
+            setLoading(false);
+            return;
+        }
         
         const valorTotalCategoria = allocation.total_valor;
         
@@ -783,11 +644,11 @@ const ClasseIXForm = () => {
             return;
         }
         
-        const detalhamento = generateDetalhamento(
+        const detalhamento = generateClasseIXDetalhamento(
             itens, 
             form.dias_operacao, 
-            form.organizacao,
-            form.ug,
+            form.organizacao, // OM Detentora
+            form.ug, // UG Detentora
             faseFinalString,
             allocation.om_destino_recurso,
             allocation.ug_destino_recurso,
@@ -799,10 +660,12 @@ const ClasseIXForm = () => {
             p_trab_id: ptrabId,
             organizacao: allocation.om_destino_recurso,
             ug: allocation.ug_destino_recurso,
+            om_detentora: form.organizacao, // Salvando OM Detentora
+            ug_detentora: form.ug, // Salvando UG Detentora
             dias_operacao: form.dias_operacao,
             categoria: categoria,
-            itens_motomecanizacao: itens as any, // MUDANÇA: Usar o campo correto
-            valor_total: valorTotalCategoria, // Salva o valor SEM margem
+            itens_motomecanizacao: itens as any,
+            valor_total: valorTotalCategoria, 
             detalhamento: detalhamento,
             fase_atividade: faseFinalString,
             detalhamento_customizado: null,
@@ -813,26 +676,25 @@ const ClasseIXForm = () => {
     }
 
     try {
-      // MUDANÇA: Deletar APENAS registros de Classe IX existentes para a OM/UG de destino atual
+      // Deletar APENAS os registros de Classe IX existentes para este PTrab E ESTA OM DETENTORA/UG DETENTORA
       const { error: deleteError } = await supabase
         .from("classe_ix_registros")
         .delete()
         .eq("p_trab_id", ptrabId)
-        .eq("organizacao", targetOmDestino) // SCOPE DELETION
-        .eq("ug", targetUgDestino); // SCOPE DELETION
+        .eq("om_detentora", form.organizacao) // Filtra pela OM Detentora
+        .eq("ug_detentora", form.ug); // Filtra pela UG Detentora
       if (deleteError) { console.error("Erro ao deletar registros existentes:", deleteError); throw deleteError; }
       
-      // MUDANÇA: Inserir os novos registros na tabela correta
       const { error: insertError } = await supabase.from("classe_ix_registros").insert(registrosParaSalvar);
       if (insertError) throw insertError;
       
       toast.success(editingId ? "Registros de Classe IX atualizados com sucesso!" : "Registros de Classe IX salvos com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
-      resetFormFields(); // IMPORTANTE: Limpa o formulário para permitir nova inserção
+      resetFormFields();
       fetchRegistros();
     } catch (error) {
       console.error("Erro ao salvar registros de Classe IX:", error);
-      toast.error(sanitizeError(error)); // FIX: Use sanitizeError
+      toast.error("Erro ao salvar registros de Classe IX");
     } finally {
       setLoading(false);
     }
@@ -842,11 +704,16 @@ const ClasseIXForm = () => {
     setLoading(true);
     resetFormFields();
     
-    // 1. Buscar TODOS os registros de CLASSE IX para este PTrab
+    const omDetentoraToEdit = registro.om_detentora;
+    const ugDetentoraToEdit = registro.ug_detentora;
+    
+    // Buscar TODOS os registros de CLASSE IX para este PTrab E ESTA OM/UG DETENTORA ESPECÍFICA
     const { data: allRecords, error: fetchAllError } = await supabase
         .from("classe_ix_registros")
-        .select("*, itens_motomecanizacao, valor_nd_30, valor_nd_39")
-        .eq("p_trab_id", ptrabId);
+        .select("*, itens_motomecanizacao, valor_nd_30, valor_nd_39, dias_operacao, fase_atividade, organizacao, ug, om_detentora, ug_detentora")
+        .eq("p_trab_id", ptrabId)
+        .eq("om_detentora", omDetentoraToEdit) 
+        .eq("ug_detentora", ugDetentoraToEdit); 
         
     if (fetchAllError) {
         toast.error("Erro ao carregar todos os registros para edição.");
@@ -854,100 +721,111 @@ const ClasseIXForm = () => {
         return;
     }
     
+    if (!allRecords || allRecords.length === 0) {
+        toast.error("Nenhum registro encontrado para esta OM.");
+        setLoading(false);
+        return;
+    }
+    
     let consolidatedItems: ItemClasseIX[] = [];
     let newAllocations = { ...initialCategoryAllocations };
-    let firstOmDetentora: { nome: string, ug: string } | null = null;
+    let tempND39Load: Record<Categoria, string> = { ...initialTempND39Inputs };
+    let tempDestinationsLoad: Record<Categoria, TempDestination> = { ...initialTempDestinations };
     
-    // Filter records belonging to the same OM/UG destination as the clicked record
-    const recordsToEdit = (allRecords || []).filter(r => 
-        r.organizacao === registro.organizacao && r.ug === registro.ug
-    );
+    const firstRecord = allRecords[0];
+    const diasOperacao = firstRecord.dias_operacao;
+    const faseAtividade = firstRecord.fase_atividade;
     
-    recordsToEdit.forEach(r => {
+    // 3. Buscar ID da OM Detentora
+    let selectedOmIdForEdit: string | undefined = undefined;
+    try {
+        const { data: omData } = await supabase
+            .from('organizacoes_militares')
+            .select('id')
+            .eq('nome_om', omDetentoraToEdit)
+            .eq('codug_om', ugDetentoraToEdit)
+            .maybeSingle();
+        selectedOmIdForEdit = omData?.id;
+    } catch (e) { console.error("Erro ao buscar OM Detentora ID:", e); }
+    
+    for (const r of (allRecords || [])) {
         const category = r.categoria as Categoria;
-        const items = (r.itens_motomecanizacao || []) as ItemClasseIX[];
+        const items = (r.itens_motomecanizacao as any[] || []).map(item => ({
+            item: item.item,
+            quantidade: Number(item.quantidade || 0),
+            valor_mnt_dia: Number(item.valor_mnt_dia || 0),
+            valor_acionamento_mensal: Number(item.valor_acionamento_mensal || 0),
+            categoria: item.categoria,
+            memoria_customizada: item.memoria_customizada || null,
+        })) as ItemClasseIX[];
         
         consolidatedItems = consolidatedItems.concat(items);
         
         if (newAllocations[category]) {
-            const totalValorBase = items.reduce((sum, item) => sum + calculateItemTotal(item, r.dias_operacao).total, 0);
+            // Recalcular o total da categoria com base nos itens carregados
+            const totalValor = items.reduce((sum, item) => {
+                const { total } = calculateItemTotalClasseIX(item, diasOperacao);
+                return sum + total;
+            }, 0);
+            
+            // Tenta buscar o ID da OM de Destino (r.organizacao/r.ug)
+            let selectedOmDestinoId: string | undefined = undefined;
+            if (r.organizacao && r.ug) {
+                try {
+                    const { data: omDestinoData } = await supabase
+                        .from('organizacoes_militares')
+                        .select('id')
+                        .eq('nome_om', r.organizacao)
+                        .eq('codug_om', r.ug)
+                        .maybeSingle();
+                    selectedOmDestinoId = omDestinoData?.id;
+                } catch (e) { console.error("Erro ao buscar OM Destino ID:", e); }
+            }
             
             newAllocations[category] = {
-                total_valor: totalValorBase,
+                total_valor: totalValor,
                 nd_39_input: formatNumberForInput(Number(r.valor_nd_39), 2),
                 nd_30_value: Number(r.valor_nd_30),
                 nd_39_value: Number(r.valor_nd_39),
-                om_destino_recurso: r.organizacao,
-                ug_destino_recurso: r.ug,
-                selectedOmDestinoId: undefined,
+                om_destino_recurso: r.organizacao, // OM de Destino (campo 'organizacao' do DB)
+                ug_destino_recurso: r.ug, // UG de Destino (campo 'ug' do DB)
+                selectedOmDestinoId: selectedOmDestinoId,
             };
-        }
-        
-        if (!firstOmDetentora) {
-            firstOmDetentora = { nome: r.organizacao, ug: r.ug };
-        }
-    });
-    
-    let selectedOmIdForEdit: string | undefined = undefined;
-    
-    const fetchOmId = async (nome: string, ug: string) => {
-        if (!nome || !ug) return undefined;
-        const { data } = await supabase
-            .from('organizacoes_militares')
-            .select('id')
-            .eq('nome_om', nome)
-            .eq('codug_om', ug)
-            .maybeSingle();
-        return data?.id;
-    };
-    
-    if (firstOmDetentora) {
-        selectedOmIdForEdit = await fetchOmId(firstOmDetentora.nome, firstOmDetentora.ug);
-    }
-    
-    // 3. Reconstruct Allocations and fetch OM IDs
-    const categoriesToLoad = Object.keys(newAllocations) as Categoria[];
-    let newTempND39Inputs = { ...initialTempND39Inputs }; // NOVO
-    let newTempDestinations = { ...initialTempDestinations }; // NOVO
-    
-    for (const cat of categoriesToLoad) {
-        const alloc = newAllocations[cat];
-        
-        if (alloc.om_destino_recurso) {
-            alloc.selectedOmDestinoId = await fetchOmId(alloc.om_destino_recurso, alloc.ug_destino_recurso);
             
-            // NOVO: Sincronizar o estado temporário de destino com o ID
-            newTempDestinations[cat] = {
-                id: alloc.selectedOmDestinoId,
-                om: alloc.om_destino_recurso,
-                ug: alloc.ug_destino_recurso,
+            const savedND39Value = Number(r.valor_nd_39);
+            const savedDigits = String(Math.round(savedND39Value * 100));
+            tempND39Load[category] = savedDigits;
+            
+            tempDestinationsLoad[category] = {
+                om: r.organizacao,
+                ug: r.ug,
+                id: selectedOmDestinoId,
             };
         }
-        
-        // NOVO: Sincronizar o estado temporário de ND 39
-        const numericValue = parseInputToNumber(alloc.nd_39_input);
-        newTempND39Inputs[cat] = numberToRawDigits(numericValue);
     }
     
-    // Definir editingId para que a mensagem de sucesso seja 'Atualizar'
+    // 4. Preencher o formulário principal com a OM Detentora
     setEditingId(registro.id); 
     setForm({
       selectedOmId: selectedOmIdForEdit,
-      organizacao: firstOmDetentora?.nome || "",
-      ug: firstOmDetentora?.ug || "",
-      dias_operacao: registro.dias_operacao,
+      organizacao: omDetentoraToEdit, // OM Detentora
+      ug: ugDetentoraToEdit, // UG Detentora
+      dias_operacao: diasOperacao,
       itens: consolidatedItems,
     });
     
+    // 5. Preencher o estado de alocação e IDs de destino
     setCategoryAllocations(newAllocations);
-    setTempND39Inputs(newTempND39Inputs); // NOVO
-    setTempDestinations(newTempDestinations); // NOVO
+    setTempND39Inputs(tempND39Load); 
+    setTempDestinations(tempDestinationsLoad);
     
-    if (consolidatedItems.length > 0) {
-        setSelectedTab(consolidatedItems[0].categoria as Categoria);
-    } else {
-        setSelectedTab(CATEGORIAS[0]);
-    }
+    // 6. Preencher fases e aba
+    const fasesSalvas = (faseAtividade || 'Execução').split(';').map(f => f.trim()).filter(f => f);
+    setFasesAtividade(fasesSalvas.filter(f => FASES_PADRAO.includes(f)));
+    setCustomFaseAtividade(fasesSalvas.find(f => !FASES_PADRAO.includes(f)) || "");
+    
+    // 7. Selecionar a aba do registro clicado
+    setSelectedTab(registro.categoria as Categoria);
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setLoading(false);
@@ -955,7 +833,11 @@ const ClasseIXForm = () => {
   
   const registrosAgrupadosPorOM = useMemo(() => {
     return registros.reduce((acc, registro) => {
-        const key = `${registro.organizacao} (${registro.ug})`;
+        // Chave de agrupamento é a OM Detentora
+        const omDetentora = registro.om_detentora;
+        const ugDetentora = registro.ug_detentora;
+        const key = `${omDetentora} (${formatCodug(ugDetentora)})`;
+        
         if (!acc[key]) {
             acc[key] = [];
         }
@@ -966,7 +848,15 @@ const ClasseIXForm = () => {
 
   const handleIniciarEdicaoMemoria = (registro: ClasseIXRegistro) => {
     setEditingMemoriaId(registro.id);
-    setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento || "");
+    
+    // 1. Gerar a memória automática mais recente
+    const memoriaAutomatica = generateClasseIXMemoriaCalculo({
+        ...registro,
+        itens_motomecanizacao: registro.itens_motomecanizacao as ItemClasseIX[],
+    } as ClasseIXRegistro);
+    
+    // 2. Usar a customizada se existir, senão usar a automática recém-gerada
+    setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
   };
 
   const handleCancelarEdicaoMemoria = () => {
@@ -977,7 +867,6 @@ const ClasseIXForm = () => {
   const handleSalvarMemoriaCustomizada = async (registroId: string) => {
     setLoading(true);
     try {
-      // MUDANÇA: Usar a tabela classe_ix_registros
       const { error } = await supabase
         .from("classe_ix_registros")
         .update({
@@ -992,20 +881,19 @@ const ClasseIXForm = () => {
       await fetchRegistros();
     } catch (error) {
       console.error("Erro ao salvar memória:", error);
-      toast.error(sanitizeError(error)); // FIX: Use sanitizeError
+      toast.error(sanitizeError(error));
     } finally {
       setLoading(false);
     }
   };
 
   const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
-    if (!confirm("Deseja restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
+    if (!confirm("Deseja realmente restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
       return;
     }
     
     setLoading(true);
     try {
-      // MUDANÇA: Usar a tabela classe_ix_registros
       const { error } = await supabase
         .from("classe_ix_registros")
         .update({
@@ -1028,6 +916,13 @@ const ClasseIXForm = () => {
   const displayFases = useMemo(() => {
     return [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join(', ');
   }, [fasesAtividade, customFaseAtividade]);
+  
+  // Helper para calcular o total de um item na tabela de itens
+  const calculateItemTotalDisplay = (item: ItemClasseIX) => {
+    if (form.dias_operacao <= 0) return 0;
+    const { total } = calculateItemTotalClasseIX(item, form.dias_operacao);
+    return total;
+  };
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1047,7 +942,7 @@ const ClasseIXForm = () => {
               Classe IX - Motomecanização
             </CardTitle>
             <CardDescription>
-              Solicitação de recursos para manutenção de viaturas (Motomecanização).
+              Solicitação de recursos para manutenção de material de Classe IX (Viaturas).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -1056,6 +951,7 @@ const ClasseIXForm = () => {
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
               
+              {/* PRIMEIRA LINHA: OM Detentora, UG Detentora, Dias de Atividade */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>OM Detentora do Equipamento *</Label>
@@ -1063,14 +959,14 @@ const ClasseIXForm = () => {
                     selectedOmId={form.selectedOmId}
                     onChange={handleOMChange}
                     placeholder="Selecione a OM..."
-                    initialOmName={form.organizacao} // Adicionado
-                    initialOmUg={form.ug} // Adicionado
+                    initialOmName={form.organizacao} // OM Detentora
+                    initialOmUg={form.ug} // UG Detentora
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label>UG Detentora</Label>
-                  <Input value={form.ug} readOnly disabled onKeyDown={handleEnterToNextField} />
+                  <Input value={formatCodug(form.ug)} readOnly disabled onKeyDown={handleEnterToNextField} />
                 </div>
                 
                 <div className="space-y-2">
@@ -1082,12 +978,14 @@ const ClasseIXForm = () => {
                     value={form.dias_operacao || ""}
                     onChange={(e) => setForm({ ...form, dias_operacao: parseInt(e.target.value) || 0 })}
                     placeholder="Ex: 7"
-                    onKeyDown={handleEnterToNextField}
+                    onKeyDown={handleNumberInputKeyDown}
                   />
                 </div>
               </div>
               
+              {/* SEGUNDA LINHA: Fase da Atividade (Colunas 1 e 2) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
                 <div className="space-y-2">
                   <Label>Fase da Atividade *</Label>
                   <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
@@ -1138,6 +1036,10 @@ const ClasseIXForm = () => {
                     </PopoverContent>
                   </Popover>
                 </div>
+                
+                <div className="space-y-2">
+                    {/* Espaço vazio */}
+                </div>
               </div>
             </div>
 
@@ -1161,23 +1063,23 @@ const ClasseIXForm = () => {
                             <Table className="w-full">
                                 <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                     <TableRow>
-                                        <TableHead className="w-[35%]">Viatura</TableHead>
-                                        <TableHead className="w-[15%] text-right">Valor/Dia</TableHead>
+                                        <TableHead className="w-[30%]">Viatura</TableHead>
+                                        <TableHead className="w-[15%] text-right">Mnt/Dia Op</TableHead>
                                         <TableHead className="w-[15%] text-right">Acionamento/Mês</TableHead>
-                                        <TableHead className="w-[15%] text-center">Qtd Vtr</TableHead>
-                                        <TableHead className="w-[20%] text-right">Total</TableHead>
+                                        <TableHead className="w-[15%] text-center">Quantidade</TableHead>
+                                        <TableHead className="w-[25%] text-right">Total (Base + Acionamento)</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {currentCategoryItems.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={5} className="text-center text-muted-foreground">
-                                                Nenhuma diretriz encontrada para esta categoria.
+                                                Nenhuma diretriz de viatura encontrada para esta categoria.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         currentCategoryItems.map((item, index) => {
-                                            const { total: itemTotal } = calculateItemTotal(item, form.dias_operacao);
+                                            const itemTotal = calculateItemTotalDisplay(item);
                                             
                                             return (
                                                 <TableRow key={item.item} className="h-12">
@@ -1198,7 +1100,7 @@ const ClasseIXForm = () => {
                                                             value={item.quantidade === 0 ? "" : item.quantidade.toString()}
                                                             onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
                                                             placeholder="0"
-                                                            onKeyDown={handleEnterToNextField}
+                                                            onKeyDown={handleNumberInputKeyDown}
                                                         />
                                                     </TableCell>
                                                     <TableCell className="text-right font-semibold text-sm py-1">
@@ -1213,7 +1115,7 @@ const ClasseIXForm = () => {
                         </div>
                         
                         <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
-                            <span className="font-bold text-sm">TOTAL DA CATEGORIA</span>
+                            <span className="font-bold text-sm">TOTAL DA CATEGORIA (C/ Acionamento)</span>
                             <span className="font-extrabold text-lg text-primary">
                                 {formatCurrency(currentCategoryTotalValue)}
                             </span>
@@ -1232,12 +1134,12 @@ const ClasseIXForm = () => {
                                         onChange={handleOMDestinoChange}
                                         placeholder="Selecione a OM que receberá o recurso..."
                                         disabled={!form.organizacao} 
-                                        initialOmName={tempDestinations[cat].om} // Adicionado
-                                        initialOmUg={tempDestinations[cat].ug} // Adicionado
+                                        initialOmName={tempDestinations[cat].om} 
+                                        initialOmUg={tempDestinations[cat].ug} 
                                     />
                                     {tempDestinations[cat].ug && (
                                         <p className="text-xs text-muted-foreground">
-                                            UG de Destino: {tempDestinations[cat].ug}
+                                            UG de Destino: {formatCodug(tempDestinations[cat].ug)}
                                         </p>
                                     )}
                                 </div>
@@ -1266,8 +1168,7 @@ const ClasseIXForm = () => {
                                             <Input
                                                 id="nd39-input"
                                                 type="text"
-                                                inputMode="numeric"
-                                                // ALTERADO: Usa formatCurrencyInput para exibir o valor formatado (usando o estado temporário)
+                                                inputMode="decimal"
                                                 value={formattedND39Value}
                                                 onChange={handleND39InputChange}
                                                 onBlur={handleND39InputBlur}
@@ -1313,14 +1214,14 @@ const ClasseIXForm = () => {
             {/* 3. Itens Adicionados e Consolidação */}
             {form.itens.length > 0 && (
               <div className="space-y-4 border-b pb-4">
-                <h3 className="text-lg font-semibold">3. Itens Adicionados ({form.itens.length})</h3>
+                <h3 className="text-lg font-semibold">3. Viaturas Adicionadas ({form.itens.length})</h3>
                 
                 {/* Alerta de Validação Final */}
                 {!isTotalAlocadoCorrect && (
                     <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription className="font-medium">
-                            Atenção: O Custo Total Solicitado ({formatCurrency(valorTotalForm)}) não corresponde ao Total Alocado ({formatCurrency(totalAlocado)}). 
+                            Atenção: O Custo Total dos Itens ({formatCurrency(valorTotalForm)}) não corresponde ao Total Alocado ({formatCurrency(totalAlocado)}). 
                             Clique em "Salvar Itens da Categoria" em todas as abas ativas.
                         </AlertDescription>
                     </Alert>
@@ -1328,51 +1229,52 @@ const ClasseIXForm = () => {
 
                 <div className="space-y-4">
                   {Object.entries(itensAgrupadosPorCategoria).map(([categoria, itens]) => {
-                    const totalCategoria = itens.reduce((sum, item) => sum + calculateItemTotal(item, form.dias_operacao).total, 0);
+                    const totalCategoria = itens.reduce((sum, item) => {
+                        const { total } = calculateItemTotalClasseIX(item, form.dias_operacao);
+                        return sum + total;
+                    }, 0);
                     const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0);
                     
                     const allocation = categoryAllocations[categoria as Categoria];
                     
-                    // NOVO: Verifica se a categoria está "suja" (itens ou alocação alterados)
-                    let isDirty = false;
+                    // NOVO CÁLCULO: Obtém o total atual para a categoria
+                    const currentItemsForCheck = categoria === selectedTab ? currentCategoryItems.filter(i => i.quantidade > 0) : itens;
+                    const currentTotalValueForCheck = currentItemsForCheck.reduce((sum, item) => {
+                        const { total } = calculateItemTotalClasseIX(item, form.dias_operacao);
+                        return sum + total;
+                    }, 0);
                     
-                    if (categoria === selectedTab) {
-                        // Check if the current unsaved state differs from the saved allocation
-                        isDirty = isCategoryAllocationDirty(
-                            categoria as Categoria, 
-                            currentCategoryTotalValue, // Unsaved total
-                            allocation, 
-                            tempND39Inputs, 
-                            tempDestinations
-                        );
-                    } else {
-                        // Check if the saved allocation total matches the calculated total from saved items
-                        if (!areNumbersEqual(allocation.total_valor, totalCategoria)) {
-                            isDirty = true;
-                        }
-                    }
+                    // NOVO: Verifica se a categoria está "suja" (itens ou alocação alterados)
+                    const isDirty = isCategoryAllocationDirty(
+                        categoria as Categoria, 
+                        currentTotalValueForCheck, 
+                        allocation, 
+                        tempND39Inputs, 
+                        tempDestinations
+                    );
+                    
+                    // Verifica se a OM Detentora é diferente da OM de Destino
+                    const isDifferentOm = form.organizacao !== allocation.om_destino_recurso;
                     
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
-                          <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} vtr)</h4>
-                          <span className="font-extrabold text-lg text-primary">
-                            {formatCurrency(totalCategoria)}
-                          </span>
+                          <h4 className="font-bold text-base text-primary">{getCategoryLabel(categoria)} ({totalQuantidade} Vtr)</h4>
+                          <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
                         </div>
                         
                         <div className="space-y-2">
                           {itens.map((item, index) => {
-                            const { total: itemTotal } = calculateItemTotal(item, form.dias_operacao);
+                            const { base, acionamento, total } = calculateItemTotalClasseIX(item, form.dias_operacao);
                             const nrMeses = Math.ceil(form.dias_operacao / 30);
                             
                             return (
-                              <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
-                                <span className="font-medium">{item.item}</span>
-                                <span className="text-right">
-                                  {item.quantidade} un. x ({formatCurrency(item.valor_mnt_dia)}/dia + {formatCurrency(item.valor_acionamento_mensal)}/{nrMeses} meses) = {formatCurrency(itemTotal)}
-                                </span>
-                              </div>
+                                <div key={index} className="flex justify-between text-sm text-muted-foreground border-b border-dashed pb-1 last:border-b-0 last:pb-0">
+                                  <span className="font-medium">{item.item} ({item.quantidade} un.)</span>
+                                  <span className="text-right text-xs">
+                                    Base: {formatCurrency(base)} | Acionamento ({nrMeses} meses): {formatCurrency(acionamento)} = {formatCurrency(total)}
+                                  </span>
+                                </div>
                             );
                           })}
                         </div>
@@ -1380,8 +1282,8 @@ const ClasseIXForm = () => {
                         <div className="pt-2 border-t mt-2">
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                <span className="font-medium text-foreground">
-                                    {allocation.om_destino_recurso} ({allocation.ug_destino_recurso})
+                                <span className={cn("font-medium", isDifferentOm ? "text-red-600 font-bold" : "text-foreground")}>
+                                    {allocation.om_destino_recurso} ({formatCodug(allocation.ug_destino_recurso)})
                                 </span>
                             </div>
                             <div className="flex justify-between text-xs">
@@ -1397,7 +1299,7 @@ const ClasseIXForm = () => {
                                     <AlertCircle className="h-4 w-4" />
                                     <AlertTitle className="text-xs font-semibold">Valores Desatualizados</AlertTitle>
                                     <AlertDescription className="text-xs">
-                                        A quantidade de itens, a alocação de ND ou a OM de destino foi alterada. Clique em "Salvar Itens da Categoria" na aba "{categoria}" para atualizar.
+                                        A quantidade de viaturas, a alocação de ND ou a OM de destino foi alterada. Clique em "Salvar Itens da Categoria" na aba "{getCategoryLabel(categoria)}" para atualizar.
                                     </AlertDescription>
                                 </Alert>
                             )}
@@ -1408,7 +1310,7 @@ const ClasseIXForm = () => {
                 </div>
                 
                 <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/20 mt-4">
-                  <span className="font-bold text-base text-primary">VALOR TOTAL SOLICITADO</span>
+                  <span className="font-bold text-base text-primary">VALOR TOTAL DA OM</span>
                   <span className="font-extrabold text-xl text-primary">
                     {formatCurrency(valorTotalForm)}
                   </span>
@@ -1443,7 +1345,7 @@ const ClasseIXForm = () => {
                 </h2>
                 
                 {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
-                    const totalOM = omRegistros.reduce((sum, r) => sum + r.valor_total, 0);
+                    const totalOM = omRegistros.reduce((sum, r) => r.valor_total + sum, 0);
                     const omName = omKey.split(' (')[0];
                     const ug = omKey.split(' (')[1].replace(')', '');
                     
@@ -1451,7 +1353,7 @@ const ClasseIXForm = () => {
                         <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <h3 className="font-bold text-lg text-primary">
-                                    {omName} (UG: {ug})
+                                    OM Detentora: {omName} (UG: {ug})
                                 </h3>
                                 <span className="font-extrabold text-xl text-primary">
                                     {formatCurrency(totalOM)}
@@ -1462,7 +1364,10 @@ const ClasseIXForm = () => {
                                 {omRegistros.map((registro) => {
                                     const totalCategoria = registro.valor_total;
                                     const fases = formatFasesParaTexto(registro.fase_atividade);
-                                    const badgeStyle = getClasseIXBadgeStyle(registro.categoria); // Use Classe IX specific style
+                                    const badgeStyle = getCategoryBadgeStyle(registro.categoria);
+                                    
+                                    // Verifica se a OM Detentora é diferente da OM de Destino
+                                    const isDifferentOm = registro.om_detentora !== registro.organizacao;
                                     
                                     return (
                                         <Card key={registro.id} className="p-3 bg-background border">
@@ -1472,9 +1377,12 @@ const ClasseIXForm = () => {
                                                         <h4 className="font-semibold text-base text-foreground">
                                                             {getCategoryLabel(registro.categoria)}
                                                         </h4>
+                                                        <Badge variant="outline" className="text-xs font-semibold">
+                                                            {fases}
+                                                        </Badge>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Dias: {registro.dias_operacao} | Fases: {fases}
+                                                        Dias: {registro.dias_operacao}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -1518,6 +1426,12 @@ const ClasseIXForm = () => {
                                             {/* Detalhes da Alocação */}
                                             <div className="pt-2 border-t mt-2">
                                                 <div className="flex justify-between text-xs">
+                                                    <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                    <span className={cn("font-medium", isDifferentOm ? "text-red-600 font-bold" : "text-foreground")}>
+                                                        {registro.organizacao} ({formatCodug(registro.ug)})
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between text-xs">
                                                     <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
                                                     <span className="font-medium text-green-600">{formatCurrency(registro.valor_nd_30)}</span>
                                                 </div>
@@ -1544,38 +1458,49 @@ const ClasseIXForm = () => {
                 </h3>
                 
                 {registros.map(registro => {
-                  const om = registro.organizacao;
-                  const ug = registro.ug;
+                  const omDetentora = registro.om_detentora;
+                  const ugDetentora = registro.ug_detentora;
                   const isEditing = editingMemoriaId === registro.id;
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
-                  const memoriaAutomatica = generateDetalhamento(
-                      registro.itens_motomecanizacao as ItemClasseIX[], 
-                      registro.dias_operacao, 
-                      registro.organizacao, 
-                      registro.ug, 
-                      registro.fase_atividade || '', 
-                      registro.organizacao, 
-                      registro.ug, 
-                      registro.valor_nd_30, 
-                      registro.valor_nd_39
-                  );
+                  // Verifica se a OM Detentora é diferente da OM de Destino
+                  const isDifferentOm = omDetentora !== registro.organizacao;
+                  
+                  const memoriaAutomatica = generateClasseIXMemoriaCalculo({
+                      ...registro,
+                      itens_motomecanizacao: registro.itens_motomecanizacao as ItemClasseIX[],
+                  } as ClasseIXRegistro);
                   
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
-                  const badgeStyle = getClasseIXBadgeStyle(registro.categoria); // Use Classe IX specific style
+                  const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                   
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                       
                       {/* Container para H4 e Botões */}
                       <div className="flex items-start justify-between gap-4 mb-4">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <h4 className="text-base font-semibold text-foreground">
-                                OM Destino: {om} ({ug})
-                              </h4>
-                              <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
-                                  {badgeStyle.label}
-                              </Badge>
+                          <div className="flex flex-col flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                  <h4 className="text-base font-semibold text-foreground">
+                                    OM Detentora: {omDetentora} (UG: {formatCodug(ugDetentora)})
+                                  </h4>
+                                  <Badge variant="default" className={cn("w-fit shrink-0", badgeStyle.className)}>
+                                      {badgeStyle.label}
+                                  </Badge>
+                                  {hasCustomMemoria && !isEditing && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Editada manualmente
+                                    </Badge>
+                                  )}
+                              </div>
+                              {isDifferentOm ? (
+                                  <div className="flex items-center gap-1 mt-1">
+                                      <AlertCircle className="h-4 w-4 text-red-600" />
+                                      <span className="text-sm font-medium text-red-600">
+                                          Recurso destinado à OM: {registro.organizacao} ({formatCodug(registro.ug)})
+                                      </span>
+                                  </div>
+                              ) : null}
                           </div>
                           
                           <div className="flex items-center justify-end gap-2 shrink-0">
