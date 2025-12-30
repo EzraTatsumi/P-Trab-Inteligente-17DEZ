@@ -169,11 +169,16 @@ export const generateCategoryMemoriaCalculo = (registro: ClasseIXRegistro): stri
     // Pluralização de Viatura(s)
     const vtrPlural = totalItens === 1 ? 'viatura' : 'viaturas';
     
-    // Obtém o rótulo da categoria principal (usando a categoria do registro, que é a chave do agrupamento)
+    // Obtém o rótulo da categoria específica (ex: Viatura Administrativa, Motocicleta)
     const categoriaLabel = getClasseIILabel(registro.categoria);
-
-    // CABEÇALHO PADRONIZADO (Classe VII/V/VI)
-    const header = `${ndPrefix} - Manutenção de ${totalItens} ${vtrPlural} de ${categoriaLabel} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPluralHeader} de ${faseFormatada}.`;
+    
+    // Ajuste para Motocicleta: Se a categoria for Motocicleta, o plural deve ser 'Motocicletas'
+    const itemPlural = registro.categoria === 'Motocicleta' 
+        ? (totalItens === 1 ? 'Motocicleta' : 'Motocicletas')
+        : vtrPlural;
+    
+    // CABEÇALHO DE EDIÇÃO (Mais específico)
+    const header = `${ndPrefix} - Manutenção de ${totalItens} ${itemPlural} de ${categoriaLabel} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPluralHeader} de ${faseFormatada}.`;
 
     return `${header}
 
@@ -267,8 +272,14 @@ export const generateDetalhamento = (
     const vtrPlural = totalItens === 1 ? 'viatura' : 'viaturas';
     
     // Obtém o rótulo da categoria principal (usando a categoria do primeiro item, se houver)
-    const categoriaPrincipal = itens.length > 0 ? itens[0].categoria : 'Motomecanização';
-    const categoriaLabel = getClasseIILabel(categoriaPrincipal);
+    // Se houver mais de uma categoria, usamos 'Motomecanização'
+    const categoriasAtivas = Object.keys(gruposPorCategoria);
+    let categoriaLabel;
+    if (categoriasAtivas.length === 1) {
+        categoriaLabel = getClasseIILabel(categoriasAtivas[0]);
+    } else {
+        categoriaLabel = 'Motomecanização (Diversos)';
+    }
 
     const header = `${ndPrefix} - Aquisição de Material de Classe IX (${categoriaLabel}) para ${totalItens} ${vtrPlural}, durante ${diasOperacao} ${diaPluralHeader} de ${faseAtividade}, para ${omDetentora}.`;
 
