@@ -395,7 +395,7 @@ const ClasseVForm = () => {
     const uniqueRecordsMap = new Map<string, ClasseVRegistro>();
     (data || []).forEach(r => {
         // A chave de unicidade deve ser OM Detentora + UG Detentora + Categoria
-        const key = `${r.om_detentora}-${r.ug_detentora}-${r.categoria}`;
+        const key = `${r.om_detentora || r.organizacao}-${r.ug_detentora || r.ug}-${r.categoria}`;
         const record = {
             ...r,
             itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseV[],
@@ -1263,6 +1263,9 @@ const ClasseVForm = () => {
                         tempDestinations
                     );
                     
+                    // NOVO: Lógica para verificar se a OM Detentora é diferente da OM de Destino
+                    const isDifferentOm = form.organizacao !== allocation.om_destino_recurso;
+                    
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
@@ -1284,7 +1287,7 @@ const ClasseVForm = () => {
                         <div className="pt-2 border-t mt-2">
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                <span className="font-medium text-foreground">
+                                <span className={cn("font-medium", isDifferentOm ? "text-red-600 font-bold" : "text-foreground")}>
                                     {allocation.om_destino_recurso} ({formatCodug(allocation.ug_destino_recurso)})
                                 </span>
                             </div>
