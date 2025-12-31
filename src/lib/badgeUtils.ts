@@ -15,9 +15,9 @@ interface BadgeStyle {
 
 const CATEGORY_STYLES: Record<string, BadgeStyle> = {
   // Classe II - Material de Intendência (Verde)
-  'Equipamento Individual': { label: 'Eqp Individual', className: 'bg-green-600 hover:bg-green-700 text-white' },
-  'Proteção Balística': { label: 'Prot Balística', className: 'bg-green-700 hover:bg-green-800 text-white' },
-  'Material de Estacionamento': { label: 'Mat Estacionamento', className: 'bg-green-500 hover:bg-green-600 text-white' },
+  'Equipamento Individual': { label: 'Equipamento Individual', className: 'bg-green-600 hover:bg-green-700 text-white' },
+  'Proteção Balística': { label: 'Proteção Balística', className: 'bg-green-700 hover:bg-green-800 text-white' },
+  'Material de Estacionamento': { label: 'Material de Estacionamento', className: 'bg-green-500 hover:bg-green-600 text-white' },
 
   // Classe V - Armamento (Vermelho/Marrom)
   'Armt L': { label: 'Armamento Leve', className: 'bg-red-700 hover:bg-red-800 text-white' },
