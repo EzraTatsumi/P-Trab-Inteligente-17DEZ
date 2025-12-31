@@ -2200,9 +2200,9 @@ const getMemoriaRecords = granularRegistros;
                               </div>
                               
                               {/* NOVO DIV: OM Destino Recurso (Ajustado para text-xs) */}
-                              <div className="flex justify-between text-xs mt-2 pt-2 border-t border-dashed">
+                              <div className="flex justify-between text-xs mt-1">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                <span className={cn("font-medium text-foreground", omDestinoTextClass)}>
+                                <span className={cn("font-medium", omDestinoTextClass)}>
                                   {destinoOmNome} ({destinoOmUg})
                                 </span>
                               </div>
