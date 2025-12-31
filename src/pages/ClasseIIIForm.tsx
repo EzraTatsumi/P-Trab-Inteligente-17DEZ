@@ -521,7 +521,7 @@ const ClasseIIIForm = () => {
               horas_dia: item.horas_dia || 0,
               distancia_percorrida: item.distancia_percorrida || 0,
               quantidade_deslocamentos: item.quantidade_deslocamentos || 0,
-              dias_utilizados: item.dias_operados || 0, // CORRIGIDO: Usar dias_operados do item
+              dias_utilizados: item.dias_utilizados || 0, // CORRIGIDO: Usar dias_utilizados do item
               consumo_lubrificante_litro: consumoLubrificante,
               preco_lubrificante: precoLubrificante,
               preco_lubrificante_input: precoLubrificanteInput,
