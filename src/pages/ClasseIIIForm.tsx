@@ -2177,14 +2177,6 @@ const getMemoriaRecords = granularRegistros;
                                 </div>
                               </div>
                               
-                              {/* NOVO DIV: OM Destino Recurso (Acima do div 2163) */}
-                              <div className="flex justify-between text-sm mt-2 pt-2 border-t border-dashed">
-                                <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                <span className={cn("font-medium", omDestinoTextClass)}>
-                                  {destinoOmNome} ({destinoOmUg})
-                                </span>
-                              </div>
-                              
                               {/* Detalhes por Categoria (Gerador, Embarcação, etc.) */}
                               <div className="pt-2 border-t mt-2 space-y-1">
                                 {CATEGORIAS.map(cat => {
@@ -2205,6 +2197,14 @@ const getMemoriaRecords = granularRegistros;
                                   }
                                   return null;
                                 })}
+                              </div>
+                              
+                              {/* NOVO DIV: OM Destino Recurso (Ajustado para text-xs) */}
+                              <div className="flex justify-between text-xs mt-2 pt-2 border-t border-dashed">
+                                <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                <span className={cn("font-medium text-foreground", omDestinoTextClass)}>
+                                  {destinoOmNome} ({destinoOmUg})
+                                </span>
                               </div>
                               
                               {/* Detalhes da Alocação (ND 30/39) - REMOVIDO */}
