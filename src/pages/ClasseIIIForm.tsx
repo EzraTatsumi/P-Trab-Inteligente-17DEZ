@@ -2178,7 +2178,7 @@ const getMemoriaRecords = granularRegistros;
                               </div>
                               
                               {/* NOVO DIV: OM Destino Recurso (Ajustado para text-xs) */}
-                              <div className="flex justify-between text-xs mt-2 pt-2 border-t border-dashed">
+                              <div className="flex justify-between text-xs mt-2 pt-2 border-t">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
                                 <span className={cn("font-medium", omDestinoTextClass)}>
                                   {destinoOmNome} ({destinoOmUg})
@@ -2186,7 +2186,7 @@ const getMemoriaRecords = granularRegistros;
                               </div>
                               
                               {/* Detalhes por Categoria (Gerador, Embarcação, etc.) */}
-                              <div className="pt-2 border-t mt-2 space-y-1">
+                              <div className="mt-1 space-y-1">
                                 {CATEGORIAS.map(cat => {
                                   const totais = suprimentoGroup.categoria_totais[cat.key];
                                   if (totais.valor > 0) {
