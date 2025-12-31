@@ -143,6 +143,12 @@ const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   return `${demaisFases} e ${ultimaFase}`;
 };
 
+// NOVO: Função para capitalizar a primeira letra
+const capitalizeFirstLetter = (str: string): string => {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
   return Math.abs(a - b) < tolerance;
 };
@@ -2188,11 +2194,12 @@ const getMemoriaRecords = granularRegistros;
                           let badgeClass = '';
                           
                           if (isCombustivel) {
-                            badgeText = suprimentoGroup.original_registro.tipo_combustivel;
+                            // APLICA CAPITALIZE AQUI
+                            badgeText = capitalizeFirstLetter(suprimentoGroup.original_registro.tipo_combustivel);
                             // Use getCombustivelBadgeClass based on the specific fuel type
                             badgeClass = getCombustivelBadgeClass(suprimentoGroup.original_registro.tipo_combustivel as CombustivelTipo);
                           } else {
-                            badgeText = 'LUBRIFICANTE';
+                            badgeText = 'Lubrificante'; // Já está capitalizado
                             badgeClass = 'bg-purple-600 text-white hover:bg-purple-700'; // Cor padronizada para Lubrificante
                           }
                           
