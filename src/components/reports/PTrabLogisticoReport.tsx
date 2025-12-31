@@ -316,21 +316,30 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       allowTaint: true,
     }).then((canvas) => {
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      
+      // A4 em Paisagem: 297mm (largura) x 210mm (altura)
       const pdf = new jsPDF('l', 'mm', 'a4');
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pdfWidth = 297; // Largura do A4 em mm (Paisagem)
+      const pdfHeight = 210; // Altura do A4 em mm (Paisagem)
+      
+      // Margem de 0.5cm = 5mm
+      const margin = 5;
+      const contentWidth = pdfWidth - 2 * margin;
+      const contentHeight = pdfHeight - 2 * margin;
+
+      const imgWidth = contentWidth;
+      const imgHeight = (canvas.height * contentWidth) / canvas.width;
       let heightLeft = imgHeight;
-      let position = 0;
+      let position = margin; // Começa com a margem superior
 
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+      heightLeft -= contentHeight;
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
+      while (heightLeft > -1) { // Ajustado para garantir que a última parte seja incluída
+        position = heightLeft - imgHeight + margin; // Calcula a posição para a próxima página
         pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+        heightLeft -= contentHeight;
       }
 
       pdf.save(generateFileName('PDF'));
@@ -607,7 +616,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               const omDestinoRecurso = registro.organizacao;
               const ugDestinoRecurso = formatCodug(registro.ug);
               
-              let categoriaDetalhe = registro.categoria;
+              let categoriaDetalhe = getClasseIILabel(registro.categoria); // Usar rótulo completo
               
               if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                   categoriaDetalhe = registro.animal_tipo;
@@ -1039,7 +1048,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         </Button>
       </div>
 
-      <div className="ptrab-print-container" ref={contentRef}>
+      {/* Ajustado o padding para simular a margem de 0.5cm (0.5cm = 0.5rem se 1rem=1cm, mas usaremos 0.5rem para ser sutil) */}
+      <div ref={contentRef} className="bg-white p-8 shadow-xl print:p-0 print:shadow-none" style={{ padding: '0.5cm' }}>
         <div className="ptrab-header">
           <p className="text-[11pt] font-bold uppercase">Ministério da Defesa</p>
           <p className="text-[11pt] font-bold uppercase">Exército Brasileiro</p>
@@ -1086,7 +1096,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
                 
                 // Se o grupo não tem linhas, pula
-                if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasClasseV.length === 0 && grupo.linhasClasseVI.length === 0 && grupo.linhasClasseVII.length === 0 && grupo.linhasClasseVIII.length === 0 && grupo.linhasClasseIX.length === 0 && grupo.linhasLubrificante.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
+                if (totaisOM.total_gnd3 === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
                   return [];
                 }
                 
@@ -1144,7 +1154,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         const omDestinoRecurso = registro.organizacao;
                         const ugDestinoRecurso = formatCodug(registro.ug);
                         
-                        let categoriaDetalhe = registro.categoria;
+                        let categoriaDetalhe = getClasseIILabel(registro.categoria); // Usar rótulo completo
                         
                         if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                             categoriaDetalhe = registro.animal_tipo;
