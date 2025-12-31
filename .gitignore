@@ -84,9 +84,9 @@ src/pages/UserProfilePage.tsx
 # REMOVIDO:src/components/reports/PTrabLogisticoReport.tsx
 # REMOVIDO:src/components/reports/PTrabRacaoOperacionalReport.tsx
 src/pages/ClasseIForm.tsx
-# REMOVIDO:src/pages/ClasseIIForm.tsx
+src/pages/ClasseIIForm.tsx
 src/pages/ClasseIIIForm.tsx
-src/pages/ClasseVForm.tsx
+# REMOVIDO:src/pages/ClasseVForm.tsx
 src/pages/ClasseVIForm.tsx
 # REMOVIDO: src/pages/ClasseVIIForm.tsx
 src/pages/ClasseVIIIForm.tsx
