@@ -86,11 +86,11 @@ src/pages/UserProfilePage.tsx
 src/pages/ClasseIForm.tsx
 # REMOVIDO:src/pages/ClasseIIForm.tsx
 src/pages/ClasseIIIForm.tsx
-# REMOVIDOsrc/pages/ClasseVForm.tsx
-# REMOVIDOsrc/pages/ClasseVIForm.tsx
+src/pages/ClasseVForm.tsx
+src/pages/ClasseVIForm.tsx
 # REMOVIDO: src/pages/ClasseVIIForm.tsx
 src/pages/ClasseVIIIForm.tsx
-# REMOVIDO: src/pages/ClasseIXForm.tsx
+src/pages/ClasseIXForm.tsx
 
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
 
