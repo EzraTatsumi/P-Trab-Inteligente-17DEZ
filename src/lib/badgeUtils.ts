@@ -106,3 +106,32 @@ export const getCategoryShortLabel = (category: string): string => {
       return category;
   }
 };
+
+/**
+ * Helper function to get the label for Classe II/V/VI/VII/VIII/IX categories, 
+ * often used in calculation utilities where the category key is the input.
+ * This function ensures full names for Vtr categories needed for pluralization logic.
+ */
+export const getClasseIILabel = (category: string): string => {
+    switch (category) {
+        case 'Vtr Administrativa': return 'Viatura Administrativa';
+        case 'Vtr Operacional': return 'Viatura Operacional';
+        case 'Motocicleta': return 'Motocicleta';
+        case 'Vtr Blindada': return 'Viatura Blindada';
+        case 'Equipamento Individual': return 'Equipamento Individual';
+        case 'Proteção Balística': return 'Proteção Balística';
+        case 'Material de Estacionamento': return 'Material de Estacionamento';
+        case 'Armt L': return 'Armamento Leve';
+        case 'Armt P': return 'Armamento Pesado';
+        case 'IODCT': return 'IODCT';
+        case 'DQBRN': return 'DQBRN';
+        case 'Gerador': return 'Gerador';
+        case 'Embarcação': return 'Embarcação';
+        case 'Equipamento de Engenharia': return 'Equipamento de Engenharia';
+        case 'Comunicações': return 'Comunicações';
+        case 'Informática': return 'Informática';
+        case 'Saúde': return 'Saúde';
+        case 'Remonta/Veterinária': return 'Remonta/Veterinária';
+        default: return category;
+    }
+};
