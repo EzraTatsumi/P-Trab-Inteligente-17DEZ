@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getEquipamentosPorTipo, TipoEquipamentoDetalhado } from "@/data/classeIIIData";
 import { RefLPC } from "@/types/refLPC";
 import RefLPCFormSection from "@/components/RefLPCFormSection";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, formatCodug } from "@/lib/formatUtils";
 import { TablesInsert } from "@/integrations/supabase/types";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
@@ -2111,33 +2111,31 @@ const getMemoriaRecords = granularRegistros;
                           
                           const originalRegistro = suprimentoGroup.original_registro;
                           
+                          // Lógica para determinar a OM Destino Recurso e a cor
+                          let destinoOmNome: string;
+                          let destinoOmUg: string;
+                          let isDifferentOm: boolean;
+
+                          if (isCombustivel) {
+                            // Extrai RM Fornecimento do detalhamento (onde foi salvo)
+                            let rmFromDetailing = "";
+                            let codugRmFromDetailing = "";
+                            const rmMatch = originalRegistro.detalhamento?.match(/Fornecido por: (.*?) \(CODUG: (.*?)\)/);
+                            if (rmMatch) {
+                                rmFromDetailing = rmMatch[1];
+                                codugRmFromDetailing = rmMatch[2];
+                            }
+                            destinoOmNome = rmFromDetailing;
+                            destinoOmUg = formatCodug(codugRmFromDetailing);
+                            isDifferentOm = group.om !== rmFromDetailing;
+                          } else {
+                            destinoOmNome = originalRegistro.organizacao;
+                            destinoOmUg = formatCodug(originalRegistro.ug);
+                            isDifferentOm = group.om !== originalRegistro.organizacao;
+                          }
+                          const omDestinoTextClass = isDifferentOm ? 'text-red-600 font-bold' : 'text-foreground';
+
                           return (
-                            // Lógica para determinar a OM Destino Recurso e a cor
-                            (() => {
-                              let destinoOmNome: string;
-                              let destinoOmUg: string;
-                              let isDifferentOm: boolean;
-
-                              if (isCombustivel) {
-                                // Extrai RM Fornecimento do detalhamento (onde foi salvo)
-                                let rmFromDetailing = "";
-                                let codugRmFromDetailing = "";
-                                const rmMatch = originalRegistro.detalhamento?.match(/Fornecido por: (.*?) \(CODUG: (.*?)\)/);
-                                if (rmMatch) {
-                                    rmFromDetailing = rmMatch[1];
-                                    codugRmFromDetailing = rmMatch[2];
-                                }
-                                destinoOmNome = rmFromDetailing;
-                                destinoOmUg = formatCodug(codugRmFromDetailing);
-                                isDifferentOm = group.om !== rmFromDetailing;
-                              } else {
-                                destinoOmNome = originalRegistro.organizacao;
-                                destinoOmUg = formatCodug(originalRegistro.ug);
-                                isDifferentOm = group.om !== originalRegistro.organizacao;
-                              }
-                              const omDestinoTextClass = isDifferentOm ? 'text-red-600 font-bold' : 'text-foreground';
-
-                              return (
                             <Card key={originalRegistro.id} className="p-3 bg-background border">
                               <div className="flex items-center justify-between">
                                 <div className="flex flex-col gap-1">
@@ -2212,7 +2210,7 @@ const getMemoriaRecords = granularRegistros;
                               {/* Detalhes da Alocação (ND 30/39) - REMOVIDO */}
                             </Card>
                           );
-                        })()}
+                        })}
                       </div>
                     </Card>
                   );
