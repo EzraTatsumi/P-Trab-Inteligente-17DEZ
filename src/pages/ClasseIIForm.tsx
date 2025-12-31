@@ -503,7 +503,7 @@ const ClasseIIForm = () => {
 
   const handleFaseChange = (fase: string, checked: boolean) => {
     if (checked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase]));
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase]))); // CORRIGIDO: Adicionado ')'
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
