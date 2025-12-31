@@ -495,7 +495,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
               ))}
               
               {/* Linha de Total - Estilos aplicados inline */}
-              <tr>
+              <tr className="total-row-op">
                 <td 
                   colSpan={2} 
                   className="text-center font-bold" 
@@ -573,13 +573,15 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
           .info-item { margin-bottom: 0.15rem; }
         .ptrab-table-wrapper { margin-top: 0.2rem; margin-bottom: 2rem; overflow-x: auto; }
         .ptrab-table-op { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid #000; line-height: 1.1; }
-        .ptrab-table-op th, .ptrab-table-op td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; }
+        .ptrab-table-op th, .ptrab-table-op td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; } /* GARANTINDO ALINHAMENTO VERTICAL */
         .ptrab-table-op thead th { background-color: #D9D9D9; font-weight: bold; text-align: center; font-size: 9pt; }
         
         .col-despesas-op { width: 25%; text-align: left; }
         .col-om-op { width: 15%; text-align: center; }
         .col-quantidade-op { width: 10%; text-align: center; }
         .col-detalhamento-op { width: 50%; text-align: left; }
+        
+        .total-row-op { page-break-inside: avoid; } /* Previne quebra */
         
         .ptrab-footer { margin-top: 3rem; text-align: center; }
         .signature-block { margin-top: 4rem; }

@@ -1416,7 +1416,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           .info-item { margin-bottom: 0.15rem; }
         .ptrab-table-wrapper { margin-top: 0.2rem; margin-bottom: 2rem; overflow-x: auto; }
         .ptrab-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid #000; line-height: 1.1; } /* ALTERADO: Borda externa para 1px */
-        .ptrab-table th, .ptrab-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; }
+        .ptrab-table th, .ptrab-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; } /* GARANTINDO ALINHAMENTO VERTICAL */
         .ptrab-table thead th { background-color: #E8E8E8; font-weight: bold; text-align: center; font-size: 9pt; }
         .col-despesas { width: 14%; text-align: left; }
         .col-om { width: 9%; text-align: center; }
@@ -1431,10 +1431,28 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         .col-detalhamento { width: 28%; text-align: left; }
         .detalhamento-cell { font-size: 6.5pt; line-height: 1.2; }
         .total-row { background-color: #FFFF99; font-weight: bold; }
-        .subtotal-row { background-color: #D3D3D3; font-weight: bold; border-top: 1px solid #000; } /* ALTERADO: Borda fina */
-        .subtotal-om-row { background-color: #E8E8E8; font-weight: bold; }
-        .total-geral-soma-row { background-color: #D3D3D3; font-weight: bold; border-top: 1px solid #000; } /* ALTERADO: Borda fina */
-        .total-geral-final-row { background-color: #E8E8E8; font-weight: bold; }
+        .subtotal-row { 
+            background-color: #D3D3D3; 
+            font-weight: bold; 
+            border-top: 1px solid #000; 
+            page-break-inside: avoid; /* Previne quebra */
+        } 
+        .subtotal-om-row { 
+            background-color: #E8E8E8; 
+            font-weight: bold; 
+            page-break-inside: avoid; /* Previne quebra */
+        }
+        .total-geral-soma-row { 
+            background-color: #D3D3D3; 
+            font-weight: bold; 
+            border-top: 1px solid #000; 
+            page-break-inside: avoid; /* Previne quebra */
+        } 
+        .total-geral-final-row { 
+            background-color: #E8E8E8; 
+            font-weight: bold; 
+            page-break-inside: avoid; /* Previne quebra */
+        }
         .total-geral-gnd-row { background-color: #E8E8E8; font-weight: bold; border-bottom: 1px solid #000; } /* ALTERADO: Borda fina */
         .secao-header-row { background-color: #4A7C4E; color: white; font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000; } /* ALTERADO: Borda fina */
         .ptrab-footer { margin-top: 3rem; text-align: center; }
