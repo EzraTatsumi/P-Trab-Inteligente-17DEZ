@@ -138,9 +138,10 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       allowTaint: true,
     }).then((canvas) => {
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
+      // ALTERADO: 'p' (portrait) para 'l' (landscape)
+      const pdf = new jsPDF('l', 'mm', 'a4');
+      const imgWidth = 297; // A4 width in mm (Landscape)
+      const pageHeight = 210; // A4 height in mm (Landscape)
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       let heightLeft = imgHeight;
       let position = 0;
@@ -367,7 +368,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     currentRow += 3;
     
     const cmtRow = worksheet.getRow(currentRow);
-    cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
+    cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'';
     cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
     cmtRow.getCell('A').alignment = centerMiddleAlignment;
     worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
