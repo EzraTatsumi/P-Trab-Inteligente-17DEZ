@@ -503,7 +503,7 @@ const ClasseIIForm = () => {
 
   const handleFaseChange = (fase: string, checked: boolean) => {
     if (checked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase]));
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
@@ -1188,7 +1188,12 @@ const ClasseIIForm = () => {
                         {/* NOVO BLOCO DE ALOCAÇÃO ND 30/39 */}
                         {currentCategoryTotalValue > 0 && (
                             <div className="space-y-4 p-4 border rounded-lg bg-background">
-                                <h4 className="font-semibold text-sm">Alocação de Recursos para {getCategoryLabel(cat)}</h4>
+                                <h4 className="font-semibold text-sm flex justify-between items-center">
+                                    <span>Alocação de Recursos para {getCategoryLabel(cat)}</span>
+                                    <span className="text-lg font-extrabold text-primary">
+                                        {formatCurrency(currentCategoryTotalValue)}
+                                    </span>
+                                </h4>
                                 
                                 {/* CAMPO: OM de Destino do Recurso */}
                                 <div className="space-y-2">
@@ -1319,6 +1324,9 @@ const ClasseIIForm = () => {
                         tempDestinations
                     );
                     
+                    // Verifica se a OM Detentora é diferente da OM de Destino
+                    const isDifferentOm = form.organizacao !== allocation.om_destino_recurso;
+                    
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
                         <div className="flex items-center justify-between mb-3 border-b pb-2">
@@ -1340,7 +1348,7 @@ const ClasseIIForm = () => {
                         <div className="pt-2 border-t mt-2">
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                <span className="font-medium text-foreground">
+                                <span className={cn("font-medium", isDifferentOm ? "text-red-600 font-bold" : "text-foreground")}>
                                     {allocation.om_destino_recurso} ({formatCodug(allocation.ug_destino_recurso)})
                                 </span>
                             </div>
@@ -1528,7 +1536,7 @@ const ClasseIIForm = () => {
                   const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
                   // Verifica se a OM Detentora é diferente da OM de Destino
-                  const isDifferentOm = omDetentora !== registro.organizacao;
+                  const isDifferentOmInView = omDetentora !== registro.organizacao;
                   
                   // NOVO: Gera a memória automática com o rótulo padronizado
                   const memoriaAutomatica = generateClasseIIMemoriaCalculo(
@@ -1546,9 +1554,6 @@ const ClasseIIForm = () => {
                   const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
                   const badgeStyle = getCategoryBadgeStyle(registro.categoria);
                   
-                  // Verifica se a OM Detentora é diferente da OM de Destino
-                  const isDifferentOmInView = omDetentora !== registro.organizacao;
-
                   return (
                     <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                       
