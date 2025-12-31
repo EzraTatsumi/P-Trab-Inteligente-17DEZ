@@ -257,7 +257,7 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
         const ugDestinoRecurso = item.original_registro.ug_detentora || ug_destino;
 
         return `33.90.30 - Aquisição de Lubrificante para ${getClasseIIICategoryLabel(categoria)} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}.
-OM Destino Recurso: ${omDestinoRecurso} (UG: ${ugDestinoRecurso})
+OM Destino Recurso: ${omDestinoRecurso} (UG: ${formatCodug(ugDestinoRecurso)})
 
 Cálculo:
 Fórmula Base: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilização) x Consumo Lubrificante/hora (ou /100h).
@@ -287,7 +287,7 @@ Valor Total: ${formatCurrency(valor_total)}.`;
         
         return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${getClasseIIICategoryLabel(categoria)} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}, para ${om_destino}.
 
-Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
+Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)})
 
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(preco_litro)}.
 
@@ -930,7 +930,7 @@ const ClasseIIIForm = () => {
       // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
       let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
 
-Fornecido por: ${rmFornecimento} (CODUG: ${codugRmFornecimento})
+Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)}).
 
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
 
@@ -994,7 +994,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE LUBRIFICANTE (NOVO PADRÃO)
       const detalhamentoLubrificante = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
 
-OM Destino Recurso: ${lubricantAllocation.om_destino_recurso} (UG: ${lubricantAllocation.ug_destino_recurso})
+OM Destino Recurso: ${lubricantAllocation.om_destino_recurso} (UG: ${formatCodug(lubricantAllocation.ug_destino_recurso)})
 
 Cálculo:
 Fórmula Base: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilização) x Consumo Lubrificante/hora (ou /100h).
@@ -2220,7 +2220,7 @@ const getMemoriaRecords = granularRegistros;
                                 codugRmFornecimentoFromDetailing = rmMatch[2];
                             }
                             destinoOmNome = rmFornecimentoFromDetailing; // RM Fornecimento
-                            destinoOmUg = formatCodug(codugRmFornecimentoFromDetailing);
+                            destinoOmUg = codugRmFornecimentoFromDetailing;
                             
                             // 2. Lógica de Coloração para Combustível: RM Fornecimento vs RM Vinculação da OM Detentora
                             // OM Detentora (Source) é a OM salva no registro (group.om)
@@ -2292,7 +2292,7 @@ const getMemoriaRecords = granularRegistros;
                               <div className="flex justify-between text-xs mt-2 pt-2 border-t">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
                                 <span className={cn("font-medium", omDestinoTextClass)}>
-                                  {destinoOmNome} ({destinoOmUg})
+                                  {destinoOmNome} ({formatCodug(destinoOmUg)})
                                 </span>
                               </div>
                               
