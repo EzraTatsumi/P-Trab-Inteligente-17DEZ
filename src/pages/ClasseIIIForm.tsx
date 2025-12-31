@@ -64,23 +64,23 @@ interface ItemClasseIII {
 
 interface FormDataClasseIII {
   selectedOmId?: string;
-  organizacao: string;
-  ug: string;
+  organizacao: string; // OM Detentora do Equipamento
+  ug: string; // UG Detentora do Equipamento
   dias_operacao: number; // Global days of activity (used only for detailing header)
   itens: ItemClasseIII[]; // All items across all categories (SAVED/COMMITTED)
 }
 
 interface LubricantAllocation {
-  om_destino_recurso: string;
-  ug_destino_recurso: string;
+  om_destino_recurso: string; // OM Destino Recurso (ND 30)
+  ug_destino_recurso: string; // UG Destino Recurso (ND 30)
   selectedOmDestinoId?: string;
 }
 
 interface ClasseIIIRegistro {
   id: string;
   tipo_equipamento: string; // COMBUSTIVEL_CONSOLIDADO, LUBRIFICANTE_CONSOLIDADO
-  organizacao: string;
-  ug: string;
+  organizacao: string; // OM Detentora do Equipamento (para agrupamento)
+  ug: string; // UG Detentora do Equipamento (para agrupamento)
   quantidade: number;
   dias_operacao: number; // Global days of activity (saved for context)
   tipo_combustivel: string;
@@ -95,13 +95,16 @@ interface ClasseIIIRegistro {
   preco_lubrificante?: number;
   valor_nd_30: number;
   valor_nd_39: number;
+  // Campos existentes no DB para OM Detentora do Recurso (Lubrificante)
+  om_detentora?: string | null; 
+  ug_detentora?: string | null;
 }
 
 // NEW INTERFACE FOR GRANULAR DISPLAY
 interface GranularDisplayItem {
   id: string; // Unique ID for the display item (e.g., based on original record ID + index)
-  om_destino: string;
-  ug_destino: string;
+  om_destino: string; // OM Detentora do Equipamento
+  ug_destino: string; // UG Detentora do Equipamento
   categoria: TipoEquipamento; // GERADOR, EMBARCACAO, etc.
   suprimento_tipo: 'COMBUSTIVEL_GASOLINA' | 'COMBUSTIVEL_DIESEL' | 'LUBRIFICANTE';
   valor_total: number;
@@ -117,8 +120,8 @@ interface GranularDisplayItem {
 
 // NEW INTERFACE FOR CONSOLIDATED DISPLAY (Seção 4)
 interface ConsolidatedSuprimentoGroup {
-  om_destino: string;
-  ug_destino: string;
+  om_detentora_equipamento: string; // OM Detentora (Chave de agrupamento)
+  ug_detentora_equipamento: string;
   suprimento_tipo: 'COMBUSTIVEL' | 'LUBRIFICANTE';
   total_valor: number;
   total_litros: number;
@@ -243,8 +246,12 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
 
     if (suprimento_tipo === 'LUBRIFICANTE') {
         // MEMÓRIA LUBRIFICANTE (GRANULAR)
+        // A OM Destino Recurso para Lubrificante é salva em om_detentora/ug_detentora no registro consolidado
+        const omDestinoRecurso = item.original_registro.om_detentora || om_destino;
+        const ugDestinoRecurso = item.original_registro.ug_detentora || ug_destino;
+
         return `33.90.30 - Aquisição de Lubrificante para ${getClasseIIICategoryLabel(categoria)} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}.
-OM Destino Recurso: ${om_destino} (UG: ${ug_destino})
+OM Destino Recurso: ${omDestinoRecurso} (UG: ${ugDestinoRecurso})
 
 Cálculo:
 Fórmula Base: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilização) x Consumo Lubrificante/hora (ou /100h).
@@ -402,7 +409,7 @@ const ClasseIIIForm = () => {
     if (!ptrabId) return;
     const { data, error } = await supabase
       .from("classe_iii_registros")
-      .select("*, detalhamento_customizado, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39")
+      .select("*, detalhamento_customizado, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora")
       .eq("p_trab_id", ptrabId)
       .order("organizacao", { ascending: true })
       .order("tipo_equipamento", { ascending: true });
@@ -416,7 +423,7 @@ const ClasseIIIForm = () => {
     // NOVO: 1. Coletar todas as OMs/UGs envolvidas (OM Detentora)
     const uniqueOmUgs = new Set<string>();
     (data || []).forEach(r => {
-        // A OM Detentora é a OM salva no registro (organizacao/ug)
+        // A OM Detentora do Equipamento é a OM salva em 'organizacao'/'ug'
         uniqueOmUgs.add(`${r.organizacao}-${r.ug}`);
     });
 
@@ -450,9 +457,10 @@ const ClasseIIIForm = () => {
       return;
     }
     
+    // O registro base deve ser sempre o que define a OM Detentora do Equipamento
     const firstRecord = combustivelRecords[0] || lubricantRecords[0];
     
-    // 1. Extract global data (OM, Days, Fases)
+    // 1. Extract global data (OM Detentora do Equipamento, Days, Fases)
     const omName = firstRecord.organizacao;
     const ug = firstRecord.ug;
     const diasOperacao = firstRecord.dias_operacao;
@@ -476,10 +484,11 @@ const ClasseIIIForm = () => {
       setCodugRmFornecimento("");
     }
     
-    // 3. Extract Lubricant Allocation
+    // 3. Extract Lubricant Allocation (OM Destino Recurso)
     const lubRecord = lubricantRecords[0];
-    const lubOmName = lubRecord?.organizacao || omName;
-    const lubUg = lubRecord?.ug || ug;
+    // Para Lubrificante, a OM Destino Recurso está em om_detentora/ug_detentora
+    const lubOmName = lubRecord?.om_detentora || omName;
+    const lubUg = lubRecord?.ug_detentora || ug;
     
     setLubricantAllocation({
       om_destino_recurso: lubOmName,
@@ -997,7 +1006,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       consolidadoLubrificante = {
         total_litros: totalLitrosLubrificante,
         valor_total: totalValorLubrificante,
-        itens: itensComLubrificante, // CORREÇÃO AQUI: Usar itensComLubrificante
+        itens: itensComLubrificante,
         detalhamento: detalhamentoLubrificante,
       };
     }
@@ -1122,7 +1131,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
             if (totalValor > 0) {
                 granular.push({
                     id: `${registro.id}-${idCounter++}`,
-                    om_destino: registro.organizacao,
+                    om_destino: registro.organizacao, // OM Detentora do Equipamento
                     ug_destino: registro.ug,
                     categoria: category,
                     suprimento_tipo: suprimento_tipo,
@@ -1147,8 +1156,9 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
 const registrosAgrupadosPorSuprimento = useMemo(() => {
     const groupedByOm: Record<string, { om: string, ug: string, total: number, suprimentos: ConsolidatedSuprimentoGroup[] }> = {};
 
-    // 1. Agrupar os registros consolidados originais por OM
+    // 1. Agrupar os registros consolidados originais pela OM Detentora do Equipamento
     registros.forEach(registro => {
+        // A chave de agrupamento é sempre a OM Detentora do Equipamento (organizacao/ug)
         const omKey = `${registro.organizacao} (${registro.ug})`;
         const isLubricant = registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
         const suprimentoType: 'COMBUSTIVEL' | 'LUBRIFICANTE' = isLubricant ? 'LUBRIFICANTE' : 'COMBUSTIVEL';
@@ -1162,8 +1172,8 @@ const registrosAgrupadosPorSuprimento = useMemo(() => {
 
         if (!suprimentoGroup) {
             suprimentoGroup = {
-                om_destino: registro.organizacao,
-                ug_destino: registro.ug,
+                om_detentora_equipamento: registro.organizacao,
+                ug_detentora_equipamento: registro.ug,
                 suprimento_tipo: suprimentoType,
                 total_valor: 0,
                 total_litros: 0,
@@ -1256,9 +1266,10 @@ const getMemoriaRecords = granularRegistros;
       
       const registro: TablesInsert<'classe_iii_registros'> = {
         p_trab_id: ptrabId,
-        tipo_equipamento: 'COMBUSTIVEL_CONSOLIDADO',
+        // OM Detentora do Equipamento (OM principal do formulário)
         organizacao: form.organizacao,
         ug: form.ug,
+        tipo_equipamento: 'COMBUSTIVEL_CONSOLIDADO',
         quantidade: consolidado.itens.reduce((sum: number, item: ItemClasseIII) => sum + item.quantidade, 0),
         dias_operacao: form.dias_operacao, // Salva o dia global para contexto
         tipo_combustivel: consolidado.tipo_combustivel,
@@ -1279,6 +1290,9 @@ const getMemoriaRecords = granularRegistros;
         preco_lubrificante: 0,
         valor_nd_30: consolidado.valor_total, // Classe III Combustível é ND 30
         valor_nd_39: 0,
+        // Para Combustível, a OM Detentora do Recurso é a própria OM Detentora do Equipamento
+        om_detentora: form.organizacao,
+        ug_detentora: form.ug,
       };
       registrosParaSalvar.push(registro);
     }
@@ -1292,9 +1306,10 @@ const getMemoriaRecords = granularRegistros;
 
       const registroLubrificante: TablesInsert<'classe_iii_registros'> = {
         p_trab_id: ptrabId,
+        // OM Detentora do Equipamento (OM principal do formulário)
+        organizacao: form.organizacao,
+        ug: form.ug,
         tipo_equipamento: 'LUBRIFICANTE_CONSOLIDADO',
-        organizacao: lubricantAllocation.om_destino_recurso,
-        ug: lubricantAllocation.ug_destino_recurso,
         quantidade: itensLubrificante.reduce((sum: number, item: ItemClasseIII) => sum + item.quantidade, 0),
         dias_operacao: form.dias_operacao, // Salva o dia global para contexto
         tipo_combustivel: 'LUBRIFICANTE',
@@ -1316,6 +1331,9 @@ const getMemoriaRecords = granularRegistros;
         preco_lubrificante: 0,
         valor_nd_30: consolidadoLubrificante.valor_total, // Classe III Lubrificante é ND 30
         valor_nd_39: 0,
+        // OM Destino Recurso (Lubrificante)
+        om_detentora: lubricantAllocation.om_destino_recurso,
+        ug_detentora: lubricantAllocation.ug_destino_recurso,
       };
       registrosParaSalvar.push(registroLubrificante);
     }
@@ -1323,7 +1341,7 @@ const getMemoriaRecords = granularRegistros;
     try {
       setLoading(true);
       
-      // 3. Deletar TODOS os registros de Classe III existentes para a OM/UG atual
+      // 3. Deletar TODOS os registros de Classe III existentes para a OM/UG Detentora do Equipamento atual
       const { error: deleteError } = await supabase
         .from("classe_iii_registros")
         .delete()
@@ -1375,7 +1393,7 @@ const getMemoriaRecords = granularRegistros;
   };
 
   const handleEditarConsolidado = (registro: ClasseIIIRegistro) => {
-    // 1. Identify the OM/UG pair to edit
+    // 1. Identify the OM/UG pair to edit (OM Detentora do Equipamento)
     const omToEdit = registro.organizacao;
     const ugToEdit = registro.ug;
     
@@ -2178,11 +2196,12 @@ const getMemoriaRecords = granularRegistros;
                             }
                             
                           } else {
-                            // LUBRIFICANTE (MANTÉM A REGRA ATUAL: OM Detentora vs OM Destino Lubrificante)
-                            destinoOmNome = originalRegistro.organizacao;
-                            destinoOmUg = formatCodug(originalRegistro.ug);
-                            // OM Detentora é a OM salva no registro (group.om)
-                            isDifferentOm = group.om !== originalRegistro.organizacao;
+                            // LUBRIFICANTE: OM Detentora do Equipamento (group.om) vs OM Destino Recurso (om_detentora/ug_detentora)
+                            destinoOmNome = originalRegistro.om_detentora || originalRegistro.organizacao;
+                            destinoOmUg = originalRegistro.ug_detentora || originalRegistro.ug;
+                            
+                            // OM Detentora do Equipamento (Source) é a OM salva no registro (group.om)
+                            isDifferentOm = group.om !== destinoOmNome;
                           }
                           const omDestinoTextClass = isDifferentOm ? 'text-red-600 font-bold' : 'text-foreground';
 
