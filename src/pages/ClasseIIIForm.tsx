@@ -1551,6 +1551,20 @@ const getMemoriaRecords = granularRegistros;
     return litrosLubrificante * precoNumeric;
   }, [editingLubricantIndex, localCategoryItems, tempConsumoInput, tempPrecoInput, form.dias_operacao]);
   // --------------------------------------------------------------------
+  
+  // Detalhes da OM Detentora do Equipamento (para comparação de cores na prévia)
+  const omDetentoraKey = `${form.organizacao}-${form.ug}`;
+  const omDetentoraDetails = omDetailsMap[omDetentoraKey] || { rm_vinculacao: '', codug_rm_vinculacao: '' };
+  const omDetentoraRmVinculacao = omDetentoraDetails.rm_vinculacao;
+
+  // Lógica de Coloração para Combustível (Prévia)
+  const isCombustivelDifferentOm = omDetentoraRmVinculacao.toUpperCase() !== rmFornecimento.toUpperCase();
+  const combustivelDestinoTextClass = isCombustivelDifferentOm ? 'text-red-600 font-bold' : 'text-foreground';
+  
+  // Lógica de Coloração para Lubrificante (Prévia)
+  const isLubrificanteDifferentOm = form.organizacao !== lubricantAllocation.om_destino_recurso;
+  const lubrificanteDestinoTextClass = isLubrificanteDifferentOm ? 'text-red-600 font-bold' : 'text-foreground';
+
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -2037,6 +2051,26 @@ const getMemoriaRecords = granularRegistros;
                           <h4 className="font-bold text-base text-primary">{categoriaLabel}</h4>
                           <span className="font-extrabold text-lg text-primary">{formatCurrency(totalCategoria)}</span>
                         </div>
+                        
+                        {/* NOVO: Detalhes de Alocação de Recursos (Combustível) */}
+                        {totalCombustivelCategoria > 0 && (
+                            <div className="flex justify-between text-sm mb-2">
+                                <span className="text-muted-foreground">OM Destino Recurso Combustível:</span>
+                                <span className={cn("font-medium", combustivelDestinoTextClass)}>
+                                    {rmFornecimento} ({formatCodug(codugRmFornecimento)})
+                                </span>
+                            </div>
+                        )}
+                        
+                        {/* NOVO: Detalhes de Alocação de Recursos (Lubrificante) */}
+                        {totalLubrificanteCategoria > 0 && (
+                            <div className="flex justify-between text-sm mb-2">
+                                <span className="text-muted-foreground">OM Destino Recurso Lubrificante:</span>
+                                <span className={cn("font-medium", lubrificanteDestinoTextClass)}>
+                                    {lubricantAllocation.om_destino_recurso} ({formatCodug(lubricantAllocation.ug_destino_recurso)})
+                                </span>
+                            </div>
+                        )}
                         
                         <div className="space-y-2">
                           {itens.map((item, index) => {
