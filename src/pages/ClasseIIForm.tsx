@@ -129,7 +129,7 @@ interface TempDestination {
     id?: string;
 }
 const initialTempDestinations: Record<Categoria, TempDestination> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: { om: "", ug: "", id: undefined } }), {} as Record<Categoria, TempDestination>);
-const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, TempDestination>);
+const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, string>);
 // --- FIM NOVOS TIPOS TEMPORÁRIOS ---
 
 
@@ -1188,7 +1188,12 @@ const ClasseIIForm = () => {
                         {/* NOVO BLOCO DE ALOCAÇÃO ND 30/39 */}
                         {currentCategoryTotalValue > 0 && (
                             <div className="space-y-4 p-4 border rounded-lg bg-background">
-                                <h4 className="font-semibold text-sm">Alocação de Recursos para {getCategoryLabel(cat)}</h4>
+                                <h4 className="font-semibold text-sm flex justify-between items-center">
+                                    <span>Alocação de Recursos para {getCategoryLabel(cat)}</span>
+                                    <span className="font-extrabold text-lg text-primary">
+                                        {formatCurrency(currentCategoryTotalValue)}
+                                    </span>
+                                </h4>
                                 
                                 {/* CAMPO: OM de Destino do Recurso */}
                                 <div className="space-y-2">
