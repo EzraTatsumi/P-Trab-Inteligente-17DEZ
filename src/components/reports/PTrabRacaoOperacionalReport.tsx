@@ -19,7 +19,7 @@ import {
 interface PTrabRacaoOperacionalReportProps {
   ptrabData: PTrabData;
   registrosClasseI: ClasseIRegistro[];
-  onExportSuccess: () => void;
+  // REMOVIDO: onExportSuccess: () => void;
   fileSuffix: string; // NOVO PROP
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe I
   generateClasseIMemoriaCalculo: (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP') => string;
@@ -42,7 +42,7 @@ interface RacaoOpLinha {
 const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = ({
   ptrabData,
   registrosClasseI,
-  onExportSuccess,
+  // REMOVIDO: onExportSuccess,
   fileSuffix, // NOVO PROP
   generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
 }) => {
@@ -166,7 +166,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       }
 
       pdf.save(generateFileName('PDF'));
-      onExportSuccess();
+      // REMOVIDO: onExportSuccess();
       pdfToast.dismiss();
       toast({
         title: "PDF Exportado!",
@@ -182,13 +182,13 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         variant: "destructive",
       });
     });
-  }, [ptrabData, racaoOperacionalConsolidada, onExportSuccess, toast, fileSuffix, generateClasseIMemoriaCalculo]);
+  }, [ptrabData, racaoOperacionalConsolidada, toast, fileSuffix, generateClasseIMemoriaCalculo]);
 
   // Função para Imprimir (Abre a caixa de diálogo de impressão)
   const handlePrint = useCallback(() => {
     window.print();
-    onExportSuccess();
-  }, [onExportSuccess]);
+    // REMOVIDO: onExportSuccess();
+  }, []);
 
 
   const exportExcel = useCallback(async () => {
@@ -399,13 +399,13 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     a.click();
     window.URL.revokeObjectURL(url);
 
-    onExportSuccess();
+    // REMOVIDO: onExportSuccess();
     toast({
       title: "Excel Exportado!",
       description: "O relatório de Ração Operacional foi salvo com sucesso.",
       duration: 3000,
     });
-  }, [racaoOperacionalConsolidada, ptrabData, diasOperacao, onExportSuccess, toast, fileSuffix, generateClasseIMemoriaCalculo]);
+  }, [racaoOperacionalConsolidada, ptrabData, diasOperacao, toast, fileSuffix, generateClasseIMemoriaCalculo]);
 
 
   if (racaoOperacionalConsolidada.length === 0) {
@@ -552,7 +552,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         }
         
         /* REGRAS DE ESTILO UNIFICADAS (TELA E IMPRESSÃO) */
-        .ptrab-print-container { max-width: 100%; margin: 0 auto; padding: 2rem 1rem; font-family: Arial, sans-serif; }
+        .ptrab-print-container { max-width: 100%; margin: 0 auto; font-family: Arial, sans-serif; }
         .ptrab-header { text-align: center; margin-bottom: 1.5rem; line-height: 1.4; }
         .ptrab-header p { font-size: 11pt; } /* Tamanho de fonte fixo */
         .ptrab-info { margin-bottom: 0.3rem; font-size: 10pt; line-height: 1.3; }

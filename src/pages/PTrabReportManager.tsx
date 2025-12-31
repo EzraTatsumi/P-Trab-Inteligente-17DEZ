@@ -456,7 +456,7 @@ const PTrabReportManager = () => {
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
 
-  const [showCompleteStatusDialog, setShowCompleteStatusDialog] = useState(false);
+  // REMOVIDO: [showCompleteStatusDialog, setShowCompleteStatusDialog] = useState(false);
 
   const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO' || r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
   const isCombustivel = (r: ClasseIIIRegistro) => !isLubrificante(r);
@@ -563,49 +563,8 @@ const PTrabReportManager = () => {
     loadData();
   }, [loadData]);
 
-  const handleExportSuccess = () => {
-    if (ptrabData && (ptrabData.status === 'em_andamento' || ptrabData.status === 'aprovado')) {
-      setShowCompleteStatusDialog(true);
-    } else {
-      // Não redireciona, apenas fecha o diálogo se não houver mudança de status
-    }
-  };
+  // REMOVIDO: handleExportSuccess, handleConfirmCompleteStatus, handleCancelCompleteStatus
 
-  const handleConfirmCompleteStatus = async () => {
-    if (!ptrabData) return;
-
-    try {
-      const { error } = await supabase
-        .from("p_trab")
-        .update({ status: "arquivado" })
-        .eq("id", ptrabData.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Status atualizado!",
-        description: `O status do P Trab ${ptrabData.numero_ptrab} foi alterado para "Arquivado".`,
-        duration: 3000,
-      });
-      navigate('/ptrab');
-    } catch (error) {
-      console.error("Erro ao atualizar status para arquivado:", error);
-      toast({
-        title: "Erro ao atualizar status",
-        description: "Não foi possível alterar o status do P Trab.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    } finally {
-      setShowCompleteStatusDialog(false);
-    }
-  };
-
-  const handleCancelCompleteStatus = () => {
-    setShowCompleteStatusDialog(false);
-    navigate('/ptrab');
-  };
-  
   // --- LÓGICA DE AGRUPAMENTO E CÁLCULO (Mantida no Manager para ser passada aos relatórios) ---
   const gruposPorOM = useMemo(() => {
     const grupos: Record<string, GrupoOM> = {};
@@ -762,11 +721,11 @@ const PTrabReportManager = () => {
             omsOrdenadas={omsOrdenadas}
             gruposPorOM={gruposPorOM}
             calcularTotaisPorOM={calcularTotaisPorOM}
-            onExportSuccess={handleExportSuccess}
-            showCompleteStatusDialog={showCompleteStatusDialog}
-            setShowCompleteStatusDialog={setShowCompleteStatusDialog}
-            handleConfirmCompleteStatus={handleConfirmCompleteStatus}
-            handleCancelCompleteStatus={handleCancelCompleteStatus}
+            // REMOVIDO: onExportSuccess={handleExportSuccess}
+            // REMOVIDO: showCompleteStatusDialog={showCompleteStatusDialog}
+            // REMOVIDO: setShowCompleteStatusDialog={setShowCompleteStatusDialog}
+            // REMOVIDO: handleConfirmCompleteStatus={handleConfirmCompleteStatus}
+            // REMOVIDO: handleCancelCompleteStatus={handleCancelCompleteStatus}
             fileSuffix={fileSuffix}
             generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // CORRIGIDO
             generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo} // USANDO A FUNÇÃO UNIFICADA
@@ -781,7 +740,7 @@ const PTrabReportManager = () => {
           <PTrabRacaoOperacionalReport
             ptrabData={ptrabData}
             registrosClasseI={registrosClasseI}
-            onExportSuccess={handleExportSuccess}
+            // REMOVIDO: onExportSuccess={handleExportSuccess}
             fileSuffix={fileSuffix}
             generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // CORRIGIDO
           />
@@ -850,21 +809,7 @@ const PTrabReportManager = () => {
         {renderReport()}
       </div>
 
-      {/* O AlertDialog é mantido aqui no Manager, mas controlado pelo Reporte Logístico */}
-      <AlertDialog open={showCompleteStatusDialog} onOpenChange={setShowCompleteStatusDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Arquivar P Trab?</AlertDialogTitle>
-            <AlertDialogDescription>
-              O P Trab "{ptrabData?.numero_ptrab} - {ptrabData?.nome_operacao}" foi exportado. Deseja alterar o status para "Arquivado"?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleConfirmCompleteStatus}>Sim, arquivar</AlertDialogAction>
-            <AlertDialogCancel onClick={handleCancelCompleteStatus}>Não, manter status atual</AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* REMOVIDO: AlertDialog */}
     </div>
   );
 };

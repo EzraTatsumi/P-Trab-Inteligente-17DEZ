@@ -60,11 +60,11 @@ interface PTrabLogisticoReportProps {
     valorDiesel: number;
     valorGasolina: number;
   };
-  onExportSuccess: () => void;
-  showCompleteStatusDialog: boolean;
-  setShowCompleteStatusDialog: (show: boolean) => void;
-  handleConfirmCompleteStatus: () => void;
-  handleCancelCompleteStatus: () => void;
+  // REMOVIDO: onExportSuccess: () => void;
+  // REMOVIDO: showCompleteStatusDialog: boolean;
+  // REMOVIDO: setShowCompleteStatusDialog: (show: boolean) => void;
+  // REMOVIDO: handleConfirmCompleteStatus: () => void;
+  // REMOVIDO: handleCancelCompleteStatus: () => void;
   fileSuffix: string; // NOVO PROP
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe I
   generateClasseIMemoriaCalculo: (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP') => string;
@@ -241,11 +241,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   omsOrdenadas,
   gruposPorOM,
   calcularTotaisPorOM,
-  onExportSuccess,
-  showCompleteStatusDialog,
-  setShowCompleteStatusDialog,
-  handleConfirmCompleteStatus,
-  handleCancelCompleteStatus,
+  // REMOVIDO: onExportSuccess,
+  // REMOVIDO: showCompleteStatusDialog,
+  // REMOVIDO: setShowCompleteStatusDialog,
+  // REMOVIDO: handleConfirmCompleteStatus,
+  // REMOVIDO: handleCancelCompleteStatus,
   fileSuffix, // NOVO PROP
   generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
   generateClasseIIMemoriaCalculo = defaultGenerateClasseIIMemoriaCalculo, // CORRIGIDO: Usando o nome correto da função de fallback
@@ -346,7 +346,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       }
 
       pdf.save(generateFileName('PDF'));
-      onExportSuccess();
+      // REMOVIDO: onExportSuccess();
       pdfToast.dismiss(); // Usa o dismiss do objeto retornado
       toast({
         title: "PDF Exportado!",
@@ -362,11 +362,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, onExportSuccess, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo]);
+  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo]);
 
   // NOVO: Função para abrir o diálogo de impressão do navegador
   const handlePrint = () => {
     window.print();
+    // REMOVIDO: onExportSuccess();
   };
 
   const exportExcel = useCallback(async () => {
@@ -1023,7 +1024,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         title: "Excel gerado com sucesso!",
         description: `Arquivo exportado com formatação completa.`,
       });
-      onExportSuccess();
+      // REMOVIDO: onExportSuccess();
     } catch (error) {
       console.error('Erro ao gerar Excel:', error);
       toast({
@@ -1032,7 +1033,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, onExportSuccess, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo]);
+  }, [ptrabData, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo]);
 
   return (
     <div className="space-y-6">
@@ -1448,20 +1449,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         }
       `}</style>
 
-      <AlertDialog open={showCompleteStatusDialog} onOpenChange={setShowCompleteStatusDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Arquivar P Trab?</AlertDialogTitle>
-            <AlertDialogDescription>
-              O P Trab "{ptrabData?.numero_ptrab} - {ptrabData?.nome_operacao}" foi exportado. Deseja alterar o status para "Arquivado"?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleConfirmCompleteStatus}>Sim, arquivar</AlertDialogAction>
-            <AlertDialogCancel onClick={handleCancelCompleteStatus}>Não, manter status atual</AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* REMOVIDO: AlertDialog */}
     </div>
   );
 };
