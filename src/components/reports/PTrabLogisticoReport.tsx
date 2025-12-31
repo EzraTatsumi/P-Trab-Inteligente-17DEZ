@@ -310,10 +310,13 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       description: "Aguarde enquanto o relatório é processado.",
     });
 
+    // OTIMIZAÇÃO: Forçar a captura do estilo de impressão e aumentar a escala
     html2canvas(contentRef.current, {
-      scale: 2,
+      scale: 3, // Aumenta a escala para maior nitidez
       useCORS: true,
       allowTaint: true,
+      // windowWidth: 1122, // Largura do A4 em 96 DPI (1122px) - Pode ajudar a forçar o layout
+      // windowHeight: 793, // Altura do A4 em 96 DPI (793px) - Pode ajudar a forçar o layout
     }).then((canvas) => {
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
       
@@ -1391,33 +1394,19 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           size: A4 landscape;
           margin: 0.5cm;
         }
-        @media print {
-          @page { size: landscape; margin: 0.5cm; }
-          body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
-          .ptrab-print-container { padding: 0 !important; margin: 0 !important; }
-          .ptrab-table thead { display: table-row-group; break-inside: avoid; break-after: auto; }
-          .ptrab-table thead tr { page-break-inside: avoid; page-break-after: auto; }
-          .ptrab-table tbody tr { page-break-inside: avoid; break-inside: avoid; }
-          .ptrab-table tr { page-break-inside: avoid; break-inside: avoid; }
-          
-          /* FORÇA BORDAS FINAS NA IMPRESSÃO */
-          .ptrab-table { border: 0.25pt solid #000 !important; }
-          .ptrab-table th, .ptrab-table td { border: 0.25pt solid #000 !important; }
-          
-          /* NOVO: Evita quebra de página antes do rodapé */
-          .print-avoid-break {
-            page-break-before: avoid !important;
-            page-break-inside: avoid !important;
-          }
-        }
+        
+        /* REGRAS DE ESTILO UNIFICADAS (TELA E IMPRESSÃO) */
         .ptrab-print-container { max-width: 100%; margin: 0 auto; padding: 2rem 1rem; font-family: Arial, sans-serif; }
         .ptrab-header { text-align: center; margin-bottom: 1.5rem; line-height: 1.4; }
+        .ptrab-header p { font-size: 11pt; } /* Tamanho de fonte fixo */
         .ptrab-info { margin-bottom: 0.3rem; font-size: 10pt; line-height: 1.3; }
           .info-item { margin-bottom: 0.15rem; }
         .ptrab-table-wrapper { margin-top: 0.2rem; margin-bottom: 2rem; overflow-x: auto; }
-        .ptrab-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid #000; line-height: 1.1; } /* ALTERADO: Borda externa para 1px */
-        .ptrab-table th, .ptrab-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; } /* GARANTINDO ALINHAMENTO VERTICAL */
+        .ptrab-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid #000; line-height: 1.1; }
+        .ptrab-table th, .ptrab-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; font-size: 8pt; } /* Fonte de dados reduzida para 8pt */
         .ptrab-table thead th { background-color: #E8E8E8; font-weight: bold; text-align: center; font-size: 9pt; }
+        
+        /* LARGURAS DE COLUNA FIXAS */
         .col-despesas { width: 14%; text-align: left; }
         .col-om { width: 9%; text-align: center; }
         .col-natureza-header { background-color: #B4C7E7 !important; text-align: center; font-weight: bold; }
@@ -1429,34 +1418,34 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         .col-valor-natureza { background-color: #B4C7E7 !important; text-align: center; padding: 6px 8px; }
         .col-combustivel-data-filled { background-color: #F8CBAD !important; text-align: center; padding: 6px 8px; }
         .col-detalhamento { width: 28%; text-align: left; }
-        .detalhamento-cell { font-size: 6.5pt; line-height: 1.2; }
-        .total-row { background-color: #FFFF99; font-weight: bold; }
-        .subtotal-row { 
-            background-color: #D3D3D3; 
+        
+        .subtotal-row, .subtotal-om-row, .total-geral-soma-row, .total-geral-final-row { 
             font-weight: bold; 
-            border-top: 1px solid #000; 
             page-break-inside: avoid; /* Previne quebra */
         } 
-        .subtotal-om-row { 
-            background-color: #E8E8E8; 
-            font-weight: bold; 
-            page-break-inside: avoid; /* Previne quebra */
-        }
-        .total-geral-soma-row { 
-            background-color: #D3D3D3; 
-            font-weight: bold; 
-            border-top: 1px solid #000; 
-            page-break-inside: avoid; /* Previne quebra */
-        } 
-        .total-geral-final-row { 
-            background-color: #E8E8E8; 
-            font-weight: bold; 
-            page-break-inside: avoid; /* Previne quebra */
-        }
-        .total-geral-gnd-row { background-color: #E8E8E8; font-weight: bold; border-bottom: 1px solid #000; } /* ALTERADO: Borda fina */
-        .secao-header-row { background-color: #4A7C4E; color: white; font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000; } /* ALTERADO: Borda fina */
+        .subtotal-row { background-color: #D3D3D3; }
+        .subtotal-om-row { background-color: #E8E8E8; }
+        .total-geral-soma-row { background-color: #D3D3D3; border-top: 1px solid #000; }
+        .total-geral-final-row { background-color: #E8E8E8; }
+        
         .ptrab-footer { margin-top: 3rem; text-align: center; }
         .signature-block { margin-top: 4rem; }
+        
+        /* REGRAS ESPECÍFICAS DE IMPRESSÃO (MANTIDAS PARA GARANTIR O COMPORTAMENTO NATIVO) */
+        @media print {
+          @page { size: landscape; margin: 0.5cm; }
+          body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
+          .ptrab-print-container { padding: 0 !important; margin: 0 !important; }
+          .ptrab-table thead { display: table-row-group; break-inside: avoid; break-after: auto; }
+          .ptrab-table th, .ptrab-table td { border: 0.25pt solid #000 !important; } /* Borda mais fina para impressão */
+          .ptrab-table { border: 0.25pt solid #000 !important; }
+          .ptrab-table td { vertical-align: top !important; } /* Alinhamento superior para células de dados */
+          
+          .print-avoid-break {
+            page-break-before: avoid !important;
+            page-break-inside: avoid !important;
+          }
+        }
       `}</style>
 
       <AlertDialog open={showCompleteStatusDialog} onOpenChange={setShowCompleteStatusDialog}>

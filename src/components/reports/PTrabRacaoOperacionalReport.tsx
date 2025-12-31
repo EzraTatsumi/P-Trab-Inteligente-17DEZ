@@ -132,8 +132,9 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
       description: "Aguarde enquanto o relatório é processado.",
     });
 
+    // OTIMIZAÇÃO: Forçar a captura do estilo de impressão e aumentar a escala
     html2canvas(contentRef.current, {
-      scale: 2,
+      scale: 3, // Aumenta a escala para maior nitidez
       useCORS: true,
       allowTaint: true,
     }).then((canvas) => {
@@ -549,42 +550,44 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
           size: A4 landscape;
           margin: 0.5cm;
         }
+        
+        /* REGRAS DE ESTILO UNIFICADAS (TELA E IMPRESSÃO) */
+        .ptrab-print-container { max-width: 100%; margin: 0 auto; padding: 2rem 1rem; font-family: Arial, sans-serif; }
+        .ptrab-header { text-align: center; margin-bottom: 1.5rem; line-height: 1.4; }
+        .ptrab-header p { font-size: 11pt; } /* Tamanho de fonte fixo */
+        .ptrab-info { margin-bottom: 0.3rem; font-size: 10pt; line-height: 1.3; }
+          .info-item { margin-bottom: 0.15rem; }
+        .ptrab-table-wrapper { margin-top: 0.2rem; margin-bottom: 2rem; overflow-x: auto; }
+        .ptrab-table-op { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid #000; line-height: 1.1; }
+        .ptrab-table-op th, .ptrab-table-op td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; font-size: 8pt; } /* Fonte de dados reduzida para 8pt */
+        .ptrab-table-op thead th { background-color: #D9D9D9; font-weight: bold; text-align: center; font-size: 9pt; }
+        
+        /* LARGURAS DE COLUNA FIXAS */
+        .col-despesas-op { width: 25%; text-align: left; }
+        .col-om-op { width: 15%; text-align: center; }
+        .col-quantidade-op { width: 10%; text-align: center; }
+        .col-detalhamento-op { width: 50%; text-align: left; }
+        
+        .total-row-op { page-break-inside: avoid; font-weight: bold; } /* Previne quebra */
+        
+        .ptrab-footer { margin-top: 3rem; text-align: center; }
+        .signature-block { margin-top: 4rem; }
+        
+        /* REGRAS ESPECÍFICAS DE IMPRESSÃO (MANTIDAS PARA GARANTIR O COMPORTAMENTO NATIVO) */
         @media print {
           @page { size: landscape; margin: 0.5cm; }
           body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
           .ptrab-print-container { padding: 0 !important; margin: 0 !important; }
           .ptrab-table-op thead { display: table-row-group; break-inside: avoid; break-after: auto; }
-          .ptrab-table-op thead tr { page-break-inside: avoid; page-break-after: auto; }
-          .ptrab-table-op tbody tr { page-break-inside: avoid; break-inside: avoid; }
-          .ptrab-table-op tr { page-break-inside: avoid; break-inside: avoid; }
-          
-          /* FORÇA BORDAS FINAS NA IMPRESSÃO */
+          .ptrab-table-op th, .ptrab-table-op td { border: 0.25pt solid #000 !important; } /* Borda mais fina para impressão */
           .ptrab-table-op { border: 0.25pt solid #000 !important; }
-          .ptrab-table-op th, .ptrab-table-op td { border: 0.25pt solid #000 !important; }
+          .ptrab-table-op td { vertical-align: top !important; } /* Alinhamento superior para células de dados */
           
           .print-avoid-break {
             page-break-before: avoid !important;
             page-break-inside: avoid !important;
           }
         }
-        .ptrab-print-container { max-width: 100%; margin: 0 auto; padding: 2rem 1rem; font-family: Arial, sans-serif; }
-        .ptrab-header { text-align: center; margin-bottom: 1.5rem; line-height: 1.4; }
-        .ptrab-info { margin-bottom: 0.3rem; font-size: 10pt; line-height: 1.3; }
-          .info-item { margin-bottom: 0.15rem; }
-        .ptrab-table-wrapper { margin-top: 0.2rem; margin-bottom: 2rem; overflow-x: auto; }
-        .ptrab-table-op { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid #000; line-height: 1.1; }
-        .ptrab-table-op th, .ptrab-table-op td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; } /* GARANTINDO ALINHAMENTO VERTICAL */
-        .ptrab-table-op thead th { background-color: #D9D9D9; font-weight: bold; text-align: center; font-size: 9pt; }
-        
-        .col-despesas-op { width: 25%; text-align: left; }
-        .col-om-op { width: 15%; text-align: center; }
-        .col-quantidade-op { width: 10%; text-align: center; }
-        .col-detalhamento-op { width: 50%; text-align: left; }
-        
-        .total-row-op { page-break-inside: avoid; } /* Previne quebra */
-        
-        .ptrab-footer { margin-top: 3rem; text-align: center; }
-        .signature-block { margin-top: 4rem; }
       `}</style>
     </div>
   );
