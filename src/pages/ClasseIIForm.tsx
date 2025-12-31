@@ -1267,7 +1267,6 @@ const ClasseIIForm = () => {
                             <Button 
                                 type="button" 
                                 onClick={handleUpdateCategoryItems} 
-                                className="w-full md:w-auto" 
                                 disabled={!form.organizacao || form.ug === "" || form.dias_operacao <= 0 || form.efetivo <= 0 || !areNumbersEqual(currentCategoryTotalValue, (nd30ValueTemp + nd39ValueTemp)) || (currentCategoryTotalValue > 0 && (!tempDestinations[cat].om || tempDestinations[cat].ug === ""))}
                             >
                                 Salvar Itens da Categoria
