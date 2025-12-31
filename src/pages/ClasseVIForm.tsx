@@ -1296,6 +1296,9 @@ const ClasseVIForm = () => {
                         tempND39Inputs, 
                         tempDestinations
                     );
+
+                    // NOVO: Lógica para verificar se a OM Detentora é diferente da OM de Destino
+                    const isDifferentOm = form.organizacao !== allocation.om_destino_recurso;
                     
                     return (
                       <Card key={categoria} className="p-4 bg-secondary/10 border-secondary">
@@ -1325,7 +1328,7 @@ const ClasseVIForm = () => {
                         <div className="pt-2 border-t mt-2">
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                <span className="font-medium text-foreground">
+                                <span className={cn("font-medium", isDifferentOm ? "text-red-600 font-bold" : "text-foreground")}>
                                     {allocation.om_destino_recurso} ({formatCodug(allocation.ug_destino_recurso)})
                                 </span>
                             </div>
