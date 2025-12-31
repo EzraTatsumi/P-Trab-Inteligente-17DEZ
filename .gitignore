@@ -86,8 +86,8 @@ src/pages/UserProfilePage.tsx
 src/pages/ClasseIForm.tsx
 src/pages/ClasseIIForm.tsx
 src/pages/ClasseIIIForm.tsx
-# REMOVIDO:src/pages/ClasseVForm.tsx
-src/pages/ClasseVIForm.tsx
+src/pages/ClasseVForm.tsx
+# REMOVIDO: src/pages/ClasseVIForm.tsx
 # REMOVIDO: src/pages/ClasseVIIForm.tsx
 src/pages/ClasseVIIIForm.tsx
 src/pages/ClasseIXForm.tsx
