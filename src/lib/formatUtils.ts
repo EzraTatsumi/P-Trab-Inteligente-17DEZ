@@ -74,9 +74,9 @@ export const formatDate = (dateString: string | null | undefined): string => {
 };
 
 /**
- * Formata uma data ISO para o formato DD/MMM/AA (ex: 25/DEZ/24).
+ * Formata uma data ISO para o formato DDMMMAA (ex: 25DEZ24).
  * @param dateString A string de data ISO.
- * @returns A string de data formatada.
+ * @returns A string de data formatada sem barras.
  */
 export const formatDateDDMMMAA = (dateString: string | null | undefined): string => {
     if (!dateString) return '';
@@ -85,7 +85,8 @@ export const formatDateDDMMMAA = (dateString: string | null | undefined): string
         const day = date.getUTCDate().toString().padStart(2, '0');
         const month = date.toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' }).toUpperCase().replace('.', '');
         const year = date.getUTCFullYear().toString().slice(-2);
-        return `${day}/${month}/${year}`;
+        // Retorna a string sem as barras
+        return `${day}${month}${year}`;
     } catch (e) {
         return dateString;
     }

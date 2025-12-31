@@ -189,7 +189,7 @@ const defaultGenerateClasseVIIIMemoriaCalculo = (registro: any): string => {
         const itens = registro.categoria === 'Saúde' ? registro.itens_saude : registro.itens_remonta;
         
         return generateClasseVIIIUtility(
-            registro.categoria,
+            registro.categoria as 'Saúde' | 'Remonta/Veterinária',
             itens,
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
@@ -247,8 +247,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   handleConfirmCompleteStatus,
   handleCancelCompleteStatus,
   fileSuffix, // NOVO PROP
-  generateClasseIIMemoriaCalculo = defaultGenerateClasseIIMemoriaCalculo, // CORRIGIDO: Usando o nome correto da função de fallback
   generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
+  generateClasseIIMemoriaCalculo = defaultGenerateClasseIIMemoriaCalculo, // CORRIGIDO: Usando o nome correto da função de fallback
   generateClasseVMemoriaCalculo = defaultGenerateClasseVMemoriaCalculo, // NOVO: DESESTRUTURANDO E USANDO DEFAULT
   generateClasseVIMemoriaCalculo = defaultGenerateClasseVIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VI
   generateClasseVIIMemoriaCalculo = defaultGenerateClasseVIIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VII
@@ -271,6 +271,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   
   // NOVO: Função para gerar o nome do arquivo
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
+    // Usa a função atualizada que retorna DDMMMAA
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
     // Substitui barras por hífens para segurança no nome do arquivo
     const numeroPTrab = ptrabData.numero_ptrab.replace(/\//g, '-'); 
@@ -294,6 +295,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     nomeBase += ` - ${ptrabData.nome_operacao}`;
     
     // 3. Adicionar a data de atualização e o sufixo da aba
+    // A data já está no formato DDMMMAA (sem barras)
     nomeBase += ` - Atz ${dataAtz} - ${fileSuffix}`;
     
     return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
@@ -561,7 +563,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             ...grupo.linhasLubrificante,
             ...grupo.linhasClasseV,
             ...grupo.linhasClasseVI,
-            ...grupo.linhasClasseVII, 
+            ...grupo.linhasClasseVII,
             ...grupo.linhasClasseVIII, // NOVO: Incluindo Classe VIII
             ...grupo.linhasClasseIX,
         ];
@@ -605,7 +607,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               const omDestinoRecurso = registro.organizacao;
               const ugDestinoRecurso = formatCodug(registro.ug);
               
-              const classeLabel = getClasseIILabel(registro.categoria); // Ex: CLASSE II, CLASSE V, etc.
               let categoriaDetalhe = registro.categoria;
               
               if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
@@ -1138,7 +1139,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             // USANDO A FUNÇÃO UNIFICADA
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                         }
-                    } else if (isClasseII_IX) { // Classes II, V, VI, VII, VIII, IX
+                    } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
                         const registro = linha.registro as ClasseIIRegistro;
                         const omDestinoRecurso = registro.organizacao;
                         const ugDestinoRecurso = formatCodug(registro.ug);

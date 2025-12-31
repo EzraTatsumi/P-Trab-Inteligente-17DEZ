@@ -93,6 +93,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
   
   // Função para gerar o nome do arquivo
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
+    // Usa a função atualizada que retorna DDMMMAA
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
     // Substitui barras por hífens para segurança no nome do arquivo
     const numeroPTrab = ptrabData.numero_ptrab.replace(/\//g, '-'); 
@@ -116,6 +117,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     nomeBase += ` - ${ptrabData.nome_operacao}`;
     
     // 3. Adicionar a data de atualização e o sufixo da aba
+    // A data já está no formato DDMMMAA (sem barras)
     nomeBase += ` - Atz ${dataAtz} - ${fileSuffix}`;
     
     return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
@@ -170,7 +172,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         variant: "destructive",
       });
     });
-  }, [ptrabData, racaoOperacionalConsolidada, onExportSuccess, toast, fileSuffix]);
+  }, [ptrabData, racaoOperacionalConsolidada, onExportSuccess, toast, fileSuffix, generateClasseIMemoriaCalculo]);
 
   // Função para Imprimir (Abre a caixa de diálogo de impressão)
   const handlePrint = useCallback(() => {
