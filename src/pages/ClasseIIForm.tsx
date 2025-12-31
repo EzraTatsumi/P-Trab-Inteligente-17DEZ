@@ -503,7 +503,7 @@ const ClasseIIForm = () => {
 
   const handleFaseChange = (fase: string, checked: boolean) => {
     if (checked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase]));
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
@@ -1310,6 +1310,9 @@ const ClasseIIForm = () => {
                     
                     const allocation = categoryAllocations[categoria as Categoria];
                     
+                    // NOVO: Verifica se a OM Detentora é diferente da OM de Destino do Recurso
+                    const isDifferentOm = form.organizacao !== allocation.om_destino_recurso;
+                    
                     // 3. Realizar a verificação de sujeira usando o total atual
                     const isDirty = isCategoryAllocationDirty(
                         categoria as Categoria, 
@@ -1340,7 +1343,7 @@ const ClasseIIForm = () => {
                         <div className="pt-2 border-t mt-2">
                             <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                <span className="font-medium text-foreground">
+                                <span className={cn("font-medium", isDifferentOm ? "text-red-600 font-bold" : "text-foreground")}>
                                     {allocation.om_destino_recurso} ({formatCodug(allocation.ug_destino_recurso)})
                                 </span>
                             </div>
