@@ -997,7 +997,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       consolidadoLubrificante = {
         total_litros: totalLitrosLubrificante,
         valor_total: totalValorLubrificante,
-        itens: itensLubrificante,
+        itens: itensComLubrificante, // CORREÇÃO AQUI: Usar itensComLubrificante
         detalhamento: detalhamentoLubrificante,
       };
     }
