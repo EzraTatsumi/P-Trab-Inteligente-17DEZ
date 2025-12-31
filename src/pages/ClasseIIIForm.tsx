@@ -329,6 +329,9 @@ const ClasseIIIForm = () => {
   const { handleEnterToNextField } = useFormNavigation();
   const lpcRef = useRef<HTMLDivElement>(null);
 
+  // NOVO ESTADO: Mapeamento de OM/UG para RM Vinculação
+  const [omDetailsMap, setOmDetailsMap] = useState<Record<string, { rm_vinculacao: string, codug_rm_vinculacao: string }>>({});
+
   // --- ESTADOS TEMPORÁRIOS PARA EDIÇÃO DE LUBRIFICANTE ---
   const [editingLubricantIndex, setEditingLubricantIndex] = useState<number | null>(null);
   const [tempConsumoInput, setTempConsumoInput] = useState<string>("");
@@ -409,7 +412,33 @@ const ClasseIIIForm = () => {
       return;
     }
     setRegistros((data || []) as ClasseIIIRegistro[]);
-    // A reconstrução do formulário foi removida daqui para que ele inicie limpo.
+    
+    // NOVO: 1. Coletar todas as OMs/UGs envolvidas (OM Detentora)
+    const uniqueOmUgs = new Set<string>();
+    (data || []).forEach(r => {
+        // A OM Detentora é a OM salva no registro (organizacao/ug)
+        uniqueOmUgs.add(`${r.organizacao}-${r.ug}`);
+    });
+
+    // NOVO: 2. Buscar detalhes de RM Vinculação para essas OMs
+    const omDetailsPromises = Array.from(uniqueOmUgs).map(async (omUgKey) => {
+        const [nome_om, codug_om] = omUgKey.split('-');
+        // Busca apenas a RM de Vinculação
+        const { data: omData } = await supabase
+            .from('organizacoes_militares')
+            .select('rm_vinculacao, codug_rm_vinculacao')
+            .eq('nome_om', nome_om)
+            .eq('codug_om', codug_om)
+            .maybeSingle();
+        return { key: omUgKey, rm_vinculacao: omData?.rm_vinculacao || '', codug_rm_vinculacao: omData?.codug_rm_vinculacao || '' };
+    });
+
+    const results = await Promise.all(omDetailsPromises);
+    const newMap: Record<string, { rm_vinculacao: string, codug_rm_vinculacao: string }> = {};
+    results.forEach(r => {
+        newMap[r.key] = { rm_vinculacao: r.rm_vinculacao, codug_rm_vinculacao: r.codug_rm_vinculacao };
+    });
+    setOmDetailsMap(newMap); // <-- NOVO ESTADO ATUALIZADO
   };
 
   const reconstructFormState = (records: ClasseIIIRegistro[]) => {
@@ -782,8 +811,12 @@ const ClasseIIIForm = () => {
     }
     
     if (categoryTotalValue > 0 && (!lubricantAllocation.om_destino_recurso || !lubricantAllocation.ug_destino_recurso)) {
+      // A verificação de OM Destino Lubrificante só é necessária se houver custo de lubrificante
+      const hasLubricantCost = itemsToKeep.some(item => item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0);
+      if (hasLubricantCost) {
         toast.error("Selecione a OM de destino do recurso Lubrificante antes de salvar a alocação.");
         return;
+      }
     }
     
     // Update allocation state for the current category (ND 39 is always 0 for Classe III)
@@ -964,7 +997,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       consolidadoLubrificante = {
         total_litros: totalLitrosLubrificante,
         valor_total: totalValorLubrificante,
-        itens: itensComLubrificante,
+        itens: itensLubrificante,
         detalhamento: detalhamentoLubrificante,
       };
     }
@@ -1172,7 +1205,7 @@ const registrosAgrupadosPorSuprimento = useMemo(() => {
     });
 
     return groupedByOm;
-}, [registros, refLPC]);
+}, [registros, refLPC, omDetailsMap]);
 
 // --- NOVO MEMO: REGISTROS PARA MEMÓRIA (SEÇÃO 5) ---
 const getMemoriaRecords = granularRegistros;
@@ -1196,7 +1229,9 @@ const getMemoriaRecords = granularRegistros;
       toast.error("Adicione pelo menos um equipamento com quantidade e dias de utilização maior que zero (e salve a categoria).");
       return;
     }
-    if (consolidadoLubrificante && (!lubricantAllocation.om_destino_recurso || !lubricantAllocation.ug_destino_recurso)) {
+    
+    const hasLubricantCost = form.itens.some(item => item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0);
+    if (hasLubricantCost && (!lubricantAllocation.om_destino_recurso || !lubricantAllocation.ug_destino_recurso)) {
       toast.error("Selecione a OM de destino do Lubrificante (ND 30)");
       return;
     }
@@ -2117,20 +2152,36 @@ const getMemoriaRecords = granularRegistros;
                           let isDifferentOm: boolean;
 
                           if (isCombustivel) {
-                            // Extrai RM Fornecimento do detalhamento (onde foi salvo)
-                            let rmFromDetailing = "";
-                            let codugRmFromDetailing = "";
+                            // 1. Extrai RM Fornecimento (OM Destino Recurso) do detalhamento
+                            let rmFornecimentoFromDetailing = "";
+                            let codugRmFornecimentoFromDetailing = "";
                             const rmMatch = originalRegistro.detalhamento?.match(/Fornecido por: (.*?) \(CODUG: (.*?)\)/);
                             if (rmMatch) {
-                                rmFromDetailing = rmMatch[1];
-                                codugRmFromDetailing = rmMatch[2];
+                                rmFornecimentoFromDetailing = rmMatch[1];
+                                codugRmFornecimentoFromDetailing = rmMatch[2];
                             }
-                            destinoOmNome = rmFromDetailing;
-                            destinoOmUg = formatCodug(codugRmFromDetailing);
-                            isDifferentOm = group.om !== rmFromDetailing;
+                            destinoOmNome = rmFornecimentoFromDetailing; // RM Fornecimento
+                            destinoOmUg = formatCodug(codugRmFornecimentoFromDetailing);
+                            
+                            // 2. Lógica de Coloração para Combustível: RM Fornecimento vs RM Vinculação da OM Detentora
+                            // OM Detentora (Source) é a OM salva no registro (group.om)
+                            const omDetentoraKey = `${group.om}-${group.ug}`;
+                            const omDetentoraDetails = omDetailsMap[omDetentoraKey];
+                            const omDetentoraRmVinculacao = omDetentoraDetails?.rm_vinculacao; // RM Vinculação da OM Detentora
+                            
+                            if (omDetentoraRmVinculacao && rmFornecimentoFromDetailing) {
+                                // Comparar RM Vinculação da OM Detentora vs RM Fornecimento
+                                isDifferentOm = omDetentoraRmVinculacao.toUpperCase() !== rmFornecimentoFromDetailing.toUpperCase();
+                            } else {
+                                // Se faltar dados, assume cor normal (não é diferente)
+                                isDifferentOm = false; 
+                            }
+                            
                           } else {
+                            // LUBRIFICANTE (MANTÉM A REGRA ATUAL: OM Detentora vs OM Destino Lubrificante)
                             destinoOmNome = originalRegistro.organizacao;
                             destinoOmUg = formatCodug(originalRegistro.ug);
+                            // OM Detentora é a OM salva no registro (group.om)
                             isDifferentOm = group.om !== originalRegistro.organizacao;
                           }
                           const omDestinoTextClass = isDifferentOm ? 'text-red-600 font-bold' : 'text-foreground';
