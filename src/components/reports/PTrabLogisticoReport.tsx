@@ -30,7 +30,7 @@ import {
   calculateDays,
   formatDate,
   formatFasesParaTexto,
-  // REMOVIDO: getClasseIILabel,
+  getClasseIILabel,
   generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport, // Importar com alias
   generateClasseIXMemoriaCalculo,
   calculateItemTotalClasseIX,
@@ -40,7 +40,6 @@ import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/
 import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils"; 
 import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils"; 
 import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils"; // NOVO: Importando utilitário de Classe VIII
-import { getClasseIILabel } from "@/lib/badgeUtils"; // NOVO: Importando getClasseIILabel do local correto
 
 interface PTrabLogisticoReportProps {
   ptrabData: PTrabData;
@@ -248,8 +247,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   handleConfirmCompleteStatus,
   handleCancelCompleteStatus,
   fileSuffix, // NOVO PROP
-  generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
   generateClasseIIMemoriaCalculo = defaultGenerateClasseIIMemoriaCalculo, // CORRIGIDO: Usando o nome correto da função de fallback
+  generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
   generateClasseVMemoriaCalculo = defaultGenerateClasseVMemoriaCalculo, // NOVO: DESESTRUTURANDO E USANDO DEFAULT
   generateClasseVIMemoriaCalculo = defaultGenerateClasseVIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VI
   generateClasseVIIMemoriaCalculo = defaultGenerateClasseVIIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VII
@@ -562,7 +561,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             ...grupo.linhasLubrificante,
             ...grupo.linhasClasseV,
             ...grupo.linhasClasseVI,
-            ...grupo.linhasClasseVII,
+            ...grupo.linhasClasseVII, 
             ...grupo.linhasClasseVIII, // NOVO: Incluindo Classe VIII
             ...grupo.linhasClasseIX,
         ];

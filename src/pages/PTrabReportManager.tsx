@@ -33,7 +33,7 @@ import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib
 import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils"; // NOVO: Importando utilitário de Classe VIII
 import { generateCategoryMemoriaCalculo as generateClasseIXUtility, calculateItemTotalClasseIX as calculateItemTotalClasseIXUtility } from "@/lib/classeIXUtils"; // NOVO: Importando utilitário de Classe IX
-import { getClasseIILabel } from "@/lib/badgeUtils"; // NOVO: Importar getClasseIILabel
+
 
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
@@ -177,7 +177,29 @@ export const formatFasesParaTexto = (faseCSV: string | null | undefined): string
 };
 
 // Helper function to get the label for Classe II/V/VI/VII/VIII/IX categories
-// REMOVIDO: export const getClasseIILabel = (category: string): string => { ... };
+export const getClasseIILabel = (category: string): string => {
+    switch (category) {
+        case 'Vtr Administrativa': return 'Viatura Administrativa';
+        case 'Vtr Operacional': return 'Viatura Operacional';
+        case 'Motocicleta': return 'Motocicleta';
+        case 'Vtr Blindada': return 'Viatura Blindada';
+        case 'Equipamento Individual': return 'Eqp Individual';
+        case 'Proteção Balística': return 'Prot Balística';
+        case 'Material de Estacionamento': return 'Mat Estacionamento';
+        case 'Armt L': return 'Armamento Leve';
+        case 'Armt P': return 'Armamento Pesado';
+        case 'IODCT': return 'IODCT';
+        case 'DQBRN': return 'DQBRN';
+        case 'Gerador': return 'Gerador';
+        case 'Embarcação': return 'Embarcação';
+        case 'Equipamento de Engenharia': return 'Eqp Engenharia';
+        case 'Comunicações': return 'Comunicações';
+        case 'Informática': return 'Informática';
+        case 'Saúde': return 'Saúde';
+        case 'Remonta/Veterinária': return 'Remonta/Veterinária';
+        default: return category;
+    }
+};
 
 // Exportando a função de cálculo de item da utilidade
 export const calculateItemTotalClasseIX = calculateItemTotalClasseIXUtility;
@@ -216,6 +238,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
                 quantidadeR3: registro.quantidade_r3,
                 // Campos não utilizados na memória OP, mas necessários para a interface
                 omQS: null, ugQS: null, nrRefInt: null, valorQS: null, valorQR: null,
+                memoriaQSCustomizada: null, memoriaQRCustomizada: null,
                 calculos: {
                     totalQS: 0, totalQR: 0, nrCiclos: 0, diasEtapaPaga: 0, diasEtapaSolicitada: 0, totalEtapas: 0,
                     complementoQS: 0, etapaQS: 0, complementoQR: 0, etapaQR: 0,
