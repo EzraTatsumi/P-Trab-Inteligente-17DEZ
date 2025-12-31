@@ -2302,11 +2302,14 @@ const getMemoriaRecords = granularRegistros;
                                   const totais = suprimentoGroup.categoria_totais[cat.key];
                                   if (totais.valor > 0) {
                                     const categoryBadgeStyle = getClasseIIICategoryBadgeStyle(cat.key);
+                                    // Usar o rótulo do categoryLabelMap para garantir a capitalização correta
+                                    const displayLabel = categoryLabelMap[cat.key] || categoryBadgeStyle.label;
+                                    
                                     return (
                                       <div key={cat.key} className="flex justify-between text-xs">
                                         <span className="text-muted-foreground flex items-center gap-1">
                                           <cat.icon className="h-3 w-3" />
-                                          {categoryBadgeStyle.label}: {formatNumber(totais.litros, 2)} L
+                                          {displayLabel}: {formatNumber(totais.litros, 2)} L
                                         </span>
                                         <span className="font-medium text-foreground text-right">
                                           {formatCurrency(totais.valor)}
