@@ -187,6 +187,13 @@ const getEquipmentPluralization = (categoria: TipoEquipamento, count: number): s
     }
 };
 
+/**
+ * Helper function to pluralize 'dia' or 'dias'.
+ */
+const pluralizeDay = (count: number): string => {
+    return count === 1 ? 'dia' : 'dias';
+};
+
 // Função auxiliar para calcular litros e valor de um item (AGORA RETORNA DETALHES DA FÓRMULA)
 const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOperacao: number) => {
   const diasUtilizados = item.dias_utilizados || 0;
@@ -194,15 +201,17 @@ const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOpe
   const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
   let formulaLitros = '';
   
+  const diasPluralItem = pluralizeDay(diasUtilizados);
+  
   if (diasUtilizados > 0) {
     if (isMotomecanizacao) {
       if (item.consumo_fixo > 0) {
         litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
-        formulaLitros = `(${item.quantidade} un. x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${diasUtilizados} dias) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
+        formulaLitros = `(${item.quantidade} un. x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${diasUtilizados} ${diasPluralItem}) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
       }
     } else {
       litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
-      formulaLitros = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} dias`;
+      formulaLitros = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} ${diasPluralItem}`;
     }
   }
   
@@ -298,6 +307,8 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
         }
     }
 
+    const diasPluralHeader = pluralizeDay(dias_operacao);
+
     if (suprimento_tipo === 'LUBRIFICANTE') {
         // MEMÓRIA LUBRIFICANTE (GRANULAR)
         // A OM Destino Recurso para Lubrificante é salva em om_detentora/ug_detentora no registro consolidado
@@ -306,7 +317,7 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
         
         const categoriaLabel = getEquipmentPluralization(categoria, totalEquipamentos);
 
-        return `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabel}, durante ${dias_operacao} dias de ${faseFormatada}.
+        return `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabel}, durante ${dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
 OM Destino Recurso: ${omDestinoRecurso} (UG: ${formatCodug(ugDestinoRecurso)})
 
 Cálculo:
@@ -337,14 +348,13 @@ Valor Total: ${formatCurrency(valor_total)}.`;
         });
         
         const totalEquipamentos = detailed_items.reduce((sum, item) => sum + item.quantidade, 0);
-        const diaPlural = dias_operacao === 1 ? 'dia' : 'dias';
         const omArticle = getOmArticle(om_destino);
         
         // NOVO: Pluralização da Categoria
         const categoriaLabel = getEquipmentPluralization(categoria, totalEquipamentos);
         
         // CABEÇALHO ATUALIZADO
-        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diaPlural} de ${faseFormatada}.
+        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
 
 Cálculo:
 - Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${tipoCombustivel} - ${formatCurrency(preco_litro)}.
@@ -579,9 +589,9 @@ const ClasseIIIForm = () => {
               ? formatCurrencyInput(String(Math.round(precoLubrificante * 100))).digits
               : "";
             
-            const consumoLubrificanteInput = consumoLubrificante > 0 
+            const consumoLubrificanteInput = item.consumo_lubrificante_input || (consumoLubrificante > 0 
               ? formatNumberForInput(consumoLubrificante, 2)
-              : "";
+              : "");
             
             const newItem: ItemClasseIII = {
               item: directiveItem.nome,
@@ -882,18 +892,14 @@ const ClasseIIIForm = () => {
         return;
     }
     
-    if (categoryTotalValue > 0 && (!lubricantAllocation.om_destino_recurso || !lubricantAllocation.ug_destino_recurso)) {
+    if (categoryTotalValue > 0) {
       // A verificação de OM Destino Lubrificante só é necessária se houver custo de lubrificante
       const hasLubricantCost = itemsToKeep.some(item => item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0);
-      if (hasLubricantCost) {
+      if (hasLubricantCost && (!lubricantAllocation.om_destino_recurso || !lubricantAllocation.ug_destino_recurso)) {
         toast.error("Selecione a OM de destino do recurso Lubrificante antes de salvar a alocação.");
         return;
       }
     }
-    
-    // Update allocation state for the current category (ND 39 is always 0 for Classe III)
-    // NOTE: We don't need categoryAllocations state for ND split anymore, but we keep it for total_valor tracking
-    // The ND split logic is now hardcoded to ND 30 = Total, ND 39 = 0.
     
     // ------------------------------------------
     
@@ -953,13 +959,14 @@ const ClasseIIIForm = () => {
         let litrosSemMargemItem = 0;
         let formulaDetalhe = '';
         const diasUtilizados = item.dias_utilizados || 0;
+        const diasPluralItem = pluralizeDay(diasUtilizados);
         
         if (item.categoria === 'MOTOMECANIZACAO') {
           litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
-          formulaDetalhe = `(${item.quantidade} un. x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${diasUtilizados} dias) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
+          formulaDetalhe = `(${item.quantidade} un. x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${diasUtilizados} ${diasPluralItem}) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
         } else {
           litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
-          formulaDetalhe = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} dias`;
+          formulaDetalhe = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} ${diasPluralItem}`;
         }
         
         totalLitrosSemMargem += litrosSemMargemItem;
@@ -986,7 +993,7 @@ const ClasseIIIForm = () => {
       const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
       
       // NOVO: Pluralização e Artigo
-      const diaPlural = form.dias_operacao === 1 ? 'dia' : 'dias';
+      const diasPluralHeader = pluralizeDay(form.dias_operacao);
       const omArticle = getOmArticle(form.organizacao);
       
       // NOVO: Pluralização da Categoria
@@ -999,7 +1006,7 @@ const ClasseIIIForm = () => {
       }
       
       // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
-      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
+      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
 
 Cálculo:
 - Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
@@ -1058,8 +1065,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
           categoriaLabelLub = 'Equipamentos Diversos';
       }
       
+      const diasPluralHeader = pluralizeDay(form.dias_operacao);
+
       // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE LUBRIFICANTE (NOVO PADRÃO)
-      let detalhamento = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabelLub}, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
+      let detalhamento = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabelLub}, durante ${form.dias_operacao} ${diasPluralHeader} de ${faseFormatada}, para ${form.organizacao}.
 
 OM Destino Recurso: ${lubricantAllocation.om_destino_recurso} (UG: ${formatCodug(lubricantAllocation.ug_destino_recurso)})
 
@@ -1084,8 +1093,8 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         };
     }
     
-    return { consolidadosCombustivel: novosConsolidados, consolidadoLubrificante: consolidadoLubrificante, itensAgrupadosPorCategoria: groupedFormItems };
-  }, [form.itens, refLPC, form.dias_operacao, fasesAtividade, customFaseAtividade, rmFornecimento, codugRmFornecimento, lubricantAllocation]);
+    return { consolidadosCombustivel: novosConsolidados, consolidadoLubrificante: lubrificanteConsolidado, itensAgrupadosPorCategoria: groupedFormItems };
+  }, [form.itens, refLPC, form.dias_operacao, fasesAtividade, customFaseAtividade, lubricantAllocation]);
 
   // Totais da Categoria Atual (para exibição na aba)
   const currentCategoryItemsActive = localCategoryItems.filter(item => item.quantidade > 0 && item.dias_utilizados > 0);
@@ -1327,13 +1336,14 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         let litrosSemMargemItem = 0;
         let formulaDetalhe = '';
         const diasUtilizados = item.dias_utilizados || 0;
+        const diasPluralItem = pluralizeDay(diasUtilizados);
         
         if (item.categoria === 'MOTOMECANIZACAO') {
           litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
-          formulaDetalhe = `(${item.quantidade} un. x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${diasUtilizados} dias) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
+          formulaDetalhe = `(${item.quantidade} un. x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${diasUtilizados} ${diasPluralItem}) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
         } else {
           litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
-          formulaDetalhe = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} dias`;
+          formulaDetalhe = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} ${diasPluralItem}`;
         }
         
         totalLitrosSemMargem += litrosSemMargemItem;
@@ -1360,7 +1370,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
       
       // NOVO: Pluralização e Artigo
-      const diaPlural = form.dias_operacao === 1 ? 'dia' : 'dias';
+      const diasPluralHeader = pluralizeDay(form.dias_operacao);
       const omArticle = getOmArticle(form.organizacao);
       
       // NOVO: Pluralização da Categoria
@@ -1373,7 +1383,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       }
       
       // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
-      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
+      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
 
 Cálculo:
 - Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
@@ -1432,8 +1442,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
           categoriaLabelLub = 'Equipamentos Diversos';
       }
       
+      const diasPluralHeader = pluralizeDay(form.dias_operacao);
+
       // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE LUBRIFICANTE (NOVO PADRÃO)
-      let detalhamento = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabelLub}, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
+      let detalhamento = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabelLub}, durante ${form.dias_operacao} ${diasPluralHeader} de ${faseFormatada}, para ${form.organizacao}.
 
 OM Destino Recurso: ${lubricantAllocation.om_destino_recurso} (UG: ${formatCodug(lubricantAllocation.ug_destino_recurso)})
 
@@ -1474,7 +1486,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         ug: form.ug, // UG Detentora do Equipamento
         tipo_equipamento: 'COMBUSTIVEL_CONSOLIDADO',
         quantidade: c.itens.reduce((sum, item) => sum + item.quantidade, 0),
-        dias_operacao: form.dias_operacao,
+        dias_operacao: form.dias_operacao, // Salva o dia global para contexto
         tipo_combustivel: c.tipo_combustivel,
         preco_litro: c.valor_total / c.total_litros, // Preço médio (ou o preço do LPC)
         total_litros: c.total_litros,
@@ -1492,8 +1504,8 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         valor_nd_30: c.valor_total, // Classe III Combustível é ND 30
         valor_nd_39: 0,
         // OM Detentora do Recurso (Combustível) - Não usado, mas mantido para consistência
-        om_detentora: form.organizacao, 
-        ug_detentora: form.ug,
+        om_detentora: rmFornecimento, 
+        ug_detentora: codugRmFornecimento,
       };
       registrosParaSalvar.push(registroCombustivel);
     });
@@ -2277,6 +2289,8 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                             const { itemTotal, totalLitros, valorCombustivel, valorLubrificante, formulaLitros, precoLitro, litrosSemMargemItem } = calculateItemTotals(item, refLPC, form.dias_operacao);
                             const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
                             
+                            const diasPluralItem = pluralizeDay(item.dias_utilizados);
+
                             return (
                               <div 
                                 key={index} 
@@ -2406,15 +2420,8 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
 
                           if (isCombustivel) {
                             // 1. Extrai RM Fornecimento (OM Destino Recurso) do detalhamento
-                            let rmFornecimentoFromDetailing = "";
-                            let codugRmFornecimentoFromDetailing = "";
-                            const rmMatch = originalRegistro.detalhamento?.match(/Fornecido por: (.*?) \(CODUG: (.*?)\)/);
-                            if (rmMatch) {
-                                rmFornecimentoFromDetailing = rmMatch[1];
-                                codugRmFornecimentoFromDetailing = rmMatch[2];
-                            }
-                            destinoOmNome = rmFornecimentoFromDetailing; // RM Fornecimento
-                            destinoOmUg = codugRmFornecimentoFromDetailing;
+                            destinoOmNome = originalRegistro.om_detentora || ''; // RM Fornecimento
+                            destinoOmUg = originalRegistro.ug_detentora || '';
                             
                             // 2. Lógica de Coloração para Combustível: RM Fornecimento vs RM Vinculação da OM Detentora
                             // OM Detentora (Source) é a OM salva no registro (group.om)
@@ -2422,9 +2429,9 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                             const omDetentoraDetails = omDetailsMap[omDetentoraKey];
                             const omDetentoraRmVinculacao = omDetentoraDetails?.rm_vinculacao; // RM Vinculação da OM Detentora
                             
-                            if (omDetentoraRmVinculacao && rmFornecimentoFromDetailing) {
+                            if (omDetentoraRmVinculacao && destinoOmNome) {
                                 // Comparar RM Vinculação da OM Detentora vs RM Fornecimento
-                                isDifferentOm = omDetentoraRmVinculacao.toUpperCase() !== rmFornecimentoFromDetailing.toUpperCase();
+                                isDifferentOm = omDetentoraRmVinculacao.toUpperCase() !== destinoOmNome.toUpperCase();
                             } else {
                                 // Se faltar dados, assume cor normal (não é diferente)
                                 isDifferentOm = false; 
