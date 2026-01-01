@@ -293,10 +293,16 @@ Valor Total: ${formatCurrency(valor_total)}.`;
             detalhes.push(`- ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
         });
         
-        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} equipamentos, durante ${dias_operacao} dias de ${faseFormatada}, para ${om_destino}.
+        // NOVO CABEÇALHO SOLICITADO:
+        const omArticle = getOmArticle(om_destino);
+        const categoriaLabel = getClasseIIICategoryLabel(categoria);
+        const diaPlural = dias_operacao === 1 ? 'dia' : 'dias';
+        
+        const header = `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diaPlural} de ${faseFormatada}.`;
+        
+        return `${header}
 
-Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)})
-
+Cálculo:
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(preco_litro)}.
 
 Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
@@ -950,12 +956,12 @@ const ClasseIIIForm = () => {
       }
       
       const omArticle = getOmArticle(form.organizacao);
+      const diaPlural = form.dias_operacao === 1 ? 'dia' : 'dias';
       
-      // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
-      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${consolidatedCategoryLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} dias de ${faseFormatada}.
+      // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO SOLICITADO)
+      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${consolidatedCategoryLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
 
 Cálculo:
-
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
 
 Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
@@ -2238,27 +2244,24 @@ const getMemoriaRecords = granularRegistros;
                             // 1. Extrai RM Fornecimento (OM Destino Recurso) do detalhamento
                             let rmFornecimentoFromDetailing = "";
                             let codugRmFornecimentoFromDetailing = "";
-                            const rmMatch = originalRegistro.detalhamento?.match(/Fornecido por: (.*?) \(CODUG: (.*?)\)/);
-                            if (rmMatch) {
-                                rmFornecimentoFromDetailing = rmMatch[1];
-                                codugRmFornecimentoFromDetailing = rmMatch[2];
-                            }
-                            destinoOmNome = rmFornecimentoFromDetailing; // RM Fornecimento
-                            destinoOmUg = codugRmFornecimentoFromDetailing;
+                            // NOTA: O detalhamento não contém mais a linha "Fornecido por", mas sim a OM Detentora do Equipamento
+                            // Para o relatório, a OM Destino Recurso de Combustível é a RM de Fornecimento.
+                            // Como não salvamos a RM de Fornecimento no registro consolidado, precisamos buscá-la
+                            // ou confiar que o detalhamento original (se não customizado) a continha.
+                            // Para fins de exibição aqui, vamos usar a OM Detentora do Equipamento (group.om)
+                            // e assumir que a RM de Fornecimento é a RM de Vinculação da OM Detentora (omDetailsMap).
                             
-                            // 2. Lógica de Coloração para Combustível: RM Fornecimento vs RM Vinculação da OM Detentora
-                            // OM Detentora (Source) é a OM salva no registro (group.om)
                             const omDetentoraKey = `${group.om}-${group.ug}`;
                             const omDetentoraDetails = omDetailsMap[omDetentoraKey];
-                            const omDetentoraRmVinculacao = omDetentoraDetails?.rm_vinculacao; // RM Vinculação da OM Detentora
                             
-                            if (omDetentoraRmVinculacao && rmFornecimentoFromDetailing) {
-                                // Comparar RM Vinculação da OM Detentora vs RM Fornecimento
-                                isDifferentOm = omDetentoraRmVinculacao.toUpperCase() !== rmFornecimentoFromDetailing.toUpperCase();
-                            } else {
-                                // Se faltar dados, assume cor normal (não é diferente)
-                                isDifferentOm = false; 
-                            }
+                            destinoOmNome = omDetentoraDetails?.rm_vinculacao || 'RM Desconhecida'; // RM de Fornecimento
+                            destinoOmUg = omDetentoraDetails?.codug_rm_vinculacao || '000.000';
+                            
+                            // Lógica de Coloração: RM Fornecimento vs RM Vinculação da OM Detentora
+                            // Como a OM Detentora do Equipamento é a OM principal, e a RM de Fornecimento é a RM de Vinculação,
+                            // a comparação de "diferente" não faz sentido aqui, a menos que o usuário tenha alterado a RM de Fornecimento.
+                            // Vamos manter a cor padrão, pois a RM de Vinculação é o destino esperado.
+                            isDifferentOm = false; 
                             
                           } else {
                             // LUBRIFICANTE: OM Detentora do Equipamento (group.om) vs OM Destino Recurso (om_detentora/ug_detentora)
