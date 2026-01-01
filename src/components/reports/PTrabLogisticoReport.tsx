@@ -31,7 +31,6 @@ import {
   formatDate,
   formatFasesParaTexto,
   getClasseIILabel,
-  generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport, // Importar com alias
   generateClasseIXMemoriaCalculo,
   calculateItemTotalClasseIX,
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
@@ -39,7 +38,8 @@ import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils"; 
 import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils"; 
 import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils"; 
-import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils"; // NOVO: Importando utilitário de Classe VIII
+import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils"; 
+import { RefLPC } from "@/types/refLPC"; // Importando RefLPC
 
 interface PTrabLogisticoReportProps {
   ptrabData: PTrabData;
@@ -75,7 +75,9 @@ interface PTrabLogisticoReportProps {
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe VII
   generateClasseVIIMemoriaCalculo: (registro: any) => string;
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe VIII
-  generateClasseVIIIMemoriaCalculo: (registro: any) => string; // ADICIONADO
+  generateClasseVIIIMemoriaCalculo: (registro: any) => string;
+  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe III (granular)
+  generateClasseIIIMemoriaCalculo: (registro: ClasseIIIRegistro) => string;
 }
 
 // Implementação padrão (fallback) para generateClasseIIMemoriaCalculo
@@ -173,7 +175,7 @@ const defaultGenerateClasseVIIMemoriaCalculo = (registro: any): string => {
     return registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
-// NOVO: Implementação padrão (fallback) para generateClasseVIIIMemoriaCalculo
+// Implementação padrão (fallback) para generateClasseVIIIMemoriaCalculo
 const defaultGenerateClasseVIIIMemoriaCalculo = (registro: any): string => {
     if (registro.detalhamento_customizado) {
         return registro.detalhamento_customizado;
@@ -197,6 +199,12 @@ const defaultGenerateClasseVIIIMemoriaCalculo = (registro: any): string => {
         );
     }
     return registro.detalhamento || "Memória de cálculo não disponível.";
+};
+
+// Implementação padrão (fallback) para generateClasseIIIMemoriaCalculo
+const defaultGenerateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro): string => {
+    // Se não for passada a função do Manager, retorna o detalhamento consolidado (fallback)
+    return registro.detalhamento_customizado || registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
 
@@ -243,6 +251,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   generateClasseVIMemoriaCalculo = defaultGenerateClasseVIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VI
   generateClasseVIIMemoriaCalculo = defaultGenerateClasseVIIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VII
   generateClasseVIIIMemoriaCalculo = defaultGenerateClasseVIIIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VIII
+  generateClasseIIIMemoriaCalculo = defaultGenerateClasseIIIMemoriaCalculo, // NOVO: ADICIONADO CLASSE III
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -687,8 +696,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               rowData.valorC = registro.valor_total;
               rowData.valorE = registro.valor_total;
               
-              // USANDO O DETALHAMENTO SALVO NO REGISTRO (que já contém a nova formatação)
-              rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
+              // NOVO: USANDO A FUNÇÃO GRANULAR DO MANAGER
+              rowData.detalhamentoValue = generateClasseIIIMemoriaCalculo(registro);
           }
           
           const row = worksheet.getRow(currentRow);
@@ -776,7 +785,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
             
             // USANDO O DETALHAMENTO SALVO NO REGISTRO (que já contém a nova formatação)
-            const detalhamentoCombustivel = registro.detalhamento_customizado || registro.detalhamento || '';
+            const detalhamentoCombustivel = generateClasseIIIMemoriaCalculo(registro);
             
             row.getCell('I').value = detalhamentoCombustivel;
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
@@ -1040,7 +1049,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo]);
+  }, [ptrabData, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo, generateClasseIIIMemoriaCalculo]);
 
   return (
     <div className="space-y-6">
@@ -1237,8 +1246,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         rowData.valorC = registro.valor_total;
                         rowData.valorE = registro.valor_total;
                         
-                        // USANDO O DETALHAMENTO SALVO NO REGISTRO (que já contém a nova formatação)
-                        rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
+                        // NOVO: USANDO A FUNÇÃO GRANULAR DO MANAGER
+                        rowData.detalhamentoValue = generateClasseIIIMemoriaCalculo(registro);
                     }
                     
                     return (
@@ -1291,8 +1300,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{formatCurrency(registro.valor_total)}</td>
                         <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
                           <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                            {/* USANDO O DETALHAMENTO SALVO NO REGISTRO (que já contém a nova formatação) */}
-                            {registro.detalhamento_customizado || registro.detalhamento || ''}
+                            {/* NOVO: USANDO A FUNÇÃO GRANULAR DO MANAGER */}
+                            {generateClasseIIIMemoriaCalculo(registro)}
                           </pre>
                         </td>
                       </tr>
