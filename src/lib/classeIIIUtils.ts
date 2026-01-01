@@ -44,6 +44,7 @@ export interface ClasseIIIRegistro {
   valor_nd_39: number;
   om_detentora?: string | null; 
   ug_detentora?: string | null;
+  categoria?: TipoEquipamento;
 }
 
 export interface GranularDisplayItem {
@@ -64,7 +65,7 @@ export interface GranularDisplayItem {
 }
 
 // Função auxiliar para pluralizar 'dia' ou 'dias'.
-const pluralizeDay = (count: number): string => {
+export const pluralizeDay = (count: number): string => {
     return count === 1 ? 'dia' : 'dias';
 };
 
@@ -240,7 +241,6 @@ export const generateConsolidatedMemoriaCalculo = (
         itens.forEach(item => {
             const { litrosLubrificante } = calculateItemTotals(item, refLPC, diasOperacaoGlobal);
             
-            // NOVO FORMATO SOLICITADO: <item>: (<Qtd Item> un. x <Qtd Nr horas/dia> x <Qtd Nr dias>) x <Consumo Lubrificante> = <Total Lubrificante> (L)
             const diasPluralItem = pluralizeDay(item.dias_utilizados);
             const itemConsumptionUnit = item.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
             

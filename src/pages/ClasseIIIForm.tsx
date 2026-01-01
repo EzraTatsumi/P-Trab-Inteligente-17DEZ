@@ -35,6 +35,7 @@ import {
   calculateItemTotals, 
   generateConsolidatedMemoriaCalculo,
   generateGranularMemoriaCalculo,
+  pluralizeDay, // IMPORTADO
 } from "@/lib/classeIIIUtils"; // Importando tipos e utilitários
 
 type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
@@ -1419,6 +1420,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
   };
 
   const isFormValid = form.organizacao && form.ug && rmFornecimento && codugRmFornecimento && form.dias_operacao > 0;
+  // CORRIGIDO: Removido o uso de pluralizeDay aqui, pois formatFasesParaTexto não precisa dele.
   const displayFases = [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join('; ');
   
   const getTipoLabel = (tipo: string) => {
