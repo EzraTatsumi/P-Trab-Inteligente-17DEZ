@@ -34,7 +34,6 @@ import {
   generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport, // Importar com alias
   generateClasseIXMemoriaCalculo,
   calculateItemTotalClasseIX,
-  generateClasseIIIMemoriaCalculo, // Importando a função de memória da Classe III
   LinhaClasseIII, // NOVO: Importando LinhaClasseIII
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
@@ -243,81 +242,21 @@ const getOmArticle = (omName: string): string => {
     return 'do';
 };
 
-// NOVO: Função para gerar a memória de cálculo granular da Classe III
-const generateGranularClasseIIIMemoria = (linha: LinhaClasseIII): string => {
-    // 1. Prioriza a memória customizada salva no item granular
-    if (linha.itemEquipamento.memoria_customizada) {
-        return linha.itemEquipamento.memoria_customizada;
+// NOVO: Função para gerar a memória de cálculo consolidada da Classe III (usando registrosClasseIII)
+const generateClasseIIIMemoria = (linha: LinhaClasseIII, allRegistrosClasseIII: ClasseIIIRegistro[]): string => {
+    const registroConsolidado = allRegistrosClasseIII.find(r => r.id === linha.registroConsolidadoId);
+    
+    if (!registroConsolidado) {
+        return "Erro: Registro consolidado não encontrado.";
     }
     
-    // 2. Se não houver customizada, gera a memória automática para o item granular
-    const item = linha.itemEquipamento;
-    const isLubrificante = linha.suprimentoTipo === 'LUBRIFICANTE';
-    const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
-    
-    const omArticle = getOmArticle(linha.omDetentoraEquipamento);
-    const diasPluralHeader = pluralizeDay(item.dias_utilizados);
-    const faseFormatada = formatFasesParaTexto(linha.faseAtividade);
-    
-    let header = "";
-    let detalhamento = "";
-    
-    if (isLubrificante) {
-        const consumptionUnit = item.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
-        
-        header = `33.90.30 - Aquisição de Lubrificante para ${item.item} (${item.quantidade} un.) ${omArticle} ${linha.omDetentoraEquipamento}, durante ${item.dias_utilizados} ${diasPluralHeader} de ${faseFormatada}.`;
-        
-        const totalHoras = item.quantidade * item.horas_dia * item.dias_utilizados;
-        const litrosLubrificante = linha.totalLitros;
-        
-        detalhamento = `Cálculo:
-- Consumo Lubrificante: ${formatNumber(item.consumo_lubrificante_litro, 2)} ${consumptionUnit}
-- Preço Lubrificante: ${formatCurrency(item.preco_lubrificante)}
-
-Fórmula: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante.
-- (${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${item.dias_utilizados} ${diasPluralHeader}) x ${formatNumber(item.consumo_lubrificante_litro, 2)} ${consumptionUnit} = ${formatNumber(litrosLubrificante, 2)} L
-
-Total: ${formatNumber(litrosLubrificante, 2)} L x ${formatCurrency(item.preco_lubrificante)} = ${formatCurrency(linha.valorTotal)}.`;
-        
-    } else {
-        // Combustível
-        const tipoCombustivelLabel = getTipoCombustivelLabel(linha.suprimentoTipo);
-        const unidadeLabel = linha.suprimentoTipo === 'COMBUSTIVEL_GASOLINA' ? 'GAS' : 'OD';
-        
-        header = `33.90.30 - Aquisição de Combustível (${tipoCombustivelLabel}) para ${item.item} (${item.quantidade} un.) ${omArticle} ${linha.omDetentoraEquipamento}, durante ${item.dias_utilizados} ${diasPluralHeader} de ${faseFormatada}.`;
-        
-        let formulaPrincipal = "";
-        let formulaLitros = "";
-        let litrosSemMargemItem = 0;
-        
-        if (isMotomecanizacao) {
-            formulaPrincipal = "Fórmula: (Nr Viaturas x Km/Desloc x Nr Desloc/dia x Nr Dias) ÷ Rendimento (Km/L).";
-            // NOTE: We cannot rely on calculateItemTotals here as it requires RefLPC, which is not available.
-            // We must recalculate based on the item data, assuming the item data is correct.
-            litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * item.dias_utilizados) / item.consumo_fixo;
-            formulaLitros = `(${item.quantidade} un. x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${item.dias_utilizados} ${diasPluralHeader}) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
-        } else {
-            formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.";
-            litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * item.dias_utilizados;
-            formulaLitros = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${item.dias_utilizados} ${diasPluralHeader}`;
-        }
-        
-        detalhamento = `Cálculo:
-- Preço Unitário: ${formatCurrency(linha.precoLitro)}.
-
-${formulaPrincipal}
-- ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.
-
-Total: ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(linha.totalLitros)} L ${unidadeLabel}.
-Valor: ${formatNumber(linha.totalLitros)} L ${unidadeLabel} x ${formatCurrency(linha.precoLitro)} = ${formatCurrency(linha.valorTotal)}.`;
+    // 1. Prioriza a memória customizada do registro consolidado
+    if (registroConsolidado.detalhamento_customizado) {
+        return registroConsolidado.detalhamento_customizado;
     }
     
-    return `${header}
-
-OM Detentora Equipamento: ${linha.omDetentoraEquipamento} (UG: ${formatCodug(linha.ugDetentoraEquipamento)})
-Recurso destinado à OM: ${linha.omDestinoRecurso} (UG: ${formatCodug(linha.ugDestinoRecurso)})
-
-${detalhamento}`;
+    // 2. Retorna o detalhamento automático salvo (que é o consolidado)
+    return registroConsolidado.detalhamento || "Memória de cálculo não disponível.";
 };
 
 
@@ -367,7 +306,25 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   
   const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
   
-  // NOVO: Função para gerar o nome do arquivo (mantida)
+  // NOVO: Função para gerar a memória de cálculo consolidada da Classe III (usando registrosClasseIII)
+  const generateClasseIIIMemoria = useCallback((linha: LinhaClasseIII): string => {
+      const registroConsolidado = registrosClasseIII.find(r => r.id === linha.registroConsolidadoId);
+      
+      if (!registroConsolidado) {
+          return "Erro: Registro consolidado não encontrado.";
+      }
+      
+      // 1. Prioriza a memória customizada do registro consolidado
+      if (registroConsolidado.detalhamento_customizado) {
+          return registroConsolidado.detalhamento_customizado;
+      }
+      
+      // 2. Retorna o detalhamento automático salvo (que é o consolidado)
+      return registroConsolidado.detalhamento || "Memória de cálculo não disponível.";
+  }, [registrosClasseIII]);
+
+
+  // Função para gerar o nome do arquivo (mantida)
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
     const numeroPTrab = ptrabData.numero_ptrab.replace(/\//g, '-'); 
@@ -441,7 +398,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo]);
+  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo, generateClasseIIIMemoria]);
 
   // NOVO: Função para abrir o diálogo de impressão do navegador (mantida)
   const handlePrint = () => {
@@ -724,23 +681,20 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               
               rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, prefixoClasse === 'CLASSE II');
               
-          } else if (isClasseIII) { // Classe III (Granular)
+          } else if (isClasseIII) { // Classe III (Consolidado)
               const linhaClasseIII = linha as LinhaClasseIII;
-              const item = linhaClasseIII.itemEquipamento;
               const isLub = linhaClasseIII.suprimentoTipo === 'LUBRIFICANTE';
               
               const omDetentoraEquipamento = linhaClasseIII.omDetentoraEquipamento;
               const omDestinoRecurso = linhaClasseIII.omDestinoRecurso;
               const ugDestinoRecurso = formatCodug(linhaClasseIII.ugDestinoRecurso);
               
-              const categoriaLabel = getTipoEquipamentoLabel(item.categoria);
-              
               // 1. Coluna A: Despesas
               if (isLub) {
-                  rowData.despesasValue = `CLASSE III - LUBRIFICANTE\n${omDetentoraEquipamento}\n${categoriaLabel} - ${item.item}`;
+                  rowData.despesasValue = `CLASSE III - LUBRIFICANTE\n${omDetentoraEquipamento}`;
               } else {
                   const tipoCombustivelLabel = getTipoCombustivelLabel(linhaClasseIII.suprimentoTipo);
-                  rowData.despesasValue = `CLASSE III - COMBUSTÍVEL\n${tipoCombustivelLabel}\n${omDetentoraEquipamento}\n${categoriaLabel} - ${item.item}`;
+                  rowData.despesasValue = `CLASSE III - COMBUSTÍVEL\n${tipoCombustivelLabel}`;
                   rowData.isCombustivelLine = true;
               }
               
@@ -771,8 +725,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   rowData.precoH = linhaClasseIII.valorTotal;
               }
               
-              // 5. Coluna I: Detalhamento (Memória Granular)
-              rowData.detalhamentoValue = generateGranularClasseIIIMemoria(linhaClasseIII);
+              // 5. Coluna I: Detalhamento (Memória Consolidada)
+              rowData.detalhamentoValue = generateClasseIIIMemoria(linhaClasseIII, registrosClasseIII);
           }
           
           const row = worksheet.getRow(currentRow);
@@ -1064,7 +1018,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, toast, gruposPorOM, calcularTotaisPorOM, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo, generateClasseIIIMemoriaCalculo]);
+  }, [ptrabData, toast, gruposPorOM, calcularTotaisPorOM, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo, generateClasseIIIMemoria, registrosClasseIII]);
 
   return (
     <div className="space-y-6">
@@ -1220,23 +1174,20 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         
                         rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, prefixoClasse === 'CLASSE II');
                         
-                    } else if (isClasseIII) { // Classe III (Granular)
+                    } else if (isClasseIII) { // Classe III (Consolidado)
                         const linhaClasseIII = linha as LinhaClasseIII;
-                        const item = linhaClasseIII.itemEquipamento;
                         const isLub = linhaClasseIII.suprimentoTipo === 'LUBRIFICANTE';
                         
                         const omDetentoraEquipamento = linhaClasseIII.omDetentoraEquipamento;
                         const omDestinoRecurso = linhaClasseIII.omDestinoRecurso;
                         const ugDestinoRecurso = formatCodug(linhaClasseIII.ugDestinoRecurso);
                         
-                        const categoriaLabel = getTipoEquipamentoLabel(item.categoria);
-                        
                         // 1. Coluna A: Despesas
                         if (isLub) {
-                            rowData.despesasValue = `CLASSE III - LUBRIFICANTE\n${omDetentoraEquipamento}\n${categoriaLabel} - ${item.item}`;
+                            rowData.despesasValue = `CLASSE III - LUBRIFICANTE\n${omDetentoraEquipamento}`;
                         } else {
                             const tipoCombustivelLabel = getTipoCombustivelLabel(linhaClasseIII.suprimentoTipo);
-                            rowData.despesasValue = `CLASSE III - COMBUSTÍVEL\n${tipoCombustivelLabel}\n${omDetentoraEquipamento}\n${categoriaLabel} - ${item.item}`;
+                            rowData.despesasValue = `CLASSE III - COMBUSTÍVEL\n${tipoCombustivelLabel}`;
                             rowData.isCombustivelLine = true;
                         }
                         
@@ -1267,8 +1218,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             rowData.precoH = linhaClasseIII.valorTotal;
                         }
                         
-                        // 5. Coluna I: Detalhamento (Memória Granular)
-                        rowData.detalhamentoValue = generateGranularClasseIIIMemoria(linhaClasseIII);
+                        // 5. Coluna I: Detalhamento (Memória Consolidada)
+                        rowData.detalhamentoValue = generateClasseIIIMemoria(linhaClasseIII, registrosClasseIII);
                     }
                     
                     return (
