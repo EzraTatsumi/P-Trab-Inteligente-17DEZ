@@ -239,7 +239,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   fileSuffix, // NOVO PROP
   generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
   generateClasseIIMemoriaCalculo = defaultGenerateClasseIIMemoriaCalculo, // CORRIGIDO: Usando o nome correto da função de fallback
-  generateClasseVMemoriaCalculo = defaultGenerateClasseVMemoriaCalculo, // NOVO: DESESTRUTURANDO E USANDO DEFAULT
+  generateClasseVMemoriaCalculo, // USANDO O PROP FORNECIDO
   generateClasseVIMemoriaCalculo = defaultGenerateClasseVIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VI
   generateClasseVIIMemoriaCalculo = defaultGenerateClasseVIIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VII
   generateClasseVIIIMemoriaCalculo = defaultGenerateClasseVIIIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VIII
@@ -617,8 +617,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               
               let categoriaDetalhe = getClasseIILabel(registro.categoria); // Usar rótulo completo
               
+              // Adiciona o tipo de animal para Classe VIII Remonta
               if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
-                  categoriaDetalhe = registro.animal_tipo;
+                  categoriaDetalhe = `${categoriaDetalhe} - ${registro.animal_tipo}`;
               }
                   
               const omDetentora = registro.om_detentora || omDestinoRecurso;
@@ -640,7 +641,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   prefixoClasse = 'CLASSE II';
               }
               
-              rowData.despesasValue = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
+              // Garantir que categoriaDetalhe seja uma string antes de chamar toUpperCase
+              rowData.despesasValue = `${prefixoClasse} - ${categoriaDetalhe ? categoriaDetalhe.toUpperCase() : 'CATEGORIA DESCONHECIDA'}`;
               
               // 2. Adiciona a OM Detentora se for diferente da OM de Destino
               if (isDifferentOm) {
@@ -658,6 +660,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                   rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
               } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                  // USANDO O PROP FORNECIDO PARA CLASSE V
                   rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
               } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
                   rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
@@ -1167,8 +1170,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         
                         let categoriaDetalhe = getClasseIILabel(registro.categoria); // Usar rótulo completo
                         
+                        // Adiciona o tipo de animal para Classe VIII Remonta
                         if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
-                            categoriaDetalhe = registro.animal_tipo;
+                            categoriaDetalhe = `${categoriaDetalhe} - ${registro.animal_tipo}`;
                         }
                             
                         const omDetentora = registro.om_detentora || omDestinoRecurso;
@@ -1190,7 +1194,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             prefixoClasse = 'CLASSE II';
                         }
                         
-                        rowData.despesasValue = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
+                        // Garantir que categoriaDetalhe seja uma string antes de chamar toUpperCase
+                        rowData.despesasValue = `${prefixoClasse} - ${categoriaDetalhe ? categoriaDetalhe.toUpperCase() : 'CATEGORIA DESCONHECIDA'}`;
                         
                         // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                         if (isDifferentOm) {
@@ -1208,6 +1213,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                             rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
                         } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                            // USANDO O PROP FORNECIDO PARA CLASSE V
                             rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
                         } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
                             rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);

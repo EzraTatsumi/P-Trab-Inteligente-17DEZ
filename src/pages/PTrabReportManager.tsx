@@ -358,6 +358,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     }
     
     if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+        // CLASSE V: Usa o utilitário de Classe V
         return generateClasseVUtility(
             registro.categoria,
             registro.itens_equipamentos,
