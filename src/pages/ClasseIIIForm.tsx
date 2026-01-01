@@ -377,7 +377,7 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
 Cálculo:
 - Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${combustivelLabel} - ${formatCurrency(itens[0].preco_lubrificante)}.
 
-Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
+Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.
 
 ${detalhes.join('\n')}
 
