@@ -33,7 +33,7 @@ import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib
 import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils"; // NOVO: Importando utilitário de Classe VIII
 import { generateCategoryMemoriaCalculo as generateClasseIXUtility, calculateItemTotalClasseIX as calculateItemTotalClasseIXUtility } from "@/lib/classeIXUtils"; // NOVO: Importando utilitário de Classe IX
-
+import { ItemClasseIII as ItemClasseIIIUtil, calculateItemTotals } from "@/lib/classeIIIUtils"; // Importando ItemClasseIII e calculateItemTotals
 
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
@@ -76,23 +76,8 @@ export interface ItemClasseIX {
   memoria_customizada?: string | null;
 }
 
-export interface ItemClasseIII {
-  item: string; // nome_equipamento
-  categoria: string; // TipoEquipamento
-  consumo_fixo: number;
-  tipo_combustivel_fixo: string; // CombustivelTipo
-  unidade_fixa: string;
-  quantidade: number;
-  horas_dia: number;
-  distancia_percorrida: number;
-  quantidade_deslocamentos: number;
-  dias_utilizados: number;
-  consumo_lubrificante_litro: number;
-  preco_lubrificante: number;
-  preco_lubrificante_input: string;
-  consumo_lubrificante_input: string;
-  memoria_customizada?: string | null;
-}
+// Usando o tipo importado do utilitário
+export type ItemClasseIII = ItemClasseIIIUtil;
 
 export interface ClasseIIRegistro {
   id: string;
@@ -120,8 +105,8 @@ export interface ClasseIIRegistro {
 export interface ClasseIIIRegistro {
   id: string;
   tipo_equipamento: string; // COMBUSTIVEL_CONSOLIDADO, LUBRIFICANTE_CONSOLIDADO
-  organizacao: string;
-  ug: string;
+  organizacao: string; // OM Detentora do Equipamento
+  ug: string; // UG Detentora do Equipamento
   quantidade: number;
   potencia_hp?: number;
   horas_dia?: number;
@@ -136,14 +121,14 @@ export interface ClasseIIIRegistro {
   valor_total: number;
   detalhamento?: string;
   detalhamento_customizado?: string | null;
-  itens_equipamentos?: ItemClasseIII[]; // Tipo corrigido
+  itens_equipamentos?: ItemClasseIII[]; // Itens granulares
   fase_atividade?: string; // Adicionado para Classe III
   consumo_lubrificante_litro?: number; // Adicionado para Classe III
   preco_lubrificante?: number; // Adicionado para Classe III
   valor_nd_30: number; // Adicionado para Classe III
   valor_nd_39: number; // Adicionado para Classe III
-  om_detentora?: string | null; // Adicionado para Classe III
-  ug_detentora?: string | null; // Adicionado para Classe III
+  om_detentora?: string | null; // OM Destino Recurso (RM ou OM Lubrificante)
+  ug_detentora?: string | null; // UG Destino Recurso (CODUG RM ou UG Lubrificante)
 }
 
 export interface LinhaTabela {
@@ -155,8 +140,22 @@ export interface LinhaClasseII {
   registro: ClasseIIRegistro;
 }
 
-export interface LinhaLubrificante {
-  registro: ClasseIIIRegistro;
+// NOVO: Interface para a linha granular de Classe III
+export interface LinhaClasseIII {
+  id: string; // ID único para a linha granular
+  registroConsolidadoId: string; // ID do registro consolidado pai
+  omDestinoRecurso: string; // OM/RM que recebe o recurso
+  ugDestinoRecurso: string; // UG/CODUG que recebe o recurso
+  omDetentoraEquipamento: string; // OM que detém o equipamento
+  ugDetentoraEquipamento: string; // UG que detém o equipamento
+  suprimentoTipo: 'COMBUSTIVEL_DIESEL' | 'COMBUSTIVEL_GASOLINA' | 'LUBRIFICANTE';
+  categoriaEquipamento: string; // GERADOR, EMBARCACAO, etc.
+  itemEquipamento: ItemClasseIII; // O item granular original
+  valorTotal: number;
+  totalLitros: number;
+  precoLitro: number;
+  memoriaCustomizada?: string | null;
+  faseAtividade: string;
 }
 
 export interface GrupoOM {
@@ -168,7 +167,9 @@ export interface GrupoOM {
   linhasClasseVII: LinhaClasseII[];
   linhasClasseVIII: LinhaClasseII[];
   linhasClasseIX: LinhaClasseII[];
-  linhasLubrificante: LinhaLubrificante[];
+  // REMOVIDO: linhasLubrificante: LinhaLubrificante[];
+  // NOVO: Linhas granulares de Classe III (Combustível e Lubrificante)
+  linhasClasseIII: LinhaClasseIII[];
 }
 
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
@@ -504,7 +505,7 @@ const PTrabReportManager = () => {
   // REMOVIDO: [showCompleteStatusDialog, setShowCompleteStatusDialog] = useState(false);
 
   const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO' || r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
-  const isCombustivel = (r: ClasseIIIRegistro) => !isLubrificante(r);
+  const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
   
   const currentReportOption = useMemo(() => REPORT_OPTIONS.find(r => r.value === selectedReport)!, [selectedReport]);
 
@@ -618,7 +619,7 @@ const PTrabReportManager = () => {
             grupos[name] = { 
                 linhasQS: [], linhasQR: [], linhasClasseII: [], linhasClasseV: [],
                 linhasClasseVI: [], linhasClasseVII: [], linhasClasseVIII: [], linhasClasseIX: [],
-                linhasLubrificante: [] 
+                linhasClasseIII: [] // Inicializa a nova lista
             };
         }
     };
@@ -653,14 +654,69 @@ const PTrabReportManager = () => {
         }
     });
 
-    // 3. Processar Classe III Lubrificante
-    registrosClasseIII.forEach((registro) => {
-        if (isLubrificante(registro)) {
-            // A OM de destino do recurso Lubrificante está em om_detentora/ug_detentora
-            const omDestinoRecurso = registro.om_detentora || registro.organizacao;
-            initializeGroup(omDestinoRecurso);
-            grupos[omDestinoRecurso].linhasLubrificante.push({ registro });
-        }
+    // 3. Processar Classe III (Combustível e Lubrificante) - DESAGREGAÇÃO
+    registrosClasseIII.forEach((registroConsolidado) => {
+        const isLub = isLubrificante(registroConsolidado);
+        
+        // A OM de destino do recurso (RM para Combustível, OM para Lubrificante)
+        const omDestinoRecurso = registroConsolidado.om_detentora || registroConsolidado.organizacao;
+        const ugDestinoRecurso = registroConsolidado.ug_detentora || registroConsolidado.ug;
+        
+        // A OM Detentora do Equipamento (para o rótulo da despesa)
+        const omDetentoraEquipamento = registroConsolidado.organizacao;
+        const ugDetentoraEquipamento = registroConsolidado.ug;
+        
+        // O registro consolidado deve ser agrupado pela OM de DESTINO do recurso
+        initializeGroup(omDestinoRecurso);
+        
+        // Iterar sobre os itens granulares dentro do registro consolidado
+        (registroConsolidado.itens_equipamentos || []).forEach((item, index) => {
+            const { valorCombustivel, valorLubrificante, totalLitros, litrosLubrificante, precoLitro } = calculateItemTotals(item, null, registroConsolidado.dias_operacao);
+            
+            // --- Lógica para Combustível (Diesel/Gasolina) ---
+            if (valorCombustivel > 0 && !isLub) {
+                const suprimentoTipo = item.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL';
+                
+                // Cria uma linha granular para o Combustível
+                grupos[omDestinoRecurso].linhasClasseIII.push({
+                    id: `${registroConsolidado.id}-C-${index}`,
+                    registroConsolidadoId: registroConsolidado.id,
+                    omDestinoRecurso,
+                    ugDestinoRecurso,
+                    omDetentoraEquipamento,
+                    ugDetentoraEquipamento,
+                    suprimentoTipo,
+                    categoriaEquipamento: item.categoria,
+                    itemEquipamento: item,
+                    valorTotal: valorCombustivel,
+                    totalLitros: totalLitros, // Com margem
+                    precoLitro: precoLitro,
+                    memoriaCustomizada: item.memoria_customizada,
+                    faseAtividade: registroConsolidado.fase_atividade || '',
+                });
+            }
+            
+            // --- Lógica para Lubrificante ---
+            if (valorLubrificante > 0 && isLub) {
+                // Cria uma linha granular para o Lubrificante
+                grupos[omDestinoRecurso].linhasClasseIII.push({
+                    id: `${registroConsolidado.id}-L-${index}`,
+                    registroConsolidadoId: registroConsolidado.id,
+                    omDestinoRecurso,
+                    ugDestinoRecurso,
+                    omDetentoraEquipamento,
+                    ugDetentoraEquipamento,
+                    suprimentoTipo: 'LUBRIFICANTE',
+                    categoriaEquipamento: item.categoria,
+                    itemEquipamento: item,
+                    valorTotal: valorLubrificante,
+                    totalLitros: litrosLubrificante, // Sem margem
+                    precoLitro: item.preco_lubrificante,
+                    memoriaCustomizada: item.memoria_customizada,
+                    faseAtividade: registroConsolidado.fase_atividade || '',
+                });
+            }
+        });
     });
     
     return grupos;
@@ -704,8 +760,17 @@ const PTrabReportManager = () => {
     const totalClasseIX_ND30 = grupo.linhasClasseIX.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
     const totalClasseIX_ND39 = grupo.linhasClasseIX.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
     
-    const totalLubrificante = grupo.linhasLubrificante.reduce((acc, linha) => acc + linha.registro.valor_total, 0);
+    // NOVO: Total Lubrificante (agora vem das linhas granulares)
+    const totalLubrificante = grupo.linhasClasseIII
+        .filter(l => l.suprimentoTipo === 'LUBRIFICANTE')
+        .reduce((acc, linha) => acc + linha.valorTotal, 0);
     
+    // NOVO: Total Combustível (agora vem das linhas granulares)
+    const totalCombustivel = grupo.linhasClasseIII
+        .filter(l => l.suprimentoTipo.startsWith('COMBUSTIVEL'))
+        .reduce((acc, linha) => acc + linha.valorTotal, 0);
+    
+    // Apenas Lubrificante entra no ND 33.90.30 (Combustível é tratado separadamente)
     const total_33_90_30 = totalQS + totalQR + 
                            totalClasseII_ND30 + totalClasseV_ND30 + totalClasseVI_ND30 + totalClasseVII_ND30 + totalClasseVIII_ND30 + totalClasseIX_ND30 +
                            totalLubrificante; 
@@ -714,38 +779,28 @@ const PTrabReportManager = () => {
     
     const total_parte_azul = total_33_90_30 + total_33_90_39;
     
-    const classeIIIDestaOM = (nomeOM === nomeRM) 
-      ? registrosClasseIII.filter(isCombustivel)
-      : [];
+    // Combustível é somado apenas na RM de Fornecimento (que é o nomeOM)
+    const totalCombustivelRM = (nomeOM === nomeRM) ? totalCombustivel : 0;
     
-    const valorDiesel = classeIIIDestaOM
-      .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
-      .reduce((acc, reg) => acc + reg.valor_total, 0);
-    const valorGasolina = classeIIIDestaOM
-      .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
-      .reduce((acc, reg) => acc + reg.valor_total, 0);
+    const total_gnd3 = total_parte_azul + totalCombustivelRM; 
     
-    const totalCombustivel = valorDiesel + valorGasolina;
-    
-    const total_gnd3 = total_parte_azul + totalCombustivel; 
-    
-    const totalDieselLitros = classeIIIDestaOM
-      .filter(reg => reg.tipo_combustivel === 'DIESEL' || reg.tipo_combustivel === 'OD')
-      .reduce((acc, reg) => acc + reg.total_litros, 0);
-    const totalGasolinaLitros = classeIIIDestaOM
-      .filter(reg => reg.tipo_combustivel === 'GASOLINA' || reg.tipo_combustivel === 'GAS')
-      .reduce((acc, reg) => acc + reg.total_litros, 0);
+    const totalDieselLitros = grupo.linhasClasseIII
+      .filter(l => l.suprimentoTipo === 'COMBUSTIVEL_DIESEL')
+      .reduce((acc, reg) => acc + reg.totalLitros, 0);
+    const totalGasolinaLitros = grupo.linhasClasseIII
+      .filter(l => l.suprimentoTipo === 'COMBUSTIVEL_GASOLINA')
+      .reduce((acc, reg) => acc + reg.totalLitros, 0);
 
     return {
       total_33_90_30,
       total_33_90_39,
       total_parte_azul,
-      total_combustivel: totalCombustivel,
+      total_combustivel: totalCombustivelRM, // Apenas o total da RM
       total_gnd3,
       totalDieselLitros,
       totalGasolinaLitros,
-      valorDiesel,
-      valorGasolina,
+      valorDiesel: grupo.linhasClasseIII.filter(l => l.suprimentoTipo === 'COMBUSTIVEL_DIESEL').reduce((acc, l) => acc + l.valorTotal, 0),
+      valorGasolina: grupo.linhasClasseIII.filter(l => l.suprimentoTipo === 'COMBUSTIVEL_GASOLINA').reduce((acc, l) => acc + l.valorTotal, 0),
     };
   }, [registrosClasseIII, nomeRM]);
   // --- FIM LÓGICA DE AGRUPAMENTO E CÁLCULO ---
@@ -768,11 +823,6 @@ const PTrabReportManager = () => {
             omsOrdenadas={omsOrdenadas}
             gruposPorOM={gruposPorOM}
             calcularTotaisPorOM={calcularTotaisPorOM}
-            // REMOVIDO: onExportSuccess={handleExportSuccess}
-            // REMOVIDO: showCompleteStatusDialog={showCompleteStatusDialog}
-            // REMOVIDO: setShowCompleteStatusDialog={setShowCompleteStatusDialog}
-            // REMOVIDO: handleConfirmCompleteStatus={handleConfirmCompleteStatus}
-            // REMOVIDO: handleCancelCompleteStatus={handleCancelCompleteStatus}
             fileSuffix={fileSuffix}
             generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // CORRIGIDO
             generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo} // USANDO A FUNÇÃO UNIFICADA
@@ -787,7 +837,6 @@ const PTrabReportManager = () => {
           <PTrabRacaoOperacionalReport
             ptrabData={ptrabData}
             registrosClasseI={registrosClasseI}
-            // REMOVIDO: onExportSuccess={handleExportSuccess}
             fileSuffix={fileSuffix}
             generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} // CORRIGIDO
           />
