@@ -194,8 +194,9 @@ export const generateConsolidatedMemoriaCalculo = (
         const precoLub = firstLubricantItem?.preco_lubrificante || 0;
         const consumptionUnit = firstLubricantItem?.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
 
-        detalhamentoCalculo += `- Consumo Lubrificante (Exemplo): ${formatNumber(consumoLub, 2)} ${consumptionUnit}\n`;
-        detalhamentoCalculo += `- Preço Lubrificante (Exemplo): ${formatCurrency(precoLub)}\n\n`;
+        // REMOVIDO: (Exemplo)
+        detalhamentoCalculo += `- Consumo Lubrificante: ${formatNumber(consumoLub, 2)} ${consumptionUnit}\n`;
+        detalhamentoCalculo += `- Preço Lubrificante: ${formatCurrency(precoLub)}\n\n`;
         
         detalhamentoCalculo += `Fórmula: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante.\n`;
 
@@ -209,6 +210,7 @@ export const generateConsolidatedMemoriaCalculo = (
             const formulaPart1 = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${item.dias_utilizados} ${diasPluralItem})`;
             const formulaPart2 = `x ${formatNumber(item.consumo_lubrificante_litro, 2)} ${itemConsumptionUnit}`;
             
+            // REMOVIDO: (GASOLINA) ou (DIESEL)
             detalhamentoCalculo += `- ${item.item}: ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L\n`;
         });
         
@@ -360,8 +362,8 @@ export const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC
         return `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${fase_atividade}.
 
 Cálculo:
-- Consumo Lubrificante (Exemplo): ${formatNumber(consumoLub, 2)} ${consumptionUnit}
-- Preço Lubrificante (Exemplo): ${formatCurrency(precoLub)}
+- Consumo Lubrificante: ${formatNumber(consumoLub, 2)} ${consumptionUnit}
+- Preço Lubrificante: ${formatCurrency(precoLub)}
 
 Fórmula: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante.
 ${detailed_items.map(item => {
@@ -373,7 +375,8 @@ ${detailed_items.map(item => {
     const formulaPart1 = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${item.dias_utilizados} ${diasPluralItem})`;
     const formulaPart2 = `x ${formatNumber(item.consumo_lubrificante_litro, 2)} ${itemConsumptionUnit}`;
     
-    return `- ${item.item} (${item.tipo_combustivel_fixo}): ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L`;
+    // REMOVIDO: (item.tipo_combustivel_fixo)
+    return `- ${item.item}: ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L`;
 }).join('\n')}
 
 Total: ${formatNumber(total_litros, 2)} L x ${formatCurrency(precoMedio)} = ${formatCurrency(valor_total)}.`; // USANDO PREÇO MÉDIO
