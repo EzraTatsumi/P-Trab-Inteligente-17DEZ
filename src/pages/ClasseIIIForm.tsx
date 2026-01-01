@@ -225,7 +225,7 @@ const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOpe
   let litrosLubrificante = 0;
   const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
   if (isLubricantType && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0 && diasUtilizados > 0) {
-    const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
+    const totalHoras = item.quantidade * item.horas_dia * item.dias_utilizados;
     
     if (item.categoria === 'GERADOR') {
       litrosLubrificante = (totalHoras / 100) * item.consumo_lubrificante_litro;
@@ -387,7 +387,9 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(itens[0
     }
 };
 
-// Função auxiliar para gerar a memória de cálculo detalhada para um item granular
+/**
+ * Função auxiliar para gerar a memória de cálculo detalhada para um item granular
+ */
 const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLPC | null, rmFornecimento: string, codugRmFornecimento: string): string => {
     const { om_destino, ug_destino, categoria, suprimento_tipo, valor_total, total_litros, preco_litro, dias_operacao, fase_atividade, detailed_items } = item;
     
@@ -701,9 +703,9 @@ const ClasseIIIForm = () => {
             const consumoLubrificante = item.consumo_lubrificante_litro || 0;
             
             // Converte o preço para a string de dígitos (centavos) para o input mascarado
-            const precoLubrificanteInput = precoLubrificante > 0 
+            const precoLubrificanteInput = item.preco_lubrificante_input || (precoLubrificante > 0 
               ? numberToRawDigits(precoLubrificante)
-              : "";
+              : "");
             
             const consumoLubrificanteInput = item.consumo_lubrificante_input || (consumoLubrificante > 0 
               ? formatNumberForInput(consumoLubrificante, 2)
@@ -857,6 +859,19 @@ const ClasseIIIForm = () => {
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
+  };
+  
+  /**
+   * NOVO: Manipulador de mudança para campos numéricos no estado principal (form).
+   */
+  const handleFormNumericChange = (field: keyof FormDataClasseIII, inputString: string) => {
+    const cleanedValue = inputString.replace(/[^\d]/g, ''); // Remove tudo exceto dígitos
+    const numericValue = parseInt(cleanedValue) || 0;
+    
+    setForm(prev => ({
+        ...prev,
+        [field]: numericValue
+    }));
   };
 
   // --- Item Management Logic (Uses localCategoryItems) ---
@@ -1840,7 +1855,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                     inputMode="numeric"
                     className="max-w-xs"
                     value={form.dias_operacao === 0 ? "" : form.dias_operacao.toString()}
-                    onChange={(e) => handleItemNumericChange(0, 'dias_operacao', e.target.value)} // Usando handleItemNumericChange para limpar não-dígitos
+                    onChange={(e) => handleFormNumericChange('dias_operacao', e.target.value)} // CORRIGIDO: Usando a nova função
                     placeholder="Ex: 7"
                     onKeyDown={handleEnterToNextField}
                     disabled={loading}
