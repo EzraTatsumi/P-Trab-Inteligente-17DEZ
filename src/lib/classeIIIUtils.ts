@@ -17,9 +17,12 @@ interface ItemClasseIII {
   distancia_percorrida: number;
   quantidade_deslocamentos: number;
   dias_utilizados: number;
-  consumo_lubrificante_litro: number;
-  preco_lubrificante: number;
+  // Lubricant fields (only for GERADOR, EMBARCACAO)
+  consumo_lubrificante_litro: number; // L/100h or L/h
+  preco_lubrificante: number; // R$/L
+  // NEW: Internal state for masked input (string of digits)
   preco_lubrificante_input: string;
+  // NEW: Internal state for raw decimal input (string)
   consumo_lubrificante_input: string;
   memoria_customizada?: string | null; // NOVO CAMPO
 }
@@ -27,6 +30,23 @@ interface ItemClasseIII {
 // Função auxiliar para pluralizar 'dia' ou 'dias'.
 const pluralizeDay = (count: number): string => {
     return count === 1 ? 'dia' : 'dias';
+};
+
+/**
+ * Formats the activity phases from a semicolon-separated string into a readable text format.
+ */
+export const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
+  if (!faseCSV) return 'operação';
+  
+  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
+  
+  if (fases.length === 0) return 'operação';
+  if (fases.length === 1) return fases[0];
+  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
+  
+  const ultimaFase = fases[fases.length - 1];
+  const demaisFases = fases.slice(0, -1).join(', ');
+  return `${demaisFases} e ${ultimaFase}`;
 };
 
 /**
