@@ -226,6 +226,23 @@ const getTipoCombustivelLabel = (tipo: string) => {
     return tipo;
 };
 
+// Função auxiliar para pluralizar 'dia' ou 'dias'.
+const pluralizeDay = (count: number): string => {
+    return count === 1 ? 'dia' : 'dias';
+};
+
+/**
+ * Helper function to determine 'do' or 'da' based on OM name.
+ */
+const getOmArticle = (omName: string): string => {
+    // Verifica se a OM contém 'ª' (ex: 23ª Bda Inf Sl)
+    if (omName.includes('ª')) {
+        return 'da';
+    }
+    // Caso contrário, usa o padrão 'do'
+    return 'do';
+};
+
 // NOVO: Função para gerar a memória de cálculo granular da Classe III
 const generateGranularClasseIIIMemoria = (linha: LinhaClasseIII): string => {
     // 1. Prioriza a memória customizada salva no item granular
@@ -239,7 +256,7 @@ const generateGranularClasseIIIMemoria = (linha: LinhaClasseIII): string => {
     const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
     
     const omArticle = getOmArticle(linha.omDetentoraEquipamento);
-    const diasPluralHeader = pluralizeDay(linha.itemEquipamento.dias_utilizados);
+    const diasPluralHeader = pluralizeDay(item.dias_utilizados);
     const faseFormatada = formatFasesParaTexto(linha.faseAtividade);
     
     let header = "";
@@ -275,6 +292,8 @@ Total: ${formatNumber(litrosLubrificante, 2)} L x ${formatCurrency(item.preco_lu
         
         if (isMotomecanizacao) {
             formulaPrincipal = "Fórmula: (Nr Viaturas x Km/Desloc x Nr Desloc/dia x Nr Dias) ÷ Rendimento (Km/L).";
+            // NOTE: We cannot rely on calculateItemTotals here as it requires RefLPC, which is not available.
+            // We must recalculate based on the item data, assuming the item data is correct.
             litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * item.dias_utilizados) / item.consumo_fixo;
             formulaLitros = `(${item.quantidade} un. x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${item.dias_utilizados} ${diasPluralHeader}) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
         } else {
@@ -638,9 +657,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         ];
         
         linhasDespesaOrdenadas.forEach((linha) => {
-          const isClasseI = 'tipo' in linha;
-          const isClasseII_IX = 'categoria' in linha.registro;
+          // Determinar o tipo de linha de forma segura
           const isClasseIII = 'suprimentoTipo' in linha;
+          const isClasseI = !isClasseIII && 'tipo' in linha;
+          const isClasseII_IX = !isClasseIII && 'registro' in linha;
           
           const rowData = {
               despesasValue: '',
@@ -656,11 +676,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           };
           
           if (isClasseI) { // Classe I (QS/QR)
-              const registro = linha.registro as ClasseIRegistro;
+              const registro = (linha as LinhaTabela).registro;
               const ug_qs_formatted = formatCodug(registro.ug_qs);
               const ug_qr_formatted = formatCodug(registro.ug);
 
-              if (linha.tipo === 'QS') {
+              if ((linha as LinhaTabela).tipo === 'QS') {
                   rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                   rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                   rowData.valorC = registro.total_qs;
@@ -674,7 +694,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
               }
           } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
-              const registro = linha.registro as ClasseIIRegistro;
+              const registro = (linha as LinhaClasseII).registro;
               const omDestinoRecurso = registro.organizacao;
               const ugDestinoRecurso = formatCodug(registro.ug);
               
@@ -733,8 +753,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   rowData.valorE = linhaClasseIII.valorTotal;
               } else {
                   // Combustível: ND 30, mas só preenche se não for linha de Combustível (para evitar dupla contagem)
-                  // NOVO: Para granularidade, Combustível é ND 30, mas só é exibido na parte Laranja.
-                  // Deixamos C, D, E vazios para linhas de Combustível.
                   rowData.valorC = 0; 
                   rowData.valorD = 0;
                   rowData.valorE = 0;
@@ -1135,9 +1153,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 return [
                   // 1. Renderizar todas as linhas de despesa (I, II, III Lub, V, VI, VII, VIII, IX)
                   ...linhasDespesaOrdenadas.map((linha) => {
-                    const isClasseI = 'tipo' in linha;
-                    const isClasseII_IX = 'categoria' in linha.registro;
+                    // Determinar o tipo de linha de forma segura
                     const isClasseIII = 'suprimentoTipo' in linha;
+                    const isClasseI = !isClasseIII && 'tipo' in linha;
+                    const isClasseII_IX = !isClasseIII && 'registro' in linha;
                     
                     const rowData = {
                         despesasValue: '',
@@ -1153,11 +1172,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     };
                     
                     if (isClasseI) { // Classe I (QS/QR)
-                        const registro = linha.registro as ClasseIRegistro;
+                        const registro = (linha as LinhaTabela).registro;
                         const ug_qs_formatted = formatCodug(registro.ug_qs);
                         const ug_qr_formatted = formatCodug(registro.ug);
 
-                        if (linha.tipo === 'QS') {
+                        if ((linha as LinhaTabela).tipo === 'QS') {
                             rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                             rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                             rowData.valorC = registro.total_qs;
@@ -1171,7 +1190,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                         }
                     } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
-                        const registro = linha.registro as ClasseIIRegistro;
+                        const registro = (linha as LinhaClasseII).registro;
                         const omDestinoRecurso = registro.organizacao;
                         const ugDestinoRecurso = formatCodug(registro.ug);
                         
@@ -1253,7 +1272,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     }
                     
                     return (
-                      <tr key={isClasseI ? `${linha.registro.id}-${linha.tipo}` : isClasseIII ? linha.id : `classe-ii-${linha.registro.id}`}>
+                      <tr key={isClasseI ? `${linha.registro.id}-${linha.tipo}` : isClasseIII ? linha.id : `classe-ii-${(linha as LinhaClasseII).registro.id}`}>
                         <td className="col-despesas">
                           {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
                         </td>
