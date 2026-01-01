@@ -1407,7 +1407,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     
                     // Segunda subdivisão: Valor Total
                     <tr key="gnd3-row-2" style={{ backgroundColor: 'white' }}>
-                      <td colSpan={7} style={{ borderLeft: '1px solid #000', borderRight: '1px solid #000' }}></td>
+                      <td colSpan={7} style={{ border: 'none' }}></td>
                       <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: '1px solid #000', borderRight: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
                       <td style={{ border: 'none' }}></td>
                     </tr>
