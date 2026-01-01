@@ -977,9 +977,11 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     const granularItems: GranularDisplayItem[] = [];
     
     // 1. Mapa de consolidação para Combustível (Chave: OM_UG_DETENTORA-TIPO_COMBUSTIVEL-CATEGORIA)
+    // Esta chave garante a granularidade por categoria de equipamento e tipo de combustível
     const consolidatedFuelMap = new Map<string, { original_registro: ClasseIIIRegistro, detailed_items: ItemClasseIII[] }>();
     
     // 2. Mapa de consolidação para Lubrificante (Chave: OM_UG_DETENTORA-CATEGORIA)
+    // Esta chave garante a granularidade por categoria de equipamento
     const consolidatedLubricantMap = new Map<string, { original_registro: ClasseIIIRegistro, detailed_items: ItemClasseIII[] }>();
     
     registros.forEach(r => {
@@ -1135,114 +1137,88 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     if (customFaseAtividade.trim()) { fasesFinais = [...fasesFinais, customFaseAtividade.trim()]; }
     const faseFinalStringDB = fasesFinais.filter(f => f).join('; ');
     
-    // 3.1. Processar Lubrificante (se houver custo)
-    if (totalCustoLubrificante > 0) {
-        const itensLubrificante = itens.filter(item => 
-            item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0
-        );
+    // --- NOVO AGRUPAMENTO PARA SALVAMENTO: POR CATEGORIA E TIPO DE SUPRIMENTO ---
+    
+    // Agrupamento de todos os itens ativos por Categoria de Equipamento e Tipo de Suprimento
+    const groupedItemsForSaving = itens.reduce((groups, item) => {
+        const isLubricant = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
         
-        if (itensLubrificante.length > 0) {
-            const totalLitrosLubrificante = itensLubrificante.reduce((sum, item) => {
-                const { litrosLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
-                return sum + litrosLubrificante;
-            }, 0);
-            
-            const totalEquipamentos = itensLubrificante.reduce((sum, item) => sum + item.quantidade, 0);
-            
-            const detalhamentoLubrificante = generateConsolidatedMemoriaCalculo(
-                'LUBRIFICANTE_CONSOLIDADO',
-                itensLubrificante,
-                form.dias_operacao,
-                form.organizacao,
-                form.ug,
-                faseFinalStringDB,
-                lubricantAllocation.om_destino_recurso,
-                lubricantAllocation.ug_destino_recurso,
-                refLPC,
-                totalCustoLubrificante,
-                totalLitrosLubrificante
-            );
-            
-            const registroLubrificante: TablesInsert<'classe_iii_registros'> = {
-                p_trab_id: ptrabId,
-                organizacao: form.organizacao,
-                ug: form.ug,
-                tipo_equipamento: 'LUBRIFICANTE_CONSOLIDADO',
-                quantidade: totalEquipamentos,
-                dias_operacao: form.dias_operacao,
-                tipo_combustivel: 'LUBRIFICANTE',
-                preco_litro: 0,
-                total_litros: totalLitrosLubrificante,
-                total_litros_sem_margem: totalLitrosLubrificante,
-                valor_total: totalCustoLubrificante,
-                detalhamento: detalhamentoLubrificante,
-                itens_equipamentos: itensLubrificante.map(item => ({
-                    ...item,
-                    tipo_equipamento_especifico: item.item,
-                    consumo_lubrificante_litro: item.consumo_lubrificante_litro,
-                    preco_lubrificante: item.preco_lubrificante,
-                })) as any,
-                fase_atividade: faseFinalStringDB,
-                consumo_lubrificante_litro: 0, 
-                preco_lubrificante: 0,
-                valor_nd_30: totalCustoLubrificante,
-                valor_nd_39: 0,
-                om_detentora: lubricantAllocation.om_destino_recurso,
-                ug_detentora: lubricantAllocation.ug_destino_recurso,
+        let key: string;
+        if (isLubricant && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0) {
+            // Chave para Lubrificante: Categoria + LUBRIFICANTE
+            key = `${item.categoria}-LUBRIFICANTE`;
+        } else if (!isLubricant || (isLubricant && item.consumo_lubrificante_litro === 0)) {
+            // Chave para Combustível: Categoria + Tipo Combustível
+            key = `${item.categoria}-${item.tipo_combustivel_fixo}`;
+        } else {
+            return groups; // Ignora itens de Embarcação/Gerador sem custo de lubrificante (serão tratados como combustível)
+        }
+        
+        if (!groups[key]) {
+            groups[key] = {
+                categoria: item.categoria,
+                tipo_suprimento: isLubricant ? 'LUBRIFICANTE' : item.tipo_combustivel_fixo,
+                itens: [],
             };
-            registrosParaSalvar.push(registroLubrificante);
         }
-    }
+        groups[key].itens.push(item);
+        return groups;
+    }, {} as Record<string, { categoria: TipoEquipamento, tipo_suprimento: CombustivelTipo | 'LUBRIFICANTE', itens: ItemClasseIII[] }>);
     
-    // 3.2. Processar Combustível (agrupado por tipo)
-    const gruposPorCombustivel = itens.reduce((grupos, item) => {
-        if (item.tipo_combustivel_fixo === 'GASOLINA' || item.tipo_combustivel_fixo === 'DIESEL') {
-            if (!grupos[item.tipo_combustivel_fixo]) {
-                grupos[item.tipo_combustivel_fixo] = [];
-            }
-            grupos[item.tipo_combustivel_fixo].push(item);
-        }
-        return grupos;
-    }, {} as Record<CombustivelTipo, ItemClasseIII[]>);
     
-    Object.entries(gruposPorCombustivel).forEach(([combustivel, itensGrupo]) => {
-        const tipoCombustivel = combustivel as CombustivelTipo;
-        const precoLitro = tipoCombustivel === 'GASOLINA' 
-            ? refLPC.preco_gasolina 
-            : refLPC.preco_diesel;
+    Object.values(groupedItemsForSaving).forEach(group => {
+        const { categoria, tipo_suprimento, itens: itensGrupo } = group;
+        
+        const isLubrificante = tipo_suprimento === 'LUBRIFICANTE';
+        const tipoCombustivel = isLubrificante ? 'LUBRIFICANTE' : tipo_suprimento as CombustivelTipo;
         
         let totalLitrosSemMargem = 0;
         let totalLitros = 0;
         let valorTotal = 0;
         let totalEquipamentos = 0;
+        let precoLitro = 0;
         
         itensGrupo.forEach(item => {
-            const { totalLitros: totalL, valorCombustivel, litrosSemMargemItem } = calculateItemTotals(item, refLPC, form.dias_operacao);
-            totalLitrosSemMargem += litrosSemMargemItem;
-            totalLitros += totalL;
-            valorTotal += valorCombustivel;
+            const totals = calculateItemTotals(item, refLPC, form.dias_operacao);
             totalEquipamentos += item.quantidade;
+            
+            if (isLubrificante) {
+                totalLitrosSemMargem += totals.litrosLubrificante;
+                totalLitros += totals.litrosLubrificante; // Lubrificante não tem margem de 30%
+                valorTotal += totals.valorLubrificante;
+                // Preço médio será calculado na memória, mas o preco_litro do registro é 0
+            } else {
+                totalLitrosSemMargem += totals.litrosSemMargemItem;
+                totalLitros += totals.totalLitros;
+                valorTotal += totals.valorCombustivel;
+                precoLitro = totals.precoLitro; // Preço do combustível (Gasolina ou Diesel)
+            }
         });
         
-        const detalhamentoCombustivel = generateConsolidatedMemoriaCalculo(
-            'COMBUSTIVEL_CONSOLIDADO',
+        // Determinar OM/UG de destino do recurso
+        const omDestinoRecurso = isLubrificante ? lubricantAllocation.om_destino_recurso : rmFornecimento;
+        const ugDestinoRecurso = isLubrificante ? lubricantAllocation.ug_destino_recurso : codugRmFornecimento;
+        
+        const detalhamento = generateConsolidatedMemoriaCalculo(
+            isLubrificante ? 'LUBRIFICANTE_CONSOLIDADO' : 'COMBUSTIVEL_CONSOLIDADO',
             itensGrupo,
             form.dias_operacao,
             form.organizacao,
             form.ug,
             faseFinalStringDB,
-            rmFornecimento, // RM Fornecimento (OM Destino Recurso)
-            codugRmFornecimento, // CODUG RM Fornecimento (UG Destino Recurso)
+            omDestinoRecurso,
+            ugDestinoRecurso,
             refLPC,
             valorTotal,
             totalLitros
         );
         
-        const registroCombustivel: TablesInsert<'classe_iii_registros'> = {
+        const registro: TablesInsert<'classe_iii_registros'> = {
             p_trab_id: ptrabId,
             organizacao: form.organizacao,
             ug: form.ug,
-            tipo_equipamento: 'COMBUSTIVEL_CONSOLIDADO',
+            // NOVO: Adicionamos a categoria do equipamento ao tipo_equipamento para granularidade
+            tipo_equipamento: isLubrificante ? 'LUBRIFICANTE_CONSOLIDADO' : 'COMBUSTIVEL_CONSOLIDADO',
             quantidade: totalEquipamentos,
             dias_operacao: form.dias_operacao,
             tipo_combustivel: tipoCombustivel,
@@ -1250,7 +1226,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
             total_litros: totalLitros,
             total_litros_sem_margem: totalLitrosSemMargem,
             valor_total: valorTotal,
-            detalhamento: detalhamentoCombustivel,
+            detalhamento: detalhamento,
             itens_equipamentos: itensGrupo.map(item => ({
                 ...item,
                 tipo_equipamento_especifico: item.item,
@@ -1258,12 +1234,14 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
             fase_atividade: faseFinalStringDB,
             consumo_lubrificante_litro: 0, 
             preco_lubrificante: 0,
-            valor_nd_30: valorTotal, // Classe III Combustível é ND 30
+            valor_nd_30: valorTotal,
             valor_nd_39: 0,
-            om_detentora: rmFornecimento, // RM Fornecimento (OM Destino Recurso)
-            ug_detentora: codugRmFornecimento, // CODUG RM Fornecimento (UG Destino Recurso)
+            om_detentora: omDestinoRecurso,
+            ug_detentora: ugDestinoRecurso,
+            // NOVO CAMPO: Usamos o campo 'categoria' para armazenar a categoria do equipamento
+            categoria: categoria, 
         };
-        registrosParaSalvar.push(registroCombustivel);
+        registrosParaSalvar.push(registro);
     });
     
     try {
@@ -1326,6 +1304,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     const ugToEdit = registro.ug;
     
     // 2. Filter all existing records (from state) belonging to this OM/UG pair
+    // NOTA: Agora, cada registro consolidado representa uma Categoria/Suprimento.
+    // Para editar, precisamos carregar TODOS os registros que compartilham a mesma OM/UG Detentora.
     const recordsToReconstruct = registros.filter(r => 
       r.organizacao === omToEdit && r.ug === ugToEdit
     );
@@ -1338,9 +1318,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     // 3. Reconstruct the form state using these records
     reconstructFormState(recordsToReconstruct);
     
-    // 4. Set the tab based on the first item found (if any)
-    // We need to find the category of the first item in the reconstructed list, not the raw record.
-    // For now, we can try to infer the category from the first item in the raw records:
+    // 4. Set the tab based on the category of the first item found
     const firstItem = (recordsToReconstruct[0].itens_equipamentos as any[])?.[0];
     if (firstItem) {
         setSelectedTab(firstItem.categoria as TipoEquipamento);
@@ -1367,6 +1345,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     );
     
     // 2. Usar a customizada salva no registro consolidado, senão usar a automática recém-gerada
+    // NOTA: Como agora cada registro consolidado é granular (por categoria/suprimento),
+    // o detalhamento customizado se aplica apenas àquele item granular.
     setMemoriaEdit(item.original_registro.detalhamento_customizado || memoriaAutomatica || "");
   };
 
