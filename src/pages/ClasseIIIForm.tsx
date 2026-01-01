@@ -320,10 +320,16 @@ const generateConsolidatedMemoriaCalculo = (
 
         let detalhamentoCalculo = "";
         itens.forEach(item => {
-            const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, diasOperacaoGlobal);
-            const itemTotalHoras = item.quantidade * item.horas_dia * item.dias_utilizados;
+            const { litrosLubrificante } = calculateItemTotals(item, refLPC, diasOperacaoGlobal);
             
-            detalhamentoCalculo += `- ${item.quantidade} ${item.item} (${item.categoria}): ${formatNumber(itemTotalHoras)} h x ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'} x ${formatCurrency(item.preco_lubrificante)} = ${formatCurrency(valorLubrificante)} (${formatNumber(litrosLubrificante, 2)} L)\n`;
+            // NOVO FORMATO SOLICITADO: <item>: (<Qtd Item> un. x <Qtd Nr horas/dia> x <Qtd Nr dias>) x <Consumo Lubrificante> = <Total Lubrificante> (L)
+            const diasPluralItem = pluralizeDay(item.dias_utilizados);
+            const consumptionUnit = item.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
+            
+            const formulaPart1 = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${item.dias_utilizados} ${diasPluralItem})`;
+            const formulaPart2 = `x ${formatNumber(item.consumo_lubrificante_litro, 2)} ${consumptionUnit}`;
+            
+            detalhamentoCalculo += `- ${item.item}: ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L\n`;
         });
         
         return `${header}
@@ -332,7 +338,8 @@ OM Detentora Equipamento: ${omDetentoraEquipamento} (UG: ${formatCodug(ugDetento
 Recurso destinado à OM: ${omDestinoRecurso} (UG: ${formatCodug(ugDestinoRecurso)})
 Total de Equipamentos: ${totalEquipamentos}
 
-Cálculo Detalhado:
+Cálculo:
+Fórmula: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante.
 ${detalhamentoCalculo.trim()}
 
 Valor Total: ${formatCurrency(valorTotal)}.`;
@@ -373,13 +380,16 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
             formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.";
         }
         
-        itensGrupo.forEach(item => {
-            const { litrosSemMargemItem, formulaLitros } = calculateItemTotals(item, refLPC, form.dias_operacao);
+        itens.forEach(item => {
+            const { litrosSemMargemItem, formulaLitros } = calculateItemTotals(item, refLPC, diasOperacaoGlobal);
             totalLitrosSemMargem += litrosSemMargemItem;
             detalhes.push(`- ${item.item}: ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
         });
         
         const totalLitros = totalLitrosSemMargem * 1.3;
+        const precoLitro = tipoCombustivel === 'GASOLINA' 
+            ? refLPC?.preco_gasolina ?? 0 
+            : refLPC?.preco_diesel ?? 0;
         const valorTotal = totalLitros * precoLitro;
         
         const formatarData = (data: string) => {
@@ -454,10 +464,16 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
 Cálculo:
 Fórmula: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante.
 ${detailed_items.map(item => {
-    const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, dias_operacao);
-    const itemTotalHoras = item.quantidade * item.horas_dia * item.dias_utilizados;
+    const { litrosLubrificante } = calculateItemTotals(item, refLPC, dias_operacao);
     
-    return `- ${item.quantidade} ${item.item} (${item.categoria}): ${formatNumber(itemTotalHoras)} h x ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'} x ${formatCurrency(item.preco_lubrificante)} = ${formatCurrency(valorLubrificante)} (${formatNumber(litrosLubrificante, 2)} L)`;
+    // NOVO FORMATO SOLICITADO: <item>: (<Qtd Item> un. x <Qtd Nr horas/dia> x <Qtd Nr dias>) x <Consumo Lubrificante> = <Total Lubrificante> (L)
+    const diasPluralItem = pluralizeDay(item.dias_utilizados);
+    const consumptionUnit = item.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
+    
+    const formulaPart1 = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${item.dias_utilizados} ${diasPluralItem})`;
+    const formulaPart2 = `x ${formatNumber(item.consumo_lubrificante_litro, 2)} ${consumptionUnit}`;
+    
+    return `- ${item.item}: ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L`;
 }).join('\n')}
 
 Total Litros: ${formatNumber(total_litros, 2)} L.
@@ -1004,7 +1020,7 @@ const ClasseIIIForm = () => {
 
   const handleUpdateCategoryItems = () => {
     if (!form.organizacao || form.dias_operacao <= 0) {
-      toast.error("Preencha a OM e os Dias de Atividade (Global) antes de salvar itens.");
+      toast.error("Preencha a OM Detentora e os Dias de Atividade (Global) antes de salvar itens.");
       return;
     }
     
@@ -1892,7 +1908,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                     type="text"
                     inputMode="numeric"
                     className="max-w-xs"
-                    value={form.dias_operacao === 0 ? "" : form.dias_operacao.toString()}
+                    value={form.dias_operacao === 0 ? "" : formatInputWithThousands(form.dias_operacao)}
                     onChange={(e) => handleFormNumericChange('dias_operacao', e.target.value)} // CORRIGIDO: Usando a nova função
                     placeholder="Ex: 7"
                     onKeyDown={handleEnterToNextField}
