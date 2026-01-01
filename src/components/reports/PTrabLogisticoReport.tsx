@@ -605,7 +605,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 valorE: 0,
                 litrosF: '',
                 precoUnitarioG: '',
-                precoTotalH: '',
+                precoTotalH: 0, // FIX 1: Initialized to 0 (monetary column)
             };
             
             if (isClasseI) { // Classe I (QS/QR)
@@ -617,6 +617,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                     rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                     rowData.valorC = registro.total_qs;
+                    rowData.valorD = 0; // FIX 2: Explicitly set D to 0
                     rowData.valorE = registro.total_qs;
                     // USANDO A FUNÇÃO UNIFICADA
                     rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
@@ -624,6 +625,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                     rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
                     rowData.valorC = registro.total_qr;
+                    rowData.valorD = 0; // FIX 2: Explicitly set D to 0
                     rowData.valorE = registro.total_qr;
                     // USANDO A FUNÇÃO UNIFICADA
                     rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
@@ -727,7 +729,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     
                     rowData.litrosF = `${formatNumber(linhaClasseIII.total_litros_linha)} L`;
                     rowData.precoUnitarioG = formatCurrency(linhaClasseIII.preco_litro_linha);
-                    rowData.precoTotalH = formatCurrency(linhaClasseIII.valor_total_linha);
+                    rowData.precoTotalH = linhaClasseIII.valor_total_linha; // FIX 3: Pass raw number
                     
                 } else if (isLubrificanteLinha) {
                     rowData.valorC = linhaClasseIII.valor_total_linha;
@@ -736,7 +738,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     
                     rowData.litrosF = '';
                     rowData.precoUnitarioG = '';
-                    rowData.precoTotalH = '';
+                    rowData.precoTotalH = 0; // FIX 3: Set to 0 (monetary column)
                 }
                 
                 rowData.detalhamentoValue = linhaClasseIII.memoria_calculo;
@@ -750,7 +752,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             row.getCell('E').value = rowData.valorE > 0 ? rowData.valorE : '';
             row.getCell('F').value = rowData.litrosF;
             row.getCell('G').value = rowData.precoUnitarioG;
-            row.getCell('H').value = rowData.precoTotalH;
+            row.getCell('H').value = rowData.precoTotalH > 0 ? rowData.precoTotalH : ''; // FIX 4: Use ternary operator here
             row.getCell('I').value = rowData.detalhamentoValue;
             
             // Estilos
@@ -1134,7 +1136,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                           valorE: 0,
                           litrosF: '',
                           precoUnitarioG: '',
-                          precoTotalH: '',
+                          precoTotalH: 0,
                       };
                       
                       if (isClasseI) { // Classe I (QS/QR)
@@ -1146,6 +1148,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                               rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                               rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                               rowData.valorC = registro.total_qs;
+                              rowData.valorD = 0;
                               rowData.valorE = registro.total_qs;
                               // USANDO A FUNÇÃO UNIFICADA
                               rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
@@ -1153,6 +1156,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                               rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                               rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
                               rowData.valorC = registro.total_qr;
+                              rowData.valorD = 0;
                               rowData.valorE = registro.total_qr;
                               // USANDO A FUNÇÃO UNIFICADA
                               rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
@@ -1257,7 +1261,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                               
                               rowData.litrosF = `${formatNumber(linhaClasseIII.total_litros_linha)} L`;
                               rowData.precoUnitarioG = formatCurrency(linhaClasseIII.preco_litro_linha);
-                              rowData.precoTotalH = formatCurrency(linhaClasseIII.valor_total_linha);
+                              rowData.precoTotalH = linhaClasseIII.valor_total_linha; // FIX 3: Pass raw number
                               
                           } else if (isLubrificanteLinha) {
                               rowData.valorC = linhaClasseIII.valor_total_linha;
@@ -1266,7 +1270,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                               
                               rowData.litrosF = '';
                               rowData.precoUnitarioG = '';
-                              rowData.precoTotalH = '';
+                              rowData.precoTotalH = 0; // FIX 3: Set to 0 (monetary column)
                           }
                           
                           rowData.detalhamentoValue = linhaClasseIII.memoria_calculo;
@@ -1280,7 +1284,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       row.getCell('E').value = rowData.valorE > 0 ? rowData.valorE : '';
                       row.getCell('F').value = rowData.litrosF;
                       row.getCell('G').value = rowData.precoUnitarioG;
-                      row.getCell('H').value = rowData.precoTotalH;
+                      row.getCell('H').value = rowData.precoTotalH > 0 ? rowData.precoTotalH : ''; // FIX 4: Use ternary operator here
                       row.getCell('I').value = rowData.detalhamentoValue;
                       
                       // Estilos
