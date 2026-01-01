@@ -185,7 +185,6 @@ const getEquipmentPluralization = (categoria: TipoEquipamento, count: number): s
         return label;
     }
     
-    // Plural
     switch (categoria) {
         case 'GERADOR': return 'Geradores';
         case 'EMBARCACAO': return 'Embarcações';
@@ -1451,7 +1450,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       toast.success("Registros de Classe III atualizados com sucesso!");
       await updatePTrabStatusIfAberto(ptrabId);
       resetFormFields(); // CHAMADA ADICIONADA AQUI
-      fetchRegistros(); // Reload data
+      await fetchRegistros(); // Reload data
     } catch (error) {
       console.error("Erro ao salvar/atualizar registros de Classe III:", error);
       toast.error(sanitizeError(error));
@@ -1474,7 +1473,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
         }
         toast.success("Registro deletado!");
         resetFormFields(); // CHAMADA ADICIONADA AQUI
-        fetchRegistros();
+        await fetchRegistros();
     } catch (error) {
         console.error("Erro ao deletar registro:", error);
         toast.error(sanitizeError(error));
@@ -1554,9 +1553,13 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
           let currentGranularId = '';
           
           // Lógica para gerar o ID granular do item atual (deve ser idêntica à lógica em getMemoriaRecords)
-          if (item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0) {
+          const isLubricantItem = item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0;
+          
+          if (isLubricantItem) {
+              // Se for Lubrificante, o ID granular é baseado na CATEGORIA (Gerador/Embarcação)
               currentGranularId = `${registroOriginal.id}-${item.categoria}-LUBRIFICANTE`;
           } else {
+              // Se for Combustível, o ID granular é baseado no ITEM (nome do equipamento)
               const suprimento_tipo = item.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL';
               currentGranularId = `${registroOriginal.id}-${item.item}-${suprimento_tipo}`;
           }
@@ -1612,9 +1615,13 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
           let currentGranularId = '';
           
           // Lógica para gerar o ID granular do item atual (deve ser idêntica à lógica em getMemoriaRecords)
-          if (item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0) {
+          const isLubricantItem = item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0;
+          
+          if (isLubricantItem) {
+              // Se for Lubrificante, o ID granular é baseado na CATEGORIA (Gerador/Embarcação)
               currentGranularId = `${registroOriginal.id}-${item.categoria}-LUBRIFICANTE`;
           } else {
+              // Se for Combustível, o ID granular é baseado no ITEM (nome do equipamento)
               const suprimento_tipo = item.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL';
               currentGranularId = `${registroOriginal.id}-${item.item}-${suprimento_tipo}`;
           }
