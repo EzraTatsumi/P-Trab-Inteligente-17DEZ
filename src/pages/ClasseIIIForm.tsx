@@ -351,7 +351,7 @@ Cálculo:
 Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.
 ${detalhes.join('\n')}
 
-Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(total_litros)} L ${unidadeLabel}.
+Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(total_litros)} L ${unidadeLabel}.
 Valor: ${formatNumber(total_litros)} L ${unidadeLabel} x ${formatCurrency(preco_litro)} = ${formatCurrency(valor_total)}.`;
     }
 };
