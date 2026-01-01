@@ -42,6 +42,14 @@ const CATEGORIAS: { key: TipoEquipamento, label: string, icon: React.FC<any> }[]
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
 
+// NOVO: Helper function to determine 'do' or 'da' based on OM name.
+const getOmArticle = (omName: string): string => {
+    if (omName.includes('ª')) {
+        return 'da';
+    }
+    return 'do';
+};
+
 interface ItemClasseIII {
   item: string; // nome_equipamento
   categoria: TipoEquipamento;
@@ -285,7 +293,7 @@ Valor Total: ${formatCurrency(valor_total)}.`;
             detalhes.push(`- ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
         });
         
-        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${getClasseIIICategoryLabel(categoria)} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}, para ${om_destino}.
+        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} equipamentos, durante ${dias_operacao} dias de ${faseFormatada}, para ${om_destino}.
 
 Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)})
 
@@ -478,16 +486,17 @@ const ClasseIIIForm = () => {
     // 2. Extract RM Fornecimento (from detailing)
     let rmFromDetailing = "";
     let codugRmFromDetailing = "";
-    const rmMatch = firstRecord.detalhamento?.match(/Fornecido por: (.*?) \(CODUG: (.*?)\)/);
-    if (rmMatch) {
-      rmFromDetailing = rmMatch[1];
-      codugRmFromDetailing = rmMatch[2];
-      setRmFornecimento(rmFromDetailing);
-      setCodugRmFornecimento(codugRmFromDetailing);
+    // A RM de fornecimento não está mais no detalhamento, mas sim nos estados rmFornecimento/codugRmFornecimento
+    // Se a OM Detentora for encontrada, usamos a RM de Vinculação dela como padrão
+    const omDetails = omDetailsMap[`${omName}-${ug}`];
+    if (omDetails) {
+        rmFromDetailing = omDetails.rm_vinculacao;
+        codugRmFromDetailing = omDetails.codug_rm_vinculacao;
+        setRmFornecimento(rmFromDetailing);
+        setCodugRmFornecimento(codugRmFromDetailing);
     } else {
-      // Clear RM/CODUG state if not found in detailing, relying on OM fetch later if possible
-      setRmFornecimento("");
-      setCodugRmFornecimento("");
+        setRmFornecimento("");
+        setCodugRmFornecimento("");
     }
     
     // 3. Extract Lubricant Allocation (OM Destino Recurso)
@@ -519,7 +528,7 @@ const ClasseIIIForm = () => {
             
             // Converte o preço para a string de dígitos (centavos) para o input mascarado
             const precoLubrificanteInput = precoLubrificante > 0 
-              ? formatCurrencyInput(String(Math.round(precoLubrificante * 100))).digits
+              ? numberToRawDigits(precoLubrificante)
               : "";
             
             const consumoLubrificanteInput = consumoLubrificante > 0 
@@ -927,10 +936,25 @@ const ClasseIIIForm = () => {
       
       const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
       
+      // --- NOVO CÁLCULO DE CATEGORIA CONSOLIDADA ---
+      const uniqueCategories = Array.from(new Set(itensGrupo.map(item => item.categoria)));
+      let consolidatedCategoryLabel = 'equipamentos';
+      if (uniqueCategories.length === 1) {
+          consolidatedCategoryLabel = getClasseIIICategoryLabel(uniqueCategories[0]);
+      } else {
+          if (uniqueCategories.includes('MOTOMECANIZACAO')) {
+              consolidatedCategoryLabel = 'viaturas e equipamentos';
+          } else {
+              consolidatedCategoryLabel = 'equipamentos';
+          }
+      }
+      
+      const omArticle = getOmArticle(form.organizacao);
+      
       // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
-      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
+      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${consolidatedCategoryLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} dias de ${faseFormatada}.
 
-Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)}).
+Cálculo:
 
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
 
@@ -2303,7 +2327,7 @@ const getMemoriaRecords = granularRegistros;
                                   if (totais.valor > 0) {
                                     const categoryBadgeStyle = getClasseIIICategoryBadgeStyle(cat.key);
                                     // Usar o rótulo do categoryLabelMap para garantir a capitalização correta
-                                    const displayLabel = categoryLabelMap[cat.key] || cat.key; // Fallback para a chave se o map falhar
+                                    const displayLabel = categoryLabelMap[cat.key] || capitalizeFirstLetter(cat.key.replace(/_/g, ' '));
                                     
                                     return (
                                       <div key={cat.key} className="flex justify-between text-xs">
