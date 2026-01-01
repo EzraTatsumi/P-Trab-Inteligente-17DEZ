@@ -293,7 +293,7 @@ const generateConsolidatedMemoriaCalculo = (
     ugDestinoRecurso: string,
     refLPC: RefLPC | null,
     valorTotal: number,
-    totalLitros: number
+    totalLitros: number // Total de litros SEM margem (para Lubrificante) ou COM margem (para Combustível)
 ): string => {
     const faseFormatada = formatFasesParaTexto(faseAtividade);
     const omArticle = getOmArticle(omDetentoraEquipamento);
@@ -320,20 +320,14 @@ const generateConsolidatedMemoriaCalculo = (
 
         let detalhamentoCalculo = "";
         
-        // Assume que todos os itens de lubrificante têm o mesmo consumo/preço (embora o cálculo seja granular)
-        // Para a exibição consolidada, pegamos o primeiro item para mostrar o consumo/preço unitário
-        const firstLubricantItem = itens.find(item => item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0);
-        const consumoLub = firstLubricantItem?.consumo_lubrificante_litro || 0;
-        const precoLub = firstLubricantItem?.preco_lubrificante || 0;
-        const consumptionUnit = firstLubricantItem?.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
+        // 2. Calcular o preço médio para a linha final (Valor Total / Total Litros)
+        // NOTA: Para Lubrificante, totalLitros é SEM margem.
+        const averagePrice = totalLitros > 0 ? valorTotal / totalLitros : 0;
 
-        detalhamentoCalculo += `- Consumo Lubrificante: ${formatNumber(consumoLub, 2)} ${consumptionUnit}\n`;
-        detalhamentoCalculo += `- Preço Lubrificante: ${formatCurrency(precoLub)}\n\n`;
-        
         detalhamentoCalculo += `Fórmula: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante.\n`;
 
         itens.forEach(item => {
-            const { litrosLubrificante } = calculateItemTotals(item, refLPC, diasOperacaoGlobal);
+            const { litrosLubrificante, precoLubrificante } = calculateItemTotals(item, refLPC, diasOperacaoGlobal);
             
             // NOVO FORMATO SOLICITADO: <item>: (<Qtd Item> un. x <Qtd Nr horas/dia> x <Qtd Nr dias>) x <Consumo Lubrificante> = <Total Lubrificante> (L)
             const diasPluralItem = pluralizeDay(item.dias_utilizados);
@@ -342,7 +336,7 @@ const generateConsolidatedMemoriaCalculo = (
             const formulaPart1 = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${item.dias_utilizados} ${diasPluralItem})`;
             const formulaPart2 = `x ${formatNumber(item.consumo_lubrificante_litro, 2)} ${itemConsumptionUnit}`;
             
-            detalhamentoCalculo += `- ${item.item}: ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L\n`;
+            detalhamentoCalculo += `- ${item.item}: ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L (Preço: ${formatCurrency(precoLubrificante)})\n`;
         });
         
         return `${header}
@@ -354,7 +348,7 @@ Total de Equipamentos: ${totalEquipamentos}
 Cálculo:
 ${detalhamentoCalculo.trim()}
 
-Total: ${formatNumber(totalLitros, 2)} L x ${formatCurrency(precoLub)} = ${formatCurrency(valorTotal)}.`;
+Total: ${formatNumber(totalLitros, 2)} L x ${formatCurrency(averagePrice)} (Preço Médio) = ${formatCurrency(valorTotal)}.`; // CORRIGIDO: Usando totalLitros (sem margem)
         
     } else {
         // MEMÓRIA COMBUSTÍVEL (CONSOLIDADA)
@@ -371,7 +365,7 @@ Total: ${formatNumber(totalLitros, 2)} L x ${formatCurrency(precoLub)} = ${forma
             categoriaLabel = 'Equipamentos Diversos';
         }
         
-        const header = `${ndPrefix} - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${omDetentoraEquipamento}, durante ${diasOperacaoGlobal} ${diasPluralHeader} de ${faseFormatada}.`;
+        const header = `${ndPrefix} - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${omDetentoraEquipamento}, durante ${diasOperacaoGlobal} ${diasPluralHeader} de ${faseAtividade}.`;
 
         let totalLitrosSemMargem = 0;
         let detalhes: string[] = [];
@@ -423,8 +417,8 @@ ${formulaPrincipal}
 
 ${detalhes.join('\n')}
 
-Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitrosComMargem)} L ${unidadeLabel}.
-Valor: ${formatNumber(totalLitrosComMargem)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
+Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitros)} L ${unidadeLabel}.
+Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
     }
 };
 
@@ -476,6 +470,9 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
         const consumoLub = granularItem.consumo_lubrificante_litro || 0;
         const precoLub = granularItem.preco_lubrificante || 0;
         const consumptionUnit = granularItem.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
+        
+        // 1. Calcular o total de litros SEM margem (total_litros já está sem margem para lubrificante)
+        const totalLitrosSemMargem = total_litros;
 
         return `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
 
@@ -485,7 +482,7 @@ Cálculo:
 
 Fórmula: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante.
 ${detailed_items.map(item => {
-    const { litrosLubrificante } = calculateItemTotals(item, refLPC, dias_operacao);
+    const { litrosLubrificante, precoLubrificante } = calculateItemTotals(item, refLPC, dias_operacao);
     
     // NOVO FORMATO SOLICITADO: <item>: (<Qtd Item> un. x <Qtd Nr horas/dia> x <Qtd Nr dias>) x <Consumo Lubrificante> = <Total Lubrificante> (L)
     const diasPluralItem = pluralizeDay(item.dias_utilizados);
@@ -494,10 +491,10 @@ ${detailed_items.map(item => {
     const formulaPart1 = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${item.dias_utilizados} ${diasPluralItem})`;
     const formulaPart2 = `x ${formatNumber(item.consumo_lubrificante_litro, 2)} ${itemConsumptionUnit}`;
     
-    return `- ${item.item}: ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L`;
+    return `- ${item.item}: ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L (Preço: ${formatCurrency(precoLubrificante)})`;
 }).join('\n')}
 
-Total: ${formatNumber(total_litros, 2)} L x ${formatCurrency(precoLub)} = ${formatCurrency(valor_total)}.`;
+Total: ${formatNumber(totalLitrosSemMargem, 2)} L x ${formatCurrency(precoLub)} = ${formatCurrency(valor_total)}.`; // CORRIGIDO: Usando totalLitrosSemMargem (que é total_litros)
     } else {
         // MEMÓRIA COMBUSTÍVEL (GRANULAR)
         const tipoCombustivel = suprimento_tipo === 'COMBUSTIVEL_GASOLINA' ? 'Gasolina' : 'Diesel';
@@ -1270,8 +1267,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
           lubricantAllocation.om_destino_recurso,
           lubricantAllocation.ug_destino_recurso,
           refLPC,
-          totalValorLubrificante,
-          totalLitrosLubrificante
+          totalValorLubrificante, // Valor total (sem margem)
+          totalLitrosLubrificante // Litros total (sem margem)
       );
       
       consolidadoLubrificante = {
@@ -1491,10 +1488,14 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
         );
         
         if (itensLubrificante.length > 0) {
-            const totalLitrosLubrificante = itensLubrificante.reduce((sum, item) => {
-                const { litrosLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
-                return sum + litrosLubrificante;
-            }, 0);
+            let totalLitrosLubrificante = 0;
+            let totalValorLubrificante = 0;
+            
+            itensLubrificante.forEach(item => {
+                const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
+                totalLitrosLubrificante += litrosLubrificante;
+                totalValorLubrificante += valorLubrificante;
+            });
             
             const totalEquipamentos = itensLubrificante.reduce((sum, item) => sum + item.quantidade, 0);
             
@@ -1508,8 +1509,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                 lubricantAllocation.om_destino_recurso,
                 lubricantAllocation.ug_destino_recurso,
                 refLPC,
-                totalCustoLubrificante,
-                totalLitrosLubrificante
+                totalValorLubrificante, // Valor total (sem margem)
+                totalLitrosLubrificante // Litros total (sem margem)
             );
             
             const registroLubrificante: TablesInsert<'classe_iii_registros'> = {
