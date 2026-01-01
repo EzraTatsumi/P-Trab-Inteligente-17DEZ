@@ -321,9 +321,11 @@ const generateConsolidatedMemoriaCalculo = (
         let detalhamentoCalculo = "";
         itens.forEach(item => {
             const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, diasOperacaoGlobal);
-            const itemTotalHoras = item.quantidade * item.horas_dia * item.dias_utilizados;
             
-            detalhamentoCalculo += `- ${item.quantidade} ${item.item} (${item.categoria}): ${formatNumber(itemTotalHoras)} h x ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'} x ${formatCurrency(item.preco_lubrificante)} = ${formatCurrency(valorLubrificante)} (${formatNumber(litrosLubrificante, 2)} L)\n`;
+            // NOVO FORMATO SOLICITADO: <item>: (<Qtd Item> un. x <Qtd Horas/dia> x <Qtd Dias>) x <Consumo> = <Total Lubrificante>.
+            const consumoUnit = item.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
+            
+            detalhamentoCalculo += `- ${item.item}: (${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${item.dias_utilizados} ${pluralizeDay(item.dias_utilizados)}) x ${formatNumber(item.consumo_lubrificante_litro, 2)} ${consumoUnit} = ${formatCurrency(valorLubrificante)} (${formatNumber(litrosLubrificante, 2)} L)\n`;
         });
         
         return `${header}
@@ -340,6 +342,9 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
     } else {
         // MEMÓRIA COMBUSTÍVEL (CONSOLIDADA)
         const tipoCombustivel = itens[0].tipo_combustivel_fixo; // Assume que todos são do mesmo tipo
+        const precoLitro = tipoCombustivel === 'GASOLINA' 
+            ? refLPC?.preco_gasolina 
+            : refLPC?.preco_diesel;
         const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
         const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
         
@@ -373,14 +378,14 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
             formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.";
         }
         
-        itensGrupo.forEach(item => {
-            const { litrosSemMargemItem, formulaLitros } = calculateItemTotals(item, refLPC, form.dias_operacao);
+        itens.forEach(item => {
+            const { litrosSemMargemItem, formulaLitros } = calculateItemTotals(item, refLPC, diasOperacaoGlobal);
             totalLitrosSemMargem += litrosSemMargemItem;
             detalhes.push(`- ${item.item}: ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
         });
         
         const totalLitros = totalLitrosSemMargem * 1.3;
-        const valorTotal = totalLitros * precoLitro;
+        const valorTotal = totalLitros * (precoLitro || 0);
         
         const formatarData = (data: string) => {
             const [ano, mes, dia] = data.split('-');
@@ -389,20 +394,20 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
         
         const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
         const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
-        const localConsultaDisplay = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? ` (${refLPC.nome_local})` : ''; // NEW DEFINITION
+        const localConsultaDisplay = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? ` (${refLPC.nome_local})` : ''; // NEW DEFINITION
         
         // REMOVIDO: OM Detentora Equipamento e Recurso fornecido pela RM
         return `${header}
 
 Cálculo:
-- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${combustivelLabel} - ${formatCurrency(precoLitro)}.
+- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${combustivelLabel} - ${formatCurrency(precoLitro || 0)}.
 
 ${formulaPrincipal}
 
 ${detalhes.join('\n')}
 
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitros)} L ${unidadeLabel}.
-Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
+Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro || 0)} = ${formatCurrency(valorTotal)}.`;
     }
 };
 
@@ -450,14 +455,19 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
         const omArticle = getOmArticle(om_destino);
 
         return `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
+OM Destino Recurso: ${omDestinoRecurso} (UG: ${formatCodug(ugDestinoRecurso)})
 
 Cálculo:
-Fórmula: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante/hora.
+Fórmula Base: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilização) x Consumo Lubrificante/hora (ou /100h).
+
+Detalhes dos Itens:
 ${detailed_items.map(item => {
     const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, dias_operacao);
-    const itemTotalHoras = item.quantidade * item.horas_dia * item.dias_utilizados;
     
-    return `- ${item.quantidade} ${item.item} (${item.categoria}): ${formatNumber(itemTotalHoras)} h x ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'} x ${formatCurrency(item.preco_lubrificante)} = ${formatCurrency(valorLubrificante)} (${formatNumber(litrosLubrificante, 2)} L)`;
+    // NOVO FORMATO SOLICITADO: <item>: (<Qtd Item> un. x <Qtd Horas/dia> x <Qtd Dias>) x <Consumo> = <Total Lubrificante>.
+    const consumoUnit = item.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
+    
+    return `- ${item.item}: (${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${item.dias_utilizados} ${pluralizeDay(item.dias_utilizados)}) x ${formatNumber(item.consumo_lubrificante_litro, 2)} ${consumoUnit} = ${formatCurrency(valorLubrificante)} (${formatNumber(litrosLubrificante, 2)} L)`;
 }).join('\n')}
 
 Total Litros: ${formatNumber(total_litros, 2)} L.
@@ -1131,7 +1141,7 @@ const ClasseIIIForm = () => {
       });
       
       const totalLitros = totalLitrosSemMargem * 1.3;
-      const valorTotal = totalLitros * precoLitro;
+      const valorTotal = totalLitros * (precoLitro || 0);
       
       const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
       const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
@@ -1143,7 +1153,7 @@ const ClasseIIIForm = () => {
       
       const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
       const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
-      const localConsultaDisplay = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? ` (${refLPC.nome_local})` : ''; // NEW DEFINITION
+      const localConsultaDisplay = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? ` (${refLPC.nome_local})` : ''; // NEW DEFINITION
       
       const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
       
@@ -1180,14 +1190,14 @@ const ClasseIIIForm = () => {
       let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
 
 Cálculo:
-- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${combustivelLabel} - ${formatCurrency(precoLitro)}.
+- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${combustivelLabel} - ${formatCurrency(precoLitro || 0)}.
 
 ${formulaPrincipal}
 
 ${detalhes.join('\n')}
 
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitros)} L ${unidadeLabel}.
-Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
+Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro || 0)} = ${formatCurrency(valorTotal)}.`;
       
       novosConsolidados.push({
         tipo_combustivel: tipoCombustivel,
