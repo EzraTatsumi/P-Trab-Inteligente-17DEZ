@@ -493,8 +493,8 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
         return `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${fase_atividade}.
 
 Cálculo:
-- Consumo Lubrificante (Exemplo): ${formatNumber(consumoLub, 2)} ${consumptionUnit}
-- Preço Lubrificante (Exemplo): ${formatCurrency(precoLub)}
+- Consumo Lubrificante: ${formatNumber(consumoLub, 2)} ${consumptionUnit}
+- Preço Lubrificante: ${formatCurrency(precoLub)}
 
 Fórmula: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante.
 ${detailed_items.map(item => {
