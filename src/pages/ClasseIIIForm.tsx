@@ -2564,7 +2564,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                           <div className="flex items-center gap-1 mb-4">
                               <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
                               <span className="text-sm font-medium text-red-600">
-                                  {resourceDestinationText} (Diferente da OM Detentora do Equipamento).
+                                  {resourceDestinationText}.
                               </span>
                           </div>
                       )}
