@@ -876,6 +876,7 @@ const ClasseIIIForm = () => {
         
         totalLitrosSemMargem += litrosSemMargemItem;
         const unidade = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
+        // CORREÇÃO APLICADA AQUI: Adiciona o nome do item na linha de detalhe
         detalhes.push(`- ${item.item}: ${formulaDetalhe} = ${formatNumber(litrosSemMargemItem)} L ${unidade}.`);
       });
       
