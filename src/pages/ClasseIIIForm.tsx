@@ -333,8 +333,8 @@ const generateConsolidatedMemoriaCalculo = (
         const precoLub = firstLubricantItem?.preco_lubrificante || 0;
         const consumptionUnit = firstLubricantItem?.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
 
-        detalhamentoCalculo += `- Consumo Lubrificante (Exemplo): ${formatNumber(consumoLub, 2)} ${consumptionUnit}\n`;
-        detalhamentoCalculo += `- Preço Lubrificante (Exemplo): ${formatCurrency(precoLub)}\n\n`;
+        detalhamentoCalculo += `- Consumo Lubrificante: ${formatNumber(consumoLub, 2)} ${consumptionUnit}\n`;
+        detalhamentoCalculo += `- Preço Lubrificante: ${formatCurrency(precoLub)}\n\n`;
         
         detalhamentoCalculo += `Fórmula: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante.\n`;
 
