@@ -42,6 +42,14 @@ const CATEGORIAS: { key: TipoEquipamento, label: string, icon: React.FC<any> }[]
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
 
+// Mapeamento para exibir o rótulo completo da categoria na Seção 4/5
+const categoryLabelMap: Record<TipoEquipamento, string> = {
+  GERADOR: 'Gerador',
+  EMBARCACAO: 'Embarcação',
+  EQUIPAMENTO_ENGENHARIA: 'Equipamento de Engenharia',
+  MOTOMECANIZACAO: 'Motomecanização',
+};
+
 interface ItemClasseIII {
   item: string; // nome_equipamento
   categoria: TipoEquipamento;
@@ -169,7 +177,7 @@ const getOmArticle = (omName: string): string => {
  * Helper function to get the pluralized equipment name based on category.
  */
 const getEquipmentPluralization = (categoria: TipoEquipamento, count: number): string => {
-    const label = getClasseIIICategoryLabel(categoria);
+    const label = categoryLabelMap[categoria] || categoria;
     
     if (count === 1) {
         // Singular: Gerador, Embarcação, Equipamento de Engenharia, Viatura
@@ -313,30 +321,63 @@ Valor Total: ${formatCurrency(valor_total)}.`;
         const unidadeLabel = suprimento_tipo === 'COMBUSTIVEL_GASOLINA' ? 'Gas' : 'OD';
         
         let totalLitrosSemMargem = 0;
-        let detalhes: string[] = [];
         
-        detailed_items.forEach(item => {
-            const { litrosSemMargemItem, formulaLitros } = calculateItemTotals(item, refLPC, dias_operacao);
-            totalLitrosSemMargem += litrosSemMargemItem;
-            detalhes.push(`- ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
+        // 1. Group detailed_items by category
+        const groupedItemsByCategory = detailed_items.reduce((acc, currentItem) => {
+            const cat = currentItem.categoria;
+            if (!acc[cat]) {
+                acc[cat] = {
+                    items: [],
+                    totalLitrosSemMargem: 0,
+                };
+            }
+            acc[cat].items.push(currentItem);
+            const { litrosSemMargemItem } = calculateItemTotals(currentItem, refLPC, dias_operacao);
+            acc[cat].totalLitrosSemMargem += litrosSemMargemItem;
+            totalLitrosSemMargem += litrosSemMargemItem; // Calculate total across all categories
+            return acc;
+        }, {} as Record<TipoEquipamento, { items: ItemClasseIII[], totalLitrosSemMargem: number }>);
+
+        let detailedCalculationOutput = '';
+        
+        // 2. Iterate over categories and format the output
+        Object.entries(groupedItemsByCategory).forEach(([categoryKey, group]) => {
+            const categoryLabel = categoryLabelMap[categoryKey as TipoEquipamento] || categoryKey;
+            
+            // Calculate total equipment count for this category
+            const totalEquipamentosCategoria = group.items.reduce((sum, item) => sum + item.quantidade, 0);
+            
+            detailedCalculationOutput += `\n--- ${categoryLabel.toUpperCase()} (${totalEquipamentosCategoria} ITENS - ${formatNumber(group.totalLitrosSemMargem)} L ${unidadeLabel}) ---\n`;
+            
+            group.items.forEach(item => {
+                const { litrosSemMargemItem, formulaLitros } = calculateItemTotals(item, refLPC, dias_operacao);
+                detailedCalculationOutput += `- ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.\n`;
+            });
         });
         
         const totalEquipamentos = detailed_items.reduce((sum, item) => sum + item.quantidade, 0);
         const diaPlural = dias_operacao === 1 ? 'dia' : 'dias';
         const omArticle = getOmArticle(om_destino);
         
-        // NOVO: Pluralização da Categoria
-        const categoriaLabel = getEquipmentPluralization(categoria, totalEquipamentos);
+        // NOVO: Pluralização da Categoria (usando a categoria do primeiro item para o cabeçalho, se houver apenas uma)
+        const categoriasAtivas = Object.keys(groupedItemsByCategory);
+        let categoriaLabelHeader;
+        if (categoriasAtivas.length === 1) {
+            categoriaLabelHeader = getEquipmentPluralization(categoriasAtivas[0] as TipoEquipamento, totalEquipamentos);
+        } else {
+            categoriaLabelHeader = 'Equipamentos Diversos';
+        }
         
         // CABEÇALHO ATUALIZADO
-        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diaPlural} de ${faseFormatada}.
+        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaLabelHeader} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diaPlural} de ${faseFormatada}.
 
 Cálculo:
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(preco_litro)}.
 
 Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
 
-${detalhes.join('\n')}
+Detalhes por Categoria:
+${detailedCalculationOutput.trim()}
 
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(total_litros)} L ${unidadeLabel}.
 Valor: ${formatNumber(total_litros)} L ${unidadeLabel} x ${formatCurrency(preco_litro)} = ${formatCurrency(valor_total)}.`;
@@ -911,23 +952,37 @@ const ClasseIIIForm = () => {
       const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
       const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
       
-      itensGrupo.forEach(item => {
-        let litrosSemMargemItem = 0;
-        let formulaDetalhe = '';
-        const diasUtilizados = item.dias_utilizados || 0;
-        
-        if (item.categoria === 'MOTOMECANIZACAO') {
-          litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
-          formulaDetalhe = `(${item.quantidade} un. x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${diasUtilizados} dias) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
-        } else {
-          litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
-          formulaDetalhe = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} dias`;
-        }
-        
-        totalLitrosSemMargem += litrosSemMargemItem;
-        const unidade = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
-        detalhes.push(`- ${formulaDetalhe} = ${formatNumber(litrosSemMargemItem)} L ${unidade}.`);
+      // --- NOVO: Agrupamento interno para detalhamento ---
+      const groupedItemsByCategory = itensGrupo.reduce((acc, currentItem) => {
+          const cat = currentItem.categoria;
+          if (!acc[cat]) {
+              acc[cat] = {
+                  items: [],
+                  totalLitrosSemMargem: 0,
+              };
+          }
+          acc[cat].items.push(currentItem);
+          const { litrosSemMargemItem } = calculateItemTotals(currentItem, refLPC, form.dias_operacao);
+          acc[cat].totalLitrosSemMargem += litrosSemMargemItem;
+          totalLitrosSemMargem += litrosSemMargemItem;
+          return acc;
+      }, {} as Record<TipoEquipamento, { items: ItemClasseIII[], totalLitrosSemMargem: number }>);
+
+      let detailedCalculationOutput = '';
+      
+      Object.entries(groupedItemsByCategory).forEach(([categoryKey, group]) => {
+          const categoryLabel = categoryLabelMap[categoryKey as TipoEquipamento] || categoryKey;
+          const totalEquipamentosCategoria = group.items.reduce((sum, item) => sum + item.quantidade, 0);
+          const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
+          
+          detailedCalculationOutput += `\n--- ${categoryLabel.toUpperCase()} (${totalEquipamentosCategoria} ITENS - ${formatNumber(group.totalLitrosSemMargem)} L ${unidadeLabel}) ---\n`;
+          
+          group.items.forEach(item => {
+              const { litrosSemMargemItem, formulaLitros } = calculateItemTotals(item, refLPC, form.dias_operacao);
+              detailedCalculationOutput += `- ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.\n`;
+          });
       });
+      // --- FIM NOVO AGRUPAMENTO ---
       
       const totalLitros = totalLitrosSemMargem * 1.3;
       const valorTotal = totalLitros * precoLitro;
@@ -949,22 +1004,23 @@ const ClasseIIIForm = () => {
       const diaPlural = form.dias_operacao === 1 ? 'dia' : 'dias';
       const omArticle = getOmArticle(form.organizacao);
       
-      const categoriasAtivas = Array.from(new Set(itensGrupo.map(item => item.categoria)));
-      let categoriaLabel;
+      const categoriasAtivas = Object.keys(groupedItemsByCategory);
+      let categoriaLabelHeader;
       if (categoriasAtivas.length === 1) {
-          categoriaLabel = getEquipmentPluralization(categoriasAtivas[0], totalEquipamentos);
+          categoriaLabelHeader = getEquipmentPluralization(categoriasAtivas[0] as TipoEquipamento, totalEquipamentos);
       } else {
-          categoriaLabel = 'Equipamentos Diversos';
+          categoriaLabelHeader = 'Equipamentos Diversos';
       }
       
-      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
+      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabelHeader} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
 
 Cálculo:
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
 
 Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
 
-${detalhes.join('\n')}
+Detalhes por Categoria:
+${detailedCalculationOutput.trim()}
 
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}.
 Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
@@ -1535,13 +1591,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
   // -----------------------------------------------------------------------------------
   
   // Mapeamento para exibir o rótulo completo da categoria na Seção 4/5
-  const categoryLabelMap: Record<TipoEquipamento, string> = {
-    GERADOR: 'Gerador',
-    EMBARCACAO: 'Embarcação',
-    EQUIPAMENTO_ENGENHARIA: 'Equipamento de Engenharia',
-    MOTOMECANIZACAO: 'Motomecanização',
-  };
-
+  // REMOVIDO: const categoryLabelMap: Record<TipoEquipamento, string> = { ... };
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
