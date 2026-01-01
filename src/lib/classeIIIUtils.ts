@@ -6,7 +6,7 @@ import { RefLPC } from "@/types/refLPC";
 type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
 type CombustivelTipo = 'GASOLINA' | 'DIESEL';
 
-interface ItemClasseIII {
+export interface ItemClasseIII {
   item: string; // nome_equipamento
   categoria: TipoEquipamento;
   consumo_fixo: number; // L/h or km/L
@@ -19,8 +19,48 @@ interface ItemClasseIII {
   dias_utilizados: number;
   consumo_lubrificante_litro: number;
   preco_lubrificante: number;
-  preco_lubrificante_input: string;
-  consumo_lubrificante_input: string;
+  preco_lubrificante_input?: string;
+  consumo_lubrificante_input?: string;
+}
+
+export interface ClasseIIIRegistro {
+  id: string;
+  tipo_equipamento: string; // COMBUSTIVEL_CONSOLIDADO, LUBRIFICANTE_CONSOLIDADO
+  organizacao: string; // OM Detentora do Equipamento (para agrupamento)
+  ug: string; // UG Detentora do Equipamento (para agrupamento)
+  quantidade: number;
+  dias_operacao: number; // Global days of activity (saved for context)
+  tipo_combustivel: string;
+  preco_litro: number;
+  total_litros: number;
+  valor_total: number;
+  detalhamento?: string;
+  detalhamento_customizado?: string | null;
+  itens_equipamentos?: any;
+  fase_atividade?: string;
+  consumo_lubrificante_litro?: number;
+  preco_lubrificante?: number;
+  valor_nd_30: number;
+  valor_nd_39: number;
+  om_detentora?: string | null; 
+  ug_detentora?: string | null;
+}
+
+export interface GranularDisplayItem {
+  id: string; // Unique ID for the display item (e.g., based on original record ID + index)
+  om_destino: string; // OM Detentora do Equipamento
+  ug_destino: string; // UG Detentora do Equipamento
+  categoria: TipoEquipamento; // GERADOR, EMBARCACAO, etc.
+  suprimento_tipo: 'COMBUSTIVEL_GASOLINA' | 'COMBUSTIVEL_DIESEL' | 'LUBRIFICANTE';
+  valor_total: number;
+  total_litros: number;
+  preco_litro: number; // Only for fuel
+  dias_operacao: number;
+  fase_atividade: string;
+  valor_nd_30: number;
+  valor_nd_39: number;
+  original_registro: ClasseIIIRegistro;
+  detailed_items: ItemClasseIII[];
 }
 
 // Função auxiliar para pluralizar 'dia' ou 'dias'.
@@ -63,7 +103,7 @@ const getEquipmentPluralization = (categoria: TipoEquipamento, count: number): s
 /**
  * Função auxiliar para calcular litros e valor de um item.
  */
-const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOperacao: number) => {
+export const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOperacao: number) => {
   const diasUtilizados = item.dias_utilizados || 0;
   let litrosSemMargemItem = 0;
   const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
@@ -119,6 +159,25 @@ const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOpe
 };
 
 /**
+ * Formats the activity phases from a semicolon-separated string into a readable text format.
+ * @param faseCSV The semicolon-separated string of phases.
+ * @returns A formatted string (e.g., "Execução, Reconhecimento e Mobilização").
+ */
+export const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
+  if (!faseCSV) return 'operação';
+  
+  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
+  
+  if (fases.length === 0) return 'operação';
+  if (fases.length === 1) return fases[0];
+  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
+  
+  const ultimaFase = fases[fases.length - 1];
+  const demaisFases = fases.slice(0, -1).join(', ');
+  return `${demaisFases} e ${ultimaFase}`;
+};
+
+/**
  * Função auxiliar para gerar a memória de cálculo consolidada (usada para salvar no DB).
  * Esta função é chamada apenas no momento de salvar.
  */
@@ -168,39 +227,27 @@ export const generateConsolidatedMemoriaCalculo = (
         // --- FIM CÁLCULO DO PREÇO MÉDIO ---
 
         // Para a exibição consolidada, pegamos o primeiro item para mostrar o consumo/preço unitário
-        // NOTA: O consumo e preço do lubrificante devem ser consistentes para todos os itens de uma mesma categoria (Gerador/Embarcação)
-        // Mas como estamos consolidando TUDO (Gerador + Embarcação), vamos usar o preço médio no final.
+        const firstLubricantItem = itens.find(item => item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0);
+        const consumoLub = firstLubricantItem?.consumo_lubrificante_litro || 0;
+        const precoLub = firstLubricantItem?.preco_lubrificante || 0;
+        const consumptionUnit = firstLubricantItem?.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
+
+        detalhamentoCalculo += `- Consumo Lubrificante (Exemplo): ${formatNumber(consumoLub, 2)} ${consumptionUnit}\n`;
+        detalhamentoCalculo += `- Preço Lubrificante (Exemplo): ${formatCurrency(precoLub)}\n\n`;
         
         detalhamentoCalculo += `Fórmula: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante.\n`;
 
-        // Agrupar itens por categoria (Gerador/Embarcação) para detalhamento
-        const itensPorCategoria = itens.reduce((acc, item) => {
-            if (!acc[item.categoria]) acc[item.categoria] = [];
-            acc[item.categoria].push(item);
-            return acc;
-        }, {} as Record<TipoEquipamento, ItemClasseIII[]>);
-        
-        Object.entries(itensPorCategoria).forEach(([categoria, itensDaCategoria]) => {
-            const firstItem = itensDaCategoria[0];
-            const consumoLub = firstItem.consumo_lubrificante_litro || 0;
-            const precoLub = firstItem.preco_lubrificante || 0;
-            const consumptionUnit = categoria === 'GERADOR' ? 'L/100h' : 'L/h';
+        itens.forEach(item => {
+            const { litrosLubrificante } = calculateItemTotals(item, refLPC, diasOperacaoGlobal);
             
-            detalhamentoCalculo += `\n--- ${getClasseIIICategoryLabel(categoria).toUpperCase()} ---\n`;
-            detalhamentoCalculo += `- Consumo Lubrificante: ${formatNumber(consumoLub, 2)} ${consumptionUnit}\n`;
-            detalhamentoCalculo += `- Preço Lubrificante: ${formatCurrency(precoLub)}\n`;
+            // NOVO FORMATO SOLICITADO: <item>: (<Qtd Item> un. x <Qtd Nr horas/dia> x <Qtd Nr dias>) x <Consumo Lubrificante> = <Total Lubrificante> (L)
+            const diasPluralItem = pluralizeDay(item.dias_utilizados);
+            const itemConsumptionUnit = item.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
             
-            itensDaCategoria.forEach(item => {
-                const { litrosLubrificante } = calculateItemTotals(item, refLPC, diasOperacaoGlobal);
-                
-                const diasPluralItem = pluralizeDay(item.dias_utilizados);
-                const itemConsumptionUnit = item.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
-                
-                const formulaPart1 = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${item.dias_utilizados} ${diasPluralItem})`;
-                const formulaPart2 = `x ${formatNumber(item.consumo_lubrificante_litro, 2)} ${itemConsumptionUnit}`;
-                
-                detalhamentoCalculo += `- ${item.item}: ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L\n`;
-            });
+            const formulaPart1 = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${item.dias_utilizados} ${diasPluralItem})`;
+            const formulaPart2 = `x ${formatNumber(item.consumo_lubrificante_litro, 2)} ${itemConsumptionUnit}`;
+            
+            detalhamentoCalculo += `- ${item.item}: ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L\n`;
         });
         
         return `${header}
@@ -215,7 +262,7 @@ ${detalhamentoCalculo.trim()}
 Total: ${formatNumber(totalLitros, 2)} L x ${formatCurrency(precoMedio)} = ${formatCurrency(valorTotal)}.`; // USANDO PREÇO MÉDIO
         
     } else {
-        // MEMÓRIA COMBUSTÍVEL (CONSOLIDADA) - Nenhuma mudança aqui
+        // MEMÓRIA COMBUSTÍVEL (CONSOLIDADA)
         const tipoCombustivel = itens[0].tipo_combustivel_fixo; // Assume que todos são do mesmo tipo
         const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
         const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
@@ -240,10 +287,13 @@ Total: ${formatNumber(totalLitros, 2)} L x ${formatCurrency(precoMedio)} = ${for
         const hasOutrasCategorias = categoriasAtivas.some(cat => cat !== 'MOTOMECANIZACAO');
         
         if (hasMotomecanizacao && !hasOutrasCategorias) {
+            // APLICANDO A FÓRMULA ESPECÍFICA DE MOTOMECANIZAÇÃO
             formulaPrincipal = "Fórmula: (Nr Viaturas x Km/Desloc x Nr Desloc/dia x Nr Dias) ÷ Rendimento (Km/L).";
         } else if (hasMotomecanizacao && hasOutrasCategorias) {
+            // Se houver mistura, usa a fórmula genérica (ou a mais complexa)
             formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.";
         } else {
+            // Apenas Gerador/Embarcação/Engenharia
             formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.";
         }
         
@@ -315,14 +365,11 @@ export const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC
 
     if (suprimento_tipo === 'LUBRIFICANTE') {
         // MEMÓRIA LUBRIFICANTE (CONSOLIDADA POR CATEGORIA)
-        // A OM Destino Recurso para Lubrificante é salva em om_detentora/ug_detentora no registro consolidado
         const omDestinoRecurso = item.original_registro.om_detentora || om_destino;
         const ugDestinoRecurso = item.original_registro.ug_detentora || ug_destino;
         
         const categoriaLabel = getEquipmentPluralization(categoria, totalEquipamentos);
         const omArticle = getOmArticle(om_destino);
-        
-        // Detalhes do item granular (todos os itens da categoria, independente do combustível)
         
         // --- CÁLCULO DO PREÇO MÉDIO ---
         let precoMedio = 0;
@@ -331,7 +378,6 @@ export const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC
         }
         // --- FIM CÁLCULO DO PREÇO MÉDIO ---
         
-        // Para a exibição, pegamos o consumo/preço do primeiro item (assumindo consistência dentro da categoria)
         const firstItem = detailed_items[0];
         const consumoLub = firstItem.consumo_lubrificante_litro || 0;
         const precoLub = firstItem.preco_lubrificante || 0;
@@ -358,7 +404,7 @@ ${detailed_items.map(item => {
 
 Total: ${formatNumber(total_litros, 2)} L x ${formatCurrency(precoMedio)} = ${formatCurrency(valor_total)}.`; // USANDO PREÇO MÉDIO
     } else {
-        // MEMÓRIA COMBUSTÍVEL (GRANULAR) - Nenhuma mudança aqui
+        // MEMÓRIA COMBUSTÍVEL (GRANULAR)
         const tipoCombustivel = suprimento_tipo === 'COMBUSTIVEL_GASOLINA' ? 'Gasolina' : 'Diesel';
         const unidadeLabel = suprimento_tipo === 'COMBUSTIVEL_GASOLINA' ? 'GAS' : 'OD';
         
@@ -374,13 +420,17 @@ Total: ${formatNumber(total_litros, 2)} L x ${formatCurrency(precoMedio)} = ${fo
         const totalEquipamentos = detailed_items.reduce((sum, item) => sum + item.quantidade, 0);
         const omArticle = getOmArticle(om_destino);
         
+        // NOVO: Pluralização da Categoria
         const categoriaLabel = getEquipmentPluralization(categoria, totalEquipamentos);
         
+        // Determinar a fórmula principal
         let formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.";
         if (categoria === 'MOTOMECANIZACAO') {
+            // APLICANDO A FÓRMULA ESPECÍFICA DE MOTOMECANIZAÇÃO
             formulaPrincipal = "Fórmula: (Nr Viaturas x Km/Desloc x Nr Desloc/dia x Nr Dias) ÷ Rendimento (Km/L).";
         }
         
+        // CABEÇALHO ATUALIZADO
         return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${fase_atividade}.
 
 Cálculo:
