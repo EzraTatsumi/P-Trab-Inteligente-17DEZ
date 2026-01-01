@@ -146,6 +146,116 @@ export const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, 
 };
 
 /**
+ * Função auxiliar para gerar a memória de cálculo detalhada para um item granular (Combustível ou Lubrificante).
+ * Esta função é usada para a Seção 5 do formulário e para o relatório logístico.
+ */
+export const generateGranularMemoriaCalculo = (
+    item: ItemClasseIII,
+    refLPC: RefLPC | null,
+    omDestinoRecurso: string, // RM para Combustível, OM para Lubrificante
+    ugDestinoRecurso: string, // CODUG RM para Combustível, UG para Lubrificante
+    omDetentoraEquipamento: string,
+    ugDetentoraEquipamento: string,
+    faseAtividade: string,
+    suprimentoTipo: 'COMBUSTIVEL' | 'LUBRIFICANTE'
+): string => {
+    const faseFormatada = formatFasesParaTexto(faseAtividade);
+    const omArticle = getOmArticle(omDetentoraEquipamento);
+    const diasPluralHeader = pluralizeDay(item.dias_utilizados);
+    
+    // 1. Determinar o prefixo ND (sempre 33.90.30 para Classe III)
+    const ndPrefix = "33.90.30";
+    
+    const { 
+        totalLitros, 
+        valorCombustivel, 
+        valorLubrificante, 
+        litrosLubrificante,
+        formulaLitros,
+        precoLitro,
+        litrosSemMargemItem,
+    } = calculateItemTotals(item, refLPC, item.dias_utilizados); // Usa dias_utilizados do item
+    
+    const totalEquipamentos = item.quantidade;
+    const categoriaLabel = getClasseIIICategoryLabel(item.categoria);
+    const equipamentoPlural = getEquipmentPluralization(item.categoria, totalEquipamentos);
+    
+    if (suprimentoTipo === 'LUBRIFICANTE') {
+        // MEMÓRIA LUBRIFICANTE (GRANULAR)
+        
+        if (valorLubrificante <= 0) return "Custo de Lubrificante não configurado para este item.";
+        
+        const header = `${ndPrefix} - Aquisição de Lubrificante para ${totalEquipamentos} ${equipamentoPlural} (${item.item}) ${omArticle} ${omDetentoraEquipamento}, durante ${item.dias_utilizados} ${diasPluralHeader} de ${faseAtividade}.`;
+
+        const consumoLub = item.consumo_lubrificante_litro || 0;
+        const precoLub = item.preco_lubrificante || 0;
+        const consumptionUnit = item.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
+        
+        const totalHoras = item.quantidade * item.horas_dia * item.dias_utilizados;
+        
+        let formulaPart1 = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${item.dias_utilizados} ${diasPluralHeader})`;
+        let formulaPart2 = `x ${formatNumber(consumoLub, 2)} ${consumptionUnit}`;
+        
+        return `${header}
+
+OM Detentora Equipamento: ${omDetentoraEquipamento} (UG: ${formatCodug(ugDetentoraEquipamento)})
+Recurso destinado à OM: ${omDestinoRecurso} (UG: ${formatCodug(ugDestinoRecurso)})
+Equipamento: ${item.item}
+
+Cálculo:
+- Consumo Lubrificante: ${formatNumber(consumoLub, 2)} ${consumptionUnit}
+- Preço Lubrificante: ${formatCurrency(precoLub)}
+
+Fórmula: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante.
+- ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L
+
+Total: ${formatNumber(litrosLubrificante, 2)} L x ${formatCurrency(precoLub)} = ${formatCurrency(valorLubrificante)}.`;
+        
+    } else {
+        // MEMÓRIA COMBUSTÍVEL (GRANULAR)
+        
+        if (valorCombustivel <= 0) return "Custo de Combustível não configurado para este item.";
+        
+        const tipoCombustivel = item.tipo_combustivel_fixo;
+        const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
+        const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
+        
+        const header = `${ndPrefix} - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${equipamentoPlural} (${item.item}) ${omArticle} ${omDetentoraEquipamento}, durante ${item.dias_utilizados} ${diasPluralHeader} de ${faseAtividade}.`;
+
+        const formatarData = (data: string) => {
+            const [ano, mes, dia] = data.split('-');
+            return `${dia}/${mes}/${ano}`;
+        };
+        
+        const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : 'N/D';
+        const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : 'N/D';
+        const localConsultaDisplay = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? ` (${refLPC.nome_local})` : '';
+        
+        // Determinar a fórmula principal
+        let formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.";
+        if (item.categoria === 'MOTOMECANIZACAO') {
+            formulaPrincipal = "Fórmula: (Nr Viaturas x Km/Desloc x Nr Desloc/dia x Nr Dias) ÷ Rendimento (Km/L).";
+        }
+        
+        return `${header}
+
+OM Detentora Equipamento: ${omDetentoraEquipamento} (UG: ${formatCodug(ugDetentoraEquipamento)})
+Recurso destinado à OM: ${omDestinoRecurso} (UG: ${formatCodug(ugDestinoRecurso)})
+Equipamento: ${item.item}
+
+Cálculo:
+- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${combustivelLabel} - ${formatCurrency(precoLitro)}.
+
+${formulaPrincipal}
+
+- ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.
+
+Total: ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitros)} L ${unidadeLabel}.
+Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorCombustivel)}.`;
+    }
+};
+
+/**
  * Função auxiliar para gerar a memória de cálculo consolidada (usada para salvar no DB).
  * Esta função é chamada apenas no momento de salvar.
  */
@@ -209,7 +319,7 @@ export const generateConsolidatedMemoriaCalculo = (
         itens.forEach(item => {
             const { litrosLubrificante } = calculateItemTotals(item, refLPC, diasOperacaoGlobal);
             
-            // NOVO FORMATO SOLICITADO: <item>: (<Qtd Item> un. x <Qtd Nr horas/dia> x <Qtd Nr dias>) x <Consumo Lubrificante> = <Total Lubrificante> (L)
+            // NOVO FORMATO SOLICITADO: <item>: (<Qtd Item> un. x <Qtd Nr horas/dia> x <Qtd Nr dias>) x <Consumo Lubrificante> (L)
             const diasPluralItem = pluralizeDay(item.dias_utilizados);
             const itemConsumptionUnit = item.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
             
@@ -284,12 +394,16 @@ Total: ${formatNumber(totalLitros, 2)} L x ${formatCurrency(precoMedio)} = ${for
             return `${dia}/${mes}/${ano}`;
         };
         
-        const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
-        const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
+        const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : 'N/D';
+        const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : 'N/D';
         const localConsultaDisplay = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? ` (${refLPC.nome_local})` : '';
         
         // REMOVIDO: OM Detentora Equipamento e Recurso fornecido pela RM
         return `${header}
+
+OM Detentora Equipamento: ${omDetentoraEquipamento} (UG: ${formatCodug(ugDetentoraEquipamento)})
+Recurso destinado à OM: ${omDestinoRecurso} (UG: ${formatCodug(ugDestinoRecurso)})
+Total de Equipamentos: ${totalEquipamentos}
 
 Cálculo:
 - Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${combustivelLabel} - ${formatCurrency(precoLitro)}.
@@ -301,13 +415,4 @@ ${detalhes.join('\n')}
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitros)} L ${unidadeLabel}.
 Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
     }
-};
-
-/**
- * Função auxiliar para gerar a memória de cálculo detalhada para um item granular
- */
-export const generateGranularMemoriaCalculo = (item: any, refLPC: RefLPC | null, rmFornecimento: string, codugRmFornecimento: string): string => {
-    // Esta função não é mais usada diretamente no relatório logístico, mas é mantida para o formulário.
-    // Para o relatório, usaremos o detalhamento salvo no DB.
-    return "Memória de cálculo granular (Classe III) - Use o detalhamento salvo no registro consolidado.";
 };
