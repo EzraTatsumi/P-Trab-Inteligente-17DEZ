@@ -1074,9 +1074,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   <th rowSpan={2} className="col-detalhamento">DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/>OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</th>
                 </tr>
                 <tr>
-                  <th className="col-nd">33.90.30</th>
-                  <th className="col-nd">33.90.39</th>
-                  <th className="col-nd">TOTAL</th>
+                  <th className="col-nd" style={{ backgroundColor: '#B4C7E7' }}>33.90.30</th>
+                  <th className="col-nd" style={{ backgroundColor: '#B4C7E7' }}>33.90.39</th>
+                  <th className="col-nd" style={{ backgroundColor: '#B4C7E7' }}>TOTAL</th>
                   <th className="col-combustivel">LITROS</th>
                   <th className="col-combustivel">PREÇO<br/>UNITÁRIO</th>
                   <th className="col-combustivel">PREÇO<br/>TOTAL</th>
