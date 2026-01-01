@@ -2362,9 +2362,8 @@ const getMemoriaRecords = granularRegistros;
                   
                   // Encontrar o label e estilo da categoria do material usando o novo utilitário
                   const categoryBadgeStyle = getClasseIIICategoryBadgeStyle(item.categoria);
-                  // CORREÇÃO APLICADA AQUI: Usar categoryLabelMap com fallback para a chave
-                  // Se o categoryLabelMap falhar, usamos a chave, mas capitalizamos a primeira letra para evitar ALL CAPS
-                  const displayCategoryLabel = categoryLabelMap[item.categoria] || capitalizeFirstLetter(item.categoria.replace(/_/g, ' '));
+                  // CORREÇÃO APLICADA AQUI: Usar categoryLabelMap para garantir o rótulo correto e unificado
+                  const displayCategoryLabel = categoryLabelMap[item.categoria];
                   
                   return (
                     <div key={`memoria-view-${item.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
