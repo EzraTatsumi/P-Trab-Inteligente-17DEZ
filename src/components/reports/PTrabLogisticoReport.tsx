@@ -586,6 +586,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         ];
         
         linhasDespesaOrdenadas.forEach((linha) => {
+          // ADICIONANDO VERIFICAÇÃO DE SEGURANÇA AQUI
+          if (!linha || !linha.registro) return;
+          
           const isClasseI = 'tipo' in linha;
           const isClasseII_IX = 'categoria' in linha.registro;
           const isLubrificante = 'tipo_equipamento' in linha.registro && linha.registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
@@ -1136,6 +1139,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 return [
                   // 1. Renderizar todas as linhas de despesa (I, II, III Lub, V, VI, VII, VIII, IX)
                   ...linhasDespesaOrdenadas.map((linha) => {
+                    // ADICIONANDO VERIFICAÇÃO DE SEGURANÇA AQUI
+                    if (!linha || !linha.registro) return null;
+                    
                     const isClasseI = 'tipo' in linha;
                     const isClasseII_IX = 'categoria' in linha.registro;
                     const isLubrificante = 'tipo_equipamento' in linha.registro && linha.registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
