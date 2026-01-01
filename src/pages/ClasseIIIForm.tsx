@@ -469,7 +469,7 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
     const diasPluralHeader = pluralizeDay(dias_operacao);
 
     if (suprimento_tipo === 'LUBRIFICANTE') {
-        // MEMÓRIA LUBRIFICANTE (GRANULAR)
+        // MEMÓRIA LUBRIFICANTE (CONSOLIDADA POR CATEGORIA)
         // A OM Destino Recurso para Lubrificante é salva em om_detentora/ug_detentora no registro consolidado
         const omDestinoRecurso = item.original_registro.om_detentora || om_destino;
         const ugDestinoRecurso = item.original_registro.ug_detentora || ug_destino;
@@ -477,33 +477,39 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
         const categoriaLabel = getEquipmentPluralization(categoria, totalEquipamentos);
         const omArticle = getOmArticle(om_destino);
         
-        // Detalhes do item granular (apenas um item por memória granular)
-        const granularItem = detailed_items[0];
-        const consumoLub = granularItem.consumo_lubrificante_litro || 0;
-        const precoLub = granularItem.preco_lubrificante || 0;
-        const consumptionUnit = granularItem.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
+        // --- CÁLCULO DO PREÇO MÉDIO ---
+        let precoMedio = 0;
+        if (total_litros > 0) {
+            precoMedio = valor_total / total_litros;
+        }
+        // --- FIM CÁLCULO DO PREÇO MÉDIO ---
+        
+        // Para a exibição, pegamos o consumo/preço do primeiro item (assumindo consistência dentro da categoria)
+        const firstItem = detailed_items[0];
+        const consumoLub = firstItem.consumo_lubrificante_litro || 0;
+        const precoLub = firstItem.preco_lubrificante || 0;
+        const consumptionUnit = firstItem.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
 
         return `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${fase_atividade}.
 
 Cálculo:
-- Consumo Lubrificante: ${formatNumber(consumoLub, 2)} ${consumptionUnit}
-- Preço Lubrificante: ${formatCurrency(precoLub)}
+- Consumo Lubrificante (Exemplo): ${formatNumber(consumoLub, 2)} ${consumptionUnit}
+- Preço Lubrificante (Exemplo): ${formatCurrency(precoLub)}
 
 Fórmula: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante.
 ${detailed_items.map(item => {
     const { litrosLubrificante } = calculateItemTotals(item, refLPC, dias_operacao);
     
-    // NOVO FORMATO SOLICITADO: <item>: (<Qtd Item> un. x <Qtd Nr horas/dia> x <Qtd Nr dias>) x <Consumo Lubrificante> = <Total Lubrificante> (L)
     const diasPluralItem = pluralizeDay(item.dias_utilizados);
     const itemConsumptionUnit = item.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
     
     const formulaPart1 = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${item.dias_utilizados} ${diasPluralItem})`;
     const formulaPart2 = `x ${formatNumber(item.consumo_lubrificante_litro, 2)} ${itemConsumptionUnit}`;
     
-    return `- ${item.item}: ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L`;
+    return `- ${item.item} (${item.tipo_combustivel_fixo}): ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L`;
 }).join('\n')}
 
-Total: ${formatNumber(total_litros, 2)} L x ${formatCurrency(precoLub)} = ${formatCurrency(valor_total)}.`; // USANDO PREÇO UNITÁRIO DO ITEM
+Total: ${formatNumber(total_litros, 2)} L x ${formatCurrency(precoMedio)} = ${formatCurrency(valor_total)}.`; // USANDO PREÇO MÉDIO
     } else {
         // MEMÓRIA COMBUSTÍVEL (GRANULAR)
         const tipoCombustivel = suprimento_tipo === 'COMBUSTIVEL_GASOLINA' ? 'Gasolina' : 'Diesel';
@@ -1454,6 +1460,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
         (r.itens_equipamentos as ItemClasseIII[] || []).forEach((item) => {
             const { itemTotal } = calculateItemTotals(item, refLPC, r.dias_operacao);
             if (itemTotal > 0) {
+                // Chave de agrupamento: OM_DESTINO_UG_DESTINO-CATEGORIA
                 const key = `${r.organizacao}-${r.ug}-${item.categoria}`;
                 
                 if (!consolidatedLubricantMap.has(key)) {
@@ -2094,13 +2101,12 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                   <TabsList className="grid w-full grid-cols-4">
                     {CATEGORIAS.map(cat => (
                       <TabsTrigger key={cat.key} value={cat.key} className="flex items-center gap-1">
-                        <cat.icon className="h-4 w-4" />
+                        {/* REMOVIDO: <cat.icon className="h-4 w-4" /> */}
                         {cat.label}
                       </TabsTrigger>
                     ))}
                   </TabsList>
-                  {CATEGORIAS.map(cat => (
-                    <TabsContent key={cat.key} value={cat.key} className="mt-4">
+                  <TabsContent key={cat.key} value={cat.key} className="mt-4">
                       <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
                         <div className="max-h-[400px] overflow-y-auto rounded-md border">
                           <Table className="w-full">
@@ -2643,7 +2649,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                                     return (
                                       <div key={cat.key} className="flex justify-between text-xs">
                                         <span className="text-muted-foreground flex items-center gap-1">
-                                          <cat.icon className="h-3 w-3" />
+                                          {/* REMOVIDO: <cat.icon className="h-3 w-3" /> */}
                                           {displayLabel}: {formatNumber(totais.litros, 2)} L
                                         </span>
                                         <span className="font-medium text-foreground text-right">
