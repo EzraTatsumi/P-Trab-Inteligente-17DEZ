@@ -2561,10 +2561,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                       
                       {/* ALERTA DE RECURSO DIFERENTE (AJUSTADO PARA O PADRÃO DA CLASSE II) */}
                       {isResourceDifferent && (
-                          <div className="flex items-center gap-1 mb-4">
+                          <div className="flex items-center gap-1 mb-0">
                               <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
                               <span className="text-sm font-medium text-red-600">
-                                  {resourceDestinationText}.
+                                  {resourceDestinationText} (Diferente da OM Detentora do Equipamento).
                               </span>
                           </div>
                       )}
