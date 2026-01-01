@@ -1097,7 +1097,7 @@ const PTrabReportManager = () => {
             gruposPorOM={gruposPorOM}
             calcularTotaisPorOM={calcularTotaisPorOM}
             fileSuffix={fileSuffix}
-            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculada}
+            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada}
             generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo}
             generateClasseVMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)}
             generateClasseVIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)}
