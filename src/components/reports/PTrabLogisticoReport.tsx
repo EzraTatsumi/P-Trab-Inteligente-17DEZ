@@ -34,6 +34,7 @@ import {
   generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport, // Importar com alias
   generateClasseIXMemoriaCalculo,
   calculateItemTotalClasseIX,
+  generateClasseIIIMemoriaCalculo, // NOVO: Importando a função de memória da Classe III
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils"; 
@@ -690,8 +691,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               rowData.valorC = registro.valor_total;
               rowData.valorE = registro.valor_total;
               
-              // USANDO O DETALHAMENTO SALVO NO REGISTRO (que já contém a nova formatação)
-              rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
+              // NOVO: Usar a função de memória da Classe III
+              rowData.detalhamentoValue = generateClasseIIIMemoriaCalculo(registro);
           }
           
           const row = worksheet.getRow(currentRow);
@@ -778,8 +779,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             row.getCell('H').numFmt = 'R$ #,##0.00';
             row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
             
-            // USANDO O DETALHAMENTO SALVO NO REGISTRO (que já contém a nova formatação)
-            const detalhamentoCombustivel = registro.detalhamento_customizado || registro.detalhamento || '';
+            // NOVO: Usar a função de memória da Classe III
+            const detalhamentoCombustivel = generateClasseIIIMemoriaCalculo(registro);
             
             row.getCell('I').value = detalhamentoCombustivel;
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
@@ -1043,7 +1044,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo]);
+  }, [ptrabData, toast, gruposPorOM, calcularTotaisPorOM, registrosClasseIII, nomeRM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo, generateClasseIIIMemoriaCalculo]);
 
   return (
     <div className="space-y-6">
@@ -1243,8 +1244,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         rowData.valorC = registro.valor_total;
                         rowData.valorE = registro.valor_total;
                         
-                        // USANDO O DETALHAMENTO SALVO NO REGISTRO (que já contém a nova formatação)
-                        rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
+                        // NOVO: Usar a função de memória da Classe III
+                        rowData.detalhamentoValue = generateClasseIIIMemoriaCalculo(registro);
                     }
                     
                     return (
@@ -1297,8 +1298,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{formatCurrency(registro.valor_total)}</td>
                         <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
                           <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                            {/* USANDO O DETALHAMENTO SALVO NO REGISTRO (que já contém a nova formatação) */}
-                            {registro.detalhamento_customizado || registro.detalhamento || ''}
+                            {/* NOVO: Usar a função de memória da Classe III */}
+                            {generateClasseIIIMemoriaCalculo(registro)}
                           </pre>
                         </td>
                       </tr>

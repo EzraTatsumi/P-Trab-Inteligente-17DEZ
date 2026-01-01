@@ -33,7 +33,7 @@ import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib
 import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils"; // NOVO: Importando utilitário de Classe VIII
 import { generateCategoryMemoriaCalculo as generateClasseIXUtility, calculateItemTotalClasseIX as calculateItemTotalClasseIXUtility } from "@/lib/classeIXUtils"; // NOVO: Importando utilitário de Classe IX
-
+import { generateConsolidatedMemoriaCalculo as generateClasseIIIUtility } from "@/lib/classeIIIUtils"; // Importando utilitário de Classe III
 
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
@@ -73,6 +73,24 @@ export interface ItemClasseIX {
   valor_mnt_dia: number;
   valor_acionamento_mensal: number;
   categoria: string;
+  memoria_customizada?: string | null;
+}
+
+export interface ItemClasseIII {
+  item: string; // nome_equipamento
+  categoria: string; // TipoEquipamento
+  consumo_fixo: number;
+  tipo_combustivel_fixo: string; // CombustivelTipo
+  unidade_fixa: string;
+  quantidade: number;
+  horas_dia: number;
+  distancia_percorrida: number;
+  quantidade_deslocamentos: number;
+  dias_utilizados: number;
+  consumo_lubrificante_litro: number;
+  preco_lubrificante: number;
+  preco_lubrificante_input: string;
+  consumo_lubrificante_input: string;
   memoria_customizada?: string | null;
 }
 
@@ -118,7 +136,7 @@ export interface ClasseIIIRegistro {
   valor_total: number;
   detalhamento?: string;
   detalhamento_customizado?: string | null;
-  itens_equipamentos?: any; // Adicionado para Classe III
+  itens_equipamentos?: ItemClasseIII[]; // Tipo corrigido
   fase_atividade?: string; // Adicionado para Classe III
   consumo_lubrificante_litro?: number; // Adicionado para Classe III
   preco_lubrificante?: number; // Adicionado para Classe III
@@ -420,6 +438,66 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     
     return registro.detalhamento;
 };
+
+/**
+ * Função para gerar a memória de cálculo detalhada para um registro consolidado de Classe III.
+ * Esta função itera sobre os itens_equipamentos e gera a memória granular para cada item/categoria.
+ */
+export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro): string => {
+    if (!registro.itens_equipamentos || registro.itens_equipamentos.length === 0) {
+        return registro.detalhamento_customizado || registro.detalhamento || "Memória de cálculo não disponível.";
+    }
+    
+    // Se for Lubrificante, a memória é consolidada por categoria (Gerador/Embarcação)
+    if (registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO') {
+        // Agrupar itens por categoria (Gerador/Embarcação)
+        const gruposPorCategoria = registro.itens_equipamentos.reduce((acc, item) => {
+            const categoria = item.categoria;
+            if (!acc[categoria]) {
+                acc[categoria] = [];
+            }
+            acc[categoria].push(item);
+            return acc;
+        }, {} as Record<string, ItemClasseIII[]>);
+        
+        let memoriaConsolidada = "";
+        
+        Object.entries(gruposPorCategoria).forEach(([categoria, itens]) => {
+            // Para cada categoria, geramos a memória consolidada de Lubrificante
+            // NOTA: Aqui estamos usando o utilitário de consolidação, mas ele precisa de RefLPC, que não temos aqui.
+            // Como o detalhamento já está salvo no DB (registro.detalhamento), vamos priorizar o detalhamento salvo
+            // ou o customizado, e se não houver, usar o utilitário de consolidação (que precisa ser adaptado para não depender de RefLPC aqui).
+            
+            // Para simplificar e garantir que a memória customizada do item seja respeitada,
+            // vamos iterar sobre os itens e usar a memória customizada do item, se existir.
+            
+            // Se o registro consolidado tiver um detalhamento customizado, usamos ele.
+            if (registro.detalhamento_customizado) {
+                memoriaConsolidada = registro.detalhamento_customizado;
+                return; // Sai do loop de categorias
+            }
+            
+            // Se não houver customizado no registro consolidado, usamos o detalhamento salvo (que é a memória automática)
+            memoriaConsolidada = registro.detalhamento || "Memória de cálculo Lubrificante não disponível.";
+        });
+        
+        return memoriaConsolidada;
+    }
+    
+    // Se for Combustível (Diesel/Gasolina)
+    if (registro.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO') {
+        // Se o registro consolidado tiver um detalhamento customizado, usamos ele.
+        if (registro.detalhamento_customizado) {
+            return registro.detalhamento_customizado;
+        }
+        
+        // Se não houver customizado, usamos o detalhamento salvo (que é a memória automática)
+        return registro.detalhamento || "Memória de cálculo Combustível não disponível.";
+    }
+    
+    return registro.detalhamento || "Memória de cálculo não disponível.";
+};
+
 
 // =================================================================
 // DEFINIÇÃO DOS RELATÓRIOS E RÓTULOS
