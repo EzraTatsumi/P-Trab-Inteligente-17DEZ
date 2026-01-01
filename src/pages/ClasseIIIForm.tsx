@@ -225,7 +225,7 @@ const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOpe
   let litrosLubrificante = 0;
   const isLubricantType = item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO';
   if (isLubricantType && item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0 && diasUtilizados > 0) {
-    const totalHoras = item.quantidade * item.horas_dia * item.dias_utilizados;
+    const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
     
     if (item.categoria === 'GERADOR') {
       litrosLubrificante = (totalHoras / 100) * item.consumo_lubrificante_litro;
@@ -387,9 +387,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(itens[0
     }
 };
 
-/**
- * Função auxiliar para gerar a memória de cálculo detalhada para um item granular
- */
+// Função auxiliar para gerar a memória de cálculo detalhada para um item granular
 const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLPC | null, rmFornecimento: string, codugRmFornecimento: string): string => {
     const { om_destino, ug_destino, categoria, suprimento_tipo, valor_total, total_litros, preco_litro, dias_operacao, fase_atividade, detailed_items } = item;
     
@@ -1393,9 +1391,9 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     // 2. Preparar registros para salvar
     const registrosParaSalvar: TablesInsert<'classe_iii_registros'>[] = [];
     
-    let fasesFinais = [...fasesAtividade];
-    if (customFaseAtividade.trim()) { fasesFinais = [...fasesFinais, customFaseAtividade.trim()]; }
-    const faseFinalStringDB = fasesFinais.filter(f => f).join('; ');
+    let faseFinalString = [...fasesAtividade];
+    if (customFaseAtividade.trim()) { faseFinalString = [...fasesFinais, customFaseAtividade.trim()]; }
+    const faseFinalStringDB = faseFinalString.filter(f => f).join('; ');
     
     // 3.1. Processar Lubrificante (se houver custo)
     if (totalCustoLubrificante > 0) {
@@ -2649,17 +2647,17 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                             </>
                           )}
                         </div>
-                        
-                        {/* ALERTA DE RECURSO DIFERENTE (MOVIDO PARA DENTRO DO CONTAINER) */}
-                        {isResourceDifferent && (
-                            <div className="flex items-center gap-1 mt-2 w-full">
-                                <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
-                                <span className="text-sm font-medium text-red-600">
-                                    {resourceDestinationText}
-                                </span>
-                            </div>
-                        )}
                       </div>
+                      
+                      {/* ALERTA DE RECURSO DIFERENTE (AJUSTADO PARA O PADRÃO DA CLASSE II) */}
+                      {isResourceDifferent && (
+                          <div className="flex items-center gap-1 mb-0">
+                              <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+                              <span className="text-sm font-medium text-red-600">
+                                  {resourceDestinationText}
+                              </span>
+                          </div>
+                      )}
                       
                       <Card className="p-4 bg-background rounded-lg border">
                         {isEditing ? (
