@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, FileText, Package, Utensils, Briefcase, HardHat, Plane, ClipboardList } from "lucide-react";
+import { ArrowLeft, Loader2, FileText, Package, Utensils, Briefcase, HardHat, Plane, ClipboardList, LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
@@ -35,6 +35,66 @@ import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/l
 import { generateCategoryMemoriaCalculo as generateClasseIXUtility, calculateItemTotalClasseIX as calculateItemTotalClasseIXUtility } from "@/lib/classeIXUtils"; // NOVO: Importando utilitário de Classe IX
 import { generateGranularMemoriaCalculo as generateClasseIIIGranularUtility } from "@/lib/classeIIIUtils"; // NOVO: Importando utilitário granular da Classe III
 import { RefLPC } from "@/types/refLPC"; // NOVO: Importando tipo RefLPC
+
+// =================================================================
+// DEFINIÇÕES DE RELATÓRIO
+// =================================================================
+
+type ReportType = 'logistico' | 'racao_operacional' | 'operacional' | 'material_permanente' | 'hora_voo' | 'dor';
+
+interface ReportOption {
+  value: ReportType;
+  label: string;
+  icon: LucideIcon;
+  iconClass: string;
+  fileSuffix: string;
+}
+
+const REPORT_OPTIONS: ReportOption[] = [
+  {
+    value: 'logistico',
+    label: 'Relatório Logístico (Completo)',
+    icon: FileText,
+    iconClass: 'text-primary',
+    fileSuffix: 'Logistico',
+  },
+  {
+    value: 'racao_operacional',
+    label: 'Relatório Ração Operacional (Classe I - OP)',
+    icon: Utensils,
+    iconClass: 'text-orange-500',
+    fileSuffix: 'RacaoOp',
+  },
+  {
+    value: 'operacional',
+    label: 'Relatório Operacional (Classe I - QS/QR)',
+    icon: Briefcase,
+    iconClass: 'text-green-600',
+    fileSuffix: 'RacaoQSQR',
+  },
+  {
+    value: 'material_permanente',
+    label: 'Relatório Material Permanente (Classe II/V/VI/VII/VIII/IX)',
+    icon: Package,
+    iconClass: 'text-blue-600',
+    fileSuffix: 'MaterialPermanente',
+  },
+  {
+    value: 'hora_voo',
+    label: 'Relatório Hora de Voo (Classe III - Aviação)',
+    icon: Plane,
+    iconClass: 'text-indigo-600',
+    fileSuffix: 'HoraVoo',
+  },
+  {
+    value: 'dor',
+    label: 'Relatório DOR (Despesas Operacionais)',
+    icon: ClipboardList,
+    iconClass: 'text-red-600',
+    fileSuffix: 'DOR',
+  },
+];
+
 
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
@@ -191,7 +251,7 @@ export interface GrupoOM {
   linhasClasseVII: LinhaClasseII[];
   linhasClasseVIII: LinhaClasseII[];
   linhasClasseIX: LinhaClasseII[];
-  linhasClasseIII: LinhaClasseIII[]; // NOVO: Para linhas granulares
+  linhasClasseIII: LinhaClasseIII[]; // Inicializa o novo array
   linhasLubrificante: LinhaLubrificante[]; // MANTIDO, mas será substituído por linhasClasseIII
 }
 
@@ -1037,7 +1097,7 @@ const PTrabReportManager = () => {
             gruposPorOM={gruposPorOM}
             calcularTotaisPorOM={calcularTotaisPorOM}
             fileSuffix={fileSuffix}
-            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada}
+            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculada}
             generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo}
             generateClasseVMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)}
             generateClasseVIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)}
