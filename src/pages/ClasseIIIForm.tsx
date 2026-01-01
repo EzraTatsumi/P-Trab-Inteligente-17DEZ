@@ -966,8 +966,10 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
   const getMemoriaRecords = useMemo(() => {
     const granularItems: GranularDisplayItem[] = [];
     
-    // NOVO MAPA DE CONSOLIDAÇÃO PARA LUBRIFICANTE
-    // Chave: OM_DESTINO_UG_DESTINO-CATEGORIA (Ex: 23ª Bda Inf Sl-160001-GERADOR)
+    // 1. Mapa de consolidação para Combustível (Chave: OM_UG_DETENTORA-TIPO_COMBUSTIVEL-CATEGORIA)
+    const consolidatedFuelMap = new Map<string, { original_registro: ClasseIIIRegistro, detailed_items: ItemClasseIII[] }>();
+    
+    // 2. Mapa de consolidação para Lubrificante (Chave: OM_UG_DETENTORA-CATEGORIA)
     const consolidatedLubricantMap = new Map<string, { original_registro: ClasseIIIRegistro, detailed_items: ItemClasseIII[] }>();
     
     registros.forEach(r => {
@@ -975,42 +977,27 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       const isLubrificante = r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
       
       if (isCombustivel) {
-        // Combustível: Mantém a lógica granular por item (separado por tipo de combustível)
-        (r.itens_equipamentos as ItemClasseIII[] || []).forEach((item, index) => {
-          const { itemTotal } = calculateItemTotals(item, refLPC, r.dias_operacao);
-          if (itemTotal > 0) {
-            
-            let suprimento_tipo: GranularDisplayItem['suprimento_tipo'] = item.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL';
-            
-            const { totalLitros, valorCombustivel, precoLitro } = calculateItemTotals(item, refLPC, r.dias_operacao);
-            
-            // Se o valor for zero, não adiciona
+        (r.itens_equipamentos as ItemClasseIII[] || []).forEach((item) => {
+            const { valorCombustivel } = calculateItemTotals(item, refLPC, r.dias_operacao);
             if (valorCombustivel > 0) {
-                granularItems.push({
-                  id: `${r.id}-${item.item}-${suprimento_tipo}`, // ID único para o item granular
-                  om_destino: r.organizacao, // OM Detentora do Equipamento
-                  ug_destino: r.ug, // UG Detentora do Equipamento
-                  categoria: item.categoria,
-                  suprimento_tipo: suprimento_tipo,
-                  valor_total: valorCombustivel,
-                  total_litros: totalLitros, // Total Litros (com margem para Combustível)
-                  preco_litro: precoLitro,
-                  dias_operacao: r.dias_operacao,
-                  fase_atividade: r.fase_atividade || '',
-                  valor_nd_30: valorCombustivel, // Classe III é sempre ND 30
-                  valor_nd_39: 0,
-                  original_registro: r, // Passa o registro consolidado
-                  detailed_items: [item], // Passa apenas o item granular
-                });
+                // Chave de agrupamento: OM_UG_DETENTORA-TIPO_COMBUSTIVEL-CATEGORIA
+                const suprimento_tipo: GranularDisplayItem['suprimento_tipo'] = item.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL';
+                const key = `${r.organizacao}-${r.ug}-${suprimento_tipo}-${item.categoria}`;
+                
+                if (!consolidatedFuelMap.has(key)) {
+                    consolidatedFuelMap.set(key, {
+                        original_registro: r,
+                        detailed_items: [],
+                    });
+                }
+                consolidatedFuelMap.get(key)!.detailed_items.push(item);
             }
-          }
         });
       } else if (isLubrificante) {
-        // Lubrificante: Agrupa por OM Detentora do Equipamento e Categoria (Gerador/Embarcação)
         (r.itens_equipamentos as ItemClasseIII[] || []).forEach((item) => {
             const { valorLubrificante } = calculateItemTotals(item, refLPC, r.dias_operacao);
             if (valorLubrificante > 0) {
-                // Chave de agrupamento: OM_DESTINO_UG_DESTINO-CATEGORIA
+                // Chave de agrupamento: OM_UG_DETENTORA-CATEGORIA
                 const key = `${r.organizacao}-${r.ug}-${item.categoria}`;
                 
                 if (!consolidatedLubricantMap.has(key)) {
@@ -1019,15 +1006,52 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                         detailed_items: [],
                     });
                 }
-                
-                // Adiciona o item ao grupo consolidado
                 consolidatedLubricantMap.get(key)!.detailed_items.push(item);
             }
         });
       }
     });
     
-    // 2. Processar o mapa consolidado de Lubrificante
+    // 3. Processar o mapa consolidado de Combustível
+    Array.from(consolidatedFuelMap.entries()).forEach(([key, group]) => {
+        const firstItem = group.detailed_items[0];
+        const categoria = firstItem.categoria;
+        const om_destino = group.original_registro.organizacao;
+        const ug_destino = group.original_registro.ug;
+        const dias_operacao = group.original_registro.dias_operacao;
+        const fase_atividade = group.original_registro.fase_atividade || '';
+        const suprimento_tipo = firstItem.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL';
+        
+        let totalValor = 0;
+        let totalLitros = 0;
+        let totalLitrosSemMargem = 0;
+        
+        group.detailed_items.forEach(item => {
+            const { valorCombustivel, totalLitros: totalL, litrosSemMargemItem } = calculateItemTotals(item, refLPC, dias_operacao);
+            totalValor += valorCombustivel;
+            totalLitros += totalL;
+            totalLitrosSemMargem += litrosSemMargemItem;
+        });
+        
+        granularItems.push({
+            id: `${group.original_registro.id}-${categoria}-${suprimento_tipo}`, // ID único para a memória
+            om_destino,
+            ug_destino,
+            categoria,
+            suprimento_tipo,
+            valor_total: totalValor,
+            total_litros: totalLitros,
+            preco_litro: group.original_registro.preco_litro,
+            dias_operacao,
+            fase_atividade,
+            valor_nd_30: totalValor,
+            valor_nd_39: 0,
+            original_registro: group.original_registro,
+            detailed_items: group.detailed_items,
+        });
+    });
+    
+    // 4. Processar o mapa consolidado de Lubrificante
     Array.from(consolidatedLubricantMap.entries()).forEach(([key, group]) => {
         const firstItem = group.detailed_items[0];
         const categoria = firstItem.categoria;
@@ -1036,10 +1060,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
         const dias_operacao = group.original_registro.dias_operacao;
         const fase_atividade = group.original_registro.fase_atividade || '';
         
-        // Recalcula os totais para o grupo consolidado de Lubrificante
         let totalValor = 0;
         let totalLitros = 0;
-        let precoMedio = 0;
         
         group.detailed_items.forEach(item => {
             const { valorLubrificante, litrosLubrificante } = calculateItemTotals(item, refLPC, dias_operacao);
@@ -1047,29 +1069,27 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
             totalLitros += litrosLubrificante;
         });
         
-        if (totalLitros > 0) {
-            precoMedio = totalValor / totalLitros;
-        }
+        let precoMedio = totalLitros > 0 ? totalValor / totalLitros : 0;
         
         granularItems.push({
-            id: `${group.original_registro.id}-${categoria}`, // ID único para a memória
+            id: `${group.original_registro.id}-${categoria}-LUB`, // ID único para a memória
             om_destino,
             ug_destino,
             categoria,
             suprimento_tipo: 'LUBRIFICANTE',
             valor_total: totalValor,
             total_litros: totalLitros,
-            preco_litro: precoMedio, // Usando preço médio para consistência
+            preco_litro: precoMedio,
             dias_operacao,
             fase_atividade,
-            valor_nd_30: totalValor, // ND 30 do registro consolidado
-            valor_nd_39: 0, // ND 39 é 0
+            valor_nd_30: totalValor,
+            valor_nd_39: 0,
             original_registro: group.original_registro,
-            detailed_items: group.detailed_items, // Todos os itens (Gasolina e Diesel)
+            detailed_items: group.detailed_items,
         });
     });
     
-    // 3. Ordenar a lista final
+    // 5. Ordenar a lista final
     return granularItems.sort((a, b) => {
         if (a.om_destino !== b.om_destino) return a.om_destino.localeCompare(b.om_destino);
         if (a.categoria !== b.categoria) return a.categoria.localeCompare(b.categoria);

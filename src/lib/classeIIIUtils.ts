@@ -378,9 +378,12 @@ export const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC
         }
         // --- FIM CÁLCULO DO PREÇO MÉDIO ---
         
-        const firstItem = detailed_items[0];
+        // Usamos o primeiro item para o exemplo de consumo/preço, mas garantimos que ele exista
+        const firstItem = detailed_items.find(i => i.consumo_lubrificante_litro > 0 && i.preco_lubrificante > 0) || detailed_items[0];
+        
         const consumoLub = firstItem.consumo_lubrificante_litro || 0;
         const precoLub = firstItem.preco_lubrificante || 0;
+        // A unidade de consumo deve ser baseada na categoria do item detalhado
         const consumptionUnit = firstItem.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
 
         return `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${fase_atividade}.
@@ -394,6 +397,7 @@ ${detailed_items.map(item => {
     const { litrosLubrificante } = calculateItemTotals(item, refLPC, dias_operacao);
     
     const diasPluralItem = pluralizeDay(item.dias_utilizados);
+    // A unidade de consumo deve ser baseada na categoria do item detalhado
     const itemConsumptionUnit = item.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
     
     const formulaPart1 = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${item.dias_utilizados} ${diasPluralItem})`;
@@ -425,8 +429,8 @@ Total: ${formatNumber(total_litros, 2)} L x ${formatCurrency(precoMedio)} = ${fo
         
         // Determinar a fórmula principal
         let formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.";
+        // A fórmula principal deve ser determinada pela categoria do item granular (que é a categoria do equipamento)
         if (categoria === 'MOTOMECANIZACAO') {
-            // APLICANDO A FÓRMULA ESPECÍFICA DE MOTOMECANIZAÇÃO
             formulaPrincipal = "Fórmula: (Nr Viaturas x Km/Desloc x Nr Desloc/dia x Nr Dias) ÷ Rendimento (Km/L).";
         }
         
