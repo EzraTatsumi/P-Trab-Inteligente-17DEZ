@@ -698,26 +698,27 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 
                 // 1ª Linha: CLASSE III - DIESEL/GASOLINA/LUBRIFICANTE
                 const tipoSuprimentoLabel = isLubrificanteLinha ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
-                rowData.despesasValue = `CLASSE III - ${tipoSuprimentoLabel}`;
+                let despesasValue = `CLASSE III - ${tipoSuprimentoLabel}`;
                 
                 // 2ª Linha: CATEGORIA
                 const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
-                rowData.despesasValue += `\n${categoriaEquipamento}`;
+                despesasValue += `\n${categoriaEquipamento}`;
                 
                 // 3ª Linha: OM Detentora (se for necessário, ou seja, se for diferente da OM de destino do recurso)
                 const omDestinoRecurso = isCombustivelLinha ? nomeOM : (registro.om_detentora || registro.organizacao);
                 const isDifferentOm = omDetentoraEquipamento !== omDestinoRecurso;
                 
                 if (isDifferentOm) {
-                    rowData.despesasValue += `\n${omDetentoraEquipamento}`;
+                    despesasValue += `\n${omDetentoraEquipamento}`;
                 }
                 
                 // OM (UGE) CODUG: OM de Destino do Recurso
                 const ugDestinoRecurso = isCombustivelLinha ? (registro.ug_detentora || '') : (registro.ug_detentora || registro.ug);
                 const ugDestinoFormatted = formatCodug(ugDestinoRecurso);
-                omValue = `${omDestinoRecurso}\n(${ugDestinoFormatted})`;
+                let omValue = `${omDestinoRecurso}\n(${ugDestinoFormatted})`;
                 
-                rowData.omValue = omValue;
+                rowData.despesasValue = despesasValue; // Atribuição corrigida
+                rowData.omValue = omValue; // Atribuição corrigida
                 
                 if (isCombustivelLinha) {
                     rowData.valorC = 0;
@@ -1275,13 +1276,20 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       const isDifferentOm = omDetentoraEquipamento !== omDestinoRecurso;
                       
                       if (isDifferentOm) {
-                          rowData.despesasValue += `\n${omDetentoraEquipamento}`;
+                          despesasValue += `\n${omDetentoraEquipamento}`;
                       }
                       
                       // OM (UGE) CODUG: OM de Destino do Recurso
                       const ugDestinoRecurso = isCombustivelLinha ? (linha.registro.ug_detentora || '') : (linha.registro.ug_detentora || linha.registro.ug);
                       const ugDestinoFormatted = formatCodug(ugDestinoRecurso);
                       omValue = `${omDestinoRecurso}\n(${ugDestinoFormatted})`;
+                      
+                      // Atribuição ao rowData
+                      const valorC = isLubrificanteLinha ? linha.valor_total_linha : 0;
+                      const valorE = isLubrificanteLinha ? linha.valor_total_linha : 0;
+                      const litrosF = isCombustivelLinha ? `${formatNumber(linha.total_litros_linha)} L` : '';
+                      const precoUnitarioG = isCombustivelLinha ? formatCurrency(linha.preco_litro_linha) : '';
+                      const precoTotalH = isCombustivelLinha ? formatCurrency(linha.valor_total_linha) : '';
                       
                       return (
                         <tr key={`classe-iii-${linha.registro.id}-${linha.tipo_suprimento}-${linha.categoria_equipamento}`}>
@@ -1293,21 +1301,21 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                           </td>
                           {/* ND 30/39 */}
                           <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>
-                            {isLubrificanteLinha && linha.valor_total_linha > 0 ? formatCurrency(linha.valor_total_linha) : ''}
+                            {valorC > 0 ? formatCurrency(valorC) : ''}
                           </td>
                           <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td>
                           <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>
-                            {isLubrificanteLinha && linha.valor_total_linha > 0 ? formatCurrency(linha.valor_total_linha) : ''}
+                            {valorE > 0 ? formatCurrency(valorE) : ''}
                           </td>
                           {/* Combustível */}
                           <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>
-                            {isCombustivelLinha ? `${formatNumber(linha.total_litros_linha)} L` : ''}
+                            {litrosF}
                           </td>
                           <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>
-                            {isCombustivelLinha ? formatCurrency(linha.preco_litro_linha) : ''}
+                            {precoUnitarioG}
                           </td>
                           <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>
-                            {isCombustivelLinha ? formatCurrency(linha.valor_total_linha) : ''}
+                            {precoTotalH}
                           </td>
                           <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
                             <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
