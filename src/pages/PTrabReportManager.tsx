@@ -656,7 +656,8 @@ const PTrabReportManager = () => {
 
     // 3. Processar Classe III (Combustível e Lubrificante) - DESAGREGAÇÃO
     registrosClasseIII.forEach((registroConsolidado) => {
-        const isLub = isLubrificante(registroConsolidado);
+        const isLubConsolidado = isLubrificante(registroConsolidado);
+        const isCombConsolidado = isCombustivel(registroConsolidado);
         
         // A OM de destino do recurso (RM para Combustível, OM para Lubrificante)
         const omDestinoRecurso = registroConsolidado.om_detentora || registroConsolidado.organizacao;
@@ -671,10 +672,13 @@ const PTrabReportManager = () => {
         
         // Iterar sobre os itens granulares dentro do registro consolidado
         (registroConsolidado.itens_equipamentos || []).forEach((item, index) => {
+            // NOTA: Passamos null para refLPC aqui, pois os valores totais (valorCombustivel, valorLubrificante)
+            // não são usados para o cálculo de ND/Total, mas sim para a desagregação.
+            // O cálculo real de ND/Total é feito em calcularTotaisPorOM, que usa a soma dos valores totais das linhas granulares.
             const { valorCombustivel, valorLubrificante, totalLitros, litrosLubrificante, precoLitro } = calculateItemTotals(item, null, registroConsolidado.dias_operacao);
             
             // --- Lógica para Combustível (Diesel/Gasolina) ---
-            if (valorCombustivel > 0 && !isLub) {
+            if (isCombConsolidado && valorCombustivel > 0) {
                 const suprimentoTipo = item.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL';
                 
                 // Cria uma linha granular para o Combustível
@@ -697,7 +701,7 @@ const PTrabReportManager = () => {
             }
             
             // --- Lógica para Lubrificante ---
-            if (valorLubrificante > 0 && isLub) {
+            if (isLubConsolidado && valorLubrificante > 0) {
                 // Cria uma linha granular para o Lubrificante
                 grupos[omDestinoRecurso].linhasClasseIII.push({
                     id: `${registroConsolidado.id}-L-${index}`,
