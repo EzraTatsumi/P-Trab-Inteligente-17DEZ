@@ -2471,7 +2471,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                       const omDestinoRecurso = item.original_registro.om_detentora || om;
                       const ugDestinoRecurso = item.original_registro.ug_detentora || ug;
                       isResourceDifferent = om !== omDestinoRecurso;
-                      resourceDestinationText = `Lubrificante destinado à OM: ${omDestinoRecurso} (UG: ${formatCodug(ugDestinoRecurso)})`;
+                      // NOVO TEXTO PADRÃO PARA LUBRIFICANTE
+                      resourceDestinationText = `Recurso Lubrificante destinado à OM: ${omDestinoRecurso} (${formatCodug(ugDestinoRecurso)})`;
                   } else {
                       // Combustível: RM Vinculação da OM Detentora vs RM de Fornecimento (om_detentora)
                       const rmFornecimento = item.original_registro.om_detentora || '';
@@ -2480,7 +2481,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                       if (omDetentoraRmVinculacao && rmFornecimento) {
                           isResourceDifferent = omDetentoraRmVinculacao.toUpperCase() !== rmFornecimento.toUpperCase();
                       }
-                      resourceDestinationText = `Combustível fornecido pela RM: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)})`;
+                      // NOVO TEXTO PADRÃO PARA COMBUSTÍVEL
+                      resourceDestinationText = `Recurso Combustível fornecido pela RM: ${rmFornecimento} (${formatCodug(codugRmFornecimento)})`;
                   }
                   // ------------------------------------------------
                   
@@ -2562,7 +2564,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                           <div className="flex items-center gap-1 mb-4">
                               <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
                               <span className="text-sm font-medium text-red-600">
-                                  Atenção: {resourceDestinationText} (Diferente da OM Detentora do Equipamento).
+                                  {resourceDestinationText} (Diferente da OM Detentora do Equipamento).
                               </span>
                           </div>
                       )}
