@@ -84,7 +84,7 @@ const getEquipmentPluralization = (categoria: TipoEquipamento, count: number): s
 /**
  * Função auxiliar para calcular litros e valor de um item.
  */
-const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOperacao: number) => {
+export const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOperacao: number) => {
   const diasUtilizados = item.dias_utilizados || 0;
   let litrosSemMargemItem = 0;
   const isMotomecanizacao = item.categoria === 'MOTOMECANIZACAO';
