@@ -1315,57 +1315,18 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     return grupos;
   }, [registros, refLPC]);
   
-  // --- AGRUPAMENTO PARA MEMÓRIA DETALHADA (SEÇÃO 5) ---
-  const getMemoriaRecords = useMemo(() => {
-    const granularItems: GranularDisplayItem[] = [];
-    
-    registros.forEach(r => {
-      const isCombustivel = r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
-      const isLubrificante = r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
-      
-      if (isCombustivel || isLubrificante) {
-        (r.itens_equipamentos as ItemClasseIII[] || []).forEach((item, index) => {
-          // Filtra itens que realmente contribuíram para o custo
-          const { itemTotal } = calculateItemTotals(item, refLPC, r.dias_operacao);
-          if (itemTotal > 0) {
-            
-            let suprimento_tipo: GranularDisplayItem['suprimento_tipo'];
-            if (isLubrificante) {
-                suprimento_tipo = 'LUBRIFICANTE';
-            } else {
-                suprimento_tipo = item.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL';
-            }
-            
-            const { totalLitros, valorCombustivel, valorLubrificante, precoLitro } = calculateItemTotals(item, refLPC, r.dias_operacao);
-            
-            granularItems.push({
-              id: `${r.id}-${index}`,
-              om_destino: r.organizacao, // OM Detentora do Equipamento
-              ug_destino: r.ug, // UG Detentora do Equipamento
-              categoria: item.categoria,
-              suprimento_tipo: suprimento_tipo,
-              valor_total: isLubrificante ? valorLubrificante : valorCombustivel,
-              total_litros: isLubrificante ? totalLitros : totalLitros, // Total Litros (com margem para Combustível)
-              preco_litro: isLubrificante ? item.preco_lubrificante : precoLitro,
-              dias_operacao: r.dias_operacao,
-              fase_atividade: r.fase_atividade || '',
-              valor_nd_30: r.valor_nd_30,
-              valor_nd_39: r.valor_nd_39,
-              original_registro: r, // Passa o registro consolidado
-              detailed_items: [item], // Passa apenas o item granular
-            });
-          }
-        });
-      }
+  // --- NOVO MEMO: Registros Consolidados para Memória (Seção 5) ---
+  const consolidatedMemoriaRecords = useMemo(() => {
+    // Filtra apenas os registros consolidados (Combustível e Lubrificante)
+    return registros.filter(r => 
+        r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO' || 
+        r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO'
+    ).sort((a, b) => {
+        // Ordena por OM Detentora do Equipamento, depois por tipo de suprimento
+        if (a.organizacao !== b.organizacao) return a.organizacao.localeCompare(b.organizacao);
+        return a.tipo_equipamento.localeCompare(b.tipo_equipamento);
     });
-    
-    // Ordenar por OM Detentora, depois por Categoria, depois por Suprimento
-    return granularItems.sort((a, b) => {
-        if (a.om_destino !== b.om_destino) return a.om_destino.localeCompare(b.om_destino);
-        if (a.categoria !== b.categoria) return a.categoria.localeCompare(b.categoria);
-        return a.suprimento_tipo.localeCompare(b.suprimento_tipo);
-    });
-  }, [registros, refLPC]);
+  }, [registros]);
   
   // --- FUNÇÃO DE SALVAR REGISTROS (CORRIGIDA PARA ASYNC) ---
   const handleSalvarRegistros = async () => {
@@ -1614,7 +1575,27 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
 
   const handleIniciarEdicaoMemoria = (registro: ClasseIIIRegistro) => {
     setEditingMemoriaId(registro.id);
-    setMemoriaEdit(registro.detalhamento_customizado || registro.detalhamento || "");
+    
+    // 1. Gerar a memória automática mais recente
+    const itens = (registro.itens_equipamentos || []) as ItemClasseIII[];
+    const isLubrificante = registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
+    
+    const memoriaAutomatica = generateConsolidatedMemoriaCalculo(
+        registro.tipo_equipamento as 'COMBUSTIVEL_CONSOLIDADO' | 'LUBRIFICANTE_CONSOLIDADO',
+        itens,
+        registro.dias_operacao,
+        registro.organizacao,
+        registro.ug,
+        registro.fase_atividade || '',
+        registro.om_detentora || (isLubrificante ? registro.organizacao : rmFornecimento),
+        registro.ug_detentora || (isLubrificante ? registro.ug : codugRmFornecimento),
+        refLPC,
+        registro.valor_total,
+        registro.total_litros
+    );
+    
+    // 2. Usar a customizada se existir, senão usar a automática recém-gerada
+    setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
   };
 
   const handleCancelarEdicaoMemoria = () => {
@@ -1680,20 +1661,18 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     }
   };
   
-  const getSuprimentoLabel = (item: GranularDisplayItem) => {
-    switch (item.suprimento_tipo) {
-        case 'COMBUSTIVEL_DIESEL': return 'Diesel';
-        case 'COMBUSTIVEL_GASOLINA': return 'Gasolina';
-        case 'LUBRIFICANTE': return 'Lubrificante';
+  const getSuprimentoLabel = (tipo: string) => {
+    switch (tipo) {
+        case 'COMBUSTIVEL_CONSOLIDADO': return 'Combustível';
+        case 'LUBRIFICANTE_CONSOLIDADO': return 'Lubrificante';
         default: return 'Suprimento';
     }
   };
   
-  const getSuprimentoBadgeClass = (item: GranularDisplayItem) => {
-    switch (item.suprimento_tipo) {
-        case 'COMBUSTIVEL_DIESEL': return 'bg-cyan-600 text-white hover:bg-cyan-700';
-        case 'COMBUSTIVEL_GASOLINA': return 'bg-amber-500 text-white hover:bg-amber-600';
-        case 'LUBRIFICANTE': return 'bg-purple-600 text-white hover:bg-purple-700';
+  const getSuprimentoBadgeClass = (tipo: string) => {
+    switch (tipo) {
+        case 'COMBUSTIVEL_CONSOLIDADO': return 'bg-cyan-600 text-white hover:bg-cyan-700';
+        case 'LUBRIFICANTE_CONSOLIDADO': return 'bg-purple-600 text-white hover:bg-purple-700';
         default: return 'bg-primary text-primary-foreground';
     }
   };
@@ -1870,6 +1849,16 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label>OM Destino Recurso Lubrificante (ND 30) *</Label>
+                  <OmSelector 
+                    selectedOmId={lubricantAllocation.selectedOmDestinoId} 
+                    onChange={handleOMLubrificanteChange} 
+                    placeholder="Selecione a OM de destino..."
+                    disabled={!form.organizacao || loading}
+                  />
+                  <p className="text-xs text-muted-foreground">OM que receberá o recurso de lubrificante.</p>
+                </div>
+                <div className="space-y-2">
                   <Label>Fase da Atividade *</Label>
                   <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                     <PopoverTrigger asChild>
@@ -1919,16 +1908,6 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                       </Command>
                     </PopoverContent>
                   </Popover>
-                </div>
-                <div className="space-y-2">
-                  <Label>OM Destino Recurso Lubrificante (ND 30) *</Label>
-                  <OmSelector 
-                    selectedOmId={lubricantAllocation.selectedOmDestinoId} 
-                    onChange={handleOMLubrificanteChange} 
-                    placeholder="Selecione a OM de destino..."
-                    disabled={!form.organizacao || loading}
-                  />
-                  <p className="text-xs text-muted-foreground">OM que receberá o recurso de lubrificante.</p>
                 </div>
               </div>
             </div>
@@ -2514,73 +2493,73 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
               </div>
             )}
             
-            {/* 5. Memórias de Cálculos Detalhadas */}
-            {getMemoriaRecords.length > 0 && (
+            {/* 5. Memórias de Cálculos Detalhadas (AGORA USA consolidatedMemoriaRecords) */}
+            {consolidatedMemoriaRecords.length > 0 && (
               <div className="space-y-4 mt-8">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   📋 Memórias de Cálculos Detalhadas
                 </h3>
-                {getMemoriaRecords.map(item => {
-                  const om = item.om_destino;
-                  const ug = item.ug_destino;
+                {consolidatedMemoriaRecords.map(registro => {
+                  const om = registro.organizacao; // OM Detentora do Equipamento
+                  const ug = registro.ug;
                   
-                  // Use the original consolidated record ID for memory editing
-                  const originalId = item.original_registro.id;
+                  const originalId = registro.id;
                   const isEditing = editingMemoriaId === originalId;
                   
                   // Check if the original consolidated record has custom memory
-                  const hasCustomMemoria = !!item.original_registro.detalhamento_customizado;
+                  const hasCustomMemoria = !!registro.detalhamento_customizado;
                   
-                  // Generate automatic memory based on granular item data
-                  const memoriaAutomatica = generateGranularMemoriaCalculo(item, refLPC, rmFornecimento, codugRmFornecimento);
+                  // Generate automatic memory based on the consolidated record data
+                  const isLubrificante = registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
+                  const omDestinoRecurso = registro.om_detentora || (isLubrificante ? registro.organizacao : rmFornecimento);
+                  const ugDestinoRecurso = registro.ug_detentora || (isLubrificante ? registro.ug : codugRmFornecimento);
+                  
+                  const memoriaAutomatica = generateConsolidatedMemoriaCalculo(
+                      registro.tipo_equipamento as 'COMBUSTIVEL_CONSOLIDADO' | 'LUBRIFICANTE_CONSOLIDADO',
+                      (registro.itens_equipamentos || []) as ItemClasseIII[],
+                      registro.dias_operacao,
+                      registro.organizacao,
+                      registro.ug,
+                      registro.fase_atividade || '',
+                      omDestinoRecurso,
+                      ugDestinoRecurso,
+                      refLPC,
+                      registro.valor_total,
+                      registro.total_litros
+                  );
                   
                   // Determine which memory to display/edit
                   const memoriaExibida = isEditing 
                     ? memoriaEdit 
-                    : (item.original_registro.detalhamento_customizado || memoriaAutomatica);
+                    : (registro.detalhamento_customizado || memoriaAutomatica);
                   
-                  const suprimento = getSuprimentoLabel(item);
-                  const badgeClass = getSuprimentoBadgeClass(item);
-                  
-                  // Encontrar o label e estilo da categoria do material usando o novo utilitário
-                  const categoryBadgeStyle = getClasseIIICategoryBadgeStyle(item.categoria);
-                  // CORREÇÃO APLICADA AQUI: Usar getClasseIIICategoryLabel como fallback robusto
-                  const displayCategoryLabel = categoryLabelMap[item.categoria] || getClasseIIICategoryLabel(item.categoria);
+                  const suprimento = getSuprimentoLabel(registro.tipo_equipamento);
+                  const badgeClass = getSuprimentoBadgeClass(registro.tipo_equipamento);
                   
                   // --- LÓGICA DE ALERTA PARA MEMÓRIA DETALHADA ---
                   let isResourceDifferent = false;
-                  let omDestinoRecurso = '';
-                  let ugDestinoRecurso = '';
                   
                   // 1. Obter detalhes da OM Detentora do Equipamento (OM que está sendo detalhada)
                   const omDetentoraKey = `${om}-${ug}`;
                   const omDetentoraDetails = omDetailsMap[omDetentoraKey];
                   const omDetentoraRmVinculacao = omDetentoraDetails?.rm_vinculacao;
                   
-                  if (item.suprimento_tipo === 'LUBRIFICANTE') {
+                  if (isLubrificante) {
                       // Lubrificante: OM Detentora do Equipamento (om) vs OM Destino Recurso (om_detentora)
-                      omDestinoRecurso = item.original_registro.om_detentora || om;
-                      ugDestinoRecurso = item.original_registro.ug_detentora || ug;
                       isResourceDifferent = om !== omDestinoRecurso;
                   } else {
                       // Combustível: RM Vinculação da OM Detentora vs RM de Fornecimento (om_detentora)
-                      const rmFornecimento = item.original_registro.om_detentora || '';
-                      const codugRmFornecimento = item.original_registro.ug_detentora || '';
-                      
-                      omDestinoRecurso = rmFornecimento;
-                      ugDestinoRecurso = codugRmFornecimento;
-                      
-                      if (omDetentoraRmVinculacao && rmFornecimento) {
-                          isResourceDifferent = omDetentoraRmVinculacao.toUpperCase() !== rmFornecimento.toUpperCase();
+                      if (omDetentoraRmVinculacao && omDestinoRecurso) {
+                          isResourceDifferent = omDetentoraRmVinculacao.toUpperCase() !== omDestinoRecurso.toUpperCase();
                       }
                   }
                   
-                  // NOVO TEXTO SIMPLIFICADO
+                  // NOVO TEXTO SIMPLIFICADO (Ajustado conforme a solicitação do usuário)
                   const resourceDestinationText = `Recurso destinado à OM: ${omDestinoRecurso} (${formatCodug(ugDestinoRecurso)})`;
                   // ------------------------------------------------
                   
                   return (
-                    <div key={`memoria-view-${item.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
+                    <div key={`memoria-view-${originalId}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                       
                       {/* Container para H4 e Botões */}
                       <div className="flex items-start justify-between gap-4 mb-4">
@@ -2589,10 +2568,6 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                             <h4 className="text-base font-semibold text-foreground">
                               OM Detentora: {om} ({formatCodug(ug)})
                             </h4>
-                            {/* NOVO BADGE: Categoria do Material (com cor específica) */}
-                            <Badge variant="default" className={cn("w-fit shrink-0", categoryBadgeStyle.className)}>
-                              {displayCategoryLabel}
-                            </Badge>
                             {/* BADGE EXISTENTE: Tipo de Suprimento */}
                             <Badge variant="default" className={cn("w-fit shrink-0", badgeClass)}>
                               {suprimento}
@@ -2623,7 +2598,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                                 size="sm" 
                                 variant="outline" 
                                 // Pass the original consolidated ID for memory editing
-                                onClick={() => handleIniciarEdicaoMemoria(item.original_registro)}
+                                onClick={() => handleIniciarEdicaoMemoria(registro)}
                                 disabled={loading}
                                 className="gap-2"
                               >
@@ -2634,7 +2609,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                                 <Button 
                                   size="sm" 
                                   variant="ghost" 
-                                  onClick={() => handleRestaurarMemoriaAutomatica(item.original_registro.id)}
+                                  onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
                                   disabled={loading}
                                   className="gap-2 text-muted-foreground"
                                 >
