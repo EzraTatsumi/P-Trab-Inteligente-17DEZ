@@ -380,6 +380,7 @@ Cálculo:
 - Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${combustivelLabel} - ${formatCurrency(itens[0].preco_lubrificante)}.
 
 Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
+
 ${detalhes.join('\n')}
 
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitros)} L ${unidadeLabel}.
@@ -567,6 +568,11 @@ const ClasseIIIForm = () => {
       EQUIPAMENTO_ENGENHARIA: [],
       MOTOMECANIZACAO: []
     };
+    
+    CATEGORIAS.forEach((cat, index) => {
+        newDiretrizItems[cat.key] = results[index];
+    });
+    
     setAllDiretrizItems(newDiretrizItems);
   };
 
