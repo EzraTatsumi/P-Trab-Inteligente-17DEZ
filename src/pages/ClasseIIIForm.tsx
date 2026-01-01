@@ -227,7 +227,7 @@ const ClasseIIIForm = () => {
     if (!ptrabId) return;
     const { data, error } = await supabase
       .from("classe_iii_registros")
-      .select("*, detalhamento_customizado, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora")
+      .select("*, detalhamento_customizado, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, categoria") // Incluindo 'categoria'
       .eq("p_trab_id", ptrabId)
       .order("organizacao", { ascending: true })
       .order("tipo_equipamento", { ascending: true });
@@ -267,6 +267,7 @@ const ClasseIIIForm = () => {
   };
 
   const reconstructFormState = (records: ClasseIIIRegistro[]) => {
+    // Agrupa os registros por tipo de suprimento (COMBUSTIVEL ou LUBRIFICANTE)
     const combustivelRecords = records.filter(r => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO');
     const lubricantRecords = records.filter(r => r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO');
     
@@ -290,7 +291,8 @@ const ClasseIIIForm = () => {
     // 2. Extract RM Fornecimento (from om_detentora/ug_detentora of COMBUSTIVEL_CONSOLIDADO)
     let rmFromRecord = "";
     let codugRmFromRecord = "";
-    const combustivelRecord = combustivelRecords[0];
+    // Busca a RM/CODUG de fornecimento do primeiro registro de COMBUSTÍVEL encontrado
+    const combustivelRecord = combustivelRecords.find(r => r.tipo_combustivel !== 'LUBRIFICANTE');
     if (combustivelRecord) {
         rmFromRecord = combustivelRecord.om_detentora || "";
         codugRmFromRecord = combustivelRecord.ug_detentora || "";
@@ -305,7 +307,8 @@ const ClasseIIIForm = () => {
     }
     
     // 3. Extract Lubricant Allocation (OM Destino Recurso)
-    const lubRecord = lubricantRecords[0];
+    // Busca a OM/UG de destino do primeiro registro de LUBRIFICANTE encontrado
+    const lubRecord = lubricantRecords.find(r => r.tipo_combustivel === 'LUBRIFICANTE');
     // Para Lubrificante, a OM Destino Recurso está em om_detentora/ug_detentora
     const lubOmName = lubRecord?.om_detentora || omName;
     const lubUg = lubRecord?.ug_detentora || ug;
@@ -319,7 +322,8 @@ const ClasseIIIForm = () => {
     // 4. Consolidate all ItemClasseIII data, ensuring no duplicates and merging lubricant info
     const consolidatedItemsMap = new Map<string, ItemClasseIII>();
     
-    [...combustivelRecords, ...lubricantRecords].forEach(r => {
+    // Itera sobre TODOS os registros carregados para reconstruir a lista de itens
+    records.forEach(r => {
       if (r.itens_equipamentos && Array.isArray(r.itens_equipamentos)) {
         (r.itens_equipamentos as any[]).forEach(item => {
           const baseCategory = item.categoria as TipoEquipamento;
@@ -1243,6 +1247,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
         };
         registrosParaSalvar.push(registro);
     });
+    
+    console.log("Registros a serem salvos (Chaves Granulares):", registrosParaSalvar.map(r => `${r.organizacao}-${r.categoria}-${r.tipo_combustivel}`));
     
     try {
       setLoading(true);
