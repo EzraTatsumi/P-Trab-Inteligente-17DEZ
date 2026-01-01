@@ -33,7 +33,7 @@ import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib
 import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils"; // NOVO: Importando utilitário de Classe VIII
 import { generateCategoryMemoriaCalculo as generateClasseIXUtility, calculateItemTotalClasseIX as calculateItemTotalClasseIXUtility } from "@/lib/classeIXUtils"; // NOVO: Importando utilitário de Classe IX
-import { generateGranularMemoriaCalculo as generateClasseIIIGranularUtility } from "@/lib/classeIIIUtils"; // NOVO: Importando utilitário granular da Classe III
+import { generateGranularMemoriaCalculo as generateClasseIIIGranularUtility, calculateItemTotals } from "@/lib/classeIIIUtils"; // NOVO: Importando utilitário granular da Classe III
 import { RefLPC } from "@/types/refLPC"; // NOVO: Importando tipo RefLPC
 
 // =================================================================
@@ -808,23 +808,12 @@ const PTrabReportManager = () => {
             // Agrupamento por Categoria de Equipamento (para Lubrificante) ou Tipo de Combustível (para Combustível)
             const gruposGranulares: Record<string, ItemClasseIII[]> = {};
             
-            if (isCombustivel) {
-                // Agrupa por Categoria de Equipamento (Gerador, Embarcação, etc.)
-                itens.forEach(item => {
-                    const key = item.categoria;
-                    if (!gruposGranulares[key]) gruposGranulares[key] = [];
-                    gruposGranulares[key].push(item);
-                });
-            } else if (isLubrificante) {
-                // Agrupa por Categoria de Equipamento (Gerador, Embarcação)
-                itens.forEach(item => {
-                    if (item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0) {
-                        const key = item.categoria;
-                        if (!gruposGranulares[key]) gruposGranulares[key] = [];
-                        gruposGranulares[key].push(item);
-                    }
-                });
-            }
+            // Agrupa por Categoria de Equipamento (Gerador, Embarcação, etc.)
+            itens.forEach(item => {
+                const key = item.categoria;
+                if (!gruposGranulares[key]) gruposGranulares[key] = [];
+                gruposGranulares[key].push(item);
+            });
             
             // Cria uma LinhaClasseIII para cada grupo granular
             Object.entries(gruposGranulares).forEach(([categoriaKey, itensGrupo]) => {
@@ -840,10 +829,14 @@ const PTrabReportManager = () => {
                 itensGrupo.forEach(item => {
                     const totals = calculateItemTotals(item, refLPC, registro.dias_operacao);
                     if (isCombustivel) {
-                        totalLitrosLinha += totals.totalLitros;
-                        valorTotalLinha += totals.valorCombustivel;
-                        precoLitroLinha = totals.precoLitro; // Preço é o mesmo para o tipo de combustível
+                        // Combustível: Agrupa por tipo de combustível (Diesel/Gasolina)
+                        if (item.tipo_combustivel_fixo === registro.tipo_combustivel) {
+                            totalLitrosLinha += totals.totalLitros;
+                            valorTotalLinha += totals.valorCombustivel;
+                            precoLitroLinha = totals.precoLitro; // Preço é o mesmo para o tipo de combustível
+                        }
                     } else if (isLubrificante) {
+                        // Lubrificante: Agrupa por categoria (Gerador/Embarcação)
                         totalLitrosLinha += totals.litrosLubrificante;
                         valorTotalLinha += totals.valorLubrificante;
                         // Para Lubrificante, o preço unitário é o preço médio (valor total / litros)
@@ -851,6 +844,9 @@ const PTrabReportManager = () => {
                     }
                 });
                 
+                // Se o valor total for zero, ignora a linha (pode acontecer se o item for de outro tipo de combustível no registro consolidado)
+                if (valorTotalLinha === 0) return;
+
                 const tipoSuprimento: LinhaClasseIII['tipo_suprimento'] = isCombustivel 
                     ? (primeiroItem.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL')
                     : 'LUBRIFICANTE';
