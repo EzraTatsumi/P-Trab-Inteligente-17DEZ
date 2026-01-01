@@ -316,19 +316,25 @@ const generateConsolidatedMemoriaCalculo = (
             categoriaLabel = 'Equipamentos Diversos';
         }
         
-        const header = `${ndPrefix} - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${omDetentoraEquipamento}, durante ${diasOperacaoGlobal} ${diasPluralHeader} de ${faseFormatada}.`;
+        const header = `${ndPrefix} - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${omDetentoraEquipamento}, durante ${diasOperacaoGlobal} ${diasPluralHeader} de ${faseAtividade}.`;
 
         let detalhamentoCalculo = "";
         
-        // Assume que todos os itens de lubrificante têm o mesmo consumo/preço (embora o cálculo seja granular)
+        // --- CÁLCULO DO PREÇO MÉDIO ---
+        let precoMedio = 0;
+        if (totalLitros > 0) {
+            precoMedio = valorTotal / totalLitros;
+        }
+        // --- FIM CÁLCULO DO PREÇO MÉDIO ---
+
         // Para a exibição consolidada, pegamos o primeiro item para mostrar o consumo/preço unitário
         const firstLubricantItem = itens.find(item => item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0);
         const consumoLub = firstLubricantItem?.consumo_lubrificante_litro || 0;
         const precoLub = firstLubricantItem?.preco_lubrificante || 0;
         const consumptionUnit = firstLubricantItem?.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
 
-        detalhamentoCalculo += `- Consumo Lubrificante: ${formatNumber(consumoLub, 2)} ${consumptionUnit}\n`;
-        detalhamentoCalculo += `- Preço Lubrificante: ${formatCurrency(precoLub)}\n\n`;
+        detalhamentoCalculo += `- Consumo Lubrificante (Exemplo): ${formatNumber(consumoLub, 2)} ${consumptionUnit}\n`;
+        detalhamentoCalculo += `- Preço Lubrificante (Exemplo): ${formatCurrency(precoLub)}\n\n`;
         
         detalhamentoCalculo += `Fórmula: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante.\n`;
 
@@ -354,7 +360,7 @@ Total de Equipamentos: ${totalEquipamentos}
 Cálculo:
 ${detalhamentoCalculo.trim()}
 
-Total: ${formatNumber(totalLitros, 2)} L x ${formatCurrency(precoLub)} = ${formatCurrency(valorTotal)}.`;
+Total: ${formatNumber(totalLitros, 2)} L x ${formatCurrency(precoMedio)} = ${formatCurrency(valorTotal)}.`; // USANDO PREÇO MÉDIO
         
     } else {
         // MEMÓRIA COMBUSTÍVEL (CONSOLIDADA)
@@ -371,7 +377,7 @@ Total: ${formatNumber(totalLitros, 2)} L x ${formatCurrency(precoLub)} = ${forma
             categoriaLabel = 'Equipamentos Diversos';
         }
         
-        const header = `${ndPrefix} - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${omDetentoraEquipamento}, durante ${diasOperacaoGlobal} ${diasPluralHeader} de ${faseFormatada}.`;
+        const header = `${ndPrefix} - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${omDetentoraEquipamento}, durante ${diasOperacaoGlobal} ${diasPluralHeader} de ${faseAtividade}.`;
 
         let totalLitrosSemMargem = 0;
         let detalhes: string[] = [];
@@ -423,8 +429,8 @@ ${formulaPrincipal}
 
 ${detalhes.join('\n')}
 
-Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitrosComMargem)} L ${unidadeLabel}.
-Valor: ${formatNumber(totalLitrosComMargem)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
+Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitros)} L ${unidadeLabel}.
+Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
     }
 };
 
@@ -477,7 +483,7 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
         const precoLub = granularItem.preco_lubrificante || 0;
         const consumptionUnit = granularItem.categoria === 'GERADOR' ? 'L/100h' : 'L/h';
 
-        return `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
+        return `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${fase_atividade}.
 
 Cálculo:
 - Consumo Lubrificante: ${formatNumber(consumoLub, 2)} ${consumptionUnit}
@@ -497,7 +503,7 @@ ${detailed_items.map(item => {
     return `- ${item.item}: ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L`;
 }).join('\n')}
 
-Total: ${formatNumber(total_litros, 2)} L x ${formatCurrency(precoLub)} = ${formatCurrency(valor_total)}.`;
+Total: ${formatNumber(total_litros, 2)} L x ${formatCurrency(precoLub)} = ${formatCurrency(valor_total)}.`; // USANDO PREÇO UNITÁRIO DO ITEM
     } else {
         // MEMÓRIA COMBUSTÍVEL (GRANULAR)
         const tipoCombustivel = suprimento_tipo === 'COMBUSTIVEL_GASOLINA' ? 'Gasolina' : 'Diesel';
@@ -526,7 +532,7 @@ Total: ${formatNumber(total_litros, 2)} L x ${formatCurrency(precoLub)} = ${form
         }
         
         // CABEÇALHO ATUALIZADO
-        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
+        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${fase_atividade}.
 
 Cálculo:
 - Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${tipoCombustivel} - ${formatCurrency(preco_litro)}.
@@ -538,7 +544,6 @@ Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = 
 Valor: ${formatNumber(total_litros)} L ${unidadeLabel} x ${formatCurrency(preco_litro)} = ${formatCurrency(valor_total)}.`;
     }
 };
-
 
 const ClasseIIIForm = () => {
   const navigate = useNavigate();
