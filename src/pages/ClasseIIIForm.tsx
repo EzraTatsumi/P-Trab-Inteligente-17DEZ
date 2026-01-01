@@ -165,6 +165,28 @@ const getOmArticle = (omName: string): string => {
     return 'do';
 };
 
+/**
+ * Helper function to get the pluralized equipment name based on category.
+ */
+const getEquipmentPluralization = (categoria: TipoEquipamento, count: number): string => {
+    const label = getClasseIIICategoryLabel(categoria);
+    
+    if (count === 1) {
+        // Singular: Gerador, Embarcação, Equipamento de Engenharia, Viatura
+        if (categoria === 'MOTOMECANIZACAO') return 'Viatura';
+        return label;
+    }
+    
+    // Plural
+    switch (categoria) {
+        case 'GERADOR': return 'Geradores';
+        case 'EMBARCACAO': return 'Embarcações';
+        case 'EQUIPAMENTO_ENGENHARIA': return 'Equipamentos de Engenharia';
+        case 'MOTOMECANIZACAO': return 'Viaturas';
+        default: return `${label}s`;
+    }
+};
+
 // Função auxiliar para calcular litros e valor de um item (AGORA RETORNA DETALHES DA FÓRMULA)
 const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOperacao: number) => {
   const diasUtilizados = item.dias_utilizados || 0;
@@ -267,8 +289,10 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
         // A OM Destino Recurso para Lubrificante é salva em om_detentora/ug_detentora no registro consolidado
         const omDestinoRecurso = item.original_registro.om_detentora || om_destino;
         const ugDestinoRecurso = item.original_registro.ug_detentora || ug_destino;
+        
+        const categoriaLabel = getEquipmentPluralization(categoria, totalEquipamentos);
 
-        return `33.90.30 - Aquisição de Lubrificante para ${getClasseIIICategoryLabel(categoria)} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}.
+        return `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabel}, durante ${dias_operacao} dias de ${faseFormatada}.
 OM Destino Recurso: ${omDestinoRecurso} (UG: ${formatCodug(ugDestinoRecurso)})
 
 Cálculo:
@@ -301,8 +325,11 @@ Valor Total: ${formatCurrency(valor_total)}.`;
         const diaPlural = dias_operacao === 1 ? 'dia' : 'dias';
         const omArticle = getOmArticle(om_destino);
         
-        // NOVO CABEÇALHO SOLICITADO PELO USUÁRIO
-        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} equipamentos ${omArticle} ${om_destino}, durante ${dias_operacao} ${diaPlural} de ${faseFormatada}.
+        // NOVO: Pluralização da Categoria
+        const categoriaLabel = getEquipmentPluralization(categoria, totalEquipamentos);
+        
+        // CABEÇALHO ATUALIZADO
+        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diaPlural} de ${faseFormatada}.
 
 Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)})
 
@@ -948,8 +975,20 @@ const ClasseIIIForm = () => {
       const diaPlural = form.dias_operacao === 1 ? 'dia' : 'dias';
       const omArticle = getOmArticle(form.organizacao);
       
+      // NOVO: Pluralização da Categoria (usando a categoria do primeiro item do grupo, pois o grupo é por combustível)
+      // Para o registro consolidado de combustível, precisamos saber qual categoria de equipamento está sendo consolidada.
+      // Como o agrupamento é por tipo de combustível, vamos agrupar por categoria de equipamento dentro do grupo de combustível.
+      const categoriasAtivas = Array.from(new Set(itensGrupo.map(item => item.categoria)));
+      let categoriaLabel;
+      if (categoriasAtivas.length === 1) {
+          categoriaLabel = getEquipmentPluralization(categoriasAtivas[0], totalEquipamentos);
+      } else {
+          // Se houver múltiplas categorias (ex: Gerador e Embarcação usando Diesel), usamos um termo genérico
+          categoriaLabel = 'Equipamentos Diversos';
+      }
+      
       // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
-      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
+      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
 
 Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)}).
 
@@ -1000,8 +1039,17 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       
       const totalEquipamentos = itensLubrificante.reduce((sum, item) => sum + item.quantidade, 0);
       
+      // NOVO: Pluralização da Categoria (Lubrificante)
+      const categoriasLub = Array.from(new Set(itensLubrificante.map(item => item.categoria)));
+      let categoriaLabelLub;
+      if (categoriasLub.length === 1) {
+          categoriaLabelLub = getEquipmentPluralization(categoriasLub[0], totalEquipamentos);
+      } else {
+          categoriaLabelLub = 'Equipamentos Diversos';
+      }
+      
       // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE LUBRIFICANTE (NOVO PADRÃO)
-      let detalhamento = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
+      let detalhamento = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabelLub}, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
 
 OM Destino Recurso: ${lubricantAllocation.om_destino_recurso} (UG: ${formatCodug(lubricantAllocation.ug_destino_recurso)})
 
@@ -1305,8 +1353,17 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         const diaPlural = form.dias_operacao === 1 ? 'dia' : 'dias';
         const omArticle = getOmArticle(form.organizacao);
         
+        // NOVO: Pluralização da Categoria
+        const categoriasAtivas = Array.from(new Set(itensGrupo.map(item => item.categoria)));
+        let categoriaLabel;
+        if (categoriasAtivas.length === 1) {
+            categoriaLabel = getEquipmentPluralization(categoriasAtivas[0], totalEquipamentos);
+        } else {
+            categoriaLabel = 'Equipamentos Diversos';
+        }
+        
         // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
-        let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
+        let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
 
 Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)}).
 
@@ -1357,8 +1414,17 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
         
         const totalEquipamentos = itensLubrificante.reduce((sum, item) => sum + item.quantidade, 0);
         
+        // NOVO: Pluralização da Categoria (Lubrificante)
+        const categoriasLub = Array.from(new Set(itensLubrificante.map(item => item.categoria)));
+        let categoriaLabelLub;
+        if (categoriasLub.length === 1) {
+            categoriaLabelLub = getEquipmentPluralization(categoriasLub[0], totalEquipamentos);
+        } else {
+            categoriaLabelLub = 'Equipamentos Diversos';
+        }
+        
         // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE LUBRIFICANTE (NOVO PADRÃO)
-        let detalhamento = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
+        let detalhamento = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabelLub}, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
 
 OM Destino Recurso: ${lubricantAllocation.om_destino_recurso} (UG: ${formatCodug(lubricantAllocation.ug_destino_recurso)})
 
@@ -1383,7 +1449,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         };
       }
       
-      return { consolidadosCombustivel: novosConsolidados, consolidadoLubrificante: lubrificanteConsolidado };
+      return { consolidadosCombustivel: novosConsolidados, consolidadoLubrificante: lubrificanteConsolidado, itensAgrupadosPorCategoria: groupedFormItems };
     }, [form.itens, refLPC, form.dias_operacao, fasesAtividade, customFaseAtividade, rmFornecimento, codugRmFornecimento, lubricantAllocation]);
     
     const registrosParaSalvar: TablesInsert<'classe_iii_registros'>[] = [];
