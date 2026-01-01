@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getEquipamentosPorTipo, TipoEquipamentoDetalhado } from "@/data/classeIIIData";
 import { RefLPC } from "@/types/refLPC";
 import RefLPCFormSection from "@/components/RefLPCFormSection";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, formatCodug } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
 import { TablesInsert } from "@/integrations/supabase/types";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
@@ -560,10 +560,10 @@ const ClasseIIIForm = () => {
   const loadAllDiretrizItems = async () => {
     const results = await Promise.all(CATEGORIAS.map(c => getEquipamentosPorTipo(c.key)));
     const newDiretrizItems: Record<TipoEquipamento, TipoEquipamentoDetalhado[]> = {
-      GERADOR: results[0],
-      EMBARCACAO: results[1],
-      EQUIPAMENTO_ENGENHARIA: results[2],
-      MOTOMECANIZACAO: results[3],
+      GERADOR: [],
+      EMBARCACAO: [],
+      EQUIPAMENTO_ENGENHARIA: [],
+      MOTOMECANIZACAO: []
     };
     setAllDiretrizItems(newDiretrizItems);
   };
@@ -2580,19 +2580,31 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                     <div key={`memoria-view-${item.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                       
                       {/* Container para H4 e Botões */}
-                      <div className="flex items-start justify-between gap-4 mb-2">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <h4 className="text-base font-semibold text-foreground">
-                            OM Detentora: {om} ({formatCodug(ug)})
-                          </h4>
-                          {/* NOVO BADGE: Categoria do Material (com cor específica) */}
-                          <Badge variant="default" className={cn("w-fit shrink-0", categoryBadgeStyle.className)}>
-                            {displayCategoryLabel}
-                          </Badge>
-                          {/* BADGE EXISTENTE: Tipo de Suprimento */}
-                          <Badge variant="default" className={cn("w-fit shrink-0", badgeClass)}>
-                            {suprimento}
-                          </Badge>
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-base font-semibold text-foreground">
+                              OM Detentora: {om} ({formatCodug(ug)})
+                            </h4>
+                            {/* NOVO BADGE: Categoria do Material (com cor específica) */}
+                            <Badge variant="default" className={cn("w-fit shrink-0", categoryBadgeStyle.className)}>
+                              {displayCategoryLabel}
+                            </Badge>
+                            {/* BADGE EXISTENTE: Tipo de Suprimento */}
+                            <Badge variant="default" className={cn("w-fit shrink-0", badgeClass)}>
+                              {suprimento}
+                            </Badge>
+                          </div>
+                          
+                          {/* ALERTA DE RECURSO DIFERENTE (AJUSTADO PARA O PADRÃO DA CLASSE VII) */}
+                          {isResourceDifferent && (
+                              <div className="flex items-center gap-1 mt-1">
+                                  <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+                                  <span className="text-sm font-medium text-red-600">
+                                      {resourceDestinationText}
+                                  </span>
+                              </div>
+                          )}
                         </div>
                         
                         <div className="flex items-center justify-end gap-2 shrink-0">
@@ -2648,16 +2660,6 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                           )}
                         </div>
                       </div>
-                      
-                      {/* ALERTA DE RECURSO DIFERENTE (AJUSTADO PARA O PADRÃO DA CLASSE II) */}
-                      {isResourceDifferent && (
-                          <div className="flex items-center gap-1 mb-0">
-                              <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
-                              <span className="text-sm font-medium text-red-600">
-                                  {resourceDestinationText}
-                              </span>
-                          </div>
-                      )}
                       
                       <Card className="p-4 bg-background rounded-lg border">
                         {isEditing ? (
