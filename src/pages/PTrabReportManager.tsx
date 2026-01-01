@@ -655,6 +655,7 @@ const PTrabReportManager = () => {
                 const omDestinoRecurso = registroConsolidado.om_detentora || omDetentoraEquipamento; // RM de Fornecimento
                 const ugDestinoRecurso = registroConsolidado.ug_detentora || ugDetentoraEquipamento; // CODUG RM
                 
+                // CHAVE DE AGRUPAMENTO: RM de Fornecimento (omDestinoRecurso)
                 initializeGroup(omDestinoRecurso);
                 
                 const newLine: LinhaClasseIII = {
@@ -678,9 +679,11 @@ const PTrabReportManager = () => {
             
             // --- 3.2. Linha de Lubrificante (se houver custo de lubrificante) ---
             if (valorLubrificante > 0) {
-                const omDestinoRecurso = registroConsolidado.om_detentora || omDetentoraEquipamento; // OM Destino Lubrificante
-                const ugDestinoRecurso = registroConsolidado.ug_detentora || ugDetentoraEquipamento; // UG Destino Lubrificante
+                // OM Destino Recurso (Lubrificante) é a OM Detentora do Recurso (om_detentora)
+                const omDestinoRecurso = registroConsolidado.om_detentora || omDetentoraEquipamento; 
+                const ugDestinoRecurso = registroConsolidado.ug_detentora || ugDetentoraEquipamento; 
                 
+                // CHAVE DE AGRUPAMENTO: OM de Destino do Recurso (omDestinoRecurso)
                 initializeGroup(omDestinoRecurso);
                 
                 const precoMedioLub = litrosLubrificante > 0 ? valorLubrificante / litrosLubrificante : 0;
