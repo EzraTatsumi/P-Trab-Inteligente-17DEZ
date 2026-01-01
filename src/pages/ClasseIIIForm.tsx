@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getEquipamentosPorTipo, TipoEquipamentoDetalhado } from "@/data/classeIIIData";
 import { RefLPC } from "@/types/refLPC";
 import RefLPCFormSection from "@/components/RefLPCFormSection";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, formatCodug, numberToRawDigits } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, formatCodug } from "@/lib/formatUtils";
 import { TablesInsert } from "@/integrations/supabase/types";
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
@@ -52,24 +52,27 @@ const getOmArticle = (omName: string): string => {
 
 /**
  * Helper function to get the pluralized category name based on count.
- * Refatorado para ser totalmente explícito e evitar fallbacks problemáticos.
  */
 const getPluralizedCategory = (categoria: TipoEquipamento, count: number): string => {
-    const isSingular = count <= 1;
+    if (categoria === 'MOTOMECANIZACAO') {
+        return count <= 1 ? 'Viatura' : 'Viaturas';
+    }
     
+    if (count <= 1) {
+        return getClasseIIICategoryLabel(categoria);
+    }
+    
+    // Plural forms for other categories
     switch (categoria) {
-        case 'MOTOMECANIZACAO':
-            return isSingular ? 'Viatura' : 'Viaturas';
-        case 'EQUIPAMENTO_ENGENHARIA':
-            return isSingular ? 'Equipamento de Engenharia' : 'Equipamentos de Engenharia';
         case 'GERADOR':
-            return isSingular ? 'Gerador' : 'Geradores';
+            return 'Geradores';
         case 'EMBARCACAO':
-            return isSingular ? 'Embarcação' : 'Embarcações';
+            return 'Embarcações';
+        case 'EQUIPAMENTO_ENGENHARIA':
+            return 'Equipamentos de Engenharia';
         default:
-            // Fallback usando o rótulo local (que é capitalizado)
-            const label = CATEGORIAS.find(c => c.key === categoria)?.label || categoria;
-            return isSingular ? label : `${label}s`;
+            // Fallback to the label if plural form is not explicitly defined
+            return `${getClasseIIICategoryLabel(categoria)}s`; 
     }
 };
 
@@ -319,7 +322,6 @@ Valor Total: ${formatCurrency(valor_total)}.`;
         
         // NOVO CABEÇALHO SOLICITADO:
         const omArticle = getOmArticle(om_destino);
-        const totalEquipamentos = detailed_items.reduce((sum, item) => sum + item.quantidade, 0);
         const categoriaPluralizada = getPluralizedCategory(categoria, totalEquipamentos); // Usando a nova função
         const diaPlural = dias_operacao === 1 ? 'dia' : 'dias';
         
@@ -1005,44 +1007,69 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     });
     
     // 2. Preparar registro de LUBRIFICANTE (ND 33.90.30)
-    if (consolidadoLubrificante) {
-      // Filtra apenas itens que realmente usam lubrificante para o registro de LUBRIFICANTE
-      const itensLubrificante = consolidadoLubrificante.itens.filter((item: ItemClasseIII) => 
-        item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0
-      );
+    let totalLitrosLubrificante = 0;
+    let totalValorLubrificante = 0;
+    const itensComLubrificante = itens.filter(item => 
+      item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0
+    );
+    const detalhesLubrificante: string[] = [];
+    
+    itensComLubrificante.forEach(item => {
+      const diasUtilizados = item.dias_utilizados || 0;
+      const totalHoras = item.quantidade * item.horas_dia * diasUtilizados;
+      let litrosItem = 0;
+      let formulaDetalhe = '';
+      
+      if (item.categoria === 'GERADOR') {
+        litrosItem = (totalHoras / 100) * item.consumo_lubrificante_litro;
+        formulaDetalhe = `(${formatNumber(totalHoras)} horas) / 100h x ${formatNumber(item.consumo_lubrificante_litro, 2)} L/100h`;
+      } else if (item.categoria === 'EMBARCACAO') {
+        litrosItem = totalHoras * item.consumo_lubrificante_litro;
+        formulaDetalhe = `(${formatNumber(totalHoras)} horas) x ${formatNumber(item.consumo_lubrificante_litro, 2)} L/h`;
+      }
+      
+      const valorItem = litrosItem * item.preco_lubrificante;
+      totalLitrosLubrificante += litrosItem;
+      totalValorLubrificante += valorItem;
+      
+      detalhesLubrificante.push(`- ${item.quantidade} ${item.item} (${item.categoria}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosItem, 2)} L. Valor: ${formatCurrency(valorItem)}.`);
+    });
+    
+    let consolidadoLubrificante: any | null = null;
+    if (totalLitrosLubrificante > 0) {
+      const totalEquipamentos = itensComLubrificante.reduce((sum, item) => sum + item.quantidade, 0);
+      
+      let fasesFinaisCalc = [...fasesAtividade];
+      if (customFaseAtividade.trim()) {
+        fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividade.trim()];
+      }
+      const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
+      const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
+      
+      // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE LUBRIFICANTE (NOVO PADRÃO)
+      const detalhamentoLubrificante = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
 
-      const registroLubrificante: TablesInsert<'classe_iii_registros'> = {
-        p_trab_id: ptrabId,
-        // OM Detentora do Equipamento (OM principal do formulário)
-        organizacao: form.organizacao,
-        ug: form.ug,
-        tipo_equipamento: 'LUBRIFICANTE_CONSOLIDADO',
-        quantidade: itensLubrificante.reduce((sum: number, item: ItemClasseIII) => sum + item.quantidade, 0),
-        dias_operacao: form.dias_operacao, // Salva o dia global para contexto
-        tipo_combustivel: 'LUBRIFICANTE',
-        preco_litro: 0,
-        total_litros: consolidadoLubrificante.total_litros,
-        total_litros_sem_margem: consolidadoLubrificante.total_litros,
-        valor_total: consolidadoLubrificante.valor_total,
-        detalhamento: consolidadoLubrificante.detalhamento,
-        itens_equipamentos: itensLubrificante.map((item: ItemClasseIII) => ({
-          ...item,
-          tipo_equipamento_especifico: item.item,
-          // Garante que os campos de lubrificante são salvos corretamente
-          consumo_lubrificante_litro: item.consumo_lubrificante_litro,
-          preco_lubrificante: item.preco_lubrificante,
-        })) as any,
-        fase_atividade: faseFinalString,
-        // Estes campos não são consolidados no nível do registro, mas sim nos itens_equipamentos
-        consumo_lubrificante_litro: 0, 
-        preco_lubrificante: 0,
-        valor_nd_30: consolidadoLubrificante.valor_total, // Classe III Lubrificante é ND 30
-        valor_nd_39: 0,
-        // OM Destino Recurso (Lubrificante)
-        om_detentora: lubricantAllocation.om_destino_recurso,
-        ug_detentora: lubricantAllocation.ug_destino_recurso,
+OM Destino Recurso: ${lubricantAllocation.om_destino_recurso} (UG: ${formatCodug(lubricantAllocation.ug_destino_recurso)})
+
+Cálculo:
+Fórmula Base: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilização) x Consumo Lubrificante/hora (ou /100h).
+
+Detalhes dos Itens:
+${itensComLubrificante.map(item => {
+    const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
+    
+    return `- ${item.quantidade} ${item.item} (${item.categoria}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosLubrificante, 2)} L. Valor: ${formatCurrency(valorLubrificante)}.`;
+}).join('\n')}
+
+Total Litros: ${formatNumber(totalLitrosLubrificante, 2)} L.
+Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
+      
+      consolidadoLubrificante = {
+        total_litros: totalLitrosLubrificante,
+        valor_total: totalValorLubrificante,
+        itens: itensComLubrificante,
+        detalhamento: detalhamentoLubrificante,
       };
-      registrosParaSalvar.push(registroLubrificante);
     }
     
     return { consolidadosCombustivel: novosConsolidados, consolidadoLubrificante, itensAgrupadosPorCategoria: groupedFormItems };
