@@ -118,6 +118,14 @@ export interface ClasseIIIRegistro {
   valor_total: number;
   detalhamento?: string;
   detalhamento_customizado?: string | null;
+  itens_equipamentos?: any; // Adicionado para Classe III
+  fase_atividade?: string; // Adicionado para Classe III
+  consumo_lubrificante_litro?: number; // Adicionado para Classe III
+  preco_lubrificante?: number; // Adicionado para Classe III
+  valor_nd_30: number; // Adicionado para Classe III
+  valor_nd_39: number; // Adicionado para Classe III
+  om_detentora?: string | null; // Adicionado para Classe III
+  ug_detentora?: string | null; // Adicionado para Classe III
 }
 
 export interface LinhaTabela {
@@ -223,7 +231,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
         if (tipo === 'OP') {
             // 1. Para Ração Operacional (OP), prioriza o customizado armazenado em memoria_calculo_op_customizada
             if (registro.memoria_calculo_op_customizada) {
-                return registro.memoria_calculo_op_customizada; // <-- CORREÇÃO APLICADA AQUI
+                return registro.memoria_calculo_op_customizada;
             }
             
             // 2. Se não houver customizado, gera o automático
@@ -503,7 +511,7 @@ const PTrabReportManager = () => {
         supabase.from('classe_viii_saude_registros').select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
         supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
-        supabase.from('classe_iii_registros').select('*, detalhamento_customizado').eq('p_trab_id', ptrabId),
+        supabase.from('classe_iii_registros').select('*, detalhamento_customizado, itens_equipamentos, fase_atividade, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
       ]);
 
       const allClasseItems = [
