@@ -42,6 +42,19 @@ import {
 } from "@/lib/classeIIIUtils";
 import { RefLPC } from "@/types/refLPC"; // Importando RefLPC
 
+// NOVO: Definição dos tipos de relatório
+type ReportType = 'logistico' | 'racao_operacional' | 'operacional' | 'material_permanente' | 'hora_voo' | 'dor';
+
+// NOVO: Definição das opções de relatório
+const REPORT_OPTIONS: { value: ReportType, label: string, icon: React.FC<any>, iconClass: string, fileSuffix: string }[] = [
+  { value: 'logistico', label: 'P Trab Logístico (Completo)', icon: Package, iconClass: 'text-primary', fileSuffix: 'Logistico' },
+  { value: 'racao_operacional', label: 'Ração Operacional (Classe I - OP)', icon: Utensils, iconClass: 'text-green-600', fileSuffix: 'RacaoOp' },
+  { value: 'operacional', label: 'Operacional (Não Implementado)', icon: Briefcase, iconClass: 'text-yellow-600', fileSuffix: 'Operacional' },
+  { value: 'material_permanente', label: 'Material Permanente (Não Implementado)', icon: HardHat, iconClass: 'text-red-600', fileSuffix: 'MatPerm' },
+  { value: 'hora_voo', label: 'Hora de Voo (Não Implementado)', icon: Plane, iconClass: 'text-blue-600', fileSuffix: 'HoraVoo' },
+  { value: 'dor', label: 'DOR (Não Implementado)', icon: ClipboardList, iconClass: 'text-purple-600', fileSuffix: 'DOR' },
+];
+
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
 // =================================================================
@@ -130,7 +143,7 @@ export interface GrupoOM {
   linhasClasseVII: LinhaClasseII[];
   linhasClasseVIII: LinhaClasseII[];
   linhasClasseIX: LinhaClasseII[];
-  linhasClasseIII: ClasseIIIGranularLinha[]; // NOVO: Linhas granulares de Classe III
+  linhasClasseIII: ClasseIIIGranularLinha[]; // Inicializa a nova lista
 }
 
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
