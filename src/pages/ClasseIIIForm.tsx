@@ -948,6 +948,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
             MOTOMECANIZACAO: { litros: 0, valor: 0 },
         };
         
+        // Calcular totais por categoria de equipamento
         (r.itens_equipamentos as ItemClasseIII[] || []).forEach(item => {
             const categoria = item.categoria as TipoEquipamento;
             const totals = calculateItemTotals(item, refLPC, r.dias_operacao);
@@ -978,6 +979,14 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
         group.suprimentos.sort((a, b) => {
             if (a.suprimento_tipo === 'COMBUSTIVEL' && b.suprimento_tipo === 'LUBRIFICANTE') return -1;
             if (a.suprimento_tipo === 'LUBRIFICANTE' && b.suprimento_tipo === 'COMBUSTIVEL') return 1;
+            
+            // Dentro de Combustível, ordenar por tipo (Diesel > Gasolina)
+            if (a.suprimento_tipo === 'COMBUSTIVEL' && b.suprimento_tipo === 'COMBUSTIVEL') {
+                const aType = a.original_registro.tipo_combustivel;
+                const bType = b.original_registro.tipo_combustivel;
+                if (aType === 'DIESEL' && bType === 'GASOLINA') return -1;
+                if (aType === 'GASOLINA' && bType === 'DIESEL') return 1;
+            }
             return 0;
         });
     });
@@ -1438,22 +1447,20 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     }
   };
   
-  const getSuprimentoLabel = (item: GranularDisplayItem) => {
-    switch (item.suprimento_tipo) {
-        case 'COMBUSTIVEL_DIESEL': return 'Diesel';
-        case 'COMBUSTIVEL_GASOLINA': return 'Gasolina';
-        case 'LUBRIFICANTE': return 'Lubrificante';
-        default: return 'Suprimento';
-    }
+  const getSuprimentoLabel = (item: ConsolidatedSuprimentoGroup) => {
+    if (item.suprimento_tipo === 'LUBRIFICANTE') return 'Lubrificante';
+    
+    const tipoCombustivel = item.original_registro.tipo_combustivel;
+    return capitalizeFirstLetter(tipoCombustivel);
   };
   
-  const getSuprimentoBadgeClass = (item: GranularDisplayItem) => {
-    switch (item.suprimento_tipo) {
-        case 'COMBUSTIVEL_DIESEL': return 'bg-cyan-600 text-white hover:bg-cyan-700';
-        case 'COMBUSTIVEL_GASOLINA': return 'bg-amber-500 text-white hover:bg-amber-600';
-        case 'LUBRIFICANTE': return 'bg-purple-600 text-white hover:bg-purple-700';
-        default: return 'bg-primary text-primary-foreground';
-    }
+  const getSuprimentoBadgeClass = (item: ConsolidatedSuprimentoGroup) => {
+    if (item.suprimento_tipo === 'LUBRIFICANTE') return 'bg-purple-600 text-white hover:bg-purple-700';
+    
+    const tipoCombustivel = item.original_registro.tipo_combustivel;
+    return tipoCombustivel === 'DIESEL' 
+      ? 'bg-cyan-600 text-white hover:bg-cyan-700' 
+      : 'bg-amber-500 text-white hover:bg-amber-600';
   };
   
   const getCombustivelBadgeClass = (tipo: CombustivelTipo | string) => {
@@ -1988,7 +1995,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
 
                 <div className="space-y-4">
                   {Object.entries(itensAgrupadosPorCategoriaParaResumo).map(([categoria, itens]) => {
-                    const categoriaLabel = categoryLabelMap[categoria as TipoEquipamento] || categoria;
+                    const categoriaLabel = CATEGORIAS.find(c => c.key === categoria)?.label || categoria;
                     
                     const totalCombustivelCategoria = itens.reduce((sum, item) => {
                       const { valorCombustivel } = calculateItemTotals(item, refLPC, form.dias_operacao);
@@ -2147,13 +2154,11 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                           let badgeClass = '';
                           
                           if (isCombustivel) {
-                            // APLICA CAPITALIZE AQUI
                             badgeText = capitalizeFirstLetter(suprimentoGroup.original_registro.tipo_combustivel);
-                            // Use getCombustivelBadgeClass based on the specific fuel type
                             badgeClass = getCombustivelBadgeClass(suprimentoGroup.original_registro.tipo_combustivel as CombustivelTipo);
                           } else {
-                            badgeText = 'Lubrificante'; // Já está capitalizado
-                            badgeClass = 'bg-purple-600 text-white hover:bg-purple-700'; // Cor padronizada para Lubrificante
+                            badgeText = 'Lubrificante';
+                            badgeClass = 'bg-purple-600 text-white hover:bg-purple-700';
                           }
                           
                           const originalRegistro = suprimentoGroup.original_registro;
@@ -2164,30 +2169,22 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                           let isDifferentOm: boolean;
 
                           if (isCombustivel) {
-                            // 1. Extrai RM Fornecimento (OM Destino Recurso) do detalhamento
                             destinoOmNome = originalRegistro.om_detentora || ''; // RM Fornecimento
                             destinoOmUg = originalRegistro.ug_detentora || '';
                             
-                            // 2. Lógica de Coloração para Combustível: RM Fornecimento vs RM Vinculação da OM Detentora
-                            // OM Detentora (Source) é a OM salva no registro (group.om)
                             const omDetentoraKey = `${group.om}-${group.ug}`;
                             const omDetentoraDetails = omDetailsMap[omDetentoraKey];
-                            const omDetentoraRmVinculacao = omDetentoraDetails?.rm_vinculacao; // RM Vinculação da OM Detentora
+                            const omDetentoraRmVinculacao = omDetentoraDetails?.rm_vinculacao;
                             
                             if (omDetentoraRmVinculacao && destinoOmNome) {
-                                // Comparar RM Vinculação da OM Detentora vs RM Fornecimento
                                 isDifferentOm = omDetentoraRmVinculacao.toUpperCase() !== destinoOmNome.toUpperCase();
                             } else {
-                                // Se faltar dados, assume cor normal (não é diferente)
                                 isDifferentOm = false; 
                             }
                             
                           } else {
-                            // LUBRIFICANTE: OM Detentora do Equipamento (group.om) vs OM Destino Recurso (om_detentora/ug_detentora)
                             destinoOmNome = originalRegistro.om_detentora || originalRegistro.organizacao;
                             destinoOmUg = originalRegistro.ug_detentora || originalRegistro.ug;
-                            
-                            // OM Detentora do Equipamento (Source) é a OM salva no registro (group.om)
                             isDifferentOm = group.om !== destinoOmNome;
                           }
                           const omDestinoTextClass = isDifferentOm ? 'text-red-600 font-bold' : 'text-foreground';
@@ -2213,7 +2210,6 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                                     {formatCurrency(suprimentoGroup.total_valor)}
                                   </span>
                                   <div className="flex gap-1">
-                                    {/* Ações de Edição e Deleção devem ser feitas no registro CONSOLIDADO original */}
                                     <Button 
                                       variant="ghost" 
                                       size="icon" 
@@ -2249,21 +2245,21 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                                 {CATEGORIAS.map(cat => {
                                   const totais = suprimentoGroup.categoria_totais[cat.key];
                                   if (totais.valor > 0) {
-                                    const categoryBadgeStyle = getClasseIIICategoryBadgeStyle(cat.key);
-                                    // Usar o rótulo do categoryLabelMap para garantir a capitalização correta
                                     const displayLabel = categoryLabelMap[cat.key] || getClasseIIICategoryLabel(cat.key);
                                     
-                                    // Determinar a unidade correta (L ou L/100h)
-                                    const unit = cat.key === 'MOTOMECANIZACAO' ? 'L' : 'L'; // Combustível é sempre L
+                                    // Calcular o valor total da categoria (para a coluna da direita)
+                                    const totalValorCategoria = totais.valor;
+                                    
+                                    // Calcular os litros da categoria (para a coluna da esquerda)
+                                    const totalLitrosCategoria = totais.litros;
                                     
                                     return (
                                       <div key={cat.key} className="flex justify-between text-xs">
                                         <span className="text-muted-foreground flex items-center gap-1">
-                                          {/* REMOVIDO: <cat.icon className="h-3 w-3" /> */}
-                                          {displayLabel}: {formatNumber(totais.litros, 2)} {unit}
+                                          {displayLabel}: {formatNumber(totalLitrosCategoria, 2)} L
                                         </span>
                                         <span className="font-medium text-foreground text-right">
-                                          {formatCurrency(totais.valor)}
+                                          {formatCurrency(totalValorCategoria)}
                                         </span>
                                       </div>
                                     );
@@ -2271,8 +2267,6 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                                   return null;
                                 })}
                               </div>
-                              
-                              {/* Detalhes da Alocação (ND 30/39) - REMOVIDO */}
                             </Card>
                           );
                         })}
@@ -2313,8 +2307,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                     ? memoriaEdit 
                     : (item.original_registro.detalhamento_customizado || memoriaAutomatica);
                   
-                  const suprimento = getSuprimentoLabel(item);
-                  const badgeClass = getSuprimentoBadgeClass(item);
+                  const suprimento = getSuprimentoLabel({ original_registro: item.original_registro, suprimento_tipo: item.suprimento_tipo === 'LUBRIFICANTE' ? 'LUBRIFICANTE' : 'COMBUSTIVEL' } as ConsolidatedSuprimentoGroup);
+                  const badgeClass = getSuprimentoBadgeClass({ original_registro: item.original_registro, suprimento_tipo: item.suprimento_tipo === 'LUBRIFICANTE' ? 'LUBRIFICANTE' : 'COMBUSTIVEL' } as ConsolidatedSuprimentoGroup);
                   
                   // Encontrar o label e estilo da categoria do material usando o novo utilitário
                   const categoryBadgeStyle = getClasseIIICategoryBadgeStyle(item.categoria);
