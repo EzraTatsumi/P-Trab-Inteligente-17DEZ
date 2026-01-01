@@ -34,6 +34,7 @@ import {
   getClasseIILabel,
   generateClasseIXMemoriaCalculo,
   calculateItemTotalClasseIX,
+  getTipoCombustivelLabel, // Importando a função corrigida do Manager
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils"; 
@@ -223,14 +224,9 @@ const getTipoEquipamentoLabel = (tipo: string) => {
     }
 };
 
-const getTipoCombustivelLabel = (tipo: string) => {
-    if (tipo === 'DIESEL' || tipo === 'OD' || tipo === 'COMBUSTIVEL_DIESEL') {
-        return 'ÓLEO DIESEL';
-    } else if (tipo === 'GASOLINA' || tipo === 'GAS' || tipo === 'COMBUSTIVEL_GASOLINA') {
-        return 'GASOLINA';
-    }
-    return tipo;
-};
+// CORRIGIDO: Usando a função importada do Manager, que já está correta.
+// REMOVIDO: Definição local de getTipoCombustivelLabel
+// const getTipoCombustivelLabel = (tipo: string) => { ... }; 
 
 // =================================================================
 // COMPONENTE PRINCIPAL
@@ -324,8 +320,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       scale: 3, // Aumenta a escala para maior nitidez
       useCORS: true,
       allowTaint: true,
-      // windowWidth: 1122, // Largura do A4 em 96 DPI (1122px) - Pode ajudar a forçar o layout
-      // windowHeight: 793, // Altura do A4 em 96 DPI (793px) - Pode ajudar a forçar o layout
     }).then((canvas) => {
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
       
@@ -1264,6 +1258,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       const omDetentoraEquipamento = linha.registro.organizacao;
                       
                       // 1ª Linha: CLASSE III - DIESEL/GASOLINA/LUBRIFICANTE
+                      // USANDO A FUNÇÃO IMPORTADA DO MANAGER
                       const tipoSuprimentoLabel = isLubrificanteLinha ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linha.tipo_suprimento);
                       despesasValue = `CLASSE III - ${tipoSuprimentoLabel}`;
                       
