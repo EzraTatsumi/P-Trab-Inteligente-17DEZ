@@ -153,6 +153,18 @@ const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
   return Math.abs(a - b) < tolerance;
 };
 
+/**
+ * Helper function to determine 'do' or 'da' based on OM name.
+ */
+const getOmArticle = (omName: string): string => {
+    // Verifica se a OM contém 'ª' (ex: 23ª Bda Inf Sl)
+    if (omName.includes('ª')) {
+        return 'da';
+    }
+    // Caso contrário, usa o padrão 'do'
+    return 'do';
+};
+
 // Função auxiliar para calcular litros e valor de um item (AGORA RETORNA DETALHES DA FÓRMULA)
 const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOperacao: number) => {
   const diasUtilizados = item.dias_utilizados || 0;
@@ -285,7 +297,12 @@ Valor Total: ${formatCurrency(valor_total)}.`;
             detalhes.push(`- ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
         });
         
-        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${getClasseIIICategoryLabel(categoria)} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}, para ${om_destino}.
+        const totalEquipamentos = detailed_items.reduce((sum, item) => sum + item.quantidade, 0);
+        const diaPlural = dias_operacao === 1 ? 'dia' : 'dias';
+        const omArticle = getOmArticle(om_destino);
+        
+        // NOVO CABEÇALHO SOLICITADO PELO USUÁRIO
+        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} equipamentos ${omArticle} ${om_destino}, durante ${dias_operacao} ${diaPlural} de ${faseFormatada}.
 
 Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)})
 
@@ -927,8 +944,12 @@ const ClasseIIIForm = () => {
       
       const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
       
+      // NOVO: Pluralização e Artigo
+      const diaPlural = form.dias_operacao === 1 ? 'dia' : 'dias';
+      const omArticle = getOmArticle(form.organizacao);
+      
       // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
-      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
+      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
 
 Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)}).
 
@@ -1280,8 +1301,12 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         
         const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
         
+        // NOVO: Pluralização e Artigo
+        const diaPlural = form.dias_operacao === 1 ? 'dia' : 'dias';
+        const omArticle = getOmArticle(form.organizacao);
+        
         // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
-        let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
+        let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
 
 Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)}).
 
