@@ -1210,9 +1210,6 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
               fase_atividade: r.fase_atividade || '',
               original_registro: r,
               detailed_items: [],
-              valor_total: 0,
-              total_litros: 0,
-              preco_litro: 0,
               valor_nd_30: r.valor_nd_30,
               valor_nd_39: r.valor_nd_39,
             };
@@ -1233,9 +1230,6 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                 fase_atividade: r.fase_atividade || '',
                 original_registro: r,
                 detailed_items: [],
-                valor_total: 0,
-                total_litros: 0,
-                preco_litro: 0,
                 valor_nd_30: r.valor_nd_30,
                 valor_nd_39: r.valor_nd_39,
               };
@@ -1403,111 +1397,6 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
         itens: itensGrupo,
         detalhamento,
       });
-    });
-    
-    // --- CÁLCULO DE LUBRIFICANTE (ND 33.90.30) ---
-    const itensLubrificante = itens.filter(item => 
-      (item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO') && 
-      item.consumo_lubrificante_litro > 0 && 
-      item.preco_lubrificante > 0
-    );
-    
-    let lubrificanteConsolidado = null;
-    
-    if (itensLubrificante.length > 0) {
-      let totalLitrosLubrificante = 0;
-      let totalValorLubrificante = 0;
-      
-      itensLubrificante.forEach(item => {
-        const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
-        totalLitrosLubrificante += litrosLubrificante;
-        totalValorLubrificante += valorLubrificante;
-      });
-      
-      let fasesFinaisCalc = [...fasesAtividade];
-      if (customFaseAtividade.trim()) {
-        fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividade.trim()];
-      }
-      const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
-      const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
-      
-      const totalEquipamentos = itensLubrificante.reduce((sum, item) => sum + item.quantidade, 0);
-      
-      // NOVO: Pluralização da Categoria (Lubrificante)
-      const categoriasLub = Array.from(new Set(itensLubrificante.map(item => item.categoria)));
-      let categoriaLabelLub;
-      if (categoriasLub.length === 1) {
-            categoriaLabelLub = getEquipmentPluralization(categoriasLub[0], totalEquipamentos);
-      } else {
-          categoriaLabelLub = 'Equipamentos Diversos';
-      }
-      
-      const diasPluralHeader = pluralizeDay(form.dias_operacao);
-
-      // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE LUBRIFICANTE (NOVO PADRÃO)
-      let detalhamento = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabelLub}, durante ${form.dias_operacao} ${diasPluralHeader} de ${faseFormatada}, para ${form.organizacao}.
-
-OM Destino Recurso: ${lubricantAllocation.om_destino_recurso} (UG: ${formatCodug(lubricantAllocation.ug_destino_recurso)})
-
-Cálculo:
-Fórmula Base: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilização) x Consumo Lubrificante/hora (ou /100h).
-
-Detalhes dos Itens:
-${itensLubrificante.map(item => {
-    const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
-    
-    return `- ${item.quantidade} ${item.item} (${item.categoria}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosLubrificante, 2)} L. Valor: ${formatCurrency(valorLubrificante)}.`;
-}).join('\n')}
-
-Total Litros: ${formatNumber(totalLitrosLubrificante, 2)} L.
-Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
-        
-        lubrificanteConsolidado = {
-          total_litros: totalLitrosLubrificante,
-          valor_total: totalValorLubrificante,
-          itens: itensLubrificante,
-          detalhamento,
-        };
-    }
-    
-    // 2. Preparar registros de COMBUSTÍVEL (ND 33.90.30)
-    const registrosParaSalvar: TablesInsert<'classe_iii_registros'>[] = [];
-    
-    const fasesFinais = [...fasesAtividade];
-    if (customFaseAtividade.trim()) {
-      fasesFinais.push(customFaseAtividade.trim());
-    }
-    const faseFinalString = fasesFinais.filter(f => f).join('; ');
-    
-    consolidadosCombustivel.forEach(c => {
-      const registroCombustivel: TablesInsert<'classe_iii_registros'> = {
-        p_trab_id: ptrabId,
-        organizacao: form.organizacao, // OM Detentora do Equipamento
-        ug: form.ug, // UG Detentora do Equipamento
-        tipo_equipamento: 'COMBUSTIVEL_CONSOLIDADO',
-        quantidade: c.itens.reduce((sum, item) => sum + item.quantidade, 0),
-        dias_operacao: form.dias_operacao, // Salva o dia global para contexto
-        tipo_combustivel: c.tipo_combustivel,
-        preco_litro: c.valor_total / c.total_litros, // Preço médio (ou o preço do LPC)
-        total_litros: c.total_litros,
-        total_litros_sem_margem: c.total_litros_sem_margem,
-        valor_total: c.valor_total,
-        detalhamento: c.detalhamento,
-        itens_equipamentos: c.itens.map(item => ({
-          ...item,
-          tipo_equipamento_especifico: item.item,
-          // Garante que os campos de lubrificante são salvos corretamente
-          consumo_lubrificante_litro: item.consumo_lubrificante_litro,
-          preco_lubrificante: item.preco_lubrificante,
-        })) as any,
-        fase_atividade: faseFinalString,
-        valor_nd_30: c.valor_total, // Classe III Combustível é ND 30
-        valor_nd_39: 0,
-        // OM Detentora do Recurso (Combustível) - Não usado, mas mantido para consistência
-        om_detentora: rmFornecimento, 
-        ug_detentora: codugRmFornecimento,
-      };
-      registrosParaSalvar.push(registroCombustivel);
     });
     
     // 3. Preparar registro de LUBRIFICANTE (ND 33.90.30)
@@ -2668,9 +2557,9 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                         </div>
                       </div>
                       
-                      {/* ALERTA DE RECURSO DIFERENTE */}
+                      {/* ALERTA DE RECURSO DIFERENTE (AJUSTADO PARA O PADRÃO DA CLASSE II) */}
                       {isResourceDifferent && (
-                          <div className="flex items-center gap-1 mb-4 p-2 bg-red-50 border border-red-200 rounded-md">
+                          <div className="flex items-center gap-1 mb-4">
                               <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
                               <span className="text-sm font-medium text-red-600">
                                   Atenção: {resourceDestinationText} (Diferente da OM Detentora do Equipamento).
