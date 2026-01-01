@@ -1093,383 +1093,6 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         };
     }
     
-    return { consolidadosCombustivel: novosConsolidados, consolidadoLubrificante: lubrificanteConsolidado, itensAgrupadosPorCategoria: groupedFormItems };
-  }, [form.itens, refLPC, form.dias_operacao, fasesAtividade, customFaseAtividade, lubricantAllocation]);
-
-  // Totais da Categoria Atual (para exibição na aba)
-  const currentCategoryItemsActive = localCategoryItems.filter(item => item.quantidade > 0 && item.dias_utilizados > 0);
-  const { 
-    totalValor: currentCategoryTotalCombustivel, 
-    totalLitros: currentCategoryTotalLitros, 
-    precoLitro: currentCategoryPrecoLitro,
-  } = calculateGranularTotals(currentCategoryItemsActive, refLPC, form.dias_operacao, selectedTab === 'MOTOMECANIZACAO' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL'); // Assume Diesel/Gasolina para cálculo de preço
-  
-  const currentCategoryDieselItems = currentCategoryItemsActive.filter(item => item.tipo_combustivel_fixo === 'DIESEL');
-  const { totalValor: currentCategoryDieselValor, totalLitros: currentCategoryDieselLitros } = calculateGranularTotals(currentCategoryDieselItems, refLPC, form.dias_operacao, 'COMBUSTIVEL_DIESEL');
-  
-  const currentCategoryGasolinaItems = currentCategoryItemsActive.filter(item => item.tipo_combustivel_fixo === 'GASOLINA');
-  const { totalValor: currentCategoryGasolinaValor, totalLitros: currentCategoryGasolinaLitros } = calculateGranularTotals(currentCategoryGasolinaItems, refLPC, form.dias_operacao, 'COMBUSTIVEL_GASOLINA');
-  
-  const currentCategoryTotalLubrificante = currentCategoryItemsActive.reduce((sum, item) => {
-    const { valorLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
-    return sum + valorLubrificante;
-  }, 0);
-  
-  // Agrupamento para a Seção 3 (Resumo)
-  const itensAgrupadosPorCategoriaParaResumo = useMemo(() => {
-    return form.itens.filter(i => i.quantidade > 0 && i.dias_utilizados > 0).reduce((acc, item) => {
-      if (!acc[item.categoria]) {
-        acc[item.categoria] = [];
-      }
-      acc[item.categoria].push(item);
-      return acc;
-    }, {} as Record<TipoEquipamento, ItemClasseIII[]>);
-  }, [form.itens, refLPC, form.dias_operacao]);
-
-  // Agrupamento para a Seção 4 (Registros Salvos)
-  const registrosAgrupadosPorSuprimento = useMemo(() => {
-    const grupos: Record<string, { om: string, ug: string, total: number, suprimentos: ConsolidatedSuprimentoGroup[] }> = {};
-    
-    registros.forEach(r => {
-      // Chave de agrupamento é a OM Detentora do Equipamento (organizacao/ug)
-      const omKey = `${r.organizacao}-${r.ug}`;
-      
-      if (!grupos[omKey]) {
-        grupos[omKey] = { om: r.organizacao, ug: r.ug, total: 0, suprimentos: [] };
-      }
-      
-      grupos[omKey].total += r.valor_total;
-      
-      // Detalhes por categoria (para exibição)
-      const categoriaTotais: Record<TipoEquipamento, { litros: number, valor: number }> = {
-        GERADOR: { litros: 0, valor: 0 },
-        EMBARCACAO: { litros: 0, valor: 0 },
-        EQUIPAMENTO_ENGENHARIA: { litros: 0, valor: 0 },
-        MOTOMECANIZACAO: { litros: 0, valor: 0 },
-      };
-      
-      if (r.itens_equipamentos && Array.isArray(r.itens_equipamentos)) {
-        (r.itens_equipamentos as any[]).forEach(item => {
-          const categoria = item.categoria as TipoEquipamento;
-          const itemTotals = calculateItemTotals(item, refLPC, r.dias_operacao);
-          
-          if (r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO') {
-            categoriaTotais[categoria].litros += itemTotals.litrosLubrificante;
-            categoriaTotais[categoria].valor += itemTotals.valorLubrificante;
-          } else {
-            categoriaTotais[categoria].litros += itemTotals.totalLitros;
-            categoriaTotais[categoria].valor += itemTotals.valorCombustivel;
-          }
-        });
-      }
-      
-      grupos[omKey].suprimentos.push({
-        om_detentora_equipamento: r.organizacao,
-        ug_detentora_equipamento: r.ug,
-        suprimento_tipo: r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO' ? 'LUBRIFICANTE' : 'COMBUSTIVEL',
-        total_valor: r.valor_total,
-        total_litros: r.total_litros,
-        categoria_totais: categoriaTotais,
-        original_registro: r,
-      });
-    });
-    
-    // Ordenar os suprimentos dentro de cada grupo (Combustível antes de Lubrificante)
-    Object.values(grupos).forEach(group => {
-      group.suprimentos.sort((a, b) => {
-        if (a.suprimento_tipo === 'COMBUSTIVEL' && b.suprimento_tipo === 'LUBRIFICANTE') return -1;
-        if (a.suprimento_tipo === 'LUBRIFICANTE' && b.suprimento_tipo === 'COMBUSTIVEL') return 1;
-        return 0;
-      });
-    });
-    
-    return grupos;
-  }, [registros, refLPC]);
-
-  // NOVO MEMO: Lista de itens granulares para a Seção 5 (Memória)
-  const getMemoriaRecords = useMemo(() => {
-    const granularItems: GranularDisplayItem[] = [];
-    
-    registros.forEach(r => {
-      if (r.itens_equipamentos && Array.isArray(r.itens_equipamentos)) {
-        // Agrupar itens por categoria e tipo de suprimento (Combustível/Lubrificante)
-        const groupedItems = (r.itens_equipamentos as any[]).reduce((acc, item) => {
-          const categoria = item.categoria as TipoEquipamento;
-          
-          // 1. Combustível (sempre presente se o item foi salvo)
-          const combustivelType = item.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL';
-          const keyCombustivel = `${categoria}-${combustivelType}`;
-          
-          if (!acc[keyCombustivel]) {
-            acc[keyCombustivel] = {
-              om_destino: r.organizacao,
-              ug_destino: r.ug,
-              categoria: categoria,
-              suprimento_tipo: combustivelType,
-              dias_operacao: r.dias_operacao,
-              fase_atividade: r.fase_atividade || '',
-              original_registro: r,
-              detailed_items: [],
-              valor_total: 0,
-              total_litros: 0,
-              preco_litro: 0,
-              valor_nd_30: r.valor_nd_30,
-              valor_nd_39: r.valor_nd_39,
-            };
-          }
-          acc[keyCombustivel].detailed_items.push(item as ItemClasseIII);
-          
-          // 2. Lubrificante (se aplicável e com custo)
-          if (item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0) {
-            const keyLubrificante = `${categoria}-LUBRIFICANTE`;
-            
-            if (!acc[keyLubrificante]) {
-              acc[keyLubrificante] = {
-                om_destino: r.organizacao,
-                ug_destino: r.ug,
-                categoria: categoria,
-                suprimento_tipo: 'LUBRIFICANTE',
-                dias_operacao: r.dias_operacao,
-                fase_atividade: r.fase_atividade || '',
-                original_registro: r,
-                detailed_items: [],
-                valor_total: 0,
-                total_litros: 0,
-                preco_litro: 0,
-                valor_nd_30: r.valor_nd_30,
-                valor_nd_39: r.valor_nd_39,
-              };
-            }
-            acc[keyLubrificante].detailed_items.push(item as ItemClasseIII);
-          }
-          
-          return acc;
-        }, {} as Record<string, GranularDisplayItem>);
-        
-        // Calcular totais para cada grupo granular
-        Object.values(groupedItems).forEach(item => {
-          const { totalValor, totalLitros, precoLitro } = calculateGranularTotals(
-            item.detailed_items, 
-            refLPC, 
-            item.dias_operacao, 
-            item.suprimento_tipo
-          );
-          item.valor_total = totalValor;
-          item.total_litros = totalLitros;
-          item.preco_litro = precoLitro;
-          granularItems.push(item);
-        });
-      }
-    });
-    
-    // Ordenar por OM e depois por tipo de suprimento
-    granularItems.sort((a, b) => {
-      if (a.om_destino !== b.om_destino) {
-        return a.om_destino.localeCompare(b.om_destino);
-      }
-      return a.suprimento_tipo.localeCompare(b.suprimento_tipo);
-    });
-    
-    return granularItems;
-  }, [registros, refLPC]);
-  
-  // Mapeamento de rótulos para exibição na Seção 5 (Memória)
-  const categoryLabelMap: Record<TipoEquipamento, string> = {
-    GERADOR: 'Gerador',
-    EMBARCACAO: 'Embarcação',
-    EQUIPAMENTO_ENGENHARIA: 'Equipamento de Engenharia',
-    MOTOMECANIZACAO: 'Motomecanização',
-  };
-
-  // --- FUNÇÃO DE SALVAR REGISTROS (CORRIGIDA PARA ASYNC) ---
-  const handleSalvarRegistros = async () => {
-    if (!ptrabId) return;
-    if (!isFormValid || !refLPC) {
-      toast.error("Preencha todos os campos obrigatórios e configure a Referência LPC.");
-      return;
-    }
-    
-    const allActiveItems = form.itens.filter(i => i.quantidade > 0 && i.dias_utilizados > 0);
-    if (allActiveItems.length === 0) {
-      toast.error("Adicione pelo menos um item ativo.");
-      return;
-    }
-    
-    // 1. Consolidar Combustível e Lubrificante (usando o memo)
-    const itens = form.itens.filter(item => item.quantidade > 0 && item.dias_utilizados > 0);
-    
-    if (itens.length === 0 || !refLPC || form.dias_operacao === 0) {
-      toast.error("Erro de cálculo: Dados insuficientes para consolidação.");
-      return;
-    }
-    
-    // --- CÁLCULO DE COMBUSTÍVEL (ND 33.90.30) ---
-    const gruposPorCombustivel = itens.reduce((grupos, item) => {
-      if (item.tipo_combustivel_fixo === 'GASOLINA' || item.tipo_combustivel_fixo === 'DIESEL') {
-        if (!grupos[item.tipo_combustivel_fixo]) {
-          grupos[item.tipo_combustivel_fixo] = [];
-        }
-        grupos[item.tipo_combustivel_fixo].push(item);
-      }
-      return grupos;
-    }, {} as Record<CombustivelTipo, ItemClasseIII[]>);
-    
-    const novosConsolidados: { tipo_combustivel: CombustivelTipo, total_litros_sem_margem: number, total_litros: number, valor_total: number, itens: ItemClasseIII[], detalhamento: string }[] = [];
-    
-    Object.entries(gruposPorCombustivel).forEach(([combustivel, itensGrupo]) => {
-      const tipoCombustivel = combustivel as CombustivelTipo;
-      const precoLitro = tipoCombustivel === 'GASOLINA' 
-        ? refLPC.preco_gasolina 
-        : refLPC.preco_diesel;
-      
-      let totalLitrosSemMargem = 0;
-      let detalhes: string[] = [];
-      
-      let fasesFinaisCalc = [...fasesAtividade];
-      if (customFaseAtividade.trim()) {
-        fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividade.trim()];
-      }
-      const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
-      const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
-      
-      itensGrupo.forEach(item => {
-        let litrosSemMargemItem = 0;
-        let formulaDetalhe = '';
-        const diasUtilizados = item.dias_utilizados || 0;
-        const diasPluralItem = pluralizeDay(diasUtilizados);
-        
-        if (item.categoria === 'MOTOMECANIZACAO') {
-          litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
-          formulaDetalhe = `(${item.quantidade} un. x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${diasUtilizados} ${diasPluralItem}) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
-        } else {
-          litrosSemMargemItem = item.quantidade * item.horas_dia * item.consumo_fixo * diasUtilizados;
-          formulaDetalhe = `(${item.quantidade} un. x ${formatNumber(item.horas_dia, 1)} h/dia x ${formatNumber(item.consumo_fixo, 1)} L/h) x ${diasUtilizados} ${diasPluralItem}`;
-        }
-        
-        totalLitrosSemMargem += litrosSemMargemItem;
-        const unidade = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
-        // MODIFICAÇÃO APLICADA AQUI
-        detalhes.push(`- ${item.item}: ${formulaDetalhe} = ${formatNumber(litrosSemMargemItem)} L ${unidade}.`);
-      });
-      
-      const totalLitros = totalLitrosSemMargem * 1.3;
-      const valorTotal = totalLitros * precoLitro;
-      
-      const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
-      const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
-      
-      const formatarData = (data: string) => {
-        const [ano, mes, dia] = data.split('-');
-        return `${dia}/${mes}/${ano}`;
-      };
-      
-      const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
-      const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
-      const localConsultaDisplay = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? ` (${refLPC.nome_local})` : ''; // NEW DEFINITION
-      
-      const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
-      
-      // NOVO: Pluralização e Artigo
-      const diasPluralHeader = pluralizeDay(form.dias_operacao);
-      const omArticle = getOmArticle(form.organizacao);
-      
-      // NOVO: Pluralização da Categoria
-      const categoriasAtivas = Array.from(new Set(itensGrupo.map(item => item.categoria)));
-      let categoriaLabel;
-      if (categoriasAtivas.length === 1) {
-          categoriaLabel = getEquipmentPluralization(categoriasAtivas[0], totalEquipamentos);
-      } else {
-          categoriaLabel = 'Equipamentos Diversos';
-      }
-      
-      // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
-      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
-
-Cálculo:
-- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
-
-Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
-
-${detalhes.join('\n')}
-
-Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitros)} L ${unidadeLabel}.
-Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
-      
-      novosConsolidados.push({
-        tipo_combustivel: tipoCombustivel,
-        total_litros_sem_margem: totalLitrosSemMargem,
-        total_litros: totalLitros,
-        valor_total: valorTotal,
-        itens: itensGrupo,
-        detalhamento,
-      });
-    });
-    
-    // --- CÁLCULO DE LUBRIFICANTE (ND 33.90.30) ---
-    const itensLubrificante = itens.filter(item => 
-      (item.categoria === 'GERADOR' || item.categoria === 'EMBARCACAO') && 
-      item.consumo_lubrificante_litro > 0 && 
-      item.preco_lubrificante > 0
-    );
-    
-    let lubrificanteConsolidado = null;
-    
-    if (itensLubrificante.length > 0) {
-      let totalLitrosLubrificante = 0;
-      let totalValorLubrificante = 0;
-      
-      itensLubrificante.forEach(item => {
-        const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
-        totalLitrosLubrificante += litrosLubrificante;
-        totalValorLubrificante += valorLubrificante;
-      });
-      
-      let fasesFinaisCalc = [...fasesAtividade];
-      if (customFaseAtividade.trim()) {
-        fasesFinaisCalc = [...fasesFinaisCalc, customFaseAtividade.trim()];
-      }
-      const faseFinalStringCalc = fasesFinaisCalc.filter(f => f).join('; ');
-      const faseFormatada = formatFasesParaTexto(faseFinalStringCalc);
-      
-      const totalEquipamentos = itensLubrificante.reduce((sum, item) => sum + item.quantidade, 0);
-      
-      // NOVO: Pluralização da Categoria (Lubrificante)
-      const categoriasLub = Array.from(new Set(itensLubrificante.map(item => item.categoria)));
-      let categoriaLabelLub;
-      if (categoriasLub.length === 1) {
-            categoriaLabelLub = getEquipmentPluralization(categoriasLub[0], totalEquipamentos);
-      } else {
-          categoriaLabelLub = 'Equipamentos Diversos';
-      }
-      
-      const diasPluralHeader = pluralizeDay(form.dias_operacao);
-
-      // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE LUBRIFICANTE (NOVO PADRÃO)
-      let detalhamento = `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabelLub}, durante ${form.dias_operacao} ${diasPluralHeader} de ${faseFormatada}, para ${form.organizacao}.
-
-OM Destino Recurso: ${lubricantAllocation.om_destino_recurso} (UG: ${formatCodug(lubricantAllocation.ug_destino_recurso)})
-
-Cálculo:
-Fórmula Base: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilização) x Consumo Lubrificante/hora (ou /100h).
-
-Detalhes dos Itens:
-${itensLubrificante.map(item => {
-    const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, form.dias_operacao);
-    
-    return `- ${item.quantidade} ${item.item} (${item.categoria}): Consumo: ${formatNumber(item.consumo_lubrificante_litro, 2)} L/${item.categoria === 'GERADOR' ? '100h' : 'h'}. Preço Unitário: ${formatCurrency(item.preco_lubrificante)}. Litros: ${formatNumber(litrosLubrificante, 2)} L. Valor: ${formatCurrency(valorLubrificante)}.`;
-}).join('\n')}
-
-Total Litros: ${formatNumber(totalLitrosLubrificante, 2)} L.
-Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
-        
-        lubrificanteConsolidado = {
-          total_litros: totalLitrosLubrificante,
-          valor_total: totalValorLubrificante,
-          itens: itensLubrificante,
-          detalhamento,
-        };
-    }
-    
     // 2. Preparar registros de COMBUSTÍVEL (ND 33.90.30)
     const registrosParaSalvar: TablesInsert<'classe_iii_registros'>[] = [];
     
@@ -2568,6 +2191,33 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                   // CORREÇÃO APLICADA AQUI: Usar getClasseIIICategoryLabel como fallback robusto
                   const displayCategoryLabel = categoryLabelMap[item.categoria] || getClasseIIICategoryLabel(item.categoria);
                   
+                  // --- LÓGICA DE ALERTA PARA MEMÓRIA DETALHADA ---
+                  let isResourceDifferent = false;
+                  let resourceDestinationText = '';
+                  
+                  // 1. Obter detalhes da OM Detentora do Equipamento (OM que está sendo detalhada)
+                  const omDetentoraKey = `${om}-${ug}`;
+                  const omDetentoraDetails = omDetailsMap[omDetentoraKey];
+                  const omDetentoraRmVinculacao = omDetentoraDetails?.rm_vinculacao;
+                  
+                  if (item.suprimento_tipo === 'LUBRIFICANTE') {
+                      // Lubrificante: OM Detentora do Equipamento (om) vs OM Destino Recurso (om_detentora)
+                      const omDestinoRecurso = item.original_registro.om_detentora || om;
+                      const ugDestinoRecurso = item.original_registro.ug_detentora || ug;
+                      isResourceDifferent = om !== omDestinoRecurso;
+                      resourceDestinationText = `Lubrificante destinado à OM: ${omDestinoRecurso} (UG: ${formatCodug(ugDestinoRecurso)})`;
+                  } else {
+                      // Combustível: RM Vinculação da OM Detentora vs RM de Fornecimento (om_detentora)
+                      const rmFornecimento = item.original_registro.om_detentora || '';
+                      const codugRmFornecimento = item.original_registro.ug_detentora || '';
+                      
+                      if (omDetentoraRmVinculacao && rmFornecimento) {
+                          isResourceDifferent = omDetentoraRmVinculacao.toUpperCase() !== rmFornecimento.toUpperCase();
+                      }
+                      resourceDestinationText = `Combustível fornecido pela RM: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)})`;
+                  }
+                  // ------------------------------------------------
+                  
                   return (
                     <div key={`memoria-view-${item.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                       
@@ -2575,7 +2225,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                       <div className="flex items-start justify-between gap-4 mb-4">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <h4 className="text-base font-semibold text-foreground">
-                            OM Destino: {om} ({formatCodug(ug)})
+                            OM Detentora: {om} ({formatCodug(ug)})
                           </h4>
                           {/* NOVO BADGE: Categoria do Material (com cor específica) */}
                           <Badge variant="default" className={cn("w-fit shrink-0", categoryBadgeStyle.className)}>
@@ -2640,6 +2290,16 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                           )}
                         </div>
                       </div>
+                      
+                      {/* ALERTA DE RECURSO DIFERENTE */}
+                      {isResourceDifferent && (
+                          <div className="flex items-center gap-1 mb-4 p-2 bg-red-50 border border-red-200 rounded-md">
+                              <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+                              <span className="text-sm font-medium text-red-600">
+                                  Atenção: {resourceDestinationText} (Diferente da OM Detentora do Equipamento).
+                              </span>
+                          </div>
+                      )}
                       
                       <Card className="p-4 bg-background rounded-lg border">
                         {isEditing ? (
