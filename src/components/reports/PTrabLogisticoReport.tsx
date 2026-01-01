@@ -704,7 +704,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                     categoriaDetalhe = registro.animal_tipo;
                 }
-                    
+                                
                 const omDetentora = registro.om_detentora || omDestinoRecurso;
                 const isDifferentOm = omDetentora !== omDestinoRecurso;
                 
@@ -1005,7 +1005,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow += 3;
       
       const cmtRow = worksheet.getRow(currentRow);
-      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'';
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
