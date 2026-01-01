@@ -643,6 +643,11 @@ const ClasseIIIForm = () => {
       ...prev,
       selectedOmDestinoId: lubOmData?.id
     }));
+    
+    // 6. Set the initial tab based on the first item found in the consolidated list
+    if (consolidatedItems.length > 0) {
+        setSelectedTab(consolidatedItems[0].categoria);
+    }
   };
 
   const resetFormFields = () => {
