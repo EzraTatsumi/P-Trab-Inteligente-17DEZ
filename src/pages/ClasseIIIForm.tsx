@@ -50,6 +50,29 @@ const getOmArticle = (omName: string): string => {
     return 'do';
 };
 
+/**
+ * Helper function to get the pluralized category name based on count.
+ */
+const getPluralizedCategory = (categoria: TipoEquipamento, count: number): string => {
+    if (count <= 1) {
+        return getClasseIIICategoryLabel(categoria);
+    }
+    
+    switch (categoria) {
+        case 'GERADOR':
+            return 'Geradores';
+        case 'EMBARCACAO':
+            return 'Embarcações';
+        case 'EQUIPAMENTO_ENGENHARIA':
+            return 'Equipamentos de Engenharia';
+        case 'MOTOMECANIZACAO':
+            return 'Viaturas/Equipamentos de Motomecanização';
+        default:
+            return getClasseIIICategoryLabel(categoria);
+    }
+};
+
+
 interface ItemClasseIII {
   item: string; // nome_equipamento
   categoria: TipoEquipamento;
@@ -295,10 +318,11 @@ Valor Total: ${formatCurrency(valor_total)}.`;
         
         // NOVO CABEÇALHO SOLICITADO:
         const omArticle = getOmArticle(om_destino);
-        const categoriaLabel = getClasseIIICategoryLabel(categoria);
+        const categoriaPluralizada = getPluralizedCategory(categoria, totalEquipamentos); // Usando a nova função
         const diaPlural = dias_operacao === 1 ? 'dia' : 'dias';
         
-        const header = `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diaPlural} de ${faseFormatada}.`;
+        // FORMATO: "33.90.30 - Aquisição de Combustível (<Tipo Combustível>) para <Qtd Item> <Categoria> do(a) <Nome OM>, durante <Qtd Dias Atividade> <Fases da Atividade>."
+        const header = `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaPluralizada} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diaPlural} de ${faseFormatada}.`;
         
         return `${header}
 
@@ -944,15 +968,12 @@ const ClasseIIIForm = () => {
       
       // --- NOVO CÁLCULO DE CATEGORIA CONSOLIDADA ---
       const uniqueCategories = Array.from(new Set(itensGrupo.map(item => item.categoria)));
-      let consolidatedCategoryLabel = 'equipamentos';
+      let consolidatedCategoryLabel: string;
       if (uniqueCategories.length === 1) {
-          consolidatedCategoryLabel = getClasseIIICategoryLabel(uniqueCategories[0]);
+          consolidatedCategoryLabel = getPluralizedCategory(uniqueCategories[0], totalEquipamentos);
       } else {
-          if (uniqueCategories.includes('MOTOMECANIZACAO')) {
-              consolidatedCategoryLabel = 'viaturas e equipamentos';
-          } else {
-              consolidatedCategoryLabel = 'equipamentos';
-          }
+          // Se houver múltiplas categorias, usamos a pluralização genérica
+          consolidatedCategoryLabel = totalEquipamentos > 1 ? 'equipamentos diversos' : 'equipamento';
       }
       
       const omArticle = getOmArticle(form.organizacao);
