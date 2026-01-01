@@ -349,7 +349,6 @@ Cálculo:
 - Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${tipoCombustivel} - ${formatCurrency(preco_litro)}.
 
 Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.
-
 ${detalhes.join('\n')}
 
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(total_litros)} L ${unidadeLabel}.
