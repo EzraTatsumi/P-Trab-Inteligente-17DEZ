@@ -2549,7 +2549,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                   
                   // --- LÓGICA DE ALERTA PARA MEMÓRIA DETALHADA ---
                   let isResourceDifferent = false;
-                  let resourceDestinationText = '';
+                  let omDestinoRecurso = '';
+                  let ugDestinoRecurso = '';
                   
                   // 1. Obter detalhes da OM Detentora do Equipamento (OM que está sendo detalhada)
                   const omDetentoraKey = `${om}-${ug}`;
@@ -2558,22 +2559,24 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                   
                   if (item.suprimento_tipo === 'LUBRIFICANTE') {
                       // Lubrificante: OM Detentora do Equipamento (om) vs OM Destino Recurso (om_detentora)
-                      const omDestinoRecurso = item.original_registro.om_detentora || om;
-                      const ugDestinoRecurso = item.original_registro.ug_detentora || ug;
+                      omDestinoRecurso = item.original_registro.om_detentora || om;
+                      ugDestinoRecurso = item.original_registro.ug_detentora || ug;
                       isResourceDifferent = om !== omDestinoRecurso;
-                      // NOVO TEXTO PADRÃO PARA LUBRIFICANTE
-                      resourceDestinationText = `Recurso destinado à OM: ${omDestinoRecurso} (${formatCodug(ugDestinoRecurso)})`;
                   } else {
                       // Combustível: RM Vinculação da OM Detentora vs RM de Fornecimento (om_detentora)
                       const rmFornecimento = item.original_registro.om_detentora || '';
                       const codugRmFornecimento = item.original_registro.ug_detentora || '';
                       
+                      omDestinoRecurso = rmFornecimento;
+                      ugDestinoRecurso = codugRmFornecimento;
+                      
                       if (omDetentoraRmVinculacao && rmFornecimento) {
                           isResourceDifferent = omDetentoraRmVinculacao.toUpperCase() !== rmFornecimento.toUpperCase();
                       }
-                      // NOVO TEXTO PADRÃO PARA COMBUSTÍVEL
-                      resourceDestinationText = `Recurso destinado à OM: ${rmFornecimento} (${formatCodug(codugRmFornecimento)})`;
                   }
+                  
+                  // NOVO TEXTO SIMPLIFICADO
+                  const resourceDestinationText = `Recurso destinado à OM: ${omDestinoRecurso} (${formatCodug(ugDestinoRecurso)})`;
                   // ------------------------------------------------
                   
                   return (
@@ -2594,6 +2597,12 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                             <Badge variant="default" className={cn("w-fit shrink-0", badgeClass)}>
                               {suprimento}
                             </Badge>
+                            {/* NOVO BADGE DE MEMÓRIA CUSTOMIZADA */}
+                            {hasCustomMemoria && !isEditing && (
+                                <Badge variant="outline" className="text-xs">
+                                    Editada manualmente
+                                </Badge>
+                            )}
                           </div>
                           
                           {/* ALERTA DE RECURSO DIFERENTE (AJUSTADO PARA O PADRÃO DA CLASSE VII) */}
