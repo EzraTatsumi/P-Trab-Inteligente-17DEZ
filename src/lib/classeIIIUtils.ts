@@ -1,4 +1,4 @@
-import { formatCurrency, formatCodug } from "./formatUtils";
+import { formatCurrency, formatCodug, formatNumber } from "./formatUtils";
 import { getClasseIIICategoryLabel } from "./classeIIIBadgeUtils";
 import { RefLPC } from "@/types/refLPC";
 
