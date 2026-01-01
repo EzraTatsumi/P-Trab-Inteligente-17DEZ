@@ -450,13 +450,10 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
         const omArticle = getOmArticle(om_destino);
 
         return `33.90.30 - Aquisição de Lubrificante para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
-OM Destino Recurso: ${omDestinoRecurso} (UG: ${formatCodug(ugDestinoRecurso)})
 
 Cálculo:
-Fórmula Base: (Nr Equipamentos x Nr Horas utilizadas/dia x Nr dias de utilização) x Consumo Lubrificante/hora (ou /100h).
-
-Detalhes dos Itens:
-${detailed_items.map(item => {
+Fórmula Base: (Nr Equipamentos x Nr Horas/dia x Nr dias) x Consumo Lubrificante/hora.
+- ${detailed_items.map(item => {
     const { litrosLubrificante, valorLubrificante } = calculateItemTotals(item, refLPC, dias_operacao);
     const itemTotalHoras = item.quantidade * item.horas_dia * item.dias_utilizados;
     
