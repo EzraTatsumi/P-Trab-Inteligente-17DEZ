@@ -42,41 +42,6 @@ const CATEGORIAS: { key: TipoEquipamento, label: string, icon: React.FC<any> }[]
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
 
-// NOVO: Helper function to determine 'do' or 'da' based on OM name.
-const getOmArticle = (omName: string): string => {
-    if (omName.includes('ª')) {
-        return 'da';
-    }
-    return 'do';
-};
-
-/**
- * Helper function to get the pluralized category name based on count.
- */
-const getPluralizedCategory = (categoria: TipoEquipamento, count: number): string => {
-    if (categoria === 'MOTOMECANIZACAO') {
-        return count <= 1 ? 'Viatura' : 'Viaturas';
-    }
-    
-    if (count <= 1) {
-        return getClasseIIICategoryLabel(categoria);
-    }
-    
-    // Plural forms for other categories
-    switch (categoria) {
-        case 'GERADOR':
-            return 'Geradores';
-        case 'EMBARCACAO':
-            return 'Embarcações';
-        case 'EQUIPAMENTO_ENGENHARIA':
-            return 'Equipamentos de Engenharia';
-        default:
-            // Fallback to the label if plural form is not explicitly defined
-            return `${getClasseIIICategoryLabel(categoria)}s`; 
-    }
-};
-
-
 interface ItemClasseIII {
   item: string; // nome_equipamento
   categoria: TipoEquipamento;
@@ -320,17 +285,10 @@ Valor Total: ${formatCurrency(valor_total)}.`;
             detalhes.push(`- ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
         });
         
-        // NOVO CABEÇALHO SOLICITADO:
-        const omArticle = getOmArticle(om_destino);
-        const categoriaPluralizada = getPluralizedCategory(categoria, totalEquipamentos); // Usando a nova função
-        const diaPlural = dias_operacao === 1 ? 'dia' : 'dias';
-        
-        // FORMATO: "33.90.30 - Aquisição de Combustível (<Tipo Combustível>) para <Qtd Item> <Categoria> do(a) <Nome OM>, durante <Qtd Dias Atividade> <Fases da Atividade>."
-        const header = `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaPluralizada} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diaPlural} de ${faseFormatada}.`;
-        
-        return `${header}
+        return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${getClasseIIICategoryLabel(categoria)} (${totalEquipamentos} equipamentos), durante ${dias_operacao} dias de ${faseFormatada}, para ${om_destino}.
 
-Cálculo:
+Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)})
+
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(preco_litro)}.
 
 Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
@@ -520,17 +478,16 @@ const ClasseIIIForm = () => {
     // 2. Extract RM Fornecimento (from detailing)
     let rmFromDetailing = "";
     let codugRmFromDetailing = "";
-    // A RM de fornecimento não está mais no detalhamento, mas sim nos estados rmFornecimento/codugRmFornecimento
-    // Se a OM Detentora for encontrada, usamos a RM de Vinculação dela como padrão
-    const omDetails = omDetailsMap[`${omName}-${ug}`];
-    if (omDetails) {
-        rmFromDetailing = omDetails.rm_vinculacao;
-        codugRmFromDetailing = omDetails.codug_rm_vinculacao;
-        setRmFornecimento(rmFromDetailing);
-        setCodugRmFornecimento(codugRmFromDetailing);
+    const rmMatch = firstRecord.detalhamento?.match(/Fornecido por: (.*?) \(CODUG: (.*?)\)/);
+    if (rmMatch) {
+      rmFromDetailing = rmMatch[1];
+      codugRmFromDetailing = rmMatch[2];
+      setRmFornecimento(rmFromDetailing);
+      setCodugRmFornecimento(codugRmFromDetailing);
     } else {
-        setRmFornecimento("");
-        setCodugRmFornecimento("");
+      // Clear RM/CODUG state if not found in detailing, relying on OM fetch later if possible
+      setRmFornecimento("");
+      setCodugRmFornecimento("");
     }
     
     // 3. Extract Lubricant Allocation (OM Destino Recurso)
@@ -562,7 +519,7 @@ const ClasseIIIForm = () => {
             
             // Converte o preço para a string de dígitos (centavos) para o input mascarado
             const precoLubrificanteInput = precoLubrificante > 0 
-              ? numberToRawDigits(precoLubrificante)
+              ? formatCurrencyInput(String(Math.round(precoLubrificante * 100))).digits
               : "";
             
             const consumoLubrificanteInput = consumoLubrificante > 0 
@@ -970,23 +927,11 @@ const ClasseIIIForm = () => {
       
       const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
       
-      // --- NOVO CÁLCULO DE CATEGORIA CONSOLIDADA ---
-      const uniqueCategories = Array.from(new Set(itensGrupo.map(item => item.categoria)));
-      let consolidatedCategoryLabel: string;
-      if (uniqueCategories.length === 1) {
-          consolidatedCategoryLabel = getPluralizedCategory(uniqueCategories[0], totalEquipamentos);
-      } else {
-          // Se houver múltiplas categorias, usamos a pluralização genérica
-          consolidatedCategoryLabel = totalEquipamentos > 1 ? 'equipamentos diversos' : 'equipamento';
-      }
-      
-      const omArticle = getOmArticle(form.organizacao);
-      const diaPlural = form.dias_operacao === 1 ? 'dia' : 'dias';
-      
-      // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO SOLICITADO)
-      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${consolidatedCategoryLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
+      // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
+      let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} equipamentos, durante ${form.dias_operacao} dias de ${faseFormatada}, para ${form.organizacao}.
 
-Cálculo:
+Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)}).
+
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
 
 Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
@@ -2269,24 +2214,27 @@ const getMemoriaRecords = granularRegistros;
                             // 1. Extrai RM Fornecimento (OM Destino Recurso) do detalhamento
                             let rmFornecimentoFromDetailing = "";
                             let codugRmFornecimentoFromDetailing = "";
-                            // NOTA: O detalhamento não contém mais a linha "Fornecido por", mas sim a OM Detentora do Equipamento
-                            // Para o relatório, a OM Destino Recurso de Combustível é a RM de Fornecimento.
-                            // Como não salvamos a RM de Fornecimento no registro consolidado, precisamos buscá-la
-                            // ou confiar que o detalhamento original (se não customizado) a continha.
-                            // Para fins de exibição aqui, vamos usar a OM Detentora do Equipamento (group.om)
-                            // e assumir que a RM de Fornecimento é a RM de Vinculação da OM Detentora (omDetailsMap).
+                            const rmMatch = originalRegistro.detalhamento?.match(/Fornecido por: (.*?) \(CODUG: (.*?)\)/);
+                            if (rmMatch) {
+                                rmFornecimentoFromDetailing = rmMatch[1];
+                                codugRmFornecimentoFromDetailing = rmMatch[2];
+                            }
+                            destinoOmNome = rmFornecimentoFromDetailing; // RM Fornecimento
+                            destinoOmUg = codugRmFornecimentoFromDetailing;
                             
+                            // 2. Lógica de Coloração para Combustível: RM Fornecimento vs RM Vinculação da OM Detentora
+                            // OM Detentora (Source) é a OM salva no registro (group.om)
                             const omDetentoraKey = `${group.om}-${group.ug}`;
                             const omDetentoraDetails = omDetailsMap[omDetentoraKey];
+                            const omDetentoraRmVinculacao = omDetentoraDetails?.rm_vinculacao; // RM Vinculação da OM Detentora
                             
-                            destinoOmNome = omDetentoraDetails?.rm_vinculacao || 'RM Desconhecida'; // RM de Fornecimento
-                            destinoOmUg = omDetentoraDetails?.codug_rm_vinculacao || '000.000';
-                            
-                            // Lógica de Coloração: RM Fornecimento vs RM Vinculação da OM Detentora
-                            // Como a OM Detentora do Equipamento é a OM principal, e a RM de Fornecimento é a RM de Vinculação,
-                            // a comparação de "diferente" não faz sentido aqui, a menos que o usuário tenha alterado a RM de Fornecimento.
-                            // Vamos manter a cor padrão, pois a RM de Vinculação é o destino esperado.
-                            isDifferentOm = false; 
+                            if (omDetentoraRmVinculacao && rmFornecimentoFromDetailing) {
+                                // Comparar RM Vinculação da OM Detentora vs RM Fornecimento
+                                isDifferentOm = omDetentoraRmVinculacao.toUpperCase() !== rmFornecimentoFromDetailing.toUpperCase();
+                            } else {
+                                // Se faltar dados, assume cor normal (não é diferente)
+                                isDifferentOm = false; 
+                            }
                             
                           } else {
                             // LUBRIFICANTE: OM Detentora do Equipamento (group.om) vs OM Destino Recurso (om_detentora/ug_detentora)
@@ -2355,7 +2303,7 @@ const getMemoriaRecords = granularRegistros;
                                   if (totais.valor > 0) {
                                     const categoryBadgeStyle = getClasseIIICategoryBadgeStyle(cat.key);
                                     // Usar o rótulo do categoryLabelMap para garantir a capitalização correta
-                                    const displayLabel = categoryLabelMap[cat.key] || capitalizeFirstLetter(cat.key.replace(/_/g, ' '));
+                                    const displayLabel = categoryLabelMap[cat.key] || cat.key; // Fallback para a chave se o map falhar
                                     
                                     return (
                                       <div key={cat.key} className="flex justify-between text-xs">
