@@ -1546,26 +1546,33 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       const registroOriginal = registros.find(r => r.id === editingMemoriaId);
       if (!registroOriginal) throw new Error("Registro consolidado não encontrado.");
       
+      // NOVO: Determinar o tipo de memória e a categoria alvo
+      const isSavingLubricant = editingGranularId.endsWith('-LUBRIFICANTE');
+      const parts = editingGranularId.split('-');
+      // Se for Lubrificante, a categoria é a penúltima parte (ex: GERADOR)
+      const targetCategory = isSavingLubricant ? parts[parts.length - 2] : null; 
+      
       // 2. Encontrar o item granular correspondente no array itens_equipamentos
       const itensEquipamentos = (registroOriginal.itens_equipamentos as ItemClasseIII[] || []).map(item => {
-          // Cria o ID granular para comparação (Combustível: ID_REGISTRO-ITEM-TIPO_SUPRIMENTO)
-          // Lubrificante: ID_REGISTRO-CATEGORIA-LUBRIFICANTE
           let currentGranularId = '';
           
           // Lógica para gerar o ID granular do item atual (deve ser idêntica à lógica em getMemoriaRecords)
           const isLubricantItem = item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0;
           
-          if (isLubricantItem) {
-              // Se for Lubrificante, o ID granular é baseado na CATEGORIA (Gerador/Embarcação)
-              currentGranularId = `${registroOriginal.id}-${item.categoria}-LUBRIFICANTE`;
+          if (isSavingLubricant) {
+              // Se estiver salvando LUBRIFICANTE, verifica se o item é relevante e pertence à categoria alvo
+              if (isLubricantItem && item.categoria === targetCategory) {
+                  // Todos os itens desta categoria com custo de lubrificante compartilham o mesmo ID granular de memória
+                  currentGranularId = `${registroOriginal.id}-${item.categoria}-LUBRIFICANTE`;
+              }
           } else {
-              // Se for Combustível, o ID granular é baseado no ITEM (nome do equipamento)
+              // Se estiver salvando COMBUSTÍVEL, o ID é granular por item e tipo de combustível
               const suprimento_tipo = item.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL';
               currentGranularId = `${registroOriginal.id}-${item.item}-${suprimento_tipo}`;
           }
           
           if (currentGranularId === editingGranularId) {
-              // Este é o item que estamos editando. Atualiza a memória customizada.
+              // Este é o item/grupo que estamos editando. Atualiza a memória customizada.
               return {
                   ...item,
                   memoria_customizada: memoriaEdit.trim() || null,
@@ -1610,6 +1617,11 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       const registroOriginal = registros.find(r => r.id === consolidatedId);
       if (!registroOriginal) throw new Error("Registro consolidado não encontrado.");
       
+      // NOVO: Determinar o tipo de memória e a categoria alvo
+      const isRestoringLubricant = granularId.endsWith('-LUBRIFICANTE');
+      const parts = granularId.split('-');
+      const targetCategory = isRestoringLubricant ? parts[parts.length - 2] : null; 
+      
       // 2. Encontrar o item granular correspondente no array itens_equipamentos e remover a memória customizada
       const itensEquipamentos = (registroOriginal.itens_equipamentos as ItemClasseIII[] || []).map(item => {
           let currentGranularId = '';
@@ -1617,17 +1629,19 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
           // Lógica para gerar o ID granular do item atual (deve ser idêntica à lógica em getMemoriaRecords)
           const isLubricantItem = item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0;
           
-          if (isLubricantItem) {
-              // Se for Lubrificante, o ID granular é baseado na CATEGORIA (Gerador/Embarcação)
-              currentGranularId = `${registroOriginal.id}-${item.categoria}-LUBRIFICANTE`;
+          if (isRestoringLubricant) {
+              // Se estiver restaurando LUBRIFICANTE, verifica se o item é relevante e pertence à categoria alvo
+              if (isLubricantItem && item.categoria === targetCategory) {
+                  currentGranularId = `${registroOriginal.id}-${item.categoria}-LUBRIFICANTE`;
+              }
           } else {
-              // Se for Combustível, o ID granular é baseado no ITEM (nome do equipamento)
+              // Se estiver restaurando COMBUSTÍVEL, o ID é granular por item e tipo de combustível
               const suprimento_tipo = item.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL';
               currentGranularId = `${registroOriginal.id}-${item.item}-${suprimento_tipo}`;
           }
           
           if (currentGranularId === granularId) {
-              // Este é o item que estamos restaurando. Remove a memória customizada.
+              // Este é o item/grupo que estamos restaurando. Remove a memória customizada.
               return {
                   ...item,
                   memoria_customizada: null,
@@ -2529,7 +2543,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                   const isEditing = editingGranularId === granularId;
                   
                   // Verifica se o item granular tem memória customizada
-                  const itemComMemoria = item.detailed_items[0];
+                  // Para Lubrificante, a memória customizada é compartilhada por todos os itens da categoria
+                  const itemComMemoria = item.detailed_items.find(i => !!i.memoria_customizada) || item.detailed_items[0];
                   const hasCustomMemoria = !!itemComMemoria.memoria_customizada;
                   
                   // Generate automatic memory based on granular item data
