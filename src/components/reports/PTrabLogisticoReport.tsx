@@ -607,23 +607,24 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             return a.categoria_equipamento.localeCompare(b.categoria_equipamento);
         });
         
-        return [
-          // 1. Renderizar todas as linhas de despesa (I, II, V, VI, VII, VIII, IX)
-          ...linhasDespesaOrdenadas.map((linha) => {
-            // ADICIONANDO VERIFICAÇÃO DE SEGURANÇA AQUI
-            if (!linha || !linha.registro) return null;
+        // Renderizar todas as linhas de despesa (I, II, V, VI, VII, VIII, IX)
+        [...linhasDespesaOrdenadas, ...linhasClasseIIIOrdenadas].forEach((linha, index) => {
+            const row = worksheet.getRow(currentRow);
             
             const isClasseI = 'tipo' in linha;
-            // Verifica se o registro tem a propriedade 'categoria' para ser Classe II-IX
-            const isClasseII_IX = 'categoria' in linha.registro && typeof (linha.registro as ClasseIIRegistro).categoria === 'string';
+            const isClasseII_IX = 'categoria' in (linha as any).registro && typeof (linha as any).registro.categoria === 'string';
+            const isClasseIII = 'categoria_equipamento' in linha;
             
-            const rowData = {
+            let rowData = {
                 despesasValue: '',
                 omValue: '',
                 detalhamentoValue: '',
                 valorC: 0,
                 valorD: 0,
                 valorE: 0,
+                litrosF: '',
+                precoUnitarioG: '',
+                precoTotalH: '',
             };
             
             if (isClasseI) { // Classe I (QS/QR)
@@ -636,14 +637,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                     rowData.valorC = registro.total_qs;
                     rowData.valorE = registro.total_qs;
-                    // USANDO A FUNÇÃO UNIFICADA
                     rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                 } else { // QR
                     rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                     rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
                     rowData.valorC = registro.total_qr;
                     rowData.valorE = registro.total_qr;
-                    // USANDO A FUNÇÃO UNIFICADA
                     rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                 }
             } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
@@ -651,7 +650,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 const omDestinoRecurso = registro.organizacao;
                 const ugDestinoRecurso = formatCodug(registro.ug);
                 
-                let categoriaDetalhe = getClasseIILabel(registro.categoria); // Usar rótulo completo
+                let categoriaDetalhe = getClasseIILabel(registro.categoria);
                 
                 if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                     categoriaDetalhe = registro.animal_tipo;
@@ -660,7 +659,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 const omDetentora = registro.om_detentora || omDestinoRecurso;
                 const isDifferentOm = omDetentora !== omDestinoRecurso;
                 
-                // 1. Define o prefixo CLASSE X
                 let prefixoClasse = '';
                 if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
                     prefixoClasse = 'CLASSE V';
@@ -678,7 +676,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 
                 rowData.despesasValue = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
                 
-                // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                 if (isDifferentOm) {
                     rowData.despesasValue += `\n${omDetentora}`;
                 }
@@ -688,181 +685,696 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 rowData.valorD = registro.valor_nd_39;
                 rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
                 
-                // 3. Prioriza o detalhamento customizado ou usa a função de memória unificada
-                if (registro.detalhamento_customizado) {
-                    rowData.detalhamentoValue = registro.detalhamento_customizado;
-                } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
-                } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
-                } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
-                } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseVIIMemoriaCalculo(registro);
-                } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseVIIIMemoriaCalculo(registro); // NOVO
-                } else {
-                    const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
-                    rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
+                rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, prefixoClasse === 'CLASSE II');
+                
+            } else if (isClasseIII) { // Classe III (Combustível/Lubrificante)
+                const linhaClasseIII = linha as LinhaClasseIII;
+                const registro = linhaClasseIII.registro;
+                const isCombustivelLinha = linhaClasseIII.tipo_suprimento !== 'LUBRIFICANTE';
+                const isLubrificanteLinha = linhaClasseIII.tipo_suprimento === 'LUBRIFICANTE';
+                
+                // OM Detentora do Equipamento (Source)
+                const omDetentoraEquipamento = registro.organizacao;
+                
+                if (isCombustivelLinha) {
+                    const tipoCombustivel = getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
+                    const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
+                    
+                    rowData.despesasValue = `CLASSE III - ${tipoCombustivel}\n${categoriaEquipamento} - ${omDetentoraEquipamento}`;
+                    
+                    const rmUg = registro.ug_detentora || '';
+                    const rmUgFormatted = formatCodug(rmUg);
+                    rowData.omValue = `${nomeOM}\n(${rmUgFormatted})`; // OM de destino é a RM de Fornecimento
+                    
+                    rowData.valorC = 0; // Combustível é tratado na coluna H
+                    rowData.valorD = 0;
+                    rowData.valorE = 0;
+                    
+                    rowData.litrosF = `${formatNumber(linhaClasseIII.total_litros_linha)} L`;
+                    rowData.precoUnitarioG = formatCurrency(linhaClasseIII.preco_litro_linha);
+                    rowData.precoTotalH = formatCurrency(linhaClasseIII.valor_total_linha);
+                    
+                } else if (isLubrificanteLinha) {
+                    const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
+                    
+                    rowData.despesasValue = `CLASSE III - LUBRIFICANTE\n${categoriaEquipamento} - ${omDetentoraEquipamento}`;
+                    
+                    const omDestinoRecurso = registro.om_detentora || registro.organizacao;
+                    const ugDestinoRecurso = formatCodug(registro.ug_detentora || registro.ug);
+                    rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
+                    
+                    rowData.valorC = linhaClasseIII.valor_total_linha;
+                    rowData.valorD = 0;
+                    rowData.valorE = linhaClasseIII.valor_total_linha;
+                    
+                    rowData.litrosF = '';
+                    rowData.precoUnitarioG = '';
+                    rowData.precoTotalH = '';
                 }
                 
+                rowData.detalhamentoValue = linhaClasseIII.memoria_calculo;
             }
             
-            return (
-              <tr key={isClasseI ? `${linha.registro.id}-${linha.tipo}` : `classe-ii-${linha.registro.id}`}>
-                <td className="col-despesas">
-                  {/* Renderiza a string. Se contiver '\n', divide em divs. Se não, renderiza como um bloco único. */}
-                  {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
-                </td>
-                <td className="col-om">
-                  {rowData.omValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
-                </td>
-                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorC > 0 ? formatCurrency(rowData.valorC) : ''}</td>
-                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorD > 0 ? formatCurrency(rowData.valorD) : ''}</td>
-                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorE > 0 ? formatCurrency(rowData.valorE) : ''}</td>
-                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}></td>
-                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}></td>
-                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}></td>
-                <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
-                  <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                    {rowData.detalhamentoValue}
-                  </pre>
-                </td>
-              </tr>
-            );
-          }),
-          
-          // 2. Linhas Classe III (Lubrificante e Combustível) - Desagregadas
-          ...linhasClasseIIIOrdenadas.map((linha) => {
-            const isCombustivelLinha = linha.tipo_suprimento !== 'LUBRIFICANTE';
-            const isLubrificanteLinha = linha.tipo_suprimento === 'LUBRIFICANTE';
+            // --- Renderização da Linha ---
+            row.getCell('A').value = rowData.despesasValue;
+            row.getCell('B').value = rowData.omValue;
+            row.getCell('C').value = rowData.valorC > 0 ? rowData.valorC : '';
+            row.getCell('D').value = rowData.valorD > 0 ? rowData.valorD : '';
+            row.getCell('E').value = rowData.valorE > 0 ? rowData.valorE : '';
+            row.getCell('F').value = rowData.litrosF;
+            row.getCell('G').value = rowData.precoUnitarioG;
+            row.getCell('H').value = rowData.precoTotalH;
+            row.getCell('I').value = rowData.detalhamentoValue;
             
-            let despesasValue = '';
-            let omValue = '';
+            // Estilos
+            ['A', 'B'].forEach(col => {
+                row.getCell(col).alignment = dataTextStyle;
+                row.getCell(col).font = baseFontStyle;
+                row.getCell(col).border = cellBorder;
+            });
             
-            // OM Detentora do Equipamento (Source)
-            const omDetentoraEquipamento = linha.registro.organizacao;
+            ['C', 'D', 'E'].forEach(col => {
+                const cell = row.getCell(col);
+                cell.alignment = dataCenterMonetaryAlignment;
+                cell.font = baseFontStyle;
+                cell.border = cellBorder;
+                cell.numFmt = 'R$ #,##0.00'; // Formato monetário
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+            });
             
-            if (isCombustivelLinha) {
-                // Combustível: OM de destino é a RM de Fornecimento (nomeOM)
-                const tipoCombustivel = getTipoCombustivelLabel(linha.tipo_suprimento);
-                const categoriaEquipamento = getTipoEquipamentoLabel(linha.categoria_equipamento);
-                
-                // RÓTULO: CLASSE III - TIPO - CATEGORIA - OM DETENTORA
-                despesasValue = `CLASSE III - ${tipoCombustivel}\n${categoriaEquipamento} - ${omDetentoraEquipamento}`;
-                
-                // OM (UGE) CODUG: RM de Fornecimento
-                const rmUg = linha.registro.ug_detentora || '';
-                const rmUgFormatted = formatCodug(rmUg);
-                omValue = `${nomeOM}\n(${rmUgFormatted})`;
-                
-            } else if (isLubrificanteLinha) {
-                // Lubrificante: OM de destino é a OM Detentora do Recurso (om_detentora/ug_detentora)
-                const categoriaEquipamento = getTipoEquipamentoLabel(linha.categoria_equipamento);
-                
-                // RÓTULO: CLASSE III - LUBRIFICANTE - CATEGORIA - OM DETENTORA
-                despesasValue = `CLASSE III - LUBRIFICANTE\n${categoriaEquipamento} - ${omDetentoraEquipamento}`;
-                
-                const omDestinoRecurso = linha.registro.om_detentora || linha.registro.organizacao;
-                const ugDestinoRecurso = formatCodug(linha.registro.ug_detentora || linha.registro.ug);
-                omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
-            }
+            ['F', 'G', 'H'].forEach(col => {
+                const cell = row.getCell(col);
+                cell.alignment = dataCenterMonetaryAlignment;
+                cell.font = baseFontStyle;
+                cell.border = cellBorder;
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+                if (col === 'H') {
+                    cell.numFmt = 'R$ #,##0.00'; // Formato monetário
+                }
+            });
             
-            return (
-              <tr key={`classe-iii-${linha.registro.id}-${linha.tipo_suprimento}-${linha.categoria_equipamento}`}>
-                <td className="col-despesas">
-                  {despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
-                </td>
-                <td className="col-om">
-                  {omValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
-                </td>
-                {/* ND 30/39 */}
-                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>
-                  {isLubrificanteLinha && linha.valor_total_linha > 0 ? formatCurrency(linha.valor_total_linha) : ''}
-                </td>
-                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td>
-                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>
-                  {isLubrificanteLinha && linha.valor_total_linha > 0 ? formatCurrency(linha.valor_total_linha) : ''}
-                </td>
-                {/* Combustível */}
-                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>
-                  {isCombustivelLinha ? `${formatNumber(linha.total_litros_linha)} L` : ''}
-                </td>
-                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>
-                  {isCombustivelLinha ? formatCurrency(linha.preco_litro_linha) : ''}
-                </td>
-                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>
-                  {isCombustivelLinha ? formatCurrency(linha.valor_total_linha) : ''}
-                </td>
-                <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
-                  <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                    {linha.memoria_calculo}
-                  </pre>
-                </td>
-              </tr>
-            );
-          }),
-          
-          // Subtotal da OM
-          <tr key={`subtotal-${omIndex}`} className="subtotal-row">
-            <td colSpan={2} className="text-right font-bold">SOMA POR ND E GP DE DESPESA</td>
-            {/* Parte Azul (Natureza de Despesa) */}
-            <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_30)}</td>
-            <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_39)}</td>
-            <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
-            {/* Parte Laranja (Combustivel) */}
-            <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-              {nomeOM === nomeRM && totaisOM.totalDieselLitros > 0 
-                ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
-                : ''}
-            </td>
-            <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-              {nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0 
-                ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` 
-                : ''}
-            </td>
-            <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-              {nomeOM === nomeRM && totaisOM.total_combustivel > 0 
-                ? formatCurrency(totaisOM.total_combustivel) 
-                : ''}
-            </td>
-            <td></td>
-          </tr>,
-          
-          // Total da OM
-          <tr key={`total-${omIndex}`} className="subtotal-om-row">
-            <td colSpan={4} className="text-right font-bold">
-              VALOR TOTAL DO {nomeOM}
-            </td>
-            <td className="text-center font-bold" style={{ backgroundColor: '#E8E8E8' }}>{formatCurrency(totaisOM.total_gnd3)}</td>
-            <td colSpan={3}></td>
-            <td></td>
-          </tr>
-        ];
-              })}
-              
-              {/* ========== TOTAL GERAL ========== */}
-              {/* Linha em branco para espaçamento */}
-              <tr className="spacing-row">
-                <td colSpan={9} style={{ height: '20px', border: 'none', backgroundColor: 'transparent', borderLeft: 'none', borderRight: 'none' }}></td>
-              </tr>
-              
-              {(() => {
-                // Totais de combustível por tipo (para exibição na parte laranja)
-                const totalDiesel = gruposPorOM[nomeRM]?.linhasClasseIII
-                  .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL')
-                  .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
-                  
-                const totalGasolina = gruposPorOM[nomeRM]?.linhasClasseIII
-                  .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
-                  .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
-                  
-                const totalValorCombustivelFinal = totalValorCombustivel;
+            row.getCell('I').alignment = leftTopAlignment;
+            row.getCell('I').font = { name: 'Arial', size: 6.5 }; // Fonte menor para detalhamento
+            row.getCell('I').border = cellBorder;
+            
+            currentRow++;
+        });
+        
+        // Subtotal da OM
+        const subtotalRow = worksheet.getRow(currentRow);
+        subtotalRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
+        worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
+        subtotalRow.getCell('A').alignment = rightMiddleAlignment;
+        subtotalRow.getCell('A').font = headerFontStyle;
+        subtotalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+        subtotalRow.getCell('A').border = cellBorder;
+        
+        subtotalRow.getCell('C').value = totaisOM.total_33_90_30;
+        subtotalRow.getCell('C').alignment = dataCenterMonetaryAlignment;
+        subtotalRow.getCell('C').font = headerFontStyle;
+        subtotalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+        subtotalRow.getCell('C').border = cellBorder;
+        subtotalRow.getCell('C').numFmt = 'R$ #,##0.00';
+        
+        subtotalRow.getCell('D').value = totaisOM.total_33_90_39;
+        subtotalRow.getCell('D').alignment = dataCenterMonetaryAlignment;
+        subtotalRow.getCell('D').font = headerFontStyle;
+        subtotalRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+        subtotalRow.getCell('D').border = cellBorder;
+        subtotalRow.getCell('D').numFmt = 'R$ #,##0.00';
+        
+        subtotalRow.getCell('E').value = totaisOM.total_parte_azul;
+        subtotalRow.getCell('E').alignment = dataCenterMonetaryAlignment;
+        subtotalRow.getCell('E').font = headerFontStyle;
+        subtotalRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+        subtotalRow.getCell('E').border = cellBorder;
+        subtotalRow.getCell('E').numFmt = 'R$ #,##0.00';
+        
+        // Combustível (Apenas na RM)
+        const isRM = nomeOM === nomeRM;
+        
+        subtotalRow.getCell('F').value = isRM && totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
+        subtotalRow.getCell('F').alignment = dataCenterMiddleAlignment;
+        subtotalRow.getCell('F').font = headerFontStyle;
+        subtotalRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+        subtotalRow.getCell('F').border = cellBorder;
+        
+        subtotalRow.getCell('G').value = isRM && totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
+        subtotalRow.getCell('G').alignment = dataCenterMiddleAlignment;
+        subtotalRow.getCell('G').font = headerFontStyle;
+        subtotalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+        subtotalRow.getCell('G').border = cellBorder;
+        
+        subtotalRow.getCell('H').value = isRM && totaisOM.total_combustivel > 0 ? totaisOM.total_combustivel : '';
+        subtotalRow.getCell('H').alignment = dataCenterMonetaryAlignment;
+        subtotalRow.getCell('H').font = headerFontStyle;
+        subtotalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+        subtotalRow.getCell('H').border = cellBorder;
+        subtotalRow.getCell('H').numFmt = 'R$ #,##0.00';
+        
+        subtotalRow.getCell('I').value = '';
+        subtotalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+        subtotalRow.getCell('I').border = cellBorder;
+        
+        currentRow++;
+        
+        // Total da OM
+        const totalOMRow = worksheet.getRow(currentRow);
+        totalOMRow.getCell('A').value = `VALOR TOTAL DO ${nomeOM}`;
+        worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+        totalOMRow.getCell('A').alignment = rightMiddleAlignment;
+        totalOMRow.getCell('A').font = headerFontStyle;
+        totalOMRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+        totalOMRow.getCell('A').border = cellBorder;
+        
+        totalOMRow.getCell('E').value = totaisOM.total_gnd3;
+        totalOMRow.getCell('E').alignment = dataCenterMonetaryAlignment;
+        totalOMRow.getCell('E').font = headerFontStyle;
+        totalOMRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+        totalOMRow.getCell('E').border = cellBorder;
+        totalOMRow.getCell('E').numFmt = 'R$ #,##0.00';
+        
+        worksheet.mergeCells(`F${currentRow}:I${currentRow}`);
+        totalOMRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+        totalOMRow.getCell('F').border = cellBorder;
+        
+        currentRow++;
+      });
+      
+      // Linha em branco para espaçamento
+      currentRow++;
+      
+      // ========== TOTAL GERAL ==========
+      
+      // Linha 1: Soma detalhada por ND e GP de Despesa
+      const totalGeralSomaRow = worksheet.getRow(currentRow);
+      totalGeralSomaRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
+      worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
+      totalGeralSomaRow.getCell('A').alignment = rightMiddleAlignment;
+      totalGeralSomaRow.getCell('A').font = headerFontStyle;
+      totalGeralSomaRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+      totalGeralSomaRow.getCell('A').border = cellBorder;
+      
+      totalGeralSomaRow.getCell('C').value = totalGeral_33_90_30;
+      totalGeralSomaRow.getCell('C').alignment = dataCenterMonetaryAlignment;
+      totalGeralSomaRow.getCell('C').font = headerFontStyle;
+      totalGeralSomaRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      totalGeralSomaRow.getCell('C').border = cellBorder;
+      totalGeralSomaRow.getCell('C').numFmt = 'R$ #,##0.00';
+      
+      totalGeralSomaRow.getCell('D').value = totalGeral_33_90_39;
+      totalGeralSomaRow.getCell('D').alignment = dataCenterMonetaryAlignment;
+      totalGeralSomaRow.getCell('D').font = headerFontStyle;
+      totalGeralSomaRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      totalGeralSomaRow.getCell('D').border = cellBorder;
+      totalGeralSomaRow.getCell('D').numFmt = 'R$ #,##0.00';
+      
+      totalGeralSomaRow.getCell('E').value = totalGeral_GND3_ND;
+      totalGeralSomaRow.getCell('E').alignment = dataCenterMonetaryAlignment;
+      totalGeralSomaRow.getCell('E').font = headerFontStyle;
+      totalGeralSomaRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      totalGeralSomaRow.getCell('E').border = cellBorder;
+      totalGeralSomaRow.getCell('E').numFmt = 'R$ #,##0.00';
+      
+      const totalDiesel = gruposPorOM[nomeRM]?.linhasClasseIII
+        .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL')
+        .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
+        
+      const totalGasolina = gruposPorOM[nomeRM]?.linhasClasseIII
+        .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
+        .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
+        
+      totalGeralSomaRow.getCell('F').value = totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : '';
+      totalGeralSomaRow.getCell('F').alignment = dataCenterMiddleAlignment;
+      totalGeralSomaRow.getCell('F').font = headerFontStyle;
+      totalGeralSomaRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      totalGeralSomaRow.getCell('F').border = cellBorder;
+      
+      totalGeralSomaRow.getCell('G').value = totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : '';
+      totalGeralSomaRow.getCell('G').alignment = dataCenterMiddleAlignment;
+      totalGeralSomaRow.getCell('G').font = headerFontStyle;
+      totalGeralSomaRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      totalGeralSomaRow.getCell('G').border = cellBorder;
+      
+      totalGeralSomaRow.getCell('H').value = totalValorCombustivel;
+      totalGeralSomaRow.getCell('H').alignment = dataCenterMonetaryAlignment;
+      totalGeralSomaRow.getCell('H').font = headerFontStyle;
+      totalGeralSomaRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      totalGeralSomaRow.getCell('H').border = cellBorder;
+      totalGeralSomaRow.getCell('H').numFmt = 'R$ #,##0.00';
+      
+      totalGeralSomaRow.getCell('I').value = '';
+      totalGeralSomaRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+      totalGeralSomaRow.getCell('I').border = cellBorder;
+      
+      currentRow++;
 
-                return (
-                  <>
-                    {/* Linha 1: Soma detalhada por ND e GP de Despesa */}
-                    <tr className="total-geral-soma-row">
+      // Linha 2: Valor Total
+      const totalGeralFinalRow = worksheet.getRow(currentRow);
+      worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
+      totalGeralFinalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+      totalGeralFinalRow.getCell('A').border = cellBorder;
+      
+      totalGeralFinalRow.getCell('G').value = 'VALOR TOTAL';
+      totalGeralFinalRow.getCell('G').alignment = centerMiddleAlignment;
+      totalGeralFinalRow.getCell('G').font = headerFontStyle;
+      totalGeralFinalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+      totalGeralFinalRow.getCell('G').border = cellBorder;
+      
+      totalGeralFinalRow.getCell('H').value = valorTotalSolicitado;
+      totalGeralFinalRow.getCell('H').alignment = dataCenterMonetaryAlignment;
+      totalGeralFinalRow.getCell('H').font = headerFontStyle;
+      totalGeralFinalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+      totalGeralFinalRow.getCell('H').border = cellBorder;
+      totalGeralFinalRow.getCell('H').numFmt = 'R$ #,##0.00';
+      
+      totalGeralFinalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+      totalGeralFinalRow.getCell('I').border = cellBorder;
+      
+      currentRow++;
+      
+      // Linha 3: GND - 3 (dividida em 2 subdivisões)
+      const gnd3Row1 = worksheet.getRow(currentRow);
+      worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
+      gnd3Row1.getCell('H').value = 'GND - 3';
+      gnd3Row1.getCell('H').alignment = centerMiddleAlignment;
+      gnd3Row1.getCell('H').font = headerFontStyle;
+      gnd3Row1.getCell('H').border = { top: cellBorder.top, left: cellBorder.left, right: cellBorder.right };
+      
+      currentRow++;
+      
+      // Segunda subdivisão: Valor Total
+      const gnd3Row2 = worksheet.getRow(currentRow);
+      worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
+      gnd3Row2.getCell('H').value = valorTotalSolicitado;
+      gnd3Row2.getCell('H').alignment = dataCenterMonetaryAlignment;
+      gnd3Row2.getCell('H').font = headerFontStyle;
+      gnd3Row2.getCell('H').border = { bottom: cellBorder.bottom, left: cellBorder.left, right: cellBorder.right };
+      gnd3Row2.getCell('H').numFmt = 'R$ #,##0.00';
+      
+      currentRow++;
+      
+      // Rodapé
+      currentRow += 2;
+      
+      const localRow = worksheet.getRow(currentRow);
+      localRow.getCell('A').value = `${ptrabData.local_om || 'Local'}, ${new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+      localRow.getCell('A').font = { name: 'Arial', size: 10 };
+      localRow.getCell('A').alignment = centerMiddleAlignment;
+      worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
+      currentRow += 3;
+      
+      const cmtRow = worksheet.getRow(currentRow);
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
+      cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
+      cmtRow.getCell('A').alignment = centerMiddleAlignment;
+      worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
+      currentRow++;
+      
+      const cargoRow = worksheet.getRow(currentRow);
+      cargoRow.getCell('A').value = `Comandante da ${ptrabData.nome_om_extenso || ptrabData.nome_om}`;
+      cargoRow.getCell('A').font = { name: 'Arial', size: 9 };
+      cargoRow.getCell('A').alignment = centerMiddleAlignment;
+      worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
+
+      // Exportar
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = generateFileName('Excel');
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Excel Exportado!",
+        description: "O P Trab Logístico foi salvo com sucesso.",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Erro ao gerar Excel:", error);
+      toast({
+        title: "Erro na Exportação",
+        description: "Não foi possível gerar o Excel. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  }, [ptrabData, diasOperacao, totalGeral_33_90_30, totalGeral_33_90_39, totalValorCombustivel, valorTotalSolicitado, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo, generateClasseIIIMemoriaCalculo]);
+
+
+  return (
+    <div className="space-y-4">
+      {/* Botões de Exportação/Impressão padronizados */}
+      <div className="flex justify-end gap-2 print:hidden">
+        <Button onClick={exportPDF} variant="outline">
+          <Download className="mr-2 h-4 w-4" />
+          Exportar PDF
+        </Button>
+        <Button onClick={exportExcel} variant="outline">
+          <FileSpreadsheet className="mr-2 h-4 w-4" />
+          Exportar Excel
+        </Button>
+        <Button onClick={handlePrint} variant="default">
+          <Printer className="mr-2 h-4 w-4" />
+          Imprimir
+        </Button>
+      </div>
+
+      {/* Conteúdo do Relatório (para impressão) */}
+      <div ref={contentRef} className="bg-white p-8 shadow-xl print:p-0 print:shadow-none" style={{ padding: '0.5cm' }}>
+        <div className="ptrab-header">
+          <p className="text-[11pt] font-bold uppercase">Ministério da Defesa</p>
+          <p className="text-[11pt] font-bold uppercase">Exército Brasileiro</p>
+          <p className="text-[11pt] font-bold uppercase">{ptrabData.comando_militar_area}</p>
+          <p className="text-[11pt] font-bold uppercase">{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
+          <p className="text-[11pt] font-bold uppercase">
+            Plano de Trabalho Logístico de Solicitação de Recursos Orçamentários e Financeiros Operação {ptrabData.nome_operacao}
+          </p>
+          <p className="text-[11pt] font-bold uppercase underline">Plano de Trabalho Logístico</p>
+        </div>
+
+        <div className="ptrab-info">
+          <p className="info-item"><span className="font-bold">1. NOME DA OPERAÇÃO:</span> {ptrabData.nome_operacao}</p>
+          <p className="info-item"><span className="font-bold">2. PERÍODO:</span> de {formatDate(ptrabData.periodo_inicio)} a {formatDate(ptrabData.periodo_fim)} - Nr Dias: {diasOperacao}</p>
+          <p className="info-item"><span className="font-bold">3. EFETIVO EMPREGADO:</span> {ptrabData.efetivo_empregado} militares do Exército Brasileiro</p>
+          <p className="info-item"><span className="font-bold">4. AÇÕES:</span> {ptrabData.acoes}</p>
+          <p className="info-item font-bold">5. DESPESAS OPERACIONAIS:</p>
+        </div>
+
+        {omsOrdenadas.length > 0 ? (
+          <div className="ptrab-table-wrapper">
+            <table className="ptrab-table">
+              <thead>
+                <tr>
+                  <th rowSpan={2} className="col-despesas">DESPESAS<br/>(ORDENAR POR CLASSE DE SUBSISTÊNCIA)</th>
+                  <th rowSpan={2} className="col-om">OM (UGE)<br/>CODUG</th>
+                  <th colSpan={3} className="col-natureza-header">NATUREZA DE DESPESA</th>
+                  <th colSpan={3} className="col-combustivel-header">COMBUSTÍVEL</th>
+                  <th rowSpan={2} className="col-detalhamento">DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/>OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</th>
+                </tr>
+                <tr>
+                  <th className="col-nd">33.90.30</th>
+                  <th className="col-nd">33.90.39</th>
+                  <th className="col-nd">TOTAL</th>
+                  <th className="col-combustivel">LITROS</th>
+                  <th className="col-combustivel">PREÇO<br/>UNITÁRIO</th>
+                  <th className="col-combustivel">PREÇO<br/>TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+              {[
+                ...omsOrdenadas.flatMap((nomeOM, omIndex) => {
+                  const grupo = gruposPorOM[nomeOM];
+                  const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
+                  
+                  const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
+                  
+                  if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasClasseV.length === 0 && grupo.linhasClasseVI.length === 0 && grupo.linhasClasseVII.length === 0 && grupo.linhasClasseVIII.length === 0 && grupo.linhasClasseIX.length === 0 && grupo.linhasClasseIII.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
+                    return [];
+                  }
+                  
+                  // Array de todas as linhas de despesa, ordenadas pela sequência romana:
+                  const linhasDespesaOrdenadas = [
+                      ...grupo.linhasQS,
+                      ...grupo.linhasQR,
+                      ...grupo.linhasClasseII,
+                      ...grupo.linhasClasseV,
+                      ...grupo.linhasClasseVI,
+                      ...grupo.linhasClasseVII,
+                      ...grupo.linhasClasseVIII,
+                      ...grupo.linhasClasseIX,
+                  ];
+                  
+                  // Linhas de Classe III (Lubrificante e Combustível)
+                  const linhasClasseIIIOrdenadas = grupo.linhasClasseIII.sort((a, b) => {
+                      // Ordena Lubrificante antes de Combustível
+                      if (a.tipo_suprimento === 'LUBRIFICANTE' && b.tipo_suprimento !== 'LUBRIFICANTE') return -1;
+                      if (a.tipo_suprimento !== 'LUBRIFICANTE' && b.tipo_suprimento === 'LUBRIFICANTE') return 1;
+                      
+                      // Dentro de Combustível, ordena Diesel antes de Gasolina
+                      if (a.tipo_suprimento === 'COMBUSTIVEL_DIESEL' && b.tipo_suprimento === 'COMBUSTIVEL_GASOLINA') return -1;
+                      if (a.tipo_suprimento === 'COMBUSTIVEL_GASOLINA' && b.tipo_suprimento === 'COMBUSTIVEL_DIESEL') return 1;
+                      
+                      // Ordena por categoria de equipamento
+                      return a.categoria_equipamento.localeCompare(b.categoria_equipamento);
+                  });
+                  
+                  return [
+                    // 1. Renderizar todas as linhas de despesa (I, II, V, VI, VII, VIII, IX)
+                    ...linhasDespesaOrdenadas.map((linha) => {
+                      // ADICIONANDO VERIFICAÇÃO DE SEGURANÇA AQUI
+                      if (!linha || !linha.registro) return null;
+                      
+                      const isClasseI = 'tipo' in linha;
+                      // Verifica se o registro tem a propriedade 'categoria' para ser Classe II-IX
+                      const isClasseII_IX = 'categoria' in linha.registro && typeof (linha.registro as ClasseIIRegistro).categoria === 'string';
+                      
+                      const rowData = {
+                          despesasValue: '',
+                          omValue: '',
+                          detalhamentoValue: '',
+                          valorC: 0,
+                          valorD: 0,
+                          valorE: 0,
+                      };
+                      
+                      if (isClasseI) { // Classe I (QS/QR)
+                          const registro = linha.registro as ClasseIRegistro;
+                          const ug_qs_formatted = formatCodug(registro.ug_qs);
+                          const ug_qr_formatted = formatCodug(registro.ug);
+
+                          if (linha.tipo === 'QS') {
+                              rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
+                              rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
+                              rowData.valorC = registro.total_qs;
+                              rowData.valorE = registro.total_qs;
+                              // USANDO A FUNÇÃO UNIFICADA
+                              rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
+                          } else { // QR
+                              rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
+                              rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
+                              rowData.valorC = registro.total_qr;
+                              rowData.valorE = registro.total_qr;
+                              // USANDO A FUNÇÃO UNIFICADA
+                              rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
+                          }
+                      } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
+                          const registro = linha.registro as ClasseIIRegistro;
+                          const omDestinoRecurso = registro.organizacao;
+                          const ugDestinoRecurso = formatCodug(registro.ug);
+                          
+                          let categoriaDetalhe = getClasseIILabel(registro.categoria); // Usar rótulo completo
+                          
+                          if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
+                              categoriaDetalhe = registro.animal_tipo;
+                          }
+                              
+                          const omDetentora = registro.om_detentora || omDestinoRecurso;
+                          const isDifferentOm = omDetentora !== omDestinoRecurso;
+                          
+                          // 1. Define o prefixo CLASSE X
+                          let prefixoClasse = '';
+                          if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                              prefixoClasse = 'CLASSE V';
+                          } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
+                              prefixoClasse = 'CLASSE VI';
+                          } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
+                              prefixoClasse = 'CLASSE VII';
+                          } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+                              prefixoClasse = 'CLASSE VIII';
+                          } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+                              prefixoClasse = 'CLASSE IX';
+                          } else {
+                              prefixoClasse = 'CLASSE II';
+                          }
+                          
+                          rowData.despesasValue = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
+                          
+                          // 2. Adiciona a OM Detentora se for diferente da OM de Destino
+                          if (isDifferentOm) {
+                              rowData.despesasValue += `\n${omDetentora}`;
+                          }
+                          
+                          rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
+                          rowData.valorC = registro.valor_nd_30;
+                          rowData.valorD = registro.valor_nd_39;
+                          rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
+                          
+                          // 3. Prioriza o detalhamento customizado ou usa a função de memória unificada
+                          if (registro.detalhamento_customizado) {
+                              rowData.detalhamentoValue = registro.detalhamento_customizado;
+                          } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+                              rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
+                          } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                              rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
+                          } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
+                              rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
+                          } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
+                              rowData.detalhamentoValue = generateClasseVIIMemoriaCalculo(registro);
+                          } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+                              rowData.detalhamentoValue = generateClasseVIIIMemoriaCalculo(registro); // NOVO
+                          } else {
+                              const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
+                              rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
+                          }
+                          
+                      }
+                      
+                      return (
+                        <tr key={isClasseI ? `${linha.registro.id}-${linha.tipo}` : `classe-ii-${linha.registro.id}`}>
+                          <td className="col-despesas">
+                            {/* Renderiza a string. Se contiver '\n', divide em divs. Se não, renderiza como um bloco único. */}
+                            {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
+                          </td>
+                          <td className="col-om">
+                            {rowData.omValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
+                          </td>
+                          <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorC > 0 ? formatCurrency(rowData.valorC) : ''}</td>
+                          <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorD > 0 ? formatCurrency(rowData.valorD) : ''}</td>
+                          <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorE > 0 ? formatCurrency(rowData.valorE) : ''}</td>
+                          <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}></td>
+                          <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}></td>
+                          <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}></td>
+                          <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
+                            <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                              {rowData.detalhamentoValue}
+                            </pre>
+                          </td>
+                        </tr>
+                      );
+                    }),
+                    
+                    // 2. Linhas Classe III (Lubrificante e Combustível) - Desagregadas
+                    ...linhasClasseIIIOrdenadas.map((linha) => {
+                      const isCombustivelLinha = linha.tipo_suprimento !== 'LUBRIFICANTE';
+                      const isLubrificanteLinha = linha.tipo_suprimento === 'LUBRIFICANTE';
+                      
+                      let despesasValue = '';
+                      let omValue = '';
+                      
+                      // OM Detentora do Equipamento (Source)
+                      const omDetentoraEquipamento = linha.registro.organizacao;
+                      
+                      if (isCombustivelLinha) {
+                          // Combustível: OM de destino é a RM de Fornecimento (nomeOM)
+                          const tipoCombustivel = getTipoCombustivelLabel(linha.tipo_suprimento);
+                          const categoriaEquipamento = getTipoEquipamentoLabel(linha.categoria_equipamento);
+                          
+                          // RÓTULO: CLASSE III - TIPO - CATEGORIA - OM DETENTORA
+                          despesasValue = `CLASSE III - ${tipoCombustivel}\n${categoriaEquipamento} - ${omDetentoraEquipamento}`;
+                          
+                          // OM (UGE) CODUG: RM de Fornecimento
+                          const rmUg = linha.registro.ug_detentora || '';
+                          const rmUgFormatted = formatCodug(rmUg);
+                          omValue = `${nomeOM}\n(${rmUgFormatted})`;
+                          
+                      } else if (isLubrificanteLinha) {
+                          // Lubrificante: OM de destino é a OM Detentora do Recurso (om_detentora/ug_detentora)
+                          const categoriaEquipamento = getTipoEquipamentoLabel(linha.categoria_equipamento);
+                          
+                          // RÓTULO: CLASSE III - LUBRIFICANTE - CATEGORIA - OM DETENTORA
+                          despesasValue = `CLASSE III - LUBRIFICANTE\n${categoriaEquipamento} - ${omDetentoraEquipamento}`;
+                          
+                          const omDestinoRecurso = linha.registro.om_detentora || linha.registro.organizacao;
+                          const ugDestinoRecurso = formatCodug(linha.registro.ug_detentora || linha.registro.ug);
+                          omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
+                      }
+                      
+                      return (
+                        <tr key={`classe-iii-${linha.registro.id}-${linha.tipo_suprimento}-${linha.categoria_equipamento}`}>
+                          <td className="col-despesas">
+                            {despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
+                          </td>
+                          <td className="col-om">
+                            {omValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
+                          </td>
+                          {/* ND 30/39 */}
+                          <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>
+                            {isLubrificanteLinha && linha.valor_total_linha > 0 ? formatCurrency(linha.valor_total_linha) : ''}
+                          </td>
+                          <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}></td>
+                          <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>
+                            {isLubrificanteLinha && linha.valor_total_linha > 0 ? formatCurrency(linha.valor_total_linha) : ''}
+                          </td>
+                          {/* Combustível */}
+                          <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>
+                            {isCombustivelLinha ? `${formatNumber(linha.total_litros_linha)} L` : ''}
+                          </td>
+                          <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>
+                            {isCombustivelLinha ? formatCurrency(linha.preco_litro_linha) : ''}
+                          </td>
+                          <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>
+                            {isCombustivelLinha ? formatCurrency(linha.valor_total_linha) : ''}
+                          </td>
+                          <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
+                            <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                              {linha.memoria_calculo}
+                            </pre>
+                          </td>
+                        </tr>
+                      );
+                    }),
+                    
+                    // Subtotal da OM
+                    <tr key={`subtotal-${omIndex}`} className="subtotal-row">
+                      <td colSpan={2} className="text-right font-bold">SOMA POR ND E GP DE DESPESA</td>
+                      {/* Parte Azul (Natureza de Despesa) */}
+                      <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_30)}</td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_39)}</td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
+                      {/* Parte Laranja (Combustivel) */}
+                      <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
+                        {nomeOM === nomeRM && totaisOM.totalDieselLitros > 0 
+                          ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
+                          : ''}
+                      </td>
+                      <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
+                        {nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0 
+                          ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` 
+                          : ''}
+                      </td>
+                      <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
+                        {nomeOM === nomeRM && totaisOM.total_combustivel > 0 
+                          ? formatCurrency(totaisOM.total_combustivel) 
+                          : ''}
+                      </td>
+                      <td></td>
+                    </tr>,
+                    
+                    // Total da OM
+                    <tr key={`total-${omIndex}`} className="subtotal-om-row">
+                      <td colSpan={4} className="text-right font-bold">
+                        VALOR TOTAL DO {nomeOM}
+                      </td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#E8E8E8' }}>{formatCurrency(totaisOM.total_gnd3)}</td>
+                      <td colSpan={3}></td>
+                      <td></td>
+                    </tr>
+                  ];
+                }),
+                
+                // Linha em branco para espaçamento
+                <tr key="spacing-row" className="spacing-row">
+                  <td colSpan={9} style={{ height: '20px', border: 'none', backgroundColor: 'transparent', borderLeft: 'none', borderRight: 'none' }}></td>
+                </tr>,
+                
+                // ========== TOTAL GERAL ==========
+                ...(() => {
+                  // Totais de combustível por tipo (para exibição na parte laranja)
+                  const totalDiesel = gruposPorOM[nomeRM]?.linhasClasseIII
+                    .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL')
+                    .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
+                    
+                  const totalGasolina = gruposPorOM[nomeRM]?.linhasClasseIII
+                    .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
+                    .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
+                    
+                  const totalValorCombustivelFinal = totalValorCombustivel;
+
+                  return [
+                    // Linha 1: Soma detalhada por ND e GP de Despesa
+                    <tr key="total-geral-soma-row" className="total-geral-soma-row">
                       <td colSpan={2} className="text-right font-bold">SOMA POR ND E GP DE DESPESA</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_30)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_39)}</td>
@@ -871,33 +1383,32 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : ''}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalValorCombustivelFinal > 0 ? formatCurrency(totalValorCombustivelFinal) : ''}</td>
                       <td style={{ backgroundColor: 'white' }}></td>
-                    </tr>
+                    </tr>,
 
-                    {/* Linha 2: Valor Total */}
-                    <tr className="total-geral-final-row">
+                    // Linha 2: Valor Total
+                    <tr key="total-geral-final-row" className="total-geral-final-row">
                       <td colSpan={6} style={{ backgroundColor: '#E8E8E8', border: '1px solid #000', borderRight: 'none' }}></td>
                       <td className="text-center font-bold" style={{ whiteSpace: 'nowrap', backgroundColor: '#E8E8E8', border: '1px solid #000' }}>VALOR TOTAL</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
                       <td style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}></td>
-                    </tr>
+                    </tr>,
                     
-                    {/* Linha 3: GND - 3 (dividida em 2 subdivisões) */}
-                    {/* Primeira subdivisão: GND - 3 */}
-                    <tr style={{ backgroundColor: 'white' }}>
+                    // Linha 3: GND - 3 (dividida em 2 subdivisões)
+                    <tr key="gnd3-row-1" style={{ backgroundColor: 'white' }}>
                       <td colSpan={7} style={{ border: 'none' }}></td>
                       <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderTop: '1px solid #000', borderRight: '1px solid #000' }}>GND - 3</td>
                       <td style={{ border: 'none' }}></td>
-                    </tr>
+                    </tr>,
                     
-                    {/* Segunda subdivisão: Valor Total */}
-                    <tr style={{ backgroundColor: 'white' }}>
+                    // Segunda subdivisão: Valor Total
+                    <tr key="gnd3-row-2" style={{ backgroundColor: 'white' }}>
                       <td colSpan={7} style={{ borderLeft: '1px solid #000', borderRight: '1px solid #000' }}></td>
                       <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: '1px solid #000', borderRight: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
                       <td style={{ border: 'none' }}></td>
                     </tr>
-                  </>
-                );
-              })()}
+                  ];
+                })(),
+              ]}
             </tbody>
             </table>
           </div>
