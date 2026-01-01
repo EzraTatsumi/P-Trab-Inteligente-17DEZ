@@ -590,7 +590,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           if (!linha || !linha.registro) return;
           
           const isClasseI = 'tipo' in linha;
-          const isClasseII_IX = 'categoria' in linha.registro;
+          // Verifica se o registro tem a propriedade 'categoria' para ser Classe II-IX
+          const isClasseII_IX = 'categoria' in linha.registro && typeof (linha.registro as ClasseIIRegistro).categoria === 'string';
           const isLubrificante = 'tipo_equipamento' in linha.registro && linha.registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
           
           const rowData = {
@@ -1143,7 +1144,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     if (!linha || !linha.registro) return null;
                     
                     const isClasseI = 'tipo' in linha;
-                    const isClasseII_IX = 'categoria' in linha.registro;
+                    // Verifica se o registro tem a propriedade 'categoria' para ser Classe II-IX
+                    const isClasseII_IX = 'categoria' in linha.registro && typeof (linha.registro as ClasseIIRegistro).categoria === 'string';
                     const isLubrificante = 'tipo_equipamento' in linha.registro && linha.registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
                     
                     const rowData = {

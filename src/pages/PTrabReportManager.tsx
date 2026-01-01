@@ -378,9 +378,6 @@ export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, ref
         // Caso contrário, precisamos gerar a memória granular para cada item e concatenar,
         // mas o relatório logístico espera uma única string de detalhamento por linha.
         
-        // Para manter a fidelidade com a edição do usuário, precisamos gerar a memória
-        // para CADA item granular e verificar se ele tem customização.
-        
         let finalMemoria = "";
         
         // Agrupar itens por tipo de combustível (Diesel/Gasolina)
@@ -416,12 +413,8 @@ export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, ref
                     valor_nd_30: registro.valor_nd_30,
                     valor_nd_39: registro.valor_nd_39,
                     original_registro: registro,
-                    detailed_items: [item],
+                    detailed_items: [item], // Passa apenas o item granular
                 };
-                
-                // NOTA: A função generateGranularMemoriaCalculo do utilitário
-                // precisa ser adaptada para não depender de om_detentora/ug_detentora
-                // para o cálculo de preço, mas sim do registro.
                 
                 // Para Combustível, a OM Destino Recurso é a RM de Fornecimento (om_detentora/ug_detentora)
                 const rmFornecimento = registro.om_detentora || '';
@@ -461,47 +454,34 @@ export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, ref
             
             // 2. Se não houver customizada, gera a automática granular
             
-            // Recalcula os totais para o grupo consolidado de Lubrificante
-            let totalValor = 0;
-            let totalLitros = 0;
+            // Para Lubrificante, a OM Destino Recurso é a om_detentora/ug_detentora
+            const omDestinoRecurso = registro.om_detentora || '';
+            const ugDestinoRecurso = registro.ug_detentora || '';
             
-            itensGrupo.forEach(item => {
-                // NOTA: A função calculateItemTotals não está disponível aqui, mas podemos simular o cálculo
-                // ou, melhor, confiar que o valor total do registro consolidado é a soma correta.
-                // Para a memória granular, precisamos dos detalhes do cálculo.
-                
-                // Para evitar re-implementar calculateItemTotals aqui, vamos assumir que
-                // a função generateClasseIIIGranularUtility fará o cálculo interno.
-                
-                // Para Lubrificante, a OM Destino Recurso é a om_detentora/ug_detentora
-                const omDestinoRecurso = registro.om_detentora || '';
-                const ugDestinoRecurso = registro.ug_detentora || '';
-                
-                // Criamos um item granular que representa o grupo de lubrificante daquela categoria
-                const granularItem: GranularDisplayItem = {
-                    id: `${registro.id}-${categoria}-LUBRIFICANTE`,
-                    om_destino: registro.organizacao,
-                    ug_destino: registro.ug,
-                    categoria: categoria as any,
-                    suprimento_tipo: 'LUBRIFICANTE',
-                    valor_total: registro.valor_total, // Usamos o total do registro consolidado
-                    total_litros: registro.total_litros, // Usamos o total de litros do registro consolidado
-                    preco_litro: 0, // Não aplicável / Preço médio
-                    dias_operacao: registro.dias_operacao,
-                    fase_atividade: registro.fase_atividade || '',
-                    valor_nd_30: registro.valor_nd_30,
-                    valor_nd_39: registro.valor_nd_39,
-                    original_registro: registro,
-                    detailed_items: itensGrupo, // Passa todos os itens da categoria
-                };
-                
-                finalMemoria += generateClasseIIIGranularUtility(
-                    granularItem, 
-                    refLPC, 
-                    omDestinoRecurso, 
-                    ugDestinoRecurso
-                ) + "\n\n";
-            });
+            // Criamos um item granular que representa o grupo de lubrificante daquela categoria
+            const granularItem: GranularDisplayItem = {
+                id: `${registro.id}-${categoria}-LUBRIFICANTE`,
+                om_destino: registro.organizacao,
+                ug_destino: registro.ug,
+                categoria: categoria as any,
+                suprimento_tipo: 'LUBRIFICANTE',
+                valor_total: registro.valor_total, // Usamos o total do registro consolidado
+                total_litros: registro.total_litros, // Usamos o total de litros do registro consolidado
+                preco_litro: 0, // Não aplicável / Preço médio
+                dias_operacao: registro.dias_operacao,
+                fase_atividade: registro.fase_atividade || '',
+                valor_nd_30: registro.valor_nd_30,
+                valor_nd_39: registro.valor_nd_39,
+                original_registro: registro,
+                detailed_items: itensGrupo, // Passa todos os itens da categoria
+            };
+            
+            finalMemoria += generateClasseIIIGranularUtility(
+                granularItem, 
+                refLPC, 
+                omDestinoRecurso, 
+                ugDestinoRecurso
+            ) + "\n\n";
         });
         
         return finalMemoria.trim();
@@ -517,6 +497,11 @@ export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, ref
  * priorizando o customizado e usando os utilitários corretos.
  */
 export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isClasseII: boolean): string => {
+    // 0. Verificação de segurança
+    if (!registro || !registro.categoria) {
+        return "Registro inválido ou categoria ausente.";
+    }
+    
     if (registro.detalhamento_customizado) {
       return registro.detalhamento_customizado;
     }
