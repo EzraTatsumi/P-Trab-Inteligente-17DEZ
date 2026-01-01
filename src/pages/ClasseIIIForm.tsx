@@ -35,7 +35,7 @@ import {
   calculateItemTotals, 
   generateConsolidatedMemoriaCalculo,
   generateGranularMemoriaCalculo,
-  pluralizeDay, // IMPORTADO
+  pluralizeDay,
 } from "@/lib/classeIIIUtils"; // Importando tipos e utilitários
 
 type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
@@ -47,6 +47,14 @@ const CATEGORIAS: { key: TipoEquipamento, label: string, icon: React.FC<any> }[]
   { key: 'EQUIPAMENTO_ENGENHARIA', label: 'Equipamento de Engenharia', icon: Tractor },
   { key: 'MOTOMECANIZACAO', label: 'Motomecanização', icon: Truck },
 ];
+
+// Mapeamento de rótulos para exibição na Seção 5 (Memórias) e Seção 4 (Detalhes)
+const categoryLabelMap: Record<TipoEquipamento, string> = {
+  GERADOR: 'Gerador',
+  EMBARCACAO: 'Embarcação',
+  EQUIPAMENTO_ENGENHARIA: 'Equipamento de Engenharia',
+  MOTOMECANIZACAO: 'Motomecanização',
+};
 
 // Opções fixas de fase de atividade
 const FASES_PADRAO = ["Reconhecimento", "Mobilização", "Execução", "Reversão"];
@@ -1420,7 +1428,6 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
   };
 
   const isFormValid = form.organizacao && form.ug && rmFornecimento && codugRmFornecimento && form.dias_operacao > 0;
-  // CORRIGIDO: Removido o uso de pluralizeDay aqui, pois formatFasesParaTexto não precisa dele.
   const displayFases = [...fasesAtividade, customFaseAtividade.trim()].filter(f => f).join('; ');
   
   const getTipoLabel = (tipo: string) => {
@@ -1494,12 +1501,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
   const lubrificanteDestinoTextClass = isLubrificanteDifferentOm ? 'text-red-600 font-bold' : 'text-foreground';
   
   // Mapeamento de rótulos para exibição na Seção 5 (Memórias)
-  const categoryLabelMap: Record<TipoEquipamento, string> = {
-    GERADOR: 'Gerador',
-    EMBARCACAO: 'Embarcação',
-    EQUIPAMENTO_ENGENHARIA: 'Equipamento de Engenharia',
-    MOTOMECANIZACAO: 'Motomecanização',
-  };
+  // REMOVIDO: const categoryLabelMap: Record<TipoEquipamento, string> = { ... };
+  // O mapeamento foi movido para o escopo global do arquivo.
 
 
   return (
@@ -1985,7 +1988,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
 
                 <div className="space-y-4">
                   {Object.entries(itensAgrupadosPorCategoriaParaResumo).map(([categoria, itens]) => {
-                    const categoriaLabel = CATEGORIAS.find(c => c.key === categoria)?.label || categoria;
+                    const categoriaLabel = categoryLabelMap[categoria as TipoEquipamento] || categoria;
                     
                     const totalCombustivelCategoria = itens.reduce((sum, item) => {
                       const { valorCombustivel } = calculateItemTotals(item, refLPC, form.dias_operacao);
@@ -2250,11 +2253,14 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                                     // Usar o rótulo do categoryLabelMap para garantir a capitalização correta
                                     const displayLabel = categoryLabelMap[cat.key] || getClasseIIICategoryLabel(cat.key);
                                     
+                                    // Determinar a unidade correta (L ou L/100h)
+                                    const unit = cat.key === 'MOTOMECANIZACAO' ? 'L' : 'L'; // Combustível é sempre L
+                                    
                                     return (
                                       <div key={cat.key} className="flex justify-between text-xs">
                                         <span className="text-muted-foreground flex items-center gap-1">
                                           {/* REMOVIDO: <cat.icon className="h-3 w-3" /> */}
-                                          {displayLabel}: {formatNumber(totais.litros, 2)} L
+                                          {displayLabel}: {formatNumber(totais.litros, 2)} {unit}
                                         </span>
                                         <span className="font-medium text-foreground text-right">
                                           {formatCurrency(totais.valor)}
