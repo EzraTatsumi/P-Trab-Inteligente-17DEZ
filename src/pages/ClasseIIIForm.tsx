@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -339,6 +339,49 @@ const ClasseIIIForm = () => {
   const [tempPrecoInput, setTempPrecoInput] = useState<string>("");
   // -------------------------------------------------------
 
+  // Refatorando fetchRegistros para useCallback
+  const fetchRegistros = useCallback(async () => {
+    if (!ptrabId) return;
+    const { data, error } = await supabase
+      .from("classe_iii_registros")
+      .select("*, detalhamento_customizado, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora")
+      .eq("p_trab_id", ptrabId)
+      .order("organizacao", { ascending: true })
+      .order("tipo_equipamento", { ascending: true });
+    if (error) {
+      toast.error("Erro ao carregar registros");
+      console.error(error);
+      return;
+    }
+    setRegistros((data || []) as ClasseIIIRegistro[]);
+    
+    // 1. Coletar todas as OMs/UGs envolvidas (OM Detentora)
+    const uniqueOmUgs = new Set<string>();
+    (data || []).forEach(r => {
+        uniqueOmUgs.add(`${r.organizacao}-${r.ug}`);
+    });
+
+    // 2. Buscar detalhes de RM Vinculação para essas OMs
+    const omDetailsPromises = Array.from(uniqueOmUgs).map(async (omUgKey) => {
+        const [nome_om, codug_om] = omUgKey.split('-');
+        const { data: omData } = await supabase
+            .from('organizacoes_militares')
+            .select('rm_vinculacao, codug_rm_vinculacao')
+            .eq('nome_om', nome_om)
+            .eq('codug_om', codug_om)
+            .maybeSingle();
+        return { key: omUgKey, rm_vinculacao: omData?.rm_vinculacao || '', codug_rm_vinculacao: omData?.codug_rm_vinculacao || '' };
+    });
+
+    const results = await Promise.all(omDetailsPromises);
+    const newMap: Record<string, { rm_vinculacao: string, codug_rm_vinculacao: string }> = {};
+    results.forEach(r => {
+        newMap[r.key] = { rm_vinculacao: r.rm_vinculacao, codug_rm_vinculacao: r.codug_rm_vinculacao };
+    });
+    setOmDetailsMap(newMap);
+  }, [ptrabId, toast]);
+
+
   useEffect(() => {
     if (!ptrabId) {
       toast.error("ID do P Trab não encontrado");
@@ -347,7 +390,7 @@ const ClasseIIIForm = () => {
     }
     loadInitialData();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [ptrabId]);
+  }, [ptrabId]); // Removido fetchRegistros da dependência para evitar loop
 
   const loadInitialData = async () => {
     setLoading(true);
@@ -402,49 +445,6 @@ const ClasseIIIForm = () => {
   const handleRefLPCUpdate = (newRefLPC: RefLPC) => {
     setRefLPC(newRefLPC);
     toast.success("Referência LPC atualizada!");
-  };
-
-  const fetchRegistros = async () => {
-    if (!ptrabId) return;
-    const { data, error } = await supabase
-      .from("classe_iii_registros")
-      .select("*, detalhamento_customizado, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora")
-      .eq("p_trab_id", ptrabId)
-      .order("organizacao", { ascending: true })
-      .order("tipo_equipamento", { ascending: true });
-    if (error) {
-      toast.error("Erro ao carregar registros");
-      console.error(error);
-      return;
-    }
-    setRegistros((data || []) as ClasseIIIRegistro[]);
-    
-    // NOVO: 1. Coletar todas as OMs/UGs envolvidas (OM Detentora)
-    const uniqueOmUgs = new Set<string>();
-    (data || []).forEach(r => {
-        // A OM Detentora do Equipamento é a OM salva em 'organizacao'/'ug'
-        uniqueOmUgs.add(`${r.organizacao}-${r.ug}`);
-    });
-
-    // NOVO: 2. Buscar detalhes de RM Vinculação para essas OMs
-    const omDetailsPromises = Array.from(uniqueOmUgs).map(async (omUgKey) => {
-        const [nome_om, codug_om] = omUgKey.split('-');
-        // Busca apenas a RM de Vinculação
-        const { data: omData } = await supabase
-            .from('organizacoes_militares')
-            .select('rm_vinculacao, codug_rm_vinculacao')
-            .eq('nome_om', nome_om)
-            .eq('codug_om', codug_om)
-            .maybeSingle();
-        return { key: omUgKey, rm_vinculacao: omData?.rm_vinculacao || '', codug_rm_vinculacao: omData?.codug_rm_vinculacao || '' };
-    });
-
-    const results = await Promise.all(omDetailsPromises);
-    const newMap: Record<string, { rm_vinculacao: string, codug_rm_vinculacao: string }> = {};
-    results.forEach(r => {
-        newMap[r.key] = { rm_vinculacao: r.rm_vinculacao, codug_rm_vinculacao: r.codug_rm_vinculacao };
-    });
-    setOmDetailsMap(newMap); // <-- NOVO ESTADO ATUALIZADO
   };
 
   const reconstructFormState = (records: ClasseIIIRegistro[]) => {
@@ -1521,6 +1521,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     setEditingGranularId(granularId);
     
     // 1. Encontrar o item detalhado (ItemClasseIII) que contém a memória customizada
+    // O item detalhado é sempre o primeiro do array detailed_items, pois o agrupamento é granular
     const itemComMemoria = granularItem.detailed_items[0];
     
     // 2. Priorizar a memória customizada do item, senão gerar a automática
@@ -1551,6 +1552,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
           // Cria o ID granular para comparação (Combustível: ID_REGISTRO-ITEM-TIPO_SUPRIMENTO)
           // Lubrificante: ID_REGISTRO-CATEGORIA-LUBRIFICANTE
           let currentGranularId = '';
+          
+          // Lógica para gerar o ID granular do item atual (deve ser idêntica à lógica em getMemoriaRecords)
           if (item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0) {
               currentGranularId = `${registroOriginal.id}-${item.categoria}-LUBRIFICANTE`;
           } else {
@@ -1581,7 +1584,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
 
       toast.success("Memória de cálculo atualizada com sucesso!");
       handleCancelarEdicaoMemoria();
-      fetchRegistros(); // Recarrega os registros para atualizar o estado
+      await fetchRegistros(); // Recarrega os registros para atualizar o estado
     } catch (error) {
       console.error("Erro ao salvar memória:", error);
       toast.error("Erro ao salvar memória de cálculo");
@@ -1607,6 +1610,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       // 2. Encontrar o item granular correspondente no array itens_equipamentos e remover a memória customizada
       const itensEquipamentos = (registroOriginal.itens_equipamentos as ItemClasseIII[] || []).map(item => {
           let currentGranularId = '';
+          
+          // Lógica para gerar o ID granular do item atual (deve ser idêntica à lógica em getMemoriaRecords)
           if (item.consumo_lubrificante_litro > 0 && item.preco_lubrificante > 0) {
               currentGranularId = `${registroOriginal.id}-${item.categoria}-LUBRIFICANTE`;
           } else {
@@ -1636,7 +1641,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       if (error) throw error;
 
       toast.success("Memória de cálculo restaurada!");
-      fetchRegistros();
+      await fetchRegistros();
     } catch (error) {
       console.error("Erro ao restaurar memória:", error);
       toast.error("Erro ao restaurar memória automática");
