@@ -207,6 +207,7 @@ const calculateItemTotals = (item: ItemClasseIII, refLPC: RefLPC | null, diasOpe
     if (isMotomecanizacao) {
       if (item.consumo_fixo > 0) {
         litrosSemMargemItem = (item.distancia_percorrida * item.quantidade * item.quantidade_deslocamentos * diasUtilizados) / item.consumo_fixo;
+        // NOVO TEXTO DA FÓRMULA PARA MOTOMECANIZAÇÃO
         formulaLitros = `(${item.quantidade} un. x ${formatNumber(item.distancia_percorrida)} km/desloc x ${item.quantidade_deslocamentos} desloc/dia x ${diasUtilizados} ${diasPluralItem}) ÷ ${formatNumber(item.consumo_fixo, 1)} km/L`;
       }
     } else {
@@ -356,11 +357,30 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
         let totalLitrosSemMargem = 0;
         let detalhes: string[] = [];
         
-        itens.forEach(item => {
-            const { litrosSemMargemItem, formulaLitros } = calculateItemTotals(item, refLPC, diasOperacaoGlobal);
+        // Determinar a fórmula principal
+        let formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.";
+        const hasMotomecanizacao = categoriasAtivas.includes('MOTOMECANIZACAO');
+        const hasOutrasCategorias = categoriasAtivas.some(cat => cat !== 'MOTOMECANIZACAO');
+        
+        if (hasMotomecanizacao && !hasOutrasCategorias) {
+            // APLICANDO A FÓRMULA ESPECÍFICA DE MOTOMECANIZAÇÃO
+            formulaPrincipal = "Fórmula: (Nr Viaturas x Km/Desloc x Nr Desloc/dia x Nr Dias) ÷ Rendimento (Km/L).";
+        } else if (hasMotomecanizacao && hasOutrasCategorias) {
+            // Se houver mistura, usa a fórmula genérica (ou a mais complexa)
+            formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.";
+        } else {
+            // Apenas Gerador/Embarcação/Engenharia
+            formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.";
+        }
+        
+        itensGrupo.forEach(item => {
+            const { litrosSemMargemItem, formulaLitros } = calculateItemTotals(item, refLPC, form.dias_operacao);
             totalLitrosSemMargem += litrosSemMargemItem;
             detalhes.push(`- ${item.item}: ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
         });
+        
+        const totalLitros = totalLitrosSemMargem * 1.3;
+        const valorTotal = totalLitros * precoLitro;
         
         const formatarData = (data: string) => {
             const [ano, mes, dia] = data.split('-');
@@ -369,20 +389,20 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
         
         const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
         const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
-        const localConsultaDisplay = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? ` (${refLPC.nome_local})` : '';
+        const localConsultaDisplay = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? ` (${refLPC.nome_local})` : ''; // NEW DEFINITION
         
         // REMOVIDO: OM Detentora Equipamento e Recurso fornecido pela RM
         return `${header}
 
 Cálculo:
-- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${combustivelLabel} - ${formatCurrency(itens[0].preco_lubrificante)}.
+- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${combustivelLabel} - ${formatCurrency(precoLitro)}.
 
-Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.
+${formulaPrincipal}
 
 ${detalhes.join('\n')}
 
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitros)} L ${unidadeLabel}.
-Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(itens[0].preco_lubrificante)} = ${formatCurrency(valorTotal)}.`;
+Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
     }
 };
 
@@ -465,13 +485,20 @@ Valor Total: ${formatCurrency(valor_total)}.`;
         // NOVO: Pluralização da Categoria
         const categoriaLabel = getEquipmentPluralization(categoria, totalEquipamentos);
         
+        // Determinar a fórmula principal
+        let formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.";
+        if (categoria === 'MOTOMECANIZACAO') {
+            // APLICANDO A FÓRMULA ESPECÍFICA DE MOTOMECANIZAÇÃO
+            formulaPrincipal = "Fórmula: (Nr Viaturas x Km/Desloc x Nr Desloc/dia x Nr Dias) ÷ Rendimento (Km/L).";
+        }
+        
         // CABEÇALHO ATUALIZADO
         return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
 
 Cálculo:
 - Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${tipoCombustivel} - ${formatCurrency(preco_litro)}.
 
-Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.
+${formulaPrincipal}
 ${detalhes.join('\n')}
 
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(total_litros)} L ${unidadeLabel}.
@@ -1110,7 +1137,7 @@ const ClasseIIIForm = () => {
       const valorTotal = totalLitros * precoLitro;
       
       const combustivelLabel = tipoCombustivel === 'GASOLINA' ? 'Gasolina' : 'Diesel';
-      const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'Gas' : 'OD';
+      const unidadeLabel = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
       
       const formatarData = (data: string) => {
         const [ano, mes, dia] = data.split('-');
@@ -1136,13 +1163,29 @@ const ClasseIIIForm = () => {
           categoriaLabel = 'Equipamentos Diversos';
       }
       
+      // Determinar a fórmula principal
+      let formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.";
+      const hasMotomecanizacao = categoriasAtivas.includes('MOTOMECANIZACAO');
+      const hasOutrasCategorias = categoriasAtivas.some(cat => cat !== 'MOTOMECANIZACAO');
+      
+      if (hasMotomecanizacao && !hasOutrasCategorias) {
+          // APLICANDO A FÓRMULA ESPECÍFICA DE MOTOMECANIZAÇÃO
+          formulaPrincipal = "Fórmula: (Nr Viaturas x Km/Desloc x Nr Desloc/dia x Nr Dias) ÷ Rendimento (Km/L).";
+      } else if (hasMotomecanizacao && hasOutrasCategorias) {
+          // Se houver mistura, usa a fórmula genérica (ou a mais complexa)
+          formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.";
+      } else {
+          // Apenas Gerador/Embarcação/Engenharia
+          formulaPrincipal = "Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.";
+      }
+      
       // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
       let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
 
 Cálculo:
 - Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${combustivelLabel} - ${formatCurrency(precoLitro)}.
 
-Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
+${formulaPrincipal}
 
 ${detalhes.join('\n')}
 
