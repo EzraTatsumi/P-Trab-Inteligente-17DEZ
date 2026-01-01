@@ -282,7 +282,8 @@ const generateGranularMemoriaCalculo = (item: GranularDisplayItem, refLPC: RefLP
     
     const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
     const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
-    const localConsulta = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? `(${refLPC.nome_local})` : '';
+    // CORREÇÃO: Incluir o local da consulta na linha LPC, garantindo o espaço se não for vazio.
+    const localConsultaDisplay = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? ` (${refLPC.nome_local})` : ''; // Adiciona espaço antes se for local
 
     if (suprimento_tipo === 'LUBRIFICANTE') {
         // MEMÓRIA LUBRIFICANTE (GRANULAR)
@@ -332,7 +333,7 @@ Valor Total: ${formatCurrency(valor_total)}.`;
         return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diaPlural} de ${faseFormatada}.
 
 Cálculo:
-- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(preco_litro)}.
+- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${tipoCombustivel} - ${formatCurrency(preco_litro)}.
 
 Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
 
@@ -966,7 +967,7 @@ const ClasseIIIForm = () => {
       
       const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
       const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
-      const localConsulta = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? `(${refLPC.nome_local})` : '';
+      const localConsultaDisplay = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? ` (${refLPC.nome_local})` : ''; // NEW DEFINITION
       
       const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
       
@@ -987,7 +988,7 @@ const ClasseIIIForm = () => {
       let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
 
 Cálculo:
-- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} - ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
+- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
 
 Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
 
@@ -1339,7 +1340,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       
       const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
       const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
-      const localConsulta = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? `(${refLPC.nome_local})` : '';
+      const localConsultaDisplay = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? ` (${refLPC.nome_local})` : ''; // NEW DEFINITION
       
       const totalEquipamentos = itensGrupo.reduce((sum, item) => sum + item.quantidade, 0);
       
@@ -1360,7 +1361,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
       let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
 
 Cálculo:
-- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
+- Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
 
 Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
 
