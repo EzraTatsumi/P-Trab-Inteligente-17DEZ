@@ -101,13 +101,13 @@ export interface ClasseIIRegistro {
 
 export interface ClasseIIIRegistro {
   id: string;
-  tipo_equipamento: string;
+  tipo_equipamento: string; // COMBUSTIVEL_CONSOLIDADO, LUBRIFICANTE_CONSOLIDADO
   organizacao: string;
   ug: string;
   quantidade: number;
   potencia_hp?: number;
   horas_dia?: number;
-  dias_operacao: number;
+  dias_operacao: number; // Global days of activity (saved for context)
   consumo_hora?: number;
   consumo_km_litro?: number;
   km_dia?: number;
@@ -185,7 +185,9 @@ export const formatFasesParaTexto = (faseCSV: string | null | undefined): string
 };
 
 // Helper function to get the label for Classe II/V/VI/VII/VIII/IX categories
-export const getClasseIILabel = (category: string): string => {
+export const getClasseIILabel = (category: string | null | undefined): string => {
+    if (!category) return 'Categoria Desconhecida'; // Defensive check
+    
     switch (category) {
         case 'Vtr Administrativa': return 'Viatura Administrativa';
         case 'Vtr Operacional': return 'Viatura Operacional';

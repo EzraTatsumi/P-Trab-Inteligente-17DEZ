@@ -73,7 +73,9 @@ export const getCategoryClass = (category: string): string => {
  * Retorna o rótulo completo para uma categoria de Classe II, V, VI, VII, VIII ou IX.
  * Usado principalmente em relatórios e detalhamentos.
  */
-export const getClasseIILabel = (category: string): string => {
+export const getClasseIILabel = (category: string | null | undefined): string => {
+    if (!category) return 'Categoria Desconhecida'; // Defensive check
+    
     switch (category) {
         case 'Vtr Administrativa': return 'Viatura Administrativa';
         case 'Vtr Operacional': return 'Viatura Operacional';
