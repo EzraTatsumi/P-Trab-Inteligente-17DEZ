@@ -52,29 +52,24 @@ const getOmArticle = (omName: string): string => {
 
 /**
  * Helper function to get the pluralized category name based on count.
+ * Refatorado para ser totalmente explícito e evitar fallbacks problemáticos.
  */
 const getPluralizedCategory = (categoria: TipoEquipamento, count: number): string => {
-    if (categoria === 'MOTOMECANIZACAO') {
-        return count <= 1 ? 'Viatura' : 'Viaturas';
-    }
+    const isSingular = count <= 1;
     
-    if (categoria === 'EQUIPAMENTO_ENGENHARIA') {
-        return count <= 1 ? 'Equipamento de Engenharia' : 'Equipamentos de Engenharia';
-    }
-    
-    if (count <= 1) {
-        return getClasseIIICategoryLabel(categoria);
-    }
-    
-    // Plural forms for other categories
     switch (categoria) {
+        case 'MOTOMECANIZACAO':
+            return isSingular ? 'Viatura' : 'Viaturas';
+        case 'EQUIPAMENTO_ENGENHARIA':
+            return isSingular ? 'Equipamento de Engenharia' : 'Equipamentos de Engenharia';
         case 'GERADOR':
-            return 'Geradores';
+            return isSingular ? 'Gerador' : 'Geradores';
         case 'EMBARCACAO':
-            return 'Embarcações';
+            return isSingular ? 'Embarcação' : 'Embarcações';
         default:
-            // Fallback to the label if plural form is not explicitly defined
-            return `${getClasseIIICategoryLabel(categoria)}s`; 
+            // Fallback usando o rótulo local (que é capitalizado)
+            const label = CATEGORIAS.find(c => c.key === categoria)?.label || categoria;
+            return isSingular ? label : `${label}s`;
     }
 };
 
