@@ -526,8 +526,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       };
       
       // --- APLICAÇÃO DE ESTILOS E CORES EXPLÍCITAS ---
-      // Usando corAzul para todos os cabeçalhos, conforme solicitado.
+      const headerFillGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } }; // FFE8E8E8
       const headerFillAzul = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } }; // FFB4C7E7
+      const headerFillLaranja = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } }; // FFF8CBAD
       
       const headerCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 
@@ -536,8 +537,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           const cell = hdr1.getCell(col);
           cell.style = headerStyle;
           cell.border = cellBorder;
-          cell.fill = headerFillAzul; // Aplicando azul a todos
-          cell.font = headerFontStyle; // Garante letra preta
+          if (col === 'A' || col === 'B' || col === 'I') {
+              cell.fill = headerFillGray;
+          } else if (col === 'C' || col === 'D' || col === 'E') {
+              cell.fill = headerFillAzul;
+              cell.font = headerFontStyle; // Garante letra preta
+          } else if (col === 'F' || col === 'G' || col === 'H') {
+              cell.fill = headerFillLaranja;
+              cell.font = headerFontStyle; // Garante letra preta
+          }
       });
 
       // Linha 2 do Cabeçalho (hdr2)
@@ -545,8 +553,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           const cell = hdr2.getCell(col);
           cell.style = headerStyle;
           cell.border = cellBorder;
-          cell.fill = headerFillAzul; // Aplicando azul a todos
-          cell.font = headerFontStyle; // Garante letra preta
+          if (col === 'A' || col === 'B' || col === 'I') {
+              cell.fill = headerFillGray;
+          } else if (col === 'C' || col === 'D' || col === 'E') {
+              cell.fill = headerFillAzul;
+              cell.font = headerFontStyle; // Garante letra preta
+          } else if (col === 'F' || col === 'G' || col === 'H') {
+              cell.fill = headerFillLaranja;
+              cell.font = headerFontStyle; // Garante letra preta
+          }
           // Ajuste para garantir que as células mescladas não tenham valor na linha 2
           if (col === 'A' || col === 'B' || col === 'I') {
               cell.value = '';
@@ -747,7 +762,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
             });
             
-            // Mantendo as cores Laranja para as colunas de Combustível (F, G, H)
             ['F', 'G', 'H'].forEach(col => {
                 const cell = row.getCell(col);
                 cell.alignment = dataCenterMonetaryAlignment;
@@ -1055,8 +1069,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 <tr>
                   <th rowSpan={2} className="col-despesas">DESPESAS<br/>(ORDENAR POR CLASSE DE SUBSISTÊNCIA)</th>
                   <th rowSpan={2} className="col-om">OM (UGE)<br/>CODUG</th>
-                  <th colSpan={3}>NATUREZA DE DESPESA</th> {/* Removido col-natureza-header */}
-                  <th colSpan={3}>COMBUSTÍVEL</th> {/* Removido col-combustivel-header */}
+                  <th colSpan={3} className="col-natureza-header">NATUREZA DE DESPESA</th>
+                  <th colSpan={3} className="col-combustivel-header">COMBUSTÍVEL</th>
                   <th rowSpan={2} className="col-detalhamento">DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/>OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</th>
                 </tr>
                 <tr>
@@ -1426,26 +1440,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         .ptrab-table-wrapper { margin-top: 0.2rem; margin-bottom: 2rem; overflow-x: auto; }
         .ptrab-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid #000; line-height: 1.1; }
         .ptrab-table th, .ptrab-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; font-size: 8pt; } /* Fonte de dados reduzida para 8pt */
-        
-        /* APLICANDO AZUL A TODOS OS THS */
-        .ptrab-table thead th { 
-            background-color: #B4C7E7; /* Cor Azul */
-            font-weight: bold; 
-            text-align: center; 
-            font-size: 9pt; 
-        }
+        .ptrab-table thead th { background-color: #E8E8E8; font-weight: bold; text-align: center; font-size: 9pt; }
         
         /* LARGURAS DE COLUNA FIXAS */
         .col-despesas { width: 14%; text-align: left; }
         .col-om { width: 9%; text-align: center; }
-        /* Removendo estilos de cor específicos dos headers, pois o estilo geral já aplica o azul */
-        /* .col-natureza-header { background-color: #B4C7E7 !important; text-align: center; font-weight: bold; } */
-        .col-natureza { width: 8%; text-align: center; }
+        .col-natureza-header { background-color: #B4C7E7 !important; text-align: center; font-weight: bold; }
+        .col-natureza { background-color: #B4C7E7 !important; width: 8%; text-align: center; }
         .col-nd { width: 8%; text-align: center; }
-        /* .col-combustivel-header { background-color: #F8CBAD !important; text-align: center; font-weight: bold; } */
-        .col-combustivel { width: 6%; text-align: center; font-size: 8pt; }
-        
-        /* Mantendo cores nas células de dados */
+        .col-combustivel-header { background-color: #F8CBAD !important; text-align: center; font-weight: bold; }
+        .col-combustivel { background-color: #F8CBAD !important; width: 6%; text-align: center; font-size: 8pt; }
+        .col-combustivel-data { background-color: #FFF; text-align: center; width: 6%; }
         .col-valor-natureza { background-color: #B4C7E7 !important; text-align: center; padding: 6px 8px; }
         .col-combustivel-data-filled { background-color: #F8CBAD !important; text-align: center; padding: 6px 8px; }
         .col-detalhamento { width: 28%; text-align: left; }
