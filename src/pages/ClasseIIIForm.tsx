@@ -54,10 +54,15 @@ const getOmArticle = (omName: string): string => {
  * Helper function to get the pluralized category name based on count.
  */
 const getPluralizedCategory = (categoria: TipoEquipamento, count: number): string => {
+    if (categoria === 'MOTOMECANIZACAO') {
+        return count <= 1 ? 'Viatura' : 'Viaturas';
+    }
+    
     if (count <= 1) {
         return getClasseIIICategoryLabel(categoria);
     }
     
+    // Plural forms for other categories
     switch (categoria) {
         case 'GERADOR':
             return 'Geradores';
@@ -65,10 +70,9 @@ const getPluralizedCategory = (categoria: TipoEquipamento, count: number): strin
             return 'Embarcações';
         case 'EQUIPAMENTO_ENGENHARIA':
             return 'Equipamentos de Engenharia';
-        case 'MOTOMECANIZACAO':
-            return 'Viaturas/Equipamentos de Motomecanização';
         default:
-            return getClasseIIICategoryLabel(categoria);
+            // Fallback to the label if plural form is not explicitly defined
+            return `${getClasseIIICategoryLabel(categoria)}s`; 
     }
 };
 
