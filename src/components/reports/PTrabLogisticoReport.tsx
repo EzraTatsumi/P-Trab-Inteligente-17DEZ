@@ -696,17 +696,31 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 // OM Detentora do Equipamento (Source)
                 const omDetentoraEquipamento = registro.organizacao;
                 
+                // 1ª Linha: CLASSE III - DIESEL/GASOLINA/LUBRIFICANTE
+                const tipoSuprimentoLabel = isLubrificanteLinha ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
+                rowData.despesasValue = `CLASSE III - ${tipoSuprimentoLabel}`;
+                
+                // 2ª Linha: CATEGORIA
+                const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
+                rowData.despesasValue += `\n${categoriaEquipamento}`;
+                
+                // 3ª Linha: OM Detentora (se for necessário, ou seja, se for diferente da OM de destino do recurso)
+                const omDestinoRecurso = isCombustivelLinha ? nomeOM : (registro.om_detentora || registro.organizacao);
+                const isDifferentOm = omDetentoraEquipamento !== omDestinoRecurso;
+                
+                if (isDifferentOm) {
+                    rowData.despesasValue += `\n${omDetentoraEquipamento}`;
+                }
+                
+                // OM (UGE) CODUG: OM de Destino do Recurso
+                const ugDestinoRecurso = isCombustivelLinha ? (registro.ug_detentora || '') : (registro.ug_detentora || registro.ug);
+                const ugDestinoFormatted = formatCodug(ugDestinoRecurso);
+                omValue = `${omDestinoRecurso}\n(${ugDestinoFormatted})`;
+                
+                rowData.omValue = omValue;
+                
                 if (isCombustivelLinha) {
-                    const tipoCombustivel = getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
-                    const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
-                    
-                    rowData.despesasValue = `CLASSE III - ${tipoCombustivel}\n${categoriaEquipamento} - ${omDetentoraEquipamento}`;
-                    
-                    const rmUg = registro.ug_detentora || '';
-                    const rmUgFormatted = formatCodug(rmUg);
-                    rowData.omValue = `${nomeOM}\n(${rmUgFormatted})`; // OM de destino é a RM de Fornecimento
-                    
-                    rowData.valorC = 0; // Combustível é tratado na coluna H
+                    rowData.valorC = 0;
                     rowData.valorD = 0;
                     rowData.valorE = 0;
                     
@@ -715,14 +729,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     rowData.precoTotalH = formatCurrency(linhaClasseIII.valor_total_linha);
                     
                 } else if (isLubrificanteLinha) {
-                    const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
-                    
-                    rowData.despesasValue = `CLASSE III - LUBRIFICANTE\n${categoriaEquipamento} - ${omDetentoraEquipamento}`;
-                    
-                    const omDestinoRecurso = registro.om_detentora || registro.organizacao;
-                    const ugDestinoRecurso = formatCodug(registro.ug_detentora || registro.ug);
-                    rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
-                    
                     rowData.valorC = linhaClasseIII.valor_total_linha;
                     rowData.valorD = 0;
                     rowData.valorE = linhaClasseIII.valor_total_linha;
@@ -1256,30 +1262,26 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       // OM Detentora do Equipamento (Source)
                       const omDetentoraEquipamento = linha.registro.organizacao;
                       
-                      if (isCombustivelLinha) {
-                          // Combustível: OM de destino é a RM de Fornecimento (nomeOM)
-                          const tipoCombustivel = getTipoCombustivelLabel(linha.tipo_suprimento);
-                          const categoriaEquipamento = getTipoEquipamentoLabel(linha.categoria_equipamento);
-                          
-                          // RÓTULO: CLASSE III - TIPO - CATEGORIA - OM DETENTORA
-                          despesasValue = `CLASSE III - ${tipoCombustivel}\n${categoriaEquipamento} - ${omDetentoraEquipamento}`;
-                          
-                          // OM (UGE) CODUG: RM de Fornecimento
-                          const rmUg = linha.registro.ug_detentora || '';
-                          const rmUgFormatted = formatCodug(rmUg);
-                          omValue = `${nomeOM}\n(${rmUgFormatted})`;
-                          
-                      } else if (isLubrificanteLinha) {
-                          // Lubrificante: OM de destino é a OM Detentora do Recurso (om_detentora/ug_detentora)
-                          const categoriaEquipamento = getTipoEquipamentoLabel(linha.categoria_equipamento);
-                          
-                          // RÓTULO: CLASSE III - LUBRIFICANTE - CATEGORIA - OM DETENTORA
-                          despesasValue = `CLASSE III - LUBRIFICANTE\n${categoriaEquipamento} - ${omDetentoraEquipamento}`;
-                          
-                          const omDestinoRecurso = linha.registro.om_detentora || linha.registro.organizacao;
-                          const ugDestinoRecurso = formatCodug(linha.registro.ug_detentora || linha.registro.ug);
-                          omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
+                      // 1ª Linha: CLASSE III - DIESEL/GASOLINA/LUBRIFICANTE
+                      const tipoSuprimentoLabel = isLubrificanteLinha ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linha.tipo_suprimento);
+                      despesasValue = `CLASSE III - ${tipoSuprimentoLabel}`;
+                      
+                      // 2ª Linha: CATEGORIA
+                      const categoriaEquipamento = getTipoEquipamentoLabel(linha.categoria_equipamento);
+                      despesasValue += `\n${categoriaEquipamento}`;
+                      
+                      // 3ª Linha: OM Detentora (se for necessário, ou seja, se for diferente da OM de destino do recurso)
+                      const omDestinoRecurso = isCombustivelLinha ? nomeOM : (linha.registro.om_detentora || linha.registro.organizacao);
+                      const isDifferentOm = omDetentoraEquipamento !== omDestinoRecurso;
+                      
+                      if (isDifferentOm) {
+                          rowData.despesasValue += `\n${omDetentoraEquipamento}`;
                       }
+                      
+                      // OM (UGE) CODUG: OM de Destino do Recurso
+                      const ugDestinoRecurso = isCombustivelLinha ? (linha.registro.ug_detentora || '') : (linha.registro.ug_detentora || linha.registro.ug);
+                      const ugDestinoFormatted = formatCodug(ugDestinoRecurso);
+                      omValue = `${omDestinoRecurso}\n(${ugDestinoFormatted})`;
                       
                       return (
                         <tr key={`classe-iii-${linha.registro.id}-${linha.tipo_suprimento}-${linha.categoria_equipamento}`}>
