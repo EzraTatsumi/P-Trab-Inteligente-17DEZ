@@ -371,10 +371,8 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
         const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
         const localConsultaDisplay = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? ` (${refLPC.nome_local})` : '';
         
+        // REMOVIDO: OM Detentora Equipamento e Recurso fornecido pela RM
         return `${header}
-
-OM Detentora Equipamento: ${omDetentoraEquipamento} (UG: ${formatCodug(ugDetentoraEquipamento)})
-Recurso fornecido pela RM: ${omDestinoRecurso} (UG: ${formatCodug(ugDestinoRecurso)})
 
 Cálculo:
 - Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${combustivelLabel} - ${formatCurrency(itens[0].preco_lubrificante)}.
@@ -469,9 +467,6 @@ Valor Total: ${formatCurrency(valor_total)}.`;
         
         // CABEÇALHO ATUALIZADO
         return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
-
-OM Detentora Equipamento: ${om_destino} (UG: ${formatCodug(ug_destino)})
-Recurso fornecido pela RM: ${rmFornecimento} (UG: ${formatCodug(codugRmFornecimento)})
 
 Cálculo:
 - Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${tipoCombustivel} - ${formatCurrency(preco_litro)}.
@@ -1143,9 +1138,6 @@ const ClasseIIIForm = () => {
       
       // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
       let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diasPluralHeader} de ${faseFormatada}.
-
-OM Detentora Equipamento: ${form.organizacao} (UG: ${formatCodug(form.ug)})
-Recurso fornecido pela RM: ${rmFornecimento} (UG: ${formatCodug(codugRmFornecimento)})
 
 Cálculo:
 - Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${combustivelLabel} - ${formatCurrency(precoLitro)}.
