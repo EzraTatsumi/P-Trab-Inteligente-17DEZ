@@ -34,6 +34,7 @@ import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/li
 import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils"; // NOVO: Importando utilitário de Classe VIII
 import { generateCategoryMemoriaCalculo as generateClasseIXUtility, calculateItemTotalClasseIX as calculateItemTotalClasseIXUtility } from "@/lib/classeIXUtils"; // NOVO: Importando utilitário de Classe IX
 import { ItemClasseIII as ItemClasseIIIUtil, calculateItemTotals } from "@/lib/classeIIIUtils"; // Importando ItemClasseIII e calculateItemTotals
+import { RefLPC } from "@/types/refLPC"; // Importando o tipo RefLPC
 
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
@@ -123,8 +124,8 @@ export interface ClasseIIIRegistro {
   detalhamento_customizado?: string | null;
   itens_equipamentos?: ItemClasseIII[]; // Itens granulares
   fase_atividade?: string; // Adicionado para Classe III
-  consumo_lubrificante_litro?: number; // Adicionado para Classe III
-  preco_lubrificante?: number; // Adicionado para Classe III
+  consumo_lubrificante_litro?: number;
+  preco_lubrificante?: number;
   valor_nd_30: number; // Adicionado para Classe III
   valor_nd_39: number; // Adicionado para Classe III
   om_detentora?: string | null; // OM Destino Recurso (RM ou OM Lubrificante)
@@ -167,7 +168,6 @@ export interface GrupoOM {
   linhasClasseVII: LinhaClasseII[];
   linhasClasseVIII: LinhaClasseII[];
   linhasClasseIX: LinhaClasseII[];
-  // REMOVIDO: linhasLubrificante: LinhaLubrificante[];
   // NOVO: Linhas granulares de Classe III (Combustível e Lubrificante)
   linhasClasseIII: LinhaClasseIII[];
 }
@@ -267,7 +267,6 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
                 quantidadeR3: registro.quantidade_r3,
                 // Campos não utilizados na memória OP, mas necessários para a interface
                 omQS: null, ugQS: null, nrRefInt: null, valorQS: null, valorQR: null,
-                memoriaQSCustomizada: null, memoriaQRCustomizada: null,
                 calculos: {
                     totalQS: 0, totalQR: 0, nrCiclos: 0, diasEtapaPaga: 0, diasEtapaSolicitada: 0, totalEtapas: 0,
                     complementoQS: 0, etapaQS: 0, complementoQR: 0, etapaQR: 0,
@@ -659,7 +658,7 @@ const PTrabReportManager = () => {
         const isLubConsolidado = isLubrificante(registroConsolidado);
         const isCombConsolidado = isCombustivel(registroConsolidado);
         
-        // A OM de destino do recurso (RM para Combustível, OM para Lubrificante)
+        // OM Destino Recurso (RM para Combustível, OM para Lubrificante)
         const omDestinoRecurso = registroConsolidado.om_detentora || registroConsolidado.organizacao;
         const ugDestinoRecurso = registroConsolidado.ug_detentora || registroConsolidado.ug;
         
@@ -670,12 +669,27 @@ const PTrabReportManager = () => {
         // O registro consolidado deve ser agrupado pela OM de DESTINO do recurso
         initializeGroup(omDestinoRecurso);
         
+        // NEW: Map to track unique equipment items processed for LUBRIFICANTE within this consolidated record
+        const lubricantItemsMap = new Map<string, { totalValor: number, totalLitros: number, item: ItemClasseIII }>();
+
         // Iterar sobre os itens granulares dentro do registro consolidado
         (registroConsolidado.itens_equipamentos || []).forEach((item, index) => {
-            // NOTA: Passamos null para refLPC aqui, pois os valores totais (valorCombustivel, valorLubrificante)
-            // não são usados para o cálculo de ND/Total, mas sim para a desagregação.
-            // O cálculo real de ND/Total é feito em calcularTotaisPorOM, que usa a soma dos valores totais das linhas granulares.
-            const { valorCombustivel, valorLubrificante, totalLitros, litrosLubrificante, precoLitro } = calculateItemTotals(item, null, registroConsolidado.dias_operacao);
+            
+            // --- Setup Mock LPC for Combustível calculation ---
+            let mockRefLPC: Partial<RefLPC> | null = null;
+            if (isCombConsolidado) {
+                const fuelPrice = registroConsolidado.preco_litro;
+                // Criamos um mock RefLPC para que calculateItemTotals use o preço salvo no registro consolidado
+                mockRefLPC = {
+                    preco_diesel: item.tipo_combustivel_fixo === 'DIESEL' ? fuelPrice : 0,
+                    preco_gasolina: item.tipo_combustivel_fixo === 'GASOLINA' ? fuelPrice : 0,
+                    // Adicionamos campos obrigatórios para satisfazer o tipo RefLPC, mesmo que vazios
+                    data_inicio_consulta: '', data_fim_consulta: '', ambito: 'Nacional', nome_local: null,
+                };
+            }
+            
+            // Recalculate totals using the mock LPC (or null for Lubrificante, which uses item's internal price)
+            const { valorCombustivel, valorLubrificante, totalLitros, litrosLubrificante, precoLitro } = calculateItemTotals(item, mockRefLPC as RefLPC, registroConsolidado.dias_operacao);
             
             // --- Lógica para Combustível (Diesel/Gasolina) ---
             if (isCombConsolidado && valorCombustivel > 0) {
@@ -700,27 +714,55 @@ const PTrabReportManager = () => {
                 });
             }
             
-            // --- Lógica para Lubrificante ---
+            // --- Lógica para Lubrificante (Consolidação) ---
             if (isLubConsolidado && valorLubrificante > 0) {
-                // Cria uma linha granular para o Lubrificante
-                grupos[omDestinoRecurso].linhasClasseIII.push({
-                    id: `${registroConsolidado.id}-L-${index}`,
+                const itemKey = `${item.categoria}-${item.item}`; // Chave por tipo e nome do equipamento
+                
+                if (lubricantItemsMap.has(itemKey)) {
+                    const existing = lubricantItemsMap.get(itemKey)!;
+                    existing.totalValor += valorLubrificante;
+                    existing.totalLitros += litrosLubrificante;
+                } else {
+                    lubricantItemsMap.set(itemKey, {
+                        totalValor: valorLubrificante,
+                        totalLitros: litrosLubrificante,
+                        item: item,
+                    });
+                }
+            }
+        });
+        
+        // Generate lines for consolidated Lubrificante items
+        if (isLubConsolidado) {
+            // A OM Destino Recurso para Lubrificante é a OM Detentora do Recurso (om_detentora)
+            const omDestinoLub = registroConsolidado.om_detentora || registroConsolidado.organizacao;
+            const ugDestinoLub = registroConsolidado.ug_detentora || registroConsolidado.ug;
+            
+            // Garante que o grupo de destino do Lubrificante existe
+            initializeGroup(omDestinoLub);
+
+            lubricantItemsMap.forEach((data, itemKey) => {
+                const uniqueId = `${registroConsolidado.id}-L-${itemKey.replace(/[^a-zA-Z0-9]/g, '')}`;
+                const item = data.item; 
+                
+                grupos[omDestinoLub].linhasClasseIII.push({
+                    id: uniqueId,
                     registroConsolidadoId: registroConsolidado.id,
-                    omDestinoRecurso,
-                    ugDestinoRecurso,
-                    omDetentoraEquipamento,
-                    ugDetentoraEquipamento,
+                    omDestinoRecurso: omDestinoLub,
+                    ugDestinoRecurso: ugDestinoLub,
+                    omDetentoraEquipamento: registroConsolidado.organizacao,
+                    ugDetentoraEquipamento: registroConsolidado.ug,
                     suprimentoTipo: 'LUBRIFICANTE',
                     categoriaEquipamento: item.categoria,
                     itemEquipamento: item,
-                    valorTotal: valorLubrificante,
-                    totalLitros: litrosLubrificante, // Sem margem
-                    precoLitro: item.preco_lubrificante,
+                    valorTotal: data.totalValor,
+                    totalLitros: data.totalLitros,
+                    precoLitro: data.totalLitros > 0 ? data.totalValor / data.totalLitros : 0,
                     memoriaCustomizada: item.memoria_customizada,
                     faseAtividade: registroConsolidado.fase_atividade || '',
                 });
-            }
-        });
+            });
+        }
     });
     
     return grupos;
