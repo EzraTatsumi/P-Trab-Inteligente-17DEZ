@@ -354,7 +354,7 @@ Total de Equipamentos: ${totalEquipamentos}
 Cálculo:
 ${detalhamentoCalculo.trim()}
 
-Valor Total: ${formatCurrency(valorTotal)}.`;
+Total: ${formatNumber(totalLitros, 2)} L x ${formatCurrency(precoLub)} = ${formatCurrency(valorTotal)}.`;
         
     } else {
         // MEMÓRIA COMBUSTÍVEL (CONSOLIDADA)
@@ -398,11 +398,11 @@ Valor Total: ${formatCurrency(valorTotal)}.`;
             detalhes.push(`- ${item.item}: ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
         });
         
-        const totalLitros = totalLitrosSemMargem * 1.3;
+        const totalLitrosComMargem = totalLitrosSemMargem * 1.3;
         const precoLitro = tipoCombustivel === 'GASOLINA' 
             ? refLPC?.preco_gasolina ?? 0 
             : refLPC?.preco_diesel ?? 0;
-        const valorTotal = totalLitros * precoLitro;
+        const valorTotal = totalLitrosComMargem * precoLitro;
         
         const formatarData = (data: string) => {
             const [ano, mes, dia] = data.split('-');
@@ -423,8 +423,8 @@ ${formulaPrincipal}
 
 ${detalhes.join('\n')}
 
-Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitros)} L ${unidadeLabel}.
-Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
+Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitrosComMargem)} L ${unidadeLabel}.
+Valor: ${formatNumber(totalLitrosComMargem)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
     }
 };
 
@@ -497,8 +497,7 @@ ${detailed_items.map(item => {
     return `- ${item.item}: ${formulaPart1} ${formulaPart2} = ${formatNumber(litrosLubrificante, 2)} L`;
 }).join('\n')}
 
-Total Litros: ${formatNumber(total_litros, 2)} L.
-Valor Total: ${formatCurrency(valor_total)}.`;
+Total: ${formatNumber(total_litros, 2)} L x ${formatCurrency(precoLub)} = ${formatCurrency(valor_total)}.`;
     } else {
         // MEMÓRIA COMBUSTÍVEL (GRANULAR)
         const tipoCombustivel = suprimento_tipo === 'COMBUSTIVEL_GASOLINA' ? 'Gasolina' : 'Diesel';
