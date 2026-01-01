@@ -60,11 +60,6 @@ interface PTrabLogisticoReportProps {
     valorDiesel: number;
     valorGasolina: number;
   };
-  // REMOVIDO: onExportSuccess: () => void;
-  // REMOVIDO: showCompleteStatusDialog: boolean;
-  // REMOVIDO: setShowCompleteStatusDialog: (show: boolean) => void;
-  // REMOVIDO: handleConfirmCompleteStatus: () => void;
-  // REMOVIDO: handleCancelCompleteStatus: () => void;
   fileSuffix: string; // NOVO PROP
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe I
   generateClasseIMemoriaCalculo: (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP') => string;
@@ -241,11 +236,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   omsOrdenadas,
   gruposPorOM,
   calcularTotaisPorOM,
-  // REMOVIDO: onExportSuccess,
-  // REMOVIDO: showCompleteStatusDialog,
-  // REMOVIDO: setShowCompleteStatusDialog,
-  // REMOVIDO: handleConfirmCompleteStatus,
-  // REMOVIDO: handleCancelCompleteStatus,
   fileSuffix, // NOVO PROP
   generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
   generateClasseIIMemoriaCalculo = defaultGenerateClasseIIMemoriaCalculo, // CORRIGIDO: Usando o nome correto da função de fallback
@@ -257,8 +247,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
   
-  const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO' || r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
-  const isCombustivel = (r: ClasseIIIRegistro) => !isLubrificante(r);
+  const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
+  const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
 
   // 1. Recalcular Totais Gerais (para HTML/PDF)
   const totalGeral_33_90_30 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_30, 0), [gruposPorOM, calcularTotaisPorOM]);
@@ -554,6 +544,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               cell.fill = headerFillLaranja;
               cell.font = headerFontStyle; // Garante letra preta
           }
+          // Ajuste para garantir que as células mescladas não tenham valor na linha 2
+          if (col === 'A' || col === 'B' || col === 'I') {
+              cell.value = '';
+          }
       });
       
       currentRow = headerRow2 + 1;
@@ -585,7 +579,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         linhasDespesaOrdenadas.forEach((linha) => {
           const isClasseI = 'tipo' in linha;
           const isClasseII_IX = 'categoria' in linha.registro;
-          const isLubrificante = 'tipo_equipamento' in linha.registro;
+          const isLubrificante = 'tipo_equipamento' in linha.registro && linha.registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
           
           const rowData = {
               despesasValue: '',
@@ -679,8 +673,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           } else if (isLubrificante) { // Classe III Lubrificante
               const registro = linha.registro as ClasseIIIRegistro;
               
-              let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
-              rowData.despesasValue = despesasLubValue;
+              // AJUSTE NA COLUNA DESPESAS: Usar OM Detentora do Equipamento (organizacao)
+              const omDetentoraEquipamento = registro.organizacao;
+              
+              // O tipo de suprimento é Lubrificante
+              rowData.despesasValue = `CLASSE III - LUBRIFICANTE\n${omDetentoraEquipamento}`;
+              
               // A OM de destino do recurso Lubrificante está em om_detentora/ug_detentora
               const omDestinoRecurso = registro.om_detentora || registro.organizacao;
               const ugDestinoRecurso = formatCodug(registro.ug_detentora || registro.ug);
@@ -688,6 +686,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
               rowData.valorC = registro.valor_total;
               rowData.valorE = registro.valor_total;
+              
+              // USANDO O DETALHAMENTO SALVO NO REGISTRO (que já contém a nova formatação)
               rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
           }
           
@@ -750,7 +750,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const rmUg = grupo.linhasQS[0]?.registro.ug_qs || grupo.linhasQR[0]?.registro.ug || '';
             const rmUgFormatted = formatCodug(rmUg);
             
-            row.getCell('A').value = `CLASSE III - ${getTipoCombustivelLabel(registro.tipo_combustivel)}\n${getTipoEquipamentoLabel(registro.tipo_equipamento)}\n${registro.organizacao}`;
+            // AJUSTE NA COLUNA DESPESAS: Usar o tipo de combustível
+            row.getCell('A').value = `CLASSE III - COMBUSTÍVEL\n${getTipoCombustivelLabel(registro.tipo_combustivel)}`;
             row.getCell('B').value = `${nomeRM}\n(${rmUgFormatted})`;
             
             // Colunas azuis (C, D, E) - Vazias para Combustível
@@ -774,6 +775,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             row.getCell('H').numFmt = 'R$ #,##0.00';
             row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
             
+            // USANDO O DETALHAMENTO SALVO NO REGISTRO (que já contém a nova formatação)
             const detalhamentoCombustivel = registro.detalhamento_customizado || registro.detalhamento || '';
             
             row.getCell('I').value = detalhamentoCombustivel;
@@ -1127,7 +1129,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   ...linhasDespesaOrdenadas.map((linha) => {
                     const isClasseI = 'tipo' in linha;
                     const isClasseII_IX = 'categoria' in linha.registro;
-                    const isLubrificante = 'tipo_equipamento' in linha.registro;
+                    const isLubrificante = 'tipo_equipamento' in linha.registro && linha.registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
                     
                     const rowData = {
                         despesasValue: '',
@@ -1221,8 +1223,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     } else if (isLubrificante) { // Classe III Lubrificante
                         const registro = linha.registro as ClasseIIIRegistro;
                         
-                        let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
-                        rowData.despesasValue = despesasLubValue;
+                        // AJUSTE NA COLUNA DESPESAS: Usar OM Detentora do Equipamento (organizacao)
+                        const omDetentoraEquipamento = registro.organizacao;
+                        
+                        // O tipo de suprimento é Lubrificante
+                        rowData.despesasValue = `CLASSE III - LUBRIFICANTE\n${omDetentoraEquipamento}`;
+                        
                         // A OM de destino do recurso Lubrificante está em om_detentora/ug_detentora
                         const omDestinoRecurso = registro.om_detentora || registro.organizacao;
                         const ugDestinoRecurso = formatCodug(registro.ug_detentora || registro.ug);
@@ -1230,6 +1236,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
                         rowData.valorC = registro.valor_total;
                         rowData.valorE = registro.valor_total;
+                        
+                        // USANDO O DETALHAMENTO SALVO NO REGISTRO (que já contém a nova formatação)
                         rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
                     }
                     
@@ -1267,9 +1275,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     return (
                       <tr key={`classe-iii-${registro.id}`}>
                         <td className="col-despesas">
-                          <div>CLASSE III - {getTipoCombustivelLabel(registro.tipo_combustivel)}</div>
-                          <div>{getTipoEquipamentoLabel(registro.tipo_equipamento)}</div>
-                          <div>{registro.organizacao}</div>
+                          {/* AJUSTE NA COLUNA DESPESAS: Usar o tipo de combustível */}
+                          <div>CLASSE III - COMBUSTÍVEL</div>
+                          <div>{getTipoCombustivelLabel(registro.tipo_combustivel)}</div>
                         </td>
                         <td className="col-om">
                           <div>{nomeRM}</div>
@@ -1283,6 +1291,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{formatCurrency(registro.valor_total)}</td>
                         <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
                           <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                            {/* USANDO O DETALHAMENTO SALVO NO REGISTRO (que já contém a nova formatação) */}
                             {registro.detalhamento_customizado || registro.detalhamento || ''}
                           </pre>
                         </td>
