@@ -728,7 +728,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     rowData.valorE = 0;
                     
                     rowData.litrosF = `${formatNumber(linhaClasseIII.total_litros_linha)} L`;
-                    rowData.precoUnitarioG = formatCurrency(linhaClasseIII.preco_litro_linha);
+                    // CORREÇÃO AQUI: Usar formatNumber (sem R$) para o Preço Unitário
+                    rowData.precoUnitarioG = formatNumber(linhaClasseIII.preco_litro_linha, 2); 
                     rowData.precoTotalH = linhaClasseIII.valor_total_linha; // FIX 3: Pass raw number
                     
                 } else if (isLubrificanteLinha) {
@@ -753,7 +754,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             row.getCell('F').value = rowData.litrosF;
             row.getCell('G').value = rowData.precoUnitarioG;
             row.getCell('H').value = rowData.precoTotalH > 0 ? rowData.precoTotalH : ''; // FIX 4: Use ternary operator here
-            row.getCell('I').value = rowData.detalhamentoValue;
             
             // Estilos
             ['A', 'B'].forEach(col => {
@@ -782,6 +782,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 }
             });
             
+            row.getCell('I').value = rowData.detalhamentoValue;
             row.getCell('I').alignment = leftTopAlignment;
             row.getCell('I').font = { name: 'Arial', size: 6.5 }; // Fonte menor para detalhamento
             row.getCell('I').border = cellBorder;
@@ -1260,7 +1261,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                               rowData.valorE = 0;
                               
                               rowData.litrosF = `${formatNumber(linhaClasseIII.total_litros_linha)} L`;
-                              rowData.precoUnitarioG = formatCurrency(linhaClasseIII.preco_litro_linha);
+                              // CORREÇÃO AQUI: Usar formatNumber (sem R$) para o Preço Unitário
+                              rowData.precoUnitarioG = formatNumber(linhaClasseIII.preco_litro_linha, 2); 
                               rowData.precoTotalH = linhaClasseIII.valor_total_linha; // FIX 3: Pass raw number
                               
                           } else if (isLubrificanteLinha) {
@@ -1285,7 +1287,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       row.getCell('F').value = rowData.litrosF;
                       row.getCell('G').value = rowData.precoUnitarioG;
                       row.getCell('H').value = rowData.precoTotalH > 0 ? rowData.precoTotalH : ''; // FIX 4: Use ternary operator here
-                      row.getCell('I').value = rowData.detalhamentoValue;
                       
                       // Estilos
                       ['A', 'B'].forEach(col => {
@@ -1314,6 +1315,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                           }
                       });
                       
+                      row.getCell('I').value = rowData.detalhamentoValue;
                       row.getCell('I').alignment = leftTopAlignment;
                       row.getCell('I').font = { name: 'Arial', size: 6.5 }; // Fonte menor para detalhamento
                       row.getCell('I').border = cellBorder;
