@@ -221,9 +221,9 @@ export const generateClasseIXMemoriaCalculo = (registro: ClasseIIRegistro): stri
 export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP'): string => {
     if (registro.categoria === 'RACAO_OPERACIONAL') {
         if (tipo === 'OP') {
-            // 1. Para Ração Operacional (OP), prioriza o customizado armazenado em memoriaQSCustomizada
-            if (registro.memoriaQSCustomizada) {
-                return registro.memoriaQSCustomizada; // <-- AQUI ESTÁ A CORREÇÃO
+            // 1. Para Ração Operacional (OP), prioriza o customizado armazenado em memoria_calculo_op_customizada
+            if (registro.memoria_calculo_op_customizada) {
+                return registro.memoria_calculo_op_customizada; // <-- CORREÇÃO APLICADA AQUI
             }
             
             // 2. Se não houver customizado, gera o automático
@@ -483,7 +483,7 @@ const PTrabReportManager = () => {
 
       const { data: classeIData } = await supabase
         .from('classe_i_registros')
-        .select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3')
+        .select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3')
         .eq('p_trab_id', ptrabId);
       
       const [
@@ -538,10 +538,10 @@ const PTrabReportManager = () => {
           total_qs: Number(r.total_qs),
           complemento_qr: Number(r.complemento_qr),
           etapa_qr: Number(r.etapa_qr),
-          total_qr: Number(r.total_qr),
           total_geral: Number(r.total_geral),
           memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
           memoriaQRCustomizada: r.memoria_calculo_qr_customizada,
+          memoria_calculo_op_customizada: r.memoria_calculo_op_customizada, // NOVO CAMPO
           categoria: (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL',
           quantidade_r2: r.quantidade_r2 || 0,
           quantidade_r3: r.quantidade_r3 || 0,
@@ -611,8 +611,10 @@ const PTrabReportManager = () => {
     // 3. Processar Classe III Lubrificante
     registrosClasseIII.forEach((registro) => {
         if (isLubrificante(registro)) {
-            initializeGroup(registro.organizacao);
-            grupos[registro.organizacao].linhasLubrificante.push({ registro });
+            // A OM de destino do recurso Lubrificante está em om_detentora/ug_detentora
+            const omDestinoRecurso = registro.om_detentora || registro.organizacao;
+            initializeGroup(omDestinoRecurso);
+            grupos[omDestinoRecurso].linhasLubrificante.push({ registro });
         }
     });
     

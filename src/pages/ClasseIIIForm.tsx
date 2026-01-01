@@ -324,7 +324,7 @@ Valor Total: ${formatCurrency(valor_total)}.`;
     } else {
         // MEMÓRIA COMBUSTÍVEL (GRANULAR)
         const tipoCombustivel = suprimento_tipo === 'COMBUSTIVEL_GASOLINA' ? 'Gasolina' : 'Diesel';
-        const unidadeLabel = suprimento_tipo === 'COMBUSTIVEL_GASOLINA' ? 'Gas' : 'OD';
+        const unidadeLabel = suprimento_tipo === 'COMBUSTIVEL_GASOLINA' ? 'GAS' : 'OD';
         
         let totalLitrosSemMargem = 0;
         let detalhes: string[] = [];
@@ -332,7 +332,8 @@ Valor Total: ${formatCurrency(valor_total)}.`;
         detailed_items.forEach(item => {
             const { litrosSemMargemItem, formulaLitros } = calculateItemTotals(item, refLPC, dias_operacao);
             totalLitrosSemMargem += litrosSemMargemItem;
-            detalhes.push(`- ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
+            // MODIFICAÇÃO APLICADA AQUI
+            detalhes.push(`- ${item.item}: ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
         });
         
         const totalEquipamentos = detailed_items.reduce((sum, item) => sum + item.quantidade, 0);
@@ -348,7 +349,8 @@ Valor Total: ${formatCurrency(valor_total)}.`;
 Cálculo:
 - Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada}${localConsultaDisplay}: ${tipoCombustivel} - ${formatCurrency(preco_litro)}.
 
-Fórmula: (Nr Equipamentos x Nr Horas/dia x Consumo) x Nr dias de utilização.
+Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
+
 ${detalhes.join('\n')}
 
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(total_litros)} L ${unidadeLabel}.
@@ -963,7 +965,8 @@ const ClasseIIIForm = () => {
         
         totalLitrosSemMargem += litrosSemMargemItem;
         const unidade = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
-        detalhes.push(`- ${formulaDetalhe} = ${formatNumber(litrosSemMargemItem)} L ${unidade}.`);
+        // MODIFICAÇÃO APLICADA AQUI
+        detalhes.push(`- ${item.item}: ${formulaDetalhe} = ${formatNumber(litrosSemMargemItem)} L ${unidade}.`);
       });
       
       const totalLitros = totalLitrosSemMargem * 1.3;
@@ -1006,7 +1009,7 @@ Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
 
 ${detalhes.join('\n')}
 
-Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}.
+Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitros)} L ${unidadeLabel}.
 Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
       
       novosConsolidados.push({
@@ -1082,7 +1085,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         };
     }
     
-    return { consolidadosCombustivel: novosConsolidados, consolidadoLubrificante: lubrificanteConsolidado, itensAgrupadosPorCategoria: groupedFormItems };
+    return { consolidadosCombustivel: novosConsolidados, consolidadoLubrificante: consolidadoLubrificante, itensAgrupadosPorCategoria: groupedFormItems };
   }, [form.itens, refLPC, form.dias_operacao, fasesAtividade, customFaseAtividade, rmFornecimento, codugRmFornecimento, lubricantAllocation]);
 
   // Totais da Categoria Atual (para exibição na aba)
@@ -1336,7 +1339,8 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         
         totalLitrosSemMargem += litrosSemMargemItem;
         const unidade = tipoCombustivel === 'GASOLINA' ? 'GAS' : 'OD';
-        detalhes.push(`- ${formulaDetalhe} = ${formatNumber(litrosSemMargemItem)} L ${unidade}.`);
+        // MODIFICAÇÃO APLICADA AQUI
+        detalhes.push(`- ${item.item}: ${formulaDetalhe} = ${formatNumber(litrosSemMargemItem)} L ${unidade}.`);
       });
       
       const totalLitros = totalLitrosSemMargem * 1.3;
@@ -1379,7 +1383,7 @@ Fórmula: (Nr Equipamentos x Nr Horas/Km x Consumo) x Nr dias de utilização.
 
 ${detalhes.join('\n')}
 
-Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% = ${formatNumber(totalLitros)} L ${unidadeLabel}.
+Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitros)} L ${unidadeLabel}.
 Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
       
       novosConsolidados.push({
@@ -2464,6 +2468,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                       size="icon" 
                                       className="h-8 w-8"
                                       onClick={() => handleEditarConsolidado(originalRegistro)}
+                                      disabled={loading}
                                     >
                                       <Pencil className="h-4 w-4" />
                                     </Button>
@@ -2472,6 +2477,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                       size="icon" 
                                       onClick={() => handleDeletarConsolidado(originalRegistro.id)}
                                       className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                      disabled={loading}
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -2494,7 +2500,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
                                   if (totais.valor > 0) {
                                     const categoryBadgeStyle = getClasseIIICategoryBadgeStyle(cat.key);
                                     // Usar o rótulo do categoryLabelMap para garantir a capitalização correta
-                                    const displayLabel = categoryLabelMap[cat.key] || cat.key; // Fallback para a chave se o map falhar
+                                    const displayLabel = categoryLabelMap[cat.key] || getClasseIIICategoryLabel(cat.key);
                                     
                                     return (
                                       <div key={cat.key} className="flex justify-between text-xs">

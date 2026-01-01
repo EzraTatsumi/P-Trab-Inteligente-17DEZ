@@ -257,7 +257,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
   
-  const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento !== 'LUBRIFICANTE_GERADOR' && r.tipo_equipamento !== 'LUBRIFICANTE_EMBARCACAO' && r.tipo_equipamento !== 'LUBRIFICANTE_CONSOLIDADO';
+  const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_GERADOR' || r.tipo_equipamento === 'LUBRIFICANTE_EMBARCACAO' || r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
+  const isCombustivel = (r: ClasseIIIRegistro) => !isLubrificante(r);
 
   // 1. Recalcular Totais Gerais (para HTML/PDF)
   const totalGeral_33_90_30 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasLubrificante[0]?.registro.organizacao || '').total_33_90_30, 0), [gruposPorOM, calcularTotaisPorOM]);
@@ -680,7 +681,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               
               let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
               rowData.despesasValue = despesasLubValue;
-              rowData.omValue = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
+              // A OM de destino do recurso Lubrificante está em om_detentora/ug_detentora
+              const omDestinoRecurso = registro.om_detentora || registro.organizacao;
+              const ugDestinoRecurso = formatCodug(registro.ug_detentora || registro.ug);
+              
+              rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
               rowData.valorC = registro.valor_total;
               rowData.valorE = registro.valor_total;
               rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
@@ -1218,7 +1223,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         
                         let despesasLubValue = `CLASSE III - LUBRIFICANTE`;
                         rowData.despesasValue = despesasLubValue;
-                        rowData.omValue = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
+                        // A OM de destino do recurso Lubrificante está em om_detentora/ug_detentora
+                        const omDestinoRecurso = registro.om_detentora || registro.organizacao;
+                        const ugDestinoRecurso = formatCodug(registro.ug_detentora || registro.ug);
+                        
+                        rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
                         rowData.valorC = registro.valor_total;
                         rowData.valorE = registro.valor_total;
                         rowData.detalhamentoValue = registro.detalhamento_customizado || registro.detalhamento || '';
@@ -1367,7 +1376,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     
                     {/* Segunda subdivisão: Valor Total */}
                     <tr style={{ backgroundColor: 'white' }}>
-                      <td colSpan={7} style={{ border: 'none' }}></td>
+                      <td colSpan={7} style={{ borderLeft: 'none', borderRight: 'none' }}></td>
                       <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: '1px solid #000', borderRight: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
                       <td style={{ border: 'none' }}></td>
                     </tr>
