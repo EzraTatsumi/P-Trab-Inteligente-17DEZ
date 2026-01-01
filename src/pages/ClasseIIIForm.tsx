@@ -331,7 +331,7 @@ Valor Total: ${formatCurrency(valor_total)}.`;
         // CABEÇALHO ATUALIZADO
         return `33.90.30 - Aquisição de Combustível (${tipoCombustivel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${om_destino}, durante ${dias_operacao} ${diaPlural} de ${faseFormatada}.
 
-Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)})
+Cálculo:
 
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(preco_litro)}.
 
@@ -975,22 +975,19 @@ const ClasseIIIForm = () => {
       const diaPlural = form.dias_operacao === 1 ? 'dia' : 'dias';
       const omArticle = getOmArticle(form.organizacao);
       
-      // NOVO: Pluralização da Categoria (usando a categoria do primeiro item do grupo, pois o grupo é por combustível)
-      // Para o registro consolidado de combustível, precisamos saber qual categoria de equipamento está sendo consolidada.
-      // Como o agrupamento é por tipo de combustível, vamos agrupar por categoria de equipamento dentro do grupo de combustível.
+      // NOVO: Pluralização da Categoria
       const categoriasAtivas = Array.from(new Set(itensGrupo.map(item => item.categoria)));
       let categoriaLabel;
       if (categoriasAtivas.length === 1) {
           categoriaLabel = getEquipmentPluralization(categoriasAtivas[0], totalEquipamentos);
       } else {
-          // Se houver múltiplas categorias (ex: Gerador e Embarcação usando Diesel), usamos um termo genérico
           categoriaLabel = 'Equipamentos Diversos';
       }
       
       // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
       let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
 
-Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)}).
+Cálculo:
 
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
 
@@ -1065,13 +1062,13 @@ ${itensLubrificante.map(item => {
 
 Total Litros: ${formatNumber(totalLitrosLubrificante, 2)} L.
 Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
-      
-      lubrificanteConsolidado = {
-        total_litros: totalLitrosLubrificante,
-        valor_total: totalValorLubrificante,
-        itens: itensLubrificante,
-        detalhamento,
-      };
+        
+        lubrificanteConsolidado = {
+          total_litros: totalLitrosLubrificante,
+          valor_total: totalValorLubrificante,
+          itens: itensLubrificante,
+          detalhamento,
+        };
     }
     
     return { consolidadosCombustivel: novosConsolidados, consolidadoLubrificante: lubrificanteConsolidado, itensAgrupadosPorCategoria: groupedFormItems };
@@ -1365,7 +1362,7 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
         // REESTRUTURAÇÃO DA MEMÓRIA DE CÁLCULO DE COMBUSTÍVEL (NOVO PADRÃO)
         let detalhamento = `33.90.30 - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${form.organizacao}, durante ${form.dias_operacao} ${diaPlural} de ${faseFormatada}.
 
-Fornecido por: ${rmFornecimento} (CODUG: ${formatCodug(codugRmFornecimento)}).
+Cálculo:
 
 Consulta LPC de ${dataInicioFormatada} a ${dataFimFormatada} ${localConsulta}: ${tipoCombustivel} - ${formatCurrency(precoLitro)}.
 
@@ -1447,10 +1444,10 @@ Valor Total: ${formatCurrency(totalValorLubrificante)}.`;
           itens: itensLubrificante,
           detalhamento,
         };
-      }
-      
-      return { consolidadosCombustivel: novosConsolidados, consolidadoLubrificante: lubrificanteConsolidado, itensAgrupadosPorCategoria: groupedFormItems };
-    }, [form.itens, refLPC, form.dias_operacao, fasesAtividade, customFaseAtividade, rmFornecimento, codugRmFornecimento, lubricantAllocation]);
+    }
+    
+    return { consolidadosCombustivel: novosConsolidados, consolidadoLubrificante: lubrificanteConsolidado, itensAgrupadosPorCategoria: groupedFormItems };
+  }, [form.itens, refLPC, form.dias_operacao, fasesAtividade, customFaseAtividade, rmFornecimento, codugRmFornecimento, lubricantAllocation]);
     
     const registrosParaSalvar: TablesInsert<'classe_iii_registros'>[] = [];
     
