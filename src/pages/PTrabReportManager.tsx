@@ -596,6 +596,19 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
 };
 
 // =================================================================
+// FUNÇÕES AUXILIARES DE RÓTULO
+// =================================================================
+
+export const getTipoCombustivelLabel = (tipo: string) => {
+    if (tipo === 'DIESEL' || tipo === 'OD' || tipo === 'COMBUSTIVEL_DIESEL') {
+        return 'DIESEL'; // Alterado de 'ÓLEO DIESEL' para 'DIESEL'
+    } else if (tipo === 'GASOLINA' || tipo === 'GAS' || tipo === 'COMBUSTIVEL_GASOLINA') {
+        return 'GASOLINA';
+    }
+    return tipo;
+};
+
+// =================================================================
 // DEFINIÇÃO DOS RELATÓRIOS E RÓTULOS
 // =================================================================
 
