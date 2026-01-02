@@ -104,13 +104,10 @@ export async function fetchUserProfile(): Promise<Profile> {
         throw new Error("Usuário não autenticado.");
     }
 
-    // Busca o perfil e a OM padrão do usuário (se houver)
+    // Busca o perfil. REMOVIDO O JOIN INVÁLIDO.
     const { data: profileData, error } = await supabase
         .from('profiles')
-        .select(`
-            *,
-            om_details:organizacoes_militares(id, nome_om, codug_om)
-        `)
+        .select(`*`)
         .eq('id', user.id)
         .maybeSingle();
 
@@ -119,7 +116,7 @@ export async function fetchUserProfile(): Promise<Profile> {
     }
 
     if (!profileData) {
-        // Se o perfil não existir, retorna um perfil básico (pode acontecer logo após o signup)
+        // Se o perfil não existir, retorna um perfil básico
         return {
             id: user.id,
             first_name: '',
@@ -130,16 +127,16 @@ export async function fetchUserProfile(): Promise<Profile> {
             credit_gnd4: 0,
             default_diretriz_year: null,
             raw_user_meta_data: null,
-            om_details: null,
+            om_details: null, // om_details será null, pois não foi buscado
         } as Profile;
     }
-
-    // O Supabase retorna om_details como um array se for um join, mas como maybeSingle, deve ser um objeto ou null.
-    // Se o campo om_details for um array (devido a um join implícito), pegamos o primeiro elemento.
-    const omDetails = Array.isArray(profileData.om_details) ? profileData.om_details[0] : profileData.om_details;
+    
+    // Se o perfil existir, mas não tivermos a OM, precisamos buscá-la separadamente
+    // Se o perfil tiver um campo om_id (que não está no esquema, mas é esperado pelo frontend), 
+    // poderíamos usá-lo aqui. Como não temos, a OM padrão será carregada como null.
 
     return {
         ...profileData,
-        om_details: omDetails,
+        om_details: null, // Força null para evitar erros de tipo, já que o JOIN falhou
     } as Profile;
 }

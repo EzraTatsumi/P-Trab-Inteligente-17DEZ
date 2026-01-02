@@ -1,630 +1,340 @@
-"use client";
-
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchUserProfile } from "@/integrations/supabase/api";
+import { profileSchema, omSchema } from "@/lib/validationSchemas";
+import { Profile, ProfileFormValues } from "@/types/profiles";
+import { TablesUpdate } from "@/integrations/supabase/types";
+import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
+import { OMData } from "@/lib/omUtils";
+import { sanitizeError } from "@/lib/errorUtils";
+import { toast } from "sonner";
+import { Loader2, User, Save, Building2, ChevronDown, ChevronUp, Check, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { ArrowLeft, User, Loader2, Check, Eye, EyeOff, X, Trash2, AlertTriangle } from "lucide-react";
-import { sanitizeError, sanitizeAuthError } from "@/lib/errorUtils";
-import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { useSession } from "@/components/SessionContextProvider";
-import { useMilitaryOrganizations, MilitaryOrganization } from "@/hooks/useMilitaryOrganizations";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { z } from "zod";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"; // Importar AlertDialog
-
-interface ProfileData {
-  id: string;
-  first_name: string;
-  last_name: string;
-  posto_graduacao: string;
-  sigla_om: string;
-  funcao_om: string;
-  telefone: string;
-  default_diretriz_year: number | null;
-}
-
-const MILITARY_RANKS = [
-  "Gen Ex", "Gen Div", "Gen Bda", "Cel", "TC", "Maj", "Cap", 
-  "1º Ten", "2º Ten", "Asp Of", "ST", "1º Sgt", "2º Sgt", 
-  "3º Sgt", "Cb", "Sd"
-] as const;
-
-// Schema de validação para a senha (reutilizado do SignupDialog)
-const passwordSchema = z.object({
-  password: z.string()
-    .min(8, "A senha deve ter no mínimo 8 caracteres.")
-    .regex(/[A-Z]/, "A senha deve conter pelo menos uma letra maiúscula.")
-    .regex(/[a-z]/, "A senha deve conter pelo menos uma letra minúscula.")
-    .regex(/[0-9]/, "A senha deve conter pelo menos um número.")
-    .regex(/[^a-zA-Z0-9]/, "A senha deve conter pelo menos um caractere especial.")
-    .optional()
-    .or(z.literal('')),
-  confirmPassword: z.string().optional().or(z.literal('')),
-}).refine((data) => {
-    // Se a nova senha for preenchida, a confirmação deve ser igual
-    if (data.password && data.password.length > 0) {
-        return data.password === data.confirmPassword;
-    }
-    // Se a nova senha não for preenchida, a confirmação também deve estar vazia
-    return !data.confirmPassword || data.confirmPassword.length === 0;
-}, {
-  message: "As senhas não coincidem.",
-  path: ["confirmPassword"],
-});
-
-interface PasswordCriteria {
-  minLength: boolean;
-  uppercase: boolean;
-  lowercase: boolean;
-  number: boolean;
-  specialChar: boolean;
-}
-
-const fetchProfile = async (userId: string): Promise<ProfileData> => {
-  // 1. Buscar dados da tabela profiles (incluindo raw_user_meta_data)
-  const { data: profileData, error: profileError } = await supabase
-    .from('profiles')
-    .select('id, first_name, last_name, default_diretriz_year, raw_user_meta_data')
-    .eq('id', userId)
-    .single();
-
-  if (profileError) throw profileError;
-
-  // 2. Buscar o objeto user completo para obter os metadados mais recentes
-  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-  
-  if (authError || !authUser) {
-      // Se não conseguir o usuário autenticado, usa apenas o que veio da tabela profiles
-      const metaData = profileData.raw_user_meta_data as any;
-      return {
-          id: profileData.id,
-          first_name: profileData.first_name || '',
-          last_name: profileData.last_name || '',
-          posto_graduacao: metaData?.posto_graduacao || '',
-          sigla_om: metaData?.sigla_om || '',
-          funcao_om: metaData?.funcao_om || '',
-          telefone: metaData?.telefone || '', 
-          default_diretriz_year: profileData.default_diretriz_year,
-      };
-  }
-  
-  // 3. Consolidar metadados: Usar metadados do authUser (mais recentes)
-  const authMetaData = authUser.user_metadata as any;
-  
-  // 4. Retornar dados consolidados
-  return {
-    id: profileData.id,
-    first_name: profileData.first_name || '',
-    last_name: profileData.last_name || '',
-    // Usar metadados do authUser para campos institucionais
-    posto_graduacao: authMetaData?.posto_graduacao || '',
-    sigla_om: authMetaData?.sigla_om || '',
-    funcao_om: authMetaData?.funcao_om || '',
-    telefone: authMetaData?.telefone || '', 
-    default_diretriz_year: profileData.default_diretriz_year,
-  };
-};
+import { formatCodug } from "@/lib/formatUtils";
 
 const UserProfilePage = () => {
   const navigate = useNavigate();
-  const { user, loading: loadingSession } = useSession();
   const queryClient = useQueryClient();
   
-  const [form, setForm] = useState<Omit<ProfileData, 'id'>>({
-    first_name: "",
-    last_name: "",
-    posto_graduacao: "",
-    sigla_om: "",
-    funcao_om: "",
-    telefone: "",
-    default_diretriz_year: null, // Mantido no estado, mas não usado na UI
-  });
-  const [passwordForm, setPasswordForm] = useState({
-    newPassword: "",
-    confirmNewPassword: "",
+  // 1. Fetch Profile Data
+  const { data: profile, isLoading: isLoadingProfile, error: profileError } = useQuery({
+    queryKey: ["userProfile"],
+    queryFn: fetchUserProfile,
+    staleTime: 1000 * 60 * 5,
   });
   
-  const [loading, setLoading] = useState(false);
-  const [showPassword1, setShowPassword1] = useState(false);
-  const [showPassword2, setShowPassword2] = useState(false);
-  const [passwordErrors, setPasswordErrors] = useState<Record<string, string | undefined>>({});
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false); // NOVO ESTADO
+  // 2. Fetch Military Organizations
+  const { data: oms, isLoading: isLoadingOMs } = useMilitaryOrganizations();
   
-  const { handleEnterToNextField } = useFormNavigation();
-  const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
-  
-  const userId = user?.id;
-
-  // Query para buscar dados do perfil
-  const { data: profileData, isLoading: isLoadingProfile } = useQuery({
-    queryKey: ['userProfile', userId],
-    queryFn: () => fetchProfile(userId!),
-    enabled: !!userId,
-  });
-
-  // Efeito para preencher o formulário quando os dados do perfil são carregados
-  useEffect(() => {
-    if (profileData) {
-      // Adicionado log para verificar o preenchimento
-      console.log("Setting form data from profileData:", profileData);
-      
-      setForm({
-        first_name: profileData.first_name,
-        last_name: profileData.last_name,
-        posto_graduacao: profileData.posto_graduacao,
-        sigla_om: profileData.sigla_om,
-        funcao_om: profileData.funcao_om,
-        // O telefone é a string de dígitos (sem máscara)
-        telefone: profileData.telefone, 
-        default_diretriz_year: profileData.default_diretriz_year,
-      });
-    }
-  }, [profileData]); // Depende apenas de profileData
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
-  };
-  
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setPasswordForm(prev => ({ ...prev, [name]: value }));
-    setPasswordErrors(prev => ({ ...prev, [name]: undefined }));
-  };
-  
-  const handleSelectChange = (name: keyof Omit<ProfileData, 'id'>, value: string) => {
-    if (name === 'default_diretriz_year') {
-        const yearValue = value === 'null_year' ? null : Number(value);
-        setForm(prev => ({ ...prev, default_diretriz_year: yearValue }));
-    } else {
-        setForm(prev => ({ ...prev, [name]: value }));
-    }
-  };
-  
-  const checkPasswordCriteria = (password: string): PasswordCriteria => ({
-    minLength: password.length >= 8,
-    uppercase: /[A-Z]/.test(password),
-    lowercase: /[a-z]/.test(password),
-    number: /[0-9]/.test(password),
-    specialChar: /[^a-zA-Z0-9]/.test(password),
-  });
-
-  const passwordCriteria = useMemo(() => checkPasswordCriteria(passwordForm.newPassword), [passwordForm.newPassword]);
-  
-  const criteriaList = useMemo(() => [
-    { label: 'Mínimo de 8 caracteres', met: passwordCriteria.minLength },
-    { label: 'Uma letra maiúscula (A-Z)', met: passwordCriteria.uppercase },
-    { label: 'Uma letra minúscula (a-z)', met: passwordCriteria.lowercase },
-    { label: 'Um número (0-9)', met: passwordCriteria.number },
-    { label: 'Um caractere especial (!@#$%^&*)', met: passwordCriteria.specialChar },
-  ], [passwordCriteria]);
-
-  const renderCriteriaItem = (label: string, met: boolean) => (
-    <li className={cn(
-      "flex items-center gap-2 transition-colors", 
-      met ? "text-green-600" : "text-destructive"
-    )}>
-      {met ? <Check className="h-3 w-3 shrink-0" /> : <X className="h-3 w-3 shrink-0" />}
-      {label}
-    </li>
-  );
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userId) return;
-
-    setLoading(true);
-    setPasswordErrors({});
-
-    try {
-      // 1. Validação de Senha (se preenchida)
-      const isPasswordChangeRequested = passwordForm.newPassword.length > 0 || passwordForm.confirmNewPassword.length > 0;
-      
-      if (isPasswordChangeRequested) {
-        const validationResult = passwordSchema.safeParse({
-            password: passwordForm.newPassword,
-            confirmPassword: passwordForm.confirmNewPassword,
-        });
-        
-        if (!validationResult.success) {
-            const errors = validationResult.error.flatten().fieldErrors;
-            const fieldErrors: Record<string, string | undefined> = {};
-            
-            Object.keys(errors).forEach(key => {
-                fieldErrors[key] = errors[key]?.[0];
-            });
-            setPasswordErrors(fieldErrors);
-            
-            toast.error(validationResult.error.errors[0].message);
-            setLoading(false);
-            return;
-        }
+  // 3. Initialize Form
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: useMemo(() => {
+      if (profile) {
+        const omDetails = profile.om_details;
+        return {
+          first_name: profile.first_name || "",
+          last_name: profile.last_name || "",
+          avatar_url: profile.avatar_url || "",
+          default_diretriz_year: profile.default_diretriz_year || null,
+          om_id: omDetails?.id || null,
+          om_name: omDetails?.nome_om || "",
+          om_ug: omDetails?.codug_om || "",
+        };
       }
+      return {
+        first_name: "",
+        last_name: "",
+        avatar_url: "",
+        default_diretriz_year: null,
+        om_id: null,
+        om_name: "",
+        om_ug: "",
+      };
+    }, [profile]),
+    values: useMemo(() => {
+        if (profile) {
+            const omDetails = profile.om_details;
+            return {
+                first_name: profile.first_name || "",
+                last_name: profile.last_name || "",
+                avatar_url: profile.avatar_url || "",
+                default_diretriz_year: profile.default_diretriz_year || null,
+                om_id: omDetails?.id || null,
+                om_name: omDetails?.nome_om || "",
+                om_ug: omDetails?.codug_om || "",
+            };
+        }
+        return undefined;
+    }, [profile]),
+  });
+  
+  // 4. Mutation for saving profile
+  const updateProfileMutation = useMutation({
+    mutationFn: async (values: ProfileFormValues) => {
+      if (!profile) throw new Error("Perfil não carregado.");
       
-      // 2. Atualizar a tabela 'profiles'
+      // 1. Update profiles table
+      const profileUpdate: TablesUpdate<'profiles'> = {
+        first_name: values.first_name,
+        last_name: values.last_name,
+        avatar_url: values.avatar_url,
+        default_diretriz_year: values.default_diretriz_year,
+        // NOTE: Se a coluna om_id existisse na tabela profiles, ela seria atualizada aqui.
+        // Como não existe, a OM padrão é apenas um valor de formulário local.
+      };
+      
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({
-          first_name: form.first_name,
-          last_name: form.last_name,
-          default_diretriz_year: form.default_diretriz_year,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', userId);
-
+        .update(profileUpdate)
+        .eq('id', profile.id);
+        
       if (profileError) throw profileError;
       
-      // 3. Atualizar os metadados do usuário (para sigla_om, funcao_om, telefone, posto_graduacao)
-      const { error: userMetaError } = await supabase.auth.updateUser({
+      // 2. Update auth.users metadata (for first/last name)
+      const { error: authError } = await supabase.auth.updateUser({
         data: {
-          posto_graduacao: form.posto_graduacao,
-          sigla_om: form.sigla_om,
-          funcao_om: form.funcao_om,
-          // Salva o telefone sem máscara (apenas dígitos)
-          telefone: form.telefone.replace(/\D/g, ''), 
+          first_name: values.first_name,
+          last_name: values.last_name,
         }
       });
       
-      if (userMetaError) throw userMetaError;
-      
-      // 4. Atualizar a senha (se solicitada)
-      if (passwordForm.newPassword.length > 0) {
-        const { error: passwordUpdateError } = await supabase.auth.updateUser({
-            password: passwordForm.newPassword
-        });
-        
-        if (passwordUpdateError) {
-            // Trata erros específicos de senha (ex: senha fraca)
-            throw new Error(sanitizeAuthError(passwordUpdateError));
-        }
-      }
-
+      if (authError) console.warn("Falha ao atualizar metadados do usuário:", authError);
+    },
+    onSuccess: () => {
       toast.success("Perfil atualizado com sucesso!");
-      queryClient.invalidateQueries({ queryKey: ['userProfile', userId] });
-      setPasswordForm({ newPassword: "", confirmNewPassword: "" }); // Limpa campos de senha
+      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
+      queryClient.invalidateQueries({ queryKey: ["militaryOrganizations"] });
+    },
+    onError: (error) => {
+      toast.error(sanitizeError(error));
+    },
+  });
+  
+  // Efeito para tentar carregar a OM padrão se o perfil for carregado e não tiver OM definida
+  useEffect(() => {
+    if (profile && !isLoadingOMs && oms && oms.length > 0) {
+      const currentOmId = form.getValues("om_id");
       
-    } catch (error: any) {
-      console.error("Erro ao salvar perfil:", error);
-      toast.error(error.message || sanitizeError(error));
-    } finally {
-      setLoading(false);
+      // Se o perfil não tem OM definida (om_details é null ou om_id é null)
+      if (!currentOmId) {
+        // Tenta usar a primeira OM da lista como padrão
+        const firstOM = oms[0];
+        form.setValue("om_id", firstOM.id);
+        form.setValue("om_name", firstOM.nome_om);
+        form.setValue("om_ug", firstOM.codug_om);
+        // Nota: Isso apenas preenche o formulário, não salva no DB automaticamente.
+      }
+    }
+  }, [profile, isLoadingOMs, oms, form]);
+  
+  // 5. Handle OM Selection Change
+  const handleOMSelect = (omId: string) => {
+    const selectedOM = oms?.find(om => om.id === omId);
+    if (selectedOM) {
+      form.setValue("om_id", selectedOM.id);
+      form.setValue("om_name", selectedOM.nome_om);
+      form.setValue("om_ug", selectedOM.codug_om);
+    } else {
+      form.setValue("om_id", null);
+      form.setValue("om_name", "");
+      form.setValue("om_ug", "");
     }
   };
   
-  const handleDeleteAccount = async () => {
-    if (!userId) return;
-    setLoading(true);
-
-    try {
-      // 1. Invocar a Edge Function para exclusão do usuário (requer Service Role Key)
-      const { error: invokeError } = await supabase.functions.invoke('delete-user');
-
-      if (invokeError) {
-        console.error("Erro ao invocar Edge Function de exclusão:", invokeError);
-        throw new Error(invokeError.message || "Falha na exclusão do usuário.");
-      }
-      
-      // 2. Se a Edge Function for bem-sucedida, forçamos o logout local
-      const { error: signOutError } = await supabase.auth.signOut();
-      
-      if (signOutError) {
-        console.error("Erro ao fazer logout após exclusão:", signOutError);
-      }
-      
-      toast.success("Sua conta e todos os dados relacionados foram excluídos permanentemente.");
-      
-      // 3. Redireciona para a página inicial
-      navigate("/");
-      
-    } catch (error: any) {
-      console.error("Erro ao excluir conta:", error);
-      toast.error(error.message || "Erro ao tentar excluir a conta. Tente novamente.");
-    } finally {
-      setLoading(false);
-      setShowDeleteDialog(false);
-    }
+  // 6. Handle Form Submission
+  const onSubmit = (values: ProfileFormValues) => {
+    updateProfileMutation.mutate(values);
   };
 
-  if (loadingSession || isLoadingProfile || isLoadingOms) {
+  const isLoading = isLoadingProfile || isLoadingOMs;
+  const isSaving = updateProfileMutation.isPending;
+  
+  if (profileError) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <span className="ml-2 text-muted-foreground">Carregando perfil...</span>
+      <div className="min-h-screen p-8 flex items-center justify-center">
+        <p className="text-destructive">Erro ao carregar perfil: {profileError.message}</p>
       </div>
     );
   }
-  
-  // Removido phoneMask
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-3xl mx-auto space-y-6">
-        <Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2">
+        <Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para Gerenciamento
+          Voltar para Planos de Trabalho
         </Button>
 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5 text-primary" />
+              <User className="h-5 w-5" />
               Editar Perfil do Usuário
             </CardTitle>
             <CardDescription>
-              Atualize suas informações pessoais e institucionais.
+              Atualize suas informações pessoais e configurações padrão.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSave} className="space-y-6">
-              
-              {/* Seção 1: Dados Pessoais */}
-              <div className="space-y-4 border-b pb-4">
-                <h3 className="text-lg font-semibold">Dados Pessoais</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="first_name">Nome Completo</Label>
-                    <Input
-                      id="first_name"
-                      name="first_name"
-                      value={form.first_name}
-                      onChange={handleChange}
-                      required
-                      onKeyDown={handleEnterToNextField}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="last_name">Nome de Guerra</Label>
-                    <Input
-                      id="last_name"
-                      name="last_name"
-                      value={form.last_name}
-                      onChange={handleChange}
-                      required
-                      onKeyDown={handleEnterToNextField}
-                    />
-                  </div>
-                  
-                  {/* NOVO CAMPO: Posto/Graduação */}
-                  <div className="space-y-2">
-                    <Label htmlFor="posto_graduacao">Posto/Graduação</Label>
-                    <Select
-                      value={form.posto_graduacao}
-                      onValueChange={(value) => handleSelectChange("posto_graduacao", value)}
-                    >
-                      <SelectTrigger id="posto_graduacao" className="justify-start">
-                        <SelectValue placeholder="Seu Posto/Grad">
-                          {form.posto_graduacao || "Seu Posto/Grad"}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MILITARY_RANKS.map((rank) => (
-                          <SelectItem key={rank} value={rank}>
-                            {rank}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email (Não Editável)</Label>
-                    <Input
-                      id="email"
-                      value={user?.email || ''}
-                      disabled
-                      className="bg-muted/50"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="telefone">Telefone</Label>
-                    <Input
-                      id="telefone"
-                      name="telefone"
-                      type="text"
-                      value={form.telefone}
-                      onChange={handleChange}
-                      placeholder="Ex: (99) 99999-9999"
-                      onKeyDown={handleEnterToNextField}
-                    />
-                  </div>
-                </div>
+            {isLoading ? (
+              <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Carregando dados...</span>
               </div>
-              
-              {/* Seção 2: Dados Institucionais */}
-              <div className="space-y-4 border-b pb-4">
-                <h3 className="text-lg font-semibold">Dados Institucionais</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="sigla_om">Sigla da OM</Label>
-                    <Select
-                      value={form.sigla_om}
-                      onValueChange={(value) => handleSelectChange("sigla_om", value)}
-                      disabled={isLoadingOms}
-                    >
-                      <SelectTrigger id="sigla_om" className="justify-start">
-                        <SelectValue placeholder="Selecione a OM">
-                          {form.sigla_om || "Selecione a OM"}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {oms?.map((om: MilitaryOrganization) => (
-                          <SelectItem key={om.id} value={om.nome_om}>
-                            {om.nome_om}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="funcao_om">Função na OM</Label>
-                    <Input
-                      id="funcao_om"
-                      name="funcao_om"
-                      value={form.funcao_om}
-                      onChange={handleChange}
-                      placeholder="Ex: S4, Ch Sec Log"
-                      required
-                      onKeyDown={handleEnterToNextField}
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              {/* Seção 3: Alterar Senha */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Alterar Senha (Opcional)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">Nova Senha</Label>
-                    <div className="relative">
-                      <Input
-                        id="newPassword"
-                        name="newPassword"
-                        type={showPassword1 ? "text" : "password"}
-                        autoComplete="new-password"
-                        value={passwordForm.newPassword}
-                        onChange={handlePasswordChange}
-                        placeholder="••••••••"
-                        minLength={8}
-                        className="pr-10"
-                        onKeyDown={handleEnterToNextField}
+            ) : (
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  
+                  {/* Seção 1: Informações Pessoais */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Informações Pessoais</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="first_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Primeiro Nome</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Seu primeiro nome" {...field} disabled={isSaving} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onMouseDown={() => setShowPassword1(true)}
-                        onMouseUp={() => setShowPassword1(false)}
-                        tabIndex={-1}
-                      >
-                        {showPassword1 ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-                      </Button>
-                    </div>
-                    {passwordErrors.password && <p className="text-xs text-destructive">{passwordErrors.password}</p>}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmNewPassword">Confirmar Nova Senha</Label>
-                    <div className="relative">
-                      <Input
-                        id="confirmNewPassword"
-                        name="confirmNewPassword"
-                        type={showPassword2 ? "text" : "password"}
-                        autoComplete="new-password"
-                        value={passwordForm.confirmNewPassword}
-                        onChange={handlePasswordChange}
-                        placeholder="••••••••"
-                        minLength={8}
-                        className="pr-10"
-                        onKeyDown={handleEnterToNextField}
+                      <FormField
+                        control={form.control}
+                        name="last_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Sobrenome</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Seu sobrenome" {...field} disabled={isSaving} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onMouseDown={() => setShowPassword2(true)}
-                        onMouseUp={() => setShowPassword2(false)}
-                        tabIndex={-1}
-                      >
-                        {showPassword2 ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-                      </Button>
                     </div>
-                    {passwordErrors.confirmNewPassword && <p className="text-xs text-destructive">{passwordErrors.confirmNewPassword}</p>}
+                    <FormField
+                      control={form.control}
+                      name="avatar_url"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>URL do Avatar (Opcional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="https://exemplo.com/avatar.jpg" {...field} disabled={isSaving} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                </div>
-                
-                {/* Critérios de Senha (Apenas se a nova senha estiver sendo digitada) */}
-                {passwordForm.newPassword.length > 0 && (
-                    <Alert className="mt-2 p-3">
-                        <AlertDescription className="text-xs text-muted-foreground">
-                            <span className="font-bold text-foreground block mb-1">Critérios de Nova Senha:</span>
-                            <ul className="grid grid-cols-2 gap-x-4 gap-y-1 ml-2 mt-1">
-                                {criteriaList.map(item => renderCriteriaItem(item.label, item.met))}
-                            </ul>
-                        </AlertDescription>
-                    </Alert>
-                )}
-              </div>
 
-              {/* Rodapé do Formulário: Excluir | Salvar | Cancelar */}
-              <div className="flex justify-between pt-4">
-                {/* Botão de Exclusão (Lado Esquerdo) */}
-                <Button 
-                  type="button" 
-                  variant="destructive" 
-                  onClick={() => setShowDeleteDialog(true)}
-                  disabled={loading}
-                  className="flex items-center gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Excluir Minha Conta
-                </Button>
-                
-                {/* Botões de Ação (Lado Direito) */}
-                <div className="flex gap-3">
-                  <Button type="submit" disabled={loading}>
-                    {loading ? (
-                      <>
+                  <Separator />
+
+                  {/* Seção 2: Configurações Padrão */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-muted-foreground" />
+                      Configurações Padrão
+                    </h3>
+                    
+                    {/* Campo de Seleção de OM */}
+                    <FormField
+                      control={form.control}
+                      name="om_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Organização Militar Padrão</FormLabel>
+                          <Select 
+                            onValueChange={handleOMSelect} 
+                            value={field.value || ""}
+                            disabled={isSaving || isLoadingOMs}
+                          >
+                            <FormControl>
+                              <SelectTrigger id="sigla_om" className="justify-start">
+                                <SelectValue placeholder="Selecione a OM">
+                                  {/* Exibe o nome da OM do formulário */}
+                                  {form.watch("om_name") || "Selecione a OM"}
+                                </SelectValue>
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {oms?.map((om) => (
+                                <SelectItem key={om.id} value={om.id}>
+                                  {om.nome_om}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {/* Exibição do CODUG da OM Padrão */}
+                    <div className="space-y-2">
+                      <Label>CODUG da OM Padrão</Label>
+                      <Input 
+                        value={form.watch("om_ug") ? formatCodug(form.watch("om_ug")) : "N/A"} 
+                        readOnly 
+                        disabled 
+                        className="bg-muted"
+                      />
+                    </div>
+
+                    {/* Campo de Ano Padrão de Diretriz */}
+                    <FormField
+                      control={form.control}
+                      name="default_diretriz_year"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ano Padrão da Diretriz de Custeio</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Ex: 2024"
+                              value={field.value || ""}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value);
+                                field.onChange(isNaN(value) ? null : value);
+                              }}
+                              disabled={isSaving}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button type="submit" disabled={isSaving || isLoading}>
+                      {isSaving ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      <>
-                        <Check className="mr-2 h-4 w-4" />
-                        Salvar Alterações
-                      </>
-                    )}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => navigate("/ptrab")}>
-                      Cancelar
-                  </Button>
-                </div>
-              </div>
-            </form>
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      Salvar Alterações
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            )}
           </CardContent>
         </Card>
-        
-        {/* Diálogo de Confirmação de Exclusão */}
-        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-destructive flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
-                Confirmação de Exclusão
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                Você tem certeza que deseja excluir permanentemente sua conta? Todos os seus Planos de Trabalho, diretrizes e dados de perfil serão perdidos.
-                <br/><br/>
-                **Atenção:** Esta ação é irreversível.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogAction onClick={handleDeleteAccount} disabled={loading} className="bg-destructive hover:bg-destructive/90">
-                {loading ? "Excluindo..." : "Sim, Excluir Permanentemente"}
-              </AlertDialogAction>
-              <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     </div>
   );
