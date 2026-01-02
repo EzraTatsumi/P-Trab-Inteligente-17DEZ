@@ -1805,7 +1805,7 @@ const PTrabManager = () => {
                 </DropdownMenuItem>
                 
                 <DropdownMenuItem onClick={() => navigate("/config/diretrizes")}>
-                  Diretriz de Custeio
+                  Diretriz de Custeio Logístico
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/config/visualizacao")}>
                   Opção de Visualização
