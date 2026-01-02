@@ -61,7 +61,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     registros.forEach(r => {
         const key = `${r.organizacao}-${r.ug}`;
         
-        // Verifica se o registro atual tem memória customizada
+        // Verifica se o registro atual tem memória customizada (usando o campo dedicado)
         const hasCustomMemoria = !!r.memoria_calculo_op_customizada && r.memoria_calculo_op_customizada.trim().length > 0;
         
         if (!grupos[key]) {
@@ -85,6 +85,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         
         // Lógica de Priorização: Se o registro atual tem memória customizada E o registro já salvo não tem, substitui o registro original.
         const currentSavedRecord = grupos[key].registroOriginal;
+        // CORRIGIDO: Usando o campo dedicado para verificar a memória salva
         const savedHasCustomMemoria = !!currentSavedRecord.memoria_calculo_op_customizada && currentSavedRecord.memoria_calculo_op_customizada.trim().length > 0;
         
         if (hasCustomMemoria && !savedHasCustomMemoria) {

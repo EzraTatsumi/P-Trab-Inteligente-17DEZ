@@ -276,10 +276,9 @@ export const generateClasseIXMemoriaCalculo = (registro: ClasseIIRegistro): stri
 export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP'): string => {
     if (registro.categoria === 'RACAO_OPERACIONAL') {
         if (tipo === 'OP') {
-            // 1. Para Ração Operacional (OP), prioriza o customizado armazenado em memoriaQSCustomizada
-            // CORREÇÃO APLICADA AQUI: Usar memoriaQSCustomizada para Ração Operacional
-            if (registro.memoriaQSCustomizada && registro.memoriaQSCustomizada.trim().length > 0) {
-                return registro.memoriaQSCustomizada;
+            // CORREÇÃO APLICADA AQUI: Usar o campo dedicado memoria_calculo_op_customizada
+            if (registro.memoria_calculo_op_customizada && registro.memoria_calculo_op_customizada.trim().length > 0) {
+                return registro.memoria_calculo_op_customizada;
             }
             
             // 2. Se não houver customizado, gera o automático
@@ -683,8 +682,8 @@ const PTrabReportManager = () => {
 
       const { data: classeIData } = await supabase
         .from('classe_i_registros')
-        // REMOVIDO: memoria_calculo_op_customizada
-        .select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3')
+        // CORRIGIDO: Incluindo o campo dedicado memoria_calculo_op_customizada
+        .select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3')
         .eq('p_trab_id', ptrabId);
       
       const [
@@ -744,8 +743,8 @@ const PTrabReportManager = () => {
           total_geral: Number(r.total_geral),
           memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
           memoriaQRCustomizada: r.memoria_calculo_qr_customizada,
-          // CORRIGIDO: Mapeamento de Ração Operacional para o campo QS customizado, conforme regra de negócio
-          memoria_calculo_op_customizada: r.memoria_calculo_qs_customizada, 
+          // CORRIGIDO: Mapeamento do campo dedicado
+          memoria_calculo_op_customizada: r.memoria_calculo_op_customizada, 
           categoria: (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL',
           quantidade_r2: r.quantidade_r2 || 0,
           quantidade_r3: r.quantidade_r3 || 0,
