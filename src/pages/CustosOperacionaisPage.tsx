@@ -62,7 +62,7 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   fator_concessionaria: 0,
   observacoes: "",
   
-  // NOVOS CAMPOS DE DIÁRIA (Valores iniciais baseados na tabela fornecida)
+  // NOVOS CAMPOS DE DIÁRIA
   diaria_referencia_legal: 'Decreto Nº 12.324 de 19DEZ24', // NOVO DECRETO
   diaria_of_gen_bsb: 600.00,
   diaria_of_gen_capitais: 515.00,
@@ -76,6 +76,9 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   diaria_demais_pracas_bsb: 355.00,
   diaria_demais_pracas_capitais: 315.00,
   diaria_demais_pracas_demais: 280.00,
+  
+  // NOVO CAMPO
+  taxa_embarque: 95.00,
 });
 
 const CustosOperacionaisPage = () => {
@@ -236,12 +239,15 @@ const CustosOperacionaisPage = () => {
         diaria_demais_pracas_capitais: Number(loadedData.diaria_demais_pracas_capitais || DIARIA_RANKS_CONFIG[3].capitais),
         diaria_demais_pracas_demais: Number(loadedData.diaria_demais_pracas_demais || DIARIA_RANKS_CONFIG[3].demais),
         
+        // NOVO CAMPO
+        taxa_embarque: Number(loadedData.taxa_embarque || defaultDiretrizes(year).taxa_embarque),
+        
         observacoes: loadedData.observacoes || "",
       };
       
       setDiretrizes(numericData);
       
-      // Inicializar raw inputs para campos monetários (incluindo os novos campos de diária)
+      // Inicializar raw inputs para campos monetários (incluindo os novos campos de diária e taxa de embarque)
       const initialRawInputs: Record<string, string> = {};
       
       // Campos da lista OPERATIONAL_FIELDS
@@ -255,6 +261,9 @@ const CustosOperacionaisPage = () => {
         initialRawInputs[`diaria_${rank.key}_capitais`] = numberToRawDigits(numericData[`diaria_${rank.key}_capitais` as keyof DiretrizOperacional] as number);
         initialRawInputs[`diaria_${rank.key}_demais`] = numberToRawDigits(numericData[`diaria_${rank.key}_demais` as keyof DiretrizOperacional] as number);
       });
+      
+      // Taxa de Embarque
+      initialRawInputs['taxa_embarque'] = numberToRawDigits(numericData.taxa_embarque as number);
       
       setRawInputs(initialRawInputs);
       
@@ -293,7 +302,7 @@ const CustosOperacionaisPage = () => {
         valor_locacao_viaturas_dia: diretrizes.valor_locacao_viaturas_dia || 0,
         fator_material_consumo: diretrizes.fator_material_consumo || 0,
         fator_concessionaria: diretrizes.fator_concessionaria || 0,
-        // NOVOS CAMPOS DE DIÁRIA (Adicionados para validação Zod)
+        // NOVOS CAMPOS DE DIÁRIA
         diaria_of_gen_bsb: diretrizes.diaria_of_gen_bsb || 0,
         diaria_of_gen_capitais: diretrizes.diaria_of_gen_capitais || 0,
         diaria_of_gen_demais: diretrizes.diaria_of_gen_demais || 0,
@@ -306,10 +315,11 @@ const CustosOperacionaisPage = () => {
         diaria_demais_pracas_bsb: diretrizes.diaria_demais_pracas_bsb || 0,
         diaria_demais_pracas_capitais: diretrizes.diaria_demais_pracas_capitais || 0,
         diaria_demais_pracas_demais: diretrizes.diaria_demais_pracas_demais || 0,
+        // NOVO CAMPO
+        taxa_embarque: diretrizes.taxa_embarque || 0,
       };
       
       // 2. Validação Zod
-      // Nota: O schema foi atualizado no passo anterior para incluir os novos campos e remover o obsoleto.
       diretrizOperacionalSchema.parse(dataToValidate);
 
       // 3. Preparar dados para o Supabase
@@ -342,6 +352,9 @@ const CustosOperacionaisPage = () => {
         diaria_demais_pracas_bsb: diretrizes.diaria_demais_pracas_bsb,
         diaria_demais_pracas_capitais: diretrizes.diaria_demais_pracas_capitais,
         diaria_demais_pracas_demais: diretrizes.diaria_demais_pracas_demais,
+        
+        // NOVO CAMPO
+        taxa_embarque: diretrizes.taxa_embarque,
       };
 
       // 4. Salvar Diretrizes
@@ -555,17 +568,29 @@ const CustosOperacionaisPage = () => {
       };
     };
     
+    // Props para Taxa de Embarque
+    const taxaEmbarqueProps = renderDiretrizField({
+        key: 'taxa_embarque', 
+        label: 'Taxa de Embarque (R$)', 
+        type: 'currency', 
+        placeholder: 'Ex: 95,00'
+    });
+    
     return (
       <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="diaria_referencia_legal">Referência Legal (Lei/Portaria)</Label>
-          <Input
-            id="diaria_referencia_legal"
-            value={diretrizes.diaria_referencia_legal || ''}
-            onChange={(e) => setDiretrizes({ ...diretrizes, diaria_referencia_legal: e.target.value })}
-            placeholder="Ex: Portaria Normativa nº 10/2024"
-            onKeyDown={handleEnterToNextField}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="diaria_referencia_legal">Referência Legal (Lei/Portaria)</Label>
+            <Input
+              id="diaria_referencia_legal"
+              value={diretrizes.diaria_referencia_legal || ''}
+              onChange={(e) => setDiretrizes({ ...diretrizes, diaria_referencia_legal: e.target.value })}
+              placeholder="Ex: Portaria Normativa nº 10/2024"
+              onKeyDown={handleEnterToNextField}
+            />
+          </div>
+          {/* NOVO CAMPO: Taxa de Embarque */}
+          {taxaEmbarqueProps}
         </div>
         
         <Table className="border">

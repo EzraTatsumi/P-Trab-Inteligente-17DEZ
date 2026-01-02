@@ -25,8 +25,6 @@ export const diretrizCusteioSchema = z.object({
 export const diretrizOperacionalSchema = z.object({
   ano_referencia: z.number().int().min(2020, "Ano inválido.").max(2050, "Ano inválido."),
   
-  // REMOVIDO: valor_diaria_padrao
-  
   // NOVOS CAMPOS DE DIÁRIA
   diaria_referencia_legal: z.string().optional(),
   diaria_of_gen_bsb: z.number().min(0, "Valor deve ser positivo."),
@@ -41,6 +39,9 @@ export const diretrizOperacionalSchema = z.object({
   diaria_demais_pracas_bsb: z.number().min(0, "Valor deve ser positivo."),
   diaria_demais_pracas_capitais: z.number().min(0, "Valor deve ser positivo."),
   diaria_demais_pracas_demais: z.number().min(0, "Valor deve ser positivo."),
+  
+  // NOVO CAMPO
+  taxa_embarque: z.number().min(0, "Valor deve ser positivo."),
   
   // CAMPOS EXISTENTES
   fator_passagens_aereas: z.number().min(0, "Fator deve ser positivo."),
