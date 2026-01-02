@@ -17,31 +17,23 @@ import { useSession } from "@/components/SessionContextProvider";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
 import * as z from "zod";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; // NOVO: Importar Collapsible
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Importar Table components
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
-// Valores padrão para inicialização
-const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
-  ano_referencia: year,
-  valor_diaria_padrao: 0,
-  fator_passagens_aereas: 0,
-  fator_servicos_terceiros: 0,
-  valor_verba_operacional_dia: 0,
-  valor_suprimentos_fundo_dia: 0,
-  valor_complemento_alimentacao: 0,
-  valor_fretamento_aereo_hora: 0,
-  valor_locacao_estrutura_dia: 0,
-  valor_locacao_viaturas_dia: 0,
-  fator_material_consumo: 0,
-  fator_concessionaria: 0,
-  observacoes: "",
-});
+// Estrutura de dados para a tabela de diárias
+const DIARIA_RANKS_CONFIG = [
+  { key: 'of_gen', label: 'Of Gen', bsb: 600.00, capitais: 515.00, demais: 455.00 },
+  { key: 'of_sup', label: 'Of Sup', bsb: 510.00, capitais: 450.00, demais: 395.00 },
+  { key: 'of_int_sgt', label: 'Of Int/Sub/Asp Of/ST/Sgt', bsb: 425.00, capitais: 380.00, demais: 335.00 },
+  { key: 'demais_pracas', label: 'Demais Praças', bsb: 355.00, capitais: 315.00, demais: 280.00 },
+];
 
 // Mapeamento de campos para rótulos e tipo de input (R$ ou Fator)
 const OPERATIONAL_FIELDS = [
-  { key: 'valor_diaria_padrao', label: 'Pagamento de Diárias', type: 'currency' as const, placeholder: 'Ex: 100,00' }, // Rótulo atualizado
+  // REMOVIDO: valor_diaria_padrao
   { key: 'fator_passagens_aereas', label: 'Passagens Aéreas (Fator)', type: 'factor' as const, placeholder: 'Ex: 1.5 (para 150%)' },
   { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)' },
   { key: 'valor_verba_operacional_dia', label: 'Verba Operacional (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 50,00' },
@@ -53,6 +45,38 @@ const OPERATIONAL_FIELDS = [
   { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)' },
   { key: 'fator_concessionaria', label: 'Concessionária (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.01 (para 1%)' },
 ];
+
+// Valores padrão para inicialização (incluindo os novos campos de diária)
+const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
+  ano_referencia: year,
+  // REMOVIDO: valor_diaria_padrao
+  fator_passagens_aereas: 0,
+  fator_servicos_terceiros: 0,
+  valor_verba_operacional_dia: 0,
+  valor_suprimentos_fundo_dia: 0,
+  valor_complemento_alimentacao: 0,
+  valor_fretamento_aereo_hora: 0,
+  valor_locacao_estrutura_dia: 0,
+  valor_locacao_viaturas_dia: 0,
+  fator_material_consumo: 0,
+  fator_concessionaria: 0,
+  observacoes: "",
+  
+  // NOVOS CAMPOS DE DIÁRIA (Valores iniciais baseados na tabela fornecida)
+  diaria_referencia_legal: 'Lei/Portaria [NÚMERO]',
+  diaria_of_gen_bsb: 600.00,
+  diaria_of_gen_capitais: 515.00,
+  diaria_of_gen_demais: 455.00,
+  diaria_of_sup_bsb: 510.00,
+  diaria_of_sup_capitais: 450.00,
+  diaria_of_sup_demais: 395.00,
+  diaria_of_int_sgt_bsb: 425.00,
+  diaria_of_int_sgt_capitais: 380.00,
+  diaria_of_int_sgt_demais: 335.00,
+  diaria_demais_pracas_bsb: 355.00,
+  diaria_demais_pracas_capitais: 315.00,
+  diaria_demais_pracas_demais: 280.00,
+});
 
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
@@ -70,12 +94,16 @@ const CustosOperacionaisPage = () => {
   // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
   
-  // NOVO ESTADO: Controla a expansão individual de cada campo
+  // Estado para controlar a expansão individual de cada campo
   const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => {
-    return OPERATIONAL_FIELDS.reduce((acc, field) => {
-      acc[field.key as string] = false; // Começa todos FECHADOS
-      return acc;
-    }, {} as Record<string, boolean>);
+    // Inicializa todos os campos como FECHADOS (false)
+    const initialState: Record<string, boolean> = {};
+    OPERATIONAL_FIELDS.forEach(field => {
+      initialState[field.key as string] = false;
+    });
+    // Adiciona o campo de diárias (que não está em OPERATIONAL_FIELDS)
+    initialState['diarias_detalhe'] = false; 
+    return initialState;
   });
   
   const { handleEnterToNextField } = useFormNavigation();
@@ -179,27 +207,55 @@ const CustosOperacionaisPage = () => {
       // Mapear todos os campos NUMERIC para Number e atualizar o estado
       const numericData: Partial<DiretrizOperacional> = {
         ...loadedData,
-        valor_diaria_padrao: Number(loadedData.valor_diaria_padrao || 0),
+        // Campos de Fator
         fator_passagens_aereas: Number(loadedData.fator_passagens_aereas || 0),
         fator_servicos_terceiros: Number(loadedData.fator_servicos_terceiros || 0),
+        fator_material_consumo: Number(loadedData.fator_material_consumo || 0),
+        fator_concessionaria: Number(loadedData.fator_concessionaria || 0),
+        
+        // Campos Monetários (R$)
         valor_verba_operacional_dia: Number(loadedData.valor_verba_operacional_dia || 0),
         valor_suprimentos_fundo_dia: Number(loadedData.valor_suprimentos_fundo_dia || 0),
         valor_complemento_alimentacao: Number(loadedData.valor_complemento_alimentacao || 0),
         valor_fretamento_aereo_hora: Number(loadedData.valor_fretamento_aereo_hora || 0),
         valor_locacao_estrutura_dia: Number(loadedData.valor_locacao_estrutura_dia || 0),
         valor_locacao_viaturas_dia: Number(loadedData.valor_locacao_viaturas_dia || 0),
-        fator_material_consumo: Number(loadedData.fator_material_consumo || 0),
-        fator_concessionaria: Number(loadedData.fator_concessionaria || 0),
+        
+        // NOVOS CAMPOS DE DIÁRIA
+        diaria_referencia_legal: loadedData.diaria_referencia_legal || defaultDiretrizes(year).diaria_referencia_legal,
+        diaria_of_gen_bsb: Number(loadedData.diaria_of_gen_bsb || DIARIA_RANKS_CONFIG[0].bsb),
+        diaria_of_gen_capitais: Number(loadedData.diaria_of_gen_capitais || DIARIA_RANKS_CONFIG[0].capitais),
+        diaria_of_gen_demais: Number(loadedData.diaria_of_gen_demais || DIARIA_RANKS_CONFIG[0].demais),
+        diaria_of_sup_bsb: Number(loadedData.diaria_of_sup_bsb || DIARIA_RANKS_CONFIG[1].bsb),
+        diaria_of_sup_capitais: Number(loadedData.diaria_of_sup_capitais || DIARIA_RANKS_CONFIG[1].capitais),
+        diaria_of_sup_demais: Number(loadedData.diaria_of_sup_demais || DIARIA_RANKS_CONFIG[1].demais),
+        diaria_of_int_sgt_bsb: Number(loadedData.diaria_of_int_sgt_bsb || DIARIA_RANKS_CONFIG[2].bsb),
+        diaria_of_int_sgt_capitais: Number(loadedData.diaria_of_int_sgt_capitais || DIARIA_RANKS_CONFIG[2].capitais),
+        diaria_of_int_sgt_demais: Number(loadedData.diaria_of_int_sgt_demais || DIARIA_RANKS_CONFIG[2].demais),
+        diaria_demais_pracas_bsb: Number(loadedData.diaria_demais_pracas_bsb || DIARIA_RANKS_CONFIG[3].bsb),
+        diaria_demais_pracas_capitais: Number(loadedData.diaria_demais_pracas_capitais || DIARIA_RANKS_CONFIG[3].capitais),
+        diaria_demais_pracas_demais: Number(loadedData.diaria_demais_pracas_demais || DIARIA_RANKS_CONFIG[3].demais),
+        
         observacoes: loadedData.observacoes || "",
       };
       
       setDiretrizes(numericData);
       
-      // Inicializar raw inputs para campos monetários
+      // Inicializar raw inputs para campos monetários (incluindo os novos campos de diária)
       const initialRawInputs: Record<string, string> = {};
+      
+      // Campos da lista OPERATIONAL_FIELDS
       OPERATIONAL_FIELDS.filter(f => f.type === 'currency').forEach(f => {
         initialRawInputs[f.key as string] = numberToRawDigits(numericData[f.key as keyof DiretrizOperacional] as number);
       });
+      
+      // Novos campos de Diária
+      DIARIA_RANKS_CONFIG.forEach(rank => {
+        initialRawInputs[`diaria_${rank.key}_bsb`] = numberToRawDigits(numericData[`diaria_${rank.key}_bsb` as keyof DiretrizOperacional] as number);
+        initialRawInputs[`diaria_${rank.key}_capitais`] = numberToRawDigits(numericData[`diaria_${rank.key}_capitais` as keyof DiretrizOperacional] as number);
+        initialRawInputs[`diaria_${rank.key}_demais`] = numberToRawDigits(numericData[`diaria_${rank.key}_demais` as keyof DiretrizOperacional] as number);
+      });
+      
       setRawInputs(initialRawInputs);
       
     } catch (error: any) {
@@ -227,7 +283,6 @@ const CustosOperacionaisPage = () => {
       const dataToValidate = {
         ...diretrizes,
         // Garantir que todos os campos numéricos estejam presentes para a validação Zod
-        valor_diaria_padrao: diretrizes.valor_diaria_padrao || 0,
         fator_passagens_aereas: diretrizes.fator_passagens_aereas || 0,
         fator_servicos_terceiros: diretrizes.fator_servicos_terceiros || 0,
         valor_verba_operacional_dia: diretrizes.valor_verba_operacional_dia || 0,
@@ -238,16 +293,37 @@ const CustosOperacionaisPage = () => {
         valor_locacao_viaturas_dia: diretrizes.valor_locacao_viaturas_dia || 0,
         fator_material_consumo: diretrizes.fator_material_consumo || 0,
         fator_concessionaria: diretrizes.fator_concessionaria || 0,
+        // Os novos campos de diária não precisam de validação Zod complexa aqui, 
+        // pois são tratados como números e strings simples.
       };
       
-      // 2. Validação Zod
-      diretrizOperacionalSchema.parse(dataToValidate);
+      // 2. Validação Zod (usando um schema temporário que exclui valor_diaria_padrao)
+      // Nota: O schema original precisa ser atualizado para remover valor_diaria_padrao
+      // e incluir os novos campos, mas como não posso editar validationSchemas.ts,
+      // vou criar um schema temporário que ignora o campo removido e valida os fatores.
+      
+      const tempSchema = diretrizOperacionalSchema.omit({ valor_diaria_padrao: true }).extend({
+        diaria_referencia_legal: z.string().optional(),
+        diaria_of_gen_bsb: z.number().min(0),
+        diaria_of_gen_capitais: z.number().min(0),
+        diaria_of_gen_demais: z.number().min(0),
+        diaria_of_sup_bsb: z.number().min(0),
+        diaria_of_sup_capitais: z.number().min(0),
+        diaria_of_sup_demais: z.number().min(0),
+        diaria_of_int_sgt_bsb: z.number().min(0),
+        diaria_of_int_sgt_capitais: z.number().min(0),
+        diaria_of_int_sgt_demais: z.number().min(0),
+        diaria_demais_pracas_bsb: z.number().min(0),
+        diaria_demais_pracas_capitais: z.number().min(0),
+        diaria_demais_pracas_demais: z.number().min(0),
+      });
+      
+      tempSchema.parse(dataToValidate);
 
-      // 3. Preparar dados para o Supabase (garantindo que os numéricos sejam strings se necessário, embora o Supabase aceite Number)
+      // 3. Preparar dados para o Supabase
       const diretrizData: TablesInsert<'diretrizes_operacionais'> = {
         user_id: user.id,
         ano_referencia: diretrizes.ano_referencia,
-        valor_diaria_padrao: dataToValidate.valor_diaria_padrao,
         fator_passagens_aereas: dataToValidate.fator_passagens_aereas,
         fator_servicos_terceiros: dataToValidate.fator_servicos_terceiros,
         valor_verba_operacional_dia: dataToValidate.valor_verba_operacional_dia,
@@ -259,6 +335,21 @@ const CustosOperacionaisPage = () => {
         fator_material_consumo: dataToValidate.fator_material_consumo,
         fator_concessionaria: dataToValidate.fator_concessionaria,
         observacoes: diretrizes.observacoes,
+        
+        // NOVOS CAMPOS DE DIÁRIA
+        diaria_referencia_legal: diretrizes.diaria_referencia_legal,
+        diaria_of_gen_bsb: diretrizes.diaria_of_gen_bsb,
+        diaria_of_gen_capitais: diretrizes.diaria_of_gen_capitais,
+        diaria_of_gen_demais: diretrizes.diaria_of_gen_demais,
+        diaria_of_sup_bsb: diretrizes.diaria_of_sup_bsb,
+        diaria_of_sup_capitais: diretrizes.diaria_of_sup_capitais,
+        diaria_of_sup_demais: diretrizes.diaria_of_sup_demais,
+        diaria_of_int_sgt_bsb: diretrizes.diaria_of_int_sgt_bsb,
+        diaria_of_int_sgt_capitais: diretrizes.diaria_of_int_sgt_capitais,
+        diaria_of_int_sgt_demais: diretrizes.diaria_of_int_sgt_demais,
+        diaria_demais_pracas_bsb: diretrizes.diaria_demais_pracas_bsb,
+        diaria_demais_pracas_capitais: diretrizes.diaria_demais_pracas_capitais,
+        diaria_demais_pracas_demais: diretrizes.diaria_demais_pracas_demais,
       };
 
       // 4. Salvar Diretrizes
@@ -448,6 +539,90 @@ const CustosOperacionaisPage = () => {
       );
     }
   };
+  
+  // NOVO: Função para renderizar a tabela de diárias
+  const renderDiariaTable = () => {
+    const handleDiariaChange = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais', rawValue: string) => {
+      const fieldKey = `diaria_${rankKey}_${destination}` as keyof DiretrizOperacional;
+      handleCurrencyChange(fieldKey, rawValue);
+    };
+    
+    const getDiariaProps = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais') => {
+      const fieldKey = `diaria_${rankKey}_${destination}` as keyof DiretrizOperacional;
+      const value = diretrizes[fieldKey] as number;
+      const rawDigits = rawInputs[fieldKey] || numberToRawDigits(value);
+      const { formatted: displayValue } = formatCurrencyInput(rawDigits);
+      
+      return {
+        value: value === 0 && rawDigits.length === 0 ? "" : displayValue,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleDiariaChange(rankKey, destination, e.target.value),
+        onKeyDown: handleEnterToNextField,
+        type: "text" as const,
+        inputMode: "numeric" as const,
+        className: "text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+      };
+    };
+    
+    return (
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="diaria_referencia_legal">Referência Legal (Lei/Portaria)</Label>
+          <Input
+            id="diaria_referencia_legal"
+            value={diretrizes.diaria_referencia_legal || ''}
+            onChange={(e) => setDiretrizes({ ...diretrizes, diaria_referencia_legal: e.target.value })}
+            placeholder="Ex: Portaria Normativa nº 10/2024"
+            onKeyDown={handleEnterToNextField}
+          />
+        </div>
+        
+        <Table className="border">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[35%]">Posto/Graduação</TableHead>
+              <TableHead className="text-center">Dslc BSB/MAO/RJ/SP</TableHead>
+              <TableHead className="text-center">Dslc demais capitais</TableHead>
+              <TableHead className="text-center">Demais Dslc</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {DIARIA_RANKS_CONFIG.map((rank) => (
+              <TableRow key={rank.key}>
+                <TableCell className="font-medium whitespace-nowrap">{rank.label}</TableCell>
+                <TableCell>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                    <Input
+                      {...getDiariaProps(rank.key, 'bsb')}
+                      className="pl-8"
+                    />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                    <Input
+                      {...getDiariaProps(rank.key, 'capitais')}
+                      className="pl-8"
+                    />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                    <Input
+                      {...getDiariaProps(rank.key, 'demais')}
+                      className="pl-8"
+                    />
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -509,14 +684,34 @@ const CustosOperacionaisPage = () => {
 
               {/* SEÇÃO PRINCIPAL DE CUSTOS OPERACIONAIS (ITENS INDIVIDUAIS COLAPSÁVEIS) */}
               <div className="border-t pt-4 mt-6">
-                {/* REMOVIDO: <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">...</h3> */}
-                
                 <div className="space-y-4">
+                  
+                  {/* NOVO: Pagamento de Diárias (Primeiro item) */}
+                  <Collapsible 
+                    open={fieldCollapseState['diarias_detalhe']} 
+                    onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['diarias_detalhe']: open }))}
+                    className="border-b pb-4 last:border-b-0 last:pb-0"
+                  >
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between cursor-pointer py-2">
+                        <h4 className="text-base font-medium">
+                          Pagamento de Diárias
+                        </h4>
+                        {fieldCollapseState['diarias_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-2">
+                        {renderDiariaTable()}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                  
+                  {/* OUTROS CAMPOS OPERACIONAIS */}
                   {OPERATIONAL_FIELDS.map(field => {
                     const fieldKey = field.key as string;
-                    const isOpen = fieldCollapseState[fieldKey] ?? false; // Agora começa FECHADO
+                    const isOpen = fieldCollapseState[fieldKey] ?? false;
                     
-                    // Renderiza o campo dentro de um Collapsible
                     return (
                       <Collapsible 
                         key={fieldKey} 
@@ -534,7 +729,6 @@ const CustosOperacionaisPage = () => {
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <div className="mt-2">
-                            {/* O campo de input é renderizado aqui */}
                             {renderDiretrizField(field)}
                           </div>
                         </CollapsibleContent>

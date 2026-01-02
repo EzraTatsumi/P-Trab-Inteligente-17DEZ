@@ -21,10 +21,28 @@ export const diretrizCusteioSchema = z.object({
   observacoes: z.string().optional(),
 });
 
-// NOVO: Schema para Diretrizes Operacionais
+// NOVO: Schema para Diretrizes Operacionais (Atualizado para Diárias Detalhadas)
 export const diretrizOperacionalSchema = z.object({
   ano_referencia: z.number().int().min(2020, "Ano inválido.").max(2050, "Ano inválido."),
-  valor_diaria_padrao: z.number().min(0, "Valor deve ser positivo."),
+  
+  // REMOVIDO: valor_diaria_padrao
+  
+  // NOVOS CAMPOS DE DIÁRIA
+  diaria_referencia_legal: z.string().optional(),
+  diaria_of_gen_bsb: z.number().min(0, "Valor deve ser positivo."),
+  diaria_of_gen_capitais: z.number().min(0, "Valor deve ser positivo."),
+  diaria_of_gen_demais: z.number().min(0, "Valor deve ser positivo."),
+  diaria_of_sup_bsb: z.number().min(0, "Valor deve ser positivo."),
+  diaria_of_sup_capitais: z.number().min(0, "Valor deve ser positivo."),
+  diaria_of_sup_demais: z.number().min(0, "Valor deve ser positivo."),
+  diaria_of_int_sgt_bsb: z.number().min(0, "Valor deve ser positivo."),
+  diaria_of_int_sgt_capitais: z.number().min(0, "Valor deve ser positivo."),
+  diaria_of_int_sgt_demais: z.number().min(0, "Valor deve ser positivo."),
+  diaria_demais_pracas_bsb: z.number().min(0, "Valor deve ser positivo."),
+  diaria_demais_pracas_capitais: z.number().min(0, "Valor deve ser positivo."),
+  diaria_demais_pracas_demais: z.number().min(0, "Valor deve ser positivo."),
+  
+  // CAMPOS EXISTENTES
   fator_passagens_aereas: z.number().min(0, "Fator deve ser positivo."),
   fator_servicos_terceiros: z.number().min(0, "Fator deve ser positivo."),
   valor_verba_operacional_dia: z.number().min(0, "Valor deve ser positivo."),
