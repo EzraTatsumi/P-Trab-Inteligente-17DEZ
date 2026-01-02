@@ -1,72 +1,74 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { Toaster } from "sonner";
-import { ThemeProvider } from "next-themes";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-// Pages
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
+import { SessionContextProvider } from "./components/SessionContextProvider";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
-import NotFound from "./pages/NotFound";
 import PTrabManager from "./pages/PTrabManager";
 import PTrabForm from "./pages/PTrabForm";
 import PTrabReportManager from "./pages/PTrabReportManager";
+import ClasseIForm from "./pages/ClasseIForm";
+import ClasseIIForm from "./pages/ClasseIIForm";
+import ClasseVForm from "./pages/ClasseVForm";
+import ClasseIIIForm from "./pages/ClasseIIIForm";
+import ClasseVIForm from "./pages/ClasseVIForm";
+import ClasseVIIForm from "./pages/ClasseVIIForm";
+import ClasseVIIIForm from "./pages/ClasseVIIIForm";
+import ClasseIXForm from "./pages/ClasseIXForm";
 import DiretrizesCusteioPage from "./pages/DiretrizesCusteioPage";
+import CustosOperacionaisPage from "./pages/CustosOperacionaisPage";
+import VisualizacaoConfigPage from "./pages/VisualizacaoConfigPage";
 import OmConfigPage from "./pages/OmConfigPage";
 import OmBulkUploadPage from "./pages/OmBulkUploadPage";
+import PTrabExportImportPage from "./pages/PTrabExportImportPage";
 import UserProfilePage from "./pages/UserProfilePage";
-import CustosOperacionaisPage from "./pages/CustosOperacionaisPage"; // NOVO
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import SharePage from "./pages/SharePage";
-
-// Components
-import { SessionContextProvider } from "./components/SessionContextProvider";
-import ProtectedRoute from "./components/ProtectedRoute"; 
-
-import "./App.css";
+import SharePage from "./pages/SharePage"; // Importar SharePage
+import ResetPasswordPage from "./pages/ResetPasswordPage"; // Importar ResetPasswordPage
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function App() {
-  return (
-    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
-      <QueryClientProvider client={queryClient}>
-        <SessionContextProvider>
-          <Router>
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <SessionContextProvider>
             <Routes>
-              {/* Public Routes */}
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} /> {/* NOVA ROTA */}
+              <Route path="/ptrab" element={<PTrabManager />} />
+              <Route path="/ptrab/form" element={<PTrabForm />} />
+              <Route path="/ptrab/print" element={<PTrabReportManager />} />
+              <Route path="/ptrab/classe-i" element={<ClasseIForm />} />
+              <Route path="/ptrab/classe-ii" element={<ClasseIIForm />} />
+              <Route path="/ptrab/classe-v" element={<ClasseVForm />} />
+              <Route path="/ptrab/classe-vi" element={<ClasseVIForm />} />
+              <Route path="/ptrab/classe-vii" element={<ClasseVIIForm />} />
+              <Route path="/ptrab/classe-viii" element={<ClasseVIIIForm />} />
+              <Route path="/ptrab/classe-ix" element={<ClasseIXForm />} />
+              <Route path="/ptrab/classe-iii" element={<ClasseIIIForm />} />
+              <Route path="/config/custos-operacionais" element={<CustosOperacionaisPage />} />
+              <Route path="/config/diretrizes" element={<DiretrizesCusteioPage />} />
+              <Route path="/config/visualizacao" element={<VisualizacaoConfigPage />} />
+              <Route path="/config/om" element={<OmConfigPage />} />
+              <Route path="/config/om/bulk-upload" element={<OmBulkUploadPage />} />
+              <Route path="/config/ptrab-export-import" element={<PTrabExportImportPage />} />
+              <Route path="/config/profile" element={<UserProfilePage />} />
               <Route path="/share-ptrab" element={<SharePage />} />
-              
-              {/* Protected Routes */}
-              <Route element={<ProtectedRoute />}>
-                <Route path="/ptrab" element={<PTrabManager />} />
-                <Route path="/ptrab/form" element={<PTrabForm />} />
-                <Route path="/ptrab/print" element={<PTrabReportManager />} />
-                
-                {/* Configuration Routes */}
-                <Route path="/config/diretrizes" element={<DiretrizesCusteioPage />} />
-                <Route path="/config/om" element={<OmConfigPage />} />
-                <Route path="/config/om/bulk-upload" element={<OmBulkUploadPage />} />
-                <Route path="/config/profile" element={<UserProfilePage />} />
-                <Route path="/config/custos-operacionais" element={<CustosOperacionaisPage />} /> {/* ROTA ADICIONADA */}
-                
-                {/* Placeholder/Missing Routes (assuming they exist or will be added) */}
-                <Route path="/config/visualizacao" element={<NotFound />} />
-                <Route path="/config/ptrab-export-import" element={<NotFound />} />
-              </Route>
-
-              {/* Fallback Route */}
-              <Route path="/404" element={<NotFound />} />
-              <Route path="*" element={<Navigate to="/404" replace />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
-          </Router>
-        </SessionContextProvider>
-        <Toaster richColors />
-      </QueryClientProvider>
+          </SessionContextProvider>
+        </BrowserRouter>
+      </TooltipProvider>
     </ThemeProvider>
-  );
-}
+  </QueryClientProvider>
+);
 
 export default App;
