@@ -1228,7 +1228,7 @@ const DiretrizesCusteioPage = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Configurações da Diretriz de Custeio</CardTitle>
+            <CardTitle>Configurações da Diretriz de Custeio Logístico</CardTitle>
             <CardDescription>Diretrizes de Custeio (COLOG)</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
