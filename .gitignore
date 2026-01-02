@@ -75,7 +75,7 @@ src/components/MarkdownAccordion.tsx
 src/components/MarkdownViewer.tsx
 src/components/HelpDialog.tsx
 src/components/ClasseIIIRegistryForm.tsx
-src/hooks/useFormNavigation.ts
+# REMOVIDO:src/hooks/useFormNavigation.ts
 src/hooks/use-mobile.tsx
 src/lib/creditUtils.ts
 
