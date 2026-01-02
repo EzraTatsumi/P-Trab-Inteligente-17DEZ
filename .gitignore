@@ -80,7 +80,7 @@ src/hooks/use-mobile.tsx
 src/lib/creditUtils.ts
 
 # NOVAS EXCLUSÕES ADICIONAIS (UI e Páginas Estáticas)
-src/pages/UserProfilePage.tsx
+# REMOVIDO:src/pages/UserProfilePage.tsx
 # REMOVIDO:src/components/reports/PTrabLogisticoReport.tsx
 # REMOVIDO:src/components/reports/PTrabRacaoOperacionalReport.tsx
 src/pages/ClasseIForm.tsx
