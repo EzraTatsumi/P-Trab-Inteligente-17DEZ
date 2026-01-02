@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Activity, Loader2, Save, Settings } from "lucide-react";
+import { ArrowLeft, Activity, Loader2, Save, Settings, User, Briefcase, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -17,6 +17,7 @@ import { useSession } from "@/components/SessionContextProvider";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
 import * as z from "zod";
+import OperationalCostSection from "@/components/OperationalCostSection"; // NOVO: Importar o componente de seção
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -51,6 +52,25 @@ const OPERATIONAL_FIELDS = [
   { key: 'valor_locacao_viaturas_dia', label: 'Locação de Viaturas (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 150,00' },
   { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)' },
   { key: 'fator_concessionaria', label: 'Concessionária (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.01 (para 1%)' },
+];
+
+// Agrupamento dos campos para as seções
+const SECTIONS = [
+  {
+    title: 'Pessoal e Diárias',
+    icon: <User className="h-5 w-5 text-blue-600" />,
+    keys: ['valor_diaria_padrao', 'valor_complemento_alimentacao'],
+  },
+  {
+    title: 'Serviços e Fatores',
+    icon: <Briefcase className="h-5 w-5 text-green-600" />,
+    keys: ['fator_passagens_aereas', 'fator_servicos_terceiros', 'fator_material_consumo', 'fator_concessionaria'],
+  },
+  {
+    title: 'Locação e Verbas',
+    icon: <DollarSign className="h-5 w-5 text-orange-600" />,
+    keys: ['valor_verba_operacional_dia', 'valor_suprimentos_fundo_dia', 'valor_fretamento_aereo_hora', 'valor_locacao_estrutura_dia', 'valor_locacao_viaturas_dia'],
+  },
 ];
 
 const CustosOperacionaisPage = () => {
@@ -189,7 +209,7 @@ const CustosOperacionaisPage = () => {
       // Inicializar raw inputs para campos monetários
       const initialRawInputs: Record<string, string> = {};
       OPERATIONAL_FIELDS.filter(f => f.type === 'currency').forEach(f => {
-        initialRawInputs[f.key] = numberToRawDigits(numericData[f.key as keyof DiretrizOperacional] as number);
+        initialRawInputs[f.key as string] = numberToRawDigits(numericData[f.key as keyof DiretrizOperacional] as number);
       });
       setRawInputs(initialRawInputs);
       
@@ -395,50 +415,8 @@ const CustosOperacionaisPage = () => {
     setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
   };
 
-  // Função para renderizar um campo de diretriz
-  const renderDiretrizField = (field: typeof OPERATIONAL_FIELDS[number]) => {
-    const value = diretrizes[field.key as keyof DiretrizOperacional] as number;
-    
-    if (field.type === 'currency') {
-      const rawDigits = rawInputs[field.key] || numberToRawDigits(value);
-      const displayValue = formatCurrencyInput(rawDigits).formatted;
-      
-      return (
-        <div className="space-y-2">
-          <Label htmlFor={field.key}>{field.label}</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-            <Input
-              id={field.key}
-              type="text"
-              inputMode="numeric"
-              className="pl-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              value={value === 0 && rawDigits.length === 0 ? "" : displayValue}
-              onChange={(e) => handleCurrencyChange(field.key as keyof DiretrizOperacional, e.target.value)}
-              onKeyDown={handleEnterToNextField}
-              placeholder={field.placeholder}
-            />
-          </div>
-        </div>
-      );
-    } else { // type === 'factor'
-      return (
-        <div className="space-y-2">
-          <Label htmlFor={field.key}>{field.label}</Label>
-          <Input
-            id={field.key}
-            type="number"
-            step="0.01"
-            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            value={value === 0 ? "" : value}
-            onChange={(e) => handleFactorChange(field.key as keyof DiretrizOperacional, e.target.value)}
-            placeholder={field.placeholder}
-            onKeyDown={handleEnterToNextField}
-          />
-        </div>
-      );
-    }
-  };
+  // Função para renderizar um campo de diretriz (REMOVIDA DAQUI, AGORA ESTÁ NO OperationalCostSection)
+  // const renderDiretrizField = (field: typeof OPERATIONAL_FIELDS[number]) => { ... }
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -498,16 +476,20 @@ const CustosOperacionaisPage = () => {
                 </p>
               </div>
 
-              {/* SEÇÃO PRINCIPAL DE CUSTOS OPERACIONAIS */}
-              <div className="border-t pt-4 mt-6">
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {OPERATIONAL_FIELDS.map(field => (
-                    <div key={field.key} className="col-span-1">
-                      {renderDiretrizField(field)}
-                    </div>
-                  ))}
-                </div>
+              {/* SEÇÃO PRINCIPAL DE CUSTOS OPERACIONAIS (AGORA COM SEÇÕES EXPANSÍVEIS) */}
+              <div className="space-y-4">
+                {SECTIONS.map((section, index) => (
+                  <OperationalCostSection
+                    key={index}
+                    title={section.title}
+                    icon={section.icon}
+                    fields={OPERATIONAL_FIELDS.filter(f => section.keys.includes(f.key as string))}
+                    diretrizes={diretrizes}
+                    rawInputs={rawInputs}
+                    handleCurrencyChange={handleCurrencyChange}
+                    handleFactorChange={handleFactorChange}
+                  />
+                ))}
               </div>
 
               <div className="space-y-2 border-t pt-4 mt-6">
