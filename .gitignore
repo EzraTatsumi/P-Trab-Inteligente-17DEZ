@@ -127,7 +127,7 @@ src/pages/ResetPasswordPage.tsx
 src/pages/SharePage.tsx
 src/pages/Login.tsx
 # REMOVIDO:src/pages/PTrabManager.tsx
-# REMOVIDO:src/pages/PTrabForm.tsx
+src/pages/PTrabForm.tsx
 # REMOVIDO: src/pages/PTrabReportManager.tsx
 src/components/OmSelector.tsx
 src/components/SessionContextProvider.tsx
