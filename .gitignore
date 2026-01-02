@@ -131,7 +131,7 @@ src/pages/PTrabForm.tsx
 # REMOVIDO: src/pages/PTrabReportManager.tsx
 src/components/OmSelector.tsx
 src/components/SessionContextProvider.tsx
-src/hooks/useMilitaryOrganizations.ts
+# REMOVIDO: src/hooks/useMilitaryOrganizations.ts
 # REMOVIDO: src/lib/badgeUtils.ts
 src/lib/classeIIIBadgeUtils.ts
 # REMOVIDO: src/lib/classeIXUtils.ts
