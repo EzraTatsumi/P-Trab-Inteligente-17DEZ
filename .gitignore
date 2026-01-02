@@ -143,7 +143,7 @@ src/types/refLPC.ts
 src/types/diretrizes.ts
 src/integrations/supabase/types.ts
 src/integrations/supabase/client.ts
-src/App.tsx
+# REMOVIDO: src/App.tsx
 src/App.css
 src/index.css
 tailwind.config.ts
