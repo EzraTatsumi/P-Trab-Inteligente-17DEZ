@@ -55,7 +55,7 @@ const OperationalDirectiveItem: React.FC<OperationalDirectiveItemProps> = ({
     return value === 0 ? "" : value;
   }, [field.type, value, rawInput]);
   
-  const displayUnit = field.type === 'currency' ? 'R$' : 'Fator';
+  // const displayUnit = field.type === 'currency' ? 'R$' : 'Fator'; // Não é mais necessário
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border rounded-lg bg-card text-card-foreground shadow-sm">
@@ -63,9 +63,6 @@ const OperationalDirectiveItem: React.FC<OperationalDirectiveItemProps> = ({
         <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors">
           <div className="flex items-center gap-3">
             <span className="font-semibold text-sm md:text-base">{field.label}</span>
-            <span className="text-xs font-medium text-muted-foreground border rounded-full px-2 py-0.5">
-              {displayUnit}: {field.type === 'currency' ? formatCurrencyInput(rawInput).formatted : (value || 0)}
-            </span>
           </div>
           {isOpen ? <ChevronUp className="h-4 w-4 shrink-0" /> : <ChevronDown className="h-4 w-4 shrink-0" />}
         </div>
