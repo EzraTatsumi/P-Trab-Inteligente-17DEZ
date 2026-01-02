@@ -17,6 +17,7 @@ import { useSession } from "@/components/SessionContextProvider";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
 import * as z from "zod";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; // NOVO: Importar Collapsible
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -69,8 +70,13 @@ const CustosOperacionaisPage = () => {
   // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
   
-  // NOVO ESTADO: Controla a expansão da seção de custos
-  const [showCostConfig, setShowCostConfig] = useState(true);
+  // NOVO ESTADO: Controla a expansão individual de cada campo
+  const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => {
+    return OPERATIONAL_FIELDS.reduce((acc, field) => {
+      acc[field.key as string] = true; // Começa todos abertos
+      return acc;
+    }, {} as Record<string, boolean>);
+  });
   
   const { handleEnterToNextField } = useFormNavigation();
 
@@ -501,28 +507,42 @@ const CustosOperacionaisPage = () => {
                 </p>
               </div>
 
-              {/* SEÇÃO PRINCIPAL DE CUSTOS OPERACIONAIS (AGORA COM CONTROLE DE EXPANSÃO) */}
+              {/* SEÇÃO PRINCIPAL DE CUSTOS OPERACIONAIS (ITENS INDIVIDUAIS COLAPSÁVEIS) */}
               <div className="border-t pt-4 mt-6">
-                <div 
-                  className="flex items-center justify-between cursor-pointer py-2" 
-                  onClick={() => setShowCostConfig(!showCostConfig)}
-                >
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
                     <Activity className="h-5 w-5 text-primary" />
                     Custos Operacionais (GND 3)
-                  </h3>
-                  {showCostConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </div>
+                </h3>
                 
-                {showCostConfig && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                    {OPERATIONAL_FIELDS.map(field => (
-                      <div key={field.key} className="col-span-1">
-                        {renderDiretrizField(field)}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="space-y-4">
+                  {OPERATIONAL_FIELDS.map(field => {
+                    const fieldKey = field.key as string;
+                    const isOpen = fieldCollapseState[fieldKey] ?? true;
+                    
+                    return (
+                      <Collapsible 
+                        key={fieldKey} 
+                        open={isOpen} 
+                        onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, [fieldKey]: open }))}
+                        className="border-b pb-4 last:border-b-0 last:pb-0"
+                      >
+                        <CollapsibleTrigger asChild>
+                          <div className="flex items-center justify-between cursor-pointer py-2">
+                            <h4 className="text-base font-medium">
+                              {field.label}
+                            </h4>
+                            {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="mt-2">
+                            {renderDiretrizField(field)}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="space-y-2 border-t pt-4 mt-6">
