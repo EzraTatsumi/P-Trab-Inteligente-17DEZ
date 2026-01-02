@@ -18,7 +18,6 @@ import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/type
 import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
 import * as z from "zod";
 import OperationalDirectiveItem from "@/components/OperationalDirectiveItem"; // Importar o novo componente
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; // Importar Collapsible
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -415,28 +414,6 @@ const CustosOperacionaisPage = () => {
     }, {} as Record<string, typeof OPERATIONAL_FIELDS>);
   }, []);
 
-  const renderSection = (title: string, fields: typeof OPERATIONAL_FIELDS, isOpen: boolean, setIsOpen: (open: boolean) => void) => (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border rounded-lg bg-card text-card-foreground shadow-sm">
-      <CollapsibleTrigger asChild>
-        <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-          <h3 className="text-lg font-semibold">{title}</h3>
-          {isOpen ? <ChevronUp className="h-5 w-5 shrink-0" /> : <ChevronDown className="h-5 w-5 shrink-0" />}
-        </div>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="border-t p-4 bg-muted/20 space-y-3">
-        {fields.map(field => (
-          <OperationalDirectiveItem
-            key={field.key}
-            field={field}
-            value={diretrizes[field.key as keyof DiretrizOperacional] as number || 0}
-            onCurrencyChange={handleCurrencyChange}
-            onFactorChange={handleFactorChange}
-          />
-        ))}
-      </CollapsibleContent>
-    </Collapsible>
-  );
-
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -495,29 +472,83 @@ const CustosOperacionaisPage = () => {
                 </p>
               </div>
 
-              {/* SEÇÃO PRINCIPAL DE CUSTOS OPERACIONAIS (USANDO COMPONENTE COLAPSÁVEL) */}
-              <div className="border-t pt-4 mt-6 space-y-3">
+              {/* SEÇÃO PRINCIPAL DE CUSTOS OPERACIONAIS (AGORA USANDO DIVS SIMPLES) */}
+              <div className="space-y-6">
                 
-                {renderSection(
-                  'Diárias e Passagens', 
-                  groupedFields['Diárias e Passagens'], 
-                  isDiariasOpen, 
-                  setIsDiariasOpen
-                )}
+                {/* SEÇÃO: Diárias e Passagens */}
+                <div className="border-t pt-4 mt-6">
+                  <div 
+                    className="flex items-center justify-between cursor-pointer py-2" 
+                    onClick={() => setIsDiariasOpen(!isDiariasOpen)}
+                  >
+                    <h3 className="text-lg font-semibold">Diárias e Passagens</h3>
+                    {isDiariasOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                  </div>
+                  
+                  {isDiariasOpen && (
+                    <div className="space-y-3 mt-2">
+                      {groupedFields['Diárias e Passagens'].map(field => (
+                        <OperationalDirectiveItem
+                          key={field.key}
+                          field={field}
+                          value={diretrizes[field.key as keyof DiretrizOperacional] as number || 0}
+                          onCurrencyChange={handleCurrencyChange}
+                          onFactorChange={handleFactorChange}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
                 
-                {renderSection(
-                  'Verbas e Suprimentos', 
-                  groupedFields['Verbas e Suprimentos'], 
-                  isVerbasOpen, 
-                  setIsVerbasOpen
-                )}
+                {/* SEÇÃO: Verbas e Suprimentos */}
+                <div className="border-t pt-4 mt-6">
+                  <div 
+                    className="flex items-center justify-between cursor-pointer py-2" 
+                    onClick={() => setIsVerbasOpen(!isVerbasOpen)}
+                  >
+                    <h3 className="text-lg font-semibold">Verbas e Suprimentos</h3>
+                    {isVerbasOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                  </div>
+                  
+                  {isVerbasOpen && (
+                    <div className="space-y-3 mt-2">
+                      {groupedFields['Verbas e Suprimentos'].map(field => (
+                        <OperationalDirectiveItem
+                          key={field.key}
+                          field={field}
+                          value={diretrizes[field.key as keyof DiretrizOperacional] as number || 0}
+                          onCurrencyChange={handleCurrencyChange}
+                          onFactorChange={handleFactorChange}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
                 
-                {renderSection(
-                  'Locação e Fretamento', 
-                  groupedFields['Locação e Fretamento'], 
-                  isLocacaoOpen, 
-                  setIsLocacaoOpen
-                )}
+                {/* SEÇÃO: Locação e Fretamento */}
+                <div className="border-t pt-4 mt-6">
+                  <div 
+                    className="flex items-center justify-between cursor-pointer py-2" 
+                    onClick={() => setIsLocacaoOpen(!isLocacaoOpen)}
+                  >
+                    <h3 className="text-lg font-semibold">Locação e Fretamento</h3>
+                    {isLocacaoOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                  </div>
+                  
+                  {isLocacaoOpen && (
+                    <div className="space-y-3 mt-2">
+                      {groupedFields['Locação e Fretamento'].map(field => (
+                        <OperationalDirectiveItem
+                          key={field.key}
+                          field={field}
+                          value={diretrizes[field.key as keyof DiretrizOperacional] as number || 0}
+                          onCurrencyChange={handleCurrencyChange}
+                          onFactorChange={handleFactorChange}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2 border-t pt-4 mt-6">
