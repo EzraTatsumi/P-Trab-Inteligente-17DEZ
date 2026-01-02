@@ -140,6 +140,7 @@ const CustosOperacionaisPage = () => {
   const checkAuthAndLoadYears = async () => {
     const { data: { session } = { session: null } } = await supabase.auth.getSession();
     if (!session) {
+      toast.error("Você precisa estar autenticado");
       navigate("/login");
       return;
     }
