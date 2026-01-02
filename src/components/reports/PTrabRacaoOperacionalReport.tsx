@@ -61,6 +61,9 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     registros.forEach(r => {
         const key = `${r.organizacao}-${r.ug}`;
         
+        // Verifica se o registro atual tem memória customizada
+        const hasCustomMemoria = !!r.memoria_calculo_op_customizada && r.memoria_calculo_op_customizada.trim().length > 0;
+        
         if (!grupos[key]) {
             grupos[key] = {
                 om: r.organizacao,
@@ -80,15 +83,18 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         grupos[key].r3_quantidade += (r.quantidade_r3 || 0);
         grupos[key].total_unidades += (r.quantidade_r2 || 0) + (r.quantidade_r3 || 0);
         
+        // Lógica de Priorização: Se o registro atual tem memória customizada E o registro já salvo não tem, substitui o registro original.
+        const currentSavedRecord = grupos[key].registroOriginal;
+        const savedHasCustomMemoria = !!currentSavedRecord.memoria_calculo_op_customizada && currentSavedRecord.memoria_calculo_op_customizada.trim().length > 0;
+        
+        if (hasCustomMemoria && !savedHasCustomMemoria) {
+            grupos[key].registroOriginal = r;
+        }
+        
         // Atualiza campos globais (embora em teoria devam ser os mesmos)
         grupos[key].efetivo = r.efetivo || 0;
         grupos[key].dias_operacao = r.dias_operacao;
         grupos[key].fase_atividade = r.fase_atividade || 'operação';
-        
-        // NOVO: Prioriza o registro que contém a memória customizada
-        if (r.memoria_calculo_op_customizada) {
-            grupos[key].registroOriginal = r;
-        }
     });
     
     return Object.values(grupos).sort((a, b) => a.om.localeCompare(b.om));
