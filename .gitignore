@@ -85,10 +85,10 @@ src/lib/creditUtils.ts
 # REMOVIDO:src/components/reports/PTrabRacaoOperacionalReport.tsx
 # REMOVIDO:src/pages/ClasseIForm.tsx
 src/pages/ClasseIIForm.tsx
-# REMOVIDO: src/pages/ClasseIIIForm.tsx
+src/pages/ClasseIIIForm.tsx
 src/pages/ClasseVForm.tsx
 src/pages/ClasseVIForm.tsx
-# REMOVIDO: src/pages/ClasseVIIForm.tsx
+src/pages/ClasseVIIForm.tsx
 src/pages/ClasseVIIIForm.tsx
 src/pages/ClasseIXForm.tsx
 
