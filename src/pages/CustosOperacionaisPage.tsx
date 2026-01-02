@@ -580,7 +580,7 @@ const CustosOperacionaisPage = () => {
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="diaria_referencia_legal">Referência Legal (Lei/Portaria)</Label>
+            <Label htmlFor="diaria_referencia_legal">Referência Legal</Label>
             <Input
               id="diaria_referencia_legal"
               value={diretrizes.diaria_referencia_legal || ''}
