@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,17 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Activity, Loader2, Save, Settings } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { YearManagementDialog } from "@/components/YearManagementDialog";
-import { formatCurrencyInput, numberToRawDigits, parseInputToNumber } from "@/lib/formatUtils";
+import { formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
 import { useSession } from "@/components/SessionContextProvider";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
 import * as z from "zod";
-import OperationalDirectiveItem from "@/components/OperationalDirectiveItem"; // Importar o novo componente
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -41,19 +40,17 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
 
 // Mapeamento de campos para rótulos e tipo de input (R$ ou Fator)
 const OPERATIONAL_FIELDS = [
-  { key: 'valor_diaria_padrao', label: 'Diária Padrão (R$)', type: 'currency' as const, placeholder: 'Ex: 100,00', section: 'Diárias e Passagens' },
-  { key: 'fator_passagens_aereas', label: 'Passagens Aéreas (Fator)', type: 'factor' as const, placeholder: 'Ex: 1.5 (para 150%)', section: 'Diárias e Passagens' },
-  
-  { key: 'valor_verba_operacional_dia', label: 'Verba Operacional (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 50,00', section: 'Verbas e Suprimentos' },
-  { key: 'valor_suprimentos_fundo_dia', label: 'Suprimentos de Fundos (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 20,00', section: 'Verbas e Suprimentos' },
-  { key: 'valor_complemento_alimentacao', label: 'Complemento de Alimentação (R$)', type: 'currency' as const, placeholder: 'Ex: 15,00', section: 'Verbas e Suprimentos' },
-  { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)', section: 'Verbas e Suprimentos' },
-  { key: 'fator_concessionaria', label: 'Concessionária (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.01 (para 1%)', section: 'Verbas e Suprimentos' },
-  
-  { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)', section: 'Locação e Fretamento' },
-  { key: 'valor_fretamento_aereo_hora', label: 'Fretamento Aéreo (R$/hora)', type: 'currency' as const, placeholder: 'Ex: 1.200,00', section: 'Locação e Fretamento' },
-  { key: 'valor_locacao_estrutura_dia', label: 'Locação de Estrutura (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 300,00', section: 'Locação e Fretamento' },
-  { key: 'valor_locacao_viaturas_dia', label: 'Locação de Viaturas (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 150,00', section: 'Locação e Fretamento' },
+  { key: 'valor_diaria_padrao', label: 'Diária Padrão (R$)', type: 'currency' as const, placeholder: 'Ex: 100,00' },
+  { key: 'fator_passagens_aereas', label: 'Passagens Aéreas (Fator)', type: 'factor' as const, placeholder: 'Ex: 1.5 (para 150%)' },
+  { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)' },
+  { key: 'valor_verba_operacional_dia', label: 'Verba Operacional (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 50,00' },
+  { key: 'valor_suprimentos_fundo_dia', label: 'Suprimentos de Fundos (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 20,00' },
+  { key: 'valor_complemento_alimentacao', label: 'Complemento de Alimentação (R$)', type: 'currency' as const, placeholder: 'Ex: 15,00' },
+  { key: 'valor_fretamento_aereo_hora', label: 'Fretamento Aéreo (R$/hora)', type: 'currency' as const, placeholder: 'Ex: 1.200,00' },
+  { key: 'valor_locacao_estrutura_dia', label: 'Locação de Estrutura (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 300,00' },
+  { key: 'valor_locacao_viaturas_dia', label: 'Locação de Viaturas (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 150,00' },
+  { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)' },
+  { key: 'fator_concessionaria', label: 'Concessionária (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.01 (para 1%)' },
 ];
 
 const CustosOperacionaisPage = () => {
@@ -68,11 +65,6 @@ const CustosOperacionaisPage = () => {
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   const [defaultYear, setDefaultYear] = useState<number | null>(null);
-  
-  // Estados para controle de colapso das seções
-  const [isDiariasOpen, setIsDiariasOpen] = useState(true);
-  const [isVerbasOpen, setIsVerbasOpen] = useState(true);
-  const [isLocacaoOpen, setIsLocacaoOpen] = useState(true);
   
   // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
@@ -194,7 +186,7 @@ const CustosOperacionaisPage = () => {
       
       setDiretrizes(numericData);
       
-      // Inicializar raw inputs para campos monetários (apenas para manter a consistência do handler)
+      // Inicializar raw inputs para campos monetários
       const initialRawInputs: Record<string, string> = {};
       OPERATIONAL_FIELDS.filter(f => f.type === 'currency').forEach(f => {
         initialRawInputs[f.key] = numberToRawDigits(numericData[f.key as keyof DiretrizOperacional] as number);
@@ -389,30 +381,64 @@ const CustosOperacionaisPage = () => {
     }
   };
   
-  // Handler para inputs monetários (R$) - Recebe rawValue (dígitos)
-  const handleCurrencyChange = useCallback((field: string, rawValue: string) => {
-    const { numericValue } = formatCurrencyInput(rawValue);
+  // Handler para inputs monetários (R$)
+  const handleCurrencyChange = (field: keyof DiretrizOperacional, rawValue: string) => {
+    const { numericValue, digits } = formatCurrencyInput(rawValue);
     
-    setRawInputs(prev => ({ ...prev, [field]: rawValue })); // Salva os dígitos brutos
+    setRawInputs(prev => ({ ...prev, [field]: digits }));
     setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
-  }, []);
+  };
   
   // Handler para inputs de fator/percentual
-  const handleFactorChange = useCallback((field: string, value: string) => {
-    const numericValue = parseInputToNumber(value); // Usa parseInputToNumber para converter string formatada (se houver) ou float
+  const handleFactorChange = (field: keyof DiretrizOperacional, value: string) => {
+    const numericValue = parseFloat(value) || 0;
     setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
-  }, []);
-  
-  // Agrupamento dos campos
-  const groupedFields = useMemo(() => {
-    return OPERATIONAL_FIELDS.reduce((acc, field) => {
-      if (!acc[field.section]) {
-        acc[field.section] = [];
-      }
-      acc[field.section].push(field);
-      return acc;
-    }, {} as Record<string, typeof OPERATIONAL_FIELDS>);
-  }, []);
+  };
+
+  // Função para renderizar um campo de diretriz
+  const renderDiretrizField = (field: typeof OPERATIONAL_FIELDS[number]) => {
+    const value = diretrizes[field.key as keyof DiretrizOperacional] as number;
+    
+    if (field.type === 'currency') {
+      const rawDigits = rawInputs[field.key] || numberToRawDigits(value);
+      const displayValue = formatCurrencyInput(rawDigits).formatted;
+      
+      return (
+        <div className="space-y-2">
+          <Label htmlFor={field.key}>{field.label}</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+            <Input
+              id={field.key}
+              type="text"
+              inputMode="numeric"
+              className="pl-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              value={value === 0 && rawDigits.length === 0 ? "" : displayValue}
+              onChange={(e) => handleCurrencyChange(field.key as keyof DiretrizOperacional, e.target.value)}
+              onKeyDown={handleEnterToNextField}
+              placeholder={field.placeholder}
+            />
+          </div>
+        </div>
+      );
+    } else { // type === 'factor'
+      return (
+        <div className="space-y-2">
+          <Label htmlFor={field.key}>{field.label}</Label>
+          <Input
+            id={field.key}
+            type="number"
+            step="0.01"
+            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            value={value === 0 ? "" : value}
+            onChange={(e) => handleFactorChange(field.key as keyof DiretrizOperacional, e.target.value)}
+            placeholder={field.placeholder}
+            onKeyDown={handleEnterToNextField}
+          />
+        </div>
+      );
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -472,82 +498,15 @@ const CustosOperacionaisPage = () => {
                 </p>
               </div>
 
-              {/* SEÇÃO PRINCIPAL DE CUSTOS OPERACIONAIS (AGORA USANDO DIVS SIMPLES) */}
-              <div className="space-y-6">
+              {/* SEÇÃO PRINCIPAL DE CUSTOS OPERACIONAIS */}
+              <div className="border-t pt-4 mt-6">
                 
-                {/* SEÇÃO: Diárias e Passagens */}
-                <div className="border-t pt-4 mt-6">
-                  <div 
-                    className="flex items-center justify-between cursor-pointer py-2" 
-                    onClick={() => setIsDiariasOpen(!isDiariasOpen)}
-                  >
-                    <h3 className="text-lg font-semibold">Diárias e Passagens</h3>
-                    {isDiariasOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                  </div>
-                  
-                  {isDiariasOpen && (
-                    <div className="space-y-3 mt-2">
-                      {groupedFields['Diárias e Passagens'].map(field => (
-                        <OperationalDirectiveItem
-                          key={field.key}
-                          field={field}
-                          value={diretrizes[field.key as keyof DiretrizOperacional] as number || 0}
-                          onCurrencyChange={handleCurrencyChange}
-                          onFactorChange={handleFactorChange}
-                        />
-                      ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {OPERATIONAL_FIELDS.map(field => (
+                    <div key={field.key} className="col-span-1">
+                      {renderDiretrizField(field)}
                     </div>
-                  )}
-                </div>
-                
-                {/* SEÇÃO: Verbas e Suprimentos */}
-                <div className="border-t pt-4 mt-6">
-                  <div 
-                    className="flex items-center justify-between cursor-pointer py-2" 
-                    onClick={() => setIsVerbasOpen(!isVerbasOpen)}
-                  >
-                    <h3 className="text-lg font-semibold">Verbas e Suprimentos</h3>
-                    {isVerbasOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                  </div>
-                  
-                  {isVerbasOpen && (
-                    <div className="space-y-3 mt-2">
-                      {groupedFields['Verbas e Suprimentos'].map(field => (
-                        <OperationalDirectiveItem
-                          key={field.key}
-                          field={field}
-                          value={diretrizes[field.key as keyof DiretrizOperacional] as number || 0}
-                          onCurrencyChange={handleCurrencyChange}
-                          onFactorChange={handleFactorChange}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-                
-                {/* SEÇÃO: Locação e Fretamento */}
-                <div className="border-t pt-4 mt-6">
-                  <div 
-                    className="flex items-center justify-between cursor-pointer py-2" 
-                    onClick={() => setIsLocacaoOpen(!isLocacaoOpen)}
-                  >
-                    <h3 className="text-lg font-semibold">Locação e Fretamento</h3>
-                    {isLocacaoOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                  </div>
-                  
-                  {isLocacaoOpen && (
-                    <div className="space-y-3 mt-2">
-                      {groupedFields['Locação e Fretamento'].map(field => (
-                        <OperationalDirectiveItem
-                          key={field.key}
-                          field={field}
-                          value={diretrizes[field.key as keyof DiretrizOperacional] as number || 0}
-                          onCurrencyChange={handleCurrencyChange}
-                          onFactorChange={handleFactorChange}
-                        />
-                      ))}
-                    </div>
-                  )}
+                  ))}
                 </div>
               </div>
 
