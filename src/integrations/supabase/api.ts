@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import { supabase } from "./client"; // Importar o cliente Supabase
+import { Profile } from "@/types/profiles"; // Importar o novo tipo Profile
 
 // Interface para a resposta consolidada da Edge Function
 interface EdgeFunctionResponse {
@@ -91,4 +92,54 @@ export async function fetchSharePreview(ptrabId: string, token: string): Promise
         }
         throw error;
     }
+}
+
+/**
+ * Fetches the current user's profile data.
+ * @returns The user profile object.
+ */
+export async function fetchUserProfile(): Promise<Profile> {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+        throw new Error("Usuário não autenticado.");
+    }
+
+    // Busca o perfil e a OM padrão do usuário (se houver)
+    const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select(`
+            *,
+            om_details:organizacoes_militares(id, nome_om, codug_om)
+        `)
+        .eq('id', user.id)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    if (!profileData) {
+        // Se o perfil não existir, retorna um perfil básico (pode acontecer logo após o signup)
+        return {
+            id: user.id,
+            first_name: '',
+            last_name: '',
+            avatar_url: '',
+            updated_at: new Date().toISOString(),
+            credit_gnd3: 0,
+            credit_gnd4: 0,
+            default_diretriz_year: null,
+            raw_user_meta_data: null,
+            om_details: null,
+        } as Profile;
+    }
+
+    // O Supabase retorna om_details como um array se for um join, mas como maybeSingle, deve ser um objeto ou null.
+    // Se o campo om_details for um array (devido a um join implícito), pegamos o primeiro elemento.
+    const omDetails = Array.isArray(profileData.om_details) ? profileData.om_details[0] : profileData.om_details;
+
+    return {
+        ...profileData,
+        om_details: omDetails,
+    } as Profile;
 }
