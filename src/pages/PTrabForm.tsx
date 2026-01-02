@@ -188,6 +188,8 @@ const PTrabForm = () => {
       navigate(`/ptrab/classe-ix?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-iii') {
       navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
+    } else if (itemId === 'diaria') { // Rota para Diária
+      navigate(`/ptrab/diaria?ptrabId=${ptrabId}`);
     } else {
       console.log(`Selecionado: ${itemId} do tipo ${type}`);
     }
