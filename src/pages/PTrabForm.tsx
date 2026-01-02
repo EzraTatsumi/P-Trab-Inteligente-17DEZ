@@ -59,7 +59,7 @@ const PTrabForm = () => {
     { id: "locacao-estruturas", name: "Locação de Estruturas" },
     { id: "servico-grafico", name: "Serviço Gráfico" },
     { id: "passagem-aerea", name: "Passagem Aérea" },
-    { id: "diaria", name: "Pagamento de Diárias" }, // ATUALIZADO
+    { id: "diaria", name: "Pagamento de Diárias" },
     { id: "outros", name: "Outros" },
   ];
 
@@ -188,8 +188,6 @@ const PTrabForm = () => {
       navigate(`/ptrab/classe-ix?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-iii') {
       navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
-    } else if (itemId === 'diaria') { // NOVA ROTA PARA DIÁRIAS
-      navigate(`/ptrab/diaria?ptrabId=${ptrabId}`);
     } else {
       console.log(`Selecionado: ${itemId} do tipo ${type}`);
     }
