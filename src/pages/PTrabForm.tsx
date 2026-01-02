@@ -336,7 +336,7 @@ const PTrabForm = () => {
                         <Button
                           key={item.id}
                           variant="outline"
-                          className="h-auto py-4 px-6 justify-start text-left hover:bg-secondary/10 hover:border-secondary transition-all"
+                          className="h-auto py-4 px-6 justify-start text-left hover:bg-primary/10 hover:border-primary transition-all"
                           onClick={() => handleItemClick(item.id, "operacional")}
                           disabled={ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado'}
                         >
