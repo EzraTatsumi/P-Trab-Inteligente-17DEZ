@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { formatCodug } from "@/lib/formatUtils";
+import { Label } from "@/components/ui/label"; // Adicionado Label
 
 const UserProfilePage = () => {
   const navigate = useNavigate();
@@ -90,8 +91,6 @@ const UserProfilePage = () => {
         last_name: values.last_name,
         avatar_url: values.avatar_url,
         default_diretriz_year: values.default_diretriz_year,
-        // NOTE: Se a coluna om_id existisse na tabela profiles, ela seria atualizada aqui.
-        // Como não existe, a OM padrão é apenas um valor de formulário local.
       };
       
       const { error: profileError } = await supabase
