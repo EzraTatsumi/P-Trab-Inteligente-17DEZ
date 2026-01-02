@@ -21,6 +21,23 @@ export const diretrizCusteioSchema = z.object({
   observacoes: z.string().optional(),
 });
 
+// NOVO: Schema para Diretrizes Operacionais
+export const diretrizOperacionalSchema = z.object({
+  ano_referencia: z.number().int().min(2020, "Ano inválido.").max(2050, "Ano inválido."),
+  valor_diaria_padrao: z.number().min(0, "Valor deve ser positivo."),
+  fator_passagens_aereas: z.number().min(0, "Fator deve ser positivo."),
+  fator_servicos_terceiros: z.number().min(0, "Fator deve ser positivo."),
+  valor_verba_operacional_dia: z.number().min(0, "Valor deve ser positivo."),
+  valor_suprimentos_fundo_dia: z.number().min(0, "Valor deve ser positivo."),
+  valor_complemento_alimentacao: z.number().min(0, "Valor deve ser positivo."),
+  valor_fretamento_aereo_hora: z.number().min(0, "Valor deve ser positivo."),
+  valor_locacao_estrutura_dia: z.number().min(0, "Valor deve ser positivo."),
+  valor_locacao_viaturas_dia: z.number().min(0, "Valor deve ser positivo."),
+  fator_material_consumo: z.number().min(0, "Fator deve ser positivo."),
+  fator_concessionaria: z.number().min(0, "Fator deve ser positivo."),
+  observacoes: z.string().optional(),
+});
+
 // Schema para o formulário de Perfil do Usuário
 export const profileSchema = z.object({
     first_name: z.string().min(1, "O primeiro nome é obrigatório."),
