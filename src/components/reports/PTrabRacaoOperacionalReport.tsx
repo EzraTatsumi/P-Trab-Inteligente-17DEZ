@@ -84,6 +84,11 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         grupos[key].efetivo = r.efetivo || 0;
         grupos[key].dias_operacao = r.dias_operacao;
         grupos[key].fase_atividade = r.fase_atividade || 'operação';
+        
+        // NOVO: Prioriza o registro que contém a memória customizada
+        if (r.memoria_calculo_op_customizada) {
+            grupos[key].registroOriginal = r;
+        }
     });
     
     return Object.values(grupos).sort((a, b) => a.om.localeCompare(b.om));
