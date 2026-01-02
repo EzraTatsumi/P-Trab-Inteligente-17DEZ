@@ -12,11 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { YearManagementDialog } from "@/components/YearManagementDialog";
-import { formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { formatCurrencyInput, numberToRawDigits, parseInputToNumber } from "@/lib/formatUtils";
 import { useSession } from "@/components/SessionContextProvider";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
 import * as z from "zod";
+import OperationalDirectiveItem from "@/components/OperationalDirectiveItem"; // Importar o novo componente
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -67,6 +68,7 @@ const CustosOperacionaisPage = () => {
   const [defaultYear, setDefaultYear] = useState<number | null>(null);
   
   // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários
+  // NOTE: Este estado não é mais necessário para a renderização, mas é mantido para o handler de mudança.
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
   
   const { handleEnterToNextField } = useFormNavigation();
@@ -186,7 +188,7 @@ const CustosOperacionaisPage = () => {
       
       setDiretrizes(numericData);
       
-      // Inicializar raw inputs para campos monetários
+      // Inicializar raw inputs para campos monetários (apenas para manter a consistência do handler)
       const initialRawInputs: Record<string, string> = {};
       OPERATIONAL_FIELDS.filter(f => f.type === 'currency').forEach(f => {
         initialRawInputs[f.key] = numberToRawDigits(numericData[f.key as keyof DiretrizOperacional] as number);
@@ -381,64 +383,19 @@ const CustosOperacionaisPage = () => {
     }
   };
   
-  // Handler para inputs monetários (R$)
-  const handleCurrencyChange = (field: keyof DiretrizOperacional, rawValue: string) => {
-    const { numericValue, digits } = formatCurrencyInput(rawValue);
+  // Handler para inputs monetários (R$) - Recebe rawValue (dígitos)
+  const handleCurrencyChange = useCallback((field: string, rawValue: string) => {
+    const { numericValue } = formatCurrencyInput(rawValue);
     
-    setRawInputs(prev => ({ ...prev, [field]: digits }));
+    setRawInputs(prev => ({ ...prev, [field]: rawValue })); // Salva os dígitos brutos
     setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
-  };
+  }, []);
   
   // Handler para inputs de fator/percentual
-  const handleFactorChange = (field: keyof DiretrizOperacional, value: string) => {
-    const numericValue = parseFloat(value) || 0;
+  const handleFactorChange = useCallback((field: string, value: string) => {
+    const numericValue = parseInputToNumber(value); // Usa parseInputToNumber para converter string formatada (se houver) ou float
     setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
-  };
-
-  // Função para renderizar um campo de diretriz
-  const renderDiretrizField = (field: typeof OPERATIONAL_FIELDS[number]) => {
-    const value = diretrizes[field.key as keyof DiretrizOperacional] as number;
-    
-    if (field.type === 'currency') {
-      const rawDigits = rawInputs[field.key] || numberToRawDigits(value);
-      const displayValue = formatCurrencyInput(rawDigits).formatted;
-      
-      return (
-        <div className="space-y-2">
-          <Label htmlFor={field.key}>{field.label}</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-            <Input
-              id={field.key}
-              type="text"
-              inputMode="numeric"
-              className="pl-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              value={value === 0 && rawDigits.length === 0 ? "" : displayValue}
-              onChange={(e) => handleCurrencyChange(field.key as keyof DiretrizOperacional, e.target.value)}
-              onKeyDown={handleEnterToNextField}
-              placeholder={field.placeholder}
-            />
-          </div>
-        </div>
-      );
-    } else { // type === 'factor'
-      return (
-        <div className="space-y-2">
-          <Label htmlFor={field.key}>{field.label}</Label>
-          <Input
-            id={field.key}
-            type="number"
-            step="0.01"
-            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            value={value === 0 ? "" : value}
-            onChange={(e) => handleFactorChange(field.key as keyof DiretrizOperacional, e.target.value)}
-            placeholder={field.placeholder}
-            onKeyDown={handleEnterToNextField}
-          />
-        </div>
-      );
-    }
-  };
+  }, []);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -498,16 +455,18 @@ const CustosOperacionaisPage = () => {
                 </p>
               </div>
 
-              {/* SEÇÃO PRINCIPAL DE CUSTOS OPERACIONAIS */}
-              <div className="border-t pt-4 mt-6">
+              {/* SEÇÃO PRINCIPAL DE CUSTOS OPERACIONAIS (USANDO COMPONENTE COLAPSÁVEL) */}
+              <div className="border-t pt-4 mt-6 space-y-3">
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {OPERATIONAL_FIELDS.map(field => (
-                    <div key={field.key} className="col-span-1">
-                      {renderDiretrizField(field)}
-                    </div>
-                  ))}
-                </div>
+                {OPERATIONAL_FIELDS.map(field => (
+                  <OperationalDirectiveItem
+                    key={field.key}
+                    field={field}
+                    value={diretrizes[field.key as keyof DiretrizOperacional] as number || 0}
+                    onCurrencyChange={handleCurrencyChange}
+                    onFactorChange={handleFactorChange}
+                  />
+                ))}
               </div>
 
               <div className="space-y-2 border-t pt-4 mt-6">
