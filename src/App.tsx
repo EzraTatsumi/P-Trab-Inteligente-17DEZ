@@ -1,72 +1,59 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "next-themes";
-import { SessionContextProvider } from "./components/SessionContextProvider";
+import { Toaster } from "sonner";
+import { SessionContextProvider, useSession } from "./components/SessionContextProvider";
+import { ThemeProvider } from "./components/ThemeProvider";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
-import PTrabManager from "./pages/PTrabManager";
-import PTrabForm from "./pages/PTrabForm";
-import PTrabReportManager from "./pages/PTrabReportManager";
-import ClasseIForm from "./pages/ClasseIForm";
-import ClasseIIForm from "./pages/ClasseIIForm";
-import ClasseVForm from "./pages/ClasseVForm";
-import ClasseIIIForm from "./pages/ClasseIIIForm";
-import ClasseVIForm from "./pages/ClasseVIForm";
-import ClasseVIIForm from "./pages/ClasseVIIForm";
-import ClasseVIIIForm from "./pages/ClasseVIIIForm";
-import ClasseIXForm from "./pages/ClasseIXForm";
-import DiretrizesCusteioPage from "./pages/DiretrizesCusteioPage";
-import CustosOperacionaisPage from "./pages/CustosOperacionaisPage";
-import VisualizacaoConfigPage from "./pages/VisualizacaoConfigPage";
-import OmConfigPage from "./pages/OmConfigPage";
-import OmBulkUploadPage from "./pages/OmBulkUploadPage";
-import PTrabExportImportPage from "./pages/PTrabExportImportPage";
-import UserProfilePage from "./pages/UserProfilePage";
-import SharePage from "./pages/SharePage"; // Importar SharePage
-import ResetPasswordPage from "./pages/ResetPasswordPage"; // Importar ResetPasswordPage
 import NotFound from "./pages/NotFound";
+import PTrabPage from "./pages/PTrabPage";
+import PTrabDetailsPage from "./pages/PTrabDetailsPage";
+import DiretrizesCusteioPage from "./pages/DiretrizesCusteioPage";
+import OrganizacoesMilitaresPage from "./pages/OrganizacoesMilitaresPage";
+import DiretrizesOperacionaisPage from "./pages/DiretrizesOperacionaisPage";
+import CustosOperacionaisPage from "./pages/CustosOperacionaisPage"; // Importando a nova página
 
 const queryClient = new QueryClient();
 
+const AppRoutes = () => {
+  const { session, isLoading } = useSession();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route path="/login" element={session ? <Navigate to="/" /> : <Login />} />
+      <Route path="/" element={<ProtectedRoute element={Layout} />}>
+        <Route index element={<Index />} />
+        <Route path="ptrab" element={<PTrabPage />} />
+        <Route path="ptrab/:id" element={<PTrabDetailsPage />} />
+        <Route path="diretrizes-custeio" element={<DiretrizesCusteioPage />} />
+        <Route path="diretrizes-operacionais" element={<DiretrizesOperacionaisPage />} />
+        <Route path="organizacoes-militares" element={<OrganizacoesMilitaresPage />} />
+        <Route path="custos-operacionais" element={<CustosOperacionaisPage />} /> {/* NOVA ROTA */}
+      </Route>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <TooltipProvider>
+    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+      <SessionContextProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
         <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <SessionContextProvider>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} /> {/* NOVA ROTA */}
-              <Route path="/ptrab" element={<PTrabManager />} />
-              <Route path="/ptrab/form" element={<PTrabForm />} />
-              <Route path="/ptrab/print" element={<PTrabReportManager />} />
-              <Route path="/ptrab/classe-i" element={<ClasseIForm />} />
-              <Route path="/ptrab/classe-ii" element={<ClasseIIForm />} />
-              <Route path="/ptrab/classe-v" element={<ClasseVForm />} />
-              <Route path="/ptrab/classe-vi" element={<ClasseVIForm />} />
-              <Route path="/ptrab/classe-vii" element={<ClasseVIIForm />} />
-              <Route path="/ptrab/classe-viii" element={<ClasseVIIIForm />} />
-              <Route path="/ptrab/classe-ix" element={<ClasseIXForm />} />
-              <Route path="/ptrab/classe-iii" element={<ClasseIIIForm />} />
-              <Route path="/config/custos-operacionais" element={<CustosOperacionaisPage />} />
-              <Route path="/config/diretrizes" element={<DiretrizesCusteioPage />} />
-              <Route path="/config/visualizacao" element={<VisualizacaoConfigPage />} />
-              <Route path="/config/om" element={<OmConfigPage />} />
-              <Route path="/config/om/bulk-upload" element={<OmBulkUploadPage />} />
-              <Route path="/config/ptrab-export-import" element={<PTrabExportImportPage />} />
-              <Route path="/config/profile" element={<UserProfilePage />} />
-              <Route path="/share-ptrab" element={<SharePage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </SessionContextProvider>
-        </BrowserRouter>
-      </TooltipProvider>
+      </SessionContextProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
