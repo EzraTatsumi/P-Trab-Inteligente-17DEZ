@@ -83,7 +83,7 @@ src/lib/creditUtils.ts
 # REMOVIDO:src/pages/UserProfilePage.tsx
 # REMOVIDO:src/components/reports/PTrabLogisticoReport.tsx
 # REMOVIDO:src/components/reports/PTrabRacaoOperacionalReport.tsx
-src/pages/ClasseIForm.tsx
+# REMOVIDO:src/pages/ClasseIForm.tsx
 src/pages/ClasseIIForm.tsx
 # REMOVIDO: src/pages/ClasseIIIForm.tsx
 src/pages/ClasseVForm.tsx
