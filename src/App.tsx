@@ -20,7 +20,7 @@ import SharePage from "./pages/SharePage";
 
 // Components
 import { SessionContextProvider } from "./components/SessionContextProvider";
-import ProtectedRoute from "./components/ProtectedRoute"; // Assuming this exists for auth protection
+import ProtectedRoute from "./components/ProtectedRoute"; 
 
 import "./App.css";
 
