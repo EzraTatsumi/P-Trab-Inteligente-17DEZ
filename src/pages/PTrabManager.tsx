@@ -1808,8 +1808,8 @@ const PTrabManager = () => {
                   Diretriz de Custeio Logístico
                 </DropdownMenuItem>
                 
-                <DropdownMenuItem onClick={() => navigate("/config/diretrizes-operacional")}>
-                  Diretriz de Custeio Operacional
+                <DropdownMenuItem onClick={() => navigate("/config/custos-operacionais")}>
+                  Custos Operacionais
                 </DropdownMenuItem>
                 
                 <DropdownMenuItem onClick={() => navigate("/config/visualizacao")}>
