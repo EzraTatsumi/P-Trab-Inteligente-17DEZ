@@ -63,7 +63,7 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   observacoes: "",
   
   // NOVOS CAMPOS DE DIÁRIA (Valores iniciais baseados na tabela fornecida)
-  diaria_referencia_legal: 'Lei/Portaria [NÚMERO]',
+  diaria_referencia_legal: 'Decreto Nº 12.324 de 19DEZ24', // NOVO DECRETO
   diaria_of_gen_bsb: 600.00,
   diaria_of_gen_capitais: 515.00,
   diaria_of_gen_demais: 455.00,
@@ -293,32 +293,24 @@ const CustosOperacionaisPage = () => {
         valor_locacao_viaturas_dia: diretrizes.valor_locacao_viaturas_dia || 0,
         fator_material_consumo: diretrizes.fator_material_consumo || 0,
         fator_concessionaria: diretrizes.fator_concessionaria || 0,
-        // Os novos campos de diária não precisam de validação Zod complexa aqui, 
-        // pois são tratados como números e strings simples.
+        // NOVOS CAMPOS DE DIÁRIA (Adicionados para validação Zod)
+        diaria_of_gen_bsb: diretrizes.diaria_of_gen_bsb || 0,
+        diaria_of_gen_capitais: diretrizes.diaria_of_gen_capitais || 0,
+        diaria_of_gen_demais: diretrizes.diaria_of_gen_demais || 0,
+        diaria_of_sup_bsb: diretrizes.diaria_of_sup_bsb || 0,
+        diaria_of_sup_capitais: diretrizes.diaria_of_sup_capitais || 0,
+        diaria_of_sup_demais: diretrizes.diaria_of_sup_demais || 0,
+        diaria_of_int_sgt_bsb: diretrizes.diaria_of_int_sgt_bsb || 0,
+        diaria_of_int_sgt_capitais: diretrizes.diaria_of_int_sgt_capitais || 0,
+        diaria_of_int_sgt_demais: diretrizes.diaria_of_int_sgt_demais || 0,
+        diaria_demais_pracas_bsb: diretrizes.diaria_demais_pracas_bsb || 0,
+        diaria_demais_pracas_capitais: diretrizes.diaria_demais_pracas_capitais || 0,
+        diaria_demais_pracas_demais: diretrizes.diaria_demais_pracas_demais || 0,
       };
       
-      // 2. Validação Zod (usando um schema temporário que exclui valor_diaria_padrao)
-      // Nota: O schema original precisa ser atualizado para remover valor_diaria_padrao
-      // e incluir os novos campos, mas como não posso editar validationSchemas.ts,
-      // vou criar um schema temporário que ignora o campo removido e valida os fatores.
-      
-      const tempSchema = diretrizOperacionalSchema.omit({ valor_diaria_padrao: true }).extend({
-        diaria_referencia_legal: z.string().optional(),
-        diaria_of_gen_bsb: z.number().min(0),
-        diaria_of_gen_capitais: z.number().min(0),
-        diaria_of_gen_demais: z.number().min(0),
-        diaria_of_sup_bsb: z.number().min(0),
-        diaria_of_sup_capitais: z.number().min(0),
-        diaria_of_sup_demais: z.number().min(0),
-        diaria_of_int_sgt_bsb: z.number().min(0),
-        diaria_of_int_sgt_capitais: z.number().min(0),
-        diaria_of_int_sgt_demais: z.number().min(0),
-        diaria_demais_pracas_bsb: z.number().min(0),
-        diaria_demais_pracas_capitais: z.number().min(0),
-        diaria_demais_pracas_demais: z.number().min(0),
-      });
-      
-      tempSchema.parse(dataToValidate);
+      // 2. Validação Zod
+      // Nota: O schema foi atualizado no passo anterior para incluir os novos campos e remover o obsoleto.
+      diretrizOperacionalSchema.parse(dataToValidate);
 
       // 3. Preparar dados para o Supabase
       const diretrizData: TablesInsert<'diretrizes_operacionais'> = {
