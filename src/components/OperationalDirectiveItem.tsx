@@ -55,8 +55,6 @@ const OperationalDirectiveItem: React.FC<OperationalDirectiveItemProps> = ({
     return value === 0 ? "" : value;
   }, [field.type, value, rawInput]);
   
-  // const displayUnit = field.type === 'currency' ? 'R$' : 'Fator'; // Não é mais necessário
-
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border rounded-lg bg-card text-card-foreground shadow-sm">
       <CollapsibleTrigger asChild>

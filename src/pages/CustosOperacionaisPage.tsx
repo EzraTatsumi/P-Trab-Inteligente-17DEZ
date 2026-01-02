@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Activity, Loader2, Save, Settings } from "lucide-react";
+import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -18,6 +18,7 @@ import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/type
 import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
 import * as z from "zod";
 import OperationalDirectiveItem from "@/components/OperationalDirectiveItem"; // Importar o novo componente
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; // Importar Collapsible
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -41,17 +42,19 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
 
 // Mapeamento de campos para rótulos e tipo de input (R$ ou Fator)
 const OPERATIONAL_FIELDS = [
-  { key: 'valor_diaria_padrao', label: 'Diária Padrão (R$)', type: 'currency' as const, placeholder: 'Ex: 100,00' },
-  { key: 'fator_passagens_aereas', label: 'Passagens Aéreas (Fator)', type: 'factor' as const, placeholder: 'Ex: 1.5 (para 150%)' },
-  { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)' },
-  { key: 'valor_verba_operacional_dia', label: 'Verba Operacional (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 50,00' },
-  { key: 'valor_suprimentos_fundo_dia', label: 'Suprimentos de Fundos (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 20,00' },
-  { key: 'valor_complemento_alimentacao', label: 'Complemento de Alimentação (R$)', type: 'currency' as const, placeholder: 'Ex: 15,00' },
-  { key: 'valor_fretamento_aereo_hora', label: 'Fretamento Aéreo (R$/hora)', type: 'currency' as const, placeholder: 'Ex: 1.200,00' },
-  { key: 'valor_locacao_estrutura_dia', label: 'Locação de Estrutura (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 300,00' },
-  { key: 'valor_locacao_viaturas_dia', label: 'Locação de Viaturas (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 150,00' },
-  { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)' },
-  { key: 'fator_concessionaria', label: 'Concessionária (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.01 (para 1%)' },
+  { key: 'valor_diaria_padrao', label: 'Diária Padrão (R$)', type: 'currency' as const, placeholder: 'Ex: 100,00', section: 'Diárias e Passagens' },
+  { key: 'fator_passagens_aereas', label: 'Passagens Aéreas (Fator)', type: 'factor' as const, placeholder: 'Ex: 1.5 (para 150%)', section: 'Diárias e Passagens' },
+  
+  { key: 'valor_verba_operacional_dia', label: 'Verba Operacional (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 50,00', section: 'Verbas e Suprimentos' },
+  { key: 'valor_suprimentos_fundo_dia', label: 'Suprimentos de Fundos (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 20,00', section: 'Verbas e Suprimentos' },
+  { key: 'valor_complemento_alimentacao', label: 'Complemento de Alimentação (R$)', type: 'currency' as const, placeholder: 'Ex: 15,00', section: 'Verbas e Suprimentos' },
+  { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)', section: 'Verbas e Suprimentos' },
+  { key: 'fator_concessionaria', label: 'Concessionária (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.01 (para 1%)', section: 'Verbas e Suprimentos' },
+  
+  { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)', section: 'Locação e Fretamento' },
+  { key: 'valor_fretamento_aereo_hora', label: 'Fretamento Aéreo (R$/hora)', type: 'currency' as const, placeholder: 'Ex: 1.200,00', section: 'Locação e Fretamento' },
+  { key: 'valor_locacao_estrutura_dia', label: 'Locação de Estrutura (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 300,00', section: 'Locação e Fretamento' },
+  { key: 'valor_locacao_viaturas_dia', label: 'Locação de Viaturas (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 150,00', section: 'Locação e Fretamento' },
 ];
 
 const CustosOperacionaisPage = () => {
@@ -67,8 +70,12 @@ const CustosOperacionaisPage = () => {
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   const [defaultYear, setDefaultYear] = useState<number | null>(null);
   
+  // Estados para controle de colapso das seções
+  const [isDiariasOpen, setIsDiariasOpen] = useState(true);
+  const [isVerbasOpen, setIsVerbasOpen] = useState(true);
+  const [isLocacaoOpen, setIsLocacaoOpen] = useState(true);
+  
   // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários
-  // NOTE: Este estado não é mais necessário para a renderização, mas é mantido para o handler de mudança.
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
   
   const { handleEnterToNextField } = useFormNavigation();
@@ -396,6 +403,39 @@ const CustosOperacionaisPage = () => {
     const numericValue = parseInputToNumber(value); // Usa parseInputToNumber para converter string formatada (se houver) ou float
     setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
   }, []);
+  
+  // Agrupamento dos campos
+  const groupedFields = useMemo(() => {
+    return OPERATIONAL_FIELDS.reduce((acc, field) => {
+      if (!acc[field.section]) {
+        acc[field.section] = [];
+      }
+      acc[field.section].push(field);
+      return acc;
+    }, {} as Record<string, typeof OPERATIONAL_FIELDS>);
+  }, []);
+
+  const renderSection = (title: string, fields: typeof OPERATIONAL_FIELDS, isOpen: boolean, setIsOpen: (open: boolean) => void) => (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border rounded-lg bg-card text-card-foreground shadow-sm">
+      <CollapsibleTrigger asChild>
+        <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+          <h3 className="text-lg font-semibold">{title}</h3>
+          {isOpen ? <ChevronUp className="h-5 w-5 shrink-0" /> : <ChevronDown className="h-5 w-5 shrink-0" />}
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="border-t p-4 bg-muted/20 space-y-3">
+        {fields.map(field => (
+          <OperationalDirectiveItem
+            key={field.key}
+            field={field}
+            value={diretrizes[field.key as keyof DiretrizOperacional] as number || 0}
+            onCurrencyChange={handleCurrencyChange}
+            onFactorChange={handleFactorChange}
+          />
+        ))}
+      </CollapsibleContent>
+    </Collapsible>
+  );
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -458,15 +498,26 @@ const CustosOperacionaisPage = () => {
               {/* SEÇÃO PRINCIPAL DE CUSTOS OPERACIONAIS (USANDO COMPONENTE COLAPSÁVEL) */}
               <div className="border-t pt-4 mt-6 space-y-3">
                 
-                {OPERATIONAL_FIELDS.map(field => (
-                  <OperationalDirectiveItem
-                    key={field.key}
-                    field={field}
-                    value={diretrizes[field.key as keyof DiretrizOperacional] as number || 0}
-                    onCurrencyChange={handleCurrencyChange}
-                    onFactorChange={handleFactorChange}
-                  />
-                ))}
+                {renderSection(
+                  'Diárias e Passagens', 
+                  groupedFields['Diárias e Passagens'], 
+                  isDiariasOpen, 
+                  setIsDiariasOpen
+                )}
+                
+                {renderSection(
+                  'Verbas e Suprimentos', 
+                  groupedFields['Verbas e Suprimentos'], 
+                  isVerbasOpen, 
+                  setIsVerbasOpen
+                )}
+                
+                {renderSection(
+                  'Locação e Fretamento', 
+                  groupedFields['Locação e Fretamento'], 
+                  isLocacaoOpen, 
+                  setIsLocacaoOpen
+                )}
               </div>
 
               <div className="space-y-2 border-t pt-4 mt-6">
