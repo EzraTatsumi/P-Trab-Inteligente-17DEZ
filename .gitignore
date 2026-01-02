@@ -84,7 +84,7 @@ src/lib/creditUtils.ts
 # REMOVIDO:src/components/reports/PTrabLogisticoReport.tsx
 # REMOVIDO:src/components/reports/PTrabRacaoOperacionalReport.tsx
 src/pages/ClasseIForm.tsx
-# REMOVIDO:src/pages/ClasseIIForm.tsx
+src/pages/ClasseIIForm.tsx
 src/pages/ClasseIIIForm.tsx
 src/pages/ClasseVForm.tsx
 src/pages/ClasseVIForm.tsx
@@ -127,7 +127,7 @@ src/pages/ResetPasswordPage.tsx
 src/pages/SharePage.tsx
 src/pages/Login.tsx
 # REMOVIDO:src/pages/PTrabManager.tsx
-# REMOVIDO:src/pages/PTrabForm.tsx
+src/pages/PTrabForm.tsx
 # REMOVIDO: src/pages/PTrabReportManager.tsx
 src/components/OmSelector.tsx
 src/components/SessionContextProvider.tsx
