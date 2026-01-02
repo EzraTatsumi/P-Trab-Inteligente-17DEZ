@@ -41,7 +41,7 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
 
 // Mapeamento de campos para rótulos e tipo de input (R$ ou Fator)
 const OPERATIONAL_FIELDS = [
-  { key: 'valor_diaria_padrao', label: 'Diária Padrão (R$)', type: 'currency' as const, placeholder: 'Ex: 100,00' },
+  { key: 'valor_diaria_padrao', label: 'Pagamento de Diárias', type: 'currency' as const, placeholder: 'Ex: 100,00' }, // Rótulo atualizado
   { key: 'fator_passagens_aereas', label: 'Passagens Aéreas (Fator)', type: 'factor' as const, placeholder: 'Ex: 1.5 (para 150%)' },
   { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)' },
   { key: 'valor_verba_operacional_dia', label: 'Verba Operacional (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 50,00' },
@@ -73,7 +73,7 @@ const CustosOperacionaisPage = () => {
   // NOVO ESTADO: Controla a expansão individual de cada campo
   const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => {
     return OPERATIONAL_FIELDS.reduce((acc, field) => {
-      acc[field.key as string] = true; // Começa todos abertos
+      acc[field.key as string] = false; // Começa todos FECHADOS
       return acc;
     }, {} as Record<string, boolean>);
   });
@@ -509,16 +509,14 @@ const CustosOperacionaisPage = () => {
 
               {/* SEÇÃO PRINCIPAL DE CUSTOS OPERACIONAIS (ITENS INDIVIDUAIS COLAPSÁVEIS) */}
               <div className="border-t pt-4 mt-6">
-                <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                    <Activity className="h-5 w-5 text-primary" />
-                    Custos Operacionais (GND 3)
-                </h3>
+                {/* REMOVIDO: <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">...</h3> */}
                 
                 <div className="space-y-4">
                   {OPERATIONAL_FIELDS.map(field => {
                     const fieldKey = field.key as string;
-                    const isOpen = fieldCollapseState[fieldKey] ?? true;
+                    const isOpen = fieldCollapseState[fieldKey] ?? false; // Agora começa FECHADO
                     
+                    // Renderiza o campo dentro de um Collapsible
                     return (
                       <Collapsible 
                         key={fieldKey} 
@@ -536,6 +534,7 @@ const CustosOperacionaisPage = () => {
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <div className="mt-2">
+                            {/* O campo de input é renderizado aqui */}
                             {renderDiretrizField(field)}
                           </div>
                         </CollapsibleContent>
