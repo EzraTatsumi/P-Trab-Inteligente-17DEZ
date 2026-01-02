@@ -1,38 +1,56 @@
-import { useCallback } from 'react';
+import React from 'react';
 
-/**
- * Hook customizado para facilitar a navegação entre campos de formulário usando a tecla Enter.
- * Nota: Este hook é um placeholder. A lógica de navegação real deve ser implementada aqui.
- */
 export const useFormNavigation = () => {
-  // Removido o uso de useNavigate para evitar erros de contexto se o hook for chamado fora do Router.
-
-  const handleEnterToNextField = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      
-      // Lógica simples para focar no próximo elemento
-      const form = e.currentTarget.form;
+  const handleEnterToNextField = (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault(); // Previne o comportamento padrão (ex: submissão do formulário)
+      const form = event.currentTarget.form;
       if (form) {
-        const elements = Array.from(form.elements) as HTMLElement[];
-        const index = elements.indexOf(e.currentTarget);
-        
-        // Encontra o próximo elemento que pode ser focado (Input, Select, Button, etc.)
-        let nextElement = null;
-        for (let i = index + 1; i < elements.length; i++) {
-          const element = elements[i];
-          if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT' || element.tagName === 'BUTTON') {
-            nextElement = element;
-            break;
+        // Se o campo atual for um input de senha, submete o formulário diretamente
+        if (event.currentTarget.type === 'password') {
+          const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+          if (submitButton) {
+            submitButton.click();
+          } else {
+            // Fallback: tenta encontrar o primeiro botão que não seja type="button"
+            const firstDefaultButton = form.querySelector('button:not([type="button"]):not([disabled])') as HTMLButtonElement;
+            if (firstDefaultButton) {
+              firstDefaultButton.click();
+            }
           }
+          return; // Interrompe a execução para não mover o foco
         }
+
+        // Lógica existente para mover o foco para o próximo campo
+        const focusableElements = Array.from(
+          form.querySelectorAll(
+            'input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), ' +
+            'textarea:not([disabled]):not([tabindex="-1"]), ' +
+            'select:not([disabled]):not([tabindex="-1"]), ' +
+            'button:not([disabled]):not([tabindex="-1"]), ' +
+            'a[href]:not([disabled]):not([tabindex="-1"]), ' +
+            '[tabindex]:not([tabindex="-1"]):not([disabled])'
+          )
+        ) as HTMLElement[];
         
-        if (nextElement) {
-          nextElement.focus();
+        const currentElementIndex = focusableElements.indexOf(event.currentTarget);
+        
+        if (currentElementIndex > -1 && currentElementIndex < focusableElements.length - 1) {
+          focusableElements[currentElementIndex + 1].focus();
+        } else {
+          const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+          if (submitButton) {
+            submitButton.click();
+          } else {
+            const firstDefaultButton = form.querySelector('button:not([type="button"]):not([disabled])') as HTMLButtonElement;
+            if (firstDefaultButton) {
+              firstDefaultButton.click();
+            }
+          }
         }
       }
     }
-  }, []);
+  };
 
   return { handleEnterToNextField };
 };
