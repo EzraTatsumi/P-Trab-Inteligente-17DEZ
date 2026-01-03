@@ -268,7 +268,7 @@ const DiariaForm: React.FC = () => {
         
         // Cálculo
         const totalDiaria = qtd * dias * valorUnitario;
-        const totalTaxaEmbarque = qtd * valorTaxaEmbarque; // CORRIGIDO: Usando taxaEmbarque lida do input
+        const totalTaxaEmbarque = qtd * taxaEmbarque; // CORRIGIDO: Usando taxaEmbarque lida do input
         const totalGeral = totalDiaria + totalTaxaEmbarque;
         
         // Alocação ND (Diárias são sempre ND 39)
@@ -288,8 +288,68 @@ const DiariaForm: React.FC = () => {
         };
     }, [watchedFields.quantidade, watchedFields.dias_operacao, watchedFields.raw_valor_diaria_unitario, watchedFields.raw_valor_taxa_embarque]);
     
+    // --- Memória de Cálculo ---
+    
+    const generateMemoriaCalculo = (
+        data: DiariaRegistroFormValues | DiariaRegistro, 
+        valorTotal: number, 
+        valorUnitario: number, 
+        valorTaxaEmbarque: number
+    ): string => {
+        const dias = data.dias_operacao || 0;
+        const qtd = data.quantidade || 0;
+        const faseFormatada = data.fase_atividade || 'operação';
+        const omDestinoNome = data.organizacao;
+        const omDestinoUg = data.ug;
+        const omDetentoraNome = data.om_detentora || omDestinoNome;
+        const omDetentoraUg = data.ug_detentora || omDestinoUg;
+        
+        const totalDiaria = qtd * dias * valorUnitario;
+        const totalTaxaEmbarque = qtd * valorTaxaEmbarque;
+        
+        const omArticle = omDestinoNome.includes('ª') ? 'da' : 'do';
+        const militarPlural = qtd === 1 ? 'militar' : 'militares';
+        const diaPlural = dias === 1 ? 'dia' : 'dias';
+        
+        // Cabeçalho
+        const header = `33.90.39 - Pagamento de Diárias e Taxas de Embarque para ${qtd} ${militarPlural} ${omArticle} ${omDestinoNome}, durante ${dias} ${diaPlural} de ${faseFormatada}.`;
+        
+        let detalhamento = `
+OM Detentora: ${omDetentoraNome} (UG: ${formatCodug(omDetentoraUg)})
+OM Destino Recurso: ${omDestinoNome} (UG: ${formatCodug(omDestinoUg)})
+
+Referência Legal: ${diariaDiretrizes.referenciaLegal || 'Não Informada'}
+
+Cálculo Detalhado:
+- Posto/Graduação: ${data.posto_graduacao}
+- Destino: ${data.destino}
+- Valor Diária Unitário: ${formatCurrency(valorUnitario)}
+- Valor Taxa de Embarque: ${formatCurrency(valorTaxaEmbarque)}
+
+1. Diárias:
+Fórmula: Quantidade x Dias x Valor Unitário
+${qtd} un. x ${dias} ${diaPlural} x ${formatCurrency(valorUnitario)} = ${formatCurrency(totalDiaria)}
+
+2. Taxas de Embarque:
+Fórmula: Quantidade x Valor Taxa
+${qtd} un. x ${formatCurrency(valorTaxaEmbarque)} = ${formatCurrency(totalTaxaEmbarque)}
+
+Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
+        `.trim();
+        
+        return header + "\n\n" + detalhamento;
+    };
+    
     // Desestruturando os totais calculados
     const { valorDiariaUnitario, valorTaxaEmbarque, valorTotal, valorND30, valorND39 } = calculatedTotals;
+
+    // Memória de cálculo em tempo real
+    const liveMemoria = useMemo(() => {
+        if (isCustomMemoriaActive) return customMemoria;
+        
+        // Agora usamos as variáveis desestruturadas do calculatedTotals
+        return generateMemoriaCalculo(watchedFields, valorTotal, valorDiariaUnitario, valorTaxaEmbarque);
+    }, [watchedFields, valorTotal, valorDiariaUnitario, valorTaxaEmbarque, isCustomMemoriaActive, customMemoria, diariaDiretrizes]);
     
     // --- Handlers de Input ---
     
@@ -443,66 +503,6 @@ const DiariaForm: React.FC = () => {
             ug_detentora: watchedFields.ug_detentora,
         });
     };
-    
-    // --- Memória de Cálculo ---
-    
-    const generateMemoriaCalculo = (
-        data: DiariaRegistroFormValues | DiariaRegistro, 
-        valorTotal: number, 
-        valorUnitario: number, 
-        valorTaxaEmbarque: number
-    ): string => {
-        const dias = data.dias_operacao || 0;
-        const qtd = data.quantidade || 0;
-        const faseFormatada = data.fase_atividade || 'operação';
-        const omDestinoNome = data.organizacao;
-        const omDestinoUg = data.ug;
-        const omDetentoraNome = data.om_detentora || omDestinoNome;
-        const omDetentoraUg = data.ug_detentora || omDestinoUg;
-        
-        const totalDiaria = qtd * dias * valorUnitario;
-        const totalTaxaEmbarque = qtd * valorTaxaEmbarque;
-        
-        const omArticle = omDestinoNome.includes('ª') ? 'da' : 'do';
-        const militarPlural = qtd === 1 ? 'militar' : 'militares';
-        const diaPlural = dias === 1 ? 'dia' : 'dias';
-        
-        // Cabeçalho
-        const header = `33.90.39 - Pagamento de Diárias e Taxas de Embarque para ${qtd} ${militarPlural} ${omArticle} ${omDestinoNome}, durante ${dias} ${diaPlural} de ${faseFormatada}.`;
-        
-        let detalhamento = `
-OM Detentora: ${omDetentoraNome} (UG: ${formatCodug(omDetentoraUg)})
-OM Destino Recurso: ${omDestinoNome} (UG: ${formatCodug(omDestinoUg)})
-
-Referência Legal: ${diariaDiretrizes.referenciaLegal || 'Não Informada'}
-
-Cálculo Detalhado:
-- Posto/Graduação: ${data.posto_graduacao}
-- Destino: ${data.destino}
-- Valor Diária Unitário: ${formatCurrency(valorUnitario)}
-- Valor Taxa de Embarque: ${formatCurrency(valorTaxaEmbarque)}
-
-1. Diárias:
-Fórmula: Quantidade x Dias x Valor Unitário
-${qtd} un. x ${dias} ${diaPlural} x ${formatCurrency(valorUnitario)} = ${formatCurrency(totalDiaria)}
-
-2. Taxas de Embarque:
-Fórmula: Quantidade x Valor Taxa
-${qtd} un. x ${formatCurrency(valorTaxaEmbarque)} = ${formatCurrency(totalTaxaEmbarque)}
-
-Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
-        `.trim();
-        
-        return header + "\n\n" + detalhamento;
-    };
-    
-    // Memória de cálculo em tempo real
-    const liveMemoria = useMemo(() => {
-        if (isCustomMemoriaActive) return customMemoria;
-        
-        // Agora usamos as variáveis desestruturadas do calculatedTotals
-        return generateMemoriaCalculo(watchedFields, valorTotal, valorDiariaUnitario, valorTaxaEmbarque);
-    }, [watchedFields, valorTotal, valorDiariaUnitario, valorTaxaEmbarque, isCustomMemoriaActive, customMemoria, diariaDiretrizes]);
     
     // --- Renderização ---
     
