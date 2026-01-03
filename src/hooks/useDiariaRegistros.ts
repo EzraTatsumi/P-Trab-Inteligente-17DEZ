@@ -17,7 +17,7 @@ const fetchDiariaRegistros = async (p_trab_id: string): Promise<DiariaRegistro[]
     throw new Error("Falha ao carregar registros de Diária.");
   }
 
-  // Mapear campos numéricos para garantir o tipo correto
+  // Mapear campos numéricos e novos campos para garantir o tipo correto
   return (data || []).map(r => ({
     ...r,
     valor_diaria_unitario: Number(r.valor_diaria_unitario),
@@ -25,6 +25,10 @@ const fetchDiariaRegistros = async (p_trab_id: string): Promise<DiariaRegistro[]
     valor_total: Number(r.valor_total),
     valor_nd_30: Number(r.valor_nd_30),
     valor_nd_39: Number(r.valor_nd_39),
+    // Novos campos
+    nr_viagens: r.nr_viagens || 1,
+    local_atividade: r.local_atividade || null,
+    quantidades_por_posto: r.quantidades_por_posto || null,
   })) as DiariaRegistro[];
 };
 

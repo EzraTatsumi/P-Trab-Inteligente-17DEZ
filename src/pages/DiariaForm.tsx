@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useForm, FormProvider } from "react-hook-form";
+import { useForm, FormProvider, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Loader2, Plus, Trash2, Edit, Calendar, Users, MapPin, DollarSign, FileText, Check, X } from "lucide-react";
+import { ArrowLeft, Save, Loader2, DollarSign, RefreshCw, Checkbox as CheckboxIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -14,98 +14,45 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"; // Importar AlertDialog components
 
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
-import { useDiretrizesOperacionais } from "@/hooks/useDiretrizesOperacionais"; // Novo hook para diretrizes operacionais
-import { formatCurrency, formatCodug, formatNumberForInput, parseInputToNumber, numberToRawDigits, formatCurrencyInput, calculateDays } from "@/lib/formatUtils";
+import { useDiretrizesOperacionais } from "@/hooks/useDiretrizesOperacionais";
+import { formatCurrency, formatCodug, numberToRawDigits, formatCurrencyInput, calculateDays, formatNumber } from "@/lib/formatUtils";
 import { usePTrabData } from "@/hooks/usePTrabData";
-import { useDiariaRegistros } from "@/hooks/useDiariaRegistros"; // Novo hook para registros de diária
+import { useDiariaRegistros } from "@/hooks/useDiariaRegistros";
 import { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { OMData } from "@/lib/omUtils";
-import { DiariaRegistro, DiariaItem } from "@/types/diaria"; // Novo tipo para Diária
-import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
-import { OmSelector } from "@/components/OmSelector"; // Importar OmSelector
-
-// --- Schemas ---
-
-// Define a estrutura de um item de diária para o formulário
-const DiariaItemSchema = z.object({
-    posto_graduacao: z.string().min(1, "Posto/Graduação é obrigatório."),
-    destino: z.string().min(1, "Destino é obrigatório."),
-    quantidade: z.number().int().min(1, "Quantidade deve ser >= 1."),
-    dias_operacao: z.number().int().min(1, "Dias de Operação deve ser >= 1."),
-    valor_diaria_unitario: z.number().min(0, "Valor unitário deve ser positivo."),
-    valor_taxa_embarque: z.number().min(0, "Valor da taxa deve ser positivo."),
-    valor_total: z.number().min(0, "Valor total deve ser positivo."),
-    valor_nd_30: z.number().min(0, "ND 30 deve ser positivo."),
-    valor_nd_39: z.number().min(0, "ND 39 deve ser positivo."),
-    detalhamento: z.string().optional(),
-    detalhamento_customizado: z.string().optional(),
-    fase_atividade: z.string().optional(),
-    om_detentora: z.string().optional(),
-    ug_detentora: z.string().optional(),
-});
-
-// Define a estrutura do formulário principal (para edição de um registro)
-const DiariaRegistroSchema = z.object({
-    id: z.string().optional(),
-    organizacao: z.string().min(1, "OM de Destino é obrigatória."),
-    ug: z.string().min(1, "UG de Destino é obrigatória."),
-    dias_operacao: z.number().int().min(1, "Dias de Operação é obrigatório."),
-    fase_atividade: z.string().optional(),
-    
-    // Campos do item (para o formulário de adição/edição)
-    posto_graduacao: z.string().min(1, "Posto/Graduação é obrigatório."),
-    destino: z.string().min(1, "Destino é obrigatório."),
-    quantidade: z.number().int().min(1, "Quantidade é obrigatória."),
-    
-    // Campos de controle de input (raw digits)
-    raw_valor_diaria_unitario: z.string().optional(),
-    raw_valor_taxa_embarque: z.string().optional(),
-    
-    // Campos de alocação ND (raw digits)
-    raw_valor_nd_30: z.string().optional(),
-    raw_valor_nd_39: z.string().optional(),
-    
-    // Campos de OM Detentora (Source)
-    om_detentora: z.string().min(1, "OM Detentora é obrigatória."),
-    ug_detentora: z.string().min(1, "UG Detentora é obrigatória."),
-});
-
-type DiariaRegistroFormValues = z.infer<typeof DiariaRegistroSchema>;
+import { DiariaRegistro } from "@/types/diaria";
+import { useSession } from "@/components/SessionContextProvider";
+import { OmSelector } from "@/components/OmSelector";
 
 // --- Constants ---
 
 const POSTO_GRADUACAO_OPTIONS = [
     "Of Gen", "Of Sup", "Of Int/Sub/Asp Of/ST/Sgt", "Demais Praças"
-];
+] as const;
 
 const DESTINO_OPTIONS = [
     "BSB/MAO/RJ/SP", "Demais Capitais", "Demais Dslc"
-];
+] as const;
 
 const FASE_ATIVIDADE_OPTIONS = [
     "Mobilização", "Execução", "Desmobilização", "Reconhecimento"
-];
+] as const;
 
-// Default Diária values (replicated from CustosOperacionaisPage.tsx for robustness)
+const RANK_CONFIG = [
+    { key: 'of_gen', label: 'Of Gen' },
+    { key: 'of_sup', label: 'Of Sup' },
+    { key: 'of_int_sgt', label: 'Of Int/Sub/Asp Of/ST/Sgt' },
+    { key: 'demais_pracas', label: 'Demais Praças' },
+] as const;
+
+// Default Diária values (fallback if no diretrizes are loaded)
 const DEFAULT_DIARIA_VALUES = {
     diaria_referencia_legal: 'Decreto Nº 12.324 de 19DEZ24',
     taxa_embarque: 95.00,
@@ -123,6 +70,42 @@ const DEFAULT_DIARIA_VALUES = {
     diaria_demais_pracas_demais: 280.00,
 };
 
+// --- Schemas ---
+
+const QuantitySchema = z.object({
+    posto_graduacao: z.enum(POSTO_GRADUACAO_OPTIONS),
+    qtd: z.number().int().min(0),
+});
+
+const DiariaRequestSchema = z.object({
+    // Global parameters for the trip
+    nr_dias_viagem: z.number().int().min(1, "Dias de viagem é obrigatório."),
+    local_pagamento: z.enum(DESTINO_OPTIONS, { required_error: "Local de pagamento é obrigatório." }),
+    nr_viagens: z.number().int().min(1, "Número de viagens é obrigatório."),
+    local_atividade: z.string().min(1, "Local da atividade é obrigatório."),
+    
+    // OM Detentora (Source)
+    om_detentora: z.string().min(1, "OM Detentora é obrigatória."),
+    ug_detentora: z.string().min(1, "UG Detentora é obrigatória."),
+    
+    // OM de Destino (Recurso) - Fixed by PTrab
+    organizacao: z.string(),
+    ug: z.string(),
+    
+    // Quantities per rank
+    quantities: z.array(QuantitySchema).refine(arr => arr.some(q => q.qtd > 0), {
+        message: "Pelo menos um militar deve ser incluído.",
+        path: ['quantities'],
+    }),
+    
+    fase_atividade: z.string().optional(),
+    
+    // Hidden fields for ND allocation (always 33.90.15 for Diárias)
+    raw_valor_nd_15: z.string().optional(),
+});
+
+type DiariaRequestFormValues = z.infer<typeof DiariaRequestSchema>;
+
 // --- Component ---
 
 const DiariaForm: React.FC = () => {
@@ -130,25 +113,17 @@ const DiariaForm: React.FC = () => {
     const [searchParams] = useSearchParams();
     const p_trab_id = searchParams.get('ptrabId');
     
-    const { user, loading: isLoadingSession } = useSession(); // Usar useSession
-    
+    const { user, loading: isLoadingSession } = useSession();
     const { handleEnterToNextField } = useFormNavigation();
     
-    const [editingRegistroId, setEditingRegistroId] = useState<string | null>(null);
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const [registroToDelete, setRegistroToDelete] = useState<DiariaRegistro | null>(null);
-    
-    // Estado para a memória de cálculo customizada
     const [customMemoria, setCustomMemoria] = useState<string>("");
     const [isCustomMemoriaActive, setIsCustomMemoriaActive] = useState(false);
     
-    // Estado para controlar a seleção da OM Detentora no OmSelector
     const [selectedOmDetentoraId, setSelectedOmDetentoraId] = useState<string | undefined>(undefined);
     
     // Hooks de Dados
     const { data: pTrabData, isLoading: isLoadingPTrab } = usePTrabData(p_trab_id);
     const { data: omList } = useMilitaryOrganizations();
-    // Passar o userId para o hook de diretrizes
     const { data: diretrizesOp, isLoading: isLoadingDiretrizes } = useDiretrizesOperacionais(user?.id); 
     const { data: registros, isLoading: isLoadingRegistros, refetch: refetchRegistros } = useDiariaRegistros(p_trab_id);
     
@@ -156,7 +131,6 @@ const DiariaForm: React.FC = () => {
     const omDestinoPTrab = useMemo(() => {
         if (!pTrabData) return null;
         
-        // Fallback: Usa os dados do PTrab
         return {
             id: 'ptrab-om',
             nome_om: pTrabData.nome_om,
@@ -168,7 +142,7 @@ const DiariaForm: React.FC = () => {
             user_id: user?.id || '',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-        } as OMData; // Cast to OMData structure
+        } as OMData;
     }, [pTrabData, user?.id]);
     
     // Memo para as diretrizes de diária
@@ -199,334 +173,340 @@ const DiariaForm: React.FC = () => {
         };
     }, [diretrizesOp]);
 
+    // --- Data Aggregation and Initialization ---
+
+    const aggregatedRequest = useMemo(() => {
+        const defaultDias = pTrabData ? calculateDays(pTrabData.periodo_inicio, pTrabData.periodo_fim) : 1;
+        
+        if (!registros || registros.length === 0) {
+            return {
+                nr_dias_viagem: defaultDias,
+                local_pagamento: DESTINO_OPTIONS[1], // Default to Demais Capitais
+                nr_viagens: 1,
+                local_atividade: pTrabData?.local_om || "",
+                om_detentora: omDestinoPTrab?.nome_om || "",
+                ug_detentora: omDestinoPTrab?.codug_om || "",
+                fase_atividade: FASE_ATIVIDADE_OPTIONS[0],
+                quantities: RANK_CONFIG.map(r => ({ posto_graduacao: r.label as DiariaRequestFormValues['quantities'][number]['posto_graduacao'], qtd: 0 })),
+                valor_nd_15: 0,
+            };
+        }
+        
+        // Use the parameters from the most recent record (or the first one)
+        const baseRecord = registros[0];
+        
+        // Aggregate quantities (use quantities_por_posto if available, otherwise aggregate individual rows)
+        let quantities: DiariaRequestFormValues['quantities'];
+        
+        if (baseRecord.quantidades_por_posto && baseRecord.quantidades_por_posto.length > 0) {
+            quantities = baseRecord.quantidades_por_posto.map(q => ({
+                posto_graduacao: q.posto_graduacao as DiariaRequestFormValues['quantities'][number]['posto_graduacao'],
+                qtd: q.qtd,
+            }));
+        } else {
+            // Fallback: Aggregate quantities from individual rows
+            const quantitiesMap = new Map<string, number>();
+            registros.forEach(r => {
+                const currentQtd = quantitiesMap.get(r.posto_graduacao) || 0;
+                quantitiesMap.set(r.posto_graduacao, currentQtd + r.quantidade);
+            });
+            
+            quantities = RANK_CONFIG.map(r => ({
+                posto_graduacao: r.label as DiariaRequestFormValues['quantities'][number]['posto_graduacao'],
+                qtd: quantitiesMap.get(r.label) || 0,
+            }));
+        }
+        
+        // Calculate total ND 15 (sum of all valor_total)
+        const totalND15 = registros.reduce((sum, r) => sum + r.valor_total, 0);
+        
+        // Use custom memory if the base record has it
+        if (baseRecord.detalhamento_customizado) {
+            setCustomMemoria(baseRecord.detalhamento_customizado);
+            setIsCustomMemoriaActive(true);
+        } else {
+            setCustomMemoria("");
+            setIsCustomMemoriaActive(false);
+        }
+
+        return {
+            nr_dias_viagem: baseRecord.dias_operacao,
+            local_pagamento: baseRecord.destino as DiariaRequestFormValues['local_pagamento'],
+            nr_viagens: baseRecord.nr_viagens || 1,
+            local_atividade: baseRecord.local_atividade || pTrabData?.local_om || "",
+            om_detentora: baseRecord.om_detentora || omDestinoPTrab?.nome_om || "",
+            ug_detentora: baseRecord.ug_detentora || omDestinoPTrab?.codug_om || "",
+            fase_atividade: baseRecord.fase_atividade || FASE_ATIVIDADE_OPTIONS[0],
+            quantities,
+            valor_nd_15: totalND15,
+        };
+    }, [registros, pTrabData, omDestinoPTrab]);
+
     // --- Form Setup ---
-    const methods = useForm<DiariaRegistroFormValues>({
-        resolver: zodResolver(DiariaRegistroSchema),
+    const methods = useForm<DiariaRequestFormValues>({
+        resolver: zodResolver(DiariaRequestSchema),
         defaultValues: {
-            // OM de Destino (Recurso) - Fixa como a OM do PTrab
             organizacao: omDestinoPTrab?.nome_om || "",
             ug: omDestinoPTrab?.codug_om || "",
-            dias_operacao: pTrabData ? calculateDays(pTrabData.periodo_inicio, pTrabData.periodo_fim) : 1,
-            fase_atividade: FASE_ATIVIDADE_OPTIONS[0],
-            
-            // OM Detentora (Source) - Inicialmente igual à OM de Destino
-            om_detentora: omDestinoPTrab?.nome_om || "",
-            ug_detentora: omDestinoPTrab?.codug_om || "",
-            
-            // Campos do item
-            posto_graduacao: POSTO_GRADUACAO_OPTIONS[0],
-            destino: DESTINO_OPTIONS[0],
-            quantidade: 1,
-            raw_valor_diaria_unitario: numberToRawDigits(0),
-            raw_valor_taxa_embarque: numberToRawDigits(0),
-            raw_valor_nd_30: numberToRawDigits(0),
-            raw_valor_nd_39: numberToRawDigits(0),
+            ...aggregatedRequest,
+            raw_valor_nd_15: numberToRawDigits(aggregatedRequest.valor_nd_15),
         },
     });
-    const { register, handleSubmit, watch, setValue, reset: resetForm, formState: { errors, isSubmitting } } = methods;
-    
+    const { register, handleSubmit, watch, setValue, reset: resetForm, control, formState: { errors, isSubmitting } } = methods;
+    const { fields: quantityFields, replace: replaceQuantities } = useFieldArray({
+        control,
+        name: "quantities",
+    });
+
+    // Initialize quantities if they haven't been loaded yet
+    useEffect(() => {
+        if (aggregatedRequest.quantities.length > 0 && quantityFields.length === 0) {
+            replaceQuantities(aggregatedRequest.quantities);
+        }
+    }, [aggregatedRequest.quantities, quantityFields.length, replaceQuantities]);
+
     const watchedFields = watch();
-    
-    // --- Auto-Update Effects ---
-    
-    // 1. Atualizar OM de Destino e Dias de Operação (Fixos)
-    useEffect(() => {
-        if (omDestinoPTrab) {
-            // OM de Destino (Recurso) é a OM do PTrab
-            setValue('organizacao', omDestinoPTrab.nome_om);
-            setValue('ug', omDestinoPTrab.codug_om);
-            
-            // Se não estiver editando, a OM Detentora é a OM do PTrab por padrão
-            if (!editingRegistroId) {
-                setValue('om_detentora', omDestinoPTrab.nome_om);
-                setValue('ug_detentora', omDestinoPTrab.codug_om);
-            }
-        }
-        if (pTrabData) {
-            setValue('dias_operacao', calculateDays(pTrabData.periodo_inicio, pTrabData.periodo_fim));
-        }
-    }, [omDestinoPTrab, pTrabData, setValue, editingRegistroId]);
-    
-    // 2. Auto-calcular Valor Unitário da Diária e Taxa de Embarque
-    useEffect(() => {
-        if (diariaDiretrizes && watchedFields.posto_graduacao && watchedFields.destino) {
-            const posto = watchedFields.posto_graduacao;
-            const destino = watchedFields.destino;
-            
-            const valorUnitario = diariaDiretrizes.values[posto]?.[destino] || 0;
-            const taxaEmbarque = diariaDiretrizes.taxaEmbarque || 0;
-            
-            // Atualiza o valor unitário (numérico e raw input)
-            setValue('raw_valor_diaria_unitario', numberToRawDigits(valorUnitario));
-            
-            // Atualiza a taxa de embarque (numérico e raw input)
-            setValue('raw_valor_taxa_embarque', numberToRawDigits(taxaEmbarque));
-        }
-    }, [watchedFields.posto_graduacao, watchedFields.destino, diariaDiretrizes, setValue]);
-    
-    // 3. Cálculo de Totais (Diária Unitária e Taxa de Embarque)
-    const calculatedTotals = useMemo(() => {
-        const qtd = watchedFields.quantidade || 0;
-        const dias = watchedFields.dias_operacao || 0;
+
+    // --- Calculation Logic ---
+
+    const calculateDiariaTotals = useMemo(() => {
+        const nrDiasViagem = watchedFields.nr_dias_viagem || 0;
+        const localPagamento = watchedFields.local_pagamento;
+        const nrViagens = watchedFields.nr_viagens || 0;
+        const quantities = watchedFields.quantities || [];
+        const taxaEmbarque = diariaDiretrizes.taxaEmbarque;
         
-        // Valores unitários (lidos dos raw inputs)
-        const valorUnitario = parseInputToNumber(formatCurrencyInput(watchedFields.raw_valor_diaria_unitario || '0').formatted);
-        const taxaEmbarque = parseInputToNumber(formatCurrencyInput(watchedFields.raw_valor_taxa_embarque || '0').formatted);
+        let totalDiaria = 0;
+        let totalMilitares = 0;
         
-        // Cálculo
-        const totalDiaria = qtd * dias * valorUnitario;
-        const totalTaxaEmbarque = qtd * taxaEmbarque; 
+        const rankCalculations: { rank: string, qtd: number, valorDia: number, total: number }[] = [];
+        
+        if (nrDiasViagem > 0 && nrViagens > 0 && localPagamento) {
+            const diasPagos = Math.max(0, nrDiasViagem - 0.5); // (Nr dias de operação - 0.5 dia)
+            
+            quantities.forEach(q => {
+                const rankLabel = q.posto_graduacao;
+                const qtd = q.qtd;
+                
+                if (qtd > 0) {
+                    totalMilitares += qtd;
+                    
+                    const valorDia = diariaDiretrizes.values[rankLabel]?.[localPagamento] || 0;
+                    
+                    // Fórmula: (Qtd x Custo/dia/localidade) x diasPagos x Nr Viagens
+                    const subtotal = qtd * valorDia * diasPagos * nrViagens;
+                    totalDiaria += subtotal;
+                    
+                    rankCalculations.push({
+                        rank: rankLabel,
+                        qtd: qtd,
+                        valorDia: valorDia,
+                        total: subtotal,
+                    });
+                }
+            });
+        }
+        
+        // Taxa Emb Total: Qtd total x Taxa Emb x Nr Viagens
+        const totalTaxaEmbarque = totalMilitares * taxaEmbarque * nrViagens;
+        
         const totalGeral = totalDiaria + totalTaxaEmbarque;
         
-        // Alocação ND (Diárias são sempre ND 39)
-        const nd39 = totalGeral;
-        const nd30 = 0;
+        // ND Allocation: Diárias are ND 33.90.15
+        const nd15 = totalGeral;
         
         return {
-            valorDiariaUnitario: valorUnitario,
-            valorTaxaEmbarque: taxaEmbarque,
-            valorTotal: totalGeral,
-            valorND30: nd30,
-            valorND39: nd39,
+            totalDiaria,
+            totalTaxaEmbarque,
+            totalGeral,
+            nd15,
+            totalMilitares,
+            rankCalculations,
         };
-    }, [watchedFields.quantidade, watchedFields.dias_operacao, watchedFields.raw_valor_diaria_unitario, watchedFields.raw_valor_taxa_embarque]);
-    
+    }, [watchedFields.nr_dias_viagem, watchedFields.local_pagamento, watchedFields.nr_viagens, watchedFields.quantities, diariaDiretrizes]);
+
     // Desestruturando os totais calculados
-    const { valorDiariaUnitario, valorTaxaEmbarque, valorTotal, valorND30, valorND39 } = calculatedTotals;
-    
-    // --- Handlers de Input ---
-    
-    const handleCurrencyChange = (field: 'raw_valor_diaria_unitario' | 'raw_valor_taxa_embarque' | 'raw_valor_nd_30' | 'raw_valor_nd_39', rawValue: string) => {
-        const { digits } = formatCurrencyInput(rawValue);
-        setValue(field, digits, { shouldValidate: false });
-    };
-    
-    // Handler para OmSelector (OM Detentora)
-    const handleOmDetentoraChange = (omData: OMData | undefined) => {
-        if (omData) {
-            setSelectedOmDetentoraId(omData.id);
-            setValue('om_detentora', omData.nome_om);
-            setValue('ug_detentora', omData.codug_om);
-        } else {
-            setSelectedOmDetentoraId(undefined);
-            setValue('om_detentora', "");
-            setValue('ug_detentora', "");
-        }
-    };
-    
+    const { totalDiaria, totalTaxaEmbarque, totalGeral, nd15, totalMilitares, rankCalculations } = calculateDiariaTotals;
+
     // --- Memória de Cálculo ---
-    
+
     const generateMemoriaCalculo = (
-        data: DiariaRegistroFormValues | DiariaRegistro, 
-        valorTotal: number, 
-        valorUnitario: number, 
-        valorTaxaEmbarque: number
+        data: DiariaRequestFormValues, 
+        totals: ReturnType<typeof calculateDiariaTotals>
     ): string => {
-        const dias = data.dias_operacao || 0;
-        const qtd = data.quantidade || 0;
-        const faseFormatada = data.fase_atividade || 'operação';
-        const omDestinoNome = data.organizacao;
-        const omDestinoUg = data.ug;
-        const omDetentoraNome = data.om_detentora || omDestinoNome;
-        const omDetentoraUg = data.ug_detentora || omDestinoUg;
+        const { nr_dias_viagem, local_pagamento, nr_viagens, local_atividade, om_detentora } = data;
+        const { totalDiaria, totalTaxaEmbarque, totalGeral, rankCalculations, totalMilitares } = totals;
         
-        const totalDiaria = qtd * dias * valorUnitario;
-        const totalTaxaEmbarque = qtd * valorTaxaEmbarque;
+        const omArticle = om_detentora.includes('ª') ? 'da' : 'do';
+        const militarPlural = totalMilitares === 1 ? 'militar' : 'militares';
+        const diaPlural = nr_dias_viagem === 1 ? 'dia' : 'dias';
+        const viagemPlural = nr_viagens === 1 ? 'viagem' : 'viagens';
         
-        const omArticle = omDestinoNome.includes('ª') ? 'da' : 'do';
-        const militarPlural = qtd === 1 ? 'militar' : 'militares';
-        const diaPlural = dias === 1 ? 'dia' : 'dias';
+        // 1. Cabeçalho
+        const header = `33.90.15 - Custeio com Diárias de ${totalMilitares} ${militarPlural} ${omArticle} ${om_detentora}, para ${nr_viagens} ${viagemPlural} com duração de ${nr_dias_viagem} ${diaPlural} em ${local_atividade}.`;
         
-        // Cabeçalho
-        const header = `33.90.39 - Pagamento de Diárias e Taxas de Embarque para ${qtd} ${militarPlural} ${omArticle} ${omDestinoNome}, durante ${dias} ${diaPlural} de ${faseFormatada}.`;
+        // 2. Detalhes da Referência
+        const referenciaLegal = diariaDiretrizes.referenciaLegal || 'Não Informada';
+        const taxaEmbarque = diariaDiretrizes.taxaEmbarque;
         
-        let detalhamento = `
-OM Detentora: ${omDetentoraNome} (UG: ${formatCodug(omDetentoraUg)})
-OM Destino Recurso: ${omDestinoNome} (UG: ${formatCodug(omDestinoUg)})
-
-Referência Legal: ${diariaDiretrizes.referenciaLegal || 'Não Informada'}
-
-Cálculo Detalhado:
-- Posto/Graduação: ${data.posto_graduacao}
-- Destino: ${data.destino}
-- Valor Diária Unitário: ${formatCurrency(valorUnitario)}
-- Valor Taxa de Embarque: ${formatCurrency(valorTaxaEmbarque)}
-
-1. Diárias:
-Fórmula: Quantidade x Dias x Valor Unitário
-${qtd} un. x ${dias} ${diaPlural} x ${formatCurrency(valorUnitario)} = ${formatCurrency(totalDiaria)}
-
-2. Taxas de Embarque:
-Fórmula: Quantidade x Valor Taxa
-${qtd} un. x ${formatCurrency(valorTaxaEmbarque)} = ${formatCurrency(totalTaxaEmbarque)}
-
-Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
-        `.trim();
+        let detalhesReferencia = `
+Cálculo, segundo ${referenciaLegal}:
+- Para ${local_pagamento} considera-se: 
+   - Nr de Viagens planejadas: ${nr_viagens}.
+   - Valor Tarifa de Embarque e Desembarque: ${formatCurrency(taxaEmbarque)}/pessoa.
+`;
         
-        return header + "\n\n" + detalhamento;
+        // Adicionar valores diários por posto/graduação
+        rankCalculations.forEach(calc => {
+            detalhesReferencia += `   - ${calc.rank} ${formatCurrency(calc.valorDia)} / dia Op.\n`;
+        });
+        
+        // 3. Fórmulas e Cálculos
+        let calculoDiarias = `
+Fórmula: (Nr militares x Custo/dia/localidade) x (Nr dias de operação - 0,5 dia) x Nr Viagens.
+`;
+        
+        rankCalculations.forEach(calc => {
+            const diasPagos = Math.max(0, nr_dias_viagem - 0.5);
+            calculoDiarias += `- (${calc.qtd} ${calc.rank} x ${formatCurrency(calc.valorDia)}/dia) x ${formatNumber(diasPagos, 1)} dias x ${nr_viagens} ${viagemPlural} = ${formatCurrency(calc.total)}.\n`;
+        });
+        
+        // 4. Totais
+        const totalDiariaFormatado = formatCurrency(totalDiaria);
+        const totalTaxaEmbFormatado = formatCurrency(totalTaxaEmbarque);
+        const totalGeralFormatado = formatCurrency(totalGeral);
+        
+        const totalSection = `
+Total Diária: ${totalDiariaFormatado}.
+Total Taxa Emb: ${totalTaxaEmbFormatado}.
+
+Total: ${totalDiariaFormatado} + ${totalTaxaEmbFormatado} = ${totalGeralFormatado}.
+`;
+
+        return `${header}\n\n${detalhesReferencia.trim()}\n\n${calculoDiarias.trim()}\n\n${totalSection.trim()}`;
     };
-    
+
     // Memória de cálculo em tempo real
     const liveMemoria = useMemo(() => {
         if (isCustomMemoriaActive) return customMemoria;
         
-        return generateMemoriaCalculo(watchedFields, valorTotal, valorDiariaUnitario, valorTaxaEmbarque);
-    }, [watchedFields, valorTotal, valorDiariaUnitario, valorTaxaEmbarque, isCustomMemoriaActive, customMemoria, diariaDiretrizes]);
-    
+        const currentData = {
+            ...watchedFields,
+            quantities: watchedFields.quantities || [],
+        } as DiariaRequestFormValues;
+        
+        return generateMemoriaCalculo(currentData, calculateDiariaTotals);
+    }, [watchedFields, calculateDiariaTotals, isCustomMemoriaActive, customMemoria, diariaDiretrizes]);
+
     // --- CRUD Operations ---
-    
-    const handleSaveRegistro = async (data: DiariaRegistroFormValues) => {
+
+    const handleSaveRequest = async (data: DiariaRequestFormValues) => {
         if (!p_trab_id) return;
         
-        // 1. Validação final dos campos numéricos
-        const finalData = {
-            ...data,
-            valor_diaria_unitario: valorDiariaUnitario,
-            valor_taxa_embarque: valorTaxaEmbarque,
-            valor_total: valorTotal,
-            valor_nd_30: valorND30,
-            valor_nd_39: valorND39,
-            detalhamento: isCustomMemoriaActive ? customMemoria : generateMemoriaCalculo(data, valorTotal, valorDiariaUnitario, valorTaxaEmbarque),
-            detalhamento_customizado: isCustomMemoriaActive ? customMemoria : null,
-        };
-        
-        // 2. Preparar payload para o Supabase
-        const payload: TablesInsert<'diaria_registros'> = {
-            p_trab_id: p_trab_id,
-            organizacao: finalData.organizacao,
-            ug: finalData.ug,
-            om_detentora: finalData.om_detentora,
-            ug_detentora: finalData.ug_detentora,
-            dias_operacao: finalData.dias_operacao,
-            fase_atividade: finalData.fase_atividade,
-            posto_graduacao: finalData.posto_graduacao,
-            destino: finalData.destino,
-            quantidade: finalData.quantidade,
-            valor_diaria_unitario: finalData.valor_diaria_unitario,
-            valor_taxa_embarque: finalData.valor_taxa_embarque,
-            valor_total: finalData.valor_total,
-            valor_nd_30: finalData.valor_nd_30,
-            valor_nd_39: finalData.valor_nd_39,
-            detalhamento: finalData.detalhamento,
-            detalhamento_customizado: finalData.detalhamento_customizado,
-        };
-        
-        try {
-            if (editingRegistroId) {
-                // Update
-                const { error } = await supabase
-                    .from('diaria_registros')
-                    .update(payload as TablesUpdate<'diaria_registros'>)
-                    .eq('id', editingRegistroId);
-                if (error) throw error;
-                toast.success("Registro de Diária atualizado!");
-            } else {
-                // Insert
-                const { error } = await supabase
-                    .from('diaria_registros')
-                    .insert([payload]);
-                if (error) throw error;
-                toast.success("Registro de Diária adicionado!");
-            }
-            
-            resetFormForNewItem();
-            refetchRegistros();
-            
-        } catch (error: any) {
-            toast.error(sanitizeError(error));
+        if (totalGeral <= 0) {
+            toast.error("O valor total da diária deve ser maior que zero.");
+            return;
         }
-    };
-    
-    const handleEdit = (registro: DiariaRegistro) => {
-        setEditingRegistroId(registro.id);
         
-        // Preencher o formulário com os dados do registro
-        resetForm({
-            organizacao: registro.organizacao,
-            ug: registro.ug,
-            dias_operacao: registro.dias_operacao,
-            fase_atividade: registro.fase_atividade || FASE_ATIVIDADE_OPTIONS[0],
-            posto_graduacao: registro.posto_graduacao,
-            destino: registro.destino,
-            quantidade: registro.quantidade,
-            
-            // Raw inputs
-            raw_valor_diaria_unitario: numberToRawDigits(registro.valor_diaria_unitario),
-            raw_valor_taxa_embarque: numberToRawDigits(registro.valor_taxa_embarque || 0),
-            raw_valor_nd_30: numberToRawDigits(registro.valor_nd_30),
-            raw_valor_nd_39: numberToRawDigits(registro.valor_nd_39),
-            
-            om_detentora: registro.om_detentora || omDestinoPTrab?.nome_om || "",
-            ug_detentora: registro.ug_detentora || omDestinoPTrab?.codug_om || "",
+        // 1. Preparar payload para o Supabase (múltiplas inserções)
+        const recordsToInsert: TablesInsert<'diaria_registros'>[] = [];
+        
+        const memoriaFinal = isCustomMemoriaActive ? customMemoria : generateMemoriaCalculo(data, calculateDiariaTotals);
+        const detalhamentoCustomizado = isCustomMemoriaActive ? customMemoria : null;
+        
+        rankCalculations.forEach(calc => {
+            if (calc.qtd > 0) {
+                const taxaEmbarqueUnitario = diariaDiretrizes.taxaEmbarque;
+                const totalTaxaEmbarqueRank = calc.qtd * taxaEmbarqueUnitario * data.nr_viagens;
+                const valorTotalRank = calc.total + totalTaxaEmbarqueRank;
+                
+                const payload: TablesInsert<'diaria_registros'> = {
+                    p_trab_id: p_trab_id,
+                    organizacao: data.organizacao,
+                    ug: data.ug,
+                    om_detentora: data.om_detentora,
+                    ug_detentora: data.ug_detentora,
+                    dias_operacao: data.nr_dias_viagem,
+                    fase_atividade: data.fase_atividade,
+                    posto_graduacao: calc.rank,
+                    destino: data.local_pagamento,
+                    quantidade: calc.qtd,
+                    valor_diaria_unitario: calc.valorDia,
+                    valor_taxa_embarque: taxaEmbarqueUnitario,
+                    valor_total: valorTotalRank,
+                    valor_nd_30: valorTotalRank, // ND 33.90.15 é GND 3, mas usaremos ND 30 para totalização no relatório logístico
+                    valor_nd_39: 0,
+                    nr_viagens: data.nr_viagens,
+                    local_atividade: data.local_atividade,
+                    quantidades_por_posto: data.quantities,
+                    
+                    detalhamento: memoriaFinal,
+                    detalhamento_customizado: detalhamentoCustomizado,
+                };
+                recordsToInsert.push(payload);
+            }
         });
         
-        // Atualizar o OmSelector para refletir a OM Detentora
-        const omDetentora = omList?.find(om => om.nome_om === registro.om_detentora);
-        setSelectedOmDetentoraId(omDetentora?.id || 'temp'); // Usa 'temp' se o nome existir mas não o ID
-        
-        // Configurar memória customizada
-        if (registro.detalhamento_customizado) {
-            setCustomMemoria(registro.detalhamento_customizado);
-            setIsCustomMemoriaActive(true);
-        } else {
-            setCustomMemoria(generateMemoriaCalculo(registro, registro.valor_total, registro.valor_diaria_unitario, registro.valor_taxa_embarque || 0));
-            setIsCustomMemoriaActive(false);
-        }
-    };
-    
-    const handleConfirmDelete = (registro: DiariaRegistro) => {
-        setRegistroToDelete(registro);
-        setShowDeleteDialog(true);
-    };
-    
-    const handleDelete = async () => {
-        if (!registroToDelete) return;
-        
         try {
-            const { error } = await supabase
+            // 3. Deletar todos os registros existentes para este PTrab (Simplificação)
+            const { error: deleteError } = await supabase
                 .from('diaria_registros')
                 .delete()
-                .eq('id', registroToDelete.id);
+                .eq('p_trab_id', p_trab_id);
             
-            if (error) throw error;
+            if (deleteError) throw deleteError;
             
-            toast.success("Registro excluído com sucesso!");
+            // 4. Inserir os novos registros
+            if (recordsToInsert.length > 0) {
+                const { error: insertError } = await supabase
+                    .from('diaria_registros')
+                    .insert(recordsToInsert);
+                if (insertError) throw insertError;
+            }
+            
+            toast.success("Registros de Diária salvos com sucesso!");
+            
             refetchRegistros();
-            setShowDeleteDialog(false);
-            setRegistroToDelete(null);
             
         } catch (error: any) {
             toast.error(sanitizeError(error));
         }
     };
-    
-    const resetFormForNewItem = () => {
-        setEditingRegistroId(null);
-        setCustomMemoria("");
-        setIsCustomMemoriaActive(false);
-        
-        // Resetar apenas os campos de item, mantendo OM e Dias
+
+    const resetFormToAggregated = useCallback(() => {
+        // Reset form to the aggregated state (which reflects the current DB state)
         resetForm({
-            organizacao: watchedFields.organizacao,
-            ug: watchedFields.ug,
-            dias_operacao: watchedFields.dias_operacao,
-            fase_atividade: FASE_ATIVIDADE_OPTIONS[0],
-            posto_graduacao: POSTO_GRADUACAO_OPTIONS[0],
-            destino: DESTINO_OPTIONS[0],
-            quantidade: 1,
-            raw_valor_diaria_unitario: numberToRawDigits(0),
-            raw_valor_taxa_embarque: numberToRawDigits(0),
-            raw_valor_nd_30: numberToRawDigits(0),
-            raw_valor_nd_39: numberToRawDigits(0),
-            // OM Detentora volta para o padrão (OM de Destino)
-            om_detentora: watchedFields.organizacao,
-            ug_detentora: watchedFields.ug,
+            organizacao: omDestinoPTrab?.nome_om || "",
+            ug: omDestinoPTrab?.codug_om || "",
+            ...aggregatedRequest,
+            raw_valor_nd_15: numberToRawDigits(aggregatedRequest.valor_nd_15),
         });
-        setSelectedOmDetentoraId(undefined);
-    };
-    
-    // --- Renderização ---
-    
+        
+        // Update OmSelector state
+        const omDetentora = omList?.find(om => om.nome_om === aggregatedRequest.om_detentora);
+        setSelectedOmDetentoraId(omDetentora?.id || 'temp');
+        
+        // Reset custom memory state
+        if (aggregatedRequest.valor_nd_15 === 0) {
+            setCustomMemoria("");
+            setIsCustomMemoriaActive(false);
+        } else if (registros && registros[0]?.detalhamento_customizado) {
+            setCustomMemoria(registros[0].detalhamento_customizado);
+            setIsCustomMemoriaActive(true);
+        } else {
+            setCustomMemoria("");
+            setIsCustomMemoriaActive(false);
+        }
+    }, [aggregatedRequest, omDestinoPTrab, omList, resetForm, registros]);
+
+    // Effect to reset form when data loads initially
+    useEffect(() => {
+        if (!isLoadingRegistros && !isLoadingPTrab) {
+            resetFormToAggregated();
+        }
+    }, [isLoadingRegistros, isLoadingPTrab, resetFormToAggregated]);
+
+
     if (isLoadingSession || isLoadingPTrab || isLoadingRegistros || isLoadingDiretrizes || !omDestinoPTrab || !diariaDiretrizes) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
@@ -549,22 +529,22 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <DollarSign className="h-6 w-6 text-primary" />
-                                Registro de Pagamento de Diárias
+                                Registro de Pagamento de Diárias (ND 33.90.15)
                             </CardTitle>
                             <CardDescription>
-                                Adicione ou edite os registros de diárias e taxas de embarque para o P Trab: <span className="font-medium">{pTrabData?.numero_ptrab} - {pTrabData?.nome_operacao}</span>
+                                Configure a solicitação de diárias e taxas de embarque para o P Trab: <span className="font-medium">{pTrabData?.numero_ptrab} - {pTrabData?.nome_operacao}</span>
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             
-                            <form onSubmit={handleSubmit(handleSaveRegistro)} className="space-y-6">
+                            <form onSubmit={handleSubmit(handleSaveRequest)} className="space-y-6">
                                 
-                                {/* 1. Dados da Organização (OM Detentora e OM Destino) */}
+                                {/* 1. Dados da Organização e Viagem */}
                                 <Card className="bg-muted/50">
                                     <CardHeader className="py-3">
-                                        <CardTitle className="text-base">1. Dados da Organização</CardTitle>
+                                        <CardTitle className="text-base">1. Dados da Organização e Viagem</CardTitle>
                                     </CardHeader>
-                                    <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                         
                                         {/* OM Detentora (Source) */}
                                         <div className="space-y-2">
@@ -580,6 +560,83 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
                                             <p className="text-xs text-muted-foreground">UG: {formatCodug(watchedFields.ug_detentora)}</p>
                                         </div>
                                         
+                                        {/* Nr Dias da viagem */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="nr_dias_viagem">Nr Dias da Viagem *</Label>
+                                            <Input
+                                                id="nr_dias_viagem"
+                                                type="number"
+                                                {...register('nr_dias_viagem', { valueAsNumber: true })}
+                                                min={1}
+                                                placeholder="5"
+                                                onKeyDown={handleEnterToNextField}
+                                            />
+                                            {errors.nr_dias_viagem && <p className="text-xs text-destructive">{errors.nr_dias_viagem.message}</p>}
+                                        </div>
+                                        
+                                        {/* Local para fins Pgto */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="local_pagamento">Local para fins Pgto *</Label>
+                                            <Select
+                                                value={watchedFields.local_pagamento}
+                                                onValueChange={(value) => setValue('local_pagamento', value as DiariaRequestFormValues['local_pagamento'])}
+                                            >
+                                                <SelectTrigger id="local_pagamento">
+                                                    <SelectValue placeholder="Selecione..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {DESTINO_OPTIONS.map(dest => (
+                                                        <SelectItem key={dest} value={dest}>{dest}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            {errors.local_pagamento && <p className="text-xs text-destructive">{errors.local_pagamento.message}</p>}
+                                        </div>
+                                        
+                                        {/* Nr Viagens */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="nr_viagens">Nr Viagens *</Label>
+                                            <Input
+                                                id="nr_viagens"
+                                                type="number"
+                                                {...register('nr_viagens', { valueAsNumber: true })}
+                                                min={1}
+                                                placeholder="1"
+                                                onKeyDown={handleEnterToNextField}
+                                            />
+                                            {errors.nr_viagens && <p className="text-xs text-destructive">{errors.nr_viagens.message}</p>}
+                                        </div>
+                                        
+                                        {/* Local Operação */}
+                                        <div className="space-y-2 col-span-2">
+                                            <Label htmlFor="local_atividade">Local da Atividade *</Label>
+                                            <Input
+                                                id="local_atividade"
+                                                {...register('local_atividade')}
+                                                placeholder="Ex: Belém/PA"
+                                                onKeyDown={handleEnterToNextField}
+                                            />
+                                            {errors.local_atividade && <p className="text-xs text-destructive">{errors.local_atividade.message}</p>}
+                                        </div>
+                                        
+                                        {/* Fase da Atividade */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="fase_atividade">Fase da Atividade</Label>
+                                            <Select
+                                                value={watchedFields.fase_atividade}
+                                                onValueChange={(value) => setValue('fase_atividade', value)}
+                                            >
+                                                <SelectTrigger id="fase_atividade">
+                                                    <SelectValue placeholder="Selecione..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {FASE_ATIVIDADE_OPTIONS.map(fase => (
+                                                        <SelectItem key={fase} value={fase}>{fase}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        
                                         {/* OM de Destino (Recurso) - Fixa */}
                                         <div className="space-y-2">
                                             <Label>OM de Destino (Recurso)</Label>
@@ -587,148 +644,87 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
                                             <p className="text-xs text-muted-foreground">UG: {formatCodug(watchedFields.ug)}</p>
                                         </div>
                                         
-                                        {/* Dias de Operação (Total) - Fixos */}
-                                        <div className="space-y-2">
-                                            <Label>Dias de Operação (Total)</Label>
-                                            <Input 
-                                                type="number"
-                                                value={watchedFields.dias_operacao}
-                                                disabled
-                                                className="bg-white"
-                                            />
-                                            <p className="text-xs text-muted-foreground">Período do P Trab.</p>
-                                        </div>
                                     </CardContent>
                                 </Card>
                                 
-                                {/* 2. Configuração do Item */}
+                                {/* 2. Configuração do Item (Tabela de Quantidades) */}
                                 <Card>
                                     <CardHeader className="py-3">
-                                        <CardTitle className="text-base">{editingRegistroId ? "2. Editar Item" : "2. Adicionar Novo Item"}</CardTitle>
+                                        <CardTitle className="text-base">2. Quantitativo de Militares por Posto/Graduação</CardTitle>
+                                        <CardDescription>
+                                            Valores unitários de diária baseados na diretriz de {diariaDiretrizes.referenciaLegal}. Taxa de Embarque: {formatCurrency(diariaDiretrizes.taxaEmbarque)}.
+                                        </CardDescription>
                                     </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        
-                                        {/* Linha 1: Posto/Grad, Destino, Qtd, Fase */}
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="posto_graduacao">Posto/Graduação *</Label>
-                                                <Select
-                                                    value={watchedFields.posto_graduacao}
-                                                    onValueChange={(value) => setValue('posto_graduacao', value)}
-                                                >
-                                                    <SelectTrigger id="posto_graduacao">
-                                                        <SelectValue placeholder="Selecione..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {POSTO_GRADUACAO_OPTIONS.map(pg => (
-                                                            <SelectItem key={pg} value={pg}>{pg}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                {errors.posto_graduacao && <p className="text-xs text-destructive">{errors.posto_graduacao.message}</p>}
-                                            </div>
-                                            
-                                            <div className="space-y-2">
-                                                <Label htmlFor="destino">Destino *</Label>
-                                                <Select
-                                                    value={watchedFields.destino}
-                                                    onValueChange={(value) => setValue('destino', value)}
-                                                >
-                                                    <SelectTrigger id="destino">
-                                                        <SelectValue placeholder="Selecione..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {DESTINO_OPTIONS.map(dest => (
-                                                            <SelectItem key={dest} value={dest}>{dest}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                {errors.destino && <p className="text-xs text-destructive">{errors.destino.message}</p>}
-                                            </div>
-                                            
-                                            <div className="space-y-2">
-                                                <Label htmlFor="quantidade">Quantidade (Militares) *</Label>
-                                                <Input
-                                                    id="quantidade"
-                                                    type="number"
-                                                    {...register('quantidade', { valueAsNumber: true })}
-                                                    min={1}
-                                                    placeholder="1"
-                                                    onKeyDown={handleEnterToNextField}
-                                                />
-                                                {errors.quantidade && <p className="text-xs text-destructive">{errors.quantidade.message}</p>}
-                                            </div>
-                                            
-                                            <div className="space-y-2">
-                                                <Label htmlFor="fase_atividade">Fase da Atividade</Label>
-                                                <Select
-                                                    value={watchedFields.fase_atividade}
-                                                    onValueChange={(value) => setValue('fase_atividade', value)}
-                                                >
-                                                    <SelectTrigger id="fase_atividade">
-                                                        <SelectValue placeholder="Selecione..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {FASE_ATIVIDADE_OPTIONS.map(fase => (
-                                                            <SelectItem key={fase} value={fase}>{fase}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
+                                    <CardContent>
+                                        <div className="border rounded-lg overflow-hidden">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="w-[30%]">Posto/Graduação</TableHead>
+                                                        <TableHead className="w-[15%] text-center">Valor Diária ({watchedFields.local_pagamento})</TableHead>
+                                                        <TableHead className="w-[15%] text-center">Qtd (Militares) *</TableHead>
+                                                        <TableHead className="w-[20%] text-right">Custo Diária Op</TableHead>
+                                                        <TableHead className="w-[20%] text-right">Custo Total (Diária + Tx Emb)</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {quantityFields.map((field, index) => {
+                                                        const rankLabel = field.posto_graduacao;
+                                                        const valorDia = diariaDiretrizes.values[rankLabel]?.[watchedFields.local_pagamento] || 0;
+                                                        
+                                                        const calc = rankCalculations.find(r => r.rank === rankLabel);
+                                                        const custoDiariaOp = calc?.total || 0;
+                                                        
+                                                        // Recalculate total cost for display purposes
+                                                        const totalTaxaEmbarqueRank = (field.qtd || 0) * diariaDiretrizes.taxaEmbarque * (watchedFields.nr_viagens || 0);
+                                                        const custoTotal = custoDiariaOp + totalTaxaEmbarqueRank;
+                                                        
+                                                        return (
+                                                            <TableRow key={field.id}>
+                                                                <TableCell className="font-medium">{rankLabel}</TableCell>
+                                                                <TableCell className="text-center">{formatCurrency(valorDia)}</TableCell>
+                                                                <TableCell>
+                                                                    <Input
+                                                                        type="number"
+                                                                        {...register(`quantities.${index}.qtd`, { valueAsNumber: true })}
+                                                                        min={0}
+                                                                        className="text-center"
+                                                                        onKeyDown={handleEnterToNextField}
+                                                                    />
+                                                                </TableCell>
+                                                                <TableCell className="text-right">{formatCurrency(custoDiariaOp)}</TableCell>
+                                                                <TableCell className="text-right font-bold">{formatCurrency(custoTotal)}</TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })}
+                                                    <TableRow className="bg-muted/50 font-bold">
+                                                        <TableCell colSpan={3} className="text-right">Total Diária Operacional</TableCell>
+                                                        <TableCell className="text-right">{formatCurrency(totalDiaria)}</TableCell>
+                                                        <TableCell className="text-right">{formatCurrency(totalGeral)}</TableCell>
+                                                    </TableRow>
+                                                    <TableRow className="bg-muted/50 font-bold">
+                                                        <TableCell colSpan={3} className="text-right">Total Taxa Embarque ({totalMilitares} militares)</TableCell>
+                                                        <TableCell className="text-right">{formatCurrency(totalTaxaEmbarque)}</TableCell>
+                                                        <TableCell className="text-right"></TableCell>
+                                                    </TableRow>
+                                                </TableBody>
+                                            </Table>
                                         </div>
-                                        
-                                        {/* Linha 2: Valores Unitários e Total */}
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="valor_diaria_unitario">Valor Diária Unitário (R$)</Label>
-                                                <Input
-                                                    id="valor_diaria_unitario"
-                                                    type="text"
-                                                    inputMode="numeric"
-                                                    value={formatCurrencyInput(watchedFields.raw_valor_diaria_unitario || '0').formatted}
-                                                    onChange={(e) => handleCurrencyChange('raw_valor_diaria_unitario', e.target.value)}
-                                                    disabled
-                                                    className="bg-white"
-                                                />
-                                            </div>
-                                            
-                                            <div className="space-y-2">
-                                                <Label htmlFor="valor_taxa_embarque">Valor Taxa Embarque (R$)</Label>
-                                                <Input
-                                                    id="valor_taxa_embarque"
-                                                    type="text"
-                                                    inputMode="numeric"
-                                                    value={formatCurrencyInput(watchedFields.raw_valor_taxa_embarque || '0').formatted}
-                                                    onChange={(e) => handleCurrencyChange('raw_valor_taxa_embarque', e.target.value)}
-                                                    disabled
-                                                    className="bg-white"
-                                                />
-                                            </div>
-                                            
-                                            <div className="space-y-2 col-span-2">
-                                                <Label>Valor Total Calculado (ND 33.90.39)</Label>
-                                                <Input 
-                                                    value={formatCurrency(valorTotal)} 
-                                                    disabled 
-                                                    className="bg-primary/10 font-bold text-primary"
-                                                />
-                                            </div>
-                                        </div>
-                                        
+                                        {errors.quantities && <p className="text-xs text-destructive mt-2">{errors.quantities.message}</p>}
                                     </CardContent>
                                     <CardFooter className="flex justify-end gap-2 pt-4 border-t">
                                         <Button 
                                             type="button" 
                                             variant="outline" 
-                                            onClick={resetFormForNewItem}
+                                            onClick={resetFormToAggregated}
                                             disabled={isSubmitting}
                                         >
-                                            <X className="mr-2 h-4 w-4" />
-                                            Cancelar
+                                            <RefreshCw className="mr-2 h-4 w-4" />
+                                            Resetar Formulário
                                         </Button>
-                                        <Button type="submit" disabled={isSubmitting || valorTotal <= 0}>
+                                        <Button type="submit" disabled={isSubmitting || totalGeral <= 0}>
                                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                            {editingRegistroId ? "Atualizar Registro" : "Adicionar Registro"}
+                                            Salvar Solicitação de Diárias
                                         </Button>
                                     </CardFooter>
                                 </Card>
@@ -737,7 +733,7 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
                                 <Card>
                                     <CardHeader className="py-3">
                                         <CardTitle className="text-base flex items-center justify-between">
-                                            <span>3. Memória de Cálculo Detalhada (ND 33.90.39)</span>
+                                            <span>3. Memória de Cálculo Detalhada (ND 33.90.15)</span>
                                             <div className="flex items-center space-x-2">
                                                 <Checkbox
                                                     id="custom-memoria"
@@ -766,86 +762,11 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
                                     </CardContent>
                                 </Card>
                                 
-                                {/* 4. Itens Adicionados (Lista de Registros) */}
-                                <Card>
-                                    <CardHeader className="py-3">
-                                        <CardTitle className="text-base">4. Registros de Diária Adicionados ({registros?.length || 0})</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="border rounded-lg overflow-hidden">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead className="w-[15%]">Posto/Grad</TableHead>
-                                                        <TableHead className="w-[15%]">Destino</TableHead>
-                                                        <TableHead className="w-[10%] text-center">Qtd</TableHead>
-                                                        <TableHead className="w-[10%] text-center">Dias</TableHead>
-                                                        <TableHead className="w-[15%] text-right">Valor Diária</TableHead>
-                                                        <TableHead className="w-[15%] text-right">Valor Total</TableHead>
-                                                        <TableHead className="w-[10%] text-center">Fase</TableHead>
-                                                        <TableHead className="w-[10%] text-right">Ações</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {registros && registros.length > 0 ? (
-                                                        registros.map((registro) => (
-                                                            <TableRow key={registro.id}>
-                                                                <TableCell className="font-medium">{registro.posto_graduacao}</TableCell>
-                                                                <TableCell>{registro.destino}</TableCell>
-                                                                <TableCell className="text-center">{registro.quantidade}</TableCell>
-                                                                <TableCell className="text-center">{registro.dias_operacao}</TableCell>
-                                                                <TableCell className="text-right">{formatCurrency(registro.valor_diaria_unitario)}</TableCell>
-                                                                <TableCell className="text-right font-bold">{formatCurrency(registro.valor_total)}</TableCell>
-                                                                <TableCell className="text-center">{registro.fase_atividade}</TableCell>
-                                                                <TableCell className="text-right space-x-2">
-                                                                    <Button variant="outline" size="icon" onClick={() => handleEdit(registro)}>
-                                                                        <Edit className="h-4 w-4" />
-                                                                    </Button>
-                                                                    <Button variant="destructive" size="icon" onClick={() => handleConfirmDelete(registro)}>
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                    </Button>
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        ))
-                                                    ) : (
-                                                        <TableRow>
-                                                            <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                                                                Nenhum registro de diária adicionado.
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
                             </form>
                         </CardContent>
                     </Card>
                 </div>
             </div>
-            
-            {/* Diálogo de Confirmação de Exclusão */}
-            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                            <Trash2 className="h-5 w-5" />
-                            Confirmar Exclusão
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Tem certeza que deseja excluir este registro de diária? Esta ação é irreversível.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancelar</Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Excluir"}
-                        </Button>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </FormProvider>
     );
 };
