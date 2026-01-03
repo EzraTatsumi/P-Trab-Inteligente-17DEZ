@@ -267,6 +267,20 @@ const DiariaForm: React.FC = () => {
 
     const watchedFields = watch();
 
+    // --- OM Detentora Change Handler ---
+    const handleOmDetentoraChange = useCallback((omData: OMData | undefined) => {
+        if (omData) {
+            setSelectedOmDetentoraId(omData.id);
+            setValue('om_detentora', omData.nome_om);
+            setValue('ug_detentora', omData.codug_om);
+        } else {
+            setSelectedOmDetentoraId(undefined);
+            setValue('om_detentora', '');
+            setValue('ug_detentora', '');
+        }
+    }, [setValue]);
+    // --- End OM Detentora Change Handler ---
+
     // --- Calculation Logic ---
 
     const calculateDiariaTotals = useMemo(() => {
