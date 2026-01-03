@@ -225,8 +225,6 @@ const DiariaForm: React.FC = () => {
     
     const watchedFields = watch();
     
-    // --- Auto-Update Effects ---
-    
     // 1. Atualizar OM de Destino e Dias de Operação
     useEffect(() => {
         if (omDestino) {
@@ -275,10 +273,6 @@ const DiariaForm: React.FC = () => {
         const nd39 = totalGeral;
         const nd30 = 0;
         
-        // Atualiza os raw inputs de ND para refletir o cálculo
-        // NOTE: Não podemos chamar setValue dentro de useMemo, mas o cálculo é reativo.
-        // Vamos confiar que o formulário será submetido com os valores corretos.
-        
         return {
             valorDiariaUnitario: valorUnitario,
             valorTaxaEmbarque: taxaEmbarque,
@@ -287,6 +281,16 @@ const DiariaForm: React.FC = () => {
             valorND39: nd39,
         };
     }, [watchedFields.quantidade, watchedFields.dias_operacao, watchedFields.raw_valor_diaria_unitario, watchedFields.raw_valor_taxa_embarque]);
+    
+    // Desestruturando os totais calculados
+    const { valorDiariaUnitario, valorTaxaEmbarque, valorTotal, valorND30, valorND39 } = calculatedTotals;
+    
+    // --- Handlers de Input ---
+    
+    const handleCurrencyChange = (field: 'raw_valor_diaria_unitario' | 'raw_valor_taxa_embarque' | 'raw_valor_nd_30' | 'raw_valor_nd_39', rawValue: string) => {
+        const { digits } = formatCurrencyInput(rawValue);
+        setValue(field, digits, { shouldValidate: false });
+    };
     
     // --- Memória de Cálculo ---
     
@@ -340,23 +344,12 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
         return header + "\n\n" + detalhamento;
     };
     
-    // Desestruturando os totais calculados
-    const { valorDiariaUnitario, valorTaxaEmbarque, valorTotal, valorND30, valorND39 } = calculatedTotals;
-
     // Memória de cálculo em tempo real
     const liveMemoria = useMemo(() => {
         if (isCustomMemoriaActive) return customMemoria;
         
-        // Agora usamos as variáveis desestruturadas do calculatedTotals
         return generateMemoriaCalculo(watchedFields, valorTotal, valorDiariaUnitario, valorTaxaEmbarque);
     }, [watchedFields, valorTotal, valorDiariaUnitario, valorTaxaEmbarque, isCustomMemoriaActive, customMemoria, diariaDiretrizes]);
-    
-    // --- Handlers de Input ---
-    
-    const handleCurrencyChange = (field: 'raw_valor_diaria_unitario' | 'raw_valor_taxa_embarque' | 'raw_valor_nd_30' | 'raw_valor_nd_39', rawValue: string) => {
-        const { digits } = formatCurrencyInput(rawValue);
-        setValue(field, digits, { shouldValidate: false });
-    };
     
     // --- CRUD Operations ---
     
@@ -534,143 +527,140 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
                                 Adicione ou edite os registros de diárias e taxas de embarque para o P Trab: <span className="font-medium">{pTrabData?.numero_ptrab} - {pTrabData?.nome_operacao}</span>
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-6">
+                            
+                            {/* Seção de Dados do PTrab (OM e Dias) - Fixo no topo */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-muted/50">
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">OM de Destino (Recurso)</Label>
+                                    <p className="font-medium">{watchedFields.organizacao}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">UG de Destino</Label>
+                                    <p className="font-medium">{formatCodug(watchedFields.ug)}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Dias de Operação (Total)</Label>
+                                    <p className="font-medium">{watchedFields.dias_operacao}</p>
+                                </div>
+                            </div>
+
                             <form onSubmit={handleSubmit(handleSaveRegistro)} className="space-y-6">
                                 
-                                {/* 1. Dados da Organização */}
-                                <Card className="bg-muted/50">
-                                    <CardHeader className="py-3">
-                                        <CardTitle className="text-base">1. Dados da Organização</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="space-y-2">
-                                            <Label>OM de Destino (Recurso)</Label>
-                                            <Input value={watchedFields.organizacao} disabled className="bg-white" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>UG de Destino</Label>
-                                            <Input value={formatCodug(watchedFields.ug)} disabled className="bg-white" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Dias de Operação (Total)</Label>
-                                            <Input 
-                                                type="number"
-                                                value={watchedFields.dias_operacao}
-                                                disabled
-                                                className="bg-white"
-                                            />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                
-                                {/* 2. Configuração do Item */}
+                                {/* 1. Formulário de Adição/Edição de Item (Sem numeração) */}
                                 <Card>
                                     <CardHeader className="py-3">
-                                        <CardTitle className="text-base">2. Configuração do Item</CardTitle>
+                                        <CardTitle className="text-base">{editingRegistroId ? "Editar Registro" : "Adicionar Novo Registro"}</CardTitle>
                                     </CardHeader>
-                                    <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <CardContent className="space-y-4">
                                         
-                                        <div className="space-y-2">
-                                            <Label htmlFor="posto_graduacao">Posto/Graduação *</Label>
-                                            <Select
-                                                value={watchedFields.posto_graduacao}
-                                                onValueChange={(value) => setValue('posto_graduacao', value)}
-                                            >
-                                                <SelectTrigger id="posto_graduacao">
-                                                    <SelectValue placeholder="Selecione..." />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {POSTO_GRADUACAO_OPTIONS.map(pg => (
-                                                        <SelectItem key={pg} value={pg}>{pg}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                        {/* Linha 1: Posto/Grad, Destino, Qtd, Fase */}
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="posto_graduacao">Posto/Graduação *</Label>
+                                                <Select
+                                                    value={watchedFields.posto_graduacao}
+                                                    onValueChange={(value) => setValue('posto_graduacao', value)}
+                                                >
+                                                    <SelectTrigger id="posto_graduacao">
+                                                        <SelectValue placeholder="Selecione..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {POSTO_GRADUACAO_OPTIONS.map(pg => (
+                                                            <SelectItem key={pg} value={pg}>{pg}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <Label htmlFor="destino">Destino *</Label>
+                                                <Select
+                                                    value={watchedFields.destino}
+                                                    onValueChange={(value) => setValue('destino', value)}
+                                                >
+                                                    <SelectTrigger id="destino">
+                                                        <SelectValue placeholder="Selecione..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {DESTINO_OPTIONS.map(dest => (
+                                                            <SelectItem key={dest} value={dest}>{dest}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <Label htmlFor="quantidade">Quantidade (Militares) *</Label>
+                                                <Input
+                                                    id="quantidade"
+                                                    type="number"
+                                                    {...register('quantidade', { valueAsNumber: true })}
+                                                    min={1}
+                                                    placeholder="1"
+                                                    onKeyDown={handleEnterToNextField}
+                                                />
+                                                {errors.quantidade && <p className="text-xs text-destructive">{errors.quantidade.message}</p>}
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <Label htmlFor="fase_atividade">Fase da Atividade</Label>
+                                                <Select
+                                                    value={watchedFields.fase_atividade}
+                                                    onValueChange={(value) => setValue('fase_atividade', value)}
+                                                >
+                                                    <SelectTrigger id="fase_atividade">
+                                                        <SelectValue placeholder="Selecione..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {FASE_ATIVIDADE_OPTIONS.map(fase => (
+                                                            <SelectItem key={fase} value={fase}>{fase}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                         </div>
                                         
-                                        <div className="space-y-2">
-                                            <Label htmlFor="destino">Destino *</Label>
-                                            <Select
-                                                value={watchedFields.destino}
-                                                onValueChange={(value) => setValue('destino', value)}
-                                            >
-                                                <SelectTrigger id="destino">
-                                                    <SelectValue placeholder="Selecione..." />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {DESTINO_OPTIONS.map(dest => (
-                                                        <SelectItem key={dest} value={dest}>{dest}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        
-                                        <div className="space-y-2">
-                                            <Label htmlFor="quantidade">Quantidade (Militares) *</Label>
-                                            <Input
-                                                id="quantidade"
-                                                type="number"
-                                                {...register('quantidade', { valueAsNumber: true })}
-                                                min={1}
-                                                placeholder="1"
-                                                onKeyDown={handleEnterToNextField}
-                                            />
-                                            {errors.quantidade && <p className="text-xs text-destructive">{errors.quantidade.message}</p>}
-                                        </div>
-                                        
-                                        <div className="space-y-2">
-                                            <Label htmlFor="fase_atividade">Fase da Atividade</Label>
-                                            <Select
-                                                value={watchedFields.fase_atividade}
-                                                onValueChange={(value) => setValue('fase_atividade', value)}
-                                            >
-                                                <SelectTrigger id="fase_atividade">
-                                                    <SelectValue placeholder="Selecione..." />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {FASE_ATIVIDADE_OPTIONS.map(fase => (
-                                                        <SelectItem key={fase} value={fase}>{fase}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        
-                                        <div className="space-y-2">
-                                            <Label htmlFor="valor_diaria_unitario">Valor Diária Unitário (R$)</Label>
-                                            <Input
-                                                id="valor_diaria_unitario"
-                                                type="text"
-                                                inputMode="numeric"
-                                                value={formatCurrencyInput(watchedFields.raw_valor_diaria_unitario || '0').formatted}
-                                                onChange={(e) => handleCurrencyChange('raw_valor_diaria_unitario', e.target.value)}
-                                                disabled
-                                                className="bg-white"
-                                            />
-                                        </div>
-                                        
-                                        <div className="space-y-2">
-                                            <Label htmlFor="valor_taxa_embarque">Valor Taxa Embarque (R$)</Label>
-                                            <Input
-                                                id="valor_taxa_embarque"
-                                                type="text"
-                                                inputMode="numeric"
-                                                value={formatCurrencyInput(watchedFields.raw_valor_taxa_embarque || '0').formatted}
-                                                onChange={(e) => handleCurrencyChange('raw_valor_taxa_embarque', e.target.value)}
-                                                disabled
-                                                className="bg-white"
-                                            />
-                                        </div>
-                                        
-                                        <div className="space-y-2 col-span-2">
-                                            <Label>Valor Total Calculado (ND 33.90.39)</Label>
-                                            <Input 
-                                                value={formatCurrency(valorTotal)} 
-                                                disabled 
-                                                className="bg-primary/10 font-bold text-primary"
-                                            />
+                                        {/* Linha 2: Valores Unitários e Total */}
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="valor_diaria_unitario">Valor Diária Unitário (R$)</Label>
+                                                <Input
+                                                    id="valor_diaria_unitario"
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    value={formatCurrencyInput(watchedFields.raw_valor_diaria_unitario || '0').formatted}
+                                                    onChange={(e) => handleCurrencyChange('raw_valor_diaria_unitario', e.target.value)}
+                                                    disabled
+                                                    className="bg-white"
+                                                />
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <Label htmlFor="valor_taxa_embarque">Valor Taxa Embarque (R$)</Label>
+                                                <Input
+                                                    id="valor_taxa_embarque"
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    value={formatCurrencyInput(watchedFields.raw_valor_taxa_embarque || '0').formatted}
+                                                    onChange={(e) => handleCurrencyChange('raw_valor_taxa_embarque', e.target.value)}
+                                                    disabled
+                                                    className="bg-white"
+                                                />
+                                            </div>
+                                            
+                                            <div className="space-y-2 col-span-2">
+                                                <Label>Valor Total Calculado (ND 33.90.39)</Label>
+                                                <Input 
+                                                    value={formatCurrency(valorTotal)} 
+                                                    disabled 
+                                                    className="bg-primary/10 font-bold text-primary"
+                                                />
+                                            </div>
                                         </div>
                                         
                                     </CardContent>
-                                    <CardFooter className="flex justify-end gap-2 pt-4">
+                                    <CardFooter className="flex justify-end gap-2 pt-4 border-t">
                                         <Button 
                                             type="button" 
                                             variant="outline" 
@@ -687,10 +677,43 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
                                     </CardFooter>
                                 </Card>
                                 
-                                {/* 3. Itens Adicionados */}
+                                {/* 2. Memórias de Cálculo Detalhadas (Movido para baixo) */}
                                 <Card>
                                     <CardHeader className="py-3">
-                                        <CardTitle className="text-base">3. Registros de Diária Adicionados ({registros?.length || 0})</CardTitle>
+                                        <CardTitle className="text-base flex items-center justify-between">
+                                            <span>Memória de Cálculo Detalhada (ND 33.90.39)</span>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="custom-memoria"
+                                                    checked={isCustomMemoriaActive}
+                                                    onCheckedChange={(checked) => setIsCustomMemoriaActive(!!checked)}
+                                                />
+                                                <Label htmlFor="custom-memoria" className="text-sm font-medium">
+                                                    Memória Customizada
+                                                </Label>
+                                            </div>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Textarea
+                                            value={isCustomMemoriaActive ? customMemoria : liveMemoria}
+                                            onChange={(e) => setCustomMemoria(e.target.value)}
+                                            rows={15}
+                                            readOnly={!isCustomMemoriaActive}
+                                            className={isCustomMemoriaActive ? "" : "bg-muted/50 text-muted-foreground"}
+                                        />
+                                        {!isCustomMemoriaActive && (
+                                            <p className="text-xs text-muted-foreground mt-2">
+                                                A memória de cálculo é gerada automaticamente. Marque "Memória Customizada" para editar o texto.
+                                            </p>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                                
+                                {/* 3. Itens Adicionados (Lista de Registros) */}
+                                <Card>
+                                    <CardHeader className="py-3">
+                                        <CardTitle className="text-base">Registros de Diária Adicionados ({registros?.length || 0})</CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="border rounded-lg overflow-hidden">
@@ -738,54 +761,6 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
                                                 </TableBody>
                                             </Table>
                                         </div>
-                                    </CardContent>
-                                </Card>
-                                
-                                {/* 4. OMs Cadastradas (Mantido para consistência visual, mas sem funcionalidade direta aqui) */}
-                                <Card>
-                                    <CardHeader className="py-3">
-                                        <CardTitle className="text-base">4. OMs Cadastradas (Referência)</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className="text-sm text-muted-foreground">
-                                            Esta seção lista as Organizações Militares cadastradas para referência.
-                                        </p>
-                                        <Button variant="link" className="p-0 mt-2" onClick={() => navigate('/config/om')}>
-                                            Gerenciar OMs
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                                
-                                {/* 5. Memórias de Cálculo Detalhadas */}
-                                <Card>
-                                    <CardHeader className="py-3">
-                                        <CardTitle className="text-base flex items-center justify-between">
-                                            <span>5. Memória de Cálculo Detalhada (ND 33.90.39)</span>
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="custom-memoria"
-                                                    checked={isCustomMemoriaActive}
-                                                    onCheckedChange={(checked) => setIsCustomMemoriaActive(!!checked)}
-                                                />
-                                                <Label htmlFor="custom-memoria" className="text-sm font-medium">
-                                                    Memória Customizada
-                                                </Label>
-                                            </div>
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <Textarea
-                                            value={isCustomMemoriaActive ? customMemoria : liveMemoria}
-                                            onChange={(e) => setCustomMemoria(e.target.value)}
-                                            rows={15}
-                                            readOnly={!isCustomMemoriaActive}
-                                            className={isCustomMemoriaActive ? "" : "bg-muted/50 text-muted-foreground"}
-                                        />
-                                        {!isCustomMemoriaActive && (
-                                            <p className="text-xs text-muted-foreground mt-2">
-                                                A memória de cálculo é gerada automaticamente. Marque "Memória Customizada" para editar o texto.
-                                            </p>
-                                        )}
                                     </CardContent>
                                 </Card>
 
