@@ -18,6 +18,16 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"; // Importar AlertDialog components
 
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -258,7 +268,7 @@ const DiariaForm: React.FC = () => {
         
         // Cálculo
         const totalDiaria = qtd * dias * valorUnitario;
-        const totalTaxaEmbarque = qtd * taxaEmbarque; // CORRIGIDO: Usando taxaEmbarque lida do input
+        const totalTaxaEmbarque = qtd * valorTaxaEmbarque; // CORRIGIDO: Usando taxaEmbarque lida do input
         const totalGeral = totalDiaria + totalTaxaEmbarque;
         
         // Alocação ND (Diárias são sempre ND 39)
