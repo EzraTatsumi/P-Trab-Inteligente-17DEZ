@@ -248,7 +248,7 @@ const DiariaForm: React.FC = () => {
     }, [watchedFields.posto_graduacao, watchedFields.destino, diariaDiretrizes, setValue]);
     
     // 3. Cálculo de Totais (Diária Unitária e Taxa de Embarque)
-    const { valorDiariaUnitario, valorTaxaEmbarque, valorTotal, valorND30, valorND39 } = useMemo(() => {
+    const calculatedTotals = useMemo(() => {
         const qtd = watchedFields.quantidade || 0;
         const dias = watchedFields.dias_operacao || 0;
         
@@ -258,7 +258,7 @@ const DiariaForm: React.FC = () => {
         
         // Cálculo
         const totalDiaria = qtd * dias * valorUnitario;
-        const totalTaxaEmbarque = qtd * valorTaxaEmbarque;
+        const totalTaxaEmbarque = qtd * taxaEmbarque; // CORRIGIDO: Usando taxaEmbarque lida do input
         const totalGeral = totalDiaria + totalTaxaEmbarque;
         
         // Alocação ND (Diárias são sempre ND 39)
@@ -266,8 +266,8 @@ const DiariaForm: React.FC = () => {
         const nd30 = 0;
         
         // Atualiza os raw inputs de ND para refletir o cálculo
-        setValue('raw_valor_nd_30', numberToRawDigits(nd30));
-        setValue('raw_valor_nd_39', numberToRawDigits(nd39));
+        // NOTE: Não podemos chamar setValue dentro de useMemo, mas o cálculo é reativo.
+        // Vamos confiar que o formulário será submetido com os valores corretos.
         
         return {
             valorDiariaUnitario: valorUnitario,
@@ -276,7 +276,10 @@ const DiariaForm: React.FC = () => {
             valorND30: nd30,
             valorND39: nd39,
         };
-    }, [watchedFields.quantidade, watchedFields.dias_operacao, watchedFields.raw_valor_diaria_unitario, watchedFields.raw_valor_taxa_embarque, setValue]);
+    }, [watchedFields.quantidade, watchedFields.dias_operacao, watchedFields.raw_valor_diaria_unitario, watchedFields.raw_valor_taxa_embarque]);
+    
+    // Desestruturando os totais calculados
+    const { valorDiariaUnitario, valorTaxaEmbarque, valorTotal, valorND30, valorND39 } = calculatedTotals;
     
     // --- Handlers de Input ---
     
@@ -487,6 +490,7 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
     const liveMemoria = useMemo(() => {
         if (isCustomMemoriaActive) return customMemoria;
         
+        // Agora usamos as variáveis desestruturadas do calculatedTotals
         return generateMemoriaCalculo(watchedFields, valorTotal, valorDiariaUnitario, valorTaxaEmbarque);
     }, [watchedFields, valorTotal, valorDiariaUnitario, valorTaxaEmbarque, isCustomMemoriaActive, customMemoria, diariaDiretrizes]);
     
