@@ -24,7 +24,7 @@ import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useDiretrizesOperacionais } from "@/hooks/useDiretrizesOperacionais"; // Novo hook para diretrizes operacionais
-import { formatCurrency, formatCodug, formatNumberForInput, parseInputToNumber, numberToRawDigits, formatCurrencyInput } from "@/lib/formatUtils";
+import { formatCurrency, formatCodug, formatNumberForInput, parseInputToNumber, numberToRawDigits, formatCurrencyInput, calculateDays } from "@/lib/formatUtils";
 import { usePTrabData } from "@/hooks/usePTrabData";
 import { useDiariaRegistros } from "@/hooks/useDiariaRegistros"; // Novo hook para registros de diária
 import { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";

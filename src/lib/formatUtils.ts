@@ -114,6 +114,19 @@ export const getPreviousWeekRange = (): { start: string, end: string } => {
     };
 };
 
+/**
+ * Calculates the number of days between two dates (inclusive).
+ * @param inicio Start date string (ISO format).
+ * @param fim End date string (ISO format).
+ * @returns The number of days.
+ */
+export const calculateDays = (inicio: string, fim: string): number => {
+  const start = new Date(inicio);
+  const end = new Date(fim);
+  const diff = end.getTime() - start.getTime();
+  return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
+};
+
 // --- Funções de Formatação de Input (Restauradas) ---
 
 /**

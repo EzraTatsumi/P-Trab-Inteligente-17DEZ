@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, formatDate, calculateDays } from "@/lib/formatUtils"; // IMPORTADO
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
 import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
@@ -105,8 +105,6 @@ export interface ClasseIIRegistro {
   detalhamento: string;
   detalhamento_customizado?: string | null;
   fase_atividade?: string | null;
-  valor_nd_30: number;
-  valor_nd_39: number;
   animal_tipo?: 'Equino' | 'Canino' | null;
   quantidade_animais?: number;
   itens_remonta?: any; // Usado para Classe VIII Remonta
@@ -206,16 +204,8 @@ export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
 export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
 export const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
 
-export const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('pt-BR');
-};
-
-export const calculateDays = (inicio: string, fim: string) => {
-  const start = new Date(inicio);
-  const end = new Date(fim);
-  const diff = end.getTime() - start.getTime();
-  return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
-};
+// REMOVIDO: export const formatDate = (date: string) => { ... };
+// REMOVIDO: export const calculateDays = (inicio: string, fim: string) => { ... };
 
 export const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   if (!faseCSV) return 'operação';
@@ -485,7 +475,7 @@ export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, ref
                 detailed_items: itensGrupo, // Passa todos os itens da categoria
             };
             
-            finalMemoria += generateClasseIIIGranularUtility(
+            memoriaCalculo = generateClasseIIIGranularUtility(
                 granularItem, 
                 refLPC, 
                 omDestinoRecurso, 
