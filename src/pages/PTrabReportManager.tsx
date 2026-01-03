@@ -204,8 +204,8 @@ export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
 export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
 export const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
 
-// REMOVIDO: export const formatDate = (date: string) => { ... };
-// REMOVIDO: export const calculateDays = (inicio: string, fim: string) => { ... };
+// RE-EXPORTANDO FUNÇÕES DE UTILIDADE
+export { formatDate, calculateDays };
 
 export const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   if (!faseCSV) return 'operação';
@@ -457,6 +457,19 @@ export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, ref
             const omDestinoRecurso = registro.om_detentora || '';
             const ugDestinoRecurso = registro.ug_detentora || '';
             
+            // Recalcular totais para esta linha granular (apenas Lubrificante)
+            let totalLitrosLinha = 0;
+            let valorTotalLinha = 0;
+            
+            itensGrupo.forEach(item => {
+                const totals = calculateItemTotals(item, refLPC, registro.dias_operacao);
+                totalLitrosLinha += totals.litrosLubrificante;
+                valorTotalLinha += totals.valorLubrificante;
+            });
+            
+            // Preço médio
+            const precoLitroLinha = totalLitrosLinha > 0 ? valorTotalLinha / totalLitrosLinha : 0;
+            
             // Criar um item granular que representa o grupo de lubrificante daquela categoria
             const granularItem: GranularDisplayItem = {
                 id: `${registro.id}-${categoria}-LUBRIFICANTE`,
@@ -464,9 +477,9 @@ export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, ref
                 ug_destino: registro.ug, // UG Detentora do Equipamento
                 categoria: categoria as any,
                 suprimento_tipo: 'LUBRIFICANTE',
-                valor_total: registro.valor_total, // Usamos o total do registro consolidado
-                total_litros: registro.total_litros, // Usamos o total de litros do registro consolidado
-                preco_litro: 0, // Não aplicável / Preço médio
+                valor_total: valorTotalLinha,
+                total_litros: totalLitrosLinha,
+                preco_litro: precoLitroLinha,
                 dias_operacao: registro.dias_operacao,
                 fase_atividade: registro.fase_atividade || '',
                 valor_nd_30: registro.valor_nd_30,
@@ -475,7 +488,7 @@ export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, ref
                 detailed_items: itensGrupo, // Passa todos os itens da categoria
             };
             
-            memoriaCalculo = generateClasseIIIGranularUtility(
+            finalMemoria += generateClasseIIIGranularUtility(
                 granularItem, 
                 refLPC, 
                 omDestinoRecurso, 
