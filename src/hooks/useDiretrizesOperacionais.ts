@@ -80,13 +80,14 @@ const fetchDiretrizesOperacionais = async (userId: string): Promise<DiretrizOper
 };
 
 export const useDiretrizesOperacionais = () => {
+  // Acessa a sessão de forma segura
   const { data: { user } } = supabase.auth.getSession();
   const userId = user?.id;
 
   return useQuery({
     queryKey: ["diretrizesOperacionais", userId],
     queryFn: () => fetchDiretrizesOperacionais(userId!),
-    enabled: !!userId,
+    enabled: !!userId, // A query só é executada se o userId estiver disponível
     staleTime: 1000 * 60 * 5, // 5 minutes
     onError: (error) => {
       toast.error(error.message);
