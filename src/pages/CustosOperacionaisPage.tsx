@@ -169,7 +169,10 @@ const CustosOperacionaisPage = () => {
           yearToSelect = uniqueYears[0];
       }
       
-      setSelectedYear(prevYear => prevYear !== yearToSelect ? yearToSelect : yearToSelect);
+      // CORREÇÃO: Forçar a atualização do selectedYear, mesmo que seja o mesmo valor,
+      // para garantir que o useEffect de carregamento de dados seja disparado
+      // ou que o Select reflita o valor inicial.
+      setSelectedYear(yearToSelect);
 
     } catch (error: any) {
       console.error("Erro ao carregar anos disponíveis:", error);
@@ -373,7 +376,10 @@ const CustosOperacionaisPage = () => {
         toast.success("Diretrizes Operacionais criadas!");
       }
       
-      await loadAvailableYears(defaultYear);
+      // Após salvar, recarregar o ano padrão e os anos disponíveis
+      const fetchedDefaultYear = await loadDefaultYear(user.id);
+      await loadAvailableYears(fetchedDefaultYear);
+      
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
@@ -403,8 +409,12 @@ const CustosOperacionaisPage = () => {
         
       if (error) throw error;
       
+      // Atualiza o estado local do ano padrão
       setDefaultYear(diretrizes.ano_referencia);
       toast.success(`Ano ${diretrizes.ano_referencia} definido como padrão para cálculos!`);
+      
+      // Recarrega a lista de anos para garantir que o rótulo (Padrão) seja atualizado
+      await loadAvailableYears(diretrizes.ano_referencia);
       
     } catch (error: any) {
       toast.error(sanitizeError(error));
@@ -440,8 +450,11 @@ const CustosOperacionaisPage = () => {
       
       toast.success(`Diretrizes operacionais do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
       setIsYearManagementDialogOpen(false);
-      setSelectedYear(targetYear);
-      await loadAvailableYears(defaultYear);
+      
+      // Recarrega anos e seleciona o novo ano
+      const fetchedDefaultYear = await loadDefaultYear(user.id);
+      await loadAvailableYears(fetchedDefaultYear);
+      setSelectedYear(targetYear); // Garante que o novo ano seja selecionado
       
     } catch (error: any) {
       console.error("Erro ao copiar diretrizes:", error);
@@ -476,7 +489,10 @@ const CustosOperacionaisPage = () => {
 
       toast.success(`Diretrizes operacionais do ano ${year} excluídas com sucesso!`);
       setIsYearManagementDialogOpen(false);
-      await loadAvailableYears(defaultYear);
+      
+      // Recarrega anos e seleciona o ano mais recente
+      const fetchedDefaultYear = await loadDefaultYear(user.id);
+      await loadAvailableYears(fetchedDefaultYear);
       
     } catch (error: any) {
       console.error("Erro ao excluir diretrizes:", error);
