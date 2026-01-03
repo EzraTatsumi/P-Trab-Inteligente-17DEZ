@@ -79,11 +79,7 @@ const fetchDiretrizesOperacionais = async (userId: string): Promise<DiretrizOper
   return null;
 };
 
-export const useDiretrizesOperacionais = () => {
-  // Acessa a sessão de forma segura
-  const { data: { user } } = supabase.auth.getSession();
-  const userId = user?.id;
-
+export const useDiretrizesOperacionais = (userId: string | undefined) => {
   return useQuery({
     queryKey: ["diretrizesOperacionais", userId],
     queryFn: () => fetchDiretrizesOperacionais(userId!),

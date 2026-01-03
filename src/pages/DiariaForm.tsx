@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Save, Loader2, Plus, Trash2, Edit, Calendar, Users, MapPin, DollarSign, FileText, Check, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,12 +24,13 @@ import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useDiretrizesOperacionais } from "@/hooks/useDiretrizesOperacionais"; // Novo hook para diretrizes operacionais
-import { formatCurrency, formatCodug, formatNumberForInput, parseInputToNumber } from "@/lib/formatUtils";
+import { formatCurrency, formatCodug, formatNumberForInput, parseInputToNumber, numberToRawDigits, formatCurrencyInput } from "@/lib/formatUtils";
 import { usePTrabData } from "@/hooks/usePTrabData";
 import { useDiariaRegistros } from "@/hooks/useDiariaRegistros"; // Novo hook para registros de diária
 import { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { OMData } from "@/lib/omUtils";
 import { DiariaRegistro, DiariaItem } from "@/types/diaria"; // Novo tipo para Diária
+import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
 
 // --- Schemas ---
 
@@ -100,6 +101,8 @@ const DiariaForm: React.FC = () => {
     const [searchParams] = useSearchParams();
     const p_trab_id = searchParams.get('ptrabId');
     
+    const { user, loading: isLoadingSession } = useSession(); // Usar useSession
+    
     const { handleEnterToNextField } = useFormNavigation();
     
     const [editingRegistroId, setEditingRegistroId] = useState<string | null>(null);
@@ -113,7 +116,8 @@ const DiariaForm: React.FC = () => {
     // Hooks de Dados
     const { data: pTrabData, isLoading: isLoadingPTrab } = usePTrabData(p_trab_id);
     const { data: omList } = useMilitaryOrganizations();
-    const { data: diretrizesOp } = useDiretrizesOperacionais();
+    // Passar o userId para o hook de diretrizes
+    const { data: diretrizesOp, isLoading: isLoadingDiretrizes } = useDiretrizesOperacionais(user?.id); 
     const { data: registros, isLoading: isLoadingRegistros, refetch: refetchRegistros } = useDiariaRegistros(p_trab_id);
     
     // Memo para a OM de Destino (OM do PTrab)
@@ -451,7 +455,7 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
     
     // --- Renderização ---
     
-    if (isLoadingPTrab || isLoadingRegistros || !omDestino || !diariaDiretrizes) {
+    if (isLoadingSession || isLoadingPTrab || isLoadingRegistros || isLoadingDiretrizes || !omDestino || !diariaDiretrizes) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
