@@ -27,7 +27,6 @@ import PTrabExportImportPage from "./pages/PTrabExportImportPage";
 import UserProfilePage from "./pages/UserProfilePage";
 import SharePage from "./pages/SharePage"; // Importar SharePage
 import ResetPasswordPage from "./pages/ResetPasswordPage"; // Importar ResetPasswordPage
-import DiariaForm from "./pages/DiariaForm"; // Importar DiariaForm
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,7 +54,6 @@ const App = () => (
               <Route path="/ptrab/classe-viii" element={<ClasseVIIIForm />} />
               <Route path="/ptrab/classe-ix" element={<ClasseIXForm />} />
               <Route path="/ptrab/classe-iii" element={<ClasseIIIForm />} />
-              <Route path="/ptrab/diaria" element={<DiariaForm />} /> {/* NOVA ROTA */}
               <Route path="/config/custos-operacionais" element={<CustosOperacionaisPage />} />
               <Route path="/config/diretrizes" element={<DiretrizesCusteioPage />} />
               <Route path="/config/visualizacao" element={<VisualizacaoConfigPage />} />

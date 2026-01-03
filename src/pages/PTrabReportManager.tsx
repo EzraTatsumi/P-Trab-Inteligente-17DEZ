@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { formatCurrency, formatNumber, formatDate, calculateDays } from "@/lib/formatUtils"; // IMPORTADO
+import { formatCurrency, formatNumber } from "@/lib/formatUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
 import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
@@ -105,6 +105,8 @@ export interface ClasseIIRegistro {
   detalhamento: string;
   detalhamento_customizado?: string | null;
   fase_atividade?: string | null;
+  valor_nd_30: number;
+  valor_nd_39: number;
   animal_tipo?: 'Equino' | 'Canino' | null;
   quantidade_animais?: number;
   itens_remonta?: any; // Usado para Classe VIII Remonta
@@ -204,8 +206,16 @@ export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
 export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
 export const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
 
-// RE-EXPORTANDO FUNÇÕES DE UTILIDADE
-export { formatDate, calculateDays };
+export const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString('pt-BR');
+};
+
+export const calculateDays = (inicio: string, fim: string) => {
+  const start = new Date(inicio);
+  const end = new Date(fim);
+  const diff = end.getTime() - start.getTime();
+  return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
+};
 
 export const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
   if (!faseCSV) return 'operação';
@@ -457,19 +467,6 @@ export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, ref
             const omDestinoRecurso = registro.om_detentora || '';
             const ugDestinoRecurso = registro.ug_detentora || '';
             
-            // Recalcular totais para esta linha granular (apenas Lubrificante)
-            let totalLitrosLinha = 0;
-            let valorTotalLinha = 0;
-            
-            itensGrupo.forEach(item => {
-                const totals = calculateItemTotals(item, refLPC, registro.dias_operacao);
-                totalLitrosLinha += totals.litrosLubrificante;
-                valorTotalLinha += totals.valorLubrificante;
-            });
-            
-            // Preço médio
-            const precoLitroLinha = totalLitrosLinha > 0 ? valorTotalLinha / totalLitrosLinha : 0;
-            
             // Criar um item granular que representa o grupo de lubrificante daquela categoria
             const granularItem: GranularDisplayItem = {
                 id: `${registro.id}-${categoria}-LUBRIFICANTE`,
@@ -477,9 +474,9 @@ export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, ref
                 ug_destino: registro.ug, // UG Detentora do Equipamento
                 categoria: categoria as any,
                 suprimento_tipo: 'LUBRIFICANTE',
-                valor_total: valorTotalLinha,
-                total_litros: totalLitrosLinha,
-                preco_litro: precoLitroLinha,
+                valor_total: registro.valor_total, // Usamos o total do registro consolidado
+                total_litros: registro.total_litros, // Usamos o total de litros do registro consolidado
+                preco_litro: 0, // Não aplicável / Preço médio
                 dias_operacao: registro.dias_operacao,
                 fase_atividade: registro.fase_atividade || '',
                 valor_nd_30: registro.valor_nd_30,
