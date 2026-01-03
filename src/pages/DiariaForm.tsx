@@ -94,6 +94,24 @@ const FASE_ATIVIDADE_OPTIONS = [
     "Mobilização", "Execução", "Desmobilização", "Reconhecimento"
 ];
 
+// Default Diária values (replicated from CustosOperacionaisPage.tsx for robustness)
+const DEFAULT_DIARIA_VALUES = {
+    diaria_referencia_legal: 'Decreto Nº 12.324 de 19DEZ24',
+    taxa_embarque: 95.00,
+    diaria_of_gen_bsb: 600.00,
+    diaria_of_gen_capitais: 515.00,
+    diaria_of_gen_demais: 455.00,
+    diaria_of_sup_bsb: 510.00,
+    diaria_of_sup_capitais: 450.00,
+    diaria_of_sup_demais: 395.00,
+    diaria_of_int_sgt_bsb: 425.00,
+    diaria_of_int_sgt_capitais: 380.00,
+    diaria_of_int_sgt_demais: 335.00,
+    diaria_demais_pracas_bsb: 355.00,
+    diaria_demais_pracas_capitais: 315.00,
+    diaria_demais_pracas_demais: 280.00,
+};
+
 // --- Component ---
 
 const DiariaForm: React.FC = () => {
@@ -120,38 +138,57 @@ const DiariaForm: React.FC = () => {
     const { data: diretrizesOp, isLoading: isLoadingDiretrizes } = useDiretrizesOperacionais(user?.id); 
     const { data: registros, isLoading: isLoadingRegistros, refetch: refetchRegistros } = useDiariaRegistros(p_trab_id);
     
-    // Memo para a OM de Destino (OM do PTrab)
+    // Memo para a OM de Destino (OM do PTrab) - CORRIGIDO: Garante um fallback se a OM não estiver na lista
     const omDestino = useMemo(() => {
-        if (!pTrabData || !omList) return null;
-        return omList.find(om => om.nome_om === pTrabData.nome_om);
-    }, [pTrabData, omList]);
+        if (!pTrabData) return null;
+        
+        // Tenta encontrar a OM na lista
+        const foundOm = omList?.find(om => om.nome_om === pTrabData.nome_om);
+        
+        if (foundOm) return foundOm;
+        
+        // Fallback: Usa os dados do PTrab se a OM não for encontrada na lista do usuário
+        return {
+            id: 'fallback',
+            nome_om: pTrabData.nome_om,
+            codug_om: pTrabData.codug_om || '000000',
+            rm_vinculacao: pTrabData.rm_vinculacao || '',
+            codug_rm_vinculacao: pTrabData.codug_rm_vinculacao || '000000',
+            cidade: pTrabData.local_om || '',
+            ativo: true,
+            user_id: user?.id || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        } as OMData; // Cast to OMData structure
+    }, [pTrabData, omList, user?.id]);
     
-    // Memo para as diretrizes de diária
+    // Memo para as diretrizes de diária - CORRIGIDO: Usa DEFAULT_DIARIA_VALUES se diretrizesOp for null
     const diariaDiretrizes = useMemo(() => {
-        if (!diretrizesOp) return null;
+        // Use diretrizesOp se estiver disponível, senão use os valores padrão
+        const source = diretrizesOp || DEFAULT_DIARIA_VALUES; 
         
         // Mapeamento simplificado para facilitar a busca
         const map: Record<string, Record<string, number>> = {};
         
         const ranks = [
-            { key: 'Of Gen', bsb: diretrizesOp.diaria_of_gen_bsb, capitais: diretrizesOp.diaria_of_gen_capitais, demais: diretrizesOp.diaria_of_gen_demais },
-            { key: 'Of Sup', bsb: diretrizesOp.diaria_of_sup_bsb, capitais: diretrizesOp.diaria_of_sup_capitais, demais: diretrizesOp.diaria_of_sup_demais },
-            { key: 'Of Int/Sub/Asp Of/ST/Sgt', bsb: diretrizesOp.diaria_of_int_sgt_bsb, capitais: diretrizesOp.diaria_of_int_sgt_capitais, demais: diretrizesOp.diaria_of_int_sgt_demais },
-            { key: 'Demais Praças', bsb: diretrizesOp.diaria_demais_pracas_bsb, capitais: diretrizesOp.diaria_demais_pracas_capitais, demais: diretrizesOp.diaria_demais_pracas_demais },
+            { key: 'Of Gen', bsb: source.diaria_of_gen_bsb, capitais: source.diaria_of_gen_capitais, demais: source.diaria_of_gen_demais },
+            { key: 'Of Sup', bsb: source.diaria_of_sup_bsb, capitais: source.diaria_of_sup_capitais, demais: source.diaria_of_sup_demais },
+            { key: 'Of Int/Sub/Asp Of/ST/Sgt', bsb: source.diaria_of_int_sgt_bsb, capitais: source.diaria_of_int_sgt_capitais, demais: source.diaria_of_int_sgt_demais },
+            { key: 'Demais Praças', bsb: source.diaria_demais_pracas_bsb, capitais: source.diaria_demais_pracas_capitais, demais: source.diaria_demais_pracas_demais },
         ];
         
         ranks.forEach(rank => {
             map[rank.key] = {
-                'BSB/MAO/RJ/SP': rank.bsb,
-                'Demais Capitais': rank.capitais,
-                'Demais Dslc': rank.demais,
+                'BSB/MAO/RJ/SP': Number(rank.bsb),
+                'Demais Capitais': Number(rank.capitais),
+                'Demais Dslc': Number(rank.demais),
             };
         });
         
         return {
             values: map,
-            taxaEmbarque: diretrizesOp.taxa_embarque || 0,
-            referenciaLegal: diretrizesOp.diaria_referencia_legal || 'Não Informada',
+            taxaEmbarque: Number(source.taxa_embarque || 0),
+            referenciaLegal: source.diaria_referencia_legal || 'Não Informada',
         };
     }, [diretrizesOp]);
 
@@ -221,7 +258,7 @@ const DiariaForm: React.FC = () => {
         
         // Cálculo
         const totalDiaria = qtd * dias * valorUnitario;
-        const totalTaxaEmbarque = qtd * taxaEmbarque;
+        const totalTaxaEmbarque = qtd * valorTaxaEmbarque;
         const totalGeral = totalDiaria + totalTaxaEmbarque;
         
         // Alocação ND (Diárias são sempre ND 39)
@@ -424,7 +461,7 @@ const DiariaForm: React.FC = () => {
 OM Detentora: ${omDetentoraNome} (UG: ${formatCodug(omDetentoraUg)})
 OM Destino Recurso: ${omDestinoNome} (UG: ${formatCodug(omDestinoUg)})
 
-Referência Legal: ${diariaDiretrizes?.referenciaLegal || 'Não Informada'}
+Referência Legal: ${diariaDiretrizes.referenciaLegal || 'Não Informada'}
 
 Cálculo Detalhado:
 - Posto/Graduação: ${data.posto_graduacao}
