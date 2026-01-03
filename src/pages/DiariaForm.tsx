@@ -41,6 +41,7 @@ import { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { OMData } from "@/lib/omUtils";
 import { DiariaRegistro, DiariaItem } from "@/types/diaria"; // Novo tipo para Diária
 import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
+import { OmSelector } from "@/components/OmSelector"; // Importar OmSelector
 
 // --- Schemas ---
 
@@ -84,8 +85,8 @@ const DiariaRegistroSchema = z.object({
     raw_valor_nd_39: z.string().optional(),
     
     // Campos de OM Detentora (Source)
-    om_detentora: z.string().optional(),
-    ug_detentora: z.string().optional(),
+    om_detentora: z.string().min(1, "OM Detentora é obrigatória."),
+    ug_detentora: z.string().min(1, "UG Detentora é obrigatória."),
 });
 
 type DiariaRegistroFormValues = z.infer<typeof DiariaRegistroSchema>;
@@ -141,6 +142,9 @@ const DiariaForm: React.FC = () => {
     const [customMemoria, setCustomMemoria] = useState<string>("");
     const [isCustomMemoriaActive, setIsCustomMemoriaActive] = useState(false);
     
+    // Estado para controlar a seleção da OM Detentora no OmSelector
+    const [selectedOmDetentoraId, setSelectedOmDetentoraId] = useState<string | undefined>(undefined);
+    
     // Hooks de Dados
     const { data: pTrabData, isLoading: isLoadingPTrab } = usePTrabData(p_trab_id);
     const { data: omList } = useMilitaryOrganizations();
@@ -148,18 +152,13 @@ const DiariaForm: React.FC = () => {
     const { data: diretrizesOp, isLoading: isLoadingDiretrizes } = useDiretrizesOperacionais(user?.id); 
     const { data: registros, isLoading: isLoadingRegistros, refetch: refetchRegistros } = useDiariaRegistros(p_trab_id);
     
-    // Memo para a OM de Destino (OM do PTrab) - CORRIGIDO: Garante um fallback se a OM não estiver na lista
-    const omDestino = useMemo(() => {
+    // Memo para a OM de Destino (OM do PTrab)
+    const omDestinoPTrab = useMemo(() => {
         if (!pTrabData) return null;
         
-        // Tenta encontrar a OM na lista
-        const foundOm = omList?.find(om => om.nome_om === pTrabData.nome_om);
-        
-        if (foundOm) return foundOm;
-        
-        // Fallback: Usa os dados do PTrab se a OM não for encontrada na lista do usuário
+        // Fallback: Usa os dados do PTrab
         return {
-            id: 'fallback',
+            id: 'ptrab-om',
             nome_om: pTrabData.nome_om,
             codug_om: pTrabData.codug_om || '000000',
             rm_vinculacao: pTrabData.rm_vinculacao || '',
@@ -170,14 +169,12 @@ const DiariaForm: React.FC = () => {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
         } as OMData; // Cast to OMData structure
-    }, [pTrabData, omList, user?.id]);
+    }, [pTrabData, user?.id]);
     
-    // Memo para as diretrizes de diária - CORRIGIDO: Usa DEFAULT_DIARIA_VALUES se diretrizesOp for null
+    // Memo para as diretrizes de diária
     const diariaDiretrizes = useMemo(() => {
-        // Use diretrizesOp se estiver disponível, senão use os valores padrão
         const source = diretrizesOp || DEFAULT_DIARIA_VALUES; 
         
-        // Mapeamento simplificado para facilitar a busca
         const map: Record<string, Record<string, number>> = {};
         
         const ranks = [
@@ -206,10 +203,17 @@ const DiariaForm: React.FC = () => {
     const methods = useForm<DiariaRegistroFormValues>({
         resolver: zodResolver(DiariaRegistroSchema),
         defaultValues: {
-            organizacao: omDestino?.nome_om || "",
-            ug: omDestino?.codug_om || "",
+            // OM de Destino (Recurso) - Fixa como a OM do PTrab
+            organizacao: omDestinoPTrab?.nome_om || "",
+            ug: omDestinoPTrab?.codug_om || "",
             dias_operacao: pTrabData ? calculateDays(pTrabData.periodo_inicio, pTrabData.periodo_fim) : 1,
             fase_atividade: FASE_ATIVIDADE_OPTIONS[0],
+            
+            // OM Detentora (Source) - Inicialmente igual à OM de Destino
+            om_detentora: omDestinoPTrab?.nome_om || "",
+            ug_detentora: omDestinoPTrab?.codug_om || "",
+            
+            // Campos do item
             posto_graduacao: POSTO_GRADUACAO_OPTIONS[0],
             destino: DESTINO_OPTIONS[0],
             quantidade: 1,
@@ -217,26 +221,31 @@ const DiariaForm: React.FC = () => {
             raw_valor_taxa_embarque: numberToRawDigits(0),
             raw_valor_nd_30: numberToRawDigits(0),
             raw_valor_nd_39: numberToRawDigits(0),
-            om_detentora: omDestino?.nome_om || "",
-            ug_detentora: omDestino?.codug_om || "",
         },
     });
     const { register, handleSubmit, watch, setValue, reset: resetForm, formState: { errors, isSubmitting } } = methods;
     
     const watchedFields = watch();
     
-    // 1. Atualizar OM de Destino e Dias de Operação
+    // --- Auto-Update Effects ---
+    
+    // 1. Atualizar OM de Destino e Dias de Operação (Fixos)
     useEffect(() => {
-        if (omDestino) {
-            setValue('organizacao', omDestino.nome_om);
-            setValue('ug', omDestino.codug_om);
-            setValue('om_detentora', omDestino.nome_om);
-            setValue('ug_detentora', omDestino.codug_om);
+        if (omDestinoPTrab) {
+            // OM de Destino (Recurso) é a OM do PTrab
+            setValue('organizacao', omDestinoPTrab.nome_om);
+            setValue('ug', omDestinoPTrab.codug_om);
+            
+            // Se não estiver editando, a OM Detentora é a OM do PTrab por padrão
+            if (!editingRegistroId) {
+                setValue('om_detentora', omDestinoPTrab.nome_om);
+                setValue('ug_detentora', omDestinoPTrab.codug_om);
+            }
         }
         if (pTrabData) {
             setValue('dias_operacao', calculateDays(pTrabData.periodo_inicio, pTrabData.periodo_fim));
         }
-    }, [omDestino, pTrabData, setValue]);
+    }, [omDestinoPTrab, pTrabData, setValue, editingRegistroId]);
     
     // 2. Auto-calcular Valor Unitário da Diária e Taxa de Embarque
     useEffect(() => {
@@ -266,7 +275,7 @@ const DiariaForm: React.FC = () => {
         
         // Cálculo
         const totalDiaria = qtd * dias * valorUnitario;
-        const totalTaxaEmbarque = qtd * taxaEmbarque; // CORRIGIDO: Usando taxaEmbarque lida do input
+        const totalTaxaEmbarque = qtd * taxaEmbarque; 
         const totalGeral = totalDiaria + totalTaxaEmbarque;
         
         // Alocação ND (Diárias são sempre ND 39)
@@ -290,6 +299,19 @@ const DiariaForm: React.FC = () => {
     const handleCurrencyChange = (field: 'raw_valor_diaria_unitario' | 'raw_valor_taxa_embarque' | 'raw_valor_nd_30' | 'raw_valor_nd_39', rawValue: string) => {
         const { digits } = formatCurrencyInput(rawValue);
         setValue(field, digits, { shouldValidate: false });
+    };
+    
+    // Handler para OmSelector (OM Detentora)
+    const handleOmDetentoraChange = (omData: OMData | undefined) => {
+        if (omData) {
+            setSelectedOmDetentoraId(omData.id);
+            setValue('om_detentora', omData.nome_om);
+            setValue('ug_detentora', omData.codug_om);
+        } else {
+            setSelectedOmDetentoraId(undefined);
+            setValue('om_detentora', "");
+            setValue('ug_detentora', "");
+        }
     };
     
     // --- Memória de Cálculo ---
@@ -434,9 +456,13 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
             raw_valor_nd_30: numberToRawDigits(registro.valor_nd_30),
             raw_valor_nd_39: numberToRawDigits(registro.valor_nd_39),
             
-            om_detentora: registro.om_detentora || omDestino?.nome_om || "",
-            ug_detentora: registro.ug_detentora || omDestino?.codug_om || "",
+            om_detentora: registro.om_detentora || omDestinoPTrab?.nome_om || "",
+            ug_detentora: registro.ug_detentora || omDestinoPTrab?.codug_om || "",
         });
+        
+        // Atualizar o OmSelector para refletir a OM Detentora
+        const omDetentora = omList?.find(om => om.nome_om === registro.om_detentora);
+        setSelectedOmDetentoraId(omDetentora?.id || 'temp'); // Usa 'temp' se o nome existir mas não o ID
         
         // Configurar memória customizada
         if (registro.detalhamento_customizado) {
@@ -492,14 +518,16 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
             raw_valor_taxa_embarque: numberToRawDigits(0),
             raw_valor_nd_30: numberToRawDigits(0),
             raw_valor_nd_39: numberToRawDigits(0),
-            om_detentora: watchedFields.om_detentora,
-            ug_detentora: watchedFields.ug_detentora,
+            // OM Detentora volta para o padrão (OM de Destino)
+            om_detentora: watchedFields.organizacao,
+            ug_detentora: watchedFields.ug,
         });
+        setSelectedOmDetentoraId(undefined);
     };
     
     // --- Renderização ---
     
-    if (isLoadingSession || isLoadingPTrab || isLoadingRegistros || isLoadingDiretrizes || !omDestino || !diariaDiretrizes) {
+    if (isLoadingSession || isLoadingPTrab || isLoadingRegistros || isLoadingDiretrizes || !omDestinoPTrab || !diariaDiretrizes) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -529,28 +557,54 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
                         </CardHeader>
                         <CardContent className="space-y-6">
                             
-                            {/* Seção de Dados do PTrab (OM e Dias) - Fixo no topo */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-muted/50">
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">OM de Destino (Recurso)</Label>
-                                    <p className="font-medium">{watchedFields.organizacao}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">UG de Destino</Label>
-                                    <p className="font-medium">{formatCodug(watchedFields.ug)}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Dias de Operação (Total)</Label>
-                                    <p className="font-medium">{watchedFields.dias_operacao}</p>
-                                </div>
-                            </div>
-
                             <form onSubmit={handleSubmit(handleSaveRegistro)} className="space-y-6">
                                 
-                                {/* 1. Formulário de Adição/Edição de Item (Sem numeração) */}
+                                {/* 1. Dados da Organização (OM Detentora e OM Destino) */}
+                                <Card className="bg-muted/50">
+                                    <CardHeader className="py-3">
+                                        <CardTitle className="text-base">1. Dados da Organização</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        
+                                        {/* OM Detentora (Source) */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="om_detentora">OM Detentora (Source) *</Label>
+                                            <OmSelector
+                                                selectedOmId={selectedOmDetentoraId}
+                                                initialOmName={watchedFields.om_detentora}
+                                                onChange={handleOmDetentoraChange}
+                                                placeholder="Selecione a OM Detentora..."
+                                                disabled={isSubmitting}
+                                            />
+                                            {errors.om_detentora && <p className="text-xs text-destructive">{errors.om_detentora.message}</p>}
+                                            <p className="text-xs text-muted-foreground">UG: {formatCodug(watchedFields.ug_detentora)}</p>
+                                        </div>
+                                        
+                                        {/* OM de Destino (Recurso) - Fixa */}
+                                        <div className="space-y-2">
+                                            <Label>OM de Destino (Recurso)</Label>
+                                            <Input value={watchedFields.organizacao} disabled className="bg-white" />
+                                            <p className="text-xs text-muted-foreground">UG: {formatCodug(watchedFields.ug)}</p>
+                                        </div>
+                                        
+                                        {/* Dias de Operação (Total) - Fixos */}
+                                        <div className="space-y-2">
+                                            <Label>Dias de Operação (Total)</Label>
+                                            <Input 
+                                                type="number"
+                                                value={watchedFields.dias_operacao}
+                                                disabled
+                                                className="bg-white"
+                                            />
+                                            <p className="text-xs text-muted-foreground">Período do P Trab.</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                
+                                {/* 2. Configuração do Item */}
                                 <Card>
                                     <CardHeader className="py-3">
-                                        <CardTitle className="text-base">{editingRegistroId ? "Editar Registro" : "Adicionar Novo Registro"}</CardTitle>
+                                        <CardTitle className="text-base">{editingRegistroId ? "2. Editar Item" : "2. Adicionar Novo Item"}</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         
@@ -571,6 +625,7 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
+                                                {errors.posto_graduacao && <p className="text-xs text-destructive">{errors.posto_graduacao.message}</p>}
                                             </div>
                                             
                                             <div className="space-y-2">
@@ -588,6 +643,7 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
+                                                {errors.destino && <p className="text-xs text-destructive">{errors.destino.message}</p>}
                                             </div>
                                             
                                             <div className="space-y-2">
@@ -677,11 +733,11 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
                                     </CardFooter>
                                 </Card>
                                 
-                                {/* 2. Memórias de Cálculo Detalhadas (Movido para baixo) */}
+                                {/* 3. Memórias de Cálculo Detalhadas */}
                                 <Card>
                                     <CardHeader className="py-3">
                                         <CardTitle className="text-base flex items-center justify-between">
-                                            <span>Memória de Cálculo Detalhada (ND 33.90.39)</span>
+                                            <span>3. Memória de Cálculo Detalhada (ND 33.90.39)</span>
                                             <div className="flex items-center space-x-2">
                                                 <Checkbox
                                                     id="custom-memoria"
@@ -710,10 +766,10 @@ Valor Total (ND 33.90.39): ${formatCurrency(valorTotal)}.
                                     </CardContent>
                                 </Card>
                                 
-                                {/* 3. Itens Adicionados (Lista de Registros) */}
+                                {/* 4. Itens Adicionados (Lista de Registros) */}
                                 <Card>
                                     <CardHeader className="py-3">
-                                        <CardTitle className="text-base">Registros de Diária Adicionados ({registros?.length || 0})</CardTitle>
+                                        <CardTitle className="text-base">4. Registros de Diária Adicionados ({registros?.length || 0})</CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="border rounded-lg overflow-hidden">
