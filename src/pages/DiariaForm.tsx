@@ -6,7 +6,7 @@ import { useForm, FormProvider, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Loader2, DollarSign, RefreshCw, Checkbox as CheckboxIcon } from "lucide-react";
+import { ArrowLeft, Save, Loader2, RefreshCw, Checkbox as CheckboxIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -542,7 +542,6 @@ Total: ${totalDiariaFormatado} + ${totalTaxaEmbFormatado} = ${totalGeralFormatad
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <DollarSign className="h-6 w-6 text-primary" />
                                 Registro de Pagamento de Diárias (ND 33.90.15)
                             </CardTitle>
                             <CardDescription>
