@@ -41,6 +41,7 @@ import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator"; // Importando Separator
 
 // Tipos de dados
 type DiariaRegistro = Tables<'diaria_registros'>;
@@ -850,11 +851,12 @@ const DiariaForm = () => {
                                                 className="border-2 border-teal-500/50 bg-teal-50/50 shadow-md"
                                             >
                                                 <CardContent className="p-4">
-                                                    <div className="flex justify-between items-start border-b border-teal-500/30 pb-2 mb-2">
+                                                    <div className="flex justify-between items-start pb-2 mb-2">
                                                         <div className="space-y-1">
                                                             <h4 className="font-bold text-base text-teal-700">
                                                                 Diárias ({item.totalMilitares} Militares)
                                                             </h4>
+                                                            <Separator className="bg-teal-500/30" />
                                                             <p className="text-sm text-muted-foreground">
                                                                 {item.local_atividade} ({item.destinoLabel})
                                                             </p>
