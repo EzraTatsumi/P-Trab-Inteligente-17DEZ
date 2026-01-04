@@ -593,7 +593,7 @@ const DiariaForm = () => {
                                                                     disabled={!isPTrabEditable || isSaving}
                                                                 />
                                                                 <span className="text-sm text-muted-foreground">
-                                                                    {formData.is_aereo ? "Sim (Inclui Taxa Emb.)" : "Não (Terrestre/Fluvial)"}
+                                                                    {formData.is_aereo ? "Sim (Inclui Taxa de Embarque)" : "Não (Terrestre/Fluvial)"}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -616,10 +616,11 @@ const DiariaForm = () => {
                                                 <Table>
                                                     <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                                         <TableRow className="bg-muted hover:bg-muted">
-                                                            <TableHead className="w-[40%]">Posto/Graduação</TableHead>
-                                                            <TableHead className="w-[20%] text-center">Valor Unitário</TableHead>
-                                                            <TableHead className="w-[15%] text-center">Qtd *</TableHead>
-                                                            <TableHead className="w-[25%] text-right">Custo Diária (R$)</TableHead>
+                                                            <TableHead className="w-[30%]">Posto/Graduação</TableHead>
+                                                            <TableHead className="w-[15%] text-center">Valor Unitário</TableHead>
+                                                            <TableHead className="w-[20%] text-center">Taxa de Embarque</TableHead>
+                                                            <TableHead className="w-[15%] text-center">Efetivo</TableHead>
+                                                            <TableHead className="w-[20%] text-right">Custo Diária (R$)</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
@@ -628,10 +629,18 @@ const DiariaForm = () => {
                                                             const unitValue = getUnitValueDisplay(rank.key, formData.destino);
                                                             const calculatedCost = calculos.calculosPorPosto.find(c => c.posto === rank.label)?.custoTotal || 0;
                                                             
+                                                            // Valor da Taxa de Embarque para esta linha
+                                                            const taxaEmbarqueDisplay = formData.is_aereo 
+                                                                ? formatCurrency(taxaEmbarqueUnitario) 
+                                                                : formatCurrency(0);
+                                                            
                                                             return (
                                                                 <TableRow key={rank.key}>
                                                                     <TableCell className="font-medium">{rank.label}</TableCell>
                                                                     <TableCell className="text-center text-sm text-muted-foreground">{unitValue}</TableCell>
+                                                                    <TableCell className="text-center text-sm text-muted-foreground">
+                                                                        {taxaEmbarqueDisplay}
+                                                                    </TableCell>
                                                                     <TableCell className="text-center">
                                                                         <Input
                                                                             type="number"
@@ -653,15 +662,15 @@ const DiariaForm = () => {
                                                         })}
                                                         {/* Linhas de Totais */}
                                                         <TableRow className="bg-muted hover:bg-muted font-bold border-t border-border">
-                                                            <TableCell colSpan={3} className="text-right">Total Diária</TableCell>
+                                                            <TableCell colSpan={4} className="text-right">Total Diária</TableCell>
                                                             <TableCell className="text-right">{formatCurrency(calculos.totalDiaria)}</TableCell>
                                                         </TableRow>
                                                         <TableRow className="bg-muted hover:bg-muted font-bold">
-                                                            <TableCell colSpan={3} className="text-right">Total Taxa de Embarque</TableCell>
+                                                            <TableCell colSpan={4} className="text-right">Total Taxa de Embarque</TableCell>
                                                             <TableCell className="text-right">{formatCurrency(calculos.totalTaxaEmbarque)}</TableCell>
                                                         </TableRow>
                                                         <TableRow className="bg-primary/10 hover:bg-primary/10 font-bold text-primary-foreground">
-                                                            <TableCell colSpan={3} className="text-right">Total Geral</TableCell>
+                                                            <TableCell colSpan={4} className="text-right">Total Geral</TableCell>
                                                             <TableCell className="text-right">{formatCurrency(calculos.totalGeral)}</TableCell>
                                                         </TableRow>
                                                     </TableBody>
