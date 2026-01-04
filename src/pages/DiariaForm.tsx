@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane } from "lucide-react";
+import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane, PlusCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -825,8 +825,7 @@ const DiariaForm = () => {
                                                     disabled={!isPTrabEditable || isSaving || !isCalculationReady}
                                                     className="w-full md:w-auto"
                                                 >
-                                                    <Plus className="mr-2 h-4 w-4" />
-                                                    Adicionar Item à Lista
+                                                    Adicionar Itens da Categoria
                                                 </Button>
                                             )}
                                         </div>
@@ -847,12 +846,12 @@ const DiariaForm = () => {
                                         {pendingDiarias.map((item) => (
                                             <Card 
                                                 key={item.tempId} 
-                                                className="border-2 border-teal-500/50 bg-teal-50/50 shadow-md"
+                                                className="border-2 border-secondary bg-secondary/10 shadow-md"
                                             >
                                                 <CardContent className="p-4">
-                                                    <div className="flex justify-between items-start border-b border-teal-500/30 pb-2 mb-2">
+                                                    <div className="flex justify-between items-start border-b border-secondary/50 pb-2 mb-2">
                                                         <div className="space-y-1">
-                                                            <h4 className="font-bold text-base text-teal-700">
+                                                            <h4 className="font-bold text-base text-primary">
                                                                 Diárias ({item.totalMilitares} Militares)
                                                             </h4>
                                                             <p className="text-sm text-muted-foreground">
@@ -860,10 +859,9 @@ const DiariaForm = () => {
                                                             </p>
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="font-extrabold text-lg text-teal-700">
+                                                            <p className="font-extrabold text-lg text-primary">
                                                                 {formatCurrency(item.valor_total)}
                                                             </p>
-                                                            {/* Botão de remoção removido conforme solicitado */}
                                                         </div>
                                                     </div>
                                                     
@@ -896,16 +894,16 @@ const DiariaForm = () => {
                                     
                                     <div className="flex justify-end gap-3 pt-4">
                                         <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                            <X className="mr-2 h-4 w-4" />
-                                            Limpar Formulário
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Limpar Itens
                                         </Button>
                                         <Button 
                                             type="button" 
                                             onClick={handleSavePendingDiarias}
                                             disabled={isSaving || pendingDiarias.length === 0}
-                                            className="w-full md:w-auto bg-primary hover:bg-primary/90"
+                                            className="w-full md:w-auto bg-green-600 hover:bg-green-700"
                                         >
-                                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                                             Salvar Registros
                                         </Button>
                                     </div>
