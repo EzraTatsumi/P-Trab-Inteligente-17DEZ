@@ -387,7 +387,12 @@ const DiariaForm = () => {
     const isSaving = mutation.isPending;
     
     // Condição para exibir as seções 2 e 3 (Formulário de Item e Botões de Ação)
-    const isFormReady = formData.organizacao.length > 0 && formData.ug.length > 0 && formData.dias_operacao > 0;
+    // Agora inclui todos os campos obrigatórios da Seção 1
+    const isFormReady = formData.organizacao.length > 0 && 
+                        formData.ug.length > 0 && 
+                        formData.dias_operacao > 0 &&
+                        formData.fase_atividade.length > 0 &&
+                        formData.local_atividade.length > 0;
     
     // Mapeamento de destino para rótulo
     const destinoOptions = [
@@ -485,6 +490,48 @@ const DiariaForm = () => {
                                         />
                                     </div>
                                 </div>
+                                
+                                {/* Campos de Dias e Local da Atividade (Movidos para a Seção 1 para completar o isFormReady) */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="dias_operacao">Nr Dias da Viagem *</Label>
+                                        <Input
+                                            id="dias_operacao"
+                                            type="number"
+                                            min={1}
+                                            value={formData.dias_operacao}
+                                            onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
+                                            required
+                                            disabled={!isPTrabEditable || isSaving}
+                                            onKeyDown={handleEnterToNextField}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nr_viagens">Nr Viagens *</Label>
+                                        <Input
+                                            id="nr_viagens"
+                                            type="number"
+                                            min={1}
+                                            value={formData.nr_viagens}
+                                            onChange={(e) => setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 })}
+                                            required
+                                            disabled={!isPTrabEditable || isSaving}
+                                            onKeyDown={handleEnterToNextField}
+                                        />
+                                    </div>
+                                    <div className="space-y-2 col-span-2">
+                                        <Label htmlFor="local_atividade">Local da Atividade (Cidade/Estado) *</Label>
+                                        <Input
+                                            id="local_atividade"
+                                            value={formData.local_atividade}
+                                            onChange={(e) => setFormData({ ...formData, local_atividade: e.target.value })}
+                                            placeholder="Ex: Belém/PA"
+                                            required
+                                            disabled={!isPTrabEditable || isSaving}
+                                            onKeyDown={handleEnterToNextField}
+                                        />
+                                    </div>
+                                </div>
                             </section>
 
                             {/* SEÇÃO 2: CONFIGURAR O ITEM (TABELA DE DIÁRIAS) */}
@@ -494,35 +541,9 @@ const DiariaForm = () => {
                                         2. Configurar Pagamento de Diárias
                                     </h3>
                                     
-                                    {/* Linha de Dados Principais */}
+                                    {/* Linha de Dados Principais (Destino) */}
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="dias_operacao">Nr Dias da Viagem *</Label>
-                                            <Input
-                                                id="dias_operacao"
-                                                type="number"
-                                                min={1}
-                                                value={formData.dias_operacao}
-                                                onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
-                                                required
-                                                disabled={!isPTrabEditable || isSaving}
-                                                onKeyDown={handleEnterToNextField}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="nr_viagens">Nr Viagens *</Label>
-                                            <Input
-                                                id="nr_viagens"
-                                                type="number"
-                                                min={1}
-                                                value={formData.nr_viagens}
-                                                onChange={(e) => setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 })}
-                                                required
-                                                disabled={!isPTrabEditable || isSaving}
-                                                onKeyDown={handleEnterToNextField}
-                                            />
-                                        </div>
-                                        <div className="space-y-2 col-span-2">
+                                        <div className="space-y-2 col-span-4">
                                             <Label htmlFor="destino">Local para fins Pgto *</Label>
                                             <Select
                                                 value={formData.destino}
@@ -540,18 +561,6 @@ const DiariaForm = () => {
                                                     ))}
                                                 </SelectContent>
                                             </Select>
-                                        </div>
-                                        <div className="space-y-2 col-span-2">
-                                            <Label htmlFor="local_atividade">Local da Atividade (Cidade/Estado) *</Label>
-                                            <Input
-                                                id="local_atividade"
-                                                value={formData.local_atividade}
-                                                onChange={(e) => setFormData({ ...formData, local_atividade: e.target.value })}
-                                                placeholder="Ex: Belém/PA"
-                                                required
-                                                disabled={!isPTrabEditable || isSaving}
-                                                onKeyDown={handleEnterToNextField}
-                                            />
                                         </div>
                                     </div>
                                     
