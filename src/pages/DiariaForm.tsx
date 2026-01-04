@@ -848,6 +848,13 @@ const DiariaForm = () => {
                                         {pendingDiarias.map((item) => {
                                             const taxaEmbarqueUnitarioDisplay = formatCurrency(taxaEmbarqueUnitario);
                                             
+                                            // Funções utilitárias para singular/plural
+                                            const pluralize = (count: number, singular: string, plural: string) => 
+                                                count === 1 ? singular : plural;
+
+                                            const militarText = pluralize(item.totalMilitares, 'militar', 'militares');
+                                            const viagemText = pluralize(item.nr_viagens, 'viagem', 'viagens');
+                                            
                                             // --- Detailed Diária Calculation Generation ---
                                             const rankCalculationElements = DIARIA_RANKS_CONFIG.map(rank => {
                                                 const qty = item.quantidades_por_posto[rank.key] || 0;
@@ -881,8 +888,9 @@ const DiariaForm = () => {
                                                 const unitValueFormatted = formatCurrency(unitValueRaw);
                                                 const subtotalFormatted = formatCurrency(subtotal);
                                                 
-                                                // Format: 1 Of Gen x R$ 600,00/dia x 0,5 dias x 1 viagens = R$ 300,00. (Removendo parênteses)
-                                                const calculationString = `${qty} ${rank.label} x ${unitValueFormatted}/dia x ${formatNumber(diasPagamento, 1)} dias x ${item.nr_viagens} viagens = ${subtotalFormatted}`;
+                                                // Format: 1 Of Gen x R$ 600,00/dia x 0,5 dias x 1 viagens = R$ 300,00.
+                                                const diasText = pluralize(diasPagamento, 'dia', 'dias');
+                                                const calculationString = `${qty} ${rank.label} x ${unitValueFormatted}/${pluralize(1, 'dia', 'dia')} x ${formatNumber(diasPagamento, 1)} ${diasText} x ${item.nr_viagens} ${viagemText} = ${subtotalFormatted}`;
                                                 
                                                 return (
                                                     <p key={rank.key} className="font-medium text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis text-right">
@@ -899,6 +907,12 @@ const DiariaForm = () => {
                                                 );
                                             }
                                             // --- End Detailed Diária Calculation Generation ---
+
+                                            // Cálculo da Taxa de Embarque formatado
+                                            const totalTaxaEmbarque = item.valor_nd_30;
+                                            const taxaEmbarqueCalculation = item.is_aereo 
+                                                ? `${item.totalMilitares} ${militarText} x ${taxaEmbarqueUnitarioDisplay} x ${item.nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}`
+                                                : 'Não Aéreo';
 
                                             return (
                                                 <Card 
@@ -924,7 +938,7 @@ const DiariaForm = () => {
                                                             <div className="grid grid-cols-3 gap-4 text-xs">
                                                                 <p className="font-medium text-muted-foreground col-span-1">Taxa de Embarque:</p>
                                                                 <p className="font-medium text-muted-foreground text-right col-span-2">
-                                                                    {item.is_aereo ? `${item.nr_viagens} x ${item.totalMilitares} x ${taxaEmbarqueUnitarioDisplay}` : 'Não Aéreo'}
+                                                                    {taxaEmbarqueCalculation}
                                                                 </p>
                                                             </div>
                                                             
