@@ -935,16 +935,16 @@ const DiariaForm = () => {
                                             return (
                                                 <Card 
                                                     key={item.tempId} 
-                                                    className="border-2 border-teal-500/50 bg-teal-50/50 shadow-md"
+                                                    className="border-2 border-secondary bg-secondary/10 shadow-md"
                                                 >
                                                     <CardContent className="p-4">
                                                         
                                                         {/* NOVO HEADER: Título e Valor Total na mesma linha */}
-                                                        <div className="flex justify-between items-center border-b border-teal-500/30 pb-2 mb-2">
-                                                            <h4 className="font-bold text-base text-teal-700">
+                                                        <div className="flex justify-between items-center border-b border-secondary/30 pb-2 mb-2">
+                                                            <h4 className="font-bold text-base text-primary">
                                                                 Diárias ({item.local_atividade})
                                                             </h4>
-                                                            <p className="font-extrabold text-lg text-teal-700 text-right">
+                                                            <p className="font-extrabold text-lg text-primary text-right">
                                                                 {formatCurrency(item.valor_total)}
                                                             </p>
                                                         </div>
@@ -971,7 +971,7 @@ const DiariaForm = () => {
                                                         </div>
                                                         
                                                         {/* SEPARADOR MOVIDO PARA CÁ */}
-                                                        <div className="w-full h-[1px] bg-teal-500/30 my-3" />
+                                                        <div className="w-full h-[1px] bg-secondary/30 my-3" />
 
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
