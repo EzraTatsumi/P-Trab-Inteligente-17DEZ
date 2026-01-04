@@ -39,6 +39,7 @@ import * as z from "zod";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector"; // Importando o OmSelector
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Importando Tabs
 
 // Tipos de dados
 type DiariaRegistro = Tables<'diaria_registros'>;
@@ -664,7 +665,7 @@ const DiariaForm = () => {
                                                     <TableHead className="w-[10%] text-center">Dias</TableHead>
                                                     <TableHead className="w-[10%] text-center">Militares</TableHead>
                                                     <TableHead className="w-[20%] text-right">Total Diária</TableHead>
-                                                    <TableHead className="w-[15%] text-right">Ações</TableHead>
+                                                    <TableHead className className="w-[15%] text-right">Ações</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
