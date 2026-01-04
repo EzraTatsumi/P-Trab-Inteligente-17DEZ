@@ -37,11 +37,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import * as z from "zod";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
-import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect"; // Importando o novo componente
+import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
+import { OmSelector } from "@/components/OmSelector"; // Importando o novo OmSelector
 
 // Tipos de dados
 type DiariaRegistro = Tables<'diaria_registros'>;
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
+
+// Tipo de dados para OmSelector
+interface OMData {
+    id: string;
+    nome_om: string;
+    codug_om: string;
+    rm_vinculacao: string;
+    codug_rm_vinculacao: string;
+}
 
 // Schema de validação para o formulário de Diária
 const diariaSchema = z.object({
@@ -93,8 +103,8 @@ const DiariaForm = () => {
     const [registroToDelete, setRegistroToDelete] = useState<DiariaRegistro | null>(null);
     const [memoriaCustomizada, setMemoriaCustomizada] = useState<string>("");
     
-    // Estado para rastrear o input focado (para formatação monetária)
-    const [focusedInput, setFocusedInput] = useState<{ index: number, field: string, rawDigits: string } | null>(null);
+    // Estado para rastrear o ID da OM selecionada no OmSelector
+    const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
 
     // Dados mestres
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
@@ -177,13 +187,13 @@ const DiariaForm = () => {
             if (!ptrabId) throw new Error("ID do P Trab ausente.");
             if (!diretrizesOp) throw new Error("Diretrizes Operacionais não carregadas.");
             
-            const omDestino = oms?.find(om => om.nome_om === formData.organizacao);
+            // OM Detentora e UG Detentora são sempre null para Diária, pois a OM de destino é a OM que recebe o recurso.
+            // Mantemos os campos no DB para compatibilidade, mas não os usamos no formulário.
             
             const baseData = {
                 p_trab_id: ptrabId,
                 organizacao: formData.organizacao,
                 ug: formData.ug,
-                // OM Detentora e UG Detentora são removidos do formulário, mas mantidos como null no banco
                 om_detentora: null,
                 ug_detentora: null,
                 dias_operacao: formData.dias_operacao,
@@ -261,10 +271,16 @@ const DiariaForm = () => {
         setEditingId(null);
         setFormData(initialFormState);
         setMemoriaCustomizada("");
+        setSelectedOmId(undefined);
     };
 
     const handleEdit = (registro: DiariaRegistro) => {
         setEditingId(registro.id);
+        
+        // Tenta encontrar o ID da OM para preencher o OmSelector
+        const omToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
+        setSelectedOmId(omToEdit?.id);
+
         setFormData({
             organizacao: registro.organizacao,
             ug: registro.ug,
@@ -273,8 +289,8 @@ const DiariaForm = () => {
             nr_viagens: registro.nr_viagens,
             local_atividade: registro.local_atividade || "",
             fase_atividade: registro.fase_atividade || "",
-            om_detentora: registro.om_detentora || null, // Mantido para carregar dados antigos, mas não usado no formulário
-            ug_detentora: registro.ug_detentora || null, // Mantido para carregar dados antigos, mas não usado no formulário
+            om_detentora: null, // Ignorado no formulário
+            ug_detentora: null, // Ignorado no formulário
             quantidades_por_posto: (registro.quantidades_por_posto || initialFormState.quantidades_por_posto) as QuantidadesPorPosto,
         });
         setMemoriaCustomizada(registro.detalhamento_customizado || "");
@@ -298,9 +314,9 @@ const DiariaForm = () => {
             // 1. Validação Zod
             diariaSchema.parse(formData);
             
-            // 2. Validação de OM/UG
-            const omDestino = oms?.find(om => om.nome_om === formData.organizacao);
-            if (!omDestino || omDestino.codug_om !== formData.ug) {
+            // 2. Validação de OM/UG (usando o ID selecionado para garantir que é uma OM válida)
+            const omDestino = oms?.find(om => om.id === selectedOmId);
+            if (!omDestino || omDestino.codug_om !== formData.ug || omDestino.nome_om !== formData.organizacao) {
                 toast.error("OM de Destino inválida ou UG não corresponde.");
                 return;
             }
@@ -316,18 +332,19 @@ const DiariaForm = () => {
         }
     };
     
-    const handleOmChange = (omName: string) => {
-        const om = oms?.find(o => o.nome_om === omName);
-        if (om) {
+    const handleOmChange = (omData: OMData | undefined) => {
+        if (omData) {
+            setSelectedOmId(omData.id);
             setFormData(prev => ({
                 ...prev,
-                organizacao: om.nome_om,
-                ug: om.codug_om,
+                organizacao: omData.nome_om,
+                ug: omData.codug_om,
             }));
         } else {
+            setSelectedOmId(undefined);
             setFormData(prev => ({
                 ...prev,
-                organizacao: omName,
+                organizacao: "",
                 ug: "",
             }));
         }
@@ -437,22 +454,14 @@ const DiariaForm = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="organizacao">OM de Destino do Recurso *</Label>
-                                        <Select
-                                            value={formData.organizacao}
-                                            onValueChange={handleOmChange}
+                                        <OmSelector
+                                            selectedOmId={selectedOmId}
+                                            onChange={handleOmChange}
+                                            placeholder="Selecione a OM de Destino"
                                             disabled={!isPTrabEditable || isSaving || isLoadingOms}
-                                        >
-                                            <SelectTrigger id="organizacao">
-                                                <SelectValue placeholder="Selecione a OM de Destino" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {oms?.map((om) => (
-                                                    <SelectItem key={om.id} value={om.nome_om}>
-                                                        {om.nome_om} ({formatCodug(om.codug_om)})
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                            initialOmName={formData.organizacao}
+                                            initialOmUg={formData.ug}
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="ug">UG de Destino</Label>
