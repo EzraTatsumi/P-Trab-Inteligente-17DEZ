@@ -851,7 +851,7 @@ const DiariaForm = () => {
                                                 className="border-2 border-teal-500/50 bg-teal-50/50 shadow-md"
                                             >
                                                 <CardContent className="p-4">
-                                                    <div className="flex justify-between items-start pb-2 mb-2">
+                                                    <div className="flex justify-between items-start border-b border-teal-500/30 pb-2 mb-2">
                                                         <div className="space-y-1">
                                                             <h4 className="font-bold text-base text-teal-700">
                                                                 Diárias ({item.totalMilitares} Militares)
