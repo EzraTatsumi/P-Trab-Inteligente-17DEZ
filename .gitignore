@@ -173,7 +173,7 @@ src/docs/Architecture.md
 src/docs/SecurityCompliance.md
 src/lib/ptrabNumberUtils.ts
 src/lib/errorUtils.ts
-src/lib/ptrabUtils.ts
+# Removido: src/lib/ptrabUtils.ts
 src/lib/utils.ts
 
 src/lib/omUtils.ts
