@@ -863,16 +863,7 @@ const DiariaForm = () => {
                                                             <p className="font-extrabold text-lg text-teal-700">
                                                                 {formatCurrency(item.valor_total)}
                                                             </p>
-                                                            <Button 
-                                                                variant="ghost" 
-                                                                size="sm" 
-                                                                onClick={() => handleRemovePending(item.tempId)}
-                                                                disabled={isSaving}
-                                                                className="text-red-500 hover:bg-red-50/50"
-                                                            >
-                                                                <Trash2 className="h-4 w-4 mr-1" />
-                                                                Remover
-                                                            </Button>
+                                                            {/* Opção de remover item individualmente removida */}
                                                         </div>
                                                     </div>
                                                     
