@@ -24,6 +24,7 @@ interface DiariaData {
   quantidades_por_posto: QuantidadesPorPosto;
   organizacao: string; // OM de Destino
   ug: string; // UG de Destino
+  is_aereo: boolean; // NOVO CAMPO: Indica se o deslocamento é aéreo
 }
 
 // Tipo para as diretrizes operacionais (valores unitários)
@@ -84,7 +85,7 @@ export const calculateDiariaTotals = (
     totalMilitares: number,
     calculosPorPosto: { posto: string, quantidade: number, valorUnitario: number, custoTotal: number }[]
 } => {
-    const { dias_operacao, destino, nr_viagens, quantidades_por_posto } = data;
+    const { dias_operacao, destino, nr_viagens, quantidades_por_posto, is_aereo } = data;
     
     // 1. Cálculo dos dias de pagamento (dias_operacao - 0.5)
     const diasPagamento = Math.max(0, dias_operacao - 0.5);
@@ -114,8 +115,11 @@ export const calculateDiariaTotals = (
     });
     
     // 2. Cálculo da Taxa de Embarque (ND 33.90.39)
-    const taxaEmbarqueUnitario = Number(diretrizes.taxa_embarque || 0);
-    const totalTaxaEmbarque = totalMilitares * taxaEmbarqueUnitario * nr_viagens;
+    let totalTaxaEmbarque = 0;
+    if (is_aereo) { // Apenas calcula se for deslocamento aéreo
+        const taxaEmbarqueUnitario = Number(diretrizes.taxa_embarque || 0);
+        totalTaxaEmbarque = totalMilitares * taxaEmbarqueUnitario * nr_viagens;
+    }
     
     const totalGeral = totalDiaria + totalTaxaEmbarque;
 
@@ -136,7 +140,7 @@ export const generateDiariaMemoriaCalculo = (
     diretrizes: Partial<DiretrizOperacional>,
     calculos: ReturnType<typeof calculateDiariaTotals>
 ): string => {
-    const { dias_operacao, destino, nr_viagens, local_atividade, organizacao, ug } = data;
+    const { dias_operacao, destino, nr_viagens, local_atividade, organizacao, ug, is_aereo } = data;
     const { totalDiaria, totalTaxaEmbarque, totalGeral, totalMilitares, calculosPorPosto } = calculos;
     
     const referenciaLegal = diretrizes.diaria_referencia_legal || 'Lei/Portaria [NÚMERO]';
@@ -180,19 +184,29 @@ export const generateDiariaMemoriaCalculo = (
     
     const taxaEmbarqueUnitario = Number(diretrizes.taxa_embarque || 0);
     
+    let detalhamentoTaxa = '';
+    if (is_aereo) {
+        detalhamentoTaxa = `
+- Taxa de Embarque (ND 33.90.30): ${formatCurrency(taxaEmbarqueUnitario)}/pessoa.
+- Cálculo Taxa: ${totalMilitares} militares x ${formatCurrency(taxaEmbarqueUnitario)} x ${nr_viagens} viagens = ${formatCurrency(totalTaxaEmbarque)}.
+`;
+    } else {
+        detalhamentoTaxa = `
+- Deslocamento Terrestre/Fluvial: Não há previsão legal para pagamento de Taxa de Embarque.
+`;
+    }
+    
     return `${header}
 
 Cálculo, segundo ${referenciaLegal}:
 - Para ${destinoLabel} considera-se: 
-   - Nr de Viagens planejadas: ${formatNumber(nr_viagens)}.
-   - Valor Tarifa de Embarque e Desembarque: ${formatCurrency(taxaEmbarqueUnitario)}/pessoa.
 ${detalhamentoValores.trim()}
 
-Fórmula: (Nr militares x Custo/dia/localidade) x (Nr dias de operação - 0,5 dia) x Nr Viagens.
+Fórmula Diária: (Nr militares x Custo/dia/localidade) x (Nr dias de operação - 0,5 dia) x Nr Viagens.
 ${detalhamentoFormula.trim()}
 
-Total Diária: ${formatCurrency(totalDiaria)}.
-Total Taxa Emb: ${formatCurrency(totalTaxaEmbarque)}.
+Total Diária (ND 33.90.39): ${formatCurrency(totalDiaria)}.
+${detalhamentoTaxa.trim()}
 
-Total: ${formatCurrency(totalDiaria)} + ${formatCurrency(totalTaxaEmbarque)} = ${formatCurrency(totalGeral)}.`;
+Total Geral: ${formatCurrency(totalDiaria)} + ${formatCurrency(totalTaxaEmbarque)} = ${formatCurrency(totalGeral)}.`;
 };

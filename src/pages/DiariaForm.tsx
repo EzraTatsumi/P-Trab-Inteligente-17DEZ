@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText } from "lucide-react";
+import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -40,6 +40,7 @@ import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector"; // Importando o OmSelector
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Importando Tabs
+import { Switch } from "@/components/ui/switch"; // Importando Switch
 
 // Tipos de dados
 type DiariaRegistro = Tables<'diaria_registros'>;
@@ -65,6 +66,7 @@ const diariaSchema = z.object({
     nr_viagens: z.number().int().min(1, "O número de viagens deve ser maior que zero."),
     local_atividade: z.string().min(1, "O local da atividade é obrigatório."),
     fase_atividade: z.string().min(1, "A fase da atividade é obrigatória."), // Tornando obrigatório
+    is_aereo: z.boolean(), // NOVO CAMPO
     
     // Quantidades por posto (validação de que pelo menos um militar foi inserido)
     quantidades_por_posto: z.record(z.string(), z.number().int().min(0)).refine(
@@ -86,6 +88,7 @@ const initialFormState = {
     nr_viagens: 1,
     local_atividade: "",
     fase_atividade: "", // Agora obrigatório
+    is_aereo: false, // NOVO: Padrão é terrestre
     om_detentora: null,
     ug_detentora: null,
     quantidades_por_posto: DIARIA_RANKS_CONFIG.reduce((acc, rank) => ({ ...acc, [rank.key]: 0 }), {} as QuantidadesPorPosto),
@@ -208,7 +211,7 @@ const DiariaForm = () => {
                 
                 // Alocação ND: Diárias são GND 3, mas o ND específico é 33.90.15.
                 // Alocamos o total da diária (sem taxa) em ND 39 (Serviço) e a taxa de embarque em ND 30 (Material)
-                valor_nd_30: calculos.totalTaxaEmbarque, // Taxa de Embarque
+                valor_nd_30: calculos.totalTaxaEmbarque, // Taxa de Embarque (se houver)
                 valor_nd_39: calculos.totalDiaria, // Diárias
                 
                 // JSONB para quantidades detalhadas
@@ -217,6 +220,9 @@ const DiariaForm = () => {
                 // Detalhamento
                 detalhamento: calculos.memoria,
                 detalhamento_customizado: memoriaCustomizada.trim().length > 0 ? memoriaCustomizada : null,
+                
+                // NOVO CAMPO
+                is_aereo: formData.is_aereo,
             };
 
             if (editingId) {
@@ -289,6 +295,7 @@ const DiariaForm = () => {
             nr_viagens: registro.nr_viagens,
             local_atividade: registro.local_atividade || "",
             fase_atividade: registro.fase_atividade || "",
+            is_aereo: (registro as any).is_aereo || false, // Carrega o novo campo
             om_detentora: null, // Ignorado no formulário
             ug_detentora: null, // Ignorado no formulário
             quantidades_por_posto: (registro.quantidades_por_posto || initialFormState.quantidades_por_posto) as QuantidadesPorPosto,
@@ -401,9 +408,9 @@ const DiariaForm = () => {
     
     // Mapeamento de destino para rótulo
     const destinoOptions = [
-        { value: 'bsb_capitais_especiais', label: 'Deslocamento para BSB/MAO/RJ/SP' },
+        { value: 'bsb_capitais_especiais', label: 'BSB/MAO/RJ/SP' },
         { value: 'demais_capitais', label: 'Demais Capitais' },
-        { value: 'demais_dslc', label: 'Demais deslocamentos' },
+        { value: 'demais_dslc', label: 'Demais Dslc' },
     ];
     
     // Função para obter o valor unitário da diária (para exibição na tabela)
@@ -554,17 +561,37 @@ const DiariaForm = () => {
                                                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             />
                                         </div>
-                                        <div className="space-y-2 col-span-2">
-                                            <Label htmlFor="local_atividade">Local da Atividade (Cidade/Estado) *</Label>
-                                            <Input
-                                                id="local_atividade"
-                                                value={formData.local_atividade}
-                                                onChange={(e) => setFormData({ ...formData, local_atividade: e.target.value })}
-                                                placeholder="Ex: Belém/PA"
-                                                required
-                                                disabled={!isPTrabEditable || isSaving}
-                                                onKeyDown={handleEnterToNextField}
-                                            />
+                                        <div className="space-y-2 col-span-2 grid grid-cols-2 gap-4">
+                                            <div className="space-y-2 col-span-1">
+                                                <Label htmlFor="local_atividade">Local da Atividade (Cidade/Estado) *</Label>
+                                                <Input
+                                                    id="local_atividade"
+                                                    value={formData.local_atividade}
+                                                    onChange={(e) => setFormData({ ...formData, local_atividade: e.target.value })}
+                                                    placeholder="Ex: Belém/PA"
+                                                    required
+                                                    disabled={!isPTrabEditable || isSaving}
+                                                    onKeyDown={handleEnterToNextField}
+                                                />
+                                            </div>
+                                            {/* NOVO CAMPO: Deslocamento Aéreo */}
+                                            <div className="flex flex-col justify-end space-y-2 col-span-1">
+                                                <Label htmlFor="is_aereo" className="flex items-center text-sm font-medium">
+                                                    <Plane className="h-4 w-4 mr-2 text-blue-500" />
+                                                    Deslocamento Aéreo?
+                                                </Label>
+                                                <div className="flex items-center space-x-2 h-10">
+                                                    <Switch
+                                                        id="is_aereo"
+                                                        checked={formData.is_aereo}
+                                                        onCheckedChange={(checked) => setFormData({ ...formData, is_aereo: checked })}
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                    />
+                                                    <span className="text-sm text-muted-foreground">
+                                                        {formData.is_aereo ? "Sim (Inclui Taxa Emb.)" : "Não (Terrestre/Fluvial)"}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     
@@ -665,7 +692,7 @@ const DiariaForm = () => {
                                                     <TableHead className="w-[10%] text-center">Dias</TableHead>
                                                     <TableHead className="w-[10%] text-center">Militares</TableHead>
                                                     <TableHead className="w-[20%] text-right">Total Diária</TableHead>
-                                                    <TableHead className className="w-[15%] text-right">Ações</TableHead>
+                                                    <TableHead className="w-[15%] text-right">Ações</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
