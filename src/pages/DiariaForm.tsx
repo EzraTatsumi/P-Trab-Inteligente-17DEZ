@@ -875,16 +875,17 @@ const DiariaForm = () => {
                                                     return Number(diretrizesOp[fieldKey] || 0);
                                                 })();
                                                 
-                                                const subtotal = qty * unitValueRaw * item.dias_operacao * item.nr_viagens;
+                                                const diasPagamento = Math.max(0, item.dias_operacao - 0.5);
+                                                const subtotal = qty * unitValueRaw * diasPagamento * item.nr_viagens;
                                                 
                                                 const unitValueFormatted = formatCurrency(unitValueRaw);
                                                 const subtotalFormatted = formatCurrency(subtotal);
                                                 
                                                 // Format: (1 Of Gen x R$ 600,00/dia) x 0,5 dias x 1 viagens = R$ 300,00.
-                                                const calculationString = `(${qty} ${rank.label} x ${unitValueFormatted}/dia) x ${item.dias_operacao} dias x ${item.nr_viagens} viagens = ${subtotalFormatted}`;
+                                                const calculationString = `(${qty} ${rank.label} x ${unitValueFormatted}/dia) x ${formatNumber(diasPagamento, 1)} dias x ${item.nr_viagens} viagens = ${subtotalFormatted}`;
                                                 
                                                 return (
-                                                    <p key={rank.key} className="font-medium text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                                                    <p key={rank.key} className="font-medium text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis text-right">
                                                         {calculationString}
                                                     </p>
                                                 );
@@ -892,7 +893,7 @@ const DiariaForm = () => {
 
                                             if (rankCalculationElements.length === 0) {
                                                 rankCalculationElements.push(
-                                                    <p key="fallback" className="font-medium text-muted-foreground">
+                                                    <p key="fallback" className="font-medium text-muted-foreground text-right">
                                                         Nenhum militar adicionado.
                                                     </p>
                                                 );
@@ -917,7 +918,7 @@ const DiariaForm = () => {
                                                                     {/* Taxa de Embarque Row */}
                                                                     <div className="grid grid-cols-2 gap-4 text-xs">
                                                                         <p className="font-medium text-muted-foreground">Taxa de Embarque:</p>
-                                                                        <p className="text-right font-medium text-muted-foreground">
+                                                                        <p className="font-medium text-muted-foreground text-right">
                                                                             {item.is_aereo ? `${item.nr_viagens} x ${item.totalMilitares} x ${taxaEmbarqueUnitarioDisplay}` : 'Não Aéreo'}
                                                                         </p>
                                                                     </div>
@@ -925,15 +926,15 @@ const DiariaForm = () => {
                                                                     {/* Diárias Section (Multi-line breakdown) */}
                                                                     <div className="grid grid-cols-2 gap-4 text-xs">
                                                                         <p className="font-medium text-muted-foreground">Diárias:</p>
-                                                                        <div className="text-right space-y-1">
+                                                                        <div className="space-y-1">
                                                                             {rankCalculationElements}
                                                                         </div>
                                                                     </div>
                                                                 </div>
                                                                 
                                                             </div>
-                                                            <div className="text-right">
-                                                                <p className="font-extrabold text-lg text-teal-700">
+                                                            <div>
+                                                                <p className="font-extrabold text-lg text-teal-700 text-right">
                                                                     {formatCurrency(item.valor_total)}
                                                                 </p>
                                                                 {/* Opção de remover item individualmente removida */}
