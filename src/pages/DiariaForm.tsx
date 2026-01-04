@@ -83,7 +83,7 @@ const diariaSchema = z.object({
     is_aereo: z.boolean(),
     
     // Quantidades por posto (validação de que pelo menos um militar foi inserido)
-    quantidades_por_posto: z.record(z.string(), z.number().int().min(0)).refine(
+    z.record(z.string(), z.number().int().min(0)).refine(
         (data) => Object.values(data).some(qty => qty > 0),
         { message: "Pelo menos um militar deve ser adicionado." }
     ),
@@ -384,6 +384,10 @@ const DiariaForm = () => {
                 // Campos que foram NOT NULL, mas são redundantes no novo fluxo
                 posto_graduacao: null,
                 valor_diaria_unitario: null,
+
+                // Campos de display para a lista pendente (CORRIGIDO)
+                destinoLabel: destinoLabel,
+                totalMilitares: calculos.totalMilitares,
             };
             
             // 4. Adicionar à lista pendente
@@ -859,6 +863,7 @@ const DiariaForm = () => {
                                             const pluralize = (count: number, singular: string, plural: string) => 
                                                 count === 1 ? singular : plural;
 
+                                            // CORRIGIDO: Usando item.totalMilitares que agora é garantido
                                             const militarText = pluralize(item.totalMilitares, 'militar', 'militares');
                                             const viagemText = pluralize(item.nr_viagens, 'viagem', 'viagens');
                                             
@@ -917,6 +922,7 @@ const DiariaForm = () => {
 
                                             // Cálculo da Taxa de Embarque formatado
                                             const totalTaxaEmbarque = item.valor_nd_30;
+                                            // CORRIGIDO: Usando item.totalMilitares que agora é garantido
                                             const taxaEmbarqueCalculation = item.is_aereo 
                                                 ? `${item.totalMilitares} ${militarText} x ${taxaEmbarqueUnitarioDisplay} x ${item.nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}`
                                                 : 'Não Aéreo';
@@ -951,6 +957,7 @@ const DiariaForm = () => {
                                                             
                                                             {/* Diárias Section (Multi-line breakdown) */}
                                                             <div className="grid grid-cols-3 gap-4 text-xs">
+                                                                {/* CORRIGIDO: item.destinoLabel agora é garantido */}
                                                                 <p className="font-medium text-muted-foreground col-span-1">{item.destinoLabel}</p>
                                                                 <div className="space-y-1 w-full col-span-2">
                                                                     {rankCalculationElements}
