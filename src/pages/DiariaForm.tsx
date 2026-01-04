@@ -837,7 +837,6 @@ const DiariaForm = () => {
                                                     disabled={!isPTrabEditable || isSaving || !isCalculationReady}
                                                     className="w-full md:w-auto"
                                                 >
-                                                    <Plus className="mr-2 h-4 w-4" />
                                                     Salvar Itens da Categoria
                                                 </Button>
                                             )}
