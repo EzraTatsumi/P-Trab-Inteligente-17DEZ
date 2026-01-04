@@ -847,8 +847,58 @@ const DiariaForm = () => {
                                     <div className="space-y-4">
                                         {pendingDiarias.map((item) => {
                                             const taxaEmbarqueUnitarioDisplay = formatCurrency(taxaEmbarqueUnitario);
-                                            const totalDiariasMilitares = item.totalMilitares * item.dias_operacao * item.nr_viagens;
                                             
+                                            // --- Detailed Diária Calculation Generation ---
+                                            const rankCalculationElements = DIARIA_RANKS_CONFIG.map(rank => {
+                                                const qty = item.quantidades_por_posto[rank.key] || 0;
+                                                if (qty === 0) return null;
+
+                                                // Get raw unit value
+                                                const unitValueRaw = (() => {
+                                                    if (!diretrizesOp) return 0;
+                                                    let fieldSuffix: 'bsb' | 'capitais' | 'demais';
+                                                    
+                                                    switch (item.destino) {
+                                                        case 'bsb_capitais_especiais':
+                                                            fieldSuffix = 'bsb';
+                                                            break;
+                                                        case 'demais_capitais':
+                                                            fieldSuffix = 'capitais';
+                                                            break;
+                                                        case 'demais_dslc':
+                                                            fieldSuffix = 'demais';
+                                                            break;
+                                                        default:
+                                                            return 0;
+                                                    }
+                                                    const fieldKey = `${rank.fieldPrefix}_${fieldSuffix}` as keyof DiretrizOperacional;
+                                                    return Number(diretrizesOp[fieldKey] || 0);
+                                                })();
+                                                
+                                                const subtotal = qty * unitValueRaw * item.dias_operacao * item.nr_viagens;
+                                                
+                                                const unitValueFormatted = formatCurrency(unitValueRaw);
+                                                const subtotalFormatted = formatCurrency(subtotal);
+                                                
+                                                // Format: (1 Of Gen x R$ 600,00/dia) x 0,5 dias x 1 viagens = R$ 300,00.
+                                                const calculationString = `(${qty} ${rank.label} x ${unitValueFormatted}/dia) x ${item.dias_operacao} dias x ${item.nr_viagens} viagens = ${subtotalFormatted}`;
+                                                
+                                                return (
+                                                    <p key={rank.key} className="font-medium text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                                                        {calculationString}
+                                                    </p>
+                                                );
+                                            }).filter(Boolean);
+
+                                            if (rankCalculationElements.length === 0) {
+                                                rankCalculationElements.push(
+                                                    <p key="fallback" className="font-medium text-muted-foreground">
+                                                        Nenhum militar adicionado.
+                                                    </p>
+                                                );
+                                            }
+                                            // --- End Detailed Diária Calculation Generation ---
+
                                             return (
                                                 <Card 
                                                     key={item.tempId} 
@@ -862,19 +912,22 @@ const DiariaForm = () => {
                                                                 </h4>
                                                                 <div className="w-full h-[1px] bg-teal-500/30 my-1" />
                                                                 
-                                                                {/* Detalhes do Cálculo (Substituindo a linha de descrição) */}
-                                                                <div className="grid grid-cols-2 gap-4 text-xs pt-1">
-                                                                    <div className="space-y-1">
+                                                                {/* Detalhes do Cálculo (Taxa de Embarque e Diárias Detalhadas) */}
+                                                                <div className="space-y-2 pt-1">
+                                                                    {/* Taxa de Embarque Row */}
+                                                                    <div className="grid grid-cols-2 gap-4 text-xs">
                                                                         <p className="font-medium text-muted-foreground">Taxa de Embarque:</p>
-                                                                        <p className="font-medium text-muted-foreground">Diárias (Militares x Dias x Viagens):</p>
-                                                                    </div>
-                                                                    <div className="text-right space-y-1">
-                                                                        <p className="font-medium text-muted-foreground">
+                                                                        <p className="text-right font-medium text-muted-foreground">
                                                                             {item.is_aereo ? `${item.nr_viagens} x ${item.totalMilitares} x ${taxaEmbarqueUnitarioDisplay}` : 'Não Aéreo'}
                                                                         </p>
-                                                                        <p className="font-medium text-muted-foreground">
-                                                                            {item.totalMilitares} x {item.dias_operacao} x {item.nr_viagens} = {totalDiariasMilitares}
-                                                                        </p>
+                                                                    </div>
+                                                                    
+                                                                    {/* Diárias Section (Multi-line breakdown) */}
+                                                                    <div className="grid grid-cols-2 gap-4 text-xs">
+                                                                        <p className="font-medium text-muted-foreground">Diárias:</p>
+                                                                        <div className="text-right space-y-1">
+                                                                            {rankCalculationElements}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                                 
