@@ -80,7 +80,7 @@ src/hooks/use-mobile.tsx
 src/lib/creditUtils.ts
 
 # NOVAS EXCLUSÕES ADICIONAIS (UI e Páginas Estáticas)
-# REMOVIDO:src/pages/UserProfilePage.tsx
+src/pages/UserProfilePage.tsx
 # REMOVIDO:src/components/reports/PTrabLogisticoReport.tsx
 # REMOVIDO:src/components/reports/PTrabRacaoOperacionalReport.tsx
 src/pages/ClasseIForm.tsx
@@ -134,8 +134,8 @@ src/components/SessionContextProvider.tsx
 # REMOVIDO: src/hooks/useMilitaryOrganizations.ts
 # REMOVIDO: src/lib/badgeUtils.ts
 src/lib/classeIIIBadgeUtils.ts
-# REMOVIDO: src/lib/classeIXUtils.ts
-# REMOVIDO: src/data/classeIXData.ts
+src/lib/classeIXUtils.ts
+src/data/classeIXData.ts
 src/types/diretrizesClasseII.ts
 src/types/diretrizesClasseIX.ts
 src/types/diretrizesEquipamentos.ts
