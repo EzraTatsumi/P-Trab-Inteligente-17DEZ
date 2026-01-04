@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane, XCircle } from "lucide-react";
+import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane, XCircle, RefreshCw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -163,15 +163,18 @@ const DiariaForm = () => {
 
     // EFEITO PARA DETECTAR ALTERAÇÕES NO FORMULÁRIO
     useEffect(() => {
+        // Cria uma cópia do formData sem os campos que não devem ser comparados (om_detentora/ug_detentora)
+        const currentFormDataForComparison = { ...formData, om_detentora: null, ug_detentora: null };
+        
         if (lastSavedItem) {
-            // Compara o formData atual (excluindo om_detentora/ug_detentora que são sempre null no form)
-            const currentData = JSON.stringify({ ...formData, om_detentora: null, ug_detentora: null });
+            // Compara o formData atual com o último item salvo
+            const currentData = JSON.stringify(currentFormDataForComparison);
             const savedData = JSON.stringify(lastSavedItem);
             
             setIsFormDirty(currentData !== savedData);
         } else {
             // Se não há item salvo, verifica se o formulário está preenchido (diferente do initialFormState)
-            const isInitial = JSON.stringify(formData) === JSON.stringify(initialFormState);
+            const isInitial = JSON.stringify(currentFormDataForComparison) === JSON.stringify(initialFormState);
             setIsFormDirty(!isInitial);
         }
     }, [formData, lastSavedItem]);
