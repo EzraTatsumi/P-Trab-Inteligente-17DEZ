@@ -36,7 +36,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import * as z from "zod";
-import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear"; // NOVO HOOK
+import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
+import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect"; // Importando o novo componente
 
 // Tipos de dados
 type DiariaRegistro = Tables<'diaria_registros'>;
@@ -52,7 +53,7 @@ const diariaSchema = z.object({
     }),
     nr_viagens: z.number().int().min(1, "O número de viagens deve ser maior que zero."),
     local_atividade: z.string().min(1, "O local da atividade é obrigatório."),
-    fase_atividade: z.string().optional().nullable(),
+    fase_atividade: z.string().min(1, "A fase da atividade é obrigatória."), // Tornando obrigatório
     
     // Quantidades por posto (validação de que pelo menos um militar foi inserido)
     quantidades_por_posto: z.record(z.string(), z.number().int().min(0)).refine(
@@ -60,7 +61,7 @@ const diariaSchema = z.object({
         { message: "Pelo menos um militar deve ser adicionado." }
     ),
     
-    // Campos de OM Detentora (opcionais, mas úteis)
+    // Campos de OM Detentora (removidos do formulário, mas mantidos no schema como opcionais para compatibilidade com o banco)
     om_detentora: z.string().optional().nullable(),
     ug_detentora: z.string().optional().nullable(),
 });
@@ -73,7 +74,7 @@ const initialFormState = {
     destino: 'demais_dslc' as DestinoDiaria,
     nr_viagens: 1,
     local_atividade: "",
-    fase_atividade: "",
+    fase_atividade: "", // Agora obrigatório
     om_detentora: null,
     ug_detentora: null,
     quantidades_por_posto: DIARIA_RANKS_CONFIG.reduce((acc, rank) => ({ ...acc, [rank.key]: 0 }), {} as QuantidadesPorPosto),
@@ -177,14 +178,14 @@ const DiariaForm = () => {
             if (!diretrizesOp) throw new Error("Diretrizes Operacionais não carregadas.");
             
             const omDestino = oms?.find(om => om.nome_om === formData.organizacao);
-            const omDetentora = oms?.find(om => om.nome_om === formData.om_detentora);
             
             const baseData = {
                 p_trab_id: ptrabId,
                 organizacao: formData.organizacao,
                 ug: formData.ug,
-                om_detentora: omDetentora?.nome_om || null,
-                ug_detentora: omDetentora?.codug_om || null,
+                // OM Detentora e UG Detentora são removidos do formulário, mas mantidos como null no banco
+                om_detentora: null,
+                ug_detentora: null,
                 dias_operacao: formData.dias_operacao,
                 fase_atividade: formData.fase_atividade,
                 destino: formData.destino,
@@ -272,8 +273,8 @@ const DiariaForm = () => {
             nr_viagens: registro.nr_viagens,
             local_atividade: registro.local_atividade || "",
             fase_atividade: registro.fase_atividade || "",
-            om_detentora: registro.om_detentora || null,
-            ug_detentora: registro.ug_detentora || null,
+            om_detentora: registro.om_detentora || null, // Mantido para carregar dados antigos, mas não usado no formulário
+            ug_detentora: registro.ug_detentora || null, // Mantido para carregar dados antigos, mas não usado no formulário
             quantidades_por_posto: (registro.quantidades_por_posto || initialFormState.quantidades_por_posto) as QuantidadesPorPosto,
         });
         setMemoriaCustomizada(registro.detalhamento_customizado || "");
@@ -332,30 +333,11 @@ const DiariaForm = () => {
         }
     };
     
-    const handleOmDetentoraChange = (omName: string) => {
-        if (omName === "NONE_OM_SELECTED") {
-            setFormData(prev => ({
-                ...prev,
-                om_detentora: null,
-                ug_detentora: null,
-            }));
-            return;
-        }
-        
-        const om = oms?.find(o => o.nome_om === omName);
-        if (om) {
-            setFormData(prev => ({
-                ...prev,
-                om_detentora: om.nome_om,
-                ug_detentora: om.codug_om,
-            }));
-        } else {
-            setFormData(prev => ({
-                ...prev,
-                om_detentora: omName,
-                ug_detentora: "",
-            }));
-        }
+    const handleFaseAtividadeChange = (fase: string) => {
+        setFormData(prev => ({
+            ...prev,
+            fase_atividade: fase,
+        }));
     };
     
     const handleRankQuantityChange = (rankKey: string, value: string) => {
@@ -450,7 +432,7 @@ const DiariaForm = () => {
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    1. Dados da Organização
+                                    1. Dados da Organização (Destino do Recurso)
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -482,34 +464,13 @@ const DiariaForm = () => {
                                         />
                                     </div>
                                     
-                                    {/* OM Detentora (Opcional, mas útil para rastreamento) */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="om_detentora">OM Detentora (Opcional)</Label>
-                                        <Select
-                                            value={formData.om_detentora || "NONE_OM_SELECTED"}
-                                            onValueChange={handleOmDetentoraChange}
-                                            disabled={!isPTrabEditable || isSaving || isLoadingOms}
-                                        >
-                                            <SelectTrigger id="om_detentora">
-                                                <SelectValue placeholder="Selecione a OM Detentora (se diferente)" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="NONE_OM_SELECTED">-- Nenhuma --</SelectItem>
-                                                {oms?.map((om) => (
-                                                    <SelectItem key={om.id} value={om.nome_om}>
-                                                        {om.nome_om} ({formatCodug(om.codug_om)})
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="ug_detentora">UG Detentora</Label>
-                                        <Input
-                                            id="ug_detentora"
-                                            value={formatCodug(formData.ug_detentora)}
-                                            disabled
-                                            className="bg-muted/50"
+                                    {/* Fase da Atividade movida para a Seção 1 */}
+                                    <div className="space-y-2 col-span-2">
+                                        <Label htmlFor="fase_atividade">Fase da Atividade *</Label>
+                                        <FaseAtividadeSelect
+                                            value={formData.fase_atividade}
+                                            onChange={handleFaseAtividadeChange}
+                                            disabled={!isPTrabEditable || isSaving}
                                         />
                                     </div>
                                 </div>
@@ -576,17 +537,6 @@ const DiariaForm = () => {
                                             onChange={(e) => setFormData({ ...formData, local_atividade: e.target.value })}
                                             placeholder="Ex: Belém/PA"
                                             required
-                                            disabled={!isPTrabEditable || isSaving}
-                                            onKeyDown={handleEnterToNextField}
-                                        />
-                                    </div>
-                                    <div className="space-y-2 col-span-2">
-                                        <Label htmlFor="fase_atividade">Fase da Atividade (Opcional)</Label>
-                                        <Input
-                                            id="fase_atividade"
-                                            value={formData.fase_atividade || ''}
-                                            onChange={(e) => setFormData({ ...formData, fase_atividade: e.target.value })}
-                                            placeholder="Ex: Execução; Reconhecimento"
                                             disabled={!isPTrabEditable || isSaving}
                                             onKeyDown={handleEnterToNextField}
                                         />
