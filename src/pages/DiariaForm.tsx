@@ -845,45 +845,64 @@ const DiariaForm = () => {
                                     </h3>
                                     
                                     <div className="space-y-4">
-                                        {pendingDiarias.map((item) => (
-                                            <Card 
-                                                key={item.tempId} 
-                                                className="border-2 border-teal-500/50 bg-teal-50/50 shadow-md"
-                                            >
-                                                <CardContent className="p-4">
-                                                    <div className="flex justify-between items-start border-b border-teal-500/30 pb-2 mb-2">
-                                                        <div className="space-y-1">
-                                                            <h4 className="font-bold text-base text-teal-700">
-                                                                Diárias ({item.local_atividade})
-                                                            </h4>
-                                                            <div className="w-full h-[1px] bg-teal-500/30 my-1" />
-                                                            <p className="text-sm text-muted-foreground">
-                                                                {item.local_atividade} ({item.destinoLabel})
-                                                            </p>
+                                        {pendingDiarias.map((item) => {
+                                            const taxaEmbarqueUnitarioDisplay = formatCurrency(taxaEmbarqueUnitario);
+                                            const totalDiariasMilitares = item.totalMilitares * item.dias_operacao * item.nr_viagens;
+                                            
+                                            return (
+                                                <Card 
+                                                    key={item.tempId} 
+                                                    className="border-2 border-teal-500/50 bg-teal-50/50 shadow-md"
+                                                >
+                                                    <CardContent className="p-4">
+                                                        <div className="flex justify-between items-start border-b border-teal-500/30 pb-2 mb-2">
+                                                            <div className="space-y-1 w-full">
+                                                                <h4 className="font-bold text-base text-teal-700">
+                                                                    Diárias ({item.local_atividade})
+                                                                </h4>
+                                                                <div className="w-full h-[1px] bg-teal-500/30 my-1" />
+                                                                
+                                                                {/* Detalhes do Cálculo (Substituindo a linha de descrição) */}
+                                                                <div className="grid grid-cols-2 gap-4 text-xs pt-1">
+                                                                    <div className="space-y-1">
+                                                                        <p className="font-medium text-muted-foreground">Taxa de Embarque:</p>
+                                                                        <p className="font-medium text-muted-foreground">Diárias (Militares x Dias x Viagens):</p>
+                                                                    </div>
+                                                                    <div className="text-right space-y-1">
+                                                                        <p className="font-medium text-muted-foreground">
+                                                                            {item.is_aereo ? `${item.nr_viagens} x ${item.totalMilitares} x ${taxaEmbarqueUnitarioDisplay}` : 'Não Aéreo'}
+                                                                        </p>
+                                                                        <p className="font-medium text-muted-foreground">
+                                                                            {item.totalMilitares} x {item.dias_operacao} x {item.nr_viagens} = {totalDiariasMilitares}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="font-extrabold text-lg text-teal-700">
+                                                                    {formatCurrency(item.valor_total)}
+                                                                </p>
+                                                                {/* Opção de remover item individualmente removida */}
+                                                            </div>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <p className="font-extrabold text-lg text-teal-700">
-                                                                {formatCurrency(item.valor_total)}
-                                                            </p>
-                                                            {/* Opção de remover item individualmente removida */}
+                                                        
+                                                        <div className="grid grid-cols-2 gap-4 text-xs">
+                                                            <div className="space-y-1">
+                                                                <p className="font-medium">OM Destino Recurso:</p>
+                                                                <p className="font-medium">ND 33.90.30 (Taxa Embarque):</p>
+                                                                <p className="font-medium">ND 33.90.39 (Diárias):</p>
+                                                            </div>
+                                                            <div className="text-right space-y-1">
+                                                                <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
+                                                                <p className="font-medium text-green-600">{formatCurrency(item.valor_nd_30)}</p>
+                                                                <p className="font-medium text-blue-600">{formatCurrency(item.valor_nd_39)}</p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    
-                                                    <div className="grid grid-cols-2 gap-4 text-xs">
-                                                        <div className="space-y-1">
-                                                            <p className="font-medium">OM Destino Recurso:</p>
-                                                            <p className="font-medium">Taxa de Embarque:</p>
-                                                            <p className="font-medium">Diária:</p>
-                                                        </div>
-                                                        <div className="text-right space-y-1">
-                                                            <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
-                                                            <p className="font-medium text-green-600">{formatCurrency(item.valor_nd_30)}</p>
-                                                            <p className="font-medium text-blue-600">{formatCurrency(item.valor_nd_39)}</p>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
                                     </div>
                                     
                                     {/* VALOR TOTAL DA OM (PENDENTE) */}
