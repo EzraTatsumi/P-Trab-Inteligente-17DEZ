@@ -530,7 +530,7 @@ const DiariaForm = () => {
                                     </div>
                                     
                                     {/* Dados da Viagem (Card) */}
-                                    <Card className="mt-6">
+                                    <Card className="mt-6 bg-muted/50 rounded-lg">
                                         <CardHeader className="py-3">
                                             <CardTitle className="text-base font-semibold">Dados da Viagem</CardTitle>
                                         </CardHeader>
@@ -602,7 +602,7 @@ const DiariaForm = () => {
                                     </Card>
                                     
                                     {/* Tabela de Posto/Graduação e Quantidade (Estilizada como Card) */}
-                                    <Card className="mt-6">
+                                    <Card className="mt-6 bg-muted/50 rounded-lg">
                                         <CardHeader className="py-3">
                                             <CardTitle className="text-base font-semibold">Efetivo por Posto/Graduação</CardTitle>
                                         </CardHeader>
