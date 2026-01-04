@@ -1018,7 +1018,7 @@ const DiariaForm = () => {
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIA DE CÁLCULO DETALHADA */}
-                            {isCalculationReady && (
+                            {(isCalculationReady || editingId) && (
                                 <section className="space-y-4 border-t pt-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         <FileText className="h-4 w-4 text-muted-foreground" />
