@@ -114,7 +114,7 @@ export const calculateDiariaTotals = (
         }
     });
     
-    // 2. Cálculo da Taxa de Embarque (ND 33.90.39)
+    // 2. Cálculo da Taxa de Embarque (ND 33.90.15 - parte da diária)
     let totalTaxaEmbarque = 0;
     if (is_aereo) { // Apenas calcula se for deslocamento aéreo
         const taxaEmbarqueUnitario = Number(diretrizes.taxa_embarque || 0);
@@ -160,7 +160,7 @@ export const generateDiariaMemoriaCalculo = (
     }
     
     // CABEÇALHO (ND 33.90.15)
-    const header = `33.90.15 Custeio com Diárias de ${totalMilitares} ${militarPlural} ${omPreposition} ${organizacao}, para ${nr_viagens} ${viagemPlural} com duração de ${dias_operacao} ${diaPlural} em ${local_atividade}.`;
+    const header = `33.90.15 - Custeio com Diárias de ${totalMilitares} ${militarPlural} ${omPreposition} ${organizacao}, para ${nr_viagens} ${viagemPlural} com duração de ${dias_operacao} ${diaPlural} em ${local_atividade}.`;
 
     let detalhamentoValores = '';
     let detalhamentoFormula = '';
@@ -187,7 +187,7 @@ export const generateDiariaMemoriaCalculo = (
     let detalhamentoTaxa = '';
     if (is_aereo) {
         detalhamentoTaxa = `
-- Taxa de Embarque (ND 33.90.30): ${formatCurrency(taxaEmbarqueUnitario)}/pessoa.
+- Taxa de Embarque (ND 33.90.15): ${formatCurrency(taxaEmbarqueUnitario)}/pessoa.
 - Cálculo Taxa: ${totalMilitares} militares x ${formatCurrency(taxaEmbarqueUnitario)} x ${nr_viagens} viagens = ${formatCurrency(totalTaxaEmbarque)}.
 `;
     } else {
@@ -205,8 +205,8 @@ ${detalhamentoValores.trim()}
 Fórmula Diária: (Nr militares x Custo/dia/localidade) x (Nr dias de operação - 0,5 dia) x Nr Viagens.
 ${detalhamentoFormula.trim()}
 
-Total Diária (ND 33.90.39): ${formatCurrency(totalDiaria)}.
+Total Diária (ND 33.90.15 - Diária): ${formatCurrency(totalDiaria)}.
 ${detalhamentoTaxa.trim()}
 
-Total Geral: ${formatCurrency(totalDiaria)} + ${formatCurrency(totalTaxaEmbarque)} = ${formatCurrency(totalGeral)}.`;
+Total Geral (ND 33.90.15): ${formatCurrency(totalDiaria)} + ${formatCurrency(totalTaxaEmbarque)} = ${formatCurrency(totalGeral)}.`;
 };

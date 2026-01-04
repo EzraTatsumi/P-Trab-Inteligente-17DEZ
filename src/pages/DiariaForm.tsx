@@ -62,6 +62,9 @@ interface CalculatedDiaria extends TablesInsert<'diaria_registros'> {
     // Campos de display adicionais
     destinoLabel: string;
     totalMilitares: number;
+    // Valores desagregados para exibição
+    valorDiariaND39: number;
+    valorTaxaEmbarqueND30: number;
 }
 
 // Schema de validação para o formulário de Diária
@@ -368,8 +371,12 @@ const DiariaForm = () => {
                 quantidade: calculos.totalMilitares,
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
-                valor_nd_30: calculos.totalTaxaEmbarque,
-                valor_nd_39: calculos.totalDiaria,
+                
+                // CORREÇÃO CRÍTICA DE ND: Mapear o total para ND 39 (que será tratado como 33.90.15 no relatório)
+                // E zerar ND 30, pois Diária é uma única ND (33.90.15)
+                valor_nd_30: 0, 
+                valor_nd_39: calculos.totalGeral,
+                
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
                 detalhamento_customizado: memoriaCustomizada.trim().length > 0 ? memoriaCustomizada : null,
@@ -379,6 +386,8 @@ const DiariaForm = () => {
                 memoria_calculo_display: calculos.memoria,
                 destinoLabel: destinoLabel,
                 totalMilitares: calculos.totalMilitares,
+                valorDiariaND39: calculos.totalDiaria, // Valor da diária (sem taxa)
+                valorTaxaEmbarqueND30: calculos.totalTaxaEmbarque, // Valor da taxa (para exibição)
                 
                 // Campos que foram NOT NULL, mas são redundantes no novo fluxo
                 posto_graduacao: null,
@@ -419,7 +428,7 @@ const DiariaForm = () => {
         // Mapeia os itens pendentes para o formato de inserção no DB
         const recordsToSave: TablesInsert<'diaria_registros'>[] = pendingDiarias.map(p => {
             // Remove campos de display e temporários
-            const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, ...dbRecord } = p;
+            const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, valorDiariaND39, valorTaxaEmbarqueND30, ...dbRecord } = p;
             return dbRecord as TablesInsert<'diaria_registros'>;
         });
         
@@ -471,8 +480,11 @@ const DiariaForm = () => {
                 quantidade: calculos.totalMilitares,
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
-                valor_nd_30: calculos.totalTaxaEmbarque,
-                valor_nd_39: calculos.totalDiaria,
+                
+                // CORREÇÃO CRÍTICA DE ND: Mapear o total para ND 39
+                valor_nd_30: 0, 
+                valor_nd_39: calculos.totalGeral,
+                
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
                 detalhamento_customizado: memoriaCustomizada.trim().length > 0 ? memoriaCustomizada : null,
@@ -560,14 +572,14 @@ const DiariaForm = () => {
         
         // Se houver mais de uma parte, mostra a soma, senão mostra a única parte.
         if (formulaParts.length > 1) {
-            return `Soma dos custos por posto: ${formulaParts.join(' + ')}`;
+            return formulaParts;
         }
-        return formulaParts[0] || "Nenhum militar adicionado.";
+        return formulaParts;
         
     }, [diretrizesOp]);
     
     const getTaxaEmbarqueFormulaDisplay = useCallback((item: CalculatedDiaria, taxaUnitario: number) => {
-        if (!item.is_aereo) return "Não aplicável (Deslocamento Terrestre/Fluvial)";
+        if (!item.is_aereo) return null;
         
         const militaresPlural = item.totalMilitares === 1 ? 'militar' : 'militares';
         const viagensPlural = item.nr_viagens === 1 ? 'viagem' : 'viagens';
@@ -913,27 +925,7 @@ const DiariaForm = () => {
                                         {pendingDiarias.map((item) => {
                                             // Fórmulas de cálculo para display
                                             const taxaEmbarqueFormula = getTaxaEmbarqueFormulaDisplay(item, taxaEmbarqueUnitario);
-                                            
-                                            // Detalhamento da Diária (ND 39)
-                                            const diariaFormulaParts: string[] = [];
-                                            const diasPagamento = Math.max(0, item.dias_operacao - 0.5);
-                                            const nrViagens = item.nr_viagens;
-                                            
-                                            DIARIA_RANKS_CONFIG.forEach(rank => {
-                                                const quantidade = item.quantidades_por_posto[rank.key] || 0;
-                                                if (quantidade > 0) {
-                                                    const valorUnitario = Number(diretrizesOp![`${rank.fieldPrefix}_${item.destino === 'bsb_capitais_especiais' ? 'bsb' : item.destino === 'demais_capitais' ? 'capitais' : 'demais'}` as keyof DiretrizOperacional] || 0);
-                                                    
-                                                    const militaresPlural = quantidade === 1 ? 'mil.' : 'militares';
-                                                    const viagensPlural = nrViagens === 1 ? 'viagem' : 'viagens';
-                                                    
-                                                    const custoTotalPosto = quantidade * valorUnitario * diasPagamento * nrViagens;
-                                                    
-                                                    diariaFormulaParts.push(
-                                                        `${quantidade} ${rank.label} x ${formatCurrency(valorUnitario)}/dia x ${formatNumber(diasPagamento, 1)} dias x ${nrViagens} ${viagensPlural} = ${formatCurrency(custoTotalPosto)}`
-                                                    );
-                                                }
-                                            });
+                                            const diariaFormulaParts = getDiariaFormulaDisplay(item);
 
                                             return (
                                                 <Card 
@@ -942,18 +934,18 @@ const DiariaForm = () => {
                                                 >
                                                     <CardContent className="p-4">
                                                         {/* LINHA 1: Localidade e Taxa de Embarque (Cinza) */}
-                                                        <div className="flex justify-between items-center text-sm text-muted-foreground border-b border-secondary/50 pb-2 mb-2">
+                                                        <div className="flex justify-between items-center text-sm text-muted-foreground pb-2">
                                                             <span className="font-medium">Localidade: {item.destinoLabel}</span>
                                                             <div className="flex items-center gap-2">
-                                                                <span className="font-medium">Taxa de Embarque (ND 30):</span>
+                                                                <span className="font-medium">Taxa de Embarque (ND 33.90.15):</span>
                                                                 <span className="text-green-600 font-semibold">
-                                                                    {item.is_aereo ? formatCurrency(item.valor_nd_30) : formatCurrency(0)}
+                                                                    {item.is_aereo ? formatCurrency(item.valorTaxaEmbarqueND30) : formatCurrency(0)}
                                                                 </span>
                                                             </div>
                                                         </div>
                                                         
-                                                        {/* LINHAS DE CÁLCULO DE DIÁRIAS POR POSTO (ND 39) */}
-                                                        <div className="space-y-1 text-xs text-blue-700 font-medium border-b border-secondary/50 pb-2 mb-2">
+                                                        {/* LINHAS DE CÁLCULO DE DIÁRIAS POR POSTO (ND 33.90.15) */}
+                                                        <div className="space-y-1 text-xs text-blue-700 font-medium border-t border-b border-secondary/50 py-2 my-2">
                                                             {diariaFormulaParts.map((formula, index) => (
                                                                 <div key={index} className="flex justify-between">
                                                                     <span className="text-muted-foreground mr-2">Diária:</span>
@@ -965,22 +957,22 @@ const DiariaForm = () => {
                                                         {/* LINHA FINAL: TOTAIS CONSOLIDADOS */}
                                                         <div className="grid grid-cols-2 gap-4 pt-2">
                                                             <div className="space-y-1">
-                                                                <p className="font-medium text-sm">Taxa de Embarque (ND 30):</p>
-                                                                <p className="font-medium text-sm">Diárias (ND 39):</p>
+                                                                <p className="font-medium text-sm">Taxa de Embarque (ND 33.90.15):</p>
+                                                                <p className="font-medium text-sm">Diárias (ND 33.90.15):</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-extrabold text-sm text-green-600">
-                                                                    {formatCurrency(item.valor_nd_30)}
+                                                                    {formatCurrency(item.valorTaxaEmbarqueND30)}
                                                                 </p>
                                                                 <p className="font-extrabold text-sm text-blue-600">
-                                                                    {formatCurrency(item.valor_nd_39)}
+                                                                    {formatCurrency(item.valorDiariaND39)}
                                                                 </p>
                                                             </div>
                                                         </div>
                                                         
                                                         <div className="flex justify-between items-center pt-3 border-t border-secondary/50 mt-3">
                                                             <h4 className="font-bold text-base text-primary">
-                                                                TOTAL GERAL
+                                                                TOTAL GERAL (ND 33.90.15)
                                                             </h4>
                                                             <div className="flex items-center gap-2">
                                                                 <Button 
