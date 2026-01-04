@@ -398,7 +398,6 @@ const DiariaForm = () => {
             setMemoriaCustomizada("");
             
             toast.info("Item de Diária adicionado à lista pendente.");
-            window.scrollTo({ top: 0, behavior: 'smooth' });
             
         } catch (err) {
             if (err instanceof z.ZodError) {
