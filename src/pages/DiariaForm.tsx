@@ -39,7 +39,6 @@ import * as z from "zod";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector"; // Importando o OmSelector
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Importando Tabs
 
 // Tipos de dados
 type DiariaRegistro = Tables<'diaria_registros'>;
@@ -388,6 +387,7 @@ const DiariaForm = () => {
     const isSaving = mutation.isPending;
     
     // Condição para exibir as seções 2 e 3 (Formulário de Item e Botões de Ação)
+    // Agora inclui todos os campos obrigatórios da Seção 1
     const isFormReady = formData.organizacao.length > 0 && 
                         formData.ug.length > 0 && 
                         formData.dias_operacao > 0 &&
@@ -395,9 +395,9 @@ const DiariaForm = () => {
                         formData.local_atividade.length > 0;
     
     // Mapeamento de destino para rótulo
-    const destinoOptions: { value: DestinoDiaria, label: string }[] = [
-        { value: 'bsb_capitais_especiais', label: 'BSB/MAO/RJ/SP' },
-        { value: 'demais_capitais', label: 'Demais Capitais' },
+    const destinoOptions = [
+        { value: 'bsb_capitais_especiais', label: 'Dslc BSB/MAO/RJ/SP' },
+        { value: 'demais_capitais', label: 'Dslc demais capitais' },
         { value: 'demais_dslc', label: 'Demais Dslc' },
     ];
     
@@ -541,83 +541,82 @@ const DiariaForm = () => {
                                         2. Configurar Pagamento de Diárias
                                     </h3>
                                     
-                                    {/* Linha de Dados Principais (Destino) - Substituído por Tabs */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="destino">Local para fins Pgto *</Label>
-                                        <Tabs 
-                                            value={formData.destino} 
-                                            onValueChange={(value) => setFormData({ ...formData, destino: value as DestinoDiaria })}
-                                            className="w-full"
-                                        >
-                                            <TabsList className="grid w-full grid-cols-3">
-                                                {destinoOptions.map(opt => (
-                                                    <TabsTrigger 
-                                                        key={opt.value} 
-                                                        value={opt.value}
-                                                        disabled={!isPTrabEditable || isSaving}
-                                                    >
-                                                        {opt.label}
-                                                    </TabsTrigger>
-                                                ))}
-                                            </TabsList>
-                                        </Tabs>
+                                    {/* Linha de Dados Principais (Destino) */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="space-y-2 col-span-4">
+                                            <Label htmlFor="destino">Local para fins Pgto *</Label>
+                                            <Select
+                                                value={formData.destino}
+                                                onValueChange={(value) => setFormData({ ...formData, destino: value as DestinoDiaria })}
+                                                disabled={!isPTrabEditable || isSaving}
+                                            >
+                                                <SelectTrigger id="destino">
+                                                    <SelectValue placeholder="Selecione o tipo de deslocamento" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {destinoOptions.map(opt => (
+                                                        <SelectItem key={opt.value} value={opt.value}>
+                                                            {opt.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
                                     
-                                    {/* Tabela de Posto/Graduação e Quantidade - Aplicando estilo bg-muted/50 */}
-                                    <div className="mt-6 space-y-4 p-4 bg-muted/50 rounded-lg">
-                                        <h4 className="font-semibold">Efetivo por Posto/Graduação</h4>
-                                        <div className="max-h-[400px] overflow-y-auto rounded-md border bg-card">
-                                            <Table className="w-full">
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead className="w-[40%]">Posto/Graduação</TableHead>
-                                                        <TableHead className="w-[20%] text-center">Valor Unitário</TableHead>
-                                                        <TableHead className="w-[15%] text-center">Qtd *</TableHead>
-                                                        <TableHead className="w-[25%] text-right">Custo Diária (R$)</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {DIARIA_RANKS_CONFIG.map((rank) => {
-                                                        const qty = formData.quantidades_por_posto[rank.key] || 0;
-                                                        const unitValue = getUnitValueDisplay(rank.key, formData.destino);
-                                                        const calculatedCost = calculos.calculosPorPosto.find(c => c.posto === rank.label)?.custoTotal || 0;
-                                                        
-                                                        return (
-                                                            <TableRow key={rank.key}>
-                                                                <TableCell className="font-medium">{rank.label}</TableCell>
-                                                                <TableCell className="text-center text-sm text-muted-foreground">{unitValue}</TableCell>
-                                                                <TableCell className="text-center">
-                                                                    <Input
-                                                                        type="number"
-                                                                        min={0}
-                                                                        value={qty === 0 ? "" : qty}
-                                                                        onChange={(e) => handleRankQuantityChange(rank.key, e.target.value)}
-                                                                        disabled={!isPTrabEditable || isSaving}
-                                                                        className="text-center max-w-[80px] mx-auto"
-                                                                        onKeyDown={handleEnterToNextField}
-                                                                    />
-                                                                </TableCell>
-                                                                <TableCell className="text-right font-semibold">
-                                                                    {formatCurrency(calculatedCost)}
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        );
-                                                    })}
-                                                    <TableRow className="bg-muted/50 font-bold">
-                                                        <TableCell colSpan={3} className="text-right">Total Diária (33.90.39)</TableCell>
-                                                        <TableCell className="text-right">{formatCurrency(calculos.totalDiaria)}</TableCell>
-                                                    </TableRow>
-                                                    <TableRow className="bg-muted/50 font-bold">
-                                                        <TableCell colSpan={3} className="text-right">Total Taxa Emb (33.90.30)</TableCell>
-                                                        <TableCell className="text-right">{formatCurrency(calculos.totalTaxaEmbarque)}</TableCell>
-                                                    </TableRow>
-                                                    <TableRow className="bg-primary/10 font-bold text-primary-foreground">
-                                                        <TableCell colSpan={3} className="text-right">Total Geral (33.90.15)</TableCell>
-                                                        <TableCell className="text-right">{formatCurrency(calculos.totalGeral)}</TableCell>
-                                                    </TableRow>
-                                                </TableBody>
-                                            </Table>
-                                        </div>
+                                    {/* Tabela de Posto/Graduação e Quantidade */}
+                                    <div className="mt-6">
+                                        <h4 className="font-semibold mb-2">Efetivo por Posto/Graduação</h4>
+                                        <Table className="border">
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="w-[40%]">Posto/Graduação</TableHead>
+                                                    <TableHead className="w-[20%] text-center">Valor Unitário</TableHead>
+                                                    <TableHead className="w-[15%] text-center">Qtd *</TableHead>
+                                                    <TableHead className="w-[25%] text-right">Custo Diária (R$)</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {DIARIA_RANKS_CONFIG.map((rank) => {
+                                                    const qty = formData.quantidades_por_posto[rank.key] || 0;
+                                                    const unitValue = getUnitValueDisplay(rank.key, formData.destino);
+                                                    const calculatedCost = calculos.calculosPorPosto.find(c => c.posto === rank.label)?.custoTotal || 0;
+                                                    
+                                                    return (
+                                                        <TableRow key={rank.key}>
+                                                            <TableCell className="font-medium">{rank.label}</TableCell>
+                                                            <TableCell className="text-center text-sm text-muted-foreground">{unitValue}</TableCell>
+                                                            <TableCell className="text-center">
+                                                                <Input
+                                                                    type="number"
+                                                                    min={0}
+                                                                    value={qty === 0 ? "" : qty}
+                                                                    onChange={(e) => handleRankQuantityChange(rank.key, e.target.value)}
+                                                                    disabled={!isPTrabEditable || isSaving}
+                                                                    className="text-center max-w-[80px] mx-auto"
+                                                                    onKeyDown={handleEnterToNextField}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell className="text-right font-semibold">
+                                                                {formatCurrency(calculatedCost)}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                                <TableRow className="bg-muted/50 font-bold">
+                                                    <TableCell colSpan={3} className="text-right">Total Diária (33.90.39)</TableCell>
+                                                    <TableCell className="text-right">{formatCurrency(calculos.totalDiaria)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="bg-muted/50 font-bold">
+                                                    <TableCell colSpan={3} className="text-right">Total Taxa Emb (33.90.30)</TableCell>
+                                                    <TableCell className="text-right">{formatCurrency(calculos.totalTaxaEmbarque)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="bg-primary/10 font-bold text-primary-foreground">
+                                                    <TableCell colSpan={3} className="text-right">Total Geral (33.90.15)</TableCell>
+                                                    <TableCell className="text-right">{formatCurrency(calculos.totalGeral)}</TableCell>
+                                                </TableRow>
+                                            </TableBody>
+                                        </Table>
                                         
                                         <p className="text-xs text-muted-foreground mt-2">
                                             * Valores unitários baseados na Diretriz Operacional ({diretrizesOp?.ano_referencia || anoReferencia}). Taxa de Embarque: {formatCurrency(taxaEmbarqueUnitario)}. Referência Legal: {referenciaLegal}.
