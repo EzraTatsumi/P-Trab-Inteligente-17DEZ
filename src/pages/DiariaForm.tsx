@@ -392,7 +392,8 @@ const DiariaForm = () => {
                         formData.ug.length > 0 && 
                         formData.dias_operacao > 0 &&
                         formData.fase_atividade.length > 0 &&
-                        formData.local_atividade.length > 0;
+                        formData.local_atividade.length > 0 &&
+                        formData.nr_viagens > 0; // Adicionado nr_viagens
     
     // Mapeamento de destino para rótulo
     const destinoOptions = [
@@ -456,10 +457,12 @@ const DiariaForm = () => {
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    1. Dados da Organização (Destino do Recurso)
+                                    1. Dados da Organização e Atividade
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
+                                
+                                {/* PRIMEIRA LINHA (4 COLUNAS) */}
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <div className="space-y-2 col-span-1">
                                         <Label htmlFor="organizacao">OM de Destino do Recurso *</Label>
                                         <OmSelector
                                             selectedOmId={selectedOmId}
@@ -470,7 +473,7 @@ const DiariaForm = () => {
                                             initialOmUg={formData.ug}
                                         />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 col-span-1">
                                         <Label htmlFor="ug">UG de Destino</Label>
                                         <Input
                                             id="ug"
@@ -479,21 +482,7 @@ const DiariaForm = () => {
                                             className="bg-muted/50"
                                         />
                                     </div>
-                                    
-                                    {/* Fase da Atividade movida para a Seção 1 */}
-                                    <div className="space-y-2 col-span-2">
-                                        <Label htmlFor="fase_atividade">Fase da Atividade *</Label>
-                                        <FaseAtividadeSelect
-                                            value={formData.fase_atividade}
-                                            onChange={handleFaseAtividadeChange}
-                                            disabled={!isPTrabEditable || isSaving}
-                                        />
-                                    </div>
-                                </div>
-                                
-                                {/* Campos de Dias e Local da Atividade (Movidos para a Seção 1 para completar o isFormReady) */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 col-span-1">
                                         <Label htmlFor="dias_operacao">Nr Dias da Viagem *</Label>
                                         <Input
                                             id="dias_operacao"
@@ -506,7 +495,7 @@ const DiariaForm = () => {
                                             onKeyDown={handleEnterToNextField}
                                         />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 col-span-1">
                                         <Label htmlFor="nr_viagens">Nr Viagens *</Label>
                                         <Input
                                             id="nr_viagens"
@@ -519,7 +508,11 @@ const DiariaForm = () => {
                                             onKeyDown={handleEnterToNextField}
                                         />
                                     </div>
-                                    <div className="space-y-2 col-span-2">
+                                </div>
+                                
+                                {/* SEGUNDA LINHA (2 COLUNAS) */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
                                         <Label htmlFor="local_atividade">Local da Atividade (Cidade/Estado) *</Label>
                                         <Input
                                             id="local_atividade"
@@ -529,6 +522,14 @@ const DiariaForm = () => {
                                             required
                                             disabled={!isPTrabEditable || isSaving}
                                             onKeyDown={handleEnterToNextField}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="fase_atividade">Fase da Atividade *</Label>
+                                        <FaseAtividadeSelect
+                                            value={formData.fase_atividade}
+                                            onChange={handleFaseAtividadeChange}
+                                            disabled={!isPTrabEditable || isSaving}
                                         />
                                     </div>
                                 </div>
