@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } => "sonner";
+import { toast } from "sonner";
 import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane, PlusCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -873,7 +873,7 @@ const DiariaForm = () => {
                                                     disabled={!isPTrabEditable || isSaving || !isCalculationReady}
                                                     className="w-full md:w-auto"
                                                 >
-                                                    Adicionar Itens da Categoria
+                                                    Salvar Itens da Categoria
                                                 </Button>
                                             )}
                                         </div>
@@ -894,7 +894,31 @@ const DiariaForm = () => {
                                         {pendingDiarias.map((item) => {
                                             // Fórmulas de cálculo para display
                                             const taxaEmbarqueFormula = getTaxaEmbarqueFormulaDisplay(item, taxaEmbarqueUnitario);
-                                            const diariaFormula = getDiariaFormulaDisplay(item);
+                                            
+                                            // Detalhamento da Diária (ND 39)
+                                            const diasPagamento = Math.max(0, item.dias_operacao - 0.5);
+                                            const nrViagens = item.nr_viagens;
+                                            
+                                            const diariaFormulaParts: string[] = [];
+                                            
+                                            DIARIA_RANKS_CONFIG.forEach(rank => {
+                                                const quantidade = item.quantidades_por_posto[rank.key] || 0;
+                                                if (quantidade > 0) {
+                                                    const valorUnitario = Number(diretrizesOp![`${rank.fieldPrefix}_${item.destino === 'bsb_capitais_especiais' ? 'bsb' : item.destino === 'demais_capitais' ? 'capitais' : 'demais'}` as keyof DiretrizOperacional] || 0);
+                                                    
+                                                    const militaresPlural = quantidade === 1 ? 'mil.' : 'militares';
+                                                    const viagensPlural = nrViagens === 1 ? 'viagem' : 'viagens';
+                                                    
+                                                    const custoTotalPosto = quantidade * valorUnitario * diasPagamento * nrViagens;
+                                                    
+                                                    // Formato solicitado: <Qtd Mil> <Posto/Gradução> x <Valor Diária> x <Quantidade de Viagens> = <Total Diária>
+                                                    diariaFormulaParts.push(
+                                                        `${quantidade} ${rank.label} x ${formatCurrency(valorUnitario)}/dia x ${formatNumber(diasPagamento, 1)} dias x ${nrViagens} ${viagensPlural} = ${formatCurrency(custoTotalPosto)}`
+                                                    );
+                                                }
+                                            });
+                                            
+                                            const diariaFormula = diariaFormulaParts.join(' + ');
 
                                             return (
                                                 <Card 
