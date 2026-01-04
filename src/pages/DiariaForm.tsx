@@ -441,7 +441,7 @@ const DiariaForm = () => {
                             Pagamento de Diárias
                         </CardTitle>
                         <CardDescription>
-                            Utilize este formulário para registrar o pagamento de diárias e taxas de embarque para o P Trab "{ptrabData?.numero_ptrab} - {ptrabData?.nome_operacao}". Os valores unitários são baseados nas Diretrizes Operacionais do ano {diretrizesOp?.ano_referencia || anoReferencia}.
+                            Solicitação de recursos para Pagamento de Diárias em Atividades Militares.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
