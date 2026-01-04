@@ -35,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import *s z from "zod";
+import * as z from "zod";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector"; // Importando o OmSelector
@@ -666,27 +666,25 @@ const DiariaForm = () => {
                                         </CardContent>
                                     </Card>
                                     
-                                    {/* NOVO BLOCO DE RESUMO DE TOTAIS CONSOLIDADO */}
+                                    {/* NOVO BLOCO DE RESUMO DE TOTAIS */}
                                     <div className="space-y-2 mt-4">
-                                        <div className="p-4 bg-background rounded-lg border">
-                                            <div className="flex justify-between items-center text-sm text-muted-foreground mb-1">
-                                                <span className="font-medium">Total Diária</span>
-                                                <span className="font-semibold text-foreground">
-                                                    {formatCurrency(calculos.totalDiaria)}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center text-sm text-muted-foreground mb-3">
-                                                <span className="font-medium">Total Taxa de Embarque</span>
-                                                <span className="font-semibold text-foreground">
-                                                    {formatCurrency(calculos.totalTaxaEmbarque)}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center pt-3 border-t border-border">
-                                                <span className="font-bold text-base">TOTAL DA CATEGORIA</span>
-                                                <span className="font-extrabold text-xl text-primary">
-                                                    {formatCurrency(calculos.totalGeral)}
-                                                </span>
-                                            </div>
+                                        <div className="flex justify-between items-center p-3 bg-muted rounded-lg border">
+                                            <span className="font-medium text-sm text-muted-foreground">Total Diária (sem Taxa)</span>
+                                            <span className="font-semibold text-base text-foreground">
+                                                {formatCurrency(calculos.totalDiaria)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center p-3 bg-muted rounded-lg border">
+                                            <span className="font-medium text-sm text-muted-foreground">Total Taxa de Embarque</span>
+                                            <span className="font-semibold text-base text-foreground">
+                                                {formatCurrency(calculos.totalTaxaEmbarque)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
+                                            <span className="font-bold text-base">TOTAL GERAL</span>
+                                            <span className="font-extrabold text-xl text-primary">
+                                                {formatCurrency(calculos.totalGeral)}
+                                            </span>
                                         </div>
                                     </div>
                                     
