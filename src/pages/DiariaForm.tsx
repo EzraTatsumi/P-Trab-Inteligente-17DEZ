@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane } from "lucide-react";
+import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane, XCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -975,7 +975,7 @@ const DiariaForm = () => {
                                     {/* VALOR TOTAL DA OM (PENDENTE) */}
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
-                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA OM (PENDENTE)</span>
+                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA OM</span>
                                             <span className="font-extrabold text-xl text-foreground">
                                                 {formatCurrency(totalPendingDiarias)}
                                             </span>
@@ -984,7 +984,7 @@ const DiariaForm = () => {
                                     
                                     <div className="flex justify-end gap-3 pt-4">
                                         <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                            <X className="mr-2 h-4 w-4" />
+                                            <XCircle className="mr-2 h-4 w-4" />
                                             Limpar Formulário
                                         </Button>
                                         <Button 
