@@ -890,7 +890,7 @@ const DiariaForm = () => {
                                                 
                                                 // Format: 1 Of Gen x R$ 600,00/dia x 0,5 dias x 1 viagens = R$ 300,00.
                                                 const diasText = pluralize(diasPagamento, 'dia', 'dias');
-                                                const calculationString = `${qty} ${rank.label} x ${unitValueFormatted}/${pluralize(1, 'dia', 'dia')} x ${formatNumber(diasPagamento, 1)} ${diasText} x ${item.nr_viagens} ${viagemText} = ${subtotalFormatted}`;
+                                                const calculationString = `${qty} ${rank.label} x ${unitValueFormatted}/dia x ${formatNumber(diasPagamento, 1)} ${diasText} x ${item.nr_viagens} ${viagemText} = ${subtotalFormatted}`;
                                                 
                                                 return (
                                                     <p key={rank.key} className="font-medium text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis text-right">
@@ -944,7 +944,7 @@ const DiariaForm = () => {
                                                             
                                                             {/* Diárias Section (Multi-line breakdown) */}
                                                             <div className="grid grid-cols-3 gap-4 text-xs">
-                                                                <p className="font-medium text-muted-foreground col-span-1">Diárias:</p>
+                                                                <p className="font-medium text-muted-foreground col-span-1">Categoria da Localidade para Pagamento de Diária:</p>
                                                                 <div className="space-y-1 w-full col-span-2">
                                                                     {rankCalculationElements}
                                                                 </div>
