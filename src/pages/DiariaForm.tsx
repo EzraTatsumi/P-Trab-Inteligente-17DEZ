@@ -974,8 +974,8 @@ const DiariaForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Destino Recurso:</p>
-                                                                <p className="font-medium">Taxa de Embarque (ND 33.90.15):</p>
-                                                                <p className="font-medium">Diárias (ND 33.90.15):</p>
+                                                                <p className="font-medium">Taxa de Embarque:</p>
+                                                                <p className="font-medium">Diárias:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
