@@ -44,6 +44,8 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator"; // Importando Separator
 
 // Tipos de dados
+// NOTE: O tipo Tables<'diaria_registros'> será atualizado automaticamente pelo Supabase CLI
+// assumindo que valor_nd_39 foi removido e valor_nd_15 foi adicionado.
 type DiariaRegistro = Tables<'diaria_registros'>;
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
@@ -63,6 +65,8 @@ interface CalculatedDiaria extends TablesInsert<'diaria_registros'> {
     // Campos de display adicionais
     destinoLabel: string;
     totalMilitares: number;
+    // Adicionando valor_nd_15 e removendo valor_nd_39 do tipo local para consistência
+    valor_nd_15: number;
 }
 
 // Schema de validação para o formulário de Diária
@@ -209,9 +213,15 @@ const DiariaForm = () => {
         mutationFn: async (recordsToSave: TablesInsert<'diaria_registros'>[]) => {
             if (recordsToSave.length === 0) return;
             
+            // Mapeia para o formato de inserção, garantindo que valor_nd_39 não seja enviado
+            const dbRecords = recordsToSave.map(record => {
+                const { valor_nd_39, ...rest } = record as any; // Remove valor_nd_39 se ainda estiver no tipo
+                return rest;
+            });
+
             const { error } = await supabase
                 .from("diaria_registros")
-                .insert(recordsToSave);
+                .insert(dbRecords);
             
             if (error) throw error;
         },
@@ -364,16 +374,12 @@ const DiariaForm = () => {
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
                 valor_nd_30: calculos.totalTaxaEmbarque,
-                valor_nd_39: calculos.totalDiaria,
+                valor_nd_15: calculos.totalDiaria, // Usando ND 15 para Diária
+                
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
                 detalhamento_customizado: memoriaCustomizada.trim().length > 0 ? memoriaCustomizada : null,
                 is_aereo: formData.is_aereo,
-                
-                // Campos de display
-                memoria_calculo_display: calculos.memoria,
-                destinoLabel: destinoLabel,
-                totalMilitares: calculos.totalMilitares,
                 
                 // Campos que foram NOT NULL, mas são redundantes no novo fluxo
                 posto_graduacao: null,
@@ -414,7 +420,7 @@ const DiariaForm = () => {
         // Mapeia os itens pendentes para o formato de inserção no DB
         const recordsToSave: TablesInsert<'diaria_registros'>[] = pendingDiarias.map(p => {
             // Remove campos de display e temporários
-            const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, ...dbRecord } = p;
+            const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, valor_nd_39, ...dbRecord } = p as any;
             return dbRecord as TablesInsert<'diaria_registros'>;
         });
         
@@ -454,7 +460,8 @@ const DiariaForm = () => {
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
                 valor_nd_30: calculos.totalTaxaEmbarque,
-                valor_nd_39: calculos.totalDiaria,
+                valor_nd_15: calculos.totalDiaria, // Usando ND 15 para Diária
+                
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
                 detalhamento_customizado: memoriaCustomizada.trim().length > 0 ? memoriaCustomizada : null,
@@ -958,12 +965,12 @@ const DiariaForm = () => {
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Destino Recurso:</p>
                                                                 <p className="font-medium">ND 33.90.30 (Taxa Embarque):</p>
-                                                                <p className="font-medium">ND 33.90.39 (Diárias):</p>
+                                                                <p className="font-medium">ND 33.90.15 (Diárias):</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
                                                                 <p className="font-medium text-green-600">{formatCurrency(item.valor_nd_30)}</p>
-                                                                <p className="font-medium text-blue-600">{formatCurrency(item.valor_nd_39)}</p>
+                                                                <p className="font-medium text-blue-600">{formatCurrency(item.valor_nd_15)}</p>
                                                             </div>
                                                         </div>
                                                     </CardContent>
