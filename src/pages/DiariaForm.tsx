@@ -679,29 +679,27 @@ const DiariaForm = () => {
                                         </CardContent>
                                     </Card>
                                     
+                                    {/* BOTÕES DE AÇÃO (Movidos da antiga Seção 3) */}
+                                    <div className="flex justify-end gap-3 pt-4">
+                                        <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Limpar Formulário
+                                        </Button>
+                                        <Button type="submit" disabled={!isPTrabEditable || isSaving || calculos.totalMilitares === 0 || !isSubmissionReady}>
+                                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                            {editingId ? "Atualizar Registro" : "Adicionar Registro"}
+                                        </Button>
+                                    </div>
+                                    
                                 </section>
                             )}
 
-                            {/* SEÇÃO 3: BOTÕES DE AÇÃO */}
-                            {isBaseFormReady && (
-                                <section className="flex justify-end gap-3">
-                                    <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Limpar Formulário
-                                    </Button>
-                                    <Button type="submit" disabled={!isPTrabEditable || isSaving || calculos.totalMilitares === 0 || !isSubmissionReady}>
-                                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                        {editingId ? "Atualizar Registro" : "Adicionar Registro"}
-                                    </Button>
-                                </section>
-                            )}
-                            
-                            {/* SEÇÃO 4: REGISTROS CADASTRADOS */}
+                            {/* SEÇÃO 3: REGISTROS CADASTRADOS (Antiga Seção 4) */}
                             {registros && registros.length > 0 && (
                                 <section className="space-y-4 border-t pt-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         <ClipboardList className="h-4 w-4 text-muted-foreground" />
-                                        4. Registros de Diárias Cadastrados ({registros?.length || 0})
+                                        3. Registros de Diárias Cadastrados ({registros?.length || 0})
                                     </h3>
                                     <div className="border rounded-lg overflow-hidden">
                                         <Table>
@@ -764,12 +762,12 @@ const DiariaForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 5: MEMÓRIA DE CÁLCULO DETALHADA */}
+                            {/* SEÇÃO 4: MEMÓRIA DE CÁLCULO DETALHADA (Antiga Seção 5) */}
                             {registros && registros.length > 0 && (
                                 <section className="space-y-4 border-t pt-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         <FileText className="h-4 w-4 text-muted-foreground" />
-                                        5. Memória de Cálculo Detalhada
+                                        4. Memória de Cálculo Detalhada
                                     </h3>
                                     <div className="space-y-2">
                                         <Label htmlFor="memoria_calculo">Memória de Cálculo Automática</Label>
