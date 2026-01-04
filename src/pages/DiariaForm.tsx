@@ -563,7 +563,7 @@ const DiariaForm = () => {
                                         </div>
                                         <div className="space-y-2 col-span-2 grid grid-cols-2 gap-4">
                                             <div className="space-y-2 col-span-1">
-                                                <Label htmlFor="local_atividade">Local da Atividade (Cidade/Estado) *</Label>
+                                                <Label htmlFor="local_atividade">Local da Atividade*</Label>
                                                 <Input
                                                     id="local_atividade"
                                                     value={formData.local_atividade}
