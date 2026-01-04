@@ -561,7 +561,7 @@ const DiariaForm = () => {
                                                 className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             />
                                         </div>
-                                        <div className="space-y-2 col-span-2 grid grid-cols-2 gap-4">
+                                        <div className="col-span-2 grid grid-cols-2 gap-4">
                                             <div className="space-y-2 col-span-1">
                                                 <Label htmlFor="local_atividade">Local da Atividade *</Label>
                                                 <Input
@@ -575,11 +575,11 @@ const DiariaForm = () => {
                                                 />
                                             </div>
                                             {/* NOVO CAMPO: Deslocamento Aéreo */}
-                                            <div className="space-y-2 col-span-1">
-                                                <Label htmlFor="is_aereo" className="text-sm font-medium">
+                                            <div className="flex flex-col col-span-1">
+                                                <Label htmlFor="is_aereo" className="text-sm font-medium mb-2">
                                                     Deslocamento Aéreo?
                                                 </Label>
-                                                <div className="flex items-center space-x-2 h-10">
+                                                <div className="flex items-center space-x-2 h-10 mt-auto">
                                                     <Switch
                                                         id="is_aereo"
                                                         checked={formData.is_aereo}
