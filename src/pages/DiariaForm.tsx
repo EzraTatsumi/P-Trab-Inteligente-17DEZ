@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane, PlusCircle } from "lucide-react";
+import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane, PlusCircle, XCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -372,8 +372,7 @@ const DiariaForm = () => {
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
                 
-                // CORREÇÃO CRÍTICA DE ND: Mapear o total para ND 39 (que será tratado como 33.90.15 no relatório)
-                // E zerar ND 30, pois Diária é uma única ND (33.90.15)
+                // Mapeamento de ND: Total Geral (Diária + Taxa) vai para ND 39 (que representa 33.90.15 no relatório)
                 valor_nd_30: 0, 
                 valor_nd_39: calculos.totalGeral,
                 
@@ -481,7 +480,7 @@ const DiariaForm = () => {
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
                 
-                // CORREÇÃO CRÍTICA DE ND: Mapear o total para ND 39
+                // Mapeamento de ND: Total Geral (Diária + Taxa) vai para ND 39
                 valor_nd_30: 0, 
                 valor_nd_39: calculos.totalGeral,
                 
@@ -570,10 +569,6 @@ const DiariaForm = () => {
             }
         });
         
-        // Se houver mais de uma parte, mostra a soma, senão mostra a única parte.
-        if (formulaParts.length > 1) {
-            return formulaParts;
-        }
         return formulaParts;
         
     }, [diretrizesOp]);
@@ -585,7 +580,7 @@ const DiariaForm = () => {
         const viagensPlural = item.nr_viagens === 1 ? 'viagem' : 'viagens';
         
         // Fórmula: (Total Militares) x (Nr Viagens) x (Taxa Unitária)
-        return `${item.totalMilitares} ${militaresPlural} x ${item.nr_viagens} ${viagensPlural} x ${formatCurrency(taxaUnitario)}`;
+        return `${item.totalMilitares} ${militaresPlitares} x ${item.nr_viagens} ${viagensPlural} x ${formatCurrency(taxaUnitario)} = ${formatCurrency(item.valor_taxa_embarque)}`;
         
     }, []);
 
@@ -904,7 +899,8 @@ const DiariaForm = () => {
                                                     disabled={!isPTrabEditable || isSaving || !isCalculationReady}
                                                     className="w-full md:w-auto"
                                                 >
-                                                    Salvar Itens da Categoria
+                                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                                    Adicionar Item
                                                 </Button>
                                             )}
                                         </div>
@@ -932,23 +928,37 @@ const DiariaForm = () => {
                                                     key={item.tempId} 
                                                     className="border-2 border-secondary bg-secondary/10 shadow-md"
                                                 >
-                                                    <CardContent className="p-4">
-                                                        {/* LINHA 1: Localidade e Taxa de Embarque (Cinza) */}
-                                                        <div className="flex justify-between items-center text-sm text-muted-foreground pb-2">
-                                                            <span className="font-medium">Localidade: {item.destinoLabel}</span>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-medium">Taxa de Embarque (ND 33.90.15):</span>
-                                                                <span className="text-green-600 font-semibold">
-                                                                    {item.is_aereo ? formatCurrency(item.valorTaxaEmbarqueND30) : formatCurrency(0)}
+                                                    <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
+                                                        <CardTitle className="text-base font-bold text-primary">
+                                                            Diárias ({item.local_atividade})
+                                                        </CardTitle>
+                                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                            <Users className="h-4 w-4" />
+                                                            {item.totalMilitares} Militares
+                                                        </div>
+                                                    </CardHeader>
+                                                    <CardContent className="p-4 pt-2">
+                                                        
+                                                        {/* Detalhamento da Taxa de Embarque (ND 33.90.15) */}
+                                                        <div className="space-y-1 text-sm border-b border-secondary/50 pb-2 mb-2">
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="font-medium text-muted-foreground">Taxa de Embarque (ND 33.90.15):</span>
+                                                                <span className={`font-semibold ${item.is_aereo ? 'text-green-600' : 'text-gray-500'}`}>
+                                                                    {item.is_aereo ? formatCurrency(item.valor_taxa_embarque) : 'R$ 0,00 (Não Aéreo)'}
                                                                 </span>
                                                             </div>
+                                                            {item.is_aereo && (
+                                                                <p className="text-xs text-muted-foreground italic">
+                                                                    Fórmula: {taxaEmbarqueFormula}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                         
-                                                        {/* LINHAS DE CÁLCULO DE DIÁRIAS POR POSTO (ND 33.90.15) */}
-                                                        <div className="space-y-1 text-xs text-blue-700 font-medium border-t border-b border-secondary/50 py-2 my-2">
+                                                        {/* Detalhamento das Diárias por Posto (ND 33.90.15) */}
+                                                        <div className="space-y-1 text-xs font-medium border-b border-secondary/50 py-2 mb-2">
+                                                            <p className="font-bold text-sm text-blue-700 mb-1">Diárias por Posto/Graduação (ND 33.90.15):</p>
                                                             {diariaFormulaParts.map((formula, index) => (
-                                                                <div key={index} className="flex justify-between">
-                                                                    <span className="text-muted-foreground mr-2">Diária:</span>
+                                                                <div key={index} className="flex justify-between text-gray-700">
                                                                     <span>{formula}</span>
                                                                 </div>
                                                             ))}
@@ -957,15 +967,15 @@ const DiariaForm = () => {
                                                         {/* LINHA FINAL: TOTAIS CONSOLIDADOS */}
                                                         <div className="grid grid-cols-2 gap-4 pt-2">
                                                             <div className="space-y-1">
-                                                                <p className="font-medium text-sm">Taxa de Embarque (ND 33.90.15):</p>
-                                                                <p className="font-medium text-sm">Diárias (ND 33.90.15):</p>
+                                                                <p className="font-medium text-sm">Total Diárias (sem taxa):</p>
+                                                                <p className="font-medium text-sm">Total Taxa de Embarque:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
-                                                                <p className="font-extrabold text-sm text-green-600">
-                                                                    {formatCurrency(item.valorTaxaEmbarqueND30)}
-                                                                </p>
                                                                 <p className="font-extrabold text-sm text-blue-600">
                                                                     {formatCurrency(item.valorDiariaND39)}
+                                                                </p>
+                                                                <p className="font-extrabold text-sm text-green-600">
+                                                                    {formatCurrency(item.valorTaxaEmbarqueND30)}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -1006,7 +1016,7 @@ const DiariaForm = () => {
                                     
                                     <div className="flex justify-end gap-3 pt-4">
                                         <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                            <X className="mr-2 h-4 w-4" />
+                                            <XCircle className="mr-2 h-4 w-4" />
                                             Limpar Formulário
                                         </Button>
                                         <Button 
