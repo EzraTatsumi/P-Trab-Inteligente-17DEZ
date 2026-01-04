@@ -611,8 +611,8 @@ const DiariaForm = () => {
                                                 Referência Legal: {referenciaLegal}.
                                             </p>
                                         </CardHeader>
-                                        <CardContent className="p-0 pt-2">
-                                            <div className="max-h-[400px] overflow-y-auto rounded-lg border">
+                                        <CardContent className="p-4 pt-2">
+                                            <div className="max-h-[400px] overflow-y-auto">
                                                 <Table>
                                                     <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                                         <TableRow className="bg-muted hover:bg-muted">
