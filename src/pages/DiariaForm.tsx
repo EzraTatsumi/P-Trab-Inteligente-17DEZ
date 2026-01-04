@@ -669,7 +669,7 @@ const DiariaForm = () => {
                                                             <TableCell colSpan={4} className="text-right">Total Taxa de Embarque</TableCell>
                                                             <TableCell className="text-right">{formatCurrency(calculos.totalTaxaEmbarque)}</TableCell>
                                                         </TableRow>
-                                                        <TableRow className="bg-primary/10 hover:bg-primary/10 font-bold text-primary-foreground">
+                                                        <TableRow className="bg-muted hover:bg-muted font-bold text-foreground">
                                                             <TableCell colSpan={4} className="text-right">Total Geral</TableCell>
                                                             <TableCell className="text-right">{formatCurrency(calculos.totalGeral)}</TableCell>
                                                         </TableRow>
