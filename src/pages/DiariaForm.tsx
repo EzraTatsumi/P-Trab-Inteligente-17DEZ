@@ -195,6 +195,11 @@ const DiariaForm = () => {
         }
     }, [formData, diretrizesOp, ptrabData]);
     
+    // NOVO: Cálculo do total de todos os itens pendentes
+    const totalPendingDiarias = useMemo(() => {
+        return pendingDiarias.reduce((sum, item) => sum + item.valor_total, 0);
+    }, [pendingDiarias]);
+
     // =================================================================
     // MUTAÇÕES
     // =================================================================
@@ -279,7 +284,6 @@ const DiariaForm = () => {
     };
 
     const handleEdit = (registro: DiariaRegistro) => {
-        // Se houver itens pendentes, força o usuário a salvar ou limpar primeiro
         if (pendingDiarias.length > 0) {
             toast.warning("Salve ou limpe os itens pendentes antes de editar um registro existente.");
             return;
@@ -287,7 +291,6 @@ const DiariaForm = () => {
         
         setEditingId(registro.id);
         
-        // Tenta encontrar o ID da OM para preencher o OmSelector
         const omToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
         setSelectedOmId(omToEdit?.id);
 
@@ -313,9 +316,15 @@ const DiariaForm = () => {
         setShowDeleteDialog(true);
     };
 
-    // NOVO HANDLER: Adiciona o item calculado à lista pendente
+    // Adiciona o item calculado à lista pendente
     const handleCalculateAndAdd = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (editingId) {
+            // Se estiver editando, chama a função de atualização direta
+            handleUpdateExisting(e);
+            return;
+        }
         
         if (!diretrizesOp) {
             toast.error("Diretrizes Operacionais não carregadas. Verifique as configurações.");
@@ -394,7 +403,7 @@ const DiariaForm = () => {
         }
     };
     
-    // NOVO HANDLER: Salva todos os itens pendentes no DB
+    // Salva todos os itens pendentes no DB
     const handleSavePendingDiarias = () => {
         if (pendingDiarias.length === 0) {
             toast.warning("Nenhum item pendente para salvar.");
@@ -411,13 +420,13 @@ const DiariaForm = () => {
         saveMutation.mutate(recordsToSave);
     };
     
-    // NOVO HANDLER: Remove item da lista pendente
+    // Remove item da lista pendente
     const handleRemovePending = (tempId: string) => {
         setPendingDiarias(prev => prev.filter(p => p.tempId !== tempId));
         toast.info("Item removido da lista pendente.");
     };
     
-    // NOVO HANDLER: Edita item existente (apenas se não houver pendentes)
+    // Edita item existente (apenas se não houver pendentes)
     const handleUpdateExisting = (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -583,7 +592,7 @@ const DiariaForm = () => {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={editingId ? handleUpdateExisting : handleCalculateAndAdd} className="space-y-8">
+                        <form onSubmit={handleCalculateAndAdd} className="space-y-8">
                             
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
@@ -802,7 +811,8 @@ const DiariaForm = () => {
                                         <div className="flex justify-end gap-3 pt-4">
                                             {editingId ? (
                                                 <Button 
-                                                    type="submit" 
+                                                    type="button" 
+                                                    onClick={handleUpdateExisting}
                                                     disabled={!isPTrabEditable || isSaving || !isCalculationReady}
                                                     className="w-full md:w-auto"
                                                 >
@@ -826,77 +836,92 @@ const DiariaForm = () => {
                                 </section>
                             )}
                             
-                            {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES) */}
+                            {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES) - NOVO LAYOUT */}
                             {pendingDiarias.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        <ClipboardList className="h-4 w-4 text-muted-foreground" />
                                         3. Itens Adicionados ({pendingDiarias.length})
                                     </h3>
                                     
-                                    <div className="border rounded-lg overflow-hidden">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead className="w-[20%]">OM Destino</TableHead>
-                                                    <TableHead className="w-[15%]">Local Pgto</TableHead>
-                                                    <TableHead className="w-[10%] text-center">Dias</TableHead>
-                                                    <TableHead className="w-[10%] text-center">Militares</TableHead>
-                                                    <TableHead className="w-[20%] text-right">Total Diária</TableHead>
-                                                    <TableHead className="w-[15%] text-right">Ações</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {pendingDiarias.map((item) => (
-                                                    <TableRow key={item.tempId} className="bg-green-50/50">
-                                                        <TableCell className="font-medium">
-                                                            {item.organizacao} ({formatCodug(item.ug)})
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {item.destinoLabel}
-                                                        </TableCell>
-                                                        <TableCell className="text-center">{item.dias_operacao}</TableCell>
-                                                        <TableCell className="text-center">
-                                                            {item.totalMilitares}
-                                                        </TableCell>
-                                                        <TableCell className="text-right font-semibold">
-                                                            {formatCurrency(item.valor_total)}
-                                                        </TableCell>
-                                                        <TableCell className="text-right space-x-2">
+                                    <div className="space-y-4">
+                                        {pendingDiarias.map((item) => (
+                                            <Card 
+                                                key={item.tempId} 
+                                                className="border-2 border-teal-500/50 bg-teal-50/50 shadow-md"
+                                            >
+                                                <CardContent className="p-4">
+                                                    <div className="flex justify-between items-start border-b border-teal-500/30 pb-2 mb-2">
+                                                        <div className="space-y-1">
+                                                            <h4 className="font-bold text-base text-teal-700">
+                                                                Diárias ({item.totalMilitares} Militares)
+                                                            </h4>
+                                                            <p className="text-sm text-muted-foreground">
+                                                                {item.local_atividade} ({item.destinoLabel})
+                                                            </p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="font-extrabold text-lg text-teal-700">
+                                                                {formatCurrency(item.valor_total)}
+                                                            </p>
                                                             <Button 
-                                                                variant="destructive" 
-                                                                size="icon" 
+                                                                variant="ghost" 
+                                                                size="sm" 
                                                                 onClick={() => handleRemovePending(item.tempId)}
                                                                 disabled={isSaving}
+                                                                className="text-red-500 hover:bg-red-50/50"
                                                             >
-                                                                <Trash2 className="h-4 w-4" />
+                                                                <Trash2 className="h-4 w-4 mr-1" />
+                                                                Remover
                                                             </Button>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="grid grid-cols-2 gap-4 text-xs">
+                                                        <div className="space-y-1">
+                                                            <p className="font-medium">OM Destino Recurso:</p>
+                                                            <p className="font-medium">ND 33.90.30 (Taxa Embarque):</p>
+                                                            <p className="font-medium">ND 33.90.39 (Diárias):</p>
+                                                        </div>
+                                                        <div className="text-right space-y-1">
+                                                            <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
+                                                            <p className="font-medium text-green-600">{formatCurrency(item.valor_nd_30)}</p>
+                                                            <p className="font-medium text-blue-600">{formatCurrency(item.valor_nd_39)}</p>
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
                                     </div>
+                                    
+                                    {/* VALOR TOTAL DA OM (PENDENTE) */}
+                                    <Card className="bg-gray-100 shadow-inner">
+                                        <CardContent className="p-4 flex justify-between items-center">
+                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA OM (PENDENTE)</span>
+                                            <span className="font-extrabold text-xl text-foreground">
+                                                {formatCurrency(totalPendingDiarias)}
+                                            </span>
+                                        </CardContent>
+                                    </Card>
                                     
                                     <div className="flex justify-end gap-3 pt-4">
                                         <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Limpar Itens
+                                            <X className="mr-2 h-4 w-4" />
+                                            Limpar Formulário
                                         </Button>
                                         <Button 
                                             type="button" 
                                             onClick={handleSavePendingDiarias}
                                             disabled={isSaving || pendingDiarias.length === 0}
-                                            className="w-full md:w-auto bg-green-600 hover:bg-green-700"
+                                            className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                         >
                                             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                            Salvar Registros de Diária
+                                            Salvar Registros
                                         </Button>
                                     </div>
                                 </section>
                             )}
 
-                            {/* SEÇÃO 4: REGISTROS SALVOS (Antiga Seção 3) */}
+                            {/* SEÇÃO 4: REGISTROS SALVOS */}
                             {registros && registros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -970,7 +995,7 @@ const DiariaForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 5: MEMÓRIA DE CÁLCULO DETALHADA (Antiga Seção 4) */}
+                            {/* SEÇÃO 5: MEMÓRIA DE CÁLCULO DETALHADA */}
                             {isCalculationReady && (
                                 <section className="space-y-4 border-t pt-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
