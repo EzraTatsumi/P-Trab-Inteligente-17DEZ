@@ -437,21 +437,11 @@ const DiariaForm = () => {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Briefcase className="h-5 w-5 text-blue-600" />
-                            Registro de Pagamento de Diárias
+                        <CardTitle>
+                            Pagamento de Diárias
                         </CardTitle>
                         <CardDescription>
-                            P Trab: <span className="font-medium">{ptrabData?.numero_ptrab} - {ptrabData?.nome_operacao}</span>
-                            {diretrizesOp ? (
-                                <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700">
-                                    Diretriz {diretrizesOp.ano_referencia} Carregada
-                                </Badge>
-                            ) : (
-                                <Badge variant="secondary" className="ml-2 bg-red-100 text-red-700">
-                                    Diretriz {anoReferencia} Ausente
-                                </Badge>
-                            )}
+                            Utilize este formulário para registrar o pagamento de diárias e taxas de embarque para o P Trab "{ptrabData?.numero_ptrab} - {ptrabData?.nome_operacao}". Os valores unitários são baseados nas Diretrizes Operacionais do ano {diretrizesOp?.ano_referencia || anoReferencia}.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
