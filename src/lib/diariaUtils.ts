@@ -114,7 +114,7 @@ export const calculateDiariaTotals = (
         }
     });
     
-    // 2. Cálculo da Taxa de Embarque (ND 33.90.39)
+    // 2. Cálculo da Taxa de Embarque (ND 33.90.30)
     let totalTaxaEmbarque = 0;
     if (is_aereo) { // Apenas calcula se for deslocamento aéreo
         const taxaEmbarqueUnitario = Number(diretrizes.taxa_embarque || 0);
@@ -196,6 +196,7 @@ export const generateDiariaMemoriaCalculo = (
 `;
     }
     
+    // CORRIGIDO: Rótulo da ND para Diária
     return `${header}
 
 Cálculo, segundo ${referenciaLegal}:
@@ -205,7 +206,7 @@ ${detalhamentoValores.trim()}
 Fórmula Diária: (Nr militares x Custo/dia/localidade) x (Nr dias de operação - 0,5 dia) x Nr Viagens.
 ${detalhamentoFormula.trim()}
 
-Total Diária (ND 33.90.39): ${formatCurrency(totalDiaria)}.
+Total Diária (ND 33.90.15): ${formatCurrency(totalDiaria)}.
 ${detalhamentoTaxa.trim()}
 
 Total Geral: ${formatCurrency(totalDiaria)} + ${formatCurrency(totalTaxaEmbarque)} = ${formatCurrency(totalGeral)}.`;
