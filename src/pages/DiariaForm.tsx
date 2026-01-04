@@ -607,6 +607,9 @@ const DiariaForm = () => {
                                     <Card className="mt-6 bg-muted/50 rounded-lg">
                                         <CardHeader className="py-3">
                                             <CardTitle className="text-base font-semibold">Efetivo por Posto/Graduação</CardTitle>
+                                            <p className="text-xs text-muted-foreground">
+                                                Referência Legal: {referenciaLegal}.
+                                            </p>
                                         </CardHeader>
                                         <CardContent className="pt-2">
                                             <div className="p-4 bg-background rounded-lg border">
@@ -650,15 +653,15 @@ const DiariaForm = () => {
                                                         })}
                                                         {/* Linhas de Totais */}
                                                         <TableRow className="bg-muted hover:bg-muted font-bold border-t border-border">
-                                                            <TableCell colSpan={3} className="text-right">Total Diária (33.90.39)</TableCell>
+                                                            <TableCell colSpan={3} className="text-right">Total Diária</TableCell>
                                                             <TableCell className="text-right">{formatCurrency(calculos.totalDiaria)}</TableCell>
                                                         </TableRow>
                                                         <TableRow className="bg-muted hover:bg-muted font-bold">
-                                                            <TableCell colSpan={3} className="text-right">Total Taxa Emb (33.90.30)</TableCell>
+                                                            <TableCell colSpan={3} className="text-right">Total Taxa de Embarque</TableCell>
                                                             <TableCell className="text-right">{formatCurrency(calculos.totalTaxaEmbarque)}</TableCell>
                                                         </TableRow>
                                                         <TableRow className="bg-primary/10 hover:bg-primary/10 font-bold text-primary-foreground">
-                                                            <TableCell colSpan={3} className="text-right">Total Geral (33.90.15)</TableCell>
+                                                            <TableCell colSpan={3} className="text-right">Total Geral</TableCell>
                                                             <TableCell className="text-right">{formatCurrency(calculos.totalGeral)}</TableCell>
                                                         </TableRow>
                                                     </TableBody>
@@ -667,9 +670,7 @@ const DiariaForm = () => {
                                         </CardContent>
                                     </Card>
                                     
-                                    <p className="text-xs text-muted-foreground mt-2">
-                                        * Valores unitários baseados na Diretriz Operacional ({diretrizesOp?.ano_referencia || anoReferencia}). Taxa de Embarque: {formatCurrency(taxaEmbarqueUnitario)}. Referência Legal: {referenciaLegal}.
-                                    </p>
+                                    {/* O parágrafo original foi removido daqui */}
                                 </section>
                             )}
 
