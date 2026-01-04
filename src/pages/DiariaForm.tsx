@@ -205,6 +205,9 @@ const DiariaForm = () => {
                 nr_viagens: formData.nr_viagens,
                 local_atividade: formData.local_atividade,
                 
+                // NOVO: Campo 'quantidade' (total de militares)
+                quantidade: calculos.totalMilitares,
+                
                 // Campos calculados
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
