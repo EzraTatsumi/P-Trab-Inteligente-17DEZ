@@ -881,8 +881,8 @@ const DiariaForm = () => {
                                                 const unitValueFormatted = formatCurrency(unitValueRaw);
                                                 const subtotalFormatted = formatCurrency(subtotal);
                                                 
-                                                // Format: (1 Of Gen x R$ 600,00/dia) x 0,5 dias x 1 viagens = R$ 300,00.
-                                                const calculationString = `(${qty} ${rank.label} x ${unitValueFormatted}/dia) x ${formatNumber(diasPagamento, 1)} dias x ${item.nr_viagens} viagens = ${subtotalFormatted}`;
+                                                // Format: 1 Of Gen x R$ 600,00/dia x 0,5 dias x 1 viagens = R$ 300,00. (Removendo parênteses)
+                                                const calculationString = `${qty} ${rank.label} x ${unitValueFormatted}/dia x ${formatNumber(diasPagamento, 1)} dias x ${item.nr_viagens} viagens = ${subtotalFormatted}`;
                                                 
                                                 return (
                                                     <p key={rank.key} className="font-medium text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis text-right">
@@ -919,7 +919,6 @@ const DiariaForm = () => {
                                                         
                                                         {/* Detalhes do Cálculo (Taxa de Embarque e Diárias Detalhadas) - AGORA FULL WIDTH */}
                                                         <div className="space-y-2 pt-1">
-                                                            <div className="w-full h-[1px] bg-teal-500/30 my-1" />
                                                             
                                                             {/* Taxa de Embarque Row */}
                                                             <div className="grid grid-cols-2 gap-4 text-xs">
@@ -938,7 +937,10 @@ const DiariaForm = () => {
                                                             </div>
                                                         </div>
                                                         
-                                                        <div className="grid grid-cols-2 gap-4 text-xs pt-4">
+                                                        {/* SEPARADOR MOVIDO PARA CÁ */}
+                                                        <div className="w-full h-[1px] bg-teal-500/30 my-3" />
+
+                                                        <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Destino Recurso:</p>
                                                                 <p className="font-medium">ND 33.90.30 (Taxa Embarque):</p>
