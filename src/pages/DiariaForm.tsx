@@ -161,7 +161,7 @@ const DiariaForm = () => {
     const calculos = useMemo(() => {
         if (!diretrizesOp || !ptrabData) {
             return {
-                totalDiaria: 0,
+                totalDiariaBase: 0,
                 totalTaxaEmbarque: 0,
                 totalGeral: 0,
                 totalMilitares: 0,
@@ -174,7 +174,7 @@ const DiariaForm = () => {
             // Validação rápida dos campos essenciais antes de calcular
             if (formData.dias_operacao <= 0 || formData.nr_viagens <= 0 || !formData.destino || formData.organizacao.length === 0) {
                 return {
-                    totalDiaria: 0, totalTaxaEmbarque: 0, totalGeral: 0, totalMilitares: 0, calculosPorPosto: [],
+                    totalDiariaBase: 0, totalTaxaEmbarque: 0, totalGeral: 0, totalMilitares: 0, calculosPorPosto: [],
                     memoria: "Preencha todos os campos obrigatórios para calcular.",
                 };
             }
@@ -190,7 +190,7 @@ const DiariaForm = () => {
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : "Erro desconhecido no cálculo.";
             return {
-                totalDiaria: 0,
+                totalDiariaBase: 0,
                 totalTaxaEmbarque: 0,
                 totalGeral: 0,
                 totalMilitares: 0,
@@ -373,8 +373,8 @@ const DiariaForm = () => {
                 quantidade: calculos.totalMilitares,
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
-                valor_nd_30: calculos.totalTaxaEmbarque,
-                valor_nd_15: calculos.totalDiaria, // Usando ND 15 para Diária
+                valor_nd_30: 0, // Taxa de Embarque consolidada na ND 15
+                valor_nd_15: calculos.totalGeral, // Total Geral (Diária Base + Taxa Embarque)
                 
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
@@ -463,8 +463,8 @@ const DiariaForm = () => {
                 quantidade: calculos.totalMilitares,
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
-                valor_nd_30: calculos.totalTaxaEmbarque,
-                valor_nd_15: calculos.totalDiaria, // Usando ND 15 para Diária
+                valor_nd_30: 0, // Taxa de Embarque consolidada na ND 15
+                valor_nd_15: calculos.totalGeral, // Total Geral (Diária Base + Taxa Embarque)
                 
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
@@ -921,7 +921,7 @@ const DiariaForm = () => {
                                             // --- End Detailed Diária Calculation Generation ---
 
                                             // Cálculo da Taxa de Embarque formatado
-                                            const totalTaxaEmbarque = item.valor_nd_30;
+                                            const totalTaxaEmbarque = item.valor_taxa_embarque;
                                             // CORRIGIDO: Usando item.totalMilitares que agora é garantido
                                             const taxaEmbarqueCalculation = item.is_aereo 
                                                 ? `${item.totalMilitares} ${militarText} x ${taxaEmbarqueUnitarioDisplay} x ${item.nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}`
@@ -949,7 +949,7 @@ const DiariaForm = () => {
                                                             
                                                             {/* Taxa de Embarque Row */}
                                                             <div className="grid grid-cols-3 gap-4 text-xs">
-                                                                <p className="font-medium text-muted-foreground col-span-1"></p>
+                                                                <p className="font-medium text-muted-foreground col-span-1">Taxa de Embarque:</p>
                                                                 <p className="font-medium text-muted-foreground text-right col-span-2">
                                                                     {taxaEmbarqueCalculation}
                                                                 </p>
@@ -971,8 +971,8 @@ const DiariaForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Destino Recurso:</p>
-                                                                <p className="font-medium">ND 33.90.30 (Taxa Embarque):</p>
-                                                                <p className="font-medium">ND 33.90.15 (Diárias):</p>
+                                                                <p className="font-medium">ND 33.90.30 (Outros):</p>
+                                                                <p className="font-medium">ND 33.90.15 (Diárias + Taxa):</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>

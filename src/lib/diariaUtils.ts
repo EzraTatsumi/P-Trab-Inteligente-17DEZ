@@ -74,14 +74,15 @@ const getValorUnitario = (
 
 /**
  * Calcula o custo total da diária e da taxa de embarque.
+ * O total geral é consolidado na ND 33.90.15.
  */
 export const calculateDiariaTotals = (
     data: DiariaData, 
     diretrizes: Partial<DiretrizOperacional>
 ): { 
-    totalDiaria: number, 
+    totalDiariaBase: number, // Valor da diária sem taxa de embarque
     totalTaxaEmbarque: number, 
-    totalGeral: number, 
+    totalGeral: number, // Total consolidado (ND 33.90.15)
     totalMilitares: number,
     calculosPorPosto: { posto: string, quantidade: number, valorUnitario: number, custoTotal: number }[]
 } => {
@@ -90,7 +91,7 @@ export const calculateDiariaTotals = (
     // 1. Cálculo dos dias de pagamento (dias_operacao - 0.5)
     const diasPagamento = Math.max(0, dias_operacao - 0.5);
     
-    let totalDiaria = 0;
+    let totalDiariaBase = 0;
     let totalMilitares = 0;
     const calculosPorPosto: { posto: string, quantidade: number, valorUnitario: number, custoTotal: number }[] = [];
 
@@ -102,7 +103,7 @@ export const calculateDiariaTotals = (
             // Fórmula: (Nr militares x Custo/dia/localidade) x (Nr dias de operação - 0,5 dia) x Nr Viagens
             const custoTotal = quantidade * valorUnitario * diasPagamento * nr_viagens;
             
-            totalDiaria += custoTotal;
+            totalDiariaBase += custoTotal;
             totalMilitares += quantidade;
             
             calculosPorPosto.push({
@@ -114,17 +115,18 @@ export const calculateDiariaTotals = (
         }
     });
     
-    // 2. Cálculo da Taxa de Embarque (ND 33.90.30)
+    // 2. Cálculo da Taxa de Embarque
     let totalTaxaEmbarque = 0;
     if (is_aereo) { // Apenas calcula se for deslocamento aéreo
         const taxaEmbarqueUnitario = Number(diretrizes.taxa_embarque || 0);
         totalTaxaEmbarque = totalMilitares * taxaEmbarqueUnitario * nr_viagens;
     }
     
-    const totalGeral = totalDiaria + totalTaxaEmbarque;
+    // 3. Consolidação: Total Geral (ND 33.90.15) = Diária Base + Taxa de Embarque
+    const totalGeral = totalDiariaBase + totalTaxaEmbarque;
 
     return {
-        totalDiaria,
+        totalDiariaBase,
         totalTaxaEmbarque,
         totalGeral,
         totalMilitares,
@@ -141,7 +143,7 @@ export const generateDiariaMemoriaCalculo = (
     calculos: ReturnType<typeof calculateDiariaTotals>
 ): string => {
     const { dias_operacao, destino, nr_viagens, local_atividade, organizacao, ug, is_aereo } = data;
-    const { totalDiaria, totalTaxaEmbarque, totalGeral, totalMilitares, calculosPorPosto } = calculos;
+    const { totalDiariaBase, totalTaxaEmbarque, totalGeral, totalMilitares, calculosPorPosto } = calculos;
     
     const referenciaLegal = diretrizes.diaria_referencia_legal || 'Lei/Portaria [NÚMERO]';
     
@@ -176,7 +178,7 @@ export const generateDiariaMemoriaCalculo = (
         // Detalhamento da Fórmula
         // Ex: (3 Of Sup x R$ 450,00/dia) x 4,5 dias x 1 viagem = R$ 6.075,00.
         const formulaPart1 = `(${calc.quantidade} ${calc.posto} x ${formatCurrency(calc.valorUnitario)}/dia)`;
-        const formulaPart2 = `${formatNumber(diasPagamento, 1)} dias x ${calc.nr_viagens} viagem${calc.nr_viagens === 1 ? '' : 'ns'}`;
+        const formulaPart2 = `${formatNumber(Math.max(0, dias_operacao - 0.5), 1)} dias x ${nr_viagens} viagem${nr_viagens === 1 ? '' : 'ns'}`;
         
         detalhamentoFormula += `- ${formulaPart1} x ${formulaPart2} = ${formatCurrency(calc.custoTotal)}.\n`;
         totalFormula += calc.custoTotal;
@@ -187,7 +189,7 @@ export const generateDiariaMemoriaCalculo = (
     let detalhamentoTaxa = '';
     if (is_aereo) {
         detalhamentoTaxa = `
-- Taxa de Embarque (ND 33.90.30): ${formatCurrency(taxaEmbarqueUnitario)}/pessoa.
+- Taxa de Embarque (Componente ND 33.90.15): ${formatCurrency(taxaEmbarqueUnitario)}/pessoa.
 - Cálculo Taxa: ${totalMilitares} militares x ${formatCurrency(taxaEmbarqueUnitario)} x ${nr_viagens} viagens = ${formatCurrency(totalTaxaEmbarque)}.
 `;
     } else {
@@ -199,15 +201,17 @@ export const generateDiariaMemoriaCalculo = (
     // CORRIGIDO: Rótulo da ND para Diária
     return `${header}
 
+OM Destino Recurso: ${organizacao} (UG: ${formatCodug(ug)})
+
 Cálculo, segundo ${referenciaLegal}:
 - Para ${destinoLabel} considera-se: 
 ${detalhamentoValores.trim()}
 
-Fórmula Diária: (Nr militares x Custo/dia/localidade) x (Nr dias de operação - 0,5 dia) x Nr Viagens.
+Fórmula Diária Base: (Nr militares x Custo/dia/localidade) x (Nr dias de operação - 0,5 dia) x Nr Viagens.
 ${detalhamentoFormula.trim()}
 
-Total Diária (ND 33.90.15): ${formatCurrency(totalDiaria)}.
+Total Diária Base: ${formatCurrency(totalDiariaBase)}.
 ${detalhamentoTaxa.trim()}
 
-Total Geral: ${formatCurrency(totalDiaria)} + ${formatCurrency(totalTaxaEmbarque)} = ${formatCurrency(totalGeral)}.`;
+Total Geral (ND 33.90.15): ${formatCurrency(totalGeral)}.`;
 };
