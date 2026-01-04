@@ -854,7 +854,7 @@ const DiariaForm = () => {
                                                     <div className="flex justify-between items-start border-b border-teal-500/30 pb-2 mb-2">
                                                         <div className="space-y-1">
                                                             <h4 className="font-bold text-base text-teal-700">
-                                                                Diárias ({item.totalMilitares} Militares)
+                                                                Diárias ({item.local_atividade})
                                                             </h4>
                                                             <div className="w-full h-[1px] bg-teal-500/30 my-1" />
                                                             <p className="text-sm text-muted-foreground">
@@ -872,8 +872,8 @@ const DiariaForm = () => {
                                                     <div className="grid grid-cols-2 gap-4 text-xs">
                                                         <div className="space-y-1">
                                                             <p className="font-medium">OM Destino Recurso:</p>
-                                                            <p className="font-medium">ND 33.90.30 (Taxa Embarque):</p>
-                                                            <p className="font-medium">ND 33.90.39 (Diárias):</p>
+                                                            <p className="font-medium">Taxa de Embarque:</p>
+                                                            <p className="font-medium">Diária:</p>
                                                         </div>
                                                         <div className="text-right space-y-1">
                                                             <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
