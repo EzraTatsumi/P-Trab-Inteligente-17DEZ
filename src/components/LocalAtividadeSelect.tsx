@@ -45,7 +45,6 @@ export const LocalAtividadeSelect: React.FC<LocalAtividadeSelectProps> = ({
 
     // Para Capitais Especiais e Demais Capitais, usamos um Combobox
     const cities = currentDestino?.cities || [];
-    // Alterando o placeholder para ser fixo
     const placeholderText = "Selecione a Cidade";
 
     return (
@@ -55,7 +54,7 @@ export const LocalAtividadeSelect: React.FC<LocalAtividadeSelectProps> = ({
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-full justify-between"
+                    className="w-full justify-between h-10" // Adicionando h-10 aqui
                     disabled={disabled}
                 >
                     {value ? (
