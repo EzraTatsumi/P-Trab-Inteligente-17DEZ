@@ -944,7 +944,7 @@ const DiariaForm = () => {
                                                             
                                                             {/* Diárias Section (Multi-line breakdown) */}
                                                             <div className="grid grid-cols-3 gap-4 text-xs">
-                                                                <p className="font-medium text-muted-foreground col-span-1">&lt;Localidade Pagamento Diária&gt;</p>
+                                                                <p className="font-medium text-muted-foreground col-span-1">{item.destinoLabel}</p>
                                                                 <div className="space-y-1 w-full col-span-2">
                                                                     {rankCalculationElements}
                                                                 </div>
