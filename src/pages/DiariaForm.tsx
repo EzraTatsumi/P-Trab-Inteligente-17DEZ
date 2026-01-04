@@ -532,7 +532,7 @@ const DiariaForm = () => {
                                     {/* Dados da Viagem (Card) */}
                                     <Card className="mt-6">
                                         <CardHeader className="py-3">
-                                            <CardTitle className="text-base font-semibold">Dados da Viagem (item obrigatório)</CardTitle>
+                                            <CardTitle className="text-base font-semibold">Dados da Viagem</CardTitle>
                                         </CardHeader>
                                         <CardContent className="pt-4">
                                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
