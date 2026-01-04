@@ -448,7 +448,7 @@ const DiariaForm = () => {
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    1. Dados da Organização (Destino do Recurso)
+                                    1. Dados da Organização
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
