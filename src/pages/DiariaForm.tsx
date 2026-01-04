@@ -612,7 +612,7 @@ const DiariaForm = () => {
                                             </p>
                                         </CardHeader>
                                         <CardContent className="p-4 pt-2">
-                                            <div className="rounded-lg border">
+                                            <div className="rounded-lg border overflow-hidden">
                                                 <Table>
                                                     <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                                         <TableRow className="bg-muted hover:bg-muted">
