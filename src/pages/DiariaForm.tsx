@@ -458,7 +458,7 @@ const DiariaForm = () => {
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    1. Dados da Organização e Atividade
+                                    1. Dados da Organização
                                 </h3>
                                 
                                 {/* PRIMEIRA LINHA (4 COLUNAS) */}
