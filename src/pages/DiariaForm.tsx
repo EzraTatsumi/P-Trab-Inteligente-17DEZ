@@ -838,7 +838,7 @@ const DiariaForm = () => {
                                                     className="w-full md:w-auto"
                                                 >
                                                     <Plus className="mr-2 h-4 w-4" />
-                                                    Adicionar Item à Lista
+                                                    Salvar Itens da Categoria
                                                 </Button>
                                             )}
                                         </div>
