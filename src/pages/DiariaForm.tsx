@@ -921,17 +921,17 @@ const DiariaForm = () => {
                                                         <div className="space-y-2 pt-1">
                                                             
                                                             {/* Taxa de Embarque Row */}
-                                                            <div className="grid grid-cols-2 gap-4 text-xs">
-                                                                <p className="font-medium text-muted-foreground">Taxa de Embarque:</p>
-                                                                <p className="font-medium text-muted-foreground text-right">
+                                                            <div className="grid grid-cols-3 gap-4 text-xs">
+                                                                <p className="font-medium text-muted-foreground col-span-1">Taxa de Embarque:</p>
+                                                                <p className="font-medium text-muted-foreground text-right col-span-2">
                                                                     {item.is_aereo ? `${item.nr_viagens} x ${item.totalMilitares} x ${taxaEmbarqueUnitarioDisplay}` : 'Não Aéreo'}
                                                                 </p>
                                                             </div>
                                                             
                                                             {/* Diárias Section (Multi-line breakdown) */}
-                                                            <div className="grid grid-cols-2 gap-4 text-xs">
-                                                                <p className="font-medium text-muted-foreground">Diárias:</p>
-                                                                <div className="space-y-1 w-full">
+                                                            <div className="grid grid-cols-3 gap-4 text-xs">
+                                                                <p className="font-medium text-muted-foreground col-span-1">Diárias:</p>
+                                                                <div className="space-y-1 w-full col-span-2">
                                                                     {rankCalculationElements}
                                                                 </div>
                                                             </div>
