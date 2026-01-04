@@ -358,7 +358,6 @@ const DiariaForm = () => {
     };
     
     const handleRankQuantityChange = (rankKey: string, value: string) => {
-        // Se o valor for vazio, trata como 0
         const qty = parseInt(value) || 0;
         setFormData(prev => ({
             ...prev,
@@ -389,19 +388,17 @@ const DiariaForm = () => {
     const isSaving = mutation.isPending;
     
     // Condição para exibir as seções 2 e 3 (Formulário de Item e Botões de Ação)
-    // Agora inclui todos os campos obrigatórios da Seção 1
     const isFormReady = formData.organizacao.length > 0 && 
                         formData.ug.length > 0 && 
                         formData.dias_operacao > 0 &&
                         formData.fase_atividade.length > 0 &&
-                        formData.local_atividade.length > 0 &&
-                        formData.nr_viagens > 0; // Adicionado nr_viagens
+                        formData.local_atividade.length > 0;
     
     // Mapeamento de destino para rótulo
-    const destinoOptions = [
-        { value: 'bsb_capitais_especiais', label: 'Deslocamento para BSB/MAO/RJ/SP' },
+    const destinoOptions: { value: DestinoDiaria, label: string }[] = [
+        { value: 'bsb_capitais_especiais', label: 'BSB/MAO/RJ/SP' },
         { value: 'demais_capitais', label: 'Demais Capitais' },
-        { value: 'demais_dslc', label: 'Demais deslocamentos' },
+        { value: 'demais_dslc', label: 'Demais Dslc' },
     ];
     
     // Função para obter o valor unitário da diária (para exibição na tabela)
@@ -459,12 +456,10 @@ const DiariaForm = () => {
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    1. Dados da Organização e Atividade
+                                    1. Dados da Organização (Destino do Recurso)
                                 </h3>
-                                
-                                {/* PRIMEIRA LINHA (4 COLUNAS) */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    <div className="space-y-2 col-span-1">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
                                         <Label htmlFor="organizacao">OM de Destino do Recurso *</Label>
                                         <OmSelector
                                             selectedOmId={selectedOmId}
@@ -475,7 +470,7 @@ const DiariaForm = () => {
                                             initialOmUg={formData.ug}
                                         />
                                     </div>
-                                    <div className="space-y-2 col-span-1">
+                                    <div className="space-y-2">
                                         <Label htmlFor="ug">UG de Destino</Label>
                                         <Input
                                             id="ug"
@@ -484,43 +479,47 @@ const DiariaForm = () => {
                                             className="bg-muted/50"
                                         />
                                     </div>
-                                    <div className="space-y-2 col-span-1">
+                                    
+                                    {/* Fase da Atividade movida para a Seção 1 */}
+                                    <div className="space-y-2 col-span-2">
+                                        <Label htmlFor="fase_atividade">Fase da Atividade *</Label>
+                                        <FaseAtividadeSelect
+                                            value={formData.fase_atividade}
+                                            onChange={handleFaseAtividadeChange}
+                                            disabled={!isPTrabEditable || isSaving}
+                                        />
+                                    </div>
+                                </div>
+                                
+                                {/* Campos de Dias e Local da Atividade (Movidos para a Seção 1 para completar o isFormReady) */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
+                                    <div className="space-y-2">
                                         <Label htmlFor="dias_operacao">Nr Dias da Viagem *</Label>
                                         <Input
                                             id="dias_operacao"
                                             type="number"
                                             min={1}
-                                            // CORREÇÃO AQUI: Exibir string vazia se o valor for 0
-                                            value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
+                                            value={formData.dias_operacao}
                                             onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
                                             required
                                             disabled={!isPTrabEditable || isSaving}
                                             onKeyDown={handleEnterToNextField}
-                                            onWheel={(e) => e.currentTarget.blur()}
-                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
-                                    <div className="space-y-2 col-span-1">
+                                    <div className="space-y-2">
                                         <Label htmlFor="nr_viagens">Nr Viagens *</Label>
                                         <Input
                                             id="nr_viagens"
                                             type="number"
                                             min={1}
-                                            // CORREÇÃO AQUI: Exibir string vazia se o valor for 0
-                                            value={formData.nr_viagens === 0 ? "" : formData.nr_viagens}
+                                            value={formData.nr_viagens}
                                             onChange={(e) => setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 })}
                                             required
                                             disabled={!isPTrabEditable || isSaving}
                                             onKeyDown={handleEnterToNextField}
-                                            onWheel={(e) => e.currentTarget.blur()}
-                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
-                                </div>
-                                
-                                {/* SEGUNDA LINHA (2 COLUNAS) */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 col-span-2">
                                         <Label htmlFor="local_atividade">Local da Atividade (Cidade/Estado) *</Label>
                                         <Input
                                             id="local_atividade"
@@ -530,14 +529,6 @@ const DiariaForm = () => {
                                             required
                                             disabled={!isPTrabEditable || isSaving}
                                             onKeyDown={handleEnterToNextField}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="fase_atividade">Fase da Atividade *</Label>
-                                        <FaseAtividadeSelect
-                                            value={formData.fase_atividade}
-                                            onChange={handleFaseAtividadeChange}
-                                            disabled={!isPTrabEditable || isSaving}
                                         />
                                     </div>
                                 </div>
@@ -550,28 +541,33 @@ const DiariaForm = () => {
                                         2. Configurar Pagamento de Diárias
                                     </h3>
                                     
-                                    {/* NOVO: Tabs para seleção de Destino */}
-                                    <Tabs 
-                                        value={formData.destino} 
-                                        onValueChange={(value) => setFormData({ ...formData, destino: value as DestinoDiaria })}
-                                        className="w-full"
-                                    >
-                                        <TabsList className="grid w-full grid-cols-3">
-                                            {destinoOptions.map(opt => (
-                                                <TabsTrigger key={opt.value} value={opt.value} disabled={!isPTrabEditable || isSaving}>
-                                                    {opt.label}
-                                                </TabsTrigger>
-                                            ))}
-                                        </TabsList>
-                                    </Tabs>
+                                    {/* Linha de Dados Principais (Destino) - Substituído por Tabs */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="destino">Local para fins Pgto *</Label>
+                                        <Tabs 
+                                            value={formData.destino} 
+                                            onValueChange={(value) => setFormData({ ...formData, destino: value as DestinoDiaria })}
+                                            className="w-full"
+                                        >
+                                            <TabsList className="grid w-full grid-cols-3">
+                                                {destinoOptions.map(opt => (
+                                                    <TabsTrigger 
+                                                        key={opt.value} 
+                                                        value={opt.value}
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                    >
+                                                        {opt.label}
+                                                    </TabsTrigger>
+                                                ))}
+                                            </TabsList>
+                                        </Tabs>
+                                    </div>
                                     
-                                    {/* Tabela de Posto/Graduação e Quantidade (Estilizada como Card) */}
-                                    <Card className="mt-6">
-                                        <CardHeader className="py-3">
-                                            <CardTitle className="text-base font-semibold">Efetivo por Posto/Graduação</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="p-0">
-                                            <Table>
+                                    {/* Tabela de Posto/Graduação e Quantidade - Aplicando estilo bg-muted/50 */}
+                                    <div className="mt-6 space-y-4 p-4 bg-muted/50 rounded-lg">
+                                        <h4 className="font-semibold">Efetivo por Posto/Graduação</h4>
+                                        <div className="max-h-[400px] overflow-y-auto rounded-md border bg-card">
+                                            <Table className="w-full">
                                                 <TableHeader>
                                                     <TableRow>
                                                         <TableHead className="w-[40%]">Posto/Graduação</TableHead>
@@ -594,13 +590,11 @@ const DiariaForm = () => {
                                                                     <Input
                                                                         type="number"
                                                                         min={0}
-                                                                        // CORREÇÃO AQUI: Exibir string vazia se o valor for 0
                                                                         value={qty === 0 ? "" : qty}
                                                                         onChange={(e) => handleRankQuantityChange(rank.key, e.target.value)}
                                                                         disabled={!isPTrabEditable || isSaving}
-                                                                        className="text-center max-w-[80px] mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                        className="text-center max-w-[80px] mx-auto"
                                                                         onKeyDown={handleEnterToNextField}
-                                                                        onWheel={(e) => e.currentTarget.blur()}
                                                                     />
                                                                 </TableCell>
                                                                 <TableCell className="text-right font-semibold">
@@ -623,12 +617,12 @@ const DiariaForm = () => {
                                                     </TableRow>
                                                 </TableBody>
                                             </Table>
-                                        </CardContent>
-                                    </Card>
-                                    
-                                    <p className="text-xs text-muted-foreground mt-2">
-                                        * Valores unitários baseados na Diretriz Operacional ({diretrizesOp?.ano_referencia || anoReferencia}). Taxa de Embarque: {formatCurrency(taxaEmbarqueUnitario)}. Referência Legal: {referenciaLegal}.
-                                    </p>
+                                        </div>
+                                        
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                            * Valores unitários baseados na Diretriz Operacional ({diretrizesOp?.ano_referencia || anoReferencia}). Taxa de Embarque: {formatCurrency(taxaEmbarqueUnitario)}. Referência Legal: {referenciaLegal}.
+                                        </p>
+                                    </div>
                                 </section>
                             )}
 
