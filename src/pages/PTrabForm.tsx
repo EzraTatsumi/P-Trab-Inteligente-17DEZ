@@ -166,7 +166,7 @@ const PTrabForm = () => {
     saveCreditsMutation.mutate({ gnd3, gnd4 });
   };
   
-  const handleItemClick = (itemId: string, type: string) => {
+  const handleItemClick = (itemId: string, itemName: string, type: string) => {
     if (ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado') {
       toast.warning("Este P Trab está completo ou arquivado e não pode ser editado.");
       return;
@@ -176,20 +176,23 @@ const PTrabForm = () => {
       navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-ii') {
       navigate(`/ptrab/classe-ii?ptrabId=${ptrabId}`);
+    } else if (itemId === 'classe-iii') {
+      navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-v') {
       navigate(`/ptrab/classe-v?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-vi') {
       navigate(`/ptrab/classe-vi?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-vii') {
       navigate(`/ptrab/classe-vii?ptrabId=${ptrabId}`);
-    } else if (itemId === 'classe-viii') { // Rota para Classe VIII
+    } else if (itemId === 'classe-viii') {
       navigate(`/ptrab/classe-viii?ptrabId=${ptrabId}`);
-    } else if (itemId === 'classe-ix') { // Rota para Classe IX
+    } else if (itemId === 'classe-ix') {
       navigate(`/ptrab/classe-ix?ptrabId=${ptrabId}`);
-    } else if (itemId === 'classe-iii') {
-      navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
+    } else if (itemId === 'diaria') {
+      navigate(`/ptrab/diaria?ptrabId=${ptrabId}`);
     } else {
-      console.log(`Selecionado: ${itemId} do tipo ${type}`);
+      // Trata itens operacionais não implementados
+      toast.info(`Funcionalidade '${itemName}' (Operacional) ainda não implementada.`);
     }
   };
 
@@ -313,7 +316,7 @@ const PTrabForm = () => {
                           key={classe.id}
                           variant="outline"
                           className="h-auto py-4 px-6 justify-start text-left hover:bg-primary/10 hover:border-primary transition-all"
-                          onClick={() => handleItemClick(classe.id, "logistica")}
+                          onClick={() => handleItemClick(classe.id, classe.name, "logistica")}
                           disabled={ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado'}
                         >
                           <div>
@@ -337,7 +340,7 @@ const PTrabForm = () => {
                           key={item.id}
                           variant="outline"
                           className="h-auto py-4 px-6 justify-start text-left hover:bg-primary/10 hover:border-primary transition-all"
-                          onClick={() => handleItemClick(item.id, "operacional")}
+                          onClick={() => handleItemClick(item.id, item.name, "operacional")}
                           disabled={ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado'}
                         >
                           <div className="font-semibold">{item.name}</div>
