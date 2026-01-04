@@ -45,7 +45,8 @@ export const LocalAtividadeSelect: React.FC<LocalAtividadeSelectProps> = ({
 
     // Para Capitais Especiais e Demais Capitais, usamos um Combobox
     const cities = currentDestino?.cities || [];
-    const placeholderText = `Selecione a cidade (${currentDestino?.label})`;
+    // Alterando o placeholder para ser fixo
+    const placeholderText = "Selecione a Cidade";
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -72,7 +73,7 @@ export const LocalAtividadeSelect: React.FC<LocalAtividadeSelectProps> = ({
                 <Command>
                     <CommandInput placeholder="Buscar cidade..." />
                     <CommandEmpty>Nenhuma cidade encontrada.</CommandEmpty>
-                    <CommandGroup>
+                    <CommandGroup className="max-h-[200px] overflow-y-auto">
                         {cities.map((city) => (
                             <CommandItem
                                 key={city}
