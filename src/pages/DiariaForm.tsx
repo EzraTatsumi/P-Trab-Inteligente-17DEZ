@@ -398,9 +398,9 @@ const DiariaForm = () => {
     
     // Mapeamento de destino para rótulo
     const destinoOptions = [
-        { value: 'bsb_capitais_especiais', label: 'Dslc BSB/MAO/RJ/SP' },
-        { value: 'demais_capitais', label: 'Dslc demais capitais' },
-        { value: 'demais_dslc', label: 'Demais Dslc' },
+        { value: 'bsb_capitais_especiais', label: 'Deslocamento para BSB/MAO/RJ/SP' },
+        { value: 'demais_capitais', label: 'Demais Capitais' },
+        { value: 'demais_dslc', label: 'Demais deslocamentos' },
     ];
     
     // Função para obter o valor unitário da diária (para exibição na tabela)
@@ -458,7 +458,7 @@ const DiariaForm = () => {
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    1. Dados da Organização
+                                    1. Dados da Organização e Atividade
                                 </h3>
                                 
                                 {/* PRIMEIRA LINHA (4 COLUNAS) */}
@@ -552,7 +552,7 @@ const DiariaForm = () => {
                                     {/* Linha de Dados Principais (Destino) */}
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         <div className="space-y-2 col-span-4">
-                                            <Label htmlFor="destino">Local para fins de Cálculo de Pagamento *</Label>
+                                            <Label htmlFor="destino">Local para fins Pgto *</Label>
                                             <Select
                                                 value={formData.destino}
                                                 onValueChange={(value) => setFormData({ ...formData, destino: value as DestinoDiaria })}
