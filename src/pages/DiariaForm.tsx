@@ -936,7 +936,7 @@ const DiariaForm = () => {
                                                             
                                                             {/* Taxa de Embarque Row */}
                                                             <div className="grid grid-cols-3 gap-4 text-xs">
-                                                                <p className="font-medium text-muted-foreground col-span-1">Taxa de Embarque:</p>
+                                                                <p className="font-medium text-muted-foreground col-span-1"></p>
                                                                 <p className="font-medium text-muted-foreground text-right col-span-2">
                                                                     {taxaEmbarqueCalculation}
                                                                 </p>
@@ -944,7 +944,7 @@ const DiariaForm = () => {
                                                             
                                                             {/* Diárias Section (Multi-line breakdown) */}
                                                             <div className="grid grid-cols-3 gap-4 text-xs">
-                                                                <p className="font-medium text-muted-foreground col-span-1">Categoria da Localidade para Pagamento de Diária:</p>
+                                                                <p className="font-medium text-muted-foreground col-span-1">&lt;Localidade Pagamento Diária&gt;</p>
                                                                 <div className="space-y-1 w-full col-span-2">
                                                                     {rankCalculationElements}
                                                                 </div>
