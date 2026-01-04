@@ -529,170 +529,173 @@ const DiariaForm = () => {
                                         </Tabs>
                                     </div>
                                     
-                                    {/* Dados da Viagem (Card) */}
-                                    <Card className="mt-6 bg-muted/50 rounded-lg">
-                                        <CardHeader className="py-3">
-                                            <CardTitle className="text-base font-semibold">Dados da Viagem</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="pt-2">
-                                            <div className="p-4 bg-background rounded-lg border">
-                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                                    <div className="space-y-2 col-span-1">
-                                                        <Label htmlFor="dias_operacao">Nr Dias da Viagem *</Label>
-                                                        <Input
-                                                            id="dias_operacao"
-                                                            type="number"
-                                                            min={1}
-                                                            value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
-                                                            onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
-                                                            required
-                                                            disabled={!isPTrabEditable || isSaving}
-                                                            onKeyDown={handleEnterToNextField}
-                                                            onWheel={(e) => e.currentTarget.blur()}
-                                                            className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2 col-span-1">
-                                                        <Label htmlFor="nr_viagens">Nr Viagens *</Label>
-                                                        <Input
-                                                            id="nr_viagens"
-                                                            type="number"
-                                                            min={1}
-                                                            value={formData.nr_viagens === 0 ? "" : formData.nr_viagens}
-                                                            onChange={(e) => setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 })}
-                                                            required
-                                                            disabled={!isPTrabEditable || isSaving}
-                                                            onKeyDown={handleEnterToNextField}
-                                                            onWheel={(e) => e.currentTarget.blur()}
-                                                            className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                        />
-                                                    </div>
-                                                    <div className="col-span-2 grid grid-cols-2 gap-4">
+                                    {/* NÍVEL III: Card com fundo cinza para agrupar a configuração */}
+                                    <Card className="mt-6 bg-muted/50 rounded-lg p-4">
+                                        
+                                        {/* Dados da Viagem (Card) - NÍVEL IV */}
+                                        <Card className="rounded-lg">
+                                            <CardHeader className="py-3">
+                                                <CardTitle className="text-base font-semibold">Dados da Viagem</CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="pt-2">
+                                                <div className="p-4 bg-background rounded-lg border">
+                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                                         <div className="space-y-2 col-span-1">
-                                                            <Label htmlFor="local_atividade">Local da Atividade *</Label>
+                                                            <Label htmlFor="dias_operacao">Nr Dias da Viagem *</Label>
                                                             <Input
-                                                                id="local_atividade"
-                                                                value={formData.local_atividade}
-                                                                onChange={(e) => setFormData({ ...formData, local_atividade: e.target.value })}
-                                                                placeholder="Ex: Belém/PA"
+                                                                id="dias_operacao"
+                                                                type="number"
+                                                                min={1}
+                                                                value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
+                                                                onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
+                                                                onWheel={(e) => e.currentTarget.blur()}
+                                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                             />
                                                         </div>
-                                                        {/* NOVO CAMPO: Deslocamento Aéreo */}
-                                                        <div className="flex flex-col col-span-1">
-                                                            <Label htmlFor="is_aereo" className="text-sm font-medium mb-2">
-                                                                Deslocamento Aéreo?
-                                                            </Label>
-                                                            <div className="flex items-center space-x-2 h-10 mt-auto">
-                                                                <Switch
-                                                                    id="is_aereo"
-                                                                    checked={formData.is_aereo}
-                                                                    onCheckedChange={(checked) => setFormData({ ...formData, is_aereo: checked })}
+                                                        <div className="space-y-2 col-span-1">
+                                                            <Label htmlFor="nr_viagens">Nr Viagens *</Label>
+                                                            <Input
+                                                                id="nr_viagens"
+                                                                type="number"
+                                                                min={1}
+                                                                value={formData.nr_viagens === 0 ? "" : formData.nr_viagens}
+                                                                onChange={(e) => setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 })}
+                                                                required
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                                onKeyDown={handleEnterToNextField}
+                                                                onWheel={(e) => e.currentTarget.blur()}
+                                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                            />
+                                                        </div>
+                                                        <div className="col-span-2 grid grid-cols-2 gap-4">
+                                                            <div className="space-y-2 col-span-1">
+                                                                <Label htmlFor="local_atividade">Local da Atividade *</Label>
+                                                                <Input
+                                                                    id="local_atividade"
+                                                                    value={formData.local_atividade}
+                                                                    onChange={(e) => setFormData({ ...formData, local_atividade: e.target.value })}
+                                                                    placeholder="Ex: Belém/PA"
+                                                                    required
                                                                     disabled={!isPTrabEditable || isSaving}
+                                                                    onKeyDown={handleEnterToNextField}
                                                                 />
-                                                                <span className="text-sm text-muted-foreground">
-                                                                    {formData.is_aereo ? "Sim (Inclui Taxa de Embarque)" : "Não (Terrestre/Fluvial)"}
-                                                                </span>
+                                                            </div>
+                                                            {/* NOVO CAMPO: Deslocamento Aéreo */}
+                                                            <div className="flex flex-col col-span-1">
+                                                                <Label htmlFor="is_aereo" className="text-sm font-medium mb-2">
+                                                                    Deslocamento Aéreo?
+                                                                </Label>
+                                                                <div className="flex items-center space-x-2 h-10 mt-auto">
+                                                                    <Switch
+                                                                        id="is_aereo"
+                                                                        checked={formData.is_aereo}
+                                                                        onCheckedChange={(checked) => setFormData({ ...formData, is_aereo: checked })}
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    />
+                                                                    <span className="text-sm text-muted-foreground">
+                                                                        {formData.is_aereo ? "Sim (Inclui Taxa de Embarque)" : "Não (Terrestre/Fluvial)"}
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
+                                            </CardContent>
+                                        </Card>
+                                        
+                                        {/* Tabela de Posto/Graduação e Quantidade (Estilizada como Card) - NÍVEL IV */}
+                                        <Card className="mt-4 rounded-lg">
+                                            <CardHeader className="py-2">
+                                                <CardTitle className="text-base font-semibold">Efetivo por Posto/Graduação</CardTitle>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Referência Legal: {referenciaLegal}.
+                                                </p>
+                                            </CardHeader>
+                                            <CardContent className="p-3 pt-1">
+                                                <div className="rounded-lg border overflow-hidden">
+                                                    <Table>
+                                                        <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                                                            <TableRow className="bg-muted hover:bg-muted">
+                                                                <TableHead className="w-[30%]">Posto/Graduação</TableHead>
+                                                                <TableHead className="w-[15%] text-center">Valor Unitário</TableHead>
+                                                                <TableHead className="w-[20%] text-center">Taxa de Embarque</TableHead>
+                                                                <TableHead className="w-[15%] text-center">Efetivo</TableHead>
+                                                                <TableHead className="w-[20%] text-right">Custo Diária (R$)</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {DIARIA_RANKS_CONFIG.map((rank) => {
+                                                                const qty = formData.quantidades_por_posto[rank.key] || 0;
+                                                                const unitValue = getUnitValueDisplay(rank.key, formData.destino);
+                                                                const calculatedCost = calculos.calculosPorPosto.find(c => c.posto === rank.label)?.custoTotal || 0;
+                                                                
+                                                                // Valor da Taxa de Embarque para esta linha
+                                                                const taxaEmbarqueDisplay = formData.is_aereo 
+                                                                    ? formatCurrency(taxaEmbarqueUnitario) 
+                                                                    : formatCurrency(0);
+                                                                
+                                                                return (
+                                                                    <TableRow key={rank.key}>
+                                                                        <TableCell className="font-medium">{rank.label}</TableCell>
+                                                                        <TableCell className="text-center text-sm text-muted-foreground">{unitValue}</TableCell>
+                                                                        <TableCell className="text-center text-sm text-muted-foreground">
+                                                                            {taxaEmbarqueDisplay}
+                                                                        </TableCell>
+                                                                        <TableCell className="text-center">
+                                                                            <Input
+                                                                                type="number"
+                                                                                min={0}
+                                                                                // CORREÇÃO AQUI: Exibir string vazia se o valor for 0
+                                                                                value={qty === 0 ? "" : qty}
+                                                                                onChange={(e) => handleRankQuantityChange(rank.key, e.target.value)}
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                                className="text-center max-w-[80px] mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                onKeyDown={handleEnterToNextField}
+                                                                                onWheel={(e) => e.currentTarget.blur()}
+                                                                            />
+                                                                        </TableCell>
+                                                                        <TableCell className="text-right font-semibold">
+                                                                            {formatCurrency(calculatedCost)}
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                );
+                                                            })}
+                                                        </TableBody>
+                                                    </Table>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                        
+                                        {/* NOVO BLOCO DE RESUMO DE TOTAIS (NÍVEL IV) */}
+                                        <div className="space-y-2 mt-4 p-3 bg-background rounded-lg border">
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-bold text-base">TOTAL GERAL</span>
+                                                <span className="font-extrabold text-xl text-primary">
+                                                    {formatCurrency(calculos.totalGeral)}
+                                                </span>
                                             </div>
-                                        </CardContent>
-                                    </Card>
-                                    
-                                    {/* Tabela de Posto/Graduação e Quantidade (Estilizada como Card) */}
-                                    <Card className="mt-6 bg-muted/50 rounded-lg">
-                                        <CardHeader className="py-2">
-                                            <CardTitle className="text-base font-semibold">Efetivo por Posto/Graduação</CardTitle>
-                                            <p className="text-xs text-muted-foreground">
-                                                Referência Legal: {referenciaLegal}.
-                                            </p>
-                                        </CardHeader>
-                                        <CardContent className="p-3 pt-1">
-                                            <div className="rounded-lg border overflow-hidden">
-                                                <Table>
-                                                    <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
-                                                        <TableRow className="bg-muted hover:bg-muted">
-                                                            <TableHead className="w-[30%]">Posto/Graduação</TableHead>
-                                                            <TableHead className="w-[15%] text-center">Valor Unitário</TableHead>
-                                                            <TableHead className="w-[20%] text-center">Taxa de Embarque</TableHead>
-                                                            <TableHead className="w-[15%] text-center">Efetivo</TableHead>
-                                                            <TableHead className="w-[20%] text-right">Custo Diária (R$)</TableHead>
-                                                        </TableRow>
-                                                    </TableHeader>
-                                                    <TableBody>
-                                                        {DIARIA_RANKS_CONFIG.map((rank) => {
-                                                            const qty = formData.quantidades_por_posto[rank.key] || 0;
-                                                            const unitValue = getUnitValueDisplay(rank.key, formData.destino);
-                                                            const calculatedCost = calculos.calculosPorPosto.find(c => c.posto === rank.label)?.custoTotal || 0;
-                                                            
-                                                            // Valor da Taxa de Embarque para esta linha
-                                                            const taxaEmbarqueDisplay = formData.is_aereo 
-                                                                ? formatCurrency(taxaEmbarqueUnitario) 
-                                                                : formatCurrency(0);
-                                                            
-                                                            return (
-                                                                <TableRow key={rank.key}>
-                                                                    <TableCell className="font-medium">{rank.label}</TableCell>
-                                                                    <TableCell className="text-center text-sm text-muted-foreground">{unitValue}</TableCell>
-                                                                    <TableCell className="text-center text-sm text-muted-foreground">
-                                                                        {taxaEmbarqueDisplay}
-                                                                    </TableCell>
-                                                                    <TableCell className="text-center">
-                                                                        <Input
-                                                                            type="number"
-                                                                            min={0}
-                                                                            // CORREÇÃO AQUI: Exibir string vazia se o valor for 0
-                                                                            value={qty === 0 ? "" : qty}
-                                                                            onChange={(e) => handleRankQuantityChange(rank.key, e.target.value)}
-                                                                            disabled={!isPTrabEditable || isSaving}
-                                                                            className="text-center max-w-[80px] mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                            onKeyDown={handleEnterToNextField}
-                                                                            onWheel={(e) => e.currentTarget.blur()}
-                                                                        />
-                                                                    </TableCell>
-                                                                    <TableCell className="text-right font-semibold">
-                                                                        {formatCurrency(calculatedCost)}
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            );
-                                                        })}
-                                                    </TableBody>
-                                                </Table>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                    
-                                    {/* NOVO BLOCO DE RESUMO DE TOTAIS */}
-                                    <div className="space-y-2 mt-4">
-                                        {/* REMOVIDO: Total Diária (sem Taxa) */}
-                                        {/* REMOVIDO: Total Taxa de Embarque */}
-                                        <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
-                                            <span className="font-bold text-base">TOTAL GERAL</span>
-                                            <span className="font-extrabold text-xl text-primary">
-                                                {formatCurrency(calculos.totalGeral)}
-                                            </span>
                                         </div>
-                                    </div>
-                                    
-                                    {/* BOTÕES DE AÇÃO (Apenas Salvar Itens da Categoria e Limpar) */}
-                                    <div className="flex justify-end gap-3 pt-4">
-                                        <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Limpar Formulário
-                                        </Button>
-                                        <Button 
-                                            type="submit" 
-                                            disabled={!isPTrabEditable || isSaving || calculos.totalMilitares === 0 || !isSubmissionReady}
-                                            className="w-full md:w-auto"
-                                        >
-                                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                            {editingId ? "Atualizar Registro" : "Salvar Itens da Categoria"}
-                                        </Button>
-                                    </div>
+                                        
+                                        {/* BOTÕES DE AÇÃO (Apenas Salvar Itens da Categoria e Limpar) */}
+                                        <div className="flex justify-end gap-3 pt-4">
+                                            <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Limpar Formulário
+                                            </Button>
+                                            <Button 
+                                                type="submit" 
+                                                disabled={!isPTrabEditable || isSaving || calculos.totalMilitares === 0 || !isSubmissionReady}
+                                                className="w-full md:w-auto"
+                                            >
+                                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                {editingId ? "Atualizar Registro" : "Salvar Itens da Categoria"}
+                                            </Button>
+                                        </div>
+                                        
+                                    </Card> {/* FIM NÍVEL III */}
                                     
                                 </section>
                             )}
