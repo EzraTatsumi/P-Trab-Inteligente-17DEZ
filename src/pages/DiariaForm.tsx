@@ -960,6 +960,9 @@ const DiariaForm = () => {
                                                                 </p>
                                                             </div>
                                                             
+                                                            {/* Separador Tracejado */}
+                                                            <div className="w-full border-t border-dashed border-secondary/50 my-2" />
+
                                                             {/* Diárias Section (Multi-line breakdown) */}
                                                             <div className="grid grid-cols-3 gap-4 text-xs">
                                                                 {/* CORRIGIDO: item.destinoLabel agora é garantido */}
