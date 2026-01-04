@@ -927,6 +927,9 @@ const DiariaForm = () => {
                                                 ? `${item.totalMilitares} ${militarText} x ${taxaEmbarqueUnitarioDisplay} x ${item.nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}`
                                                 : 'Não Aéreo';
 
+                                            // Cálculo da Diária Base (Total Geral - Taxa de Embarque)
+                                            const totalDiariaBase = item.valor_total - item.valor_taxa_embarque;
+
                                             return (
                                                 <Card 
                                                     key={item.tempId} 
@@ -971,13 +974,13 @@ const DiariaForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Destino Recurso:</p>
-                                                                <p className="font-medium">ND 33.90.30 (Outros):</p>
-                                                                <p className="font-medium">ND 33.90.15 (Diárias + Taxa):</p>
+                                                                <p className="font-medium">Taxa de Embarque (ND 33.90.15):</p>
+                                                                <p className="font-medium">Diárias (ND 33.90.15):</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
-                                                                <p className="font-medium text-green-600">{formatCurrency(item.valor_nd_30)}</p>
-                                                                <p className="font-medium text-blue-600">{formatCurrency(item.valor_nd_15)}</p>
+                                                                <p className="font-medium text-green-600">{formatCurrency(item.valor_taxa_embarque)}</p>
+                                                                <p className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</p>
                                                             </div>
                                                         </div>
                                                     </CardContent>
