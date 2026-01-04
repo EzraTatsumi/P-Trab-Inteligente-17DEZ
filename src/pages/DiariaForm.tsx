@@ -825,7 +825,7 @@ const DiariaForm = () => {
                                                     disabled={!isPTrabEditable || isSaving || !isCalculationReady}
                                                     className="w-full md:w-auto"
                                                 >
-                                                    Adicionar Itens da Categoria
+                                                    Salvar Itens da Categoria
                                                 </Button>
                                             )}
                                         </div>
@@ -843,43 +843,60 @@ const DiariaForm = () => {
                                     </h3>
                                     
                                     <div className="space-y-4">
-                                        {pendingDiarias.map((item) => (
-                                            <Card 
-                                                key={item.tempId} 
-                                                className="border-2 border-secondary bg-secondary/10 shadow-md"
-                                            >
-                                                <CardContent className="p-4">
-                                                    <div className="flex justify-between items-start border-b border-secondary/50 pb-2 mb-2">
-                                                        <div className="space-y-1">
-                                                            <h4 className="font-bold text-base text-primary">
-                                                                Diárias ({item.totalMilitares} Militares)
-                                                            </h4>
-                                                            <p className="text-sm text-muted-foreground">
-                                                                {item.local_atividade} ({item.destinoLabel})
-                                                            </p>
+                                        {pendingDiarias.map((item) => {
+                                            // Fórmulas de cálculo para display
+                                            const taxaEmbarqueFormula = item.is_aereo 
+                                                ? `${item.totalMilitares} Militares x ${item.nr_viagens} Viagens x ${formatCurrency(taxaEmbarqueUnitario)}`
+                                                : '0';
+                                            
+                                            // O valor total da diária (ND 39) é a soma dos custos por posto.
+                                            // A memória de cálculo completa é complexa, mas para o resumo, podemos mostrar o total.
+                                            // Para simplificar a visualização da fórmula, vamos mostrar o total de diárias (ND 39)
+                                            // dividido pelo número de viagens, para dar uma ideia do custo por viagem.
+                                            const totalDiariaPorViagem = item.valor_nd_39 / item.nr_viagens;
+                                            const diariaFormula = `${item.nr_viagens} Viagens x ${formatCurrency(totalDiariaPorViagem)} (Custo Diária por Viagem)`;
+
+                                            return (
+                                                <Card 
+                                                    key={item.tempId} 
+                                                    className="border-2 border-secondary bg-secondary/10 shadow-md"
+                                                >
+                                                    <CardContent className="p-4">
+                                                        <div className="flex justify-between items-start border-b border-secondary/50 pb-2 mb-2">
+                                                            <div className="space-y-1">
+                                                                <h4 className="font-bold text-base text-primary">
+                                                                    Diárias ({item.local_atividade})
+                                                                </h4>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="font-extrabold text-lg text-primary">
+                                                                    {formatCurrency(item.valor_total)}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <p className="font-extrabold text-lg text-primary">
-                                                                {formatCurrency(item.valor_total)}
-                                                            </p>
+                                                        
+                                                        <div className="grid grid-cols-2 gap-4 text-xs">
+                                                            <div className="space-y-1">
+                                                                <p className="font-medium">OM Destino Recurso:</p>
+                                                                <p className="font-medium">Taxa Embarque:</p>
+                                                                <p className="font-medium">Diárias:</p>
+                                                            </div>
+                                                            <div className="text-right space-y-1">
+                                                                <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
+                                                                <p className="font-medium text-green-600">
+                                                                    <span className="text-muted-foreground mr-2">{taxaEmbarqueFormula} =</span>
+                                                                    {formatCurrency(item.valor_nd_30)}
+                                                                </p>
+                                                                <p className="font-medium text-blue-600">
+                                                                    <span className="text-muted-foreground mr-2">{diariaFormula} =</span>
+                                                                    {formatCurrency(item.valor_nd_39)}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    
-                                                    <div className="grid grid-cols-2 gap-4 text-xs">
-                                                        <div className="space-y-1">
-                                                            <p className="font-medium">OM Destino Recurso:</p>
-                                                            <p className="font-medium">Taxa Embarque:</p>
-                                                            <p className="font-medium">Diárias:</p>
-                                                        </div>
-                                                        <div className="text-right space-y-1">
-                                                            <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
-                                                            <p className="font-medium text-green-600">{formatCurrency(item.valor_nd_30)}</p>
-                                                            <p className="font-medium text-blue-600">{formatCurrency(item.valor_nd_39)}</p>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
                                     </div>
                                     
                                     {/* VALOR TOTAL DA OM */}
@@ -894,16 +911,16 @@ const DiariaForm = () => {
                                     
                                     <div className="flex justify-end gap-3 pt-4">
                                         <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Limpar Itens
+                                            <X className="mr-2 h-4 w-4" />
+                                            Limpar Formulário
                                         </Button>
                                         <Button 
                                             type="button" 
                                             onClick={handleSavePendingDiarias}
                                             disabled={isSaving || pendingDiarias.length === 0}
-                                            className="w-full md:w-auto bg-green-600 hover:bg-green-700"
+                                            className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                         >
-                                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                             Salvar Registros
                                         </Button>
                                     </div>
