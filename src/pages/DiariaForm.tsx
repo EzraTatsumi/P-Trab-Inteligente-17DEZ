@@ -493,6 +493,8 @@ const DiariaForm = () => {
                                             required
                                             disabled={!isPTrabEditable || isSaving}
                                             onKeyDown={handleEnterToNextField}
+                                            onWheel={(e) => e.currentTarget.blur()}
+                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
                                     <div className="space-y-2 col-span-1">
@@ -506,6 +508,8 @@ const DiariaForm = () => {
                                             required
                                             disabled={!isPTrabEditable || isSaving}
                                             onKeyDown={handleEnterToNextField}
+                                            onWheel={(e) => e.currentTarget.blur()}
+                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
                                 </div>
@@ -594,8 +598,9 @@ const DiariaForm = () => {
                                                                     value={qty === 0 ? "" : qty}
                                                                     onChange={(e) => handleRankQuantityChange(rank.key, e.target.value)}
                                                                     disabled={!isPTrabEditable || isSaving}
-                                                                    className="text-center max-w-[80px] mx-auto"
+                                                                    className="text-center max-w-[80px] mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                     onKeyDown={handleEnterToNextField}
+                                                                    onWheel={(e) => e.currentTarget.blur()}
                                                                 />
                                                             </TableCell>
                                                             <TableCell className="text-right font-semibold">
