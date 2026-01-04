@@ -25,10 +25,10 @@ type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
 // Estrutura de dados para a tabela de diárias
 const DIARIA_RANKS_CONFIG = [
-  { key: 'of_gen', label: 'Of Gen', bsb: 600.00, capitais: 515.00, demais: 455.00 },
-  { key: 'of_sup', label: 'Of Sup', bsb: 510.00, capitais: 450.00, demais: 395.00 },
-  { key: 'of_int_sgt', label: 'Of Int/Sub/Asp Of/ST/Sgt', bsb: 425.00, capitais: 380.00, demais: 335.00 },
-  { key: 'demais_pracas', label: 'Demais Praças', bsb: 355.00, capitais: 315.00, demais: 280.00 },
+  { key: 'of_gen', label: 'Of Gen', fieldPrefix: 'diaria_of_gen' },
+  { key: 'of_sup', label: 'Of Sup', fieldPrefix: 'diaria_of_sup' },
+  { key: 'of_int_sgt', label: 'Of Int/Sub/Asp Of/ST/Sgt', fieldPrefix: 'diaria_of_int_sgt' },
+  { key: 'demais_pracas', label: 'Demais Praças', fieldPrefix: 'diaria_demais_pracas' },
 ];
 
 // Mapeamento de campos para rótulos e tipo de input (R$ ou Fator)
@@ -161,6 +161,7 @@ const CustosOperacionaisPage = () => {
       const uniqueYears = Array.from(new Set([...years, currentYear, defaultYearId || 0])).filter(y => y > 0).sort((a, b) => b - a);
       setAvailableYears(uniqueYears);
 
+      // Lógica de priorização: Ano Padrão > Ano Mais Recente > Ano Atual
       let yearToSelect = currentYear;
       
       if (defaultYearId && uniqueYears.includes(defaultYearId)) {
@@ -661,9 +662,7 @@ const CustosOperacionaisPage = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>
-              Configurações de Custos Operacionais
-            </CardTitle>
+            <CardTitle>Configurações de Custos Operacionais</CardTitle>
             <CardDescription>
               Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3).
             </CardDescription>

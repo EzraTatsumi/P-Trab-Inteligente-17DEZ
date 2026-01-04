@@ -73,50 +73,30 @@ export async function fetchPTrabRecords<T extends keyof Tables>(tableName: T, pt
 }
 
 /**
- * Busca as diretrizes operacionais (custos operacionais e diárias) para o ano de referência.
- * Prioriza o ano padrão do usuário, se não for encontrado, usa o ano da data de início do PTrab.
+ * Busca as diretrizes operacionais (custos operacionais e diárias) para o ano de referência fornecido.
+ * @param year O ano de referência para buscar a diretriz.
  */
-export async function fetchDiretrizesOperacionais(dateString: string | undefined): Promise<DiretrizOperacional> {
-    const year = dateString ? new Date(dateString).getFullYear() : new Date().getFullYear();
+export async function fetchDiretrizesOperacionais(year: number): Promise<DiretrizOperacional> {
+    if (!year) throw new Error("Ano de referência não fornecido.");
     
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
     
-    // 1. Tenta buscar o ano padrão do perfil
-    const { data: profileData } = await supabase
-        .from('profiles')
-        .select('default_diretriz_year')
-        .eq('id', user.id)
-        .maybeSingle();
-        
-    const defaultYear = profileData?.default_diretriz_year || year;
-    
-    // 2. Tenta buscar a diretriz para o ano padrão
-    let { data, error } = await supabase
+    // Busca a diretriz diretamente pelo ano e user_id
+    const { data, error } = await supabase
         .from('diretrizes_operacionais')
         .select('*')
         .eq('user_id', user.id)
-        .eq('ano_referencia', defaultYear)
+        .eq('ano_referencia', year)
         .maybeSingle();
         
-    if (error) console.error("Erro ao buscar diretriz operacional pelo ano padrão:", error);
-
-    // 3. Se não encontrou no ano padrão, tenta buscar no ano do PTrab (se for diferente)
-    if (!data && defaultYear !== year) {
-        const { data: fallbackData, error: fallbackError } = await supabase
-            .from('diretrizes_operacionais')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('ano_referencia', year)
-            .maybeSingle();
-            
-        if (fallbackError) console.error("Erro ao buscar diretriz operacional pelo ano do PTrab:", fallbackError);
-        data = fallbackData;
+    if (error) {
+        console.error("Erro ao buscar diretriz operacional:", error);
+        throw new Error(`Falha ao buscar diretrizes operacionais para o ano ${year}.`);
     }
     
     if (!data) {
-        // Se não encontrou nenhuma diretriz, retorna um objeto vazio ou com valores padrão
-        throw new Error(`Diretrizes Operacionais não encontradas para o ano ${defaultYear} ou ${year}. Por favor, cadastre-as em 'Configurações > Custos Operacionais'.`);
+        throw new Error(`Diretrizes Operacionais não encontradas para o ano ${year}. Por favor, cadastre-as em 'Configurações > Custos Operacionais'.`);
     }
     
     return data as DiretrizOperacional;

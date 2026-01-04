@@ -36,6 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import * as z from "zod";
+import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear"; // NOVO HOOK
 
 // Tipos de dados
 type DiariaRegistro = Tables<'diaria_registros'>;
@@ -101,10 +102,17 @@ const DiariaForm = () => {
         enabled: !!ptrabId,
     });
     
+    // NOVO: Busca o ano de referência padrão/mais recente
+    const { data: diretrizYearData, isLoading: isLoadingDiretrizYear } = useDefaultDiretrizYear();
+    const anoReferencia = diretrizYearData?.year;
+
+    // Busca as diretrizes operacionais usando o ano de referência
     const { data: diretrizesOp, isLoading: isLoadingDiretrizes } = useQuery<DiretrizOperacional>({
-        queryKey: ['diretrizesOperacionais', ptrabData?.periodo_inicio],
-        queryFn: () => fetchDiretrizesOperacionais(ptrabData?.periodo_inicio),
-        enabled: !!ptrabData?.periodo_inicio,
+        queryKey: ['diretrizesOperacionais', anoReferencia],
+        queryFn: () => fetchDiretrizesOperacionais(anoReferencia!),
+        enabled: !!anoReferencia,
+        // Se a busca falhar, o erro será capturado e exibido no formulário
+        retry: 1, 
     });
 
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<DiariaRegistro[]>({
@@ -128,7 +136,7 @@ const DiariaForm = () => {
                 totalGeral: 0,
                 totalMilitares: 0,
                 calculosPorPosto: [],
-                memoria: "Preencha todos os campos obrigatórios para gerar a memória de cálculo.",
+                memoria: "Preencha todos os campos obrigatórios e verifique se as Diretrizes Operacionais estão cadastradas para o ano de referência.",
             };
         }
         
@@ -147,13 +155,14 @@ const DiariaForm = () => {
                 memoria,
             };
         } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : "Erro desconhecido no cálculo.";
             return {
                 totalDiaria: 0,
                 totalTaxaEmbarque: 0,
                 totalGeral: 0,
                 totalMilitares: 0,
                 calculosPorPosto: [],
-                memoria: "Erro ao calcular: Verifique se as diretrizes operacionais e os dados do formulário estão completos.",
+                memoria: `Erro ao calcular: ${errorMessage}`,
             };
         }
     }, [formData, diretrizesOp, ptrabData]);
@@ -165,6 +174,7 @@ const DiariaForm = () => {
     const mutation = useMutation({
         mutationFn: async (data: TablesInsert<'diaria_registros'> | TablesUpdate<'diaria_registros'>) => {
             if (!ptrabId) throw new Error("ID do P Trab ausente.");
+            if (!diretrizesOp) throw new Error("Diretrizes Operacionais não carregadas.");
             
             const omDestino = oms?.find(om => om.nome_om === formData.organizacao);
             const omDetentora = oms?.find(om => om.nome_om === formData.om_detentora);
@@ -187,8 +197,6 @@ const DiariaForm = () => {
                 
                 // Alocação ND: Diárias são GND 3, mas o ND específico é 33.90.15.
                 // Alocamos o total da diária (sem taxa) em ND 39 (Serviço) e a taxa de embarque em ND 30 (Material)
-                // NOTA: A Taxa de Embarque é um custo de serviço (passagem), mas frequentemente alocada em 30.
-                // Para simplificar, alocaremos o total da diária em ND 39 e a taxa em ND 30.
                 valor_nd_30: calculos.totalTaxaEmbarque, // Taxa de Embarque
                 valor_nd_39: calculos.totalDiaria, // Diárias
                 
@@ -279,6 +287,12 @@ const DiariaForm = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (!diretrizesOp) {
+            toast.error("Diretrizes Operacionais não carregadas. Verifique as configurações.");
+            return;
+        }
+        
         try {
             // 1. Validação Zod
             diariaSchema.parse(formData);
@@ -359,7 +373,10 @@ const DiariaForm = () => {
     // RENDERIZAÇÃO
     // =================================================================
 
-    if (isLoadingPTrab || isLoadingRegistros || isLoadingOms || isLoadingDiretrizes) {
+    // Unificando o estado de carregamento
+    const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms || isLoadingDiretrizes || isLoadingDiretrizYear;
+
+    if (isGlobalLoading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -426,6 +443,15 @@ const DiariaForm = () => {
                         </CardTitle>
                         <CardDescription>
                             P Trab: <span className="font-medium">{ptrabData?.numero_ptrab} - {ptrabData?.nome_operacao}</span>
+                            {diretrizesOp ? (
+                                <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700">
+                                    Diretriz {diretrizesOp.ano_referencia} Carregada
+                                </Badge>
+                            ) : (
+                                <Badge variant="secondary" className="ml-2 bg-red-100 text-red-700">
+                                    Diretriz {anoReferencia} Ausente
+                                </Badge>
+                            )}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -634,7 +660,7 @@ const DiariaForm = () => {
                                     </Table>
                                     
                                     <p className="text-xs text-muted-foreground mt-2">
-                                        * Valores unitários baseados na Diretriz Operacional ({diretrizesOp?.ano_referencia || 'Ano Padrão'}). Taxa de Embarque: {formatCurrency(taxaEmbarqueUnitario)}. Referência Legal: {referenciaLegal}.
+                                        * Valores unitários baseados na Diretriz Operacional ({diretrizesOp?.ano_referencia || anoReferencia}). Taxa de Embarque: {formatCurrency(taxaEmbarqueUnitario)}. Referência Legal: {referenciaLegal}.
                                     </p>
                                 </div>
                             </section>
