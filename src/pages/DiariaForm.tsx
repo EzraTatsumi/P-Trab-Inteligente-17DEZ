@@ -44,6 +44,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator"; 
 import { LocalAtividadeSelect } from "@/components/LocalAtividadeSelect"; // NOVO
 import { DESTINO_OPTIONS } from "@/lib/diariaConstants"; // NOVO
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Importar Alert
 
 // Tipos de dados
 // NOTE: O tipo Tables<'diaria_registros'> será atualizado automaticamente pelo Supabase CLI
@@ -127,6 +128,10 @@ const DiariaForm = () => {
     
     // Estado para rastrear o ID da OM selecionada no OmSelector
     const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
+    
+    // NOVOS ESTADOS PARA CONTROLE DE ALTERAÇÃO
+    const [lastSavedItem, setLastSavedItem] = useState<typeof initialFormState | null>(null);
+    const [isFormDirty, setIsFormDirty] = useState(false);
 
     // Dados mestres
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
@@ -155,6 +160,22 @@ const DiariaForm = () => {
     });
     
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
+
+    // EFEITO PARA DETECTAR ALTERAÇÕES NO FORMULÁRIO
+    useEffect(() => {
+        if (lastSavedItem) {
+            // Compara o formData atual (excluindo om_detentora/ug_detentora que são sempre null no form)
+            const currentData = JSON.stringify({ ...formData, om_detentora: null, ug_detentora: null });
+            const savedData = JSON.stringify(lastSavedItem);
+            
+            setIsFormDirty(currentData !== savedData);
+        } else {
+            // Se não há item salvo, verifica se o formulário está preenchido (diferente do initialFormState)
+            const isInitial = JSON.stringify(formData) === JSON.stringify(initialFormState);
+            setIsFormDirty(!isInitial);
+        }
+    }, [formData, lastSavedItem]);
+
 
     // =================================================================
     // CÁLCULOS E MEMÓRIA (MEMOIZED)
@@ -289,6 +310,8 @@ const DiariaForm = () => {
         setFormData(initialFormState);
         setMemoriaCustomizada("");
         setSelectedOmId(undefined);
+        setLastSavedItem(null); // Resetar o último item salvo
+        setIsFormDirty(false); // Resetar o estado de sujeira
     };
     
     const handleClearPending = () => {
@@ -307,7 +330,7 @@ const DiariaForm = () => {
         const omToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
         setSelectedOmId(omToEdit?.id);
 
-        setFormData({
+        const newFormData = {
             organizacao: registro.organizacao,
             ug: registro.ug,
             dias_operacao: registro.dias_operacao,
@@ -319,7 +342,10 @@ const DiariaForm = () => {
             om_detentora: null,
             ug_detentora: null,
             quantidades_por_posto: (registro.quantidades_por_posto || initialFormState.quantidades_por_posto) as QuantidadesPorPosto,
-        });
+        };
+        
+        setFormData(newFormData);
+        setLastSavedItem(newFormData); // Define o item editado como o último salvo
         setMemoriaCustomizada(registro.detalhamento_customizado || "");
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -396,6 +422,10 @@ const DiariaForm = () => {
             setPendingDiarias(prev => [...prev, newPending]);
             
             setMemoriaCustomizada("");
+            
+            // 5. Atualizar o estado de controle de alteração
+            setLastSavedItem(formData);
+            setIsFormDirty(false);
             
             toast.info("Item de Diária adicionado à lista pendente.");
             
@@ -641,6 +671,12 @@ const DiariaForm = () => {
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         2. Configurar Item de Diária
+                                        {isFormDirty && (
+                                            <Badge variant="destructive" className="ml-2 animate-pulse">
+                                                <Edit className="h-3 w-3 mr-1" />
+                                                Não Salvo
+                                            </Badge>
+                                        )}
                                     </h3>
                                     
                                     {/* Linha de Destino (Tabs) */}
@@ -832,7 +868,17 @@ const DiariaForm = () => {
                                                     disabled={!isPTrabEditable || isSaving || !isCalculationReady}
                                                     className="w-full md:w-auto"
                                                 >
-                                                    Salvar Itens da Categoria
+                                                    {isFormDirty ? (
+                                                        <>
+                                                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                                            Recalcular e Adicionar
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Plus className="mr-2 h-4 w-4" />
+                                                            Adicionar Item
+                                                        </>
+                                                    )}
                                                 </Button>
                                             )}
                                         </div>
@@ -1022,6 +1068,20 @@ const DiariaForm = () => {
                                         <FileText className="h-4 w-4 text-muted-foreground" />
                                         5. Memória de Cálculo Detalhada
                                     </h3>
+                                    
+                                    {/* Aviso de Alteração (se estiver sujo) */}
+                                    {isFormDirty && !editingId && (
+                                        <Alert variant="warning">
+                                            <AlertTitle className="flex items-center gap-2">
+                                                <RefreshCw className="h-4 w-4" />
+                                                Item Modificado
+                                            </AlertTitle>
+                                            <AlertDescription>
+                                                O item atual foi alterado e precisa ser recalculado e adicionado novamente à lista pendente.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                    
                                     <div className="space-y-2">
                                         <Label htmlFor="memoria_calculo">Memória de Cálculo Automática (Registro Atual)</Label>
                                         <Textarea
