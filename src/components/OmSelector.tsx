@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { OMData } from "@/lib/omUtils";
+import { formatCodug } from "@/lib/formatUtils"; // Adicionado formatCodug
 
 interface OmSelectorProps {
   selectedOmId?: string; // Agora recebe o ID da OM selecionada
@@ -188,8 +189,7 @@ export function OmSelector({
                   key={om.id}
                   // Alterado o valor para incluir nome e CODUG, melhorando a busca do cmdk
                   value={`${om.nome_om} ${om.codug_om} ${om.rm_vinculacao} ${om.id}`} 
-                  onSelect={(currentValue) => {
-                    // O currentValue agora é a string completa, precisamos encontrar o ID
+                  onSelect={() => {
                     const selected = oms.find(o => o.id === om.id); // Usamos o om.id do loop para garantir a seleção correta
                     onChange(selected?.id === selectedOmId ? undefined : selected); // Passa o objeto completo ou undefined
                     setOpen(false);
@@ -201,10 +201,10 @@ export function OmSelector({
                       selectedOmId === om.id ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  <div className="flex flex-col">
-                    <span>{om.nome_om}</span>
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium">{om.nome_om}</span>
                     <span className="text-xs text-muted-foreground">
-                      CODUG: {om.codug_om} | {om.rm_vinculacao}
+                      CODUG: {formatCodug(om.codug_om)} | {om.rm_vinculacao}
                     </span>
                   </div>
                 </CommandItem>

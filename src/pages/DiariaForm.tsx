@@ -38,7 +38,7 @@ import {
 import * as z from "zod";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
-import { OmSelector } from "@/components/OmSelector"; // Importando o novo OmSelector
+import { OmSelector } from "@/components/OmSelector"; // Importando o OmSelector
 
 // Tipos de dados
 type DiariaRegistro = Tables<'diaria_registros'>;
@@ -188,7 +188,6 @@ const DiariaForm = () => {
             if (!diretrizesOp) throw new Error("Diretrizes Operacionais não carregadas.");
             
             // OM Detentora e UG Detentora são sempre null para Diária, pois a OM de destino é a OM que recebe o recurso.
-            // Mantemos os campos no DB para compatibilidade, mas não os usamos no formulário.
             
             const baseData = {
                 p_trab_id: ptrabId,
