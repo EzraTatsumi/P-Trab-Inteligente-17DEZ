@@ -608,11 +608,11 @@ const DiariaForm = () => {
                                         <CardHeader className="py-3">
                                             <CardTitle className="text-base font-semibold">Efetivo por Posto/Graduação</CardTitle>
                                         </CardHeader>
-                                        <CardContent className="p-0">
+                                        <CardContent className="pt-2">
                                             <div className="p-4 bg-background rounded-lg border">
                                                 <Table>
                                                     <TableHeader>
-                                                        <TableRow>
+                                                        <TableRow className="bg-muted hover:bg-muted">
                                                             <TableHead className="w-[40%]">Posto/Graduação</TableHead>
                                                             <TableHead className="w-[20%] text-center">Valor Unitário</TableHead>
                                                             <TableHead className="w-[15%] text-center">Qtd *</TableHead>
@@ -626,7 +626,7 @@ const DiariaForm = () => {
                                                             const calculatedCost = calculos.calculosPorPosto.find(c => c.posto === rank.label)?.custoTotal || 0;
                                                             
                                                             return (
-                                                                <TableRow key={rank.key}>
+                                                                <TableRow key={rank.key} className="hover:bg-transparent">
                                                                     <TableCell className="font-medium">{rank.label}</TableCell>
                                                                     <TableCell className="text-center text-sm text-muted-foreground">{unitValue}</TableCell>
                                                                     <TableCell className="text-center">
@@ -648,15 +648,16 @@ const DiariaForm = () => {
                                                                 </TableRow>
                                                             );
                                                         })}
-                                                        <TableRow className="bg-muted/50 font-bold">
+                                                        {/* Linhas de Totais */}
+                                                        <TableRow className="bg-muted hover:bg-muted font-bold border-t border-border">
                                                             <TableCell colSpan={3} className="text-right">Total Diária (33.90.39)</TableCell>
                                                             <TableCell className="text-right">{formatCurrency(calculos.totalDiaria)}</TableCell>
                                                         </TableRow>
-                                                        <TableRow className="bg-muted/50 font-bold">
+                                                        <TableRow className="bg-muted hover:bg-muted font-bold">
                                                             <TableCell colSpan={3} className="text-right">Total Taxa Emb (33.90.30)</TableCell>
                                                             <TableCell className="text-right">{formatCurrency(calculos.totalTaxaEmbarque)}</TableCell>
                                                         </TableRow>
-                                                        <TableRow className="bg-primary/10 font-bold text-primary-foreground">
+                                                        <TableRow className="bg-primary/10 hover:bg-primary/10 font-bold text-primary-foreground">
                                                             <TableCell colSpan={3} className="text-right">Total Geral (33.90.15)</TableCell>
                                                             <TableCell className="text-right">{formatCurrency(calculos.totalGeral)}</TableCell>
                                                         </TableRow>
