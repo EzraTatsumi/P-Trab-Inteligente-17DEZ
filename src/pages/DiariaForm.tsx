@@ -670,8 +670,8 @@ const DiariaForm = () => {
                                         </Card>
                                         
                                         {/* NOVO BLOCO DE RESUMO DE TOTAIS (NÍVEL IV) */}
-                                        <div className="space-y-2 mt-4 p-3 bg-background rounded-lg border">
-                                            <div className="flex justify-between items-center">
+                                        <div className="space-y-2 mt-4">
+                                            <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
                                                 <span className="font-bold text-base">TOTAL GERAL</span>
                                                 <span className="font-extrabold text-xl text-primary">
                                                     {formatCurrency(calculos.totalGeral)}
@@ -679,12 +679,9 @@ const DiariaForm = () => {
                                             </div>
                                         </div>
                                         
-                                        {/* BOTÕES DE AÇÃO (Apenas Salvar Itens da Categoria e Limpar) */}
+                                        {/* BOTÕES DE AÇÃO (Apenas Salvar Itens da Categoria) */}
                                         <div className="flex justify-end gap-3 pt-4">
-                                            <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                Limpar Formulário
-                                            </Button>
+                                            {/* REMOVIDO: Limpar Formulário */}
                                             <Button 
                                                 type="submit" 
                                                 disabled={!isPTrabEditable || isSaving || calculos.totalMilitares === 0 || !isSubmissionReady}
@@ -764,6 +761,23 @@ const DiariaForm = () => {
                                                 )}
                                             </TableBody>
                                         </Table>
+                                    </div>
+                                    
+                                    {/* BOTÕES DE AÇÃO MOVIDOS PARA A SEÇÃO 3 */}
+                                    <div className="flex justify-end gap-3 pt-4">
+                                        <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Limpar Formulário
+                                        </Button>
+                                        <Button 
+                                            type="button" // Alterado para type="button" pois o submit está na Seção 2
+                                            onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)}
+                                            disabled={isSaving}
+                                            className="w-full md:w-auto"
+                                        >
+                                            <Check className="mr-2 h-4 w-4" />
+                                            Finalizar e Voltar ao P Trab
+                                        </Button>
                                     </div>
                                 </section>
                             )}
