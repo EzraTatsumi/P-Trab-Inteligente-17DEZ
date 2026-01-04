@@ -343,8 +343,8 @@ const DiariaForm = () => {
             
             const omDestino = oms.find(om => om.id === selectedOmId);
 
-            if (!omDestino || omDestino.codug_om !== formData.ug || omDestino.nome_om !== formData.organizacao) {
-                toast.error("OM de Destino inválida ou UG não corresponde. Verifique se a OM está cadastrada e ativa em 'Relação de OM (CODUG)'.");
+            if (!omDestino) {
+                toast.error("OM de Destino inválida. Verifique se a OM está cadastrada e ativa em 'Relação de OM (CODUG)'.");
                 return;
             }
             
@@ -454,8 +454,8 @@ const DiariaForm = () => {
             
             const omDestino = oms.find(om => om.id === selectedOmId);
 
-            if (!omDestino || omDestino.codug_om !== formData.ug || omDestino.nome_om !== formData.organizacao) {
-                toast.error("OM de Destino inválida ou UG não corresponde. Verifique se a OM está cadastrada e ativa em 'Relação de OM (CODUG)'.");
+            if (!omDestino) {
+                toast.error("OM de Destino inválida. Verifique se a OM está cadastrada e ativa em 'Relação de OM (CODUG)'.");
                 return;
             }
             
@@ -915,7 +915,25 @@ const DiariaForm = () => {
                                             const taxaEmbarqueFormula = getTaxaEmbarqueFormulaDisplay(item, taxaEmbarqueUnitario);
                                             
                                             // Detalhamento da Diária (ND 39)
-                                            const diariaFormula = getDiariaFormulaDisplay(item);
+                                            const diariaFormulaParts: string[] = [];
+                                            const diasPagamento = Math.max(0, item.dias_operacao - 0.5);
+                                            const nrViagens = item.nr_viagens;
+                                            
+                                            DIARIA_RANKS_CONFIG.forEach(rank => {
+                                                const quantidade = item.quantidades_por_posto[rank.key] || 0;
+                                                if (quantidade > 0) {
+                                                    const valorUnitario = Number(diretrizesOp![`${rank.fieldPrefix}_${item.destino === 'bsb_capitais_especiais' ? 'bsb' : item.destino === 'demais_capitais' ? 'capitais' : 'demais'}` as keyof DiretrizOperacional] || 0);
+                                                    
+                                                    const militaresPlural = quantidade === 1 ? 'mil.' : 'militares';
+                                                    const viagensPlural = nrViagens === 1 ? 'viagem' : 'viagens';
+                                                    
+                                                    const custoTotalPosto = quantidade * valorUnitario * diasPagamento * nrViagens;
+                                                    
+                                                    diariaFormulaParts.push(
+                                                        `${quantidade} ${rank.label} x ${formatCurrency(valorUnitario)}/dia x ${formatNumber(diasPagamento, 1)} dias x ${nrViagens} ${viagensPlural} = ${formatCurrency(custoTotalPosto)}`
+                                                    );
+                                                }
+                                            });
 
                                             return (
                                                 <Card 
@@ -923,34 +941,58 @@ const DiariaForm = () => {
                                                     className="border-2 border-secondary bg-secondary/10 shadow-md"
                                                 >
                                                     <CardContent className="p-4">
-                                                        <div className="flex justify-between items-start border-b border-secondary/50 pb-2 mb-2">
-                                                            <div className="space-y-1">
-                                                                <h4 className="font-bold text-base text-primary">
-                                                                    Diárias ({item.local_atividade})
-                                                                </h4>
+                                                        {/* LINHA 1: Localidade e Taxa de Embarque (Cinza) */}
+                                                        <div className="flex justify-between items-center text-sm text-muted-foreground border-b border-secondary/50 pb-2 mb-2">
+                                                            <span className="font-medium">Localidade: {item.destinoLabel}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-medium">Taxa de Embarque (ND 30):</span>
+                                                                <span className="text-green-600 font-semibold">
+                                                                    {item.is_aereo ? formatCurrency(item.valor_nd_30) : formatCurrency(0)}
+                                                                </span>
                                                             </div>
-                                                            <div className="text-right">
-                                                                <p className="font-extrabold text-lg text-primary">
-                                                                    {formatCurrency(item.valor_total)}
+                                                        </div>
+                                                        
+                                                        {/* LINHAS DE CÁLCULO DE DIÁRIAS POR POSTO (ND 39) */}
+                                                        <div className="space-y-1 text-xs text-blue-700 font-medium border-b border-secondary/50 pb-2 mb-2">
+                                                            {diariaFormulaParts.map((formula, index) => (
+                                                                <div key={index} className="flex justify-between">
+                                                                    <span className="text-muted-foreground mr-2">Diária:</span>
+                                                                    <span>{formula}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        
+                                                        {/* LINHA FINAL: TOTAIS CONSOLIDADOS */}
+                                                        <div className="grid grid-cols-2 gap-4 pt-2">
+                                                            <div className="space-y-1">
+                                                                <p className="font-medium text-sm">Taxa de Embarque (ND 30):</p>
+                                                                <p className="font-medium text-sm">Diárias (ND 39):</p>
+                                                            </div>
+                                                            <div className="text-right space-y-1">
+                                                                <p className="font-extrabold text-sm text-green-600">
+                                                                    {formatCurrency(item.valor_nd_30)}
+                                                                </p>
+                                                                <p className="font-extrabold text-sm text-blue-600">
+                                                                    {formatCurrency(item.valor_nd_39)}
                                                                 </p>
                                                             </div>
                                                         </div>
                                                         
-                                                        <div className="grid grid-cols-2 gap-4 text-xs">
-                                                            <div className="space-y-1">
-                                                                <p className="font-medium">OM Destino Recurso:</p>
-                                                                <p className="font-medium">Taxa Embarque:</p>
-                                                                <p className="font-medium">Diárias:</p>
-                                                            </div>
-                                                            <div className="text-right space-y-1">
-                                                                <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
-                                                                <p className="font-medium text-green-600">
-                                                                    <span className="text-muted-foreground mr-2">{taxaEmbarqueFormula} =</span>
-                                                                    {formatCurrency(item.valor_nd_30)}
-                                                                </p>
-                                                                <p className="font-medium text-blue-600">
-                                                                    <span className="text-muted-foreground mr-2">{diariaFormula} =</span>
-                                                                    {formatCurrency(item.valor_nd_39)}
+                                                        <div className="flex justify-between items-center pt-3 border-t border-secondary/50 mt-3">
+                                                            <h4 className="font-bold text-base text-primary">
+                                                                TOTAL GERAL
+                                                            </h4>
+                                                            <div className="flex items-center gap-2">
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    onClick={() => handleRemovePending(item.tempId)}
+                                                                    className="text-destructive hover:text-destructive"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                                <p className="font-extrabold text-lg text-primary">
+                                                                    {formatCurrency(item.valor_total)}
                                                                 </p>
                                                             </div>
                                                         </div>
