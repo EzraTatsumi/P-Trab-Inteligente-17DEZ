@@ -35,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import * as z from "zod";
+import *s z from "zod";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector"; // Importando o OmSelector
@@ -668,21 +668,21 @@ const DiariaForm = () => {
                                     
                                     {/* NOVO BLOCO DE RESUMO DE TOTAIS CONSOLIDADO */}
                                     <div className="space-y-2 mt-4">
-                                        <div className="p-4 bg-muted rounded-lg border">
+                                        <div className="p-4 bg-background rounded-lg border">
                                             <div className="flex justify-between items-center text-sm text-muted-foreground mb-1">
-                                                <span className="font-medium">Total Diária (ND 33.90.39)</span>
+                                                <span className="font-medium">Total Diária</span>
                                                 <span className="font-semibold text-foreground">
                                                     {formatCurrency(calculos.totalDiaria)}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between items-center text-sm text-muted-foreground mb-3">
-                                                <span className="font-medium">Total Taxa de Embarque (ND 33.90.30)</span>
+                                                <span className="font-medium">Total Taxa de Embarque</span>
                                                 <span className="font-semibold text-foreground">
                                                     {formatCurrency(calculos.totalTaxaEmbarque)}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between items-center pt-3 border-t border-border">
-                                                <span className="font-bold text-base">TOTAL GERAL SOLICITADO</span>
+                                                <span className="font-bold text-base">TOTAL DA CATEGORIA</span>
                                                 <span className="font-extrabold text-xl text-primary">
                                                     {formatCurrency(calculos.totalGeral)}
                                                 </span>
