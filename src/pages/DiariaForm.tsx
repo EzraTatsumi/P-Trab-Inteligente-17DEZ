@@ -552,7 +552,7 @@ const DiariaForm = () => {
                                     {/* Linha de Dados Principais (Destino) */}
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         <div className="space-y-2 col-span-4">
-                                            <Label htmlFor="destino">Local para fins Pagamento *</Label>
+                                            <Label htmlFor="destino">Local para fins de Cálculo de Pagamento *</Label>
                                             <Select
                                                 value={formData.destino}
                                                 onValueChange={(value) => setFormData({ ...formData, destino: value as DestinoDiaria })}
