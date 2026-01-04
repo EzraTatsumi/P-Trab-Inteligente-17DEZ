@@ -84,7 +84,7 @@ const initialFormState = {
     organizacao: "",
     ug: "",
     dias_operacao: 1,
-    destino: 'demais_dslc' as DestinoDiaria,
+    destino: 'bsb_capitais_especiais' as DestinoDiaria, // ALTERADO PARA BSB/CAPITAIS ESPECIAIS
     nr_viagens: 1,
     local_atividade: "",
     fase_atividade: "", // Agora obrigatório
