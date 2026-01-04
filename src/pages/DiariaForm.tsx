@@ -395,15 +395,6 @@ const DiariaForm = () => {
             // 4. Adicionar à lista pendente
             setPendingDiarias(prev => [...prev, newPending]);
             
-            // 5. Limpar o formulário para o próximo item (mantendo OM/UG/Fase)
-            setFormData(prev => ({
-                ...initialFormState,
-                // Força a criação de um novo objeto para as quantidades por posto
-                quantidades_por_posto: DIARIA_RANKS_CONFIG.reduce((acc, rank) => ({ ...acc, [rank.key]: 0 }), {} as QuantidadesPorPosto),
-                organizacao: prev.organizacao,
-                ug: prev.ug,
-                fase_atividade: prev.fase_atividade,
-            }));
             setMemoriaCustomizada("");
             
             toast.info("Item de Diária adicionado à lista pendente.");
