@@ -605,13 +605,13 @@ const DiariaForm = () => {
                                     
                                     {/* Tabela de Posto/Graduação e Quantidade (Estilizada como Card) */}
                                     <Card className="mt-6 bg-muted/50 rounded-lg">
-                                        <CardHeader className="py-3">
+                                        <CardHeader className="py-2">
                                             <CardTitle className="text-base font-semibold">Efetivo por Posto/Graduação</CardTitle>
                                             <p className="text-xs text-muted-foreground">
                                                 Referência Legal: {referenciaLegal}.
                                             </p>
                                         </CardHeader>
-                                        <CardContent className="p-4 pt-2">
+                                        <CardContent className="p-3 pt-1">
                                             <div className="rounded-lg border overflow-hidden">
                                                 <Table>
                                                     <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
