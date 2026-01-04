@@ -41,7 +41,9 @@ import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator"; // Importando Separator
+import { Separator } from "@/components/ui/separator"; 
+import { LocalAtividadeSelect } from "@/components/LocalAtividadeSelect"; // NOVO
+import { DESTINO_OPTIONS } from "@/lib/diariaConstants"; // NOVO
 
 // Tipos de dados
 // NOTE: O tipo Tables<'diaria_registros'> será atualizado automaticamente pelo Supabase CLI
@@ -354,7 +356,7 @@ const DiariaForm = () => {
             }
             
             // 3. Preparar o objeto final (baseData)
-            const destinoLabel = destinoOptions.find(d => d.value === formData.destino)?.label || formData.destino;
+            const destinoLabel = DESTINO_OPTIONS.find(d => d.value === formData.destino)?.label || formData.destino;
             
             const newPending: CalculatedDiaria = {
                 tempId: Math.random().toString(36).substring(2, 9), // ID temporário
@@ -550,11 +552,8 @@ const DiariaForm = () => {
                               formData.local_atividade.length > 0 &&
                               calculos.totalMilitares > 0;
     
-    const destinoOptions = [
-        { value: 'bsb_capitais_especiais', label: 'BSB/MAO/RJ/SP' },
-        { value: 'demais_capitais', label: 'Demais Capitais' },
-        { value: 'demais_dslc', label: 'Demais Dslc' },
-    ];
+    // Usando DESTINO_OPTIONS importado
+    const destinoOptions = DESTINO_OPTIONS;
     
     const getUnitValueDisplay = (rankKey: string, destino: DestinoDiaria) => {
         if (!diretrizesOp) return "R$ 0,00";
@@ -657,7 +656,14 @@ const DiariaForm = () => {
                                         <Label htmlFor="destino">Local para fins de Pagamento</Label>
                                         <Tabs 
                                             value={formData.destino} 
-                                            onValueChange={(value) => setFormData({ ...formData, destino: value as DestinoDiaria })}
+                                            onValueChange={(value) => {
+                                                setFormData(prev => ({ 
+                                                    ...prev, 
+                                                    destino: value as DestinoDiaria,
+                                                    // Limpa o local da atividade ao mudar o destino, forçando nova seleção/digitação
+                                                    local_atividade: "" 
+                                                }));
+                                            }}
                                             className="w-full"
                                         >
                                             <TabsList className="grid w-full grid-cols-3">
@@ -714,14 +720,11 @@ const DiariaForm = () => {
                                                         <div className="col-span-2 grid grid-cols-2 gap-4">
                                                             <div className="space-y-2 col-span-1">
                                                                 <Label htmlFor="local_atividade">Local da Atividade *</Label>
-                                                                <Input
-                                                                    id="local_atividade"
+                                                                <LocalAtividadeSelect
+                                                                    destino={formData.destino}
                                                                     value={formData.local_atividade}
-                                                                    onChange={(e) => setFormData({ ...formData, local_atividade: e.target.value })}
-                                                                    placeholder="Ex: Belém/PA"
-                                                                    required
+                                                                    onChange={(value) => setFormData({ ...formData, local_atividade: value })}
                                                                     disabled={!isPTrabEditable || isSaving}
-                                                                    onKeyDown={handleEnterToNextField}
                                                                 />
                                                             </div>
                                                             {/* NOVO CAMPO: Deslocamento Aéreo */}
