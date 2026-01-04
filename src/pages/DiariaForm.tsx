@@ -62,15 +62,6 @@ interface CalculatedDiaria extends TablesInsert<'diaria_registros'> {
     // Campos de display adicionais
     destinoLabel: string;
     totalMilitares: number;
-    calculosPorPosto: {
-        posto: string;
-        quantidade: number;
-        valorUnitario: number;
-        valorTaxaEmbarque: number;
-        custoDiaria: number;
-        custoTaxaEmbarque: number;
-        custoTotal: number;
-    }[]; // Adicionado para exibir detalhes
 }
 
 // Schema de validação para o formulário de Diária
@@ -382,7 +373,6 @@ const DiariaForm = () => {
                 memoria_calculo_display: calculos.memoria,
                 destinoLabel: destinoLabel,
                 totalMilitares: calculos.totalMilitares,
-                calculosPorPosto: calculos.calculosPorPosto, // Adicionado
                 
                 // Campos que foram NOT NULL, mas são redundantes no novo fluxo
                 posto_graduacao: null,
@@ -423,7 +413,7 @@ const DiariaForm = () => {
         // Mapeia os itens pendentes para o formato de inserção no DB
         const recordsToSave: TablesInsert<'diaria_registros'>[] = pendingDiarias.map(p => {
             // Remove campos de display e temporários
-            const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, calculosPorPosto, ...dbRecord } = p;
+            const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, ...dbRecord } = p;
             return dbRecord as TablesInsert<'diaria_registros'>;
         });
         
@@ -860,72 +850,33 @@ const DiariaForm = () => {
                                                 className="border-2 border-teal-500/50 bg-teal-50/50 shadow-md"
                                             >
                                                 <CardContent className="p-4">
-                                                    <div className="flex justify-between items-start pb-2 mb-2">
+                                                    <div className="flex justify-between items-start border-b border-teal-500/30 pb-2 mb-2">
                                                         <div className="space-y-1">
                                                             <h4 className="font-bold text-base text-teal-700">
-                                                                {item.local_atividade} ({item.destinoLabel})
+                                                                Diárias ({item.totalMilitares} Militares)
                                                             </h4>
-                                                            {/* Linha divisória adicionada aqui */}
-                                                            <div className="border-t border-teal-500/30 pt-2">
-                                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                                                    <Users className="h-3 w-3" />
-                                                                    Efetivo Total: <span className="font-semibold">{item.totalMilitares} Militares</span>
-                                                                    <span className="mx-2 text-gray-400">|</span>
-                                                                    <Calendar className="h-3 w-3" />
-                                                                    Dias: <span className="font-semibold">{item.dias_operacao}</span>
-                                                                    <span className="mx-2 text-gray-400">|</span>
-                                                                    <Plane className="h-3 w-3" />
-                                                                    Aéreo: <span className="font-semibold">{item.is_aereo ? 'Sim' : 'Não'}</span>
-                                                                </p>
-                                                            </div>
+                                                            <p className="text-sm text-muted-foreground">
+                                                                {item.local_atividade} ({item.destinoLabel})
+                                                            </p>
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="font-extrabold text-lg text-teal-700">
                                                                 {formatCurrency(item.valor_total)}
                                                             </p>
-                                                            {/* Botão de remover foi removido conforme solicitado */}
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                onClick={() => handleRemovePending(item.tempId)}
+                                                                disabled={isSaving}
+                                                                className="text-red-500 hover:bg-red-50/50"
+                                                            >
+                                                                <Trash2 className="h-4 w-4 mr-1" />
+                                                                Remover
+                                                            </Button>
                                                         </div>
                                                     </div>
                                                     
-                                                    {/* Detalhes dos Cálculos por Posto/Graduação */}
-                                                    <div className="mt-4 space-y-2">
-                                                        <h5 className="text-sm font-semibold text-gray-700">Detalhamento do Custo por Posto/Graduação:</h5>
-                                                        <div className="rounded-lg border bg-white overflow-hidden">
-                                                            <Table>
-                                                                <TableHeader>
-                                                                    <TableRow className="bg-gray-50 hover:bg-gray-50">
-                                                                        <TableHead className="w-[30%] py-1 text-xs">Posto/Grad</TableHead>
-                                                                        <TableHead className="w-[15%] py-1 text-xs text-center">Qtd</TableHead>
-                                                                        <TableHead className="w-[25%] py-1 text-xs text-right">Custo Diária</TableHead>
-                                                                        <TableHead className="w-[30%] py-1 text-xs text-right">Custo Total</TableHead>
-                                                                    </TableRow>
-                                                                </TableHeader>
-                                                                <TableBody>
-                                                                    {item.calculosPorPosto
-                                                                        .filter(c => c.quantidade > 0)
-                                                                        .map((calc, index) => (
-                                                                        <TableRow key={index} className="text-xs">
-                                                                            <TableCell className="py-1 font-medium">{calc.posto}</TableCell>
-                                                                            <TableCell className="py-1 text-center">{calc.quantidade}</TableCell>
-                                                                            <TableCell className="py-1 text-right">
-                                                                                {formatCurrency(calc.custoDiaria)}
-                                                                                {item.is_aereo && calc.custoTaxaEmbarque > 0 && (
-                                                                                    <span className="block text-[10px] text-muted-foreground">
-                                                                                        + {formatCurrency(calc.custoTaxaEmbarque)} (Taxa)
-                                                                                    </span>
-                                                                                )}
-                                                                            </TableCell>
-                                                                            <TableCell className="py-1 text-right font-semibold">
-                                                                                {formatCurrency(calc.custoTotal)}
-                                                                            </TableCell>
-                                                                        </TableRow>
-                                                                    ))}
-                                                                </TableBody>
-                                                            </Table>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <div className="grid grid-cols-2 gap-4 text-xs mt-4">
+                                                    <div className="grid grid-cols-2 gap-4 text-xs">
                                                         <div className="space-y-1">
                                                             <p className="font-medium">OM Destino Recurso:</p>
                                                             <p className="font-medium">ND 33.90.30 (Taxa Embarque):</p>
