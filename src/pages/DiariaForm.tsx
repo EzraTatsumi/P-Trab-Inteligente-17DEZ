@@ -563,7 +563,7 @@ const DiariaForm = () => {
                                         </div>
                                         <div className="space-y-2 col-span-2 grid grid-cols-2 gap-4">
                                             <div className="space-y-2 col-span-1">
-                                                <Label htmlFor="local_atividade">Local da Atividade*</Label>
+                                                <Label htmlFor="local_atividade">Local da Atividade (Cidade/Estado) *</Label>
                                                 <Input
                                                     id="local_atividade"
                                                     value={formData.local_atividade}
@@ -575,9 +575,8 @@ const DiariaForm = () => {
                                                 />
                                             </div>
                                             {/* NOVO CAMPO: Deslocamento Aéreo */}
-                                            <div className="flex flex-col justify-end space-y-2 col-span-1">
-                                                <Label htmlFor="is_aereo" className="flex items-center text-sm font-medium">
-                                                    <Plane className="h-4 w-4 mr-2 text-blue-500" />
+                                            <div className="space-y-2 col-span-1">
+                                                <Label htmlFor="is_aereo" className="text-sm font-medium">
                                                     Deslocamento Aéreo?
                                                 </Label>
                                                 <div className="flex items-center space-x-2 h-10">
