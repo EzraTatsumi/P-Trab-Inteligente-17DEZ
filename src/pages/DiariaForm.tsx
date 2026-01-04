@@ -580,7 +580,7 @@ const DiariaForm = () => {
         const viagensPlural = item.nr_viagens === 1 ? 'viagem' : 'viagens';
         
         // Fórmula: (Total Militares) x (Nr Viagens) x (Taxa Unitária)
-        return `${item.totalMilitares} ${militaresPlitares} x ${item.nr_viagens} ${viagensPlural} x ${formatCurrency(taxaUnitario)} = ${formatCurrency(item.valor_taxa_embarque)}`;
+        return `${item.totalMilitares} ${militaresPlural} x ${item.nr_viagens} ${viagensPlural} x ${formatCurrency(taxaUnitario)} = ${formatCurrency(item.valor_taxa_embarque)}`;
         
     }, []);
 
