@@ -513,7 +513,7 @@ const DiariaForm = () => {
                                     
                                     {/* Linha de Destino (Tabs) */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="destino">Local para fins de Pagamento *</Label>
+                                        <Label htmlFor="destino">Local para fins de Pagamento</Label>
                                         <Tabs 
                                             value={formData.destino} 
                                             onValueChange={(value) => setFormData({ ...formData, destino: value as DestinoDiaria })}
