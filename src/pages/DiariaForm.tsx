@@ -1020,7 +1020,8 @@ const DiariaForm = () => {
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIA DE CÁLCULO DETALHADA */}
-                            {(editingId || pendingDiarias.length > 0) && (
+                            {/* CONDIÇÃO AJUSTADA: Mostra se estiver editando OU se for um novo item e o cálculo estiver pronto (e não houver pendentes) */}
+                            {(editingId || (isCalculationReady && pendingDiarias.length === 0)) && (
                                 <section className="space-y-4 border-t pt-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         <FileText className="h-4 w-4 text-muted-foreground" />
