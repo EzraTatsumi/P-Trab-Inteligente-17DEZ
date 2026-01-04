@@ -319,6 +319,15 @@ const DiariaForm = () => {
     };
     
     const handleOmDetentoraChange = (omName: string) => {
+        if (omName === "NONE_OM_SELECTED") {
+            setFormData(prev => ({
+                ...prev,
+                om_detentora: null,
+                ug_detentora: null,
+            }));
+            return;
+        }
+        
         const om = oms?.find(o => o.nome_om === omName);
         if (om) {
             setFormData(prev => ({
@@ -462,7 +471,7 @@ const DiariaForm = () => {
                                     <div className="space-y-2">
                                         <Label htmlFor="om_detentora">OM Detentora (Opcional)</Label>
                                         <Select
-                                            value={formData.om_detentora || ""}
+                                            value={formData.om_detentora || "NONE_OM_SELECTED"}
                                             onValueChange={handleOmDetentoraChange}
                                             disabled={!isPTrabEditable || isSaving || isLoadingOms}
                                         >
@@ -470,7 +479,7 @@ const DiariaForm = () => {
                                                 <SelectValue placeholder="Selecione a OM Detentora (se diferente)" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="">-- Nenhuma --</SelectItem>
+                                                <SelectItem value="NONE_OM_SELECTED">-- Nenhuma --</SelectItem>
                                                 {oms?.map((om) => (
                                                     <SelectItem key={om.id} value={om.nome_om}>
                                                         {om.nome_om} ({formatCodug(om.codug_om)})
