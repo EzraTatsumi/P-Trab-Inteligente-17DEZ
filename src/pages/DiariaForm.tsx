@@ -543,7 +543,7 @@ const DiariaForm = () => {
                                                 disabled={!isPTrabEditable || isSaving}
                                                 onKeyDown={handleEnterToNextField}
                                                 onWheel={(e) => e.currentTarget.blur()}
-                                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             />
                                         </div>
                                         <div className="space-y-2 col-span-1">
@@ -558,7 +558,7 @@ const DiariaForm = () => {
                                                 disabled={!isPTrabEditable || isSaving}
                                                 onKeyDown={handleEnterToNextField}
                                                 onWheel={(e) => e.currentTarget.blur()}
-                                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             />
                                         </div>
                                         <div className="space-y-2 col-span-2 grid grid-cols-2 gap-4">
