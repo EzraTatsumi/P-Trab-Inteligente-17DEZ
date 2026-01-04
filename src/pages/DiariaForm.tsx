@@ -386,6 +386,9 @@ const DiariaForm = () => {
     const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
     const isSaving = mutation.isPending;
     
+    // Condição para exibir as seções 2 e 3 (Formulário de Item e Botões de Ação)
+    const isFormReady = formData.organizacao.length > 0 && formData.ug.length > 0 && formData.dias_operacao > 0;
+    
     // Mapeamento de destino para rótulo
     const destinoOptions = [
         { value: 'bsb_capitais_especiais', label: 'Dslc BSB/MAO/RJ/SP' },
@@ -448,7 +451,7 @@ const DiariaForm = () => {
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    1. Dados da Organização
+                                    1. Dados da Organização (Destino do Recurso)
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -485,239 +488,247 @@ const DiariaForm = () => {
                             </section>
 
                             {/* SEÇÃO 2: CONFIGURAR O ITEM (TABELA DE DIÁRIAS) */}
-                            <section className="space-y-4 border-b pb-6">
-                                <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    2. Configurar Pagamento de Diárias
-                                </h3>
-                                
-                                {/* Linha de Dados Principais */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="dias_operacao">Nr Dias da Viagem *</Label>
-                                        <Input
-                                            id="dias_operacao"
-                                            type="number"
-                                            min={1}
-                                            value={formData.dias_operacao}
-                                            onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
-                                            required
-                                            disabled={!isPTrabEditable || isSaving}
-                                            onKeyDown={handleEnterToNextField}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="nr_viagens">Nr Viagens *</Label>
-                                        <Input
-                                            id="nr_viagens"
-                                            type="number"
-                                            min={1}
-                                            value={formData.nr_viagens}
-                                            onChange={(e) => setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 })}
-                                            required
-                                            disabled={!isPTrabEditable || isSaving}
-                                            onKeyDown={handleEnterToNextField}
-                                        />
-                                    </div>
-                                    <div className="space-y-2 col-span-2">
-                                        <Label htmlFor="destino">Local para fins Pgto *</Label>
-                                        <Select
-                                            value={formData.destino}
-                                            onValueChange={(value) => setFormData({ ...formData, destino: value as DestinoDiaria })}
-                                            disabled={!isPTrabEditable || isSaving}
-                                        >
-                                            <SelectTrigger id="destino">
-                                                <SelectValue placeholder="Selecione o tipo de deslocamento" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {destinoOptions.map(opt => (
-                                                    <SelectItem key={opt.value} value={opt.value}>
-                                                        {opt.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2 col-span-2">
-                                        <Label htmlFor="local_atividade">Local da Atividade (Cidade/Estado) *</Label>
-                                        <Input
-                                            id="local_atividade"
-                                            value={formData.local_atividade}
-                                            onChange={(e) => setFormData({ ...formData, local_atividade: e.target.value })}
-                                            placeholder="Ex: Belém/PA"
-                                            required
-                                            disabled={!isPTrabEditable || isSaving}
-                                            onKeyDown={handleEnterToNextField}
-                                        />
-                                    </div>
-                                </div>
-                                
-                                {/* Tabela de Posto/Graduação e Quantidade */}
-                                <div className="mt-6">
-                                    <h4 className="font-semibold mb-2">Efetivo por Posto/Graduação</h4>
-                                    <Table className="border">
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="w-[40%]">Posto/Graduação</TableHead>
-                                                <TableHead className="w-[20%] text-center">Valor Unitário</TableHead>
-                                                <TableHead className="w-[15%] text-center">Qtd *</TableHead>
-                                                <TableHead className="w-[25%] text-right">Custo Diária (R$)</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {DIARIA_RANKS_CONFIG.map((rank) => {
-                                                const qty = formData.quantidades_por_posto[rank.key] || 0;
-                                                const unitValue = getUnitValueDisplay(rank.key, formData.destino);
-                                                const calculatedCost = calculos.calculosPorPosto.find(c => c.posto === rank.label)?.custoTotal || 0;
-                                                
-                                                return (
-                                                    <TableRow key={rank.key}>
-                                                        <TableCell className="font-medium">{rank.label}</TableCell>
-                                                        <TableCell className="text-center text-sm text-muted-foreground">{unitValue}</TableCell>
-                                                        <TableCell className="text-center">
-                                                            <Input
-                                                                type="number"
-                                                                min={0}
-                                                                value={qty === 0 ? "" : qty}
-                                                                onChange={(e) => handleRankQuantityChange(rank.key, e.target.value)}
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                                className="text-center max-w-[80px] mx-auto"
-                                                                onKeyDown={handleEnterToNextField}
-                                                            />
-                                                        </TableCell>
-                                                        <TableCell className="text-right font-semibold">
-                                                            {formatCurrency(calculatedCost)}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                );
-                                            })}
-                                            <TableRow className="bg-muted/50 font-bold">
-                                                <TableCell colSpan={3} className="text-right">Total Diária (33.90.39)</TableCell>
-                                                <TableCell className="text-right">{formatCurrency(calculos.totalDiaria)}</TableCell>
-                                            </TableRow>
-                                            <TableRow className="bg-muted/50 font-bold">
-                                                <TableCell colSpan={3} className="text-right">Total Taxa Emb (33.90.30)</TableCell>
-                                                <TableCell className="text-right">{formatCurrency(calculos.totalTaxaEmbarque)}</TableCell>
-                                            </TableRow>
-                                            <TableRow className="bg-primary/10 font-bold text-primary-foreground">
-                                                <TableCell colSpan={3} className="text-right">Total Geral (33.90.15)</TableCell>
-                                                <TableCell className="text-right">{formatCurrency(calculos.totalGeral)}</TableCell>
-                                            </TableRow>
-                                        </TableBody>
-                                    </Table>
+                            {isFormReady && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                                        2. Configurar Pagamento de Diárias
+                                    </h3>
                                     
-                                    <p className="text-xs text-muted-foreground mt-2">
-                                        * Valores unitários baseados na Diretriz Operacional ({diretrizesOp?.ano_referencia || anoReferencia}). Taxa de Embarque: {formatCurrency(taxaEmbarqueUnitario)}. Referência Legal: {referenciaLegal}.
-                                    </p>
-                                </div>
-                            </section>
+                                    {/* Linha de Dados Principais */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="dias_operacao">Nr Dias da Viagem *</Label>
+                                            <Input
+                                                id="dias_operacao"
+                                                type="number"
+                                                min={1}
+                                                value={formData.dias_operacao}
+                                                onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
+                                                required
+                                                disabled={!isPTrabEditable || isSaving}
+                                                onKeyDown={handleEnterToNextField}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="nr_viagens">Nr Viagens *</Label>
+                                            <Input
+                                                id="nr_viagens"
+                                                type="number"
+                                                min={1}
+                                                value={formData.nr_viagens}
+                                                onChange={(e) => setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 })}
+                                                required
+                                                disabled={!isPTrabEditable || isSaving}
+                                                onKeyDown={handleEnterToNextField}
+                                            />
+                                        </div>
+                                        <div className="space-y-2 col-span-2">
+                                            <Label htmlFor="destino">Local para fins Pgto *</Label>
+                                            <Select
+                                                value={formData.destino}
+                                                onValueChange={(value) => setFormData({ ...formData, destino: value as DestinoDiaria })}
+                                                disabled={!isPTrabEditable || isSaving}
+                                            >
+                                                <SelectTrigger id="destino">
+                                                    <SelectValue placeholder="Selecione o tipo de deslocamento" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {destinoOptions.map(opt => (
+                                                        <SelectItem key={opt.value} value={opt.value}>
+                                                            {opt.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2 col-span-2">
+                                            <Label htmlFor="local_atividade">Local da Atividade (Cidade/Estado) *</Label>
+                                            <Input
+                                                id="local_atividade"
+                                                value={formData.local_atividade}
+                                                onChange={(e) => setFormData({ ...formData, local_atividade: e.target.value })}
+                                                placeholder="Ex: Belém/PA"
+                                                required
+                                                disabled={!isPTrabEditable || isSaving}
+                                                onKeyDown={handleEnterToNextField}
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Tabela de Posto/Graduação e Quantidade */}
+                                    <div className="mt-6">
+                                        <h4 className="font-semibold mb-2">Efetivo por Posto/Graduação</h4>
+                                        <Table className="border">
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="w-[40%]">Posto/Graduação</TableHead>
+                                                    <TableHead className="w-[20%] text-center">Valor Unitário</TableHead>
+                                                    <TableHead className="w-[15%] text-center">Qtd *</TableHead>
+                                                    <TableHead className="w-[25%] text-right">Custo Diária (R$)</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {DIARIA_RANKS_CONFIG.map((rank) => {
+                                                    const qty = formData.quantidades_por_posto[rank.key] || 0;
+                                                    const unitValue = getUnitValueDisplay(rank.key, formData.destino);
+                                                    const calculatedCost = calculos.calculosPorPosto.find(c => c.posto === rank.label)?.custoTotal || 0;
+                                                    
+                                                    return (
+                                                        <TableRow key={rank.key}>
+                                                            <TableCell className="font-medium">{rank.label}</TableCell>
+                                                            <TableCell className="text-center text-sm text-muted-foreground">{unitValue}</TableCell>
+                                                            <TableCell className="text-center">
+                                                                <Input
+                                                                    type="number"
+                                                                    min={0}
+                                                                    value={qty === 0 ? "" : qty}
+                                                                    onChange={(e) => handleRankQuantityChange(rank.key, e.target.value)}
+                                                                    disabled={!isPTrabEditable || isSaving}
+                                                                    className="text-center max-w-[80px] mx-auto"
+                                                                    onKeyDown={handleEnterToNextField}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell className="text-right font-semibold">
+                                                                {formatCurrency(calculatedCost)}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                                <TableRow className="bg-muted/50 font-bold">
+                                                    <TableCell colSpan={3} className="text-right">Total Diária (33.90.39)</TableCell>
+                                                    <TableCell className="text-right">{formatCurrency(calculos.totalDiaria)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="bg-muted/50 font-bold">
+                                                    <TableCell colSpan={3} className="text-right">Total Taxa Emb (33.90.30)</TableCell>
+                                                    <TableCell className="text-right">{formatCurrency(calculos.totalTaxaEmbarque)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="bg-primary/10 font-bold text-primary-foreground">
+                                                    <TableCell colSpan={3} className="text-right">Total Geral (33.90.15)</TableCell>
+                                                    <TableCell className="text-right">{formatCurrency(calculos.totalGeral)}</TableCell>
+                                                </TableRow>
+                                            </TableBody>
+                                        </Table>
+                                        
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                            * Valores unitários baseados na Diretriz Operacional ({diretrizesOp?.ano_referencia || anoReferencia}). Taxa de Embarque: {formatCurrency(taxaEmbarqueUnitario)}. Referência Legal: {referenciaLegal}.
+                                        </p>
+                                    </div>
+                                </section>
+                            )}
 
                             {/* SEÇÃO 3: BOTÕES DE AÇÃO */}
-                            <section className="flex justify-end gap-3">
-                                <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Limpar Formulário
-                                </Button>
-                                <Button type="submit" disabled={!isPTrabEditable || isSaving || calculos.totalMilitares === 0}>
-                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                    {editingId ? "Atualizar Registro" : "Adicionar Registro"}
-                                </Button>
-                            </section>
+                            {isFormReady && (
+                                <section className="flex justify-end gap-3">
+                                    <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Limpar Formulário
+                                    </Button>
+                                    <Button type="submit" disabled={!isPTrabEditable || isSaving || calculos.totalMilitares === 0}>
+                                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                        {editingId ? "Atualizar Registro" : "Adicionar Registro"}
+                                    </Button>
+                                </section>
+                            )}
                             
                             {/* SEÇÃO 4: REGISTROS CADASTRADOS */}
-                            <section className="space-y-4 border-t pt-6">
-                                <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    <ClipboardList className="h-4 w-4 text-muted-foreground" />
-                                    4. Registros de Diárias Cadastrados ({registros?.length || 0})
-                                </h3>
-                                <div className="border rounded-lg overflow-hidden">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="w-[20%]">OM Destino</TableHead>
-                                                <TableHead className="w-[15%]">Local Pgto</TableHead>
-                                                <TableHead className="w-[10%] text-center">Dias</TableHead>
-                                                <TableHead className="w-[10%] text-center">Militares</TableHead>
-                                                <TableHead className="w-[20%] text-right">Total Diária</TableHead>
-                                                <TableHead className="w-[15%] text-right">Ações</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {(registros || []).map((registro) => (
-                                                <TableRow key={registro.id}>
-                                                    <TableCell className="font-medium">
-                                                        {registro.organizacao} ({formatCodug(registro.ug)})
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {destinoOptions.find(d => d.value === registro.destino)?.label || registro.destino}
-                                                    </TableCell>
-                                                    <TableCell className="text-center">{registro.dias_operacao}</TableCell>
-                                                    <TableCell className="text-center">
-                                                        {Object.values(registro.quantidades_por_posto || {}).reduce((sum, qty) => sum + qty, 0)}
-                                                    </TableCell>
-                                                    <TableCell className="text-right font-semibold">
-                                                        {formatCurrency(registro.valor_total)}
-                                                    </TableCell>
-                                                    <TableCell className="text-right space-x-2">
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="icon" 
-                                                            onClick={() => handleEdit(registro)}
-                                                            disabled={!isPTrabEditable || isSaving}
-                                                        >
-                                                            <Edit className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button 
-                                                            variant="destructive" 
-                                                            size="icon" 
-                                                            onClick={() => handleConfirmDelete(registro)}
-                                                            disabled={!isPTrabEditable || isSaving}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                            {(registros || []).length === 0 && (
+                            {registros && registros.length > 0 && (
+                                <section className="space-y-4 border-t pt-6">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                                        <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                                        4. Registros de Diárias Cadastrados ({registros?.length || 0})
+                                    </h3>
+                                    <div className="border rounded-lg overflow-hidden">
+                                        <Table>
+                                            <TableHeader>
                                                 <TableRow>
-                                                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                                                        Nenhum registro de diária adicionado.
-                                                    </TableCell>
+                                                    <TableHead className="w-[20%]">OM Destino</TableHead>
+                                                    <TableHead className="w-[15%]">Local Pgto</TableHead>
+                                                    <TableHead className="w-[10%] text-center">Dias</TableHead>
+                                                    <TableHead className="w-[10%] text-center">Militares</TableHead>
+                                                    <TableHead className="w-[20%] text-right">Total Diária</TableHead>
+                                                    <TableHead className="w-[15%] text-right">Ações</TableHead>
                                                 </TableRow>
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </section>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {(registros || []).map((registro) => (
+                                                    <TableRow key={registro.id}>
+                                                        <TableCell className="font-medium">
+                                                            {registro.organizacao} ({formatCodug(registro.ug)})
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {destinoOptions.find(d => d.value === registro.destino)?.label || registro.destino}
+                                                        </TableCell>
+                                                        <TableCell className="text-center">{registro.dias_operacao}</TableCell>
+                                                        <TableCell className="text-center">
+                                                            {Object.values(registro.quantidades_por_posto || {}).reduce((sum, qty) => sum + qty, 0)}
+                                                        </TableCell>
+                                                        <TableCell className="text-right font-semibold">
+                                                            {formatCurrency(registro.valor_total)}
+                                                        </TableCell>
+                                                        <TableCell className="text-right space-x-2">
+                                                            <Button 
+                                                                variant="outline" 
+                                                                size="icon" 
+                                                                onClick={() => handleEdit(registro)}
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                            >
+                                                                <Edit className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button 
+                                                                variant="destructive" 
+                                                                size="icon" 
+                                                                onClick={() => handleConfirmDelete(registro)}
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                                {(registros || []).length === 0 && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                                                            Nenhum registro de diária adicionado.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </section>
+                            )}
 
                             {/* SEÇÃO 5: MEMÓRIA DE CÁLCULO DETALHADA */}
-                            <section className="space-y-4 border-t pt-6">
-                                <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    <FileText className="h-4 w-4 text-muted-foreground" />
-                                    5. Memória de Cálculo Detalhada
-                                </h3>
-                                <div className="space-y-2">
-                                    <Label htmlFor="memoria_calculo">Memória de Cálculo Automática</Label>
-                                    <Textarea
-                                        id="memoria_calculo"
-                                        value={calculos.memoria}
-                                        rows={15}
-                                        readOnly
-                                        className="bg-muted/50 font-mono text-xs"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="memoria_customizada">Memória de Cálculo Customizada (Opcional)</Label>
-                                    <Textarea
-                                        id="memoria_customizada"
-                                        value={memoriaCustomizada}
-                                        onChange={(e) => setMemoriaCustomizada(e.target.value)}
-                                        rows={15}
-                                        placeholder="Preencha aqui se desejar substituir a memória automática no relatório final."
-                                        disabled={!isPTrabEditable || isSaving}
-                                        className="font-mono text-xs border-primary/50"
-                                    />
-                                </div>
-                            </section>
+                            {registros && registros.length > 0 && (
+                                <section className="space-y-4 border-t pt-6">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                                        <FileText className="h-4 w-4 text-muted-foreground" />
+                                        5. Memória de Cálculo Detalhada
+                                    </h3>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="memoria_calculo">Memória de Cálculo Automática</Label>
+                                        <Textarea
+                                            id="memoria_calculo"
+                                            value={calculos.memoria}
+                                            rows={15}
+                                            readOnly
+                                            className="bg-muted/50 font-mono text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="memoria_customizada">Memória de Cálculo Customizada (Opcional)</Label>
+                                        <Textarea
+                                            id="memoria_customizada"
+                                            value={memoriaCustomizada}
+                                            onChange={(e) => setMemoriaCustomizada(e.target.value)}
+                                            rows={15}
+                                            placeholder="Preencha aqui se desejar substituir a memória automática no relatório final."
+                                            disabled={!isPTrabEditable || isSaving}
+                                            className="font-mono text-xs border-primary/50"
+                                        />
+                                    </div>
+                                </section>
+                            )}
                         </form>
                     </CardContent>
                 </Card>
