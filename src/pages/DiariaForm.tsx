@@ -856,7 +856,7 @@ const DiariaForm = () => {
                                                             <h4 className="font-bold text-base text-teal-700">
                                                                 Diárias ({item.totalMilitares} Militares)
                                                             </h4>
-                                                            <Separator className="bg-teal-500/30" />
+                                                            <div className="w-full h-[1px] bg-teal-500/30 my-1" />
                                                             <p className="text-sm text-muted-foreground">
                                                                 {item.local_atividade} ({item.destinoLabel})
                                                             </p>
