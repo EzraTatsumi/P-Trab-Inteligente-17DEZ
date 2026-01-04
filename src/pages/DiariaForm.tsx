@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
+import { toast } => "sonner";
 import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane, PlusCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -511,6 +511,54 @@ const DiariaForm = () => {
     };
     
     // =================================================================
+    // FUNÇÕES DE DETALHAMENTO PARA ITENS PENDENTES
+    // =================================================================
+    
+    const getDiariaFormulaDisplay = useCallback((item: CalculatedDiaria) => {
+        if (!diretrizesOp) return "Diretrizes não carregadas.";
+        
+        const diasPagamento = Math.max(0, item.dias_operacao - 0.5);
+        const nrViagens = item.nr_viagens;
+        
+        const formulaParts: string[] = [];
+        
+        DIARIA_RANKS_CONFIG.forEach(rank => {
+            const quantidade = item.quantidades_por_posto[rank.key] || 0;
+            if (quantidade > 0) {
+                const valorUnitario = Number(diretrizesOp[`${rank.fieldPrefix}_${item.destino === 'bsb_capitais_especiais' ? 'bsb' : item.destino === 'demais_capitais' ? 'capitais' : 'demais'}` as keyof DiretrizOperacional] || 0);
+                
+                // Fórmula: <Qtd Mil> <Posto/Gradução> x <Valor Diária> x <Quantidade de Viagens>
+                const militaresPlural = quantidade === 1 ? 'mil.' : 'militares';
+                const viagensPlural = nrViagens === 1 ? 'viagem' : 'viagens';
+                
+                const custoTotalPosto = quantidade * valorUnitario * diasPagamento * nrViagens;
+                
+                formulaParts.push(
+                    `${quantidade} ${rank.label} x ${formatCurrency(valorUnitario)}/dia x ${formatNumber(diasPagamento, 1)} dias x ${nrViagens} ${viagensPlural} = ${formatCurrency(custoTotalPosto)}`
+                );
+            }
+        });
+        
+        // Se houver mais de uma parte, mostra a soma, senão mostra a única parte.
+        if (formulaParts.length > 1) {
+            return `Soma dos custos por posto: ${formulaParts.join(' + ')}`;
+        }
+        return formulaParts[0] || "Nenhum militar adicionado.";
+        
+    }, [diretrizesOp]);
+    
+    const getTaxaEmbarqueFormulaDisplay = useCallback((item: CalculatedDiaria, taxaUnitario: number) => {
+        if (!item.is_aereo) return "Não aplicável (Deslocamento Terrestre/Fluvial)";
+        
+        const militaresPlural = item.totalMilitares === 1 ? 'militar' : 'militares';
+        const viagensPlural = item.nr_viagens === 1 ? 'viagem' : 'viagens';
+        
+        // Fórmula: (Total Militares) x (Nr Viagens) x (Taxa Unitária)
+        return `${item.totalMilitares} ${militaresPlural} x ${item.nr_viagens} ${viagensPlural} x ${formatCurrency(taxaUnitario)}`;
+        
+    }, []);
+
+    // =================================================================
     // RENDERIZAÇÃO
     // =================================================================
 
@@ -825,7 +873,7 @@ const DiariaForm = () => {
                                                     disabled={!isPTrabEditable || isSaving || !isCalculationReady}
                                                     className="w-full md:w-auto"
                                                 >
-                                                    Salvar Itens da Categoria
+                                                    Adicionar Itens da Categoria
                                                 </Button>
                                             )}
                                         </div>
@@ -845,16 +893,8 @@ const DiariaForm = () => {
                                     <div className="space-y-4">
                                         {pendingDiarias.map((item) => {
                                             // Fórmulas de cálculo para display
-                                            const taxaEmbarqueFormula = item.is_aereo 
-                                                ? `${item.totalMilitares} Militares x ${item.nr_viagens} Viagens x ${formatCurrency(taxaEmbarqueUnitario)}`
-                                                : '0';
-                                            
-                                            // O valor total da diária (ND 39) é a soma dos custos por posto.
-                                            // A memória de cálculo completa é complexa, mas para o resumo, podemos mostrar o total.
-                                            // Para simplificar a visualização da fórmula, vamos mostrar o total de diárias (ND 39)
-                                            // dividido pelo número de viagens, para dar uma ideia do custo por viagem.
-                                            const totalDiariaPorViagem = item.valor_nd_39 / item.nr_viagens;
-                                            const diariaFormula = `${item.nr_viagens} Viagens x ${formatCurrency(totalDiariaPorViagem)} (Custo Diária por Viagem)`;
+                                            const taxaEmbarqueFormula = getTaxaEmbarqueFormulaDisplay(item, taxaEmbarqueUnitario);
+                                            const diariaFormula = getDiariaFormulaDisplay(item);
 
                                             return (
                                                 <Card 
