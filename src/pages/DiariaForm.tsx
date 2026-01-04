@@ -465,10 +465,10 @@ const DiariaForm = () => {
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-8">
                             
-                            {/* SEÇÃO 1: DADOS BASE (OM e FASE) */}
+                            {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    1. Dados Base (OM e Fase da Atividade)
+                                    1. Dados da Organização
                                 </h3>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -513,7 +513,7 @@ const DiariaForm = () => {
                                     
                                     {/* Linha de Destino (Tabs) */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="destino">Local para fins Pgto *</Label>
+                                        <Label htmlFor="destino">Local para fins de Pagamento *</Label>
                                         <Tabs 
                                             value={formData.destino} 
                                             onValueChange={(value) => setFormData({ ...formData, destino: value as DestinoDiaria })}
@@ -529,70 +529,77 @@ const DiariaForm = () => {
                                         </Tabs>
                                     </div>
                                     
-                                    {/* NOVOS CAMPOS: Dias, Viagens, Local (Movidos da Seção 1) */}
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4">
-                                        <div className="space-y-2 col-span-1">
-                                            <Label htmlFor="dias_operacao">Nr Dias da Viagem *</Label>
-                                            <Input
-                                                id="dias_operacao"
-                                                type="number"
-                                                min={1}
-                                                value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
-                                                onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
-                                                required
-                                                disabled={!isPTrabEditable || isSaving}
-                                                onKeyDown={handleEnterToNextField}
-                                                onWheel={(e) => e.currentTarget.blur()}
-                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            />
-                                        </div>
-                                        <div className="space-y-2 col-span-1">
-                                            <Label htmlFor="nr_viagens">Nr Viagens *</Label>
-                                            <Input
-                                                id="nr_viagens"
-                                                type="number"
-                                                min={1}
-                                                value={formData.nr_viagens === 0 ? "" : formData.nr_viagens}
-                                                onChange={(e) => setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 })}
-                                                required
-                                                disabled={!isPTrabEditable || isSaving}
-                                                onKeyDown={handleEnterToNextField}
-                                                onWheel={(e) => e.currentTarget.blur()}
-                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            />
-                                        </div>
-                                        <div className="col-span-2 grid grid-cols-2 gap-4">
-                                            <div className="space-y-2 col-span-1">
-                                                <Label htmlFor="local_atividade">Local da Atividade *</Label>
-                                                <Input
-                                                    id="local_atividade"
-                                                    value={formData.local_atividade}
-                                                    onChange={(e) => setFormData({ ...formData, local_atividade: e.target.value })}
-                                                    placeholder="Ex: Belém/PA"
-                                                    required
-                                                    disabled={!isPTrabEditable || isSaving}
-                                                    onKeyDown={handleEnterToNextField}
-                                                />
-                                            </div>
-                                            {/* NOVO CAMPO: Deslocamento Aéreo */}
-                                            <div className="flex flex-col col-span-1">
-                                                <Label htmlFor="is_aereo" className="text-sm font-medium mb-2">
-                                                    Deslocamento Aéreo?
-                                                </Label>
-                                                <div className="flex items-center space-x-2 h-10 mt-auto">
-                                                    <Switch
-                                                        id="is_aereo"
-                                                        checked={formData.is_aereo}
-                                                        onCheckedChange={(checked) => setFormData({ ...formData, is_aereo: checked })}
+                                    {/* Dados da Viagem (Card) */}
+                                    <Card className="mt-6">
+                                        <CardHeader className="py-3">
+                                            <CardTitle className="text-base font-semibold">Dados da Viagem (item obrigatório)</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                <div className="space-y-2 col-span-1">
+                                                    <Label htmlFor="dias_operacao">Nr Dias da Viagem *</Label>
+                                                    <Input
+                                                        id="dias_operacao"
+                                                        type="number"
+                                                        min={1}
+                                                        value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
+                                                        onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
+                                                        required
                                                         disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                        onWheel={(e) => e.currentTarget.blur()}
+                                                        className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                     />
-                                                    <span className="text-sm text-muted-foreground">
-                                                        {formData.is_aereo ? "Sim (Inclui Taxa Emb.)" : "Não (Terrestre/Fluvial)"}
-                                                    </span>
+                                                </div>
+                                                <div className="space-y-2 col-span-1">
+                                                    <Label htmlFor="nr_viagens">Nr Viagens *</Label>
+                                                    <Input
+                                                        id="nr_viagens"
+                                                        type="number"
+                                                        min={1}
+                                                        value={formData.nr_viagens === 0 ? "" : formData.nr_viagens}
+                                                        onChange={(e) => setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 })}
+                                                        required
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                        onWheel={(e) => e.currentTarget.blur()}
+                                                        className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                    />
+                                                </div>
+                                                <div className="col-span-2 grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2 col-span-1">
+                                                        <Label htmlFor="local_atividade">Local da Atividade *</Label>
+                                                        <Input
+                                                            id="local_atividade"
+                                                            value={formData.local_atividade}
+                                                            onChange={(e) => setFormData({ ...formData, local_atividade: e.target.value })}
+                                                            placeholder="Ex: Belém/PA"
+                                                            required
+                                                            disabled={!isPTrabEditable || isSaving}
+                                                            onKeyDown={handleEnterToNextField}
+                                                        />
+                                                    </div>
+                                                    {/* NOVO CAMPO: Deslocamento Aéreo */}
+                                                    <div className="flex flex-col col-span-1">
+                                                        <Label htmlFor="is_aereo" className="text-sm font-medium mb-2">
+                                                            Deslocamento Aéreo?
+                                                        </Label>
+                                                        <div className="flex items-center space-x-2 h-10 mt-auto">
+                                                            <Switch
+                                                                id="is_aereo"
+                                                                checked={formData.is_aereo}
+                                                                onCheckedChange={(checked) => setFormData({ ...formData, is_aereo: checked })}
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                            />
+                                                            <span className="text-sm text-muted-foreground">
+                                                                {formData.is_aereo ? "Sim (Inclui Taxa Emb.)" : "Não (Terrestre/Fluvial)"}
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
+                                        </CardContent>
+                                    </Card>
                                     
                                     {/* Tabela de Posto/Graduação e Quantidade (Estilizada como Card) */}
                                     <Card className="mt-6">
