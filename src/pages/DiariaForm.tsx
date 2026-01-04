@@ -906,42 +906,39 @@ const DiariaForm = () => {
                                                     className="border-2 border-teal-500/50 bg-teal-50/50 shadow-md"
                                                 >
                                                     <CardContent className="p-4">
-                                                        <div className="flex justify-between items-start border-b border-teal-500/30 pb-2 mb-2">
-                                                            <div className="space-y-1 w-full flex-grow">
-                                                                <h4 className="font-bold text-base text-teal-700">
-                                                                    Diárias ({item.local_atividade})
-                                                                </h4>
-                                                                <div className="w-full h-[1px] bg-teal-500/30 my-1" />
-                                                                
-                                                                {/* Detalhes do Cálculo (Taxa de Embarque e Diárias Detalhadas) */}
-                                                                <div className="space-y-2 pt-1 w-full">
-                                                                    {/* Taxa de Embarque Row */}
-                                                                    <div className="grid grid-cols-2 gap-4 text-xs">
-                                                                        <p className="font-medium text-muted-foreground">Taxa de Embarque:</p>
-                                                                        <p className="font-medium text-muted-foreground text-right">
-                                                                            {item.is_aereo ? `${item.nr_viagens} x ${item.totalMilitares} x ${taxaEmbarqueUnitarioDisplay}` : 'Não Aéreo'}
-                                                                        </p>
-                                                                    </div>
-                                                                    
-                                                                    {/* Diárias Section (Multi-line breakdown) */}
-                                                                    <div className="grid grid-cols-2 gap-4 text-xs">
-                                                                        <p className="font-medium text-muted-foreground">Diárias:</p>
-                                                                        <div className="space-y-1">
-                                                                            {rankCalculationElements}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-extrabold text-lg text-teal-700 text-right">
-                                                                    {formatCurrency(item.valor_total)}
+                                                        
+                                                        {/* NOVO HEADER: Título e Valor Total na mesma linha */}
+                                                        <div className="flex justify-between items-center border-b border-teal-500/30 pb-2 mb-2">
+                                                            <h4 className="font-bold text-base text-teal-700">
+                                                                Diárias ({item.local_atividade})
+                                                            </h4>
+                                                            <p className="font-extrabold text-lg text-teal-700 text-right">
+                                                                {formatCurrency(item.valor_total)}
+                                                            </p>
+                                                        </div>
+                                                        
+                                                        {/* Detalhes do Cálculo (Taxa de Embarque e Diárias Detalhadas) - AGORA FULL WIDTH */}
+                                                        <div className="space-y-2 pt-1">
+                                                            <div className="w-full h-[1px] bg-teal-500/30 my-1" />
+                                                            
+                                                            {/* Taxa de Embarque Row */}
+                                                            <div className="grid grid-cols-2 gap-4 text-xs">
+                                                                <p className="font-medium text-muted-foreground">Taxa de Embarque:</p>
+                                                                <p className="font-medium text-muted-foreground text-right">
+                                                                    {item.is_aereo ? `${item.nr_viagens} x ${item.totalMilitares} x ${taxaEmbarqueUnitarioDisplay}` : 'Não Aéreo'}
                                                                 </p>
-                                                                {/* Opção de remover item individualmente removida */}
+                                                            </div>
+                                                            
+                                                            {/* Diárias Section (Multi-line breakdown) */}
+                                                            <div className="grid grid-cols-2 gap-4 text-xs">
+                                                                <p className="font-medium text-muted-foreground">Diárias:</p>
+                                                                <div className="space-y-1 w-full">
+                                                                    {rankCalculationElements}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         
-                                                        <div className="grid grid-cols-2 gap-4 text-xs">
+                                                        <div className="grid grid-cols-2 gap-4 text-xs pt-4">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Destino Recurso:</p>
                                                                 <p className="font-medium">ND 33.90.30 (Taxa Embarque):</p>
