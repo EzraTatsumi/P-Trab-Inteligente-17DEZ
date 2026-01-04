@@ -660,34 +660,47 @@ const DiariaForm = () => {
                                                                 </TableRow>
                                                             );
                                                         })}
-                                                        {/* Linhas de Totais */}
-                                                        <TableRow className="bg-muted hover:bg-muted font-bold border-t border-border">
-                                                            <TableCell colSpan={4} className="text-right">Total Diária</TableCell>
-                                                            <TableCell className="text-right">{formatCurrency(calculos.totalDiaria)}</TableCell>
-                                                        </TableRow>
-                                                        <TableRow className="bg-muted hover:bg-muted font-bold">
-                                                            <TableCell colSpan={4} className="text-right">Total Taxa de Embarque</TableCell>
-                                                            <TableCell className="text-right">{formatCurrency(calculos.totalTaxaEmbarque)}</TableCell>
-                                                        </TableRow>
-                                                        <TableRow className="bg-muted hover:bg-muted font-bold text-foreground">
-                                                            <TableCell colSpan={4} className="text-right">Total Geral</TableCell>
-                                                            <TableCell className="text-right">{formatCurrency(calculos.totalGeral)}</TableCell>
-                                                        </TableRow>
                                                     </TableBody>
                                                 </Table>
                                             </div>
                                         </CardContent>
                                     </Card>
                                     
-                                    {/* BOTÕES DE AÇÃO (Movidos da antiga Seção 3) */}
+                                    {/* NOVO BLOCO DE RESUMO DE TOTAIS */}
+                                    <div className="space-y-2 mt-4">
+                                        <div className="flex justify-between items-center p-3 bg-muted rounded-lg border">
+                                            <span className="font-medium text-sm text-muted-foreground">Total Diária (sem Taxa)</span>
+                                            <span className="font-semibold text-base text-foreground">
+                                                {formatCurrency(calculos.totalDiaria)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center p-3 bg-muted rounded-lg border">
+                                            <span className="font-medium text-sm text-muted-foreground">Total Taxa de Embarque</span>
+                                            <span className="font-semibold text-base text-foreground">
+                                                {formatCurrency(calculos.totalTaxaEmbarque)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
+                                            <span className="font-bold text-base">TOTAL GERAL</span>
+                                            <span className="font-extrabold text-xl text-primary">
+                                                {formatCurrency(calculos.totalGeral)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* BOTÕES DE AÇÃO (Apenas Salvar Itens da Categoria e Limpar) */}
                                     <div className="flex justify-end gap-3 pt-4">
                                         <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             Limpar Formulário
                                         </Button>
-                                        <Button type="submit" disabled={!isPTrabEditable || isSaving || calculos.totalMilitares === 0 || !isSubmissionReady}>
+                                        <Button 
+                                            type="submit" 
+                                            disabled={!isPTrabEditable || isSaving || calculos.totalMilitares === 0 || !isSubmissionReady}
+                                            className="w-full md:w-auto"
+                                        >
                                             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                            {editingId ? "Atualizar Registro" : "Adicionar Registro"}
+                                            {editingId ? "Atualizar Registro" : "Salvar Itens da Categoria"}
                                         </Button>
                                     </div>
                                     
