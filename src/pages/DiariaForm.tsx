@@ -39,7 +39,6 @@ import * as z from "zod";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector"; // Importando o OmSelector
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Importando Tabs
 
 // Tipos de dados
 type DiariaRegistro = Tables<'diaria_registros'>;
@@ -358,6 +357,7 @@ const DiariaForm = () => {
     };
     
     const handleRankQuantityChange = (rankKey: string, value: string) => {
+        // Se o valor for vazio, trata como 0
         const qty = parseInt(value) || 0;
         setFormData(prev => ({
             ...prev,
@@ -387,18 +387,22 @@ const DiariaForm = () => {
     const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
     const isSaving = mutation.isPending;
     
-    // Condição para exibir as seções 2 e 3 (Formulário de Item e Botões de Ação)
-    const isFormReady = formData.organizacao.length > 0 && 
-                        formData.ug.length > 0 && 
-                        formData.dias_operacao > 0 &&
-                        formData.fase_atividade.length > 0 &&
-                        formData.local_atividade.length > 0;
+    // Condição para exibir a Seção 2 e 3 (depende apenas dos dados base da Seção 1)
+    const isBaseFormReady = formData.organizacao.length > 0 && 
+                            formData.ug.length > 0 && 
+                            formData.fase_atividade.length > 0;
+
+    // Condição para permitir o cálculo e submissão (todos os campos obrigatórios, incluindo os movidos)
+    const isSubmissionReady = isBaseFormReady &&
+                              formData.dias_operacao > 0 &&
+                              formData.nr_viagens > 0 &&
+                              formData.local_atividade.length > 0;
     
     // Mapeamento de destino para rótulo
-    const destinoOptions: { value: DestinoDiaria, label: string }[] = [
-        { value: 'bsb_capitais_especiais', label: 'BSB/MAO/RJ/SP' },
+    const destinoOptions = [
+        { value: 'bsb_capitais_especiais', label: 'Deslocamento para BSB/MAO/RJ/SP' },
         { value: 'demais_capitais', label: 'Demais Capitais' },
-        { value: 'demais_dslc', label: 'Demais Dslc' },
+        { value: 'demais_dslc', label: 'Demais deslocamentos' },
     ];
     
     // Função para obter o valor unitário da diária (para exibição na tabela)
@@ -453,13 +457,14 @@ const DiariaForm = () => {
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-8">
                             
-                            {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
+                            {/* SEÇÃO 1: DADOS BASE (OM e FASE) */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    1. Dados da Organização (Destino do Recurso)
+                                    1. Dados Base (OM e Fase da Atividade)
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <div className="space-y-2 col-span-2">
                                         <Label htmlFor="organizacao">OM de Destino do Recurso *</Label>
                                         <OmSelector
                                             selectedOmId={selectedOmId}
@@ -470,7 +475,7 @@ const DiariaForm = () => {
                                             initialOmUg={formData.ug}
                                         />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 col-span-2">
                                         <Label htmlFor="ug">UG de Destino</Label>
                                         <Input
                                             id="ug"
@@ -480,8 +485,7 @@ const DiariaForm = () => {
                                         />
                                     </div>
                                     
-                                    {/* Fase da Atividade movida para a Seção 1 */}
-                                    <div className="space-y-2 col-span-2">
+                                    <div className="space-y-2 col-span-4">
                                         <Label htmlFor="fase_atividade">Fase da Atividade *</Label>
                                         <FaseAtividadeSelect
                                             value={formData.fase_atividade}
@@ -490,58 +494,16 @@ const DiariaForm = () => {
                                         />
                                     </div>
                                 </div>
-                                
-                                {/* Campos de Dias e Local da Atividade (Movidos para a Seção 1 para completar o isFormReady) */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="dias_operacao">Nr Dias da Viagem *</Label>
-                                        <Input
-                                            id="dias_operacao"
-                                            type="number"
-                                            min={1}
-                                            value={formData.dias_operacao}
-                                            onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
-                                            required
-                                            disabled={!isPTrabEditable || isSaving}
-                                            onKeyDown={handleEnterToNextField}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="nr_viagens">Nr Viagens *</Label>
-                                        <Input
-                                            id="nr_viagens"
-                                            type="number"
-                                            min={1}
-                                            value={formData.nr_viagens}
-                                            onChange={(e) => setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 })}
-                                            required
-                                            disabled={!isPTrabEditable || isSaving}
-                                            onKeyDown={handleEnterToNextField}
-                                        />
-                                    </div>
-                                    <div className="space-y-2 col-span-2">
-                                        <Label htmlFor="local_atividade">Local da Atividade (Cidade/Estado) *</Label>
-                                        <Input
-                                            id="local_atividade"
-                                            value={formData.local_atividade}
-                                            onChange={(e) => setFormData({ ...formData, local_atividade: e.target.value })}
-                                            placeholder="Ex: Belém/PA"
-                                            required
-                                            disabled={!isPTrabEditable || isSaving}
-                                            onKeyDown={handleEnterToNextField}
-                                        />
-                                    </div>
-                                </div>
                             </section>
 
-                            {/* SEÇÃO 2: CONFIGURAR O ITEM (TABELA DE DIÁRIAS) */}
-                            {isFormReady && (
+                            {/* SEÇÃO 2: CONFIGURAR O ITEM (DIAS, VIAGENS, LOCAL E EFETIVO) */}
+                            {isBaseFormReady && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        2. Configurar Pagamento de Diárias
+                                        2. Configurar Item de Diária
                                     </h3>
                                     
-                                    {/* Linha de Dados Principais (Destino) - Substituído por Tabs */}
+                                    {/* Linha de Destino (Tabs) */}
                                     <div className="space-y-2">
                                         <Label htmlFor="destino">Local para fins Pgto *</Label>
                                         <Tabs 
@@ -551,11 +513,7 @@ const DiariaForm = () => {
                                         >
                                             <TabsList className="grid w-full grid-cols-3">
                                                 {destinoOptions.map(opt => (
-                                                    <TabsTrigger 
-                                                        key={opt.value} 
-                                                        value={opt.value}
-                                                        disabled={!isPTrabEditable || isSaving}
-                                                    >
+                                                    <TabsTrigger key={opt.value} value={opt.value} disabled={!isPTrabEditable || isSaving}>
                                                         {opt.label}
                                                     </TabsTrigger>
                                                 ))}
@@ -563,11 +521,59 @@ const DiariaForm = () => {
                                         </Tabs>
                                     </div>
                                     
-                                    {/* Tabela de Posto/Graduação e Quantidade - Aplicando estilo bg-muted/50 */}
-                                    <div className="mt-6 space-y-4 p-4 bg-muted/50 rounded-lg">
-                                        <h4 className="font-semibold">Efetivo por Posto/Graduação</h4>
-                                        <div className="max-h-[400px] overflow-y-auto rounded-md border bg-card">
-                                            <Table className="w-full">
+                                    {/* NOVOS CAMPOS: Dias, Viagens, Local (Movidos da Seção 1) */}
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4">
+                                        <div className="space-y-2 col-span-1">
+                                            <Label htmlFor="dias_operacao">Nr Dias da Viagem *</Label>
+                                            <Input
+                                                id="dias_operacao"
+                                                type="number"
+                                                min={1}
+                                                value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
+                                                onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
+                                                required
+                                                disabled={!isPTrabEditable || isSaving}
+                                                onKeyDown={handleEnterToNextField}
+                                                onWheel={(e) => e.currentTarget.blur()}
+                                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-2 col-span-1">
+                                            <Label htmlFor="nr_viagens">Nr Viagens *</Label>
+                                            <Input
+                                                id="nr_viagens"
+                                                type="number"
+                                                min={1}
+                                                value={formData.nr_viagens === 0 ? "" : formData.nr_viagens}
+                                                onChange={(e) => setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 })}
+                                                required
+                                                disabled={!isPTrabEditable || isSaving}
+                                                onKeyDown={handleEnterToNextField}
+                                                onWheel={(e) => e.currentTarget.blur()}
+                                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-2 col-span-2">
+                                            <Label htmlFor="local_atividade">Local da Atividade (Cidade/Estado) *</Label>
+                                            <Input
+                                                id="local_atividade"
+                                                value={formData.local_atividade}
+                                                onChange={(e) => setFormData({ ...formData, local_atividade: e.target.value })}
+                                                placeholder="Ex: Belém/PA"
+                                                required
+                                                disabled={!isPTrabEditable || isSaving}
+                                                onKeyDown={handleEnterToNextField}
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Tabela de Posto/Graduação e Quantidade (Estilizada como Card) */}
+                                    <Card className="mt-6">
+                                        <CardHeader className="py-3">
+                                            <CardTitle className="text-base font-semibold">Efetivo por Posto/Graduação</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="p-0">
+                                            <Table>
                                                 <TableHeader>
                                                     <TableRow>
                                                         <TableHead className="w-[40%]">Posto/Graduação</TableHead>
@@ -590,11 +596,13 @@ const DiariaForm = () => {
                                                                     <Input
                                                                         type="number"
                                                                         min={0}
+                                                                        // CORREÇÃO AQUI: Exibir string vazia se o valor for 0
                                                                         value={qty === 0 ? "" : qty}
                                                                         onChange={(e) => handleRankQuantityChange(rank.key, e.target.value)}
                                                                         disabled={!isPTrabEditable || isSaving}
-                                                                        className="text-center max-w-[80px] mx-auto"
+                                                                        className="text-center max-w-[80px] mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                         onKeyDown={handleEnterToNextField}
+                                                                        onWheel={(e) => e.currentTarget.blur()}
                                                                     />
                                                                 </TableCell>
                                                                 <TableCell className="text-right font-semibold">
@@ -617,23 +625,23 @@ const DiariaForm = () => {
                                                     </TableRow>
                                                 </TableBody>
                                             </Table>
-                                        </div>
-                                        
-                                        <p className="text-xs text-muted-foreground mt-2">
-                                            * Valores unitários baseados na Diretriz Operacional ({diretrizesOp?.ano_referencia || anoReferencia}). Taxa de Embarque: {formatCurrency(taxaEmbarqueUnitario)}. Referência Legal: {referenciaLegal}.
-                                        </p>
-                                    </div>
+                                        </CardContent>
+                                    </Card>
+                                    
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                        * Valores unitários baseados na Diretriz Operacional ({diretrizesOp?.ano_referencia || anoReferencia}). Taxa de Embarque: {formatCurrency(taxaEmbarqueUnitario)}. Referência Legal: {referenciaLegal}.
+                                    </p>
                                 </section>
                             )}
 
                             {/* SEÇÃO 3: BOTÕES DE AÇÃO */}
-                            {isFormReady && (
+                            {isBaseFormReady && (
                                 <section className="flex justify-end gap-3">
                                     <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
                                         <Trash2 className="mr-2 h-4 w-4" />
                                         Limpar Formulário
                                     </Button>
-                                    <Button type="submit" disabled={!isPTrabEditable || isSaving || calculos.totalMilitares === 0}>
+                                    <Button type="submit" disabled={!isPTrabEditable || isSaving || calculos.totalMilitares === 0 || !isSubmissionReady}>
                                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                         {editingId ? "Atualizar Registro" : "Adicionar Registro"}
                                     </Button>
