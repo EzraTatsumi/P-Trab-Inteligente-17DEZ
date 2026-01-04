@@ -336,9 +336,15 @@ const DiariaForm = () => {
             diariaSchema.parse(formData);
             
             // 2. Validação de OM/UG
-            const omDestino = oms?.find(om => om.id === selectedOmId);
+            if (!oms || !selectedOmId) {
+                toast.error("OM de Destino inválida. Por favor, selecione a OM novamente.");
+                return;
+            }
+            
+            const omDestino = oms.find(om => om.id === selectedOmId);
+
             if (!omDestino || omDestino.codug_om !== formData.ug || omDestino.nome_om !== formData.organizacao) {
-                toast.error("OM de Destino inválida ou UG não corresponde.");
+                toast.error("OM de Destino inválida ou UG não corresponde. Verifique se a OM está cadastrada e ativa em 'Relação de OM (CODUG)'.");
                 return;
             }
             
@@ -439,6 +445,19 @@ const DiariaForm = () => {
         
         try {
             diariaSchema.parse(formData);
+            
+            // 2. Validação de OM/UG
+            if (!oms || !selectedOmId) {
+                toast.error("OM de Destino inválida. Por favor, selecione a OM novamente.");
+                return;
+            }
+            
+            const omDestino = oms.find(om => om.id === selectedOmId);
+
+            if (!omDestino || omDestino.codug_om !== formData.ug || omDestino.nome_om !== formData.organizacao) {
+                toast.error("OM de Destino inválida ou UG não corresponde. Verifique se a OM está cadastrada e ativa em 'Relação de OM (CODUG)'.");
+                return;
+            }
             
             const baseData: TablesUpdate<'diaria_registros'> = {
                 organizacao: formData.organizacao,
@@ -896,29 +915,7 @@ const DiariaForm = () => {
                                             const taxaEmbarqueFormula = getTaxaEmbarqueFormulaDisplay(item, taxaEmbarqueUnitario);
                                             
                                             // Detalhamento da Diária (ND 39)
-                                            const diasPagamento = Math.max(0, item.dias_operacao - 0.5);
-                                            const nrViagens = item.nr_viagens;
-                                            
-                                            const diariaFormulaParts: string[] = [];
-                                            
-                                            DIARIA_RANKS_CONFIG.forEach(rank => {
-                                                const quantidade = item.quantidades_por_posto[rank.key] || 0;
-                                                if (quantidade > 0) {
-                                                    const valorUnitario = Number(diretrizesOp![`${rank.fieldPrefix}_${item.destino === 'bsb_capitais_especiais' ? 'bsb' : item.destino === 'demais_capitais' ? 'capitais' : 'demais'}` as keyof DiretrizOperacional] || 0);
-                                                    
-                                                    const militaresPlural = quantidade === 1 ? 'mil.' : 'militares';
-                                                    const viagensPlural = nrViagens === 1 ? 'viagem' : 'viagens';
-                                                    
-                                                    const custoTotalPosto = quantidade * valorUnitario * diasPagamento * nrViagens;
-                                                    
-                                                    // Formato solicitado: <Qtd Mil> <Posto/Gradução> x <Valor Diária> x <Quantidade de Viagens> = <Total Diária>
-                                                    diariaFormulaParts.push(
-                                                        `${quantidade} ${rank.label} x ${formatCurrency(valorUnitario)}/dia x ${formatNumber(diasPagamento, 1)} dias x ${nrViagens} ${viagensPlural} = ${formatCurrency(custoTotalPosto)}`
-                                                    );
-                                                }
-                                            });
-                                            
-                                            const diariaFormula = diariaFormulaParts.join(' + ');
+                                            const diariaFormula = getDiariaFormulaDisplay(item);
 
                                             return (
                                                 <Card 
