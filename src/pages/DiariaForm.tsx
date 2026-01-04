@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane, PlusCircle, XCircle } from "lucide-react";
+import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -62,9 +62,6 @@ interface CalculatedDiaria extends TablesInsert<'diaria_registros'> {
     // Campos de display adicionais
     destinoLabel: string;
     totalMilitares: number;
-    // Valores desagregados para exibição
-    valorDiariaND39: number;
-    valorTaxaEmbarqueND30: number;
 }
 
 // Schema de validação para o formulário de Diária
@@ -339,15 +336,9 @@ const DiariaForm = () => {
             diariaSchema.parse(formData);
             
             // 2. Validação de OM/UG
-            if (!oms || !selectedOmId) {
-                toast.error("OM de Destino inválida. Por favor, selecione a OM novamente.");
-                return;
-            }
-            
-            const omDestino = oms.find(om => om.id === selectedOmId);
-
-            if (!omDestino) {
-                toast.error("OM de Destino inválida. Verifique se a OM está cadastrada e ativa em 'Relação de OM (CODUG)'.");
+            const omDestino = oms?.find(om => om.id === selectedOmId);
+            if (!omDestino || omDestino.codug_om !== formData.ug || omDestino.nome_om !== formData.organizacao) {
+                toast.error("OM de Destino inválida ou UG não corresponde.");
                 return;
             }
             
@@ -371,11 +362,8 @@ const DiariaForm = () => {
                 quantidade: calculos.totalMilitares,
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
-                
-                // Mapeamento de ND: Total Geral (Diária + Taxa) vai para ND 39 (que representa 33.90.15 no relatório)
-                valor_nd_30: 0, 
-                valor_nd_39: calculos.totalGeral,
-                
+                valor_nd_30: calculos.totalTaxaEmbarque,
+                valor_nd_39: calculos.totalDiaria,
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
                 detalhamento_customizado: memoriaCustomizada.trim().length > 0 ? memoriaCustomizada : null,
@@ -385,8 +373,6 @@ const DiariaForm = () => {
                 memoria_calculo_display: calculos.memoria,
                 destinoLabel: destinoLabel,
                 totalMilitares: calculos.totalMilitares,
-                valorDiariaND39: calculos.totalDiaria, // Valor da diária (sem taxa)
-                valorTaxaEmbarqueND30: calculos.totalTaxaEmbarque, // Valor da taxa (para exibição)
                 
                 // Campos que foram NOT NULL, mas são redundantes no novo fluxo
                 posto_graduacao: null,
@@ -427,7 +413,7 @@ const DiariaForm = () => {
         // Mapeia os itens pendentes para o formato de inserção no DB
         const recordsToSave: TablesInsert<'diaria_registros'>[] = pendingDiarias.map(p => {
             // Remove campos de display e temporários
-            const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, valorDiariaND39, valorTaxaEmbarqueND30, ...dbRecord } = p;
+            const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, ...dbRecord } = p;
             return dbRecord as TablesInsert<'diaria_registros'>;
         });
         
@@ -454,19 +440,6 @@ const DiariaForm = () => {
         try {
             diariaSchema.parse(formData);
             
-            // 2. Validação de OM/UG
-            if (!oms || !selectedOmId) {
-                toast.error("OM de Destino inválida. Por favor, selecione a OM novamente.");
-                return;
-            }
-            
-            const omDestino = oms.find(om => om.id === selectedOmId);
-
-            if (!omDestino) {
-                toast.error("OM de Destino inválida. Verifique se a OM está cadastrada e ativa em 'Relação de OM (CODUG)'.");
-                return;
-            }
-            
             const baseData: TablesUpdate<'diaria_registros'> = {
                 organizacao: formData.organizacao,
                 ug: formData.ug,
@@ -479,11 +452,8 @@ const DiariaForm = () => {
                 quantidade: calculos.totalMilitares,
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
-                
-                // Mapeamento de ND: Total Geral (Diária + Taxa) vai para ND 39
-                valor_nd_30: 0, 
-                valor_nd_39: calculos.totalGeral,
-                
+                valor_nd_30: calculos.totalTaxaEmbarque,
+                valor_nd_39: calculos.totalDiaria,
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
                 detalhamento_customizado: memoriaCustomizada.trim().length > 0 ? memoriaCustomizada : null,
@@ -540,50 +510,6 @@ const DiariaForm = () => {
         }));
     };
     
-    // =================================================================
-    // FUNÇÕES DE DETALHAMENTO PARA ITENS PENDENTES
-    // =================================================================
-    
-    const getDiariaFormulaDisplay = useCallback((item: CalculatedDiaria) => {
-        if (!diretrizesOp) return "Diretrizes não carregadas.";
-        
-        const diasPagamento = Math.max(0, item.dias_operacao - 0.5);
-        const nrViagens = item.nr_viagens;
-        
-        const formulaParts: string[] = [];
-        
-        DIARIA_RANKS_CONFIG.forEach(rank => {
-            const quantidade = item.quantidades_por_posto[rank.key] || 0;
-            if (quantidade > 0) {
-                const valorUnitario = Number(diretrizesOp[`${rank.fieldPrefix}_${item.destino === 'bsb_capitais_especiais' ? 'bsb' : item.destino === 'demais_capitais' ? 'capitais' : 'demais'}` as keyof DiretrizOperacional] || 0);
-                
-                // Fórmula: <Qtd Mil> <Posto/Gradução> x <Valor Diária> x <Quantidade de Viagens>
-                const militaresPlural = quantidade === 1 ? 'mil.' : 'militares';
-                const viagensPlural = nrViagens === 1 ? 'viagem' : 'viagens';
-                
-                const custoTotalPosto = quantidade * valorUnitario * diasPagamento * nrViagens;
-                
-                formulaParts.push(
-                    `${quantidade} ${rank.label} x ${formatCurrency(valorUnitario)}/dia x ${formatNumber(diasPagamento, 1)} dias x ${nrViagens} ${viagensPlural} = ${formatCurrency(custoTotalPosto)}`
-                );
-            }
-        });
-        
-        return formulaParts;
-        
-    }, [diretrizesOp]);
-    
-    const getTaxaEmbarqueFormulaDisplay = useCallback((item: CalculatedDiaria, taxaUnitario: number) => {
-        if (!item.is_aereo) return null;
-        
-        const militaresPlural = item.totalMilitares === 1 ? 'militar' : 'militares';
-        const viagensPlural = item.nr_viagens === 1 ? 'viagem' : 'viagens';
-        
-        // Fórmula: (Total Militares) x (Nr Viagens) x (Taxa Unitária)
-        return `${item.totalMilitares} ${militaresPlural} x ${item.nr_viagens} ${viagensPlural} x ${formatCurrency(taxaUnitario)} = ${formatCurrency(item.valor_taxa_embarque)}`;
-        
-    }, []);
-
     // =================================================================
     // RENDERIZAÇÃO
     // =================================================================
@@ -899,8 +825,8 @@ const DiariaForm = () => {
                                                     disabled={!isPTrabEditable || isSaving || !isCalculationReady}
                                                     className="w-full md:w-auto"
                                                 >
-                                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                                    Adicionar Item
+                                                    <Plus className="mr-2 h-4 w-4" />
+                                                    Adicionar Item à Lista
                                                 </Button>
                                             )}
                                         </div>
@@ -918,96 +844,59 @@ const DiariaForm = () => {
                                     </h3>
                                     
                                     <div className="space-y-4">
-                                        {pendingDiarias.map((item) => {
-                                            // Fórmulas de cálculo para display
-                                            const taxaEmbarqueFormula = getTaxaEmbarqueFormulaDisplay(item, taxaEmbarqueUnitario);
-                                            const diariaFormulaParts = getDiariaFormulaDisplay(item);
-
-                                            return (
-                                                <Card 
-                                                    key={item.tempId} 
-                                                    className="border-2 border-secondary bg-secondary/10 shadow-md"
-                                                >
-                                                    <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-                                                        <CardTitle className="text-base font-bold text-primary">
-                                                            Diárias ({item.local_atividade})
-                                                        </CardTitle>
-                                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                            <Users className="h-4 w-4" />
-                                                            {item.totalMilitares} Militares
-                                                        </div>
-                                                    </CardHeader>
-                                                    <CardContent className="p-4 pt-2">
-                                                        
-                                                        {/* Detalhamento da Taxa de Embarque (ND 33.90.15) */}
-                                                        <div className="space-y-1 text-sm border-b border-secondary/50 pb-2 mb-2">
-                                                            <div className="flex justify-between items-center">
-                                                                <span className="font-medium text-muted-foreground">Taxa de Embarque (ND 33.90.15):</span>
-                                                                <span className={`font-semibold ${item.is_aereo ? 'text-green-600' : 'text-gray-500'}`}>
-                                                                    {item.is_aereo ? formatCurrency(item.valor_taxa_embarque) : 'R$ 0,00 (Não Aéreo)'}
-                                                                </span>
-                                                            </div>
-                                                            {item.is_aereo && (
-                                                                <p className="text-xs text-muted-foreground italic">
-                                                                    Fórmula: {taxaEmbarqueFormula}
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                        
-                                                        {/* Detalhamento das Diárias por Posto (ND 33.90.15) */}
-                                                        <div className="space-y-1 text-xs font-medium border-b border-secondary/50 py-2 mb-2">
-                                                            <p className="font-bold text-sm text-blue-700 mb-1">Diárias por Posto/Graduação (ND 33.90.15):</p>
-                                                            {diariaFormulaParts.map((formula, index) => (
-                                                                <div key={index} className="flex justify-between text-gray-700">
-                                                                    <span>{formula}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                        
-                                                        {/* LINHA FINAL: TOTAIS CONSOLIDADOS */}
-                                                        <div className="grid grid-cols-2 gap-4 pt-2">
-                                                            <div className="space-y-1">
-                                                                <p className="font-medium text-sm">Total Diárias (sem taxa):</p>
-                                                                <p className="font-medium text-sm">Total Taxa de Embarque:</p>
-                                                            </div>
-                                                            <div className="text-right space-y-1">
-                                                                <p className="font-extrabold text-sm text-blue-600">
-                                                                    {formatCurrency(item.valorDiariaND39)}
-                                                                </p>
-                                                                <p className="font-extrabold text-sm text-green-600">
-                                                                    {formatCurrency(item.valorTaxaEmbarqueND30)}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <div className="flex justify-between items-center pt-3 border-t border-secondary/50 mt-3">
-                                                            <h4 className="font-bold text-base text-primary">
-                                                                TOTAL GERAL (ND 33.90.15)
+                                        {pendingDiarias.map((item) => (
+                                            <Card 
+                                                key={item.tempId} 
+                                                className="border-2 border-teal-500/50 bg-teal-50/50 shadow-md"
+                                            >
+                                                <CardContent className="p-4">
+                                                    <div className="flex justify-between items-start border-b border-teal-500/30 pb-2 mb-2">
+                                                        <div className="space-y-1">
+                                                            <h4 className="font-bold text-base text-teal-700">
+                                                                Diárias ({item.totalMilitares} Militares)
                                                             </h4>
-                                                            <div className="flex items-center gap-2">
-                                                                <Button 
-                                                                    variant="ghost" 
-                                                                    size="icon" 
-                                                                    onClick={() => handleRemovePending(item.tempId)}
-                                                                    className="text-destructive hover:text-destructive"
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                                <p className="font-extrabold text-lg text-primary">
-                                                                    {formatCurrency(item.valor_total)}
-                                                                </p>
-                                                            </div>
+                                                            <p className="text-sm text-muted-foreground">
+                                                                {item.local_atividade} ({item.destinoLabel})
+                                                            </p>
                                                         </div>
-                                                    </CardContent>
-                                                </Card>
-                                            );
-                                        })}
+                                                        <div className="text-right">
+                                                            <p className="font-extrabold text-lg text-teal-700">
+                                                                {formatCurrency(item.valor_total)}
+                                                            </p>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                onClick={() => handleRemovePending(item.tempId)}
+                                                                disabled={isSaving}
+                                                                className="text-red-500 hover:bg-red-50/50"
+                                                            >
+                                                                <Trash2 className="h-4 w-4 mr-1" />
+                                                                Remover
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="grid grid-cols-2 gap-4 text-xs">
+                                                        <div className="space-y-1">
+                                                            <p className="font-medium">OM Destino Recurso:</p>
+                                                            <p className="font-medium">ND 33.90.30 (Taxa Embarque):</p>
+                                                            <p className="font-medium">ND 33.90.39 (Diárias):</p>
+                                                        </div>
+                                                        <div className="text-right space-y-1">
+                                                            <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
+                                                            <p className="font-medium text-green-600">{formatCurrency(item.valor_nd_30)}</p>
+                                                            <p className="font-medium text-blue-600">{formatCurrency(item.valor_nd_39)}</p>
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
                                     </div>
                                     
-                                    {/* VALOR TOTAL DA OM */}
+                                    {/* VALOR TOTAL DA OM (PENDENTE) */}
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
-                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA OM</span>
+                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA OM (PENDENTE)</span>
                                             <span className="font-extrabold text-xl text-foreground">
                                                 {formatCurrency(totalPendingDiarias)}
                                             </span>
@@ -1016,7 +905,7 @@ const DiariaForm = () => {
                                     
                                     <div className="flex justify-end gap-3 pt-4">
                                         <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                            <XCircle className="mr-2 h-4 w-4" />
+                                            <X className="mr-2 h-4 w-4" />
                                             Limpar Formulário
                                         </Button>
                                         <Button 
