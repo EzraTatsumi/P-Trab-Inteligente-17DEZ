@@ -863,24 +863,15 @@ const DiariaForm = () => {
                                                             <p className="font-extrabold text-lg text-teal-700">
                                                                 {formatCurrency(item.valor_total)}
                                                             </p>
-                                                            <Button 
-                                                                variant="ghost" 
-                                                                size="sm" 
-                                                                onClick={() => handleRemovePending(item.tempId)}
-                                                                disabled={isSaving}
-                                                                className="text-red-500 hover:bg-red-50/50"
-                                                            >
-                                                                <Trash2 className="h-4 w-4 mr-1" />
-                                                                Remover
-                                                            </Button>
+                                                            {/* Botão de remoção removido conforme solicitado */}
                                                         </div>
                                                     </div>
                                                     
                                                     <div className="grid grid-cols-2 gap-4 text-xs">
                                                         <div className="space-y-1">
                                                             <p className="font-medium">OM Destino Recurso:</p>
-                                                            <p className="font-medium">ND 33.90.30 (Taxa Embarque):</p>
-                                                            <p className="font-medium">ND 33.90.39 (Diárias):</p>
+                                                            <p className="font-medium">Taxa Embarque:</p>
+                                                            <p className="font-medium">Diárias:</p>
                                                         </div>
                                                         <div className="text-right space-y-1">
                                                             <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
@@ -893,10 +884,10 @@ const DiariaForm = () => {
                                         ))}
                                     </div>
                                     
-                                    {/* VALOR TOTAL DA OM (PENDENTE) */}
+                                    {/* VALOR TOTAL DA OM */}
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
-                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA OM (PENDENTE)</span>
+                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA OM</span>
                                             <span className="font-extrabold text-xl text-foreground">
                                                 {formatCurrency(totalPendingDiarias)}
                                             </span>
