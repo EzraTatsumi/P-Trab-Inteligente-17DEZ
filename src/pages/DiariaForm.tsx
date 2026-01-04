@@ -611,8 +611,8 @@ const DiariaForm = () => {
                                     1. Dados da Organização
                                 </h3>
                                 
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    <div className="space-y-2 col-span-2">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2 col-span-1">
                                         <Label htmlFor="organizacao">OM de Destino do Recurso *</Label>
                                         <OmSelector
                                             selectedOmId={selectedOmId}
@@ -623,7 +623,7 @@ const DiariaForm = () => {
                                             initialOmUg={formData.ug}
                                         />
                                     </div>
-                                    <div className="space-y-2 col-span-2">
+                                    <div className="space-y-2 col-span-1">
                                         <Label htmlFor="ug">UG de Destino</Label>
                                         <Input
                                             id="ug"
@@ -633,7 +633,7 @@ const DiariaForm = () => {
                                         />
                                     </div>
                                     
-                                    <div className="space-y-2 col-span-4">
+                                    <div className="space-y-2 col-span-1">
                                         <Label htmlFor="fase_atividade">Fase da Atividade *</Label>
                                         <FaseAtividadeSelect
                                             value={formData.fase_atividade}
