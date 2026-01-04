@@ -611,10 +611,10 @@ const DiariaForm = () => {
                                                 Referência Legal: {referenciaLegal}.
                                             </p>
                                         </CardHeader>
-                                        <CardContent className="pt-2">
-                                            <div className="p-4 bg-background rounded-lg border">
+                                        <CardContent className="p-0 pt-2">
+                                            <div className="max-h-[400px] overflow-y-auto rounded-lg border">
                                                 <Table>
-                                                    <TableHeader>
+                                                    <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                                         <TableRow className="bg-muted hover:bg-muted">
                                                             <TableHead className="w-[40%]">Posto/Graduação</TableHead>
                                                             <TableHead className="w-[20%] text-center">Valor Unitário</TableHead>
@@ -629,7 +629,7 @@ const DiariaForm = () => {
                                                             const calculatedCost = calculos.calculosPorPosto.find(c => c.posto === rank.label)?.custoTotal || 0;
                                                             
                                                             return (
-                                                                <TableRow key={rank.key} className="hover:bg-transparent">
+                                                                <TableRow key={rank.key}>
                                                                     <TableCell className="font-medium">{rank.label}</TableCell>
                                                                     <TableCell className="text-center text-sm text-muted-foreground">{unitValue}</TableCell>
                                                                     <TableCell className="text-center">
@@ -670,7 +670,6 @@ const DiariaForm = () => {
                                         </CardContent>
                                     </Card>
                                     
-                                    {/* O parágrafo original foi removido daqui */}
                                 </section>
                             )}
 
@@ -814,6 +813,7 @@ const DiariaForm = () => {
                             {handleDeleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Excluir
                         </AlertDialogAction>
+                    </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
