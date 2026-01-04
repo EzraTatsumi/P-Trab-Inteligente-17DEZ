@@ -82,8 +82,8 @@ const diariaSchema = z.object({
     fase_atividade: z.string().min(1, "A fase da atividade é obrigatória."),
     is_aereo: z.boolean(),
     
-    // Quantidades por posto (validação de que pelo menos um militar foi inserido)
-    z.record(z.string(), z.number().int().min(0)).refine(
+    // Campo nomeado para as quantidades por posto
+    quantidades_por_posto: z.record(z.string(), z.number().int().min(0)).refine(
         (data) => Object.values(data).some(qty => qty > 0),
         { message: "Pelo menos um militar deve ser adicionado." }
     ),
@@ -1009,80 +1009,6 @@ const DiariaForm = () => {
                                         >
                                             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                             Salvar Registros
-                                        </Button>
-                                    </div>
-                                </section>
-                            )}
-
-                            {/* SEÇÃO 4: REGISTROS SALVOS */}
-                            {registros && registros.length > 0 && (
-                                <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        <ClipboardList className="h-4 w-4 text-muted-foreground" />
-                                        4. Registros Salvos ({registros?.length || 0})
-                                    </h3>
-                                    <div className="border rounded-lg overflow-hidden">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead className="w-[20%]">OM Destino</TableHead>
-                                                    <TableHead className="w-[15%]">Local Pgto</TableHead>
-                                                    <TableHead className="w-[10%] text-center">Dias</TableHead>
-                                                    <TableHead className="w-[10%] text-center">Militares</TableHead>
-                                                    <TableHead className="w-[20%] text-right">Total Diária</TableHead>
-                                                    <TableHead className="w-[15%] text-right">Ações</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {(registros || []).map((registro) => (
-                                                    <TableRow key={registro.id} className={editingId === registro.id ? "bg-yellow-50/50" : ""}>
-                                                        <TableCell className="font-medium">
-                                                            {registro.organizacao} ({formatCodug(registro.ug)})
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {destinoOptions.find(d => d.value === registro.destino)?.label || registro.destino}
-                                                        </TableCell>
-                                                        <TableCell className="text-center">{registro.dias_operacao}</TableCell>
-                                                        <TableCell className="text-center">
-                                                            {Object.values(registro.quantidades_por_posto || {}).reduce((sum, qty) => sum + qty, 0)}
-                                                        </TableCell>
-                                                        <TableCell className="text-right font-semibold">
-                                                            {formatCurrency(registro.valor_total)}
-                                                        </TableCell>
-                                                        <TableCell className="text-right space-x-2">
-                                                            <Button 
-                                                                variant="outline" 
-                                                                size="icon" 
-                                                                onClick={() => handleEdit(registro)}
-                                                                disabled={!isPTrabEditable || isSaving || pendingDiarias.length > 0}
-                                                            >
-                                                                <Edit className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button 
-                                                                variant="destructive" 
-                                                                size="icon" 
-                                                                onClick={() => handleConfirmDelete(registro)}
-                                                                disabled={!isPTrabEditable || isSaving || pendingDiarias.length > 0}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                    
-                                    {/* BOTÃO DE FINALIZAÇÃO */}
-                                    <div className="flex justify-end gap-3 pt-4">
-                                        <Button 
-                                            type="button" 
-                                            onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)}
-                                            disabled={isSaving || pendingDiarias.length > 0}
-                                            className="w-full md:w-auto"
-                                        >
-                                            <Check className="mr-2 h-4 w-4" />
-                                            Finalizar e Voltar ao P Trab
                                         </Button>
                                     </div>
                                 </section>
