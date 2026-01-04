@@ -357,6 +357,7 @@ const DiariaForm = () => {
     };
     
     const handleRankQuantityChange = (rankKey: string, value: string) => {
+        // Se o valor for vazio, trata como 0
         const qty = parseInt(value) || 0;
         setFormData(prev => ({
             ...prev,
@@ -488,7 +489,8 @@ const DiariaForm = () => {
                                             id="dias_operacao"
                                             type="number"
                                             min={1}
-                                            value={formData.dias_operacao}
+                                            // CORREÇÃO AQUI: Exibir string vazia se o valor for 0
+                                            value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
                                             onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
                                             required
                                             disabled={!isPTrabEditable || isSaving}
@@ -503,7 +505,8 @@ const DiariaForm = () => {
                                             id="nr_viagens"
                                             type="number"
                                             min={1}
-                                            value={formData.nr_viagens}
+                                            // CORREÇÃO AQUI: Exibir string vazia se o valor for 0
+                                            value={formData.nr_viagens === 0 ? "" : formData.nr_viagens}
                                             onChange={(e) => setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 })}
                                             required
                                             disabled={!isPTrabEditable || isSaving}
@@ -595,6 +598,7 @@ const DiariaForm = () => {
                                                                 <Input
                                                                     type="number"
                                                                     min={0}
+                                                                    // CORREÇÃO AQUI: Exibir string vazia se o valor for 0
                                                                     value={qty === 0 ? "" : qty}
                                                                     onChange={(e) => handleRankQuantityChange(rank.key, e.target.value)}
                                                                     disabled={!isPTrabEditable || isSaving}
