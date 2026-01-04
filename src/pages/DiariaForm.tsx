@@ -907,14 +907,14 @@ const DiariaForm = () => {
                                                 >
                                                     <CardContent className="p-4">
                                                         <div className="flex justify-between items-start border-b border-teal-500/30 pb-2 mb-2">
-                                                            <div className="space-y-1 w-full">
+                                                            <div className="space-y-1 w-full flex-grow">
                                                                 <h4 className="font-bold text-base text-teal-700">
                                                                     Diárias ({item.local_atividade})
                                                                 </h4>
                                                                 <div className="w-full h-[1px] bg-teal-500/30 my-1" />
                                                                 
                                                                 {/* Detalhes do Cálculo (Taxa de Embarque e Diárias Detalhadas) */}
-                                                                <div className="space-y-2 pt-1">
+                                                                <div className="space-y-2 pt-1 w-full">
                                                                     {/* Taxa de Embarque Row */}
                                                                     <div className="grid grid-cols-2 gap-4 text-xs">
                                                                         <p className="font-medium text-muted-foreground">Taxa de Embarque:</p>
