@@ -207,6 +207,7 @@ export const generateDiariaMemoriaCalculo = (
     detalhamentoValores += `- Taxa de Embarque: ${formatCurrency(taxaEmbarqueUnitario)}/viagem.\n`;
 
     const diasPagamento = Math.max(0, dias_operacao - 0.5);
+    const viagemPluralFormula = nr_viagens === 1 ? 'viagem' : 'viagens'; // Correção: Plural de Viagem
 
     calculosPorPosto.forEach(calc => {
         // 1. Detalhamento de Valores Unitários
@@ -216,9 +217,10 @@ export const generateDiariaMemoriaCalculo = (
         const formulaPart1 = `(${calc.quantidade} ${calc.posto} x ${formatCurrency(calc.valorUnitario)}/dia)`;
         
         // CORREÇÃO AQUI: Pluralização de diasPagamento
-        const diasPagamentoText = diasPagamento === 1 ? 'dia' : 'dias';
+        // Se for exatamente 0.5, usa 'dia'. Caso contrário, usa 'dias'.
+        const diasPagamentoText = Math.abs(diasPagamento - 0.5) < 0.001 ? 'dia' : 'dias';
         
-        const formulaPart2 = `${formatNumber(diasPagamento, 1)} ${diasPagamentoText} x ${nr_viagens} viagem${nr_viagens === 1 ? '' : 'ns'}`;
+        const formulaPart2 = `${formatNumber(diasPagamento, 1)} ${diasPagamentoText} x ${nr_viagens} ${viagemPluralFormula}`;
         
         detalhamentoFormulaDiarias += `- ${formulaPart1} x ${formulaPart2} = ${formatCurrency(calc.custoTotal)}.\n`;
     });
@@ -228,7 +230,7 @@ export const generateDiariaMemoriaCalculo = (
     
     // 2. Detalhamento da Aplicação da Fórmula da Taxa de Embarque (Simplificado)
     if (is_aereo) {
-        detalhamentoTaxaCalculo = `- ${totalMilitares} ${militarText} x ${formatCurrency(taxaEmbarqueUnitario)} x ${nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}.`;
+        detalhamentoTaxaCalculo = `- ${totalMilitares} ${militarText} x ${formatCurrency(taxaEmbarqueUnitario)} x ${nr_viagens} ${viagemPluralFormula} = ${formatCurrency(totalTaxaEmbarque)}.`;
     } else {
         // Se não for aéreo, usa a frase solicitada com o hífen
         detalhamentoTaxaCalculo = `- Não há previsão de pagamento de Taxa de Embarque.`;
