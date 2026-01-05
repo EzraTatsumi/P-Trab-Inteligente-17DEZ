@@ -1016,11 +1016,11 @@ const DiariaForm = () => {
                                             {editingId ? (
                                                 <Button 
                                                     type="submit" // Aciona handleStageCalculation
-                                                    disabled={!isPTrabEditable || isSaving || !isCalculationReady || !isDiariaDirty}
-                                                    className="w-full md:w-auto"
+                                                    disabled={!isPTrabEditable || isSaving || !isCalculationReady}
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                    {isDiariaDirty ? "Recalcular e Estagiar" : "Dados Estagiados"}
+                                                    Salvar Item na Lista
                                                 </Button>
                                             ) : (
                                                 <Button 
@@ -1050,7 +1050,7 @@ const DiariaForm = () => {
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
-                                                Atenção: Os dados do formulário (Seção 2) foram alterados e não correspondem ao registro em revisão. Clique em "Recalcular e Estagiar" na Seção 2 para atualizar.
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados e não correspondem ao registro em revisão. Clique em "Salvar Item na Lista" na Seção 2 para atualizar o cálculo.
                                             </AlertDescription>
                                         </Alert>
                                     )}
@@ -1131,8 +1131,8 @@ const DiariaForm = () => {
                                                     key={item.tempId} 
                                                     className={cn(
                                                         "border-2 shadow-md",
-                                                        // Removendo o destaque de cor primária para manter o padrão de item pendente
-                                                        isCurrentlyStaged ? "border-secondary bg-secondary/10" : "border-secondary bg-secondary/10"
+                                                        // Mantendo o padrão de item pendente
+                                                        "border-secondary bg-secondary/10"
                                                     )}
                                                 >
                                                     <CardContent className="p-4">
