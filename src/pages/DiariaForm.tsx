@@ -568,7 +568,9 @@ const DiariaForm = () => {
     };
 
     const handleSalvarMemoriaCustomizada = async (registroId: string) => {
-        setLoading(true);
+        // NOTE: Não temos um estado 'loading' local no DiariaForm, mas podemos usar o isSaving do updateMutation se necessário.
+        // Para simplificar, vamos usar o isSaving do updateMutation para desabilitar botões.
+        
         try {
             const { error } = await supabase
                 .from("diaria_registros")
@@ -585,8 +587,6 @@ const DiariaForm = () => {
         } catch (error) {
             console.error("Erro ao salvar memória:", error);
             toast.error(sanitizeError(error));
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -595,7 +595,6 @@ const DiariaForm = () => {
             return;
         }
         
-        setLoading(true);
         try {
             const { error } = await supabase
                 .from("diaria_registros")
@@ -611,8 +610,6 @@ const DiariaForm = () => {
         } catch (error) {
             console.error("Erro ao restaurar memória:", error);
             toast.error(sanitizeError(error));
-        } finally {
-            setLoading(false);
         }
     };
     
@@ -1125,8 +1122,9 @@ const DiariaForm = () => {
                             {/* SEÇÃO 4: REGISTROS SALVOS (Tabela) */}
                             {registros && registros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        4. Registros de Diárias Salvos ({registros.length})
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <Sparkles className="h-5 w-5 text-accent" />
+                                        Registros de Diárias Salvos ({registros.length})
                                     </h3>
                                     <div className="border rounded-lg overflow-hidden">
                                         <Table>
@@ -1191,7 +1189,7 @@ const DiariaForm = () => {
                             {registros && registros.length > 0 && (
                                 <div className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
-                                        📋 5. Memórias de Cálculos Detalhadas
+                                        📋 Memórias de Cálculos Detalhadas
                                     </h3>
                                     
                                     {registros.map(registro => {
