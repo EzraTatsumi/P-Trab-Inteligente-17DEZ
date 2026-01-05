@@ -445,7 +445,7 @@ const DiariaForm = () => {
             valor_taxa_embarque: totals.totalTaxaEmbarque,
             valor_total: totals.totalGeral,
             valor_nd_30: 0, 
-            valor_nd_15: totals.totalGeral, // CORRIGIDO: valor_nd_15 é o total geral
+            valor_nd_15: totals.totalGeral, 
             
             quantidades_por_posto: newFormData.quantidades_por_posto,
             detalhamento: memoria,
@@ -1401,9 +1401,6 @@ const DiariaForm = () => {
                                                                 </Badge>
                                                             )}
                                                         </div>
-                                                        <p className="text-xs text-muted-foreground mt-1">
-                                                            Local: {registro.local_atividade} | Total: {formatCurrency(registro.valor_total)}
-                                                        </p>
                                                     </div>
                                                     
                                                     <div className="flex items-center justify-end gap-2 shrink-0">
