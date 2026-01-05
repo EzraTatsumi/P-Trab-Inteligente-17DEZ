@@ -157,6 +157,23 @@ const DiariaForm = () => {
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
 
     // =================================================================
+    // EFEITO PARA CARREGAMENTO INICIAL DO PRIMEIRO REGISTRO SALVO
+    // =================================================================
+    useEffect(() => {
+        // Verifica se os registros foram carregados, se há registros, e se NÃO estamos em modo de edição
+        if (registros && registros.length > 0 && !editingId && !saveMutation.isPending && !updateMutation.isPending) {
+            // Carrega o primeiro registro da lista para edição (para exibir a Seção 5)
+            handleEdit(registros[0]);
+        }
+        
+        // Se não houver registros, garante que o formulário esteja limpo
+        if (registros && registros.length === 0 && editingId) {
+            resetForm();
+        }
+        
+    }, [registros, editingId, saveMutation.isPending, updateMutation.isPending]);
+    
+    // =================================================================
     // CÁLCULOS E MEMÓRIA (MEMOIZED)
     // =================================================================
     
@@ -208,7 +225,7 @@ const DiariaForm = () => {
     }, [pendingDiarias]);
 
     // =================================================================
-    // MUTAÇÕES (MOVIDO PARA CIMA)
+    // MUTAÇÕES
     // =================================================================
 
     const saveMutation = useMutation({
@@ -286,24 +303,6 @@ const DiariaForm = () => {
         },
     });
 
-    // =================================================================
-    // EFEITO PARA CARREGAMENTO INICIAL DO PRIMEIRO REGISTRO SALVO
-    // =================================================================
-    useEffect(() => {
-        // Verifica se os registros foram carregados, se há registros, e se NÃO estamos em modo de edição
-        // A condição !saveMutation.isPending e !updateMutation.isPending garante que isso só ocorra após o fim de uma operação de salvamento/atualização.
-        if (registros && registros.length > 0 && !editingId && !saveMutation.isPending && !updateMutation.isPending) {
-            // Carrega o primeiro registro da lista para edição (para exibir a Seção 5)
-            handleEdit(registros[0]);
-        }
-        
-        // Se não houver registros, garante que o formulário esteja limpo
-        if (registros && registros.length === 0 && editingId) {
-            resetForm();
-        }
-        
-    }, [registros, editingId, saveMutation.isPending, updateMutation.isPending]);
-    
     // =================================================================
     // HANDLERS
     // =================================================================
