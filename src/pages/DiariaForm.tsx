@@ -1228,15 +1228,15 @@ const DiariaForm = () => {
                                                                 {/* Detalhes da Alocação */}
                                                                 <div className="pt-2 border-t mt-2">
                                                                     <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">Diária Base (ND 15):</span>
+                                                                        <span className="text-muted-foreground">Diária Base:</span>
                                                                         <span className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</span>
                                                                     </div>
                                                                     <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">Taxa Embarque (ND 15):</span>
+                                                                        <span className="text-muted-foreground">Taxa Embarque:</span>
                                                                         <span className="font-medium text-green-600">{formatCurrency(totalTaxaEmbarque)}</span>
                                                                     </div>
                                                                     <div className="flex justify-between text-xs font-bold pt-1">
-                                                                        <span className="text-muted-foreground">Total ND 33.90.15:</span>
+                                                                        <span className="text-muted-foreground">Total:</span>
                                                                         <span className="text-foreground">{formatCurrency(totalGeral)}</span>
                                                                     </div>
                                                                 </div>
