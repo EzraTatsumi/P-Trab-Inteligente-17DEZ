@@ -35,6 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // IMPORT CORRIGIDO AQUI
 import * as z from "zod";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
