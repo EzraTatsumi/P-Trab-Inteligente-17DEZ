@@ -997,7 +997,6 @@ const DiariaForm = () => {
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        {/* 1. REMOVENDO ALERT CIRCLE E SIMPLIFICANDO O TEXTO */}
                                         3. Itens Adicionados ({itemsToDisplay.length})
                                     </h3>
                                     
@@ -1078,7 +1077,7 @@ const DiariaForm = () => {
                                                     key={item.tempId} 
                                                     className={cn(
                                                         "border-2 shadow-md",
-                                                        // 2. USANDO PADRÃO DE COR SECUNDÁRIA (ADIÇÃO)
+                                                        // Padrão de cor secundária (adição/revisão)
                                                         "border-secondary bg-secondary/10"
                                                     )}
                                                 >
@@ -1154,7 +1153,6 @@ const DiariaForm = () => {
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
-                                                {/* 3. MUDANDO O TEXTO PARA VALOR TOTAL DA OM */}
                                                 VALOR TOTAL DA OM
                                             </span>
                                             <span className="font-extrabold text-xl text-foreground">
@@ -1166,12 +1164,10 @@ const DiariaForm = () => {
                                     <div className="flex justify-end gap-3 pt-4">
                                         {isStagingUpdate ? (
                                             <>
-                                                {/* 4. MUDANDO O BOTÃO CANCELAR EDIÇÃO PARA LIMPAR FORMULÁRIO */}
                                                 <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
                                                     <XCircle className="mr-2 h-4 w-4" />
                                                     Limpar Formulário
                                                 </Button>
-                                                {/* 5. MUDANDO O BOTÃO CONFIRMAR ATUALIZAÇÃO PARA ATUALIZAR REGISTRO E COR PRIMÁRIA */}
                                                 <Button 
                                                     type="button" 
                                                     onClick={handleCommitStagedUpdate}
@@ -1240,8 +1236,8 @@ const DiariaForm = () => {
                                                             <Card 
                                                                 key={registro.id} 
                                                                 className={cn(
-                                                                    "p-3 bg-background border", 
-                                                                    editingId === registro.id && "border-2 border-primary/50 shadow-lg"
+                                                                    "p-3 bg-background border"
+                                                                    // Removido: editingId === registro.id && "border-2 border-primary/50 shadow-lg"
                                                                 )}
                                                             >
                                                                 <div className="flex items-center justify-between">
