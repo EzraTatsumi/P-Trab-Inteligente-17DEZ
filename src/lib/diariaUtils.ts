@@ -224,8 +224,8 @@ export const generateDiariaMemoriaCalculo = (
     if (is_aereo) {
         detalhamentoTaxaCalculo = `- ${totalMilitares} ${militarText} x ${formatCurrency(taxaEmbarqueUnitario)} x ${nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}.`;
     } else {
-        // Se não for aéreo, efetivo é 0 e valor é 0 no cálculo
-        detalhamentoTaxaCalculo = `- 0 militares x ${formatCurrency(taxaEmbarqueUnitario)} x ${nr_viagens} ${viagemText} = ${formatCurrency(0)}.`;
+        // Se não for aéreo, usa a frase solicitada
+        detalhamentoTaxaCalculo = `Não há previsão de pagamento de Taxa de Embarque.`;
     }
     
     // NOVO FORMATO DE INTRODUÇÃO AO CÁLCULO
