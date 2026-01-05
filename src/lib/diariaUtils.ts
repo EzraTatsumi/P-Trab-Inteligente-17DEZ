@@ -15,6 +15,24 @@ export const DIARIA_RANKS_CONFIG = [
 // Tipo para armazenar as quantidades de militares por posto/graduação
 export type QuantidadesPorPosto = Record<typeof DIARIA_RANKS_CONFIG[number]['key'], number>;
 
+/**
+ * Função para formatar as fases de forma natural no texto
+ */
+export const formatFasesParaTexto = (faseCSV: string | undefined | null): string => {
+  if (!faseCSV) return 'operação';
+  
+  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
+  
+  if (fases.length === 0) return 'operação';
+  if (fases.length === 1) return fases[0];
+  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
+  
+  const ultimaFase = fases[fases.length - 1];
+  const demaisFases = fases.slice(0, -1).join(', ');
+  return `${demaisFases} e ${ultimaFase}`;
+};
+
+
 // Tipo para os dados de diária (simplificado para o cálculo)
 interface DiariaData {
   dias_operacao: number;
@@ -25,6 +43,7 @@ interface DiariaData {
   organizacao: string; // OM de Destino
   ug: string; // UG de Destino
   is_aereo: boolean; // NOVO CAMPO: Indica se o deslocamento é aéreo
+  fase_atividade: string; // Adicionado para o cálculo de memória
 }
 
 // Tipo para as diretrizes operacionais (valores unitários)
@@ -142,7 +161,7 @@ export const generateDiariaMemoriaCalculo = (
     diretrizes: Partial<DiretrizOperacional>,
     calculos: ReturnType<typeof calculateDiariaTotals>
 ): string => {
-    const { dias_operacao, destino, nr_viagens, local_atividade, organizacao, ug, is_aereo } = data;
+    const { dias_operacao, destino, nr_viagens, local_atividade, organizacao, ug, is_aereo, fase_atividade } = data;
     const { totalDiariaBase, totalTaxaEmbarque, totalGeral, totalMilitares, calculosPorPosto } = calculos;
     
     const referenciaLegal = diretrizes.diaria_referencia_legal || 'Lei/Portaria [NÚMERO]';
@@ -152,6 +171,7 @@ export const generateDiariaMemoriaCalculo = (
     const diaPlural = dias_operacao === 1 ? 'dia' : 'dias';
     
     const omPreposition = getOmPreposition(organizacao);
+    const faseFormatada = formatFasesParaTexto(fase_atividade); // NOVO: Formata a fase
     
     // Mapeamento do destino para o rótulo
     let destinoLabel = '';
@@ -161,8 +181,8 @@ export const generateDiariaMemoriaCalculo = (
         case 'demais_dslc': destinoLabel = 'Demais Dslc'; break;
     }
     
-    // CABEÇALHO (ND 33.90.15)
-    const header = `33.90.15 Custeio com Diárias de ${totalMilitares} ${militarPlural} ${omPreposition} ${organizacao}, para ${nr_viagens} ${viagemPlural} com duração de ${dias_operacao} ${diaPlural} em ${local_atividade}.`;
+    // NOVO CABEÇALHO SOLICITADO:
+    const header = `33.90.15 - Custeio com Diárias de ${totalMilitares} ${militarPlural}(es) ${omPreposition} ${organizacao}, para ${nr_viagens} viagem(ns) com duração de ${dias_operacao} dia(s) em ${local_atividade}, durante a fase(s) de ${faseFormatada}.`;
 
     let detalhamentoValores = '';
     let detalhamentoFormula = '';
