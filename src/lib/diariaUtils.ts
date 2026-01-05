@@ -205,10 +205,10 @@ export const generateDiariaMemoriaCalculo = (
         const militaresPlural = calc.quantidade === 1 ? 'mil.' : 'militares';
         const diasPagamento = Math.max(0, dias_operacao - 0.5);
         
-        // Detalhamento de Valores Unitários
-        detalhamentoValores += `- ${calc.posto} R$ ${formatNumber(calc.valorUnitario, 2)} / dia Op.\n`;
+        // 1. Detalhamento de Valores Unitários (NOVO FORMATO)
+        detalhamentoValores += `- ${calc.posto}: ${formatCurrency(calc.valorUnitario)}/dia.\n`;
         
-        // Detalhamento da Fórmula
+        // 2. Detalhamento da Fórmula (Mantido o formato detalhado para a seção de cálculo)
         // Ex: (3 Of Sup x R$ 450,00/dia) x 4,5 dias x 1 viagem = R$ 6.075,00.
         const formulaPart1 = `(${calc.quantidade} ${calc.posto} x ${formatCurrency(calc.valorUnitario)}/dia)`;
         const formulaPart2 = `${formatNumber(Math.max(0, dias_operacao - 0.5), 1)} dias x ${nr_viagens} viagem${nr_viagens === 1 ? '' : 'ns'}`;
@@ -222,7 +222,6 @@ export const generateDiariaMemoriaCalculo = (
     let detalhamentoTaxa = '';
     if (is_aereo) {
         detalhamentoTaxa = `
-- Taxa de Embarque (Componente ND 33.90.15): ${formatCurrency(taxaEmbarqueUnitario)}/pessoa.
 - Cálculo Taxa: ${totalMilitares} ${militarText} x ${formatCurrency(taxaEmbarqueUnitario)} x ${nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}.
 `;
     } else {
@@ -239,7 +238,10 @@ export const generateDiariaMemoriaCalculo = (
 ${introducaoCalculo}
 ${detalhamentoValores.trim()}
 
-Fórmula Diária Base: (Nr militares x Custo/dia/localidade) x (Nr dias de operação - 0,5 dia) x Nr Viagens.
+Fórmula da Taxa de Embarque: Efetivo x Valor da Taxa de Embarque x Quantidade de Viagens.
+Fórmula das Diárias: (Efetivo x Custo/dia/localidade) x (Nr Dias - 0,5 dia) x Nr Viagens.
+
+Cálculo Detalhado:
 ${detalhamentoFormula.trim()}
 
 Total Diária Base: ${formatCurrency(totalDiariaBase)}.
