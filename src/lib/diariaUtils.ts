@@ -194,7 +194,7 @@ export const generateDiariaMemoriaCalculo = (
         case 'demais_dslc': destinoLabel = 'Demais Dslc'; break;
     }
     
-    // CABEÇALHO CORRIGIDO:
+    // CABEÇALHO
     const header = `33.90.15 - Custeio com Diárias de ${totalMilitares} ${militarText} ${omPreposition} ${organizacao}, para ${nr_viagens} ${viagemText} com duração de ${dias_operacao} ${diaText} em ${local_atividade}, durante a ${faseConcordancia} ${faseFormatada}.`;
 
     let detalhamentoValores = '';
@@ -231,11 +231,12 @@ export const generateDiariaMemoriaCalculo = (
 `;
     }
     
-    // CORRIGIDO: Rótulo da ND para Diária
+    // NOVO FORMATO DE INTRODUÇÃO AO CÁLCULO
+    const introducaoCalculo = `Cálculo, segundo ${referenciaLegal}, para ${destinoLabel}, considera-se:`;
+
     return `${header}
 
-Cálculo, segundo ${referenciaLegal}:
-- Para ${destinoLabel} considera-se: 
+${introducaoCalculo}
 ${detalhamentoValores.trim()}
 
 Fórmula Diária Base: (Nr militares x Custo/dia/localidade) x (Nr dias de operação - 0,5 dia) x Nr Viagens.
