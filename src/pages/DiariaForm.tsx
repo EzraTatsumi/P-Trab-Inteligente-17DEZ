@@ -354,13 +354,18 @@ const DiariaForm = () => {
             return;
         }
         
+        if (!diretrizesOp) {
+            toast.error("Diretrizes Operacionais não carregadas. Não é possível editar.");
+            return;
+        }
+
         setEditingId(registro.id);
-        setStagedUpdate(null); // Garante que o staging esteja limpo ao iniciar a edição
         
         const omToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
         setSelectedOmId(omToEdit?.id);
 
-        setFormData({
+        // 1. Populate formData
+        const newFormData = {
             organizacao: registro.organizacao,
             ug: registro.ug,
             dias_operacao: registro.dias_operacao,
@@ -372,9 +377,52 @@ const DiariaForm = () => {
             om_detentora: null,
             ug_detentora: null,
             quantidades_por_posto: (registro.quantidades_por_posto || initialFormState.quantidades_por_posto) as QuantidadesPorPosto,
-        });
+        };
+        setFormData(newFormData);
+
+        // 2. Calculate totals based on the *saved* record data and *current* directives
+        const totals = calculateDiariaTotals(newFormData as any, diretrizesOp);
+        const memoria = generateDiariaMemoriaCalculo(newFormData as any, diretrizesOp, totals);
         
-        // Não preenche memoriaEdit aqui, pois a edição de memória será separada
+        const destinoLabel = DESTINO_OPTIONS.find(d => d.value === newFormData.destino)?.label || newFormData.destino;
+
+        // 3. Stage the current record data immediately for display in Section 3
+        const stagedData: CalculatedDiaria = {
+            tempId: registro.id,
+            p_trab_id: ptrabId!,
+            organizacao: newFormData.organizacao,
+            ug: newFormData.ug,
+            om_detentora: null,
+            ug_detentora: null,
+            dias_operacao: newFormData.dias_operacao,
+            fase_atividade: newFormData.fase_atividade,
+            destino: newFormData.destino,
+            nr_viagens: newFormData.nr_viagens,
+            local_atividade: newFormData.local_atividade,
+            
+            quantidade: totals.totalMilitares,
+            valor_taxa_embarque: totals.totalTaxaEmbarque,
+            valor_total: totals.totalGeral,
+            valor_nd_30: 0, 
+            valor_nd_15: totals.totalGeral, 
+            
+            quantidades_por_posto: newFormData.quantidades_por_posto,
+            detalhamento: memoria,
+            detalhamento_customizado: registro.detalhamento_customizado || null, 
+            is_aereo: newFormData.is_aereo,
+            
+            posto_graduacao: null,
+            valor_diaria_unitario: null,
+
+            destinoLabel: destinoLabel,
+            totalMilitares: totals.totalMilitares,
+            memoria_calculo_display: memoria, 
+            valor_nd_15: totals.totalGeral,
+        };
+        
+        setStagedUpdate(stagedData); // Set the staged update immediately
+
+        // Reset memory edit states
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
         
