@@ -108,6 +108,20 @@ const initialFormState = {
     quantidades_por_posto: DIARIA_RANKS_CONFIG.reduce((acc, rank) => ({ ...acc, [rank.key]: 0 }), {} as QuantidadesPorPosto),
 };
 
+// Função para mapear o destino para classes de cor
+const getDestinoColorClass = (destino: DestinoDiaria) => {
+    switch (destino) {
+        case 'bsb_capitais_especiais':
+            return 'bg-blue-600 hover:bg-blue-700'; // Azul para BSB/Capitais Especiais
+        case 'demais_capitais':
+            return 'bg-green-600 hover:bg-green-700'; // Verde para Demais Capitais
+        case 'demais_dslc':
+            return 'bg-purple-600 hover:bg-purple-700'; // Roxo para Demais DSL/C
+        default:
+            return 'bg-gray-500 hover:bg-gray-600';
+    }
+};
+
 const DiariaForm = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -1166,6 +1180,7 @@ const DiariaForm = () => {
                                                         const totalTaxaEmbarque = registro.valor_taxa_embarque || 0;
                                                         
                                                         const destinoLabel = DESTINO_OPTIONS.find(d => d.value === registro.destino)?.label || registro.destino;
+                                                        const destinoColorClass = getDestinoColorClass(registro.destino as DestinoDiaria);
                                                         
                                                         return (
                                                             <Card key={registro.id} className={cn("p-3 bg-background border", editingId === registro.id && "border-2 border-yellow-500/70")}>
@@ -1175,7 +1190,7 @@ const DiariaForm = () => {
                                                                             <h4 className="font-semibold text-base text-foreground">
                                                                                 Diárias ({registro.local_atividade})
                                                                             </h4>
-                                                                            <Badge variant="default" className="text-xs bg-blue-600 text-white">
+                                                                            <Badge variant="default" className={cn("text-xs text-white", destinoColorClass)}>
                                                                                 {destinoLabel}
                                                                             </Badge>
                                                                         </div>
@@ -1251,6 +1266,9 @@ const DiariaForm = () => {
                                         const memoriaAutomatica = generateDiariaMemoriaCalculo(registro as any, diretrizesOp || {}, totals);
                                         
                                         const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
+                                        
+                                        const destinoLabel = DESTINO_OPTIONS.find(d => d.value === registro.destino)?.label || registro.destino;
+                                        const destinoColorClass = getDestinoColorClass(registro.destino as DestinoDiaria);
 
                                         return (
                                             <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
@@ -1262,8 +1280,8 @@ const DiariaForm = () => {
                                                             <h4 className="text-base font-semibold text-foreground">
                                                                 OM Destino: {registro.organizacao} (UG: {formatCodug(registro.ug)})
                                                             </h4>
-                                                            <Badge variant="default" className="w-fit bg-blue-600 text-white">
-                                                                Diária
+                                                            <Badge variant="default" className={cn("w-fit text-white", destinoColorClass)}>
+                                                                {destinoLabel}
                                                             </Badge>
                                                             {/* BADGE DE MEMÓRIA CUSTOMIZADA */}
                                                             {hasCustomMemoria && !isEditing && (
