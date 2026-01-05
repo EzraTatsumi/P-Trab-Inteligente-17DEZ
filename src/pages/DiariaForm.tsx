@@ -108,6 +108,11 @@ const initialFormState = {
     quantidades_por_posto: DIARIA_RANKS_CONFIG.reduce((acc, rank) => ({ ...acc, [rank.key]: 0 }), {} as QuantidadesPorPosto),
 };
 
+// Função para comparar números de ponto flutuante com tolerância
+const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
+    return Math.abs(a - b) < tolerance;
+};
+
 // Função para mapear o destino para classes de cor
 const getDestinoColorClass = (destino: DestinoDiaria) => {
     switch (destino) {
@@ -220,6 +225,41 @@ const DiariaForm = () => {
             };
         }
     }, [formData, diretrizesOp, ptrabData]);
+    
+    // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do stagedUpdate)
+    const isDiariaDirty = useMemo(() => {
+        if (!editingId || !stagedUpdate) return false;
+
+        // 1. Comparar campos principais
+        if (
+            formData.dias_operacao !== stagedUpdate.dias_operacao ||
+            formData.destino !== stagedUpdate.destino ||
+            formData.nr_viagens !== stagedUpdate.nr_viagens ||
+            formData.local_atividade !== stagedUpdate.local_atividade ||
+            formData.is_aereo !== stagedUpdate.is_aereo
+        ) {
+            return true;
+        }
+
+        // 2. Comparar quantidades por posto
+        for (const rank of DIARIA_RANKS_CONFIG) {
+            if (formData.quantidades_por_posto[rank.key] !== stagedUpdate.quantidades_por_posto[rank.key]) {
+                return true;
+            }
+        }
+        
+        // 3. Comparar o total calculado atual (baseado nas diretrizes atuais) com o total salvo no stagedUpdate.
+        if (!areNumbersEqual(calculos.totalGeral, stagedUpdate.valor_total)) {
+             return true;
+        }
+
+        // 4. Comparar fase de atividade (se for diferente, precisa re-estagiar para atualizar a memória)
+        if (formData.fase_atividade !== stagedUpdate.fase_atividade) {
+            return true;
+        }
+
+        return false;
+    }, [editingId, stagedUpdate, formData, calculos.totalGeral]);
     
     // NOVO: Cálculo do total de todos os itens pendentes
     const totalPendingDiarias = useMemo(() => {
@@ -494,6 +534,10 @@ const DiariaForm = () => {
             
             if (editingId) {
                 // MODO EDIÇÃO: Estagia a atualização para revisão
+                // Preserve custom memory if it exists on the original record being edited
+                const originalRecord = registros?.find(r => r.id === editingId);
+                calculatedData.detalhamento_customizado = originalRecord?.detalhamento_customizado || null;
+                
                 setStagedUpdate(calculatedData);
                 toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
                 window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); // Scroll down to review area
@@ -508,7 +552,7 @@ const DiariaForm = () => {
                 ...initialFormState,
                 organizacao: prev.organizacao,
                 ug: prev.ug,
-                selectedOmId: selectedOmId,
+                // selectedOmId: selectedOmId, // selectedOmId é gerenciado pelo estado pai, não pelo formData
                 fase_atividade: prev.fase_atividade,
                 // Resetar apenas os campos de cálculo
                 dias_operacao: 1,
@@ -971,11 +1015,11 @@ const DiariaForm = () => {
                                             {editingId ? (
                                                 <Button 
                                                     type="submit" // Aciona handleStageCalculation
-                                                    disabled={!isPTrabEditable || isSaving || !isCalculationReady}
+                                                    disabled={!isPTrabEditable || isSaving || !isCalculationReady || !isDiariaDirty}
                                                     className="w-full md:w-auto"
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                    {stagedUpdate ? "Recalcular Item" : "Preparar Atualização"}
+                                                    {isDiariaDirty ? "Recalcular e Estagiar" : "Dados Estagiados"}
                                                 </Button>
                                             ) : (
                                                 <Button 
@@ -999,6 +1043,16 @@ const DiariaForm = () => {
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         3. Itens Adicionados ({itemsToDisplay.length})
                                     </h3>
+                                    
+                                    {/* NOVO: Alerta de Validação Final (Apenas em modo de edição) */}
+                                    {editingId && isDiariaDirty && (
+                                        <Alert variant="destructive">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertDescription className="font-medium">
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados e não correspondem ao registro em revisão. Clique em "Recalcular e Estagiar" na Seção 2 para atualizar.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
                                     
                                     <div className="space-y-4">
                                         {itemsToDisplay.map((item) => {
@@ -1061,34 +1115,36 @@ const DiariaForm = () => {
                                                     </p>
                                                 );
                                             }
-                                            // --- End Detailed Diária Calculation Generation ---
-
-                                            // Cálculo da Taxa de Embarque formatado
+                                            
                                             const totalTaxaEmbarque = item.valor_taxa_embarque;
                                             const taxaEmbarqueCalculation = item.is_aereo 
                                                 ? `${item.totalMilitares} ${militarText} x ${taxaEmbarqueUnitarioDisplay} x ${item.nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}`
                                                 : 'Não Aéreo';
 
-                                            // Cálculo da Diária Base (Total Geral - Taxa de Embarque)
                                             const totalDiariaBase = item.valor_total - item.valor_taxa_embarque;
+                                            
+                                            const isCurrentlyStaged = editingId && item.tempId === editingId;
 
                                             return (
                                                 <Card 
                                                     key={item.tempId} 
                                                     className={cn(
                                                         "border-2 shadow-md",
-                                                        // Padrão de cor secundária (adição/revisão)
-                                                        "border-secondary bg-secondary/10"
+                                                        isCurrentlyStaged ? "border-primary bg-primary/10" : "border-secondary bg-secondary/10"
                                                     )}
                                                 >
                                                     <CardContent className="p-4">
                                                         
-                                                        {/* NOVO HEADER: Título e Valor Total na mesma linha */}
-                                                        <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-secondary/30")}>
+                                                        <div className={cn("flex justify-between items-center pb-2 mb-2", isCurrentlyStaged ? "border-b border-primary/30" : "border-b border-secondary/30")}>
                                                             <h4 className="font-bold text-base text-primary">
                                                                 Diárias ({item.local_atividade})
                                                             </h4>
                                                             <div className="flex items-center gap-2">
+                                                                {isCurrentlyStaged && (
+                                                                    <Badge variant="default" className="bg-primary text-primary-foreground">
+                                                                        Em Revisão
+                                                                    </Badge>
+                                                                )}
                                                                 <p className="font-extrabold text-lg text-primary text-right">
                                                                     {formatCurrency(item.valor_total)}
                                                                 </p>
@@ -1105,7 +1161,7 @@ const DiariaForm = () => {
                                                             </div>
                                                         </div>
                                                         
-                                                        {/* Detalhes do Cálculo (Taxa de Embarque e Diárias Detalhadas) - AGORA FULL WIDTH */}
+                                                        {/* Detalhes do Cálculo */}
                                                         <div className="space-y-2 pt-1">
                                                             
                                                             {/* Taxa de Embarque Row */}
@@ -1171,7 +1227,7 @@ const DiariaForm = () => {
                                                 <Button 
                                                     type="button" 
                                                     onClick={handleCommitStagedUpdate}
-                                                    disabled={isSaving}
+                                                    disabled={isSaving || isDiariaDirty} // Disable if dirty, force recalculation in Section 2
                                                     className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
