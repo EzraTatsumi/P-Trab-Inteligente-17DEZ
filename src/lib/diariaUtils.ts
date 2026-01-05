@@ -32,6 +32,14 @@ export const formatFasesParaTexto = (faseCSV: string | undefined | null): string
   return `${demaisFases} e ${ultimaFases}`;
 };
 
+/**
+ * Conta o número de fases distintas.
+ */
+const countFases = (faseCSV: string | undefined | null): number => {
+    if (!faseCSV) return 0;
+    return faseCSV.split(';').map(f => f.trim()).filter(f => f).length;
+};
+
 
 // Tipo para os dados de diária (simplificado para o cálculo)
 interface DiariaData {
@@ -166,13 +174,17 @@ export const generateDiariaMemoriaCalculo = (
     
     const referenciaLegal = diretrizes.diaria_referencia_legal || 'Lei/Portaria [NÚMERO]';
     
-    // Lógica de singular/plural sem parênteses
+    // Lógica de singular/plural
     const militarText = totalMilitares === 1 ? 'militar' : 'militares';
     const viagemText = nr_viagens === 1 ? 'viagem' : 'viagens';
     const diaText = dias_operacao === 1 ? 'dia' : 'dias';
     
     const omPreposition = getOmPreposition(organizacao);
     const faseFormatada = formatFasesParaTexto(fase_atividade);
+    
+    // NOVO: Determina se é "fase de" ou "fases de"
+    const nrFases = countFases(fase_atividade);
+    const faseConcordancia = nrFases <= 1 ? 'fase de' : 'fases de';
     
     // Mapeamento do destino para o rótulo
     let destinoLabel = '';
@@ -182,8 +194,8 @@ export const generateDiariaMemoriaCalculo = (
         case 'demais_dslc': destinoLabel = 'Demais Dslc'; break;
     }
     
-    // NOVO CABEÇALHO SOLICITADO (Corrigido para concordância direta):
-    const header = `33.90.15 - Custeio com Diárias de ${totalMilitares} ${militarText} ${omPreposition} ${organizacao}, para ${nr_viagens} ${viagemText} com duração de ${dias_operacao} ${diaText} em ${local_atividade}, durante a fase(s) de ${faseFormatada}.`;
+    // CABEÇALHO CORRIGIDO:
+    const header = `33.90.15 - Custeio com Diárias de ${totalMilitares} ${militarText} ${omPreposition} ${organizacao}, para ${nr_viagens} ${viagemText} com duração de ${dias_operacao} ${diaText} em ${local_atividade}, durante a ${faseConcordancia} ${faseFormatada}.`;
 
     let detalhamentoValores = '';
     let detalhamentoFormula = '';
@@ -199,7 +211,7 @@ export const generateDiariaMemoriaCalculo = (
         // Detalhamento da Fórmula
         // Ex: (3 Of Sup x R$ 450,00/dia) x 4,5 dias x 1 viagem = R$ 6.075,00.
         const formulaPart1 = `(${calc.quantidade} ${calc.posto} x ${formatCurrency(calc.valorUnitario)}/dia)`;
-        const formulaPart2 = `${formatNumber(Math.max(0, dias_operacao - 0.5), 1)} dias x ${nr_viagens} ${viagemText}`;
+        const formulaPart2 = `${formatNumber(Math.max(0, dias_operacao - 0.5), 1)} dias x ${nr_viagens} viagem${nr_viagens === 1 ? '' : 'ns'}`;
         
         detalhamentoFormula += `- ${formulaPart1} x ${formulaPart2} = ${formatCurrency(calc.custoTotal)}.\n`;
         totalFormula += calc.custoTotal;
