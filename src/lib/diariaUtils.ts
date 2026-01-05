@@ -29,7 +29,7 @@ export const formatFasesParaTexto = (faseCSV: string | undefined | null): string
   
   const ultimaFase = fases[fases.length - 1];
   const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFases}`;
+  return `${demaisFases} e ${ultimaFase}`;
 };
 
 /**
@@ -201,11 +201,18 @@ export const generateDiariaMemoriaCalculo = (
     let detalhamentoFormula = '';
     let totalFormula = 0;
     
+    const taxaEmbarqueUnitario = Number(diretrizes.taxa_embarque || 0);
+    
+    // NOVO: Adiciona a linha da Taxa de Embarque ao detalhamento de valores
+    if (is_aereo) {
+        detalhamentoValores += `- Taxa de Embarque: ${formatCurrency(taxaEmbarqueUnitario)}/viagem.\n`;
+    }
+
     calculosPorPosto.forEach(calc => {
         const militaresPlural = calc.quantidade === 1 ? 'mil.' : 'militares';
         const diasPagamento = Math.max(0, dias_operacao - 0.5);
         
-        // 1. Detalhamento de Valores Unitários (NOVO FORMATO)
+        // 1. Detalhamento de Valores Unitários
         detalhamentoValores += `- ${calc.posto}: ${formatCurrency(calc.valorUnitario)}/dia.\n`;
         
         // 2. Detalhamento da Fórmula (Mantido o formato detalhado para a seção de cálculo)
@@ -217,7 +224,6 @@ export const generateDiariaMemoriaCalculo = (
         totalFormula += calc.custoTotal;
     });
     
-    const taxaEmbarqueUnitario = Number(diretrizes.taxa_embarque || 0);
     
     let detalhamentoTaxa = '';
     if (is_aereo) {
