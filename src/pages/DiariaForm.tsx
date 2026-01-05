@@ -1208,7 +1208,7 @@ const DiariaForm = () => {
                                                                                 size="icon"
                                                                                 className="h-8 w-8"
                                                                                 onClick={() => handleEdit(registro)}
-                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                                disabled={!isPTrabEditable || isSaving || pendingDiarias.length > 0}
                                                                             >
                                                                                 <Pencil className="h-4 w-4" />
                                                                             </Button>
