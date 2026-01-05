@@ -1228,7 +1228,7 @@ const DiariaForm = () => {
                                                                 {/* Detalhes da Alocação */}
                                                                 <div className="pt-2 border-t mt-2">
                                                                     <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">Diária Base:</span>
+                                                                        <span className="text-muted-foreground">Diária:</span>
                                                                         <span className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</span>
                                                                     </div>
                                                                     <div className="flex justify-between text-xs">
