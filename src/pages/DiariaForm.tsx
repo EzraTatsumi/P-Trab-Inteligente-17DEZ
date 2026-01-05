@@ -975,6 +975,7 @@ const DiariaForm = () => {
                                                     className="w-full md:w-auto"
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                    {/* Ajuste do texto do botão de edição/recalculo */}
                                                     {stagedUpdate ? "Recalcular Item" : "Preparar Atualização"}
                                                 </Button>
                                             ) : (
