@@ -1204,6 +1204,7 @@ const DiariaForm = () => {
                                                                         </span>
                                                                         <div className="flex gap-1">
                                                                             <Button
+                                                                                type="button" // CORREÇÃO: Adicionado type="button" para evitar submissão do formulário
                                                                                 variant="ghost"
                                                                                 size="icon"
                                                                                 className="h-8 w-8"
@@ -1213,6 +1214,7 @@ const DiariaForm = () => {
                                                                                 <Pencil className="h-4 w-4" />
                                                                             </Button>
                                                                             <Button
+                                                                                type="button" // Garantir que o botão de exclusão também não submeta
                                                                                 variant="ghost"
                                                                                 size="icon"
                                                                                 onClick={() => handleConfirmDelete(registro)}
@@ -1299,6 +1301,7 @@ const DiariaForm = () => {
                                                         {!isEditing ? (
                                                             <>
                                                                 <Button
+                                                                    type="button" // Garantir que o botão de edição de memória não submeta
                                                                     size="sm"
                                                                     variant="outline"
                                                                     onClick={() => handleIniciarEdicaoMemoria(registro)}
@@ -1311,6 +1314,7 @@ const DiariaForm = () => {
                                                                 
                                                                 {hasCustomMemoria && (
                                                                     <Button
+                                                                        type="button" // Garantir que o botão de restauração não submeta
                                                                         size="sm"
                                                                         variant="ghost"
                                                                         onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
@@ -1325,6 +1329,7 @@ const DiariaForm = () => {
                                                         ) : (
                                                             <>
                                                                 <Button
+                                                                    type="button" // Garantir que o botão de salvar memória não submeta
                                                                     size="sm"
                                                                     variant="default"
                                                                     onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
@@ -1335,6 +1340,7 @@ const DiariaForm = () => {
                                                                     Salvar
                                                                 </Button>
                                                                 <Button
+                                                                    type="button" // Garantir que o botão de cancelar memória não submeta
                                                                     size="sm"
                                                                     variant="outline"
                                                                     onClick={handleCancelarEdicaoMemoria}
