@@ -1183,7 +1183,13 @@ const DiariaForm = () => {
                                                         const destinoColorClass = getDestinoColorClass(registro.destino as DestinoDiaria);
                                                         
                                                         return (
-                                                            <Card key={registro.id} className={cn("p-3 bg-background border", editingId === registro.id && "border-2 border-yellow-500/70")}>
+                                                            <Card 
+                                                                key={registro.id} 
+                                                                className={cn(
+                                                                    "p-3 bg-background border", 
+                                                                    editingId === registro.id && "border-2 border-primary/50 shadow-lg" // Alterado para usar border-primary/50
+                                                                )}
+                                                            >
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="flex flex-col">
                                                                         <div className="flex items-center gap-2">
