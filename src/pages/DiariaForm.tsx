@@ -1015,8 +1015,8 @@ const DiariaForm = () => {
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIA DE CÁLCULO DETALHADA */}
-                            {/* CONDIÇÃO CORRIGIDA: Aparece se estiver editando OU se o cálculo estiver pronto E não houver itens pendentes (item novo) */}
-                            {(editingId || (isCalculationReady && pendingDiarias.length === 0)) && (
+                            {/* CONDIÇÃO CORRIGIDA: Aparece APENAS se estiver editando um registro salvo. */}
+                            {editingId && (
                                 <section className="space-y-4 border-t pt-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         <FileText className="h-4 w-4 text-muted-foreground" />
@@ -1049,6 +1049,79 @@ const DiariaForm = () => {
                         </form>
                     </CardContent>
                 </Card>
+                
+                {/* SEÇÃO 4: REGISTROS SALVOS (Tabela) */}
+                {registros && registros.length > 0 && (
+                    <Card className="mt-6">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <ClipboardList className="h-5 w-5 text-secondary" />
+                                4. Registros de Diárias Salvos ({registros.length})
+                            </CardTitle>
+                            <CardDescription>
+                                Registros de diárias já salvos no P Trab.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="border rounded-lg overflow-hidden">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[15%]">OM Destino</TableHead>
+                                            <TableHead className="w-[15%]">Local Dslc</TableHead>
+                                            <TableHead className="w-[10%] text-center">Dias</TableHead>
+                                            <TableHead className="w-[10%] text-center">Militares</TableHead>
+                                            <TableHead className="w-[15%] text-right">Total Diária</TableHead>
+                                            <TableHead className="w-[15%] text-right">Total Taxa Emb.</TableHead>
+                                            <TableHead className="w-[15%] text-right">Total Geral (ND 15)</TableHead>
+                                            <TableHead className="w-[5%] text-right">Ações</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {registros.map((registro) => (
+                                            <TableRow key={registro.id} className={editingId === registro.id ? "bg-yellow-50/50" : ""}>
+                                                <TableCell className="font-medium">
+                                                    {registro.organizacao} ({formatCodug(registro.ug)})
+                                                </TableCell>
+                                                <TableCell>{registro.local_atividade}</TableCell>
+                                                <TableCell className="text-center">{registro.dias_operacao}</TableCell>
+                                                <TableCell className="text-center">{registro.quantidade}</TableCell>
+                                                <TableCell className="text-right">
+                                                    {/* Diária Base = Total Geral - Taxa Embarque */}
+                                                    {formatCurrency(registro.valor_total - (registro.valor_taxa_embarque || 0))}
+                                                </TableCell>
+                                                <TableCell className="text-right text-green-600">
+                                                    {formatCurrency(registro.valor_taxa_embarque || 0)}
+                                                </TableCell>
+                                                <TableCell className="text-right font-bold text-primary">
+                                                    {formatCurrency(registro.valor_total)}
+                                                </TableCell>
+                                                <TableCell className="text-right space-x-2 whitespace-nowrap">
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="icon" 
+                                                        onClick={() => handleEdit(registro)}
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button 
+                                                        variant="destructive" 
+                                                        size="icon" 
+                                                        onClick={() => handleConfirmDelete(registro)}
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
             
             {/* Diálogo de Confirmação de Exclusão */}
