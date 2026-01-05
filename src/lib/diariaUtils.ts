@@ -206,13 +206,19 @@ export const generateDiariaMemoriaCalculo = (
     // Sempre inclui a linha da Taxa de Embarque
     detalhamentoValores += `- Taxa de Embarque: ${formatCurrency(taxaEmbarqueUnitario)}/viagem.\n`;
 
+    const diasPagamento = Math.max(0, dias_operacao - 0.5);
+
     calculosPorPosto.forEach(calc => {
         // 1. Detalhamento de Valores Unitários
         detalhamentoValores += `- ${calc.posto}: ${formatCurrency(calc.valorUnitario)}/dia.\n`;
         
         // 2. Detalhamento da Fórmula das Diárias
         const formulaPart1 = `(${calc.quantidade} ${calc.posto} x ${formatCurrency(calc.valorUnitario)}/dia)`;
-        const formulaPart2 = `${formatNumber(Math.max(0, dias_operacao - 0.5), 1)} dias x ${nr_viagens} viagem${nr_viagens === 1 ? '' : 'ns'}`;
+        
+        // CORREÇÃO AQUI: Pluralização de diasPagamento
+        const diasPagamentoText = diasPagamento === 1 ? 'dia' : 'dias';
+        
+        const formulaPart2 = `${formatNumber(diasPagamento, 1)} ${diasPagamentoText} x ${nr_viagens} viagem${nr_viagens === 1 ? '' : 'ns'}`;
         
         detalhamentoFormulaDiarias += `- ${formulaPart1} x ${formulaPart2} = ${formatCurrency(calc.custoTotal)}.\n`;
     });
