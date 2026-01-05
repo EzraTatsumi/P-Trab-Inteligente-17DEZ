@@ -182,7 +182,7 @@ export const generateDiariaMemoriaCalculo = (
     const omPreposition = getOmPreposition(organizacao);
     const faseFormatada = formatFasesParaTexto(fase_atividade);
     
-    // NOVO: Determina se é "fase de" ou "fases de"
+    // Determina se é "fase de" ou "fases de"
     const nrFases = countFases(fase_atividade);
     const faseConcordancia = nrFases <= 1 ? 'fase de' : 'fases de';
     
@@ -233,8 +233,6 @@ export const generateDiariaMemoriaCalculo = (
     
     // CORRIGIDO: Rótulo da ND para Diária
     return `${header}
-
-OM Destino Recurso: ${organizacao} (UG: ${formatCodug(ug)})
 
 Cálculo, segundo ${referenciaLegal}:
 - Para ${destinoLabel} considera-se: 
