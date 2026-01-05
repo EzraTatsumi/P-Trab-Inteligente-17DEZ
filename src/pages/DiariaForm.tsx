@@ -141,7 +141,7 @@ const DiariaForm = () => {
     // NOVO ESTADO: Array de registros calculados, mas não salvos
     const [pendingDiarias, setPendingDiarias] = useState<CalculatedDiaria[]>([]);
     
-    // NOVO ESTADO: Item recalculado no modo de edição, aguardando commit
+    // NOVO ESTADO: Registro calculado para atualização (staging)
     const [stagedUpdate, setStagedUpdate] = useState<CalculatedDiaria | null>(null);
     
     // Estado para rastrear o ID da OM selecionada no OmSelector
@@ -223,13 +223,8 @@ const DiariaForm = () => {
     
     // NOVO: Cálculo do total de todos os itens pendentes
     const totalPendingDiarias = useMemo(() => {
-        // Se estiver editando, o total é apenas o item em staging
-        if (editingId && stagedUpdate) {
-            return stagedUpdate.valor_total;
-        }
-        // Caso contrário, soma os itens novos
         return pendingDiarias.reduce((sum, item) => sum + item.valor_total, 0);
-    }, [pendingDiarias, editingId, stagedUpdate]);
+    }, [pendingDiarias]);
     
     // NOVO MEMO: Agrupa os registros por OM de Destino (organizacao/ug)
     const registrosAgrupadosPorOM = useMemo(() => {
@@ -305,6 +300,7 @@ const DiariaForm = () => {
             queryClient.invalidateQueries({ queryKey: ["diariaRegistros", ptrabId] });
             queryClient.invalidateQueries({ queryKey: ["ptrabTotals", ptrabId] });
             toast.success(`Registro de Diária atualizado com sucesso!`);
+            setStagedUpdate(null); // Limpa o staging após o sucesso
             resetForm();
         },
         onError: (err) => {
@@ -343,11 +339,12 @@ const DiariaForm = () => {
         setEditingMemoriaId(null); // Resetar estados de edição de memória
         setMemoriaEdit("");
         setSelectedOmId(undefined);
-        setStagedUpdate(null); // Limpa o item em staging
+        setStagedUpdate(null); // Limpa o staging
     };
     
     const handleClearPending = () => {
         setPendingDiarias([]);
+        setStagedUpdate(null);
         resetForm();
     };
 
@@ -358,7 +355,7 @@ const DiariaForm = () => {
         }
         
         setEditingId(registro.id);
-        setStagedUpdate(null); // Limpa qualquer staging anterior
+        setStagedUpdate(null); // Garante que o staging esteja limpo ao iniciar a edição
         
         const omToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
         setSelectedOmId(omToEdit?.id);
@@ -389,8 +386,8 @@ const DiariaForm = () => {
         setShowDeleteDialog(true);
     };
 
-    // Adiciona o item calculado à lista pendente OU o coloca em staging para edição
-    const handleCalculateAndAdd = (e: React.FormEvent) => {
+    // Adiciona o item calculado à lista pendente OU prepara a atualização (staging)
+    const handleStageCalculation = (e: React.FormEvent) => {
         e.preventDefault();
         
         if (!diretrizesOp) {
@@ -409,11 +406,11 @@ const DiariaForm = () => {
                 return;
             }
             
-            // 3. Preparar o objeto final (baseData)
+            // 3. Preparar o objeto final (calculatedData)
             const destinoLabel = DESTINO_OPTIONS.find(d => d.value === formData.destino)?.label || formData.destino;
             
-            const newPending: CalculatedDiaria = {
-                tempId: editingId || Math.random().toString(36).substring(2, 9), // Usa editingId se estiver editando
+            const calculatedData: CalculatedDiaria = {
+                tempId: editingId || Math.random().toString(36).substring(2, 9), // Usa editingId como tempId se estiver editando
                 p_trab_id: ptrabId!,
                 organizacao: formData.organizacao,
                 ug: formData.ug,
@@ -429,15 +426,14 @@ const DiariaForm = () => {
                 quantidade: calculos.totalMilitares,
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
-                valor_nd_30: 0, // Taxa de Embarque consolidada na ND 15
-                valor_nd_15: calculos.totalGeral, // Total Geral (Diária Base + Taxa Embarque)
+                valor_nd_30: 0, 
+                valor_nd_15: calculos.totalGeral, 
                 
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
                 detalhamento_customizado: null, 
                 is_aereo: formData.is_aereo,
                 
-                // Campos que foram NOT NULL, mas são redundantes no novo fluxo
                 posto_graduacao: null,
                 valor_diaria_unitario: null,
 
@@ -445,19 +441,21 @@ const DiariaForm = () => {
                 destinoLabel: destinoLabel,
                 totalMilitares: calculos.totalMilitares,
                 memoria_calculo_display: calculos.memoria, 
+                valor_nd_15: calculos.totalGeral,
             };
             
             if (editingId) {
-                // MODO EDIÇÃO: Coloca o item em staging para revisão na Seção 3
-                setStagedUpdate(newPending);
-                toast.info("Item recalculado. Revise na Seção 3 e clique em 'Atualizar Registro'.");
+                // MODO EDIÇÃO: Estagia a atualização para revisão
+                setStagedUpdate(calculatedData);
+                toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); // Scroll down to review area
                 return;
             }
             
             // MODO ADIÇÃO: Adicionar à lista pendente
-            setPendingDiarias(prev => [...prev, newPending]);
+            setPendingDiarias(prev => [...prev, calculatedData]);
             
-            // Resetar o formulário para o próximo item (mantendo OM e Fase)
+            // 5. Resetar o formulário para o próximo item (mantendo OM e Fase)
             setFormData(prev => ({
                 ...initialFormState,
                 organizacao: prev.organizacao,
@@ -499,28 +497,22 @@ const DiariaForm = () => {
         saveMutation.mutate(recordsToSave);
     };
     
+    // NOVO: Confirma a atualização do item estagiado no DB
+    const handleCommitStagedUpdate = () => {
+        if (!editingId || !stagedUpdate) return;
+        
+        // Mapeia o stagedUpdate para o formato de atualização no DB
+        const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, valor_nd_39, ...dbRecord } = stagedUpdate as any;
+        
+        // updateMutation espera TablesUpdate, que é o dbRecord sem o ID
+        updateMutation.mutate(dbRecord as TablesUpdate<'diaria_registros'>);
+    };
+    
     // Remove item da lista pendente
     const handleRemovePending = (tempId: string) => {
         setPendingDiarias(prev => prev.filter(p => p.tempId !== tempId));
         toast.info("Item removido da lista pendente.");
     };
-    
-    // NOVO: Comita a atualização do item em staging para o DB
-    const handleCommitUpdate = (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        if (!editingId || !stagedUpdate) {
-            toast.error("Nenhum item em revisão para atualizar.");
-            return;
-        }
-        
-        // Mapeia stagedUpdate para o formato de atualização no DB
-        const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, valor_nd_39, ...dbRecord } = stagedUpdate as any;
-        
-        updateMutation.mutate(dbRecord as TablesUpdate<'diaria_registros'>);
-    };
-    
-    // REMOVIDO: handleUpdateExisting não é mais necessário, pois o commit é feito via stagedUpdate
     
     const handleOmChange = (omData: OMData | undefined) => {
         if (omData) {
@@ -538,8 +530,6 @@ const DiariaForm = () => {
                 ug: "",
             }));
         }
-        // Se estiver editando, limpar o staging para forçar o recalculate
-        if (editingId) setStagedUpdate(null);
     };
     
     const handleFaseAtividadeChange = (fase: string) => {
@@ -547,8 +537,6 @@ const DiariaForm = () => {
             ...prev,
             fase_atividade: fase,
         }));
-        // Se estiver editando, limpar o staging para forçar o recalculate
-        if (editingId) setStagedUpdate(null);
     };
     
     const handleRankQuantityChange = (rankKey: string, value: string) => {
@@ -560,8 +548,6 @@ const DiariaForm = () => {
                 [rankKey]: qty,
             }
         }));
-        // Se estiver editando, limpar o staging para forçar o recalculate
-        if (editingId) setStagedUpdate(null);
     };
     
     // --- Lógica de Edição de Memória (Copiada do Classe II) ---
@@ -691,9 +677,9 @@ const DiariaForm = () => {
     const taxaEmbarqueUnitario = diretrizesOp?.taxa_embarque ? Number(diretrizesOp.taxa_embarque) : 0;
     const referenciaLegal = diretrizesOp?.diaria_referencia_legal || 'Decreto/Portaria não cadastrada';
     
-    // Define a lista de itens para a Seção 3
-    const itemsToDisplayInSection3 = editingId && stagedUpdate ? [stagedUpdate] : pendingDiarias;
-    const isSection3Visible = itemsToDisplayInSection3.length > 0;
+    // Lógica para a Seção 3
+    const itemsToDisplay = stagedUpdate ? [stagedUpdate] : pendingDiarias;
+    const isStagingUpdate = !!stagedUpdate;
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -713,7 +699,7 @@ const DiariaForm = () => {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={handleCalculateAndAdd} className="space-y-8">
+                        <form onSubmit={handleStageCalculation} className="space-y-8">
                             
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
@@ -728,8 +714,7 @@ const DiariaForm = () => {
                                             selectedOmId={selectedOmId}
                                             onChange={handleOmChange}
                                             placeholder="Selecione a OM de Destino"
-                                            // Desabilita se estiver salvando OU se houver itens pendentes (apenas no modo de adição)
-                                            disabled={!isPTrabEditable || isSaving || isLoadingOms || (pendingDiarias.length > 0 && !editingId)}
+                                            disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingDiarias.length > 0}
                                             initialOmName={formData.organizacao}
                                             initialOmUg={formData.ug}
                                         />
@@ -749,7 +734,7 @@ const DiariaForm = () => {
                                         <FaseAtividadeSelect
                                             value={formData.fase_atividade}
                                             onChange={handleFaseAtividadeChange}
-                                            disabled={!isPTrabEditable || isSaving || (pendingDiarias.length > 0 && !editingId)}
+                                            disabled={!isPTrabEditable || isSaving || pendingDiarias.length > 0}
                                         />
                                     </div>
                                 </div>
@@ -774,7 +759,6 @@ const DiariaForm = () => {
                                                     // Limpa o local da atividade ao mudar o destino, forçando nova seleção/digitação
                                                     local_atividade: "" 
                                                 }));
-                                                if (editingId) setStagedUpdate(null); // Limpa staging
                                             }}
                                             className="w-full"
                                         >
@@ -806,10 +790,7 @@ const DiariaForm = () => {
                                                                 type="number"
                                                                 min={1}
                                                                 value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
-                                                                onChange={(e) => {
-                                                                    setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 });
-                                                                    if (editingId) setStagedUpdate(null);
-                                                                }}
+                                                                onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
@@ -824,10 +805,7 @@ const DiariaForm = () => {
                                                                 type="number"
                                                                 min={1}
                                                                 value={formData.nr_viagens === 0 ? "" : formData.nr_viagens}
-                                                                onChange={(e) => {
-                                                                    setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 });
-                                                                    if (editingId) setStagedUpdate(null);
-                                                                }}
+                                                                onChange={(e) => setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 })}
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
@@ -841,10 +819,7 @@ const DiariaForm = () => {
                                                                 <LocalAtividadeSelect
                                                                     destino={formData.destino}
                                                                     value={formData.local_atividade}
-                                                                    onChange={(value) => {
-                                                                        setFormData({ ...formData, local_atividade: value });
-                                                                        if (editingId) setStagedUpdate(null);
-                                                                    }}
+                                                                    onChange={(value) => setFormData({ ...formData, local_atividade: value })}
                                                                     disabled={!isPTrabEditable || isSaving}
                                                                 />
                                                             </div>
@@ -857,10 +832,7 @@ const DiariaForm = () => {
                                                                     <Switch
                                                                         id="is_aereo"
                                                                         checked={formData.is_aereo}
-                                                                        onCheckedChange={(checked) => {
-                                                                            setFormData({ ...formData, is_aereo: checked });
-                                                                            if (editingId) setStagedUpdate(null);
-                                                                        }}
+                                                                        onCheckedChange={(checked) => setFormData({ ...formData, is_aereo: checked })}
                                                                         disabled={!isPTrabEditable || isSaving}
                                                                     />
                                                                     <span className="text-sm text-muted-foreground">
@@ -917,10 +889,7 @@ const DiariaForm = () => {
                                                                                 type="number"
                                                                                 min={0}
                                                                                 value={qty === 0 ? "" : qty}
-                                                                                onChange={(e) => {
-                                                                                    handleRankQuantityChange(rank.key, e.target.value);
-                                                                                    if (editingId) setStagedUpdate(null);
-                                                                                }}
+                                                                                onChange={(e) => handleRankQuantityChange(rank.key, e.target.value)}
                                                                                 disabled={!isPTrabEditable || isSaving}
                                                                                 className="text-center max-w-[80px] mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                 onKeyDown={handleEnterToNextField}
@@ -952,26 +921,14 @@ const DiariaForm = () => {
                                         {/* BOTÕES DE AÇÃO (Salvar Item da Categoria) */}
                                         <div className="flex justify-end gap-3 pt-4">
                                             {editingId ? (
-                                                stagedUpdate ? (
-                                                    <Button 
-                                                        type="button" 
-                                                        onClick={handleCommitUpdate}
-                                                        disabled={!isPTrabEditable || isSaving}
-                                                        className="w-full md:w-auto bg-green-600 hover:bg-green-700"
-                                                    >
-                                                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                        Atualizar Registro
-                                                    </Button>
-                                                ) : (
-                                                    <Button 
-                                                        type="submit" // Submete para recalcular/staging
-                                                        disabled={!isPTrabEditable || isSaving || !isCalculationReady}
-                                                        className="w-full md:w-auto"
-                                                    >
-                                                        <RefreshCw className="mr-2 h-4 w-4" />
-                                                        Recalcular/Revisar Item
-                                                    </Button>
-                                                )
+                                                <Button 
+                                                    type="submit" // Aciona handleStageCalculation
+                                                    disabled={!isPTrabEditable || isSaving || !isCalculationReady}
+                                                    className="w-full md:w-auto"
+                                                >
+                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                    {stagedUpdate ? "Recalcular Item" : "Preparar Atualização"}
+                                                </Button>
                                             ) : (
                                                 <Button 
                                                     type="submit" 
@@ -988,21 +945,22 @@ const DiariaForm = () => {
                                 </section>
                             )}
                             
-                            {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES) / ITEM EM REVISÃO (EDITANDO) */}
-                            {isSection3Visible && (
+                            {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
+                            {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. {editingId ? "Item em Revisão" : `Itens Pendentes (${pendingDiarias.length})`}
-                                        {editingId && !stagedUpdate && (
-                                            <Badge variant="destructive" className="ml-2">
-                                                <AlertCircle className="h-4 w-4 mr-1" />
-                                                Recalcule o item acima para revisar
-                                            </Badge>
+                                        {isStagingUpdate ? (
+                                            <>
+                                                <AlertCircle className="h-5 w-5 text-yellow-500" />
+                                                3. Revisão de Atualização (Confirme as alterações)
+                                            </>
+                                        ) : (
+                                            `3. Itens Pendentes (${pendingDiarias.length})`
                                         )}
                                     </h3>
                                     
                                     <div className="space-y-4">
-                                        {itemsToDisplayInSection3.map((item) => {
+                                        {itemsToDisplay.map((item) => {
                                             const taxaEmbarqueUnitarioDisplay = formatCurrency(taxaEmbarqueUnitario);
                                             
                                             // Funções utilitárias para singular/plural
@@ -1076,12 +1034,15 @@ const DiariaForm = () => {
                                             return (
                                                 <Card 
                                                     key={item.tempId} 
-                                                    className="border-2 border-secondary bg-secondary/10 shadow-md"
+                                                    className={cn(
+                                                        "border-2 shadow-md",
+                                                        isStagingUpdate ? "border-yellow-500/70 bg-yellow-50/50" : "border-secondary bg-secondary/10"
+                                                    )}
                                                 >
                                                     <CardContent className="p-4">
                                                         
                                                         {/* NOVO HEADER: Título e Valor Total na mesma linha */}
-                                                        <div className="flex justify-between items-center border-b border-secondary/30 pb-2 mb-2">
+                                                        <div className={cn("flex justify-between items-center pb-2 mb-2", isStagingUpdate ? "border-b-yellow-500/30" : "border-b border-secondary/30")}>
                                                             <h4 className="font-bold text-base text-primary">
                                                                 Diárias ({item.local_atividade})
                                                             </h4>
@@ -1089,7 +1050,7 @@ const DiariaForm = () => {
                                                                 <p className="font-extrabold text-lg text-primary text-right">
                                                                     {formatCurrency(item.valor_total)}
                                                                 </p>
-                                                                {!editingId && (
+                                                                {!isStagingUpdate && (
                                                                     <Button 
                                                                         variant="ghost" 
                                                                         size="icon" 
@@ -1146,33 +1107,53 @@ const DiariaForm = () => {
                                         })}
                                     </div>
                                     
-                                    {/* VALOR TOTAL DA OM (PENDENTE) */}
+                                    {/* VALOR TOTAL DA OM (PENDENTE / STAGING) */}
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
-                                            <span className="font-bold text-base uppercase">VALOR TOTAL {editingId ? "EM REVISÃO" : "PENDENTE"}</span>
+                                            <span className="font-bold text-base uppercase">
+                                                {isStagingUpdate ? "VALOR ATUALIZADO" : "VALOR TOTAL PENDENTE"}
+                                            </span>
                                             <span className="font-extrabold text-xl text-foreground">
-                                                {formatCurrency(totalPendingDiarias)}
+                                                {formatCurrency(isStagingUpdate ? stagedUpdate!.valor_total : totalPendingDiarias)}
                                             </span>
                                         </CardContent>
                                     </Card>
                                     
-                                    {!editingId && (
-                                        <div className="flex justify-end gap-3 pt-4">
-                                            <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                                <XCircle className="mr-2 h-4 w-4" />
-                                                Limpar Lista
-                                            </Button>
-                                            <Button 
-                                                type="button" 
-                                                onClick={handleSavePendingDiarias}
-                                                disabled={isSaving || pendingDiarias.length === 0}
-                                                className="w-full md:w-auto bg-primary hover:bg-primary/90"
-                                            >
-                                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                Salvar Registros
-                                            </Button>
-                                        </div>
-                                    )}
+                                    <div className="flex justify-end gap-3 pt-4">
+                                        {isStagingUpdate ? (
+                                            <>
+                                                <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
+                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                    Cancelar Edição
+                                                </Button>
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={handleCommitStagedUpdate}
+                                                    disabled={isSaving}
+                                                    className="w-full md:w-auto bg-green-600 hover:bg-green-700"
+                                                >
+                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                                    Confirmar Atualização
+                                                </Button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
+                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                    Limpar Lista
+                                                </Button>
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={handleSavePendingDiarias}
+                                                    disabled={isSaving || pendingDiarias.length === 0}
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
+                                                >
+                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                    Salvar Registros
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
                                 </section>
                             )}
 
@@ -1334,7 +1315,7 @@ const DiariaForm = () => {
                                                         {!isEditing ? (
                                                             <>
                                                                 <Button
-                                                                    type="button" 
+                                                                    type="button" // Garantir que o botão de edição de memória não submeta
                                                                     size="sm"
                                                                     variant="outline"
                                                                     onClick={() => handleIniciarEdicaoMemoria(registro)}
@@ -1347,7 +1328,7 @@ const DiariaForm = () => {
                                                                 
                                                                 {hasCustomMemoria && (
                                                                     <Button
-                                                                        type="button" 
+                                                                        type="button" // Garantir que o botão de restauração não submeta
                                                                         size="sm"
                                                                         variant="ghost"
                                                                         onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
@@ -1362,7 +1343,7 @@ const DiariaForm = () => {
                                                         ) : (
                                                             <>
                                                                 <Button
-                                                                    type="button" 
+                                                                    type="button" // Garantir que o botão de salvar memória não submeta
                                                                     size="sm"
                                                                     variant="default"
                                                                     onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
@@ -1373,7 +1354,7 @@ const DiariaForm = () => {
                                                                     Salvar
                                                                 </Button>
                                                                 <Button
-                                                                    type="button" 
+                                                                    type="button" // Garantir que o botão de cancelar memória não submeta
                                                                     size="sm"
                                                                     variant="outline"
                                                                     onClick={handleCancelarEdicaoMemoria}
