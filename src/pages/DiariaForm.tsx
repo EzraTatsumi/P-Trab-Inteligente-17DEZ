@@ -224,7 +224,8 @@ const DiariaForm = () => {
             const { data, error } = await supabase
                 .from("diaria_registros")
                 .insert(dbRecords)
-                .select('*'); // Solicita o retorno dos registros inseridos
+                .select('*')
+                .order('created_at', { ascending: false }); // Ordena para pegar o último inserido
             
             if (error) throw error;
             return data;
@@ -240,7 +241,7 @@ const DiariaForm = () => {
             
             // 2. Colocar o último registro salvo em modo de edição para exibir a Seção 5
             if (newRecords && newRecords.length > 0) {
-                const lastSavedRecord = newRecords[newRecords.length - 1];
+                const lastSavedRecord = newRecords[0]; // O primeiro item é o mais recente devido à ordenação
                 // Chamamos handleEdit com o registro recém-salvo
                 handleEdit(lastSavedRecord as DiariaRegistro);
             }
