@@ -29,7 +29,7 @@ export const formatFasesParaTexto = (faseCSV: string | undefined | null): string
   
   const ultimaFase = fases[fases.length - 1];
   const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFases}`;
+  return `${demaisFases} e ${ultimaFase}`;
 };
 
 /**
@@ -203,11 +203,13 @@ export const generateDiariaMemoriaCalculo = (
     const taxaEmbarqueUnitario = Number(diretrizes.taxa_embarque || 0);
     
     // 1. Detalhamento de Valores Unitários (incluindo Taxa de Embarque)
-    if (is_aereo) {
-        detalhamentoValores += `- Taxa de Embarque: ${formatCurrency(taxaEmbarqueUnitario)}/viagem.\n`;
-    }
+    // Sempre inclui a linha da Taxa de Embarque
+    detalhamentoValores += `- Taxa de Embarque: ${formatCurrency(taxaEmbarqueUnitario)}/viagem.\n`;
 
     calculosPorPosto.forEach(calc => {
+        const militaresPlural = calc.quantidade === 1 ? 'mil.' : 'militares';
+        const diasPagamento = Math.max(0, dias_operacao - 0.5);
+        
         // 1. Detalhamento de Valores Unitários
         detalhamentoValores += `- ${calc.posto}: ${formatCurrency(calc.valorUnitario)}/dia.\n`;
         
@@ -220,14 +222,13 @@ export const generateDiariaMemoriaCalculo = (
     
     
     let detalhamentoTaxaCalculo = '';
+    
+    // 2. Detalhamento da Aplicação da Fórmula da Taxa de Embarque (Simplificado)
     if (is_aereo) {
-        detalhamentoTaxaCalculo = `
-- Efetivo x Valor da Taxa de Embarque x Quantidade de Viagens = ${formatCurrency(totalTaxaEmbarque)}.
-`;
+        detalhamentoTaxaCalculo = `- ${totalMilitares} ${militarText} x ${formatCurrency(taxaEmbarqueUnitario)} x ${nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}.`;
     } else {
-        detalhamentoTaxaCalculo = `
-- Deslocamento Terrestre/Fluvial: Não há previsão legal para pagamento de Taxa de Embarque.
-`;
+        // Se não for aéreo, efetivo é 0 e valor é 0 no cálculo
+        detalhamentoTaxaCalculo = `- 0 militares x ${formatCurrency(taxaEmbarqueUnitario)} x ${nr_viagens} ${viagemText} = ${formatCurrency(0)}.`;
     }
     
     // NOVO FORMATO DE INTRODUÇÃO AO CÁLCULO
@@ -241,11 +242,11 @@ ${detalhamentoValores.trim()}
 Fórmula da Taxa de Embarque: Efetivo x Valor da Taxa de Embarque x Quantidade de Viagens.
 Fórmula das Diárias: (Efetivo x Custo/dia/localidade) x (Nr Dias - 0,5 dia) x Nr Viagens.
 
-${is_aereo ? detalhamentoTaxaCalculo.trim() : ''}
+${detalhamentoTaxaCalculo}
 ${detalhamentoFormulaDiarias.trim()}
 
 Total Diária Base: ${formatCurrency(totalDiariaBase)}.
-${detalhamentoTaxaCalculo.trim()}
+Total Taxa de Embarque: ${formatCurrency(totalTaxaEmbarque)}.
 
 Total Geral (ND 33.90.15): ${formatCurrency(totalGeral)}.`;
 };
