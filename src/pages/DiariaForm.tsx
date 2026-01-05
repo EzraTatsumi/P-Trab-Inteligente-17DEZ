@@ -67,8 +67,7 @@ interface CalculatedDiaria extends TablesInsert<'diaria_registros'> {
     // Campos de display adicionais
     destinoLabel: string;
     totalMilitares: number;
-    // Adicionando valor_nd_15 e removendo valor_nd_39 do tipo local para consistência
-    valor_nd_15: number;
+    // valor_nd_15 já está em TablesInsert<'diaria_registros'>
 }
 
 // Schema de validação para o formulário de Diária
@@ -458,7 +457,6 @@ const DiariaForm = () => {
             destinoLabel: destinoLabel,
             totalMilitares: totals.totalMilitares,
             memoria_calculo_display: memoria, 
-            valor_nd_15: totals.totalGeral,
         };
         
         setStagedUpdate(stagedData); // Set the staged update immediately
@@ -530,7 +528,6 @@ const DiariaForm = () => {
                 destinoLabel: destinoLabel,
                 totalMilitares: calculos.totalMilitares,
                 memoria_calculo_display: calculos.memoria, 
-                valor_nd_15: calculos.totalGeral,
             };
             
             if (editingId) {
