@@ -208,6 +208,22 @@ const DiariaForm = () => {
     const totalPendingDiarias = useMemo(() => {
         return pendingDiarias.reduce((sum, item) => sum + item.valor_total, 0);
     }, [pendingDiarias]);
+    
+    // NOVO MEMO: Agrupa os registros por OM de Destino (organizacao/ug)
+    const registrosAgrupadosPorOM = useMemo(() => {
+        return registros?.reduce((acc, registro) => {
+            // Usamos a OM de Destino como chave de agrupamento principal
+            const omDestino = registro.organizacao;
+            const ugDestino = registro.ug;
+            const key = `${omDestino} (${ugDestino})`;
+            
+            if (!acc[key]) {
+                acc[key] = [];
+            }
+            acc[key].push(registro);
+            return acc;
+        }, {} as Record<string, DiariaRegistro[]>) || {};
+    }, [registros]);
 
     // =================================================================
     // MUTAÇÕES
@@ -1119,69 +1135,103 @@ const DiariaForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 4: REGISTROS SALVOS (Tabela) */}
+                            {/* SEÇÃO 4: REGISTROS SALVOS (Agrupados por OM) */}
                             {registros && registros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                         <Sparkles className="h-5 w-5 text-accent" />
-                                        OMs Cadastradas ({registros.length})
+                                        Registros Salvos ({registros.length})
                                     </h3>
-                                    <div className="border rounded-lg overflow-hidden">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead className="w-[15%]">OM Destino</TableHead>
-                                                    <TableHead className="w-[15%]">Local Dslc</TableHead>
-                                                    <TableHead className="w-[10%] text-center">Dias</TableHead>
-                                                    <TableHead className="w-[10%] text-center">Militares</TableHead>
-                                                    <TableHead className="w-[15%] text-right">Total Diária</TableHead>
-                                                    <TableHead className="w-[15%] text-right">Total Taxa Emb.</TableHead>
-                                                    <TableHead className="w-[15%] text-right">Total Geral (ND 15)</TableHead>
-                                                    <TableHead className="w-[5%] text-right">Ações</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {registros.map((registro) => (
-                                                    <TableRow key={registro.id} className={editingId === registro.id ? "bg-yellow-50/50" : ""}>
-                                                        <TableCell className="font-medium">
-                                                            {registro.organizacao} ({formatCodug(registro.ug)})
-                                                        </TableCell>
-                                                        <TableCell>{registro.local_atividade}</TableCell>
-                                                        <TableCell className="text-center">{registro.dias_operacao}</TableCell>
-                                                        <TableCell className="text-center">{registro.quantidade}</TableCell>
-                                                        <TableCell className="text-right">
-                                                            {/* Diária Base = Total Geral - Taxa Embarque */}
-                                                            {formatCurrency(registro.valor_total - (registro.valor_taxa_embarque || 0))}
-                                                        </TableCell>
-                                                        <TableCell className="text-right text-green-600">
-                                                            {formatCurrency(registro.valor_taxa_embarque || 0)}
-                                                        </TableCell>
-                                                        <TableCell className="text-right font-bold text-primary">
-                                                            {formatCurrency(registro.valor_total)}
-                                                        </TableCell>
-                                                        <TableCell className="text-right space-x-2 whitespace-nowrap">
-                                                            <Button 
-                                                                variant="outline" 
-                                                                size="icon" 
-                                                                onClick={() => handleEdit(registro)}
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                            >
-                                                                <Edit className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button 
-                                                                variant="destructive" 
-                                                                size="icon" 
-                                                                onClick={() => handleConfirmDelete(registro)}
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
+                                    
+                                    {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+                                        const totalOM = omRegistros.reduce((sum, r) => r.valor_total + sum, 0);
+                                        const omName = omKey.split(' (')[0];
+                                        const ug = omKey.split(' (')[1].replace(')', '');
+                                        
+                                        return (
+                                            <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                    <h3 className="font-bold text-lg text-primary">
+                                                        OM Destino: {omName} (UG: {formatCodug(ug)})
+                                                    </h3>
+                                                    <span className="font-extrabold text-xl text-primary">
+                                                        {formatCurrency(totalOM)}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="space-y-3">
+                                                    {omRegistros.map((registro) => {
+                                                        const totalGeral = registro.valor_total;
+                                                        const totalDiariaBase = totalGeral - (registro.valor_taxa_embarque || 0);
+                                                        const totalTaxaEmbarque = registro.valor_taxa_embarque || 0;
+                                                        
+                                                        const destinoLabel = DESTINO_OPTIONS.find(d => d.value === registro.destino)?.label || registro.destino;
+                                                        
+                                                        return (
+                                                            <Card key={registro.id} className={cn("p-3 bg-background border", editingId === registro.id && "border-2 border-yellow-500/70")}>
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <h4 className="font-semibold text-base text-foreground">
+                                                                                Diárias ({registro.local_atividade})
+                                                                            </h4>
+                                                                            <Badge variant="default" className="text-xs bg-blue-600 text-white">
+                                                                                {destinoLabel}
+                                                                            </Badge>
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Militares: {registro.quantidade} | Dias: {registro.dias_operacao} | Viagens: {registro.nr_viagens}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-lg text-primary/80">
+                                                                            {formatCurrency(totalGeral)}
+                                                                        </span>
+                                                                        <div className="flex gap-1">
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8"
+                                                                                onClick={() => handleEdit(registro)}
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                            >
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => handleConfirmDelete(registro)}
+                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                {/* Detalhes da Alocação */}
+                                                                <div className="pt-2 border-t mt-2">
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">Diária Base (ND 15):</span>
+                                                                        <span className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">Taxa Embarque (ND 15):</span>
+                                                                        <span className="font-medium text-green-600">{formatCurrency(totalTaxaEmbarque)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs font-bold pt-1">
+                                                                        <span className="text-muted-foreground">Total ND 33.90.15:</span>
+                                                                        <span className="text-foreground">{formatCurrency(totalGeral)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
                                 </section>
                             )}
 
