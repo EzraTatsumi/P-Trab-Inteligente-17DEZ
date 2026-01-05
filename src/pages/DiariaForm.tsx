@@ -221,18 +221,29 @@ const DiariaForm = () => {
                 return rest;
             });
 
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from("diaria_registros")
-                .insert(dbRecords);
+                .insert(dbRecords)
+                .select('*'); // Solicita o retorno dos registros inseridos
             
             if (error) throw error;
+            return data;
         },
-        onSuccess: () => {
+        onSuccess: (newRecords) => {
             queryClient.invalidateQueries({ queryKey: ["diariaRegistros", ptrabId] });
             queryClient.invalidateQueries({ queryKey: ["ptrabTotals", ptrabId] });
             toast.success(`Sucesso! ${pendingDiarias.length} registro(s) de Diária adicionado(s).`);
             setPendingDiarias([]); // Limpa a lista pendente
+            
+            // 1. Resetar o formulário
             resetForm();
+            
+            // 2. Colocar o último registro salvo em modo de edição para exibir a Seção 5
+            if (newRecords && newRecords.length > 0) {
+                const lastSavedRecord = newRecords[newRecords.length - 1];
+                // Chamamos handleEdit com o registro recém-salvo
+                handleEdit(lastSavedRecord as DiariaRegistro);
+            }
         },
         onError: (err) => {
             toast.error(sanitizeError(err));
@@ -274,6 +285,7 @@ const DiariaForm = () => {
             toast.success("Registro de Diária excluído com sucesso!");
             setRegistroToDelete(null);
             setShowDeleteDialog(false);
+            resetForm(); // Garante que o modo de edição seja limpo
         },
         onError: (err) => {
             toast.error(sanitizeError(err));
