@@ -1195,7 +1195,7 @@ const DiariaForm = () => {
                                                                             </Badge>
                                                                         </div>
                                                                         <p className="text-xs text-muted-foreground">
-                                                                            Militares: {registro.quantidade} | Dias: {registro.dias_operacao} | Viagens: {registro.nr_viagens}
+                                                                            Efetivo: {registro.quantidade} | Período: {registro.dias_operacao} dia(s) | Viagens: {registro.nr_viagens}
                                                                         </p>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
