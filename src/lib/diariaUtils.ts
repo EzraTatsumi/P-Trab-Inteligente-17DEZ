@@ -207,9 +207,6 @@ export const generateDiariaMemoriaCalculo = (
     detalhamentoValores += `- Taxa de Embarque: ${formatCurrency(taxaEmbarqueUnitario)}/viagem.\n`;
 
     calculosPorPosto.forEach(calc => {
-        const militaresPlural = calc.quantidade === 1 ? 'mil.' : 'militares';
-        const diasPagamento = Math.max(0, dias_operacao - 0.5);
-        
         // 1. Detalhamento de Valores Unitários
         detalhamentoValores += `- ${calc.posto}: ${formatCurrency(calc.valorUnitario)}/dia.\n`;
         
@@ -245,8 +242,5 @@ Fórmula das Diárias: (Efetivo x Custo/dia/localidade) x (Nr Dias - 0,5 dia) x 
 ${detalhamentoTaxaCalculo}
 ${detalhamentoFormulaDiarias.trim()}
 
-Total Diária Base: ${formatCurrency(totalDiariaBase)}.
-Total Taxa de Embarque: ${formatCurrency(totalTaxaEmbarque)}.
-
-Total Geral (ND 33.90.15): ${formatCurrency(totalGeral)}.`;
+Total: ${formatCurrency(totalTaxaEmbarque)} + ${formatCurrency(totalDiariaBase)} = ${formatCurrency(totalGeral)}.`;
 };
