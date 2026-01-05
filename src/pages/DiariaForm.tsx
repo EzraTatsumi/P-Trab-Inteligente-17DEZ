@@ -35,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // IMPORT CORRIGIDO AQUI
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import * as z from "zod";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
@@ -1026,7 +1026,7 @@ const DiariaForm = () => {
                                                 <Button 
                                                     type="submit" 
                                                     disabled={!isPTrabEditable || isSaving || !isCalculationReady}
-                                                    className="w-full md:w-auto"
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                                 >
                                                     Salvar Item na Lista
                                                 </Button>
@@ -1131,22 +1131,19 @@ const DiariaForm = () => {
                                                     key={item.tempId} 
                                                     className={cn(
                                                         "border-2 shadow-md",
-                                                        isCurrentlyStaged ? "border-primary bg-primary/10" : "border-secondary bg-secondary/10"
+                                                        // Removendo o destaque de cor primária para manter o padrão de item pendente
+                                                        isCurrentlyStaged ? "border-secondary bg-secondary/10" : "border-secondary bg-secondary/10"
                                                     )}
                                                 >
                                                     <CardContent className="p-4">
                                                         
-                                                        <div className={cn("flex justify-between items-center pb-2 mb-2", isCurrentlyStaged ? "border-b border-primary/30" : "border-b border-secondary/30")}>
-                                                            <h4 className="font-bold text-base text-primary">
+                                                        <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-secondary/30")}>
+                                                            <h4 className="font-bold text-base text-foreground">
                                                                 Diárias ({item.local_atividade})
                                                             </h4>
                                                             <div className="flex items-center gap-2">
-                                                                {isCurrentlyStaged && (
-                                                                    <Badge variant="default" className="bg-primary text-primary-foreground">
-                                                                        Em Revisão
-                                                                    </Badge>
-                                                                )}
-                                                                <p className="font-extrabold text-lg text-primary text-right">
+                                                                {/* Removendo o badge "Em Revisão" */}
+                                                                <p className="font-extrabold text-lg text-foreground text-right">
                                                                     {formatCurrency(item.valor_total)}
                                                                 </p>
                                                                 {!isStagingUpdate && (
