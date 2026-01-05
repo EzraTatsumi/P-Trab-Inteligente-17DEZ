@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane, XCircle } from "lucide-react";
+import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane, XCircle, ChevronsUpDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -44,6 +44,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator"; 
 import { LocalAtividadeSelect } from "@/components/LocalAtividadeSelect"; // NOVO
 import { DESTINO_OPTIONS } from "@/lib/diariaConstants"; // NOVO
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; // NOVO: Importar Collapsible
 
 // Tipos de dados
 // NOTE: O tipo Tables<'diaria_registros'> será atualizado automaticamente pelo Supabase CLI
@@ -122,6 +123,9 @@ const DiariaForm = () => {
     const [registroToDelete, setRegistroToDelete] = useState<DiariaRegistro | null>(null);
     const [memoriaCustomizada, setMemoriaCustomizada] = useState<string>("");
     
+    // NOVO ESTADO: Armazena a memória automática do registro em edição
+    const [memoriaAutomatica, setMemoriaAutomatica] = useState<string>("");
+    
     // NOVO ESTADO: Array de registros calculados, mas não salvos
     const [pendingDiarias, setPendingDiarias] = useState<CalculatedDiaria[]>([]);
     
@@ -157,7 +161,7 @@ const DiariaForm = () => {
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
 
     // =================================================================
-    // CÁLCULOS E MEMÓRIA (MEMOIZED)
+    // CÁLCULOS E MEMÓRIA (MEMOIZED) - MANTIDO, MAS NÃO USADO PARA EXIBIÇÃO CONDICIONAL
     // =================================================================
     
     const calculos = useMemo(() => {
@@ -288,6 +292,7 @@ const DiariaForm = () => {
         setEditingId(null);
         setFormData(initialFormState);
         setMemoriaCustomizada("");
+        setMemoriaAutomatica(""); // Limpa a memória automática
         setSelectedOmId(undefined);
     };
     
@@ -321,6 +326,7 @@ const DiariaForm = () => {
             quantidades_por_posto: (registro.quantidades_por_posto || initialFormState.quantidades_por_posto) as QuantidadesPorPosto,
         });
         setMemoriaCustomizada(registro.detalhamento_customizado || "");
+        setMemoriaAutomatica(registro.detalhamento || ""); // Carrega a memória automática salva
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -355,7 +361,11 @@ const DiariaForm = () => {
                 return;
             }
             
-            // 3. Preparar o objeto final (baseData)
+            // 3. Recalcular totais e memória (usando o useMemo)
+            const totals = calculateDiariaTotals(formData as any, diretrizesOp);
+            const memoria = generateDiariaMemoriaCalculo(formData as any, diretrizesOp, totals);
+            
+            // 4. Preparar o objeto final (baseData)
             const destinoLabel = DESTINO_OPTIONS.find(d => d.value === formData.destino)?.label || formData.destino;
             
             const newPending: CalculatedDiaria = {
@@ -372,14 +382,14 @@ const DiariaForm = () => {
                 local_atividade: formData.local_atividade,
                 
                 // Campos calculados
-                quantidade: calculos.totalMilitares,
-                valor_taxa_embarque: calculos.totalTaxaEmbarque,
-                valor_total: calculos.totalGeral,
+                quantidade: totals.totalMilitares,
+                valor_taxa_embarque: totals.totalTaxaEmbarque,
+                valor_total: totals.totalGeral,
                 valor_nd_30: 0, // Taxa de Embarque consolidada na ND 15
-                valor_nd_15: calculos.totalGeral, // Total Geral (Diária Base + Taxa Embarque)
+                valor_nd_15: totals.totalGeral, // Total Geral (Diária Base + Taxa Embarque)
                 
                 quantidades_por_posto: formData.quantidades_por_posto,
-                detalhamento: calculos.memoria,
+                detalhamento: memoria,
                 detalhamento_customizado: memoriaCustomizada.trim().length > 0 ? memoriaCustomizada : null,
                 is_aereo: formData.is_aereo,
                 
@@ -389,10 +399,10 @@ const DiariaForm = () => {
 
                 // Campos de display para a lista pendente (CORRIGIDO)
                 destinoLabel: destinoLabel,
-                totalMilitares: calculos.totalMilitares,
+                totalMilitares: totals.totalMilitares,
             };
             
-            // 4. Adicionar à lista pendente
+            // 5. Adicionar à lista pendente
             setPendingDiarias(prev => [...prev, newPending]);
             
             setMemoriaCustomizada("");
@@ -445,6 +455,10 @@ const DiariaForm = () => {
         try {
             diariaSchema.parse(formData);
             
+            // Recalcular totais e memória (usando o useMemo)
+            const totals = calculateDiariaTotals(formData as any, diretrizesOp);
+            const memoria = generateDiariaMemoriaCalculo(formData as any, diretrizesOp, totals);
+            
             const baseData: TablesUpdate<'diaria_registros'> = {
                 organizacao: formData.organizacao,
                 ug: formData.ug,
@@ -454,14 +468,14 @@ const DiariaForm = () => {
                 nr_viagens: formData.nr_viagens,
                 local_atividade: formData.local_atividade,
                 
-                quantidade: calculos.totalMilitares,
-                valor_taxa_embarque: calculos.totalTaxaEmbarque,
-                valor_total: calculos.totalGeral,
+                quantidade: totals.totalMilitares,
+                valor_taxa_embarque: totals.totalTaxaEmbarque,
+                valor_total: totals.totalGeral,
                 valor_nd_30: 0, // Taxa de Embarque consolidada na ND 15
-                valor_nd_15: calculos.totalGeral, // Total Geral (Diária Base + Taxa Embarque)
+                valor_nd_15: totals.totalGeral, // Total Geral (Diária Base + Taxa Embarque)
                 
                 quantidades_por_posto: formData.quantidades_por_posto,
-                detalhamento: calculos.memoria,
+                detalhamento: memoria,
                 detalhamento_customizado: memoriaCustomizada.trim().length > 0 ? memoriaCustomizada : null,
                 is_aereo: formData.is_aereo,
                 
@@ -479,7 +493,11 @@ const DiariaForm = () => {
             }
         }
     };
-    
+
+    const handleCancelEdit = () => {
+        resetForm();
+    };
+
     const handleOmChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmId(omData.id);
@@ -817,22 +835,34 @@ const DiariaForm = () => {
                                         {/* BOTÕES DE AÇÃO (Salvar Item da Categoria) */}
                                         <div className="flex justify-end gap-3 pt-4">
                                             {editingId ? (
-                                                <Button 
-                                                    type="button" 
-                                                    onClick={handleUpdateExisting}
-                                                    disabled={!isPTrabEditable || isSaving || !isCalculationReady}
-                                                    className="w-full md:w-auto"
-                                                >
-                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                    Atualizar Registro
-                                                </Button>
+                                                <>
+                                                    <Button 
+                                                        type="button" 
+                                                        onClick={handleCancelEdit}
+                                                        variant="outline"
+                                                        disabled={isSaving}
+                                                    >
+                                                        <X className="mr-2 h-4 w-4" />
+                                                        Cancelar Edição
+                                                    </Button>
+                                                    <Button 
+                                                        type="button" 
+                                                        onClick={handleUpdateExisting}
+                                                        disabled={!isPTrabEditable || isSaving || !isCalculationReady}
+                                                        className="w-full md:w-auto"
+                                                    >
+                                                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                        Atualizar Registro
+                                                    </Button>
+                                                </>
                                             ) : (
                                                 <Button 
                                                     type="submit" 
                                                     disabled={!isPTrabEditable || isSaving || !isCalculationReady}
                                                     className="w-full md:w-auto"
                                                 >
-                                                    Salvar Itens da Categoria
+                                                    <Plus className="mr-2 h-4 w-4" />
+                                                    Adicionar à Lista
                                                 </Button>
                                             )}
                                         </div>
@@ -861,127 +891,72 @@ const DiariaForm = () => {
                                             const militarText = pluralize(item.totalMilitares, 'militar', 'militares');
                                             const viagemText = pluralize(item.nr_viagens, 'viagem', 'viagens');
                                             
-                                            // --- Detailed Diária Calculation Generation ---
-                                            const rankCalculationElements = DIARIA_RANKS_CONFIG.map(rank => {
-                                                const qty = item.quantidades_por_posto[rank.key] || 0;
-                                                if (qty === 0) return null;
-
-                                                // Get raw unit value
-                                                const unitValueRaw = (() => {
-                                                    if (!diretrizesOp) return 0;
-                                                    let fieldSuffix: 'bsb' | 'capitais' | 'demais';
-                                                    
-                                                    switch (item.destino) {
-                                                        case 'bsb_capitais_especiais':
-                                                            fieldSuffix = 'bsb';
-                                                            break;
-                                                        case 'demais_capitais':
-                                                            fieldSuffix = 'capitais';
-                                                            break;
-                                                        case 'demais_dslc':
-                                                            fieldSuffix = 'demais';
-                                                            break;
-                                                        default:
-                                                            return 0;
-                                                    }
-                                                    const fieldKey = `${rank.fieldPrefix}_${fieldSuffix}` as keyof DiretrizOperacional;
-                                                    return Number(diretrizesOp[fieldKey] || 0);
-                                                })();
-                                                
-                                                const diasPagamento = Math.max(0, item.dias_operacao - 0.5);
-                                                const subtotal = qty * unitValueRaw * diasPagamento * item.nr_viagens;
-                                                
-                                                const unitValueFormatted = formatCurrency(unitValueRaw);
-                                                const subtotalFormatted = formatCurrency(subtotal);
-                                                
-                                                // Format: 1 Of Gen x R$ 600,00/dia x 0,5 dias x 1 viagens = R$ 300,00.
-                                                const diasText = pluralize(diasPagamento, 'dia', 'dias');
-                                                const calculationString = `${qty} ${rank.label} x ${unitValueFormatted}/dia x ${formatNumber(diasPagamento, 1)} ${diasText} x ${item.nr_viagens} ${viagemText} = ${subtotalFormatted}`;
-                                                
-                                                return (
-                                                    <p key={rank.key} className="font-medium text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis text-right">
-                                                        {calculationString}
-                                                    </p>
-                                                );
-                                            }).filter(Boolean);
-
-                                            if (rankCalculationElements.length === 0) {
-                                                rankCalculationElements.push(
-                                                    <p key="fallback" className="font-medium text-muted-foreground text-right">
-                                                        Nenhum militar adicionado.
-                                                    </p>
-                                                );
-                                            }
-                                            // --- End Detailed Diária Calculation Generation ---
-
-                                            // Cálculo da Taxa de Embarque formatado
-                                            const totalTaxaEmbarque = item.valor_taxa_embarque;
-                                            // CORRIGIDO: Usando item.totalMilitares que agora é garantido
-                                            const taxaEmbarqueCalculation = item.is_aereo 
-                                                ? `${item.totalMilitares} ${militarText} x ${taxaEmbarqueUnitarioDisplay} x ${item.nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}`
-                                                : 'Não Aéreo';
-
                                             // Cálculo da Diária Base (Total Geral - Taxa de Embarque)
                                             const totalDiariaBase = item.valor_total - item.valor_taxa_embarque;
 
                                             return (
-                                                <Card 
+                                                <Collapsible 
                                                     key={item.tempId} 
-                                                    className="border-2 border-secondary bg-secondary/10 shadow-md"
+                                                    className="border-2 border-secondary bg-secondary/10 shadow-md rounded-lg"
                                                 >
-                                                    <CardContent className="p-4">
-                                                        
-                                                        {/* NOVO HEADER: Título e Valor Total na mesma linha */}
-                                                        <div className="flex justify-between items-center border-b border-secondary/30 pb-2 mb-2">
-                                                            <h4 className="font-bold text-base text-primary">
-                                                                Diárias ({item.local_atividade})
-                                                            </h4>
-                                                            <p className="font-extrabold text-lg text-primary text-right">
-                                                                {formatCurrency(item.valor_total)}
-                                                            </p>
-                                                        </div>
-                                                        
-                                                        {/* Detalhes do Cálculo (Taxa de Embarque e Diárias Detalhadas) - AGORA FULL WIDTH */}
-                                                        <div className="space-y-2 pt-1">
-                                                            
-                                                            {/* Taxa de Embarque Row */}
-                                                            <div className="grid grid-cols-3 gap-4 text-xs">
-                                                                <p className="font-medium text-muted-foreground col-span-1">Taxa de Embarque:</p>
-                                                                <p className="font-medium text-muted-foreground text-right col-span-2">
-                                                                    {taxaEmbarqueCalculation}
-                                                                </p>
-                                                            </div>
-                                                            
-                                                            {/* Separador Tracejado */}
-                                                            <div className="w-full border-t border-dashed border-secondary/50 my-2" />
-
-                                                            {/* Diárias Section (Multi-line breakdown) */}
-                                                            <div className="grid grid-cols-3 gap-4 text-xs">
-                                                                {/* CORRIGIDO: item.destinoLabel agora é garantido */}
-                                                                <p className="font-medium text-muted-foreground col-span-1">{item.destinoLabel}</p>
-                                                                <div className="space-y-1 w-full col-span-2">
-                                                                    {rankCalculationElements}
+                                                    <CollapsibleTrigger asChild>
+                                                        <Card className="border-none bg-transparent hover:bg-secondary/20 transition-colors cursor-pointer">
+                                                            <CardContent className="p-4 flex justify-between items-center">
+                                                                <div className="flex items-center gap-3">
+                                                                    <MapPin className="h-5 w-5 text-primary" />
+                                                                    <div className="text-left">
+                                                                        <p className="font-bold text-sm">{item.local_atividade} ({item.destinoLabel})</p>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            {item.totalMilitares} {militarText} | {item.dias_operacao} dias | {item.nr_viagens} {viagemText}
+                                                                        </p>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        {/* SEPARADOR MOVIDO PARA CÁ */}
-                                                        <div className="w-full h-[1px] bg-secondary/30 my-3" />
-
-                                                        <div className="grid grid-cols-2 gap-4 text-xs pt-1">
+                                                                <div className="flex items-center gap-4">
+                                                                    <p className="font-extrabold text-lg text-primary">
+                                                                        {formatCurrency(item.valor_total)}
+                                                                    </p>
+                                                                    <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                                                                </div>
+                                                            </CardContent>
+                                                        </Card>
+                                                    </CollapsibleTrigger>
+                                                    <CollapsibleContent className="p-4 pt-0">
+                                                        <Separator className="mb-4 bg-secondary/50" />
+                                                        <div className="grid grid-cols-2 gap-4 text-sm">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Destino Recurso:</p>
-                                                                <p className="font-medium">Taxa de Embarque:</p>
-                                                                <p className="font-medium">Diárias:</p>
+                                                                <p className="font-medium">Diárias (ND 15):</p>
+                                                                <p className="font-medium">Taxa de Embarque (ND 15):</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
-                                                                <p className="font-medium text-green-600">{formatCurrency(item.valor_taxa_embarque)}</p>
                                                                 <p className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</p>
+                                                                <p className="font-medium text-green-600">{formatCurrency(item.valor_taxa_embarque)}</p>
                                                             </div>
                                                         </div>
-                                                    </CardContent>
-                                                </Card>
+                                                        
+                                                        <div className="space-y-2 mt-4">
+                                                            <Label className="text-xs font-semibold">Memória de Cálculo (Automática)</Label>
+                                                            <Textarea
+                                                                value={item.detalhamento || "Memória não gerada."}
+                                                                rows={10}
+                                                                readOnly
+                                                                className="bg-background font-mono text-xs"
+                                                            />
+                                                        </div>
+                                                        
+                                                        <div className="flex justify-end mt-4">
+                                                            <Button 
+                                                                variant="destructive" 
+                                                                size="sm" 
+                                                                onClick={() => handleRemovePending(item.tempId)}
+                                                            >
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Remover Item
+                                                            </Button>
+                                                        </div>
+                                                    </CollapsibleContent>
+                                                </Collapsible>
                                             );
                                         })}
                                     </div>
@@ -989,7 +964,7 @@ const DiariaForm = () => {
                                     {/* VALOR TOTAL DA OM (PENDENTE) */}
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
-                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA OM</span>
+                                            <span className="font-bold text-base uppercase">VALOR TOTAL PENDENTE</span>
                                             <span className="font-extrabold text-xl text-foreground">
                                                 {formatCurrency(totalPendingDiarias)}
                                             </span>
@@ -999,7 +974,7 @@ const DiariaForm = () => {
                                     <div className="flex justify-end gap-3 pt-4">
                                         <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
                                             <XCircle className="mr-2 h-4 w-4" />
-                                            Limpar Formulário
+                                            Limpar Lista
                                         </Button>
                                         <Button 
                                             type="button" 
@@ -1014,19 +989,18 @@ const DiariaForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 5: MEMÓRIA DE CÁLCULO DETALHADA */}
-                            {/* CONDIÇÃO AJUSTADA: Mostra se estiver editando OU se for um novo item e o cálculo estiver pronto (e não houver pendentes) */}
-                            {(editingId || (isCalculationReady && pendingDiarias.length === 0)) && (
+                            {/* SEÇÃO 4: MEMÓRIA DE CÁLCULO DETALHADA (APENAS EM MODO DE EDIÇÃO) */}
+                            {editingId && (
                                 <section className="space-y-4 border-t pt-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         <FileText className="h-4 w-4 text-muted-foreground" />
-                                        5. Memória de Cálculo Detalhada
+                                        4. Memória de Cálculo Detalhada
                                     </h3>
                                     <div className="space-y-2">
-                                        <Label htmlFor="memoria_calculo">Memória de Cálculo Automática (Registro Atual)</Label>
+                                        <Label htmlFor="memoria_calculo">Memória de Cálculo Automática (Registro Salvo)</Label>
                                         <Textarea
                                             id="memoria_calculo"
-                                            value={calculos.memoria}
+                                            value={memoriaAutomatica}
                                             rows={15}
                                             readOnly
                                             className="bg-muted/50 font-mono text-xs"
@@ -1047,6 +1021,78 @@ const DiariaForm = () => {
                                 </section>
                             )}
                         </form>
+                        
+                        {/* SEÇÃO 5: REGISTROS SALVOS */}
+                        <section className="space-y-4 border-t pt-6 mt-6">
+                            <h3 className="text-lg font-semibold flex items-center gap-2">
+                                <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                                5. Registros Salvos ({registros?.length || 0})
+                            </h3>
+                            
+                            <div className="rounded-lg border overflow-hidden">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[20%]">OM Destino</TableHead>
+                                            <TableHead className="w-[20%]">Local / Destino</TableHead>
+                                            <TableHead className="w-[10%] text-center">Dias</TableHead>
+                                            <TableHead className="w-[10%] text-center">Efetivo</TableHead>
+                                            <TableHead className="w-[20%] text-right">Valor Total (ND 15)</TableHead>
+                                            <TableHead className="w-[20%] text-right">Ações</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {registros && registros.length > 0 ? (
+                                            registros.map((registro) => (
+                                                <TableRow key={registro.id}>
+                                                    <TableCell className="font-medium">
+                                                        {registro.organizacao} ({formatCodug(registro.ug)})
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium">{registro.local_atividade}</span>
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {destinoOptions.find(d => d.value === registro.destino)?.label || registro.destino}
+                                                                {registro.is_aereo && <Plane className="h-3 w-3 inline ml-1" />}
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">{registro.dias_operacao}</TableCell>
+                                                    <TableCell className="text-center">{registro.quantidade}</TableCell>
+                                                    <TableCell className="text-right font-semibold text-primary">
+                                                        {formatCurrency(registro.valor_total)}
+                                                    </TableCell>
+                                                    <TableCell className="text-right space-x-2">
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="icon" 
+                                                            onClick={() => handleEdit(registro)}
+                                                            disabled={!isPTrabEditable || isSaving}
+                                                        >
+                                                            <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button 
+                                                            variant="destructive" 
+                                                            size="icon" 
+                                                            onClick={() => handleConfirmDelete(registro)}
+                                                            disabled={!isPTrabEditable || isSaving}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                                    Nenhum registro de diária salvo.
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </section>
                     </CardContent>
                 </Card>
             </div>
