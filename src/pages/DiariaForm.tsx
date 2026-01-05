@@ -975,7 +975,6 @@ const DiariaForm = () => {
                                                     className="w-full md:w-auto"
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                    {/* Ajuste do texto do botão de edição/recalculo */}
                                                     {stagedUpdate ? "Recalcular Item" : "Preparar Atualização"}
                                                 </Button>
                                             ) : (
@@ -998,14 +997,8 @@ const DiariaForm = () => {
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        {isStagingUpdate ? (
-                                            <>
-                                                <AlertCircle className="h-5 w-5 text-yellow-500" />
-                                                3. Revisão de Atualização (Confirme as alterações)
-                                            </>
-                                        ) : (
-                                            `3. Itens Pendentes (${pendingDiarias.length})`
-                                        )}
+                                        {/* 1. REMOVENDO ALERT CIRCLE E SIMPLIFICANDO O TEXTO */}
+                                        3. Itens Adicionados ({itemsToDisplay.length})
                                     </h3>
                                     
                                     <div className="space-y-4">
@@ -1085,13 +1078,14 @@ const DiariaForm = () => {
                                                     key={item.tempId} 
                                                     className={cn(
                                                         "border-2 shadow-md",
-                                                        isStagingUpdate ? "border-yellow-500/70 bg-yellow-50/50" : "border-secondary bg-secondary/10"
+                                                        // 2. USANDO PADRÃO DE COR SECUNDÁRIA (ADIÇÃO)
+                                                        "border-secondary bg-secondary/10"
                                                     )}
                                                 >
                                                     <CardContent className="p-4">
                                                         
                                                         {/* NOVO HEADER: Título e Valor Total na mesma linha */}
-                                                        <div className={cn("flex justify-between items-center pb-2 mb-2", isStagingUpdate ? "border-b-yellow-500/30" : "border-b border-secondary/30")}>
+                                                        <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-secondary/30")}>
                                                             <h4 className="font-bold text-base text-primary">
                                                                 Diárias ({item.local_atividade})
                                                             </h4>
@@ -1160,7 +1154,8 @@ const DiariaForm = () => {
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
-                                                {isStagingUpdate ? "VALOR ATUALIZADO" : "VALOR TOTAL PENDENTE"}
+                                                {/* 3. MUDANDO O TEXTO PARA VALOR TOTAL DA OM */}
+                                                VALOR TOTAL DA OM
                                             </span>
                                             <span className="font-extrabold text-xl text-foreground">
                                                 {formatCurrency(isStagingUpdate ? stagedUpdate!.valor_total : totalPendingDiarias)}
@@ -1171,18 +1166,20 @@ const DiariaForm = () => {
                                     <div className="flex justify-end gap-3 pt-4">
                                         {isStagingUpdate ? (
                                             <>
+                                                {/* 4. MUDANDO O BOTÃO CANCELAR EDIÇÃO PARA LIMPAR FORMULÁRIO */}
                                                 <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
                                                     <XCircle className="mr-2 h-4 w-4" />
-                                                    Cancelar Edição
+                                                    Limpar Formulário
                                                 </Button>
+                                                {/* 5. MUDANDO O BOTÃO CONFIRMAR ATUALIZAÇÃO PARA ATUALIZAR REGISTRO E COR PRIMÁRIA */}
                                                 <Button 
                                                     type="button" 
                                                     onClick={handleCommitStagedUpdate}
                                                     disabled={isSaving}
-                                                    className="w-full md:w-auto bg-green-600 hover:bg-green-700"
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                                                    Confirmar Atualização
+                                                    Atualizar Registro
                                                 </Button>
                                             </>
                                         ) : (
