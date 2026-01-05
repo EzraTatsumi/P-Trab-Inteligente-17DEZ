@@ -238,7 +238,6 @@ ${detalhamentoValores.trim()}
 
 Fórmula da Taxa de Embarque: Efetivo x Valor da Taxa de Embarque x Quantidade de Viagens.
 Fórmula das Diárias: (Efetivo x Custo/dia/localidade) x (Nr Dias - 0,5 dia) x Nr Viagens.
-
 ${detalhamentoTaxaCalculo}
 ${detalhamentoFormulaDiarias.trim()}
 
