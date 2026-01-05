@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane, XCircle } from "lucide-react";
+import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -42,12 +42,11 @@ import { OmSelector } from "@/components/OmSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator"; 
-import { LocalAtividadeSelect } from "@/components/LocalAtividadeSelect"; // NOVO
-import { DESTINO_OPTIONS } from "@/lib/diariaConstants"; // NOVO
+import { LocalAtividadeSelect } from "@/components/LocalAtividadeSelect";
+import { DESTINO_OPTIONS } from "@/lib/diariaConstants";
+import { cn } from "@/lib/utils"; // Importar cn
 
 // Tipos de dados
-// NOTE: O tipo Tables<'diaria_registros'> será atualizado automaticamente pelo Supabase CLI
-// assumindo que valor_nd_39 foi removido e valor_nd_15 foi adicionado.
 type DiariaRegistro = Tables<'diaria_registros'>;
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
@@ -120,7 +119,10 @@ const DiariaForm = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [registroToDelete, setRegistroToDelete] = useState<DiariaRegistro | null>(null);
-    const [memoriaCustomizada, setMemoriaCustomizada] = useState<string>("");
+    
+    // ESTADOS DE EDIÇÃO DE MEMÓRIA (COPIADOS DO CLASSE II)
+    const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
+    const [memoriaEdit, setMemoriaEdit] = useState<string>("");
     
     // NOVO ESTADO: Array de registros calculados, mas não salvos
     const [pendingDiarias, setPendingDiarias] = useState<CalculatedDiaria[]>([]);
@@ -300,7 +302,8 @@ const DiariaForm = () => {
     const resetForm = () => {
         setEditingId(null);
         setFormData(initialFormState);
-        setMemoriaCustomizada("");
+        setEditingMemoriaId(null); // Resetar estados de edição de memória
+        setMemoriaEdit("");
         setSelectedOmId(undefined);
     };
     
@@ -333,7 +336,11 @@ const DiariaForm = () => {
             ug_detentora: null,
             quantidades_por_posto: (registro.quantidades_por_posto || initialFormState.quantidades_por_posto) as QuantidadesPorPosto,
         });
-        setMemoriaCustomizada(registro.detalhamento_customizado || "");
+        
+        // Não preenche memoriaEdit aqui, pois a edição de memória será separada
+        setEditingMemoriaId(null); 
+        setMemoriaEdit("");
+        
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -393,7 +400,7 @@ const DiariaForm = () => {
                 
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
-                detalhamento_customizado: memoriaCustomizada.trim().length > 0 ? memoriaCustomizada : null,
+                detalhamento_customizado: null, // Sempre nulo ao adicionar à lista pendente
                 is_aereo: formData.is_aereo,
                 
                 // Campos que foram NOT NULL, mas são redundantes no novo fluxo
@@ -403,12 +410,25 @@ const DiariaForm = () => {
                 // Campos de display para a lista pendente (CORRIGIDO)
                 destinoLabel: destinoLabel,
                 totalMilitares: calculos.totalMilitares,
+                memoria_calculo_display: calculos.memoria, // Adiciona a memória automática para exibição
             };
             
             // 4. Adicionar à lista pendente
             setPendingDiarias(prev => [...prev, newPending]);
             
-            setMemoriaCustomizada("");
+            // 5. Resetar o formulário para o próximo item (mantendo OM e Fase)
+            setFormData(prev => ({
+                ...initialFormState,
+                organizacao: prev.organizacao,
+                ug: prev.ug,
+                selectedOmId: selectedOmId,
+                fase_atividade: prev.fase_atividade,
+                // Resetar apenas os campos de cálculo
+                dias_operacao: 1,
+                nr_viagens: 1,
+                local_atividade: "",
+                quantidades_por_posto: initialFormState.quantidades_por_posto,
+            }));
             
             toast.info("Item de Diária adicionado à lista pendente.");
             
@@ -475,7 +495,7 @@ const DiariaForm = () => {
                 
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
-                detalhamento_customizado: memoriaCustomizada.trim().length > 0 ? memoriaCustomizada : null,
+                detalhamento_customizado: null, // A edição de memória é feita na Seção 5
                 is_aereo: formData.is_aereo,
                 
                 posto_graduacao: null,
@@ -528,6 +548,75 @@ const DiariaForm = () => {
             }
         }));
     };
+    
+    // --- Lógica de Edição de Memória (Copiada do Classe II) ---
+    
+    const handleIniciarEdicaoMemoria = (registro: DiariaRegistro) => {
+        setEditingMemoriaId(registro.id);
+        
+        // 1. Gerar a memória automática mais recente
+        const totals = calculateDiariaTotals(registro as any, diretrizesOp || {});
+        const memoriaAutomatica = generateDiariaMemoriaCalculo(registro as any, diretrizesOp || {}, totals);
+        
+        // 2. Usar a customizada se existir, senão usar a automática recém-gerada
+        setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
+    };
+
+    const handleCancelarEdicaoMemoria = () => {
+        setEditingMemoriaId(null);
+        setMemoriaEdit("");
+    };
+
+    const handleSalvarMemoriaCustomizada = async (registroId: string) => {
+        setLoading(true);
+        try {
+            const { error } = await supabase
+                .from("diaria_registros")
+                .update({
+                    detalhamento_customizado: memoriaEdit.trim() || null,
+                })
+                .eq("id", registroId);
+
+            if (error) throw error;
+
+            toast.success("Memória de cálculo atualizada com sucesso!");
+            handleCancelarEdicaoMemoria();
+            queryClient.invalidateQueries({ queryKey: ["diariaRegistros", ptrabId] });
+        } catch (error) {
+            console.error("Erro ao salvar memória:", error);
+            toast.error(sanitizeError(error));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
+        if (!confirm("Deseja realmente restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
+            return;
+        }
+        
+        setLoading(true);
+        try {
+            const { error } = await supabase
+                .from("diaria_registros")
+                .update({
+                    detalhamento_customizado: null,
+                })
+                .eq("id", registroId);
+
+            if (error) throw error;
+
+            toast.success("Memória de cálculo restaurada!");
+            queryClient.invalidateQueries({ queryKey: ["diariaRegistros", ptrabId] });
+        } catch (error) {
+            console.error("Erro ao restaurar memória:", error);
+            toast.error(sanitizeError(error));
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    // --- Fim Lógica de Edição de Memória ---
     
     // =================================================================
     // RENDERIZAÇÃO
@@ -845,7 +934,7 @@ const DiariaForm = () => {
                                                     disabled={!isPTrabEditable || isSaving || !isCalculationReady}
                                                     className="w-full md:w-auto"
                                                 >
-                                                    Salvar Itens da Categoria
+                                                    Salvar Item na Lista
                                                 </Button>
                                             )}
                                         </div>
@@ -859,7 +948,7 @@ const DiariaForm = () => {
                             {pendingDiarias.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. Itens Adicionados ({pendingDiarias.length})
+                                        3. Itens Pendentes ({pendingDiarias.length})
                                     </h3>
                                     
                                     <div className="space-y-4">
@@ -870,7 +959,6 @@ const DiariaForm = () => {
                                             const pluralize = (count: number, singular: string, plural: string) => 
                                                 count === 1 ? singular : plural;
 
-                                            // CORRIGIDO: Usando item.totalMilitares que agora é garantido
                                             const militarText = pluralize(item.totalMilitares, 'militar', 'militares');
                                             const viagemText = pluralize(item.nr_viagens, 'viagem', 'viagens');
                                             
@@ -907,7 +995,6 @@ const DiariaForm = () => {
                                                 const unitValueFormatted = formatCurrency(unitValueRaw);
                                                 const subtotalFormatted = formatCurrency(subtotal);
                                                 
-                                                // Format: 1 Of Gen x R$ 600,00/dia x 0,5 dias x 1 viagens = R$ 300,00.
                                                 const diasText = pluralize(diasPagamento, 'dia', 'dias');
                                                 const calculationString = `${qty} ${rank.label} x ${unitValueFormatted}/dia x ${formatNumber(diasPagamento, 1)} ${diasText} x ${item.nr_viagens} ${viagemText} = ${subtotalFormatted}`;
                                                 
@@ -929,7 +1016,6 @@ const DiariaForm = () => {
 
                                             // Cálculo da Taxa de Embarque formatado
                                             const totalTaxaEmbarque = item.valor_taxa_embarque;
-                                            // CORRIGIDO: Usando item.totalMilitares que agora é garantido
                                             const taxaEmbarqueCalculation = item.is_aereo 
                                                 ? `${item.totalMilitares} ${militarText} x ${taxaEmbarqueUnitarioDisplay} x ${item.nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}`
                                                 : 'Não Aéreo';
@@ -949,9 +1035,19 @@ const DiariaForm = () => {
                                                             <h4 className="font-bold text-base text-primary">
                                                                 Diárias ({item.local_atividade})
                                                             </h4>
-                                                            <p className="font-extrabold text-lg text-primary text-right">
-                                                                {formatCurrency(item.valor_total)}
-                                                            </p>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-extrabold text-lg text-primary text-right">
+                                                                    {formatCurrency(item.valor_total)}
+                                                                </p>
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    onClick={() => handleRemovePending(item.tempId)}
+                                                                    disabled={isSaving}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </div>
                                                         </div>
                                                         
                                                         {/* Detalhes do Cálculo (Taxa de Embarque e Diárias Detalhadas) - AGORA FULL WIDTH */}
@@ -970,7 +1066,6 @@ const DiariaForm = () => {
 
                                                             {/* Diárias Section (Multi-line breakdown) */}
                                                             <div className="grid grid-cols-3 gap-4 text-xs">
-                                                                {/* CORRIGIDO: item.destinoLabel agora é garantido */}
                                                                 <p className="font-medium text-muted-foreground col-span-1">{item.destinoLabel}</p>
                                                                 <div className="space-y-1 w-full col-span-2">
                                                                     {rankCalculationElements}
@@ -1002,7 +1097,7 @@ const DiariaForm = () => {
                                     {/* VALOR TOTAL DA OM (PENDENTE) */}
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
-                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA OM</span>
+                                            <span className="font-bold text-base uppercase">VALOR TOTAL PENDENTE</span>
                                             <span className="font-extrabold text-xl text-foreground">
                                                 {formatCurrency(totalPendingDiarias)}
                                             </span>
@@ -1012,7 +1107,7 @@ const DiariaForm = () => {
                                     <div className="flex justify-end gap-3 pt-4">
                                         <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
                                             <XCircle className="mr-2 h-4 w-4" />
-                                            Limpar Formulário
+                                            Limpar Lista
                                         </Button>
                                         <Button 
                                             type="button" 
@@ -1027,141 +1122,216 @@ const DiariaForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 5: MEMÓRIA DE CÁLCULO DETALHADA */}
-                            {/* CONDIÇÃO CORRIGIDA: Aparece APENAS se estiver editando um registro salvo. */}
-                            {editingId && (
-                                <section className="space-y-4 border-t pt-6">
+                            {/* SEÇÃO 4: REGISTROS SALVOS (Tabela) */}
+                            {registros && registros.length > 0 && (
+                                <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        <FileText className="h-4 w-4 text-muted-foreground" />
-                                        5. Memória de Cálculo Detalhada
+                                        4. Registros de Diárias Salvos ({registros.length})
                                     </h3>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="memoria_calculo">Memória de Cálculo Automática (Registro Atual)</Label>
-                                        <Textarea
-                                            id="memoria_calculo"
-                                            value={calculos.memoria}
-                                            rows={15}
-                                            readOnly
-                                            className="bg-muted/50 font-mono text-xs"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="memoria_customizada">Memória de Cálculo Customizada (Opcional)</Label>
-                                        <Textarea
-                                            id="memoria_customizada"
-                                            value={memoriaCustomizada}
-                                            onChange={(e) => setMemoriaCustomizada(e.target.value)}
-                                            rows={15}
-                                            placeholder="Preencha aqui se desejar substituir a memória automática no relatório final."
-                                            disabled={!isPTrabEditable || isSaving}
-                                            className="font-mono text-xs border-primary/50"
-                                        />
+                                    <div className="border rounded-lg overflow-hidden">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="w-[15%]">OM Destino</TableHead>
+                                                    <TableHead className="w-[15%]">Local Dslc</TableHead>
+                                                    <TableHead className="w-[10%] text-center">Dias</TableHead>
+                                                    <TableHead className="w-[10%] text-center">Militares</TableHead>
+                                                    <TableHead className="w-[15%] text-right">Total Diária</TableHead>
+                                                    <TableHead className="w-[15%] text-right">Total Taxa Emb.</TableHead>
+                                                    <TableHead className="w-[15%] text-right">Total Geral (ND 15)</TableHead>
+                                                    <TableHead className="w-[5%] text-right">Ações</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {registros.map((registro) => (
+                                                    <TableRow key={registro.id} className={editingId === registro.id ? "bg-yellow-50/50" : ""}>
+                                                        <TableCell className="font-medium">
+                                                            {registro.organizacao} ({formatCodug(registro.ug)})
+                                                        </TableCell>
+                                                        <TableCell>{registro.local_atividade}</TableCell>
+                                                        <TableCell className="text-center">{registro.dias_operacao}</TableCell>
+                                                        <TableCell className="text-center">{registro.quantidade}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            {/* Diária Base = Total Geral - Taxa Embarque */}
+                                                            {formatCurrency(registro.valor_total - (registro.valor_taxa_embarque || 0))}
+                                                        </TableCell>
+                                                        <TableCell className="text-right text-green-600">
+                                                            {formatCurrency(registro.valor_taxa_embarque || 0)}
+                                                        </TableCell>
+                                                        <TableCell className="text-right font-bold text-primary">
+                                                            {formatCurrency(registro.valor_total)}
+                                                        </TableCell>
+                                                        <TableCell className="text-right space-x-2 whitespace-nowrap">
+                                                            <Button 
+                                                                variant="outline" 
+                                                                size="icon" 
+                                                                onClick={() => handleEdit(registro)}
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                            >
+                                                                <Edit className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button 
+                                                                variant="destructive" 
+                                                                size="icon" 
+                                                                onClick={() => handleConfirmDelete(registro)}
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
                                     </div>
                                 </section>
+                            )}
+
+                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS (COPIADA DO CLASSE II) */}
+                            {registros && registros.length > 0 && (
+                                <div className="space-y-4 mt-8">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        📋 5. Memórias de Cálculos Detalhadas
+                                    </h3>
+                                    
+                                    {registros.map(registro => {
+                                        const isEditing = editingMemoriaId === registro.id;
+                                        const hasCustomMemoria = !!registro.detalhamento_customizado;
+                                        
+                                        // Gera a memória automática para exibição/edição
+                                        const totals = calculateDiariaTotals(registro as any, diretrizesOp || {});
+                                        const memoriaAutomatica = generateDiariaMemoriaCalculo(registro as any, diretrizesOp || {}, totals);
+                                        
+                                        const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
+
+                                        return (
+                                            <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
+                                                
+                                                {/* Container para H4 e Botões */}
+                                                <div className="flex items-start justify-between gap-4 mb-2">
+                                                    <div className="flex flex-col flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="text-base font-semibold text-foreground">
+                                                                OM Destino: {registro.organizacao} (UG: {formatCodug(registro.ug)})
+                                                            </h4>
+                                                            <Badge variant="default" className="w-fit bg-blue-600 text-white">
+                                                                Diária
+                                                            </Badge>
+                                                            {/* BADGE DE MEMÓRIA CUSTOMIZADA */}
+                                                            {hasCustomMemoria && !isEditing && (
+                                                                <Badge variant="outline" className="text-xs">
+                                                                    Editada manualmente
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground mt-1">
+                                                            Local: {registro.local_atividade} | Total: {formatCurrency(registro.valor_total)}
+                                                        </p>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center justify-end gap-2 shrink-0">
+                                                        {!isEditing ? (
+                                                            <>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => handleIniciarEdicaoMemoria(registro)}
+                                                                    disabled={isSaving || !isPTrabEditable}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                    Editar Memória
+                                                                </Button>
+                                                                
+                                                                {hasCustomMemoria && (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="ghost"
+                                                                        onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                                                                        disabled={isSaving || !isPTrabEditable}
+                                                                        className="gap-2 text-muted-foreground"
+                                                                    >
+                                                                        <RefreshCw className="h-4 w-4" />
+                                                                        Restaurar Automática
+                                                                    </Button>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="default"
+                                                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                                                    disabled={isSaving}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <Check className="h-4 w-4" />
+                                                                    Salvar
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={handleCancelarEdicaoMemoria}
+                                                                    disabled={isSaving}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <XCircle className="h-4 w-4" />
+                                                                    Cancelar
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                
+                                                <Card className="p-4 bg-background rounded-lg border">
+                                                    {isEditing ? (
+                                                        <Textarea
+                                                            value={memoriaEdit}
+                                                            onChange={(e) => setMemoriaEdit(e.target.value)}
+                                                            className="min-h-[300px] font-mono text-sm"
+                                                            placeholder="Digite a memória de cálculo..."
+                                                        />
+                                                    ) : (
+                                                        <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
+                                                            {memoriaExibida}
+                                                        </pre>
+                                                    )}
+                                                </Card>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             )}
                         </form>
                     </CardContent>
                 </Card>
                 
-                {/* SEÇÃO 4: REGISTROS SALVOS (Tabela) */}
-                {registros && registros.length > 0 && (
-                    <Card className="mt-6">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <ClipboardList className="h-5 w-5 text-secondary" />
-                                4. Registros de Diárias Salvos ({registros.length})
-                            </CardTitle>
-                            <CardDescription>
-                                Registros de diárias já salvos no P Trab.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="border rounded-lg overflow-hidden">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-[15%]">OM Destino</TableHead>
-                                            <TableHead className="w-[15%]">Local Dslc</TableHead>
-                                            <TableHead className="w-[10%] text-center">Dias</TableHead>
-                                            <TableHead className="w-[10%] text-center">Militares</TableHead>
-                                            <TableHead className="w-[15%] text-right">Total Diária</TableHead>
-                                            <TableHead className="w-[15%] text-right">Total Taxa Emb.</TableHead>
-                                            <TableHead className="w-[15%] text-right">Total Geral (ND 15)</TableHead>
-                                            <TableHead className="w-[5%] text-right">Ações</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {registros.map((registro) => (
-                                            <TableRow key={registro.id} className={editingId === registro.id ? "bg-yellow-50/50" : ""}>
-                                                <TableCell className="font-medium">
-                                                    {registro.organizacao} ({formatCodug(registro.ug)})
-                                                </TableCell>
-                                                <TableCell>{registro.local_atividade}</TableCell>
-                                                <TableCell className="text-center">{registro.dias_operacao}</TableCell>
-                                                <TableCell className="text-center">{registro.quantidade}</TableCell>
-                                                <TableCell className="text-right">
-                                                    {/* Diária Base = Total Geral - Taxa Embarque */}
-                                                    {formatCurrency(registro.valor_total - (registro.valor_taxa_embarque || 0))}
-                                                </TableCell>
-                                                <TableCell className="text-right text-green-600">
-                                                    {formatCurrency(registro.valor_taxa_embarque || 0)}
-                                                </TableCell>
-                                                <TableCell className="text-right font-bold text-primary">
-                                                    {formatCurrency(registro.valor_total)}
-                                                </TableCell>
-                                                <TableCell className="text-right space-x-2 whitespace-nowrap">
-                                                    <Button 
-                                                        variant="outline" 
-                                                        size="icon" 
-                                                        onClick={() => handleEdit(registro)}
-                                                        disabled={!isPTrabEditable || isSaving}
-                                                    >
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button 
-                                                        variant="destructive" 
-                                                        size="icon" 
-                                                        onClick={() => handleConfirmDelete(registro)}
-                                                        disabled={!isPTrabEditable || isSaving}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
+                {/* Diálogo de Confirmação de Exclusão */}
+                <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                                <Trash2 className="h-5 w-5" />
+                                Confirmar Exclusão
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Tem certeza que deseja excluir o registro de diária para a OM <span className="font-bold">{registroToDelete?.organizacao}</span>?
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel disabled={handleDeleteMutation.isPending}>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction 
+                                onClick={() => registroToDelete && handleDeleteMutation.mutate(registroToDelete.id)}
+                                disabled={handleDeleteMutation.isPending}
+                                className="bg-destructive hover:bg-destructive/90"
+                            >
+                                {handleDeleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Excluir
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
-            
-            {/* Diálogo de Confirmação de Exclusão */}
-            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                            <Trash2 className="h-5 w-5" />
-                            Confirmar Exclusão
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Tem certeza que deseja excluir o registro de diária para a OM <span className="font-bold">{registroToDelete?.organizacao}</span>?
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={handleDeleteMutation.isPending}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction 
-                            onClick={() => registroToDelete && handleDeleteMutation.mutate(registroToDelete.id)}
-                            disabled={handleDeleteMutation.isPending}
-                            className="bg-destructive hover:bg-destructive/90"
-                        >
-                            {handleDeleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Excluir
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 };
