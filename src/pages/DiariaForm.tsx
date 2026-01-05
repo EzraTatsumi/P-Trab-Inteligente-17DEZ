@@ -440,11 +440,12 @@ const DiariaForm = () => {
             nr_viagens: newFormData.nr_viagens,
             local_atividade: newFormData.local_atividade,
             
+            // Campos calculados
             quantidade: totals.totalMilitares,
             valor_taxa_embarque: totals.totalTaxaEmbarque,
             valor_total: totals.totalGeral,
             valor_nd_30: 0, 
-            valor_nd_15: totals.totalGeral, 
+            valor_nd_15: totals.totalGeral, // CORRIGIDO: valor_nd_15 é o total geral
             
             quantidades_por_posto: newFormData.quantidades_por_posto,
             detalhamento: memoria,
@@ -454,6 +455,7 @@ const DiariaForm = () => {
             posto_graduacao: null,
             valor_diaria_unitario: null,
 
+            // Campos de display para a lista pendente
             destinoLabel: destinoLabel,
             totalMilitares: totals.totalMilitares,
             memoria_calculo_display: memoria, 
@@ -514,7 +516,7 @@ const DiariaForm = () => {
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
                 valor_nd_30: 0, 
-                valor_nd_15: calculos.totalGeral, 
+                valor_nd_15: calculos.totalGeral, // CORRIGIDO: valor_nd_15 é o total geral
                 
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
@@ -1087,7 +1089,9 @@ const DiariaForm = () => {
                                                 const unitValueFormatted = formatCurrency(unitValueRaw);
                                                 const subtotalFormatted = formatCurrency(subtotal);
                                                 
-                                                const diasText = pluralize(diasPagamento, 'dia', 'dias');
+                                                // Lógica de pluralização de dias (0.5 = dia, 1 = dia, >1 = dias)
+                                                const diasText = Math.abs(diasPagamento - 0.5) < 0.001 || diasPagamento === 1 ? 'dia' : 'dias';
+                                                
                                                 const calculationString = `${qty} ${rank.label} x ${unitValueFormatted}/dia x ${formatNumber(diasPagamento, 1)} ${diasText} x ${item.nr_viagens} ${viagemText} = ${subtotalFormatted}`;
                                                 
                                                 return (
