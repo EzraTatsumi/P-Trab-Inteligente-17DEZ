@@ -1124,7 +1124,7 @@ const DiariaForm = () => {
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                         <Sparkles className="h-5 w-5 text-accent" />
-                                        Registros de Diárias Salvos ({registros.length})
+                                        OMs Cadastradas ({registros.length})
                                     </h3>
                                     <div className="border rounded-lg overflow-hidden">
                                         <Table>
