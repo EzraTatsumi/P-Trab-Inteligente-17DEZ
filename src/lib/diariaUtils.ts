@@ -29,7 +29,7 @@ export const formatFasesParaTexto = (faseCSV: string | undefined | null): string
   
   const ultimaFase = fases[fases.length - 1];
   const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFase}`;
+  return `${demaisFases} e ${ultimaFases}`;
 };
 
 /**
@@ -198,40 +198,34 @@ export const generateDiariaMemoriaCalculo = (
     const header = `33.90.15 - Custeio com Diárias de ${totalMilitares} ${militarText} ${omPreposition} ${organizacao}, para ${nr_viagens} ${viagemText} com duração de ${dias_operacao} ${diaText} em ${local_atividade}, durante a ${faseConcordancia} ${faseFormatada}.`;
 
     let detalhamentoValores = '';
-    let detalhamentoFormula = '';
-    let totalFormula = 0;
+    let detalhamentoFormulaDiarias = '';
     
     const taxaEmbarqueUnitario = Number(diretrizes.taxa_embarque || 0);
     
-    // NOVO: Adiciona a linha da Taxa de Embarque ao detalhamento de valores
+    // 1. Detalhamento de Valores Unitários (incluindo Taxa de Embarque)
     if (is_aereo) {
         detalhamentoValores += `- Taxa de Embarque: ${formatCurrency(taxaEmbarqueUnitario)}/viagem.\n`;
     }
 
     calculosPorPosto.forEach(calc => {
-        const militaresPlural = calc.quantidade === 1 ? 'mil.' : 'militares';
-        const diasPagamento = Math.max(0, dias_operacao - 0.5);
-        
         // 1. Detalhamento de Valores Unitários
         detalhamentoValores += `- ${calc.posto}: ${formatCurrency(calc.valorUnitario)}/dia.\n`;
         
-        // 2. Detalhamento da Fórmula (Mantido o formato detalhado para a seção de cálculo)
-        // Ex: (3 Of Sup x R$ 450,00/dia) x 4,5 dias x 1 viagem = R$ 6.075,00.
+        // 2. Detalhamento da Fórmula das Diárias
         const formulaPart1 = `(${calc.quantidade} ${calc.posto} x ${formatCurrency(calc.valorUnitario)}/dia)`;
         const formulaPart2 = `${formatNumber(Math.max(0, dias_operacao - 0.5), 1)} dias x ${nr_viagens} viagem${nr_viagens === 1 ? '' : 'ns'}`;
         
-        detalhamentoFormula += `- ${formulaPart1} x ${formulaPart2} = ${formatCurrency(calc.custoTotal)}.\n`;
-        totalFormula += calc.custoTotal;
+        detalhamentoFormulaDiarias += `- ${formulaPart1} x ${formulaPart2} = ${formatCurrency(calc.custoTotal)}.\n`;
     });
     
     
-    let detalhamentoTaxa = '';
+    let detalhamentoTaxaCalculo = '';
     if (is_aereo) {
-        detalhamentoTaxa = `
-- Cálculo Taxa: ${totalMilitares} ${militarText} x ${formatCurrency(taxaEmbarqueUnitario)} x ${nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}.
+        detalhamentoTaxaCalculo = `
+- Efetivo x Valor da Taxa de Embarque x Quantidade de Viagens = ${formatCurrency(totalTaxaEmbarque)}.
 `;
     } else {
-        detalhamentoTaxa = `
+        detalhamentoTaxaCalculo = `
 - Deslocamento Terrestre/Fluvial: Não há previsão legal para pagamento de Taxa de Embarque.
 `;
     }
@@ -247,11 +241,11 @@ ${detalhamentoValores.trim()}
 Fórmula da Taxa de Embarque: Efetivo x Valor da Taxa de Embarque x Quantidade de Viagens.
 Fórmula das Diárias: (Efetivo x Custo/dia/localidade) x (Nr Dias - 0,5 dia) x Nr Viagens.
 
-Cálculo Detalhado:
-${detalhamentoFormula.trim()}
+${is_aereo ? detalhamentoTaxaCalculo.trim() : ''}
+${detalhamentoFormulaDiarias.trim()}
 
 Total Diária Base: ${formatCurrency(totalDiariaBase)}.
-${detalhamentoTaxa.trim()}
+${detalhamentoTaxaCalculo.trim()}
 
 Total Geral (ND 33.90.15): ${formatCurrency(totalGeral)}.`;
 };
