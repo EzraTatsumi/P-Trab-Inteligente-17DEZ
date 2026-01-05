@@ -157,6 +157,23 @@ const DiariaForm = () => {
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
 
     // =================================================================
+    // EFEITO PARA CARREGAMENTO INICIAL DO PRIMEIRO REGISTRO SALVO
+    // =================================================================
+    useEffect(() => {
+        // Verifica se os registros foram carregados, se há registros, e se NÃO estamos em modo de edição
+        if (registros && registros.length > 0 && !editingId && !saveMutation.isPending && !updateMutation.isPending) {
+            // Carrega o primeiro registro da lista para edição (para exibir a Seção 5)
+            handleEdit(registros[0]);
+        }
+        
+        // Se não houver registros, garante que o formulário esteja limpo
+        if (registros && registros.length === 0 && editingId) {
+            resetForm();
+        }
+        
+    }, [registros, editingId, saveMutation.isPending, updateMutation.isPending]);
+    
+    // =================================================================
     // CÁLCULOS E MEMÓRIA (MEMOIZED)
     // =================================================================
     
@@ -230,21 +247,14 @@ const DiariaForm = () => {
             if (error) throw error;
             return data;
         },
-        onSuccess: (newRecords) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["diariaRegistros", ptrabId] });
             queryClient.invalidateQueries({ queryKey: ["ptrabTotals", ptrabId] });
             toast.success(`Sucesso! ${pendingDiarias.length} registro(s) de Diária adicionado(s).`);
             setPendingDiarias([]); // Limpa a lista pendente
             
-            // 1. Resetar o formulário
-            resetForm();
-            
-            // 2. Colocar o último registro salvo em modo de edição para exibir a Seção 5
-            if (newRecords && newRecords.length > 0) {
-                const lastSavedRecord = newRecords[0]; // O primeiro item é o mais recente devido à ordenação
-                // Chamamos handleEdit com o registro recém-salvo
-                handleEdit(lastSavedRecord as DiariaRegistro);
-            }
+            // Resetar o formulário (o useEffect se encarregará de carregar o primeiro registro salvo)
+            resetForm(); 
         },
         onError: (err) => {
             toast.error(sanitizeError(err));
@@ -1028,7 +1038,7 @@ const DiariaForm = () => {
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIA DE CÁLCULO DETALHADA */}
-                            {/* CONDIÇÃO CORRIGIDA: Aparece APENAS se estiver editando um registro salvo. */}
+                            {/* CONDIÇÃO: Aparece APENAS se estiver editando um registro salvo. */}
                             {editingId && (
                                 <section className="space-y-4 border-t pt-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
