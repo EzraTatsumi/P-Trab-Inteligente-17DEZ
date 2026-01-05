@@ -1013,24 +1013,15 @@ const DiariaForm = () => {
                                         
                                         {/* BOTÕES DE AÇÃO (Salvar Item da Categoria) */}
                                         <div className="flex justify-end gap-3 pt-4">
-                                            {editingId ? (
-                                                <Button 
-                                                    type="submit" // Aciona handleStageCalculation
-                                                    disabled={!isPTrabEditable || isSaving || !isCalculationReady}
-                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
-                                                >
-                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                    Salvar Item na Lista
-                                                </Button>
-                                            ) : (
-                                                <Button 
-                                                    type="submit" 
-                                                    disabled={!isPTrabEditable || isSaving || !isCalculationReady}
-                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
-                                                >
-                                                    Salvar Item na Lista
-                                                </Button>
-                                            )}
+                                            {/* Revertido para o padrão: mesmo texto e desabilitação baseada apenas na prontidão do cálculo */}
+                                            <Button 
+                                                type="submit" 
+                                                disabled={!isPTrabEditable || isSaving || !isCalculationReady}
+                                                className="w-full md:w-auto bg-primary hover:bg-primary/90"
+                                            >
+                                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                Salvar Item na Lista
+                                            </Button>
                                         </div>
                                         
                                     </Card> {/* FIM NÍVEL III */}
@@ -1142,7 +1133,6 @@ const DiariaForm = () => {
                                                                 Diárias ({item.local_atividade})
                                                             </h4>
                                                             <div className="flex items-center gap-2">
-                                                                {/* Removendo o badge "Em Revisão" */}
                                                                 <p className="font-extrabold text-lg text-foreground text-right">
                                                                     {formatCurrency(item.valor_total)}
                                                                 </p>
@@ -1269,8 +1259,15 @@ const DiariaForm = () => {
                                         return (
                                             <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                                                 <div className="flex items-center justify-between mb-3 border-b pb-2">
-                                                    <h3 className="font-bold text-lg text-primary">
+                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
                                                         OM Destino: {omName} (UG: {formatCodug(ug)})
+                                                        {/* Badge de Destino movido para cá */}
+                                                        <Badge 
+                                                            variant="default" 
+                                                            className={cn("text-xs text-white", getDestinoColorClass(omRegistros[0].destino as DestinoDiaria))}
+                                                        >
+                                                            {DESTINO_OPTIONS.find(d => d.value === omRegistros[0].destino)?.label || omRegistros[0].destino}
+                                                        </Badge>
                                                     </h3>
                                                     <span className="font-extrabold text-xl text-primary">
                                                         {formatCurrency(totalOM)}
@@ -1300,8 +1297,9 @@ const DiariaForm = () => {
                                                                             <h4 className="font-semibold text-base text-foreground">
                                                                                 Diárias ({registro.local_atividade})
                                                                             </h4>
-                                                                            <Badge variant="default" className={cn("text-xs text-white", destinoColorClass)}>
-                                                                                {destinoLabel}
+                                                                            {/* NOVO BADGE: Fase da Atividade */}
+                                                                            <Badge variant="outline" className="text-xs">
+                                                                                {registro.fase_atividade}
                                                                             </Badge>
                                                                         </div>
                                                                         <p className="text-xs text-muted-foreground">
