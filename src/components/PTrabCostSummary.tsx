@@ -1091,7 +1091,7 @@ export const PTrabCostSummary = ({
                             <span className="w-1/4 text-right font-medium text-green-600">
                                 {formatCurrency(totals.totalDiariasND15)}
                             </span>
-                            <span className="w-1/4 text-right font-medium text-blue-600">
+                            <span className="w-1/4 text-right font-medium text-green-600">
                                 {formatCurrency(totals.totalDiariasND30)}
                             </span>
                           </div>
