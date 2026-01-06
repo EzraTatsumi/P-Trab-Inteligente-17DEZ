@@ -1348,16 +1348,16 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                           <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_30)}</td>
                           <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_39)}</td>
                           <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
-                          {/* Parte Laranja (Combustivel) - Exibe apenas se for a RM Fornecedora E se for > 0 */}
+                          {/* Parte Laranja (Combustivel) - Exibe apenas se for a RM Fornecedora */}
                           <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
                             {/* Coluna F: Total de Óleo Diesel da RM Fornecedora */}
-                            {nomeOM === nomeRM && totaisOM.totalDieselLitros > 0
+                            {nomeOM === nomeRM
                               ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
                               : ''}
                           </td>
                           <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
                             {/* Coluna G: Total de Gasolina da RM Fornecedora */}
-                            {nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0
+                            {nomeOM === nomeRM
                               ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` 
                               : ''}
                           </td>
