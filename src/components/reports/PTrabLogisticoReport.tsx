@@ -1349,19 +1349,19 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
                       {/* Parte Laranja (Combustivel) - Exibe apenas se for a RM Fornecedora E se for > 0 */}
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-                        {/* Linha 1332: Total de OD da RM Fornecedora */}
+                        {/* Coluna F: Total de Óleo Diesel da RM Fornecedora */}
                         {nomeOM === nomeRM && totaisOM.totalDieselLitros > 0
                           ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
                           : ''}
                       </td>
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-                        {/* Linha 1337: Total de Gasolina da RM Fornecedora */}
+                        {/* Coluna G: Total de Gasolina da RM Fornecedora */}
                         {nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0
                           ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` 
                           : ''}
                       </td>
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-                        {/* Linha 1342: Valor Total de Combustível da RM Fornecedora */}
+                        {/* Coluna H: Valor Total de Combustível da RM Fornecedora */}
                         {nomeOM === nomeRM && totaisOM.total_combustivel > 0
                           ? formatCurrency(totaisOM.total_combustivel) 
                           : ''}
@@ -1401,11 +1401,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_30)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_39)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_GND3_ND)}</td>
-                      {/* Linha 1387: Total Geral Litros OD */}
+                      {/* F - LITROS OD (Total Geral) */}
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : ''}</td>
-                      {/* Linha 1388: Total Geral Litros GAS */}
+                      {/* G - LITROS GAS (Total Geral) */}
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : ''}</td>
-                      {/* Linha 1389: Total Geral Valor Combustível */}
+                      {/* H - PREÇO TOTAL COMBUSTÍVEL (Total Geral) */}
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalValorCombustivelFinal > 0 ? formatCurrency(totalValorCombustivelFinal) : ''}</td>
                       <td style={{ backgroundColor: 'white' }}></td>
                     </tr>,
