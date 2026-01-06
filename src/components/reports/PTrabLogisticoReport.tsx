@@ -455,24 +455,24 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       addHeaderRow('EXÉRCITO BRASILEIRO');
       addHeaderRow(ptrabData.comando_militar_area.toUpperCase());
       
-      const omExtensoRow = worksheet.getRow(currentRow);
+      let row = worksheet.getRow(currentRow); // Declaração única de 'row'
       omExtensoRow.getCell(1).value = (ptrabData.nome_om_extenso || ptrabData.nome_om).toUpperCase();
       omExtensoRow.getCell(1).font = titleFontStyle;
       omExtensoRow.getCell(1).alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
-      const fullTitleRow = worksheet.getRow(currentRow);
-      fullTitleRow.getCell('A').value = `PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO ${ptrabData.nome_operacao.toUpperCase()}`;
-      fullTitleRow.getCell('A').font = titleFontStyle;
-      fullTitleRow.getCell('A').alignment = centerMiddleAlignment;
+      row = worksheet.getRow(currentRow);
+      row.getCell('A').value = `PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO ${ptrabData.nome_operacao.toUpperCase()}`;
+      row.getCell('A').font = titleFontStyle;
+      row.getCell('A').alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
 
-      const shortTitleRow = worksheet.getRow(currentRow);
-      shortTitleRow.getCell('A').value = 'PLANO DE TRABALHO LOGÍSTICO';
-      shortTitleRow.getCell('A').font = { ...titleFontStyle, underline: true };
-      shortTitleRow.getCell('A').alignment = centerMiddleAlignment;
+      row = worksheet.getRow(currentRow);
+      row.getCell('A').value = 'PLANO DE TRABALHO LOGÍSTICO';
+      row.getCell('A').font = { ...titleFontStyle, underline: true };
+      row.getCell('A').alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
@@ -481,7 +481,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
       
       const addInfoRow = (label: string, value: string) => {
-        const row = worksheet.getRow(currentRow);
+        row = worksheet.getRow(currentRow);
         
         row.getCell(1).value = {
           richText: [
@@ -500,9 +500,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       addInfoRow('3. EFETIVO EMPREGADO:', `${ptrabData.efetivo_empregado} militares do Exército Brasileiro`);
       addInfoRow('4. AÇÕES:', ptrabData.acoes || '');
       
-      const despesasRow = worksheet.getRow(currentRow);
-      despesasRow.getCell('A').value = '5. DESPESAS OPERACIONAIS:';
-      despesasRow.getCell('A').font = titleFontStyle;
+      row = worksheet.getRow(currentRow);
+      row.getCell('A').value = '5. DESPESAS OPERACIONAIS:';
+      row.getCell('A').font = titleFontStyle;
       currentRow++;
       
       const headerRow1 = currentRow;
@@ -621,7 +621,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
 
         // Renderizar todas as linhas de despesa (I, II, III, V-IX)
         allExpenseLines.forEach((linha, index) => {
-            const row = worksheet.getRow(currentRow);
+            row = worksheet.getRow(currentRow); // Reatribuição de 'row'
             
             let rowData = {
                 despesasValue: '',
@@ -776,7 +776,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             }
             
             // --- Renderização da Linha ---
-            const row = worksheet.getRow(currentRow);
             
             row.getCell('A').value = rowData.despesasValue;
             row.getCell('B').value = rowData.omValue;
@@ -824,80 +823,80 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         });
         
         // Subtotal da OM
-        const subtotalRow = worksheet.getRow(currentRow);
-        subtotalRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
+        row = worksheet.getRow(currentRow); // Reatribuição de 'row'
+        row.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
         worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
         
-        subtotalRow.getCell('A').alignment = rightMiddleAlignment;
-        subtotalRow.getCell('A').font = headerFontStyle;
-        subtotalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+        row.getCell('A').alignment = rightMiddleAlignment;
+        row.getCell('A').font = headerFontStyle;
+        row.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
         
-        subtotalRow.getCell('C').value = totaisOM.total_33_90_30;
-        subtotalRow.getCell('D').value = totaisOM.total_33_90_39;
-        subtotalRow.getCell('E').value = totaisOM.total_parte_azul;
+        row.getCell('C').value = totaisOM.total_33_90_30;
+        row.getCell('D').value = totaisOM.total_33_90_39;
+        row.getCell('E').value = totaisOM.total_parte_azul;
         
         ['C', 'D', 'E'].forEach(col => {
-            subtotalRow.getCell(col).alignment = centerMiddleAlignment;
-            subtotalRow.getCell(col).font = headerFontStyle;
-            subtotalRow.getCell(col).numFmt = 'R$ #,##0.00';
-            subtotalRow.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+            row.getCell(col).alignment = centerMiddleAlignment;
+            row.getCell(col).font = headerFontStyle;
+            row.getCell(col).numFmt = 'R$ #,##0.00';
+            row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
         });
         
         // Combustível (F, G, H)
         if (nomeOM === nomeRM) {
-            subtotalRow.getCell('F').value = totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
-            subtotalRow.getCell('G').value = totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
-            subtotalRow.getCell('H').value = totaisOM.total_combustivel > 0 ? totaisOM.total_combustivel : '';
+            row.getCell('F').value = totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
+            row.getCell('G').value = totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
+            row.getCell('H').value = totaisOM.total_combustivel > 0 ? totaisOM.total_combustivel : '';
             
             ['F', 'G'].forEach(col => {
-                subtotalRow.getCell(col).alignment = centerMiddleAlignment;
-                subtotalRow.getCell(col).font = headerFontStyle;
-                subtotalRow.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+                row.getCell(col).alignment = centerMiddleAlignment;
+                row.getCell(col).font = headerFontStyle;
+                row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
             });
             
-            subtotalRow.getCell('H').alignment = centerMiddleAlignment;
-            subtotalRow.getCell('H').font = headerFontStyle;
-            subtotalRow.getCell('H').numFmt = 'R$ #,##0.00';
-            subtotalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+            row.getCell('H').alignment = centerMiddleAlignment;
+            row.getCell('H').font = headerFontStyle;
+            row.getCell('H').numFmt = 'R$ #,##0.00';
+            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         } else {
             ['F', 'G', 'H'].forEach(col => {
-                subtotalRow.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+                row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
             });
         }
         
         // Aplicar bordas
         headerCols.forEach(col => {
-            subtotalRow.getCell(col).border = cellBorder;
+            row.getCell(col).border = cellBorder;
         });
         currentRow++;
         
         // Total da OM
-        const totalOMRow = worksheet.getRow(currentRow);
-        totalOMRow.getCell('A').value = `VALOR TOTAL DO ${nomeOM}`;
+        row = worksheet.getRow(currentRow); // Reatribuição de 'row'
+        row.getCell('A').value = `VALOR TOTAL DO ${nomeOM}`;
         worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
         
-        totalOMRow.getCell('A').alignment = rightMiddleAlignment;
-        totalOMRow.getCell('A').font = headerFontStyle;
-        totalOMRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+        row.getCell('A').alignment = rightMiddleAlignment;
+        row.getCell('A').font = headerFontStyle;
+        row.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
         
-        totalOMRow.getCell('E').value = totaisOM.total_gnd3;
-        totalOMRow.getCell('E').alignment = centerMiddleAlignment;
-        totalOMRow.getCell('E').font = headerFontStyle;
-        totalOMRow.getCell('E').numFmt = 'R$ #,##0.00';
-        totalOMRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+        row.getCell('E').value = totaisOM.total_gnd3;
+        row.getCell('E').alignment = centerMiddleAlignment;
+        row.getCell('E').font = headerFontStyle;
+        row.getCell('E').numFmt = 'R$ #,##0.00';
+        row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
         
         ['F', 'G', 'H', 'I'].forEach(col => {
-            totalOMRow.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+            row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
         });
         
         // Aplicar bordas
         headerCols.forEach(col => {
-            totalOMRow.getCell(col).border = cellBorder;
+            row.getCell(col).border = cellBorder;
         });
         currentRow++;
         
         currentRow++; // Espaçamento
-    });
+      });
     
     // ========== TOTAL GERAL ==========
     
@@ -910,125 +909,125 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     const totalValorCombustivelFinal = totalValorCombustivel;
 
     // Linha 1: Soma detalhada por ND e GP de Despesa
-    const totalRow1 = worksheet.getRow(currentRow);
-    totalRow1.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
+    row = worksheet.getRow(currentRow); // Reatribuição de 'row'
+    row.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
     worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
     
-    totalRow1.getCell('A').alignment = rightMiddleAlignment;
-    totalRow1.getCell('A').font = headerFontStyle;
-    totalRow1.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+    row.getCell('A').alignment = rightMiddleAlignment;
+    row.getCell('A').font = headerFontStyle;
+    row.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
     
-    totalRow1.getCell('C').value = totalGeral_33_90_30;
-    totalRow1.getCell('D').value = totalGeral_33_90_39;
-    totalRow1.getCell('E').value = totalGeral_GND3_ND;
+    row.getCell('C').value = totalGeral_33_90_30;
+    row.getCell('D').value = totalGeral_33_90_39;
+    row.getCell('E').value = totalGeral_GND3_ND;
     
     ['C', 'D', 'E'].forEach(col => {
-        totalRow1.getCell(col).alignment = centerMiddleAlignment;
-        totalRow1.getCell(col).font = headerFontStyle;
-        totalRow1.getCell(col).numFmt = 'R$ #,##0.00';
-        totalRow1.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+        row.getCell(col).alignment = centerMiddleAlignment;
+        row.getCell(col).font = headerFontStyle;
+        row.getCell(col).numFmt = 'R$ #,##0.00';
+        row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
     });
     
-    totalRow1.getCell('F').value = totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : '';
-    totalRow1.getCell('G').value = totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : '';
-    totalRow1.getCell('H').value = totalValorCombustivelFinal > 0 ? totalValorCombustivelFinal : '';
+    row.getCell('F').value = totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : '';
+    row.getCell('G').value = totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : '';
+    row.getCell('H').value = totalValorCombustivelFinal > 0 ? totalValorCombustivelFinal : '';
     
     ['F', 'G'].forEach(col => {
-        totalRow1.getCell(col).alignment = centerMiddleAlignment;
-        totalRow1.getCell(col).font = headerFontStyle;
-        totalRow1.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+        row.getCell(col).alignment = centerMiddleAlignment;
+        row.getCell(col).font = headerFontStyle;
+        row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
     });
     
-    totalRow1.getCell('H').alignment = centerMiddleAlignment;
-    totalRow1.getCell('H').font = headerFontStyle;
-    totalRow1.getCell('H').numFmt = 'R$ #,##0.00';
-    totalRow1.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+    row.getCell('H').alignment = centerMiddleAlignment;
+    row.getCell('H').font = headerFontStyle;
+    row.getCell('H').numFmt = 'R$ #,##0.00';
+    row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
     
-    totalRow1.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+    row.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
     
     // Aplicar bordas
     headerCols.forEach(col => {
-        totalRow1.getCell(col).border = cellBorder;
+        row.getCell(col).border = cellBorder;
     });
     currentRow++;
 
     // Linha 2: Valor Total
-    const totalRow2 = worksheet.getRow(currentRow);
+    row = worksheet.getRow(currentRow); // Reatribuição de 'row'
     worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
-    totalRow2.getCell('A').value = '';
+    row.getCell('A').value = '';
     
-    totalRow2.getCell('G').value = 'VALOR TOTAL';
-    totalRow2.getCell('H').value = valorTotalSolicitado;
+    row.getCell('G').value = 'VALOR TOTAL';
+    row.getCell('H').value = valorTotalSolicitado;
     
     ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
-        totalRow2.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
-        totalRow2.getCell(col).border = cellBorder;
+        row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+        row.getCell(col).border = cellBorder;
     });
     
-    totalRow2.getCell('G').alignment = centerMiddleAlignment;
-    totalRow2.getCell('G').font = headerFontStyle;
-    totalRow2.getCell('G').numFmt = 'General';
+    row.getCell('G').alignment = centerMiddleAlignment;
+    row.getCell('G').font = headerFontStyle;
+    row.getCell('G').numFmt = 'General';
     
-    totalRow2.getCell('H').alignment = centerMiddleAlignment;
-    totalRow2.getCell('H').font = headerFontStyle;
-    totalRow2.getCell('H').numFmt = 'R$ #,##0.00';
+    row.getCell('H').alignment = centerMiddleAlignment;
+    row.getCell('H').font = headerFontStyle;
+    row.getCell('H').numFmt = 'R$ #,##0.00';
     
     currentRow++;
     
     // Linha 3: GND - 3 (dividida em 2 subdivisões)
-    const totalRow3 = worksheet.getRow(currentRow);
+    row = worksheet.getRow(currentRow); // Reatribuição de 'row'
     worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
-    totalRow3.getCell('A').value = '';
+    row.getCell('A').value = '';
     
-    totalRow3.getCell('H').value = 'GND - 3';
-    totalRow3.getCell('H').alignment = centerMiddleAlignment;
-    totalRow3.getCell('H').font = headerFontStyle;
+    row.getCell('H').value = 'GND - 3';
+    row.getCell('H').alignment = centerMiddleAlignment;
+    row.getCell('H').font = headerFontStyle;
     
     ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'I'].forEach(col => {
-        totalRow3.getCell(col).border = { top: { style: 'none' }, bottom: { style: 'none' }, left: { style: 'none' }, right: { style: 'none' } };
+        row.getCell(col).border = { top: { style: 'none' }, bottom: { style: 'none' }, left: { style: 'none' }, right: { style: 'none' } };
     });
-    totalRow3.getCell('H').border = { top: cellBorder.top, bottom: { style: 'none' }, left: cellBorder.left, right: cellBorder.right };
+    row.getCell('H').border = { top: cellBorder.top, bottom: { style: 'none' }, left: cellBorder.left, right: cellBorder.right };
     
     currentRow++;
     
     // Segunda subdivisão: Valor Total
-    const totalRow4 = worksheet.getRow(currentRow);
+    row = worksheet.getRow(currentRow); // Reatribuição de 'row'
     worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
-    totalRow4.getCell('A').value = '';
+    row.getCell('A').value = '';
     
-    totalRow4.getCell('H').value = valorTotalSolicitado;
-    totalRow4.getCell('H').alignment = centerMiddleAlignment;
-    totalRow4.getCell('H').font = headerFontStyle;
-    totalRow4.getCell('H').numFmt = 'R$ #,##0.00';
+    row.getCell('H').value = valorTotalSolicitado;
+    row.getCell('H').alignment = centerMiddleAlignment;
+    row.getCell('H').font = headerFontStyle;
+    row.getCell('H').numFmt = 'R$ #,##0.00';
     
     ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'I'].forEach(col => {
-        totalRow4.getCell(col).border = { top: { style: 'none' }, bottom: { style: 'none' }, left: { style: 'none' }, right: { style: 'none' } };
+        row.getCell(col).border = { top: { style: 'none' }, bottom: { style: 'none' }, left: { style: 'none' }, right: { style: 'none' } };
     });
-    totalRow4.getCell('H').border = { top: { style: 'none' }, bottom: cellBorder.bottom, left: cellBorder.left, right: cellBorder.right };
+    row.getCell('H').border = { top: { style: 'none' }, bottom: cellBorder.bottom, left: cellBorder.left, right: cellBorder.right };
     
     currentRow++;
     
     currentRow++;
     
     // Rodapé
-    const localRow = worksheet.getRow(currentRow);
-    localRow.getCell('A').value = `${ptrabData.local_om || 'Local'}, ${new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
-    localRow.getCell('A').font = { name: 'Arial', size: 10 };
-    localRow.getCell('A').alignment = centerMiddleAlignment;
+    row = worksheet.getRow(currentRow); // Reatribuição de 'row'
+    row.getCell('A').value = `${ptrabData.local_om || 'Local'}, ${new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+    row.getCell('A').font = { name: 'Arial', size: 10 };
+    row.getCell('A').alignment = centerMiddleAlignment;
     worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
     currentRow += 3;
     
-    const cmtRow = worksheet.getRow(currentRow);
-    cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
-    cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
-    cmtRow.getCell('A').alignment = centerMiddleAlignment;
+    row = worksheet.getRow(currentRow); // Reatribuição de 'row'
+    row.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
+    row.getCell('A').font = { name: 'Arial', size: 10, bold: true };
+    row.getCell('A').alignment = centerMiddleAlignment;
     worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
     currentRow++;
     
-    const cargoRow = worksheet.getRow(currentRow);
-    cargoRow.getCell('A').value = `Comandante da ${ptrabData.nome_om_extenso || ptrabData.nome_om}`;
-    cargoRow.getCell('A').font = { name: 'Arial', size: 9 };
-    cargoRow.getCell('A').alignment = centerMiddleAlignment;
+    row = worksheet.getRow(currentRow); // Reatribuição de 'row'
+    row.getCell('A').value = `Comandante da ${ptrabData.nome_om_extenso || ptrabData.nome_om}`;
+    row.getCell('A').font = { name: 'Arial', size: 9 };
+    row.getCell('A').alignment = centerMiddleAlignment;
     worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
 
     // Exportar
