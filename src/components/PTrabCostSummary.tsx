@@ -84,7 +84,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     }
   });
   
-  // 2. Fetch Classes II/V/VI/VII/VIII/IX records from their respective tables
+  // 2. Fetch Classe II/V/VI/VII/VIII/IX records from their respective tables
   const [
     { data: classeIIData, error: classeIIError },
     { data: classeVData, error: classeVError },
@@ -125,7 +125,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .eq('p_trab_id', ptrabId),
     supabase
       .from('diaria_registros') // NOVO: Diárias
-      .select('valor_total, valor_nd_15, quantidade')
+      .select('valor_total, valor_nd_15, valor_nd_30, quantidade, dias_operacao') // Buscando ND 15 e ND 30
       .eq('p_trab_id', ptrabId),
   ]);
 
@@ -355,13 +355,26 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const totalLubrificanteLitros = lubrificanteRecords
     .reduce((sum, record) => sum + Number(record.total_litros || 0), 0);
     
-  // 4. Fetch Diárias totals (ND 33.90.15)
-  let totalDiarias = 0;
+  // 4. Processamento de Diárias (ND 33.90.15)
+  let totalDiariasND15 = 0; // Taxa de Embarque
+  let totalDiariasND30 = 0; // Diárias (valor principal)
   let totalMilitaresDiarias = 0;
+  let totalDiasViagem = 0; // Novo total
+
   if (!diariaError) {
-      totalDiarias = (diariaData || []).reduce((sum, record) => sum + Number(record.valor_total || 0), 0);
-      totalMilitaresDiarias = (diariaData || []).reduce((sum, record) => sum + Number(record.quantidade || 0), 0);
+      (diariaData || []).forEach(record => {
+          // ND 15 é a Taxa de Embarque
+          totalDiariasND15 += Number(record.valor_nd_15 || 0);
+          // ND 30 é o valor da Diária Base
+          totalDiariasND30 += Number(record.valor_nd_30 || 0);
+          totalMilitaresDiarias += Number(record.quantidade || 0);
+          // O total de dias de viagem é a soma dos dias_operacao de cada registro
+          totalDiasViagem += Number(record.dias_operacao || 0);
+      });
   }
+  
+  // O total da Diária (ND 33.90.15) é a soma das duas subdivisões
+  const totalDiarias = totalDiariasND15 + totalDiariasND30; 
     
   // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
   const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX + totalCombustivel + totalLubrificanteValor;
@@ -431,7 +444,10 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     
     // NOVO: Diárias
     totalDiarias,
+    totalDiariasND15, // Taxa de Embarque
+    totalDiariasND30, // Diárias (valor principal)
     totalMilitaresDiarias,
+    totalDiasViagem, // Novo: Total de dias de viagem
   };
 };
 
@@ -503,7 +519,10 @@ export const PTrabCostSummary = ({
       totalRacoesOperacionaisGeral: 0, // NOVO: Adiciona ao initialData
       // NOVO: Diárias
       totalDiarias: 0,
+      totalDiariasND15: 0, // Taxa de Embarque
+      totalDiariasND30: 0, // Diárias (valor principal)
       totalMilitaresDiarias: 0,
+      totalDiasViagem: 0, // Novo: Total de dias de viagem
     },
   });
   
@@ -1037,7 +1056,7 @@ export const PTrabCostSummary = ({
                         <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
                           <div className="flex items-center gap-1 text-foreground">
                             <Briefcase className="h-3 w-3 text-blue-500" />
-                            Diárias (ND 33.90.15)
+                            Diárias
                           </div>
                           <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
                             {formatCurrency(totals.totalDiarias)}
@@ -1046,6 +1065,7 @@ export const PTrabCostSummary = ({
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-0">
                         <div className="space-y-1 pl-4 text-[10px]">
+                          {/* Detalhe 1: Total de Militares */}
                           <div className="flex justify-between text-muted-foreground">
                             <span className="w-1/2 text-left">Total de Militares</span>
                             <span className="w-1/4 text-right font-medium">
@@ -1053,6 +1073,26 @@ export const PTrabCostSummary = ({
                             </span>
                             <span className="w-1/4 text-right font-medium text-background">
                                 {formatCurrency(0)}
+                            </span>
+                          </div>
+                          {/* Detalhe 2: Total de Dias de Viagem */}
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className="w-1/2 text-left">Total de Dias de Viagem</span>
+                            <span className="w-1/4 text-right font-medium">
+                              {formatNumber(totals.totalDiasViagem)} dias
+                            </span>
+                            <span className="w-1/4 text-right font-medium text-background">
+                                {formatCurrency(0)}
+                            </span>
+                          </div>
+                          {/* Detalhe 3: Taxa de Embarque / Diárias (ND 15) */}
+                          <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                            <span className="w-1/2 text-left font-semibold">Taxa de Embarque / Diárias (ND 15)</span>
+                            <span className="w-1/4 text-right font-medium text-green-600">
+                                {formatCurrency(totals.totalDiariasND15)}
+                            </span>
+                            <span className="w-1/4 text-right font-medium text-blue-600">
+                                {formatCurrency(totals.totalDiariasND30)}
                             </span>
                           </div>
                         </div>
