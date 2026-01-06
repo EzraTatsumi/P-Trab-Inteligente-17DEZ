@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Droplet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck } from "lucide-react";
+import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Droplet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase } from "lucide-react";
 import {
   Accordion,
   AccordionItem,
@@ -84,7 +84,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     }
   });
   
-  // 2. Fetch Classe II/V/VI/VII/VIII/IX records from their respective tables
+  // 2. Fetch Classes II/V/VI/VII/VIII/IX records from their respective tables
   const [
     { data: classeIIData, error: classeIIError },
     { data: classeVData, error: classeVError },
@@ -93,6 +93,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     { data: classeVIIISaudeData, error: classeVIIISaudeError },
     { data: classeVIIIRemontaData, error: classeVIIIRemontaError },
     { data: classeIXData, error: classeIXError }, // NOVO
+    { data: diariaData, error: diariaError }, // NOVO: Diárias
   ] = await Promise.all([
     supabase
       .from('classe_ii_registros')
@@ -122,6 +123,10 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .from('classe_ix_registros') // NOVO
       .select('valor_total, itens_motomecanizacao, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
       .eq('p_trab_id', ptrabId),
+    supabase
+      .from('diaria_registros') // NOVO: Diárias
+      .select('valor_total, valor_nd_15, quantidade')
+      .eq('p_trab_id', ptrabId),
   ]);
 
   if (classeIIError) throw classeIIError;
@@ -131,6 +136,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   if (classeVIIISaudeError) console.error("Erro ao carregar Classe VIII Saúde:", classeVIIISaudeError);
   if (classeVIIIRemontaError) console.error("Erro ao carregar Classe VIII Remonta:", classeVIIIRemontaError);
   if (classeIXError) console.error("Erro ao carregar Classe IX:", classeIXError); // NOVO
+  if (diariaError) console.error("Erro ao carregar Diárias:", diariaError); // NOVO
   
   const allClasseItemsData = [
     ...(classeIIData || []),
@@ -349,16 +355,25 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const totalLubrificanteLitros = lubrificanteRecords
     .reduce((sum, record) => sum + Number(record.total_litros || 0), 0);
     
+  // 4. Fetch Diárias totals (ND 33.90.15)
+  let totalDiarias = 0;
+  let totalMilitaresDiarias = 0;
+  if (!diariaError) {
+      totalDiarias = (diariaData || []).reduce((sum, record) => sum + Number(record.valor_total || 0), 0);
+      totalMilitaresDiarias = (diariaData || []).reduce((sum, record) => sum + Number(record.quantidade || 0), 0);
+  }
+    
   // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
   const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX + totalCombustivel + totalLubrificanteValor;
+  
+  // Total Operacional (Diárias + Outros Operacionais)
+  const totalOutrosOperacionais = 0; // Placeholder para outros itens operacionais
+  const totalOperacional = totalDiarias + totalOutrosOperacionais;
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
   const totalAviacaoExercito = 0;
   
-  // Total Operacional (Placeholder)
-  const totalOperacional = 0;
-
   return {
     totalLogisticoGeral,
     totalOperacional,
@@ -413,6 +428,10 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalMaterialPermanente,
     totalAviacaoExercito,
     totalRacoesOperacionaisGeral, // NOVO: Retorna o total de rações operacionais
+    
+    // NOVO: Diárias
+    totalDiarias,
+    totalMilitaresDiarias,
   };
 };
 
@@ -482,6 +501,9 @@ export const PTrabCostSummary = ({
       totalMaterialPermanente: 0,
       totalAviacaoExercito: 0,
       totalRacoesOperacionaisGeral: 0, // NOVO: Adiciona ao initialData
+      // NOVO: Diárias
+      totalDiarias: 0,
+      totalMilitaresDiarias: 0,
     },
   });
   
@@ -998,21 +1020,58 @@ export const PTrabCostSummary = ({
                   {/* REMOVIDO: Não haverá valores para Classes IV e X */}
                 </div>
 
-                {/* Aba Operacional (Placeholder) */}
+                {/* Aba Operacional (NOVO: Incluindo Diárias) */}
                 <div className="space-y-3 border-l-4 border-blue-500 pl-3 pt-4">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-blue-600">
-                    <Activity className="h-3 w-3" />
-                    Operacional ({formatCurrency(totals.totalOperacional)})
+                  <div className="flex items-center justify-between text-xs font-semibold text-blue-600 mb-2">
+                    <div className="flex items-center gap-2">
+                        <Activity className="h-3 w-3" />
+                        Operacional
+                    </div>
+                    <span className="font-bold text-sm">{formatCurrency(totals.totalOperacional)}</span>
                   </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="w-1/2 text-left">Itens Operacionais</span>
-                    <span className="w-1/4 text-right font-medium">
-                      {/* Vazio */}
-                    </span>
-                    <span className="w-1/4 text-right font-medium">
-                      {formatCurrency(totals.totalOperacional)}
-                    </span>
-                  </div>
+                  
+                  {/* Diárias (ND 33.90.15) */}
+                  <Accordion type="single" collapsible className="w-full pt-0">
+                    <AccordionItem value="item-diarias" className="border-b-0">
+                      <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                          <div className="flex items-center gap-1 text-foreground">
+                            <Briefcase className="h-3 w-3 text-blue-500" />
+                            Diárias (ND 33.90.15)
+                          </div>
+                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                            {formatCurrency(totals.totalDiarias)}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className="w-1/2 text-left">Total de Militares</span>
+                            <span className="w-1/4 text-right font-medium">
+                              {formatNumber(totals.totalMilitaresDiarias)}
+                            </span>
+                            <span className="w-1/4 text-right font-medium text-background">
+                                {formatCurrency(0)}
+                            </span>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                  
+                  {/* Outros Operacionais (Placeholder) */}
+                  {totals.totalOperacional - totals.totalDiarias > 0 && (
+                    <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                        <span className="w-1/2 text-left">Outros Itens Operacionais</span>
+                        <span className="w-1/4 text-right font-medium">
+                            {/* Vazio */}
+                        </span>
+                        <span className="w-1/4 text-right font-medium">
+                            {formatCurrency(totals.totalOperacional - totals.totalDiarias)}
+                        </span>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Aba Material Permanente (Placeholder) */}
