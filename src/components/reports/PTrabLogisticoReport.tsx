@@ -267,6 +267,24 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         .reduce((acc, l) => acc + l.valor_total_linha, 0);
   }, [gruposPorOM, nomeRM]);
   
+  // NOVO: Total Litros Diesel Geral
+  const totalDieselLitrosGeral = useMemo(() => {
+    const rmGroup = gruposPorOM[nomeRM];
+    if (!rmGroup) return 0;
+    return rmGroup.linhasClasseIII
+        .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL')
+        .reduce((acc, l) => acc + l.total_litros_linha, 0);
+  }, [gruposPorOM, nomeRM]);
+
+  // NOVO: Total Litros Gasolina Geral
+  const totalGasolinaLitrosGeral = useMemo(() => {
+    const rmGroup = gruposPorOM[nomeRM];
+    if (!rmGroup) return 0;
+    return rmGroup.linhasClasseIII
+        .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
+        .reduce((acc, l) => acc + l.total_litros_linha, 0);
+  }, [gruposPorOM, nomeRM]);
+  
   const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39;
   // O valor total solicitado inclui o GND3 (33.90.30 + 33.90.39) + o valor total do combustível (que é GND3, mas é segregado na tabela)
   const valorTotalSolicitado = totalGeral_GND3_ND + totalValorCombustivel;
@@ -630,13 +648,13 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 const ug_qs_formatted = formatCodug(registro.ug_qs);
                 const ug_qr_formatted = formatCodug(registro.ug);
 
-                if ((linha as LinhaTabela).tipo === 'QS') {
+                if (registro.categoria === 'RACAO_QUENTE' && (linha as LinhaTabela).tipo === 'QS') {
                     rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                     rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                     rowData.valorC = registro.total_qs;
                     rowData.valorE = registro.total_qs;
                     rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
-                } else { // QR
+                } else if (registro.categoria === 'RACAO_QUENTE' && (linha as LinhaTabela).tipo === 'QR') { // QR
                     rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                     rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
                     rowData.valorC = registro.total_qr;
@@ -837,21 +855,21 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         const isRM = nomeOM === nomeRM;
         
         // F - LITROS OD
-        subtotalRow.getCell('F').value = isRM && totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
+        subtotalRow.getCell('F').value = isRM ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
         subtotalRow.getCell('F').alignment = dataCenterMiddleAlignment;
         subtotalRow.getCell('F').font = headerFontStyle;
         subtotalRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         subtotalRow.getCell('F').border = cellBorder;
         
         // G - LITROS GAS
-        subtotalRow.getCell('G').value = isRM && totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
+        subtotalRow.getCell('G').value = isRM ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
         subtotalRow.getCell('G').alignment = dataCenterMiddleAlignment;
         subtotalRow.getCell('G').font = headerFontStyle;
         subtotalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         subtotalRow.getCell('G').border = cellBorder;
         
         // H - PREÇO TOTAL COMBUSTÍVEL
-        subtotalRow.getCell('H').value = isRM && totaisOM.total_combustivel > 0 ? totaisOM.total_combustivel : '';
+        subtotalRow.getCell('H').value = isRM ? totaisOM.total_combustivel : '';
         subtotalRow.getCell('H').alignment = dataCenterMonetaryAlignment;
         subtotalRow.getCell('H').font = headerFontStyle;
         subtotalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
@@ -922,23 +940,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       totalGeralSomaRow.getCell('E').border = cellBorder;
       totalGeralSomaRow.getCell('E').numFmt = 'R$ #,##0.00';
       
-      const totalDiesel = gruposPorOM[nomeRM]?.linhasClasseIII
-        .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL')
-        .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
-        
-      const totalGasolina = gruposPorOM[nomeRM]?.linhasClasseIII
-        .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
-        .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
-        
       // F - LITROS OD (Total Geral)
-      totalGeralSomaRow.getCell('F').value = totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : '';
+      totalGeralSomaRow.getCell('F').value = totalDieselLitrosGeral > 0 ? `${formatNumber(totalDieselLitrosGeral)} L OD` : '';
       totalGeralSomaRow.getCell('F').alignment = dataCenterMiddleAlignment;
       totalGeralSomaRow.getCell('F').font = headerFontStyle;
       totalGeralSomaRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       totalGeralSomaRow.getCell('F').border = cellBorder;
       
       // G - LITROS GAS (Total Geral)
-      totalGeralSomaRow.getCell('G').value = totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : '';
+      totalGeralSomaRow.getCell('G').value = totalGasolinaLitrosGeral > 0 ? `${formatNumber(totalGasolinaLitrosGeral)} L GAS` : '';
       totalGeralSomaRow.getCell('G').alignment = dataCenterMiddleAlignment;
       totalGeralSomaRow.getCell('G').font = headerFontStyle;
       totalGeralSomaRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
@@ -1049,7 +1059,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, diasOperacao, totalGeral_33_90_30, totalGeral_33_90_39, totalValorCombustivel, valorTotalSolicitado, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo, generateClasseIIIMemoriaCalculo]);
+  }, [ptrabData, diasOperacao, totalGeral_33_90_30, totalGeral_33_90_39, totalValorCombustivel, valorTotalSolicitado, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo, generateClasseIIIMemoriaCalculo, totalDieselLitrosGeral, totalGasolinaLitrosGeral]);
 
 
   return (
@@ -1179,13 +1189,13 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             const ug_qs_formatted = formatCodug(registro.ug_qs);
                             const ug_qr_formatted = formatCodug(registro.ug);
 
-                            if (tipo === 'QS') {
+                            if (registro.categoria === 'RACAO_QUENTE' && tipo === 'QS') {
                                 rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                                 rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                                 rowData.valorC = registro.total_qs;
                                 rowData.valorE = registro.total_qs;
                                 rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
-                            } else { // QR
+                            } else if (registro.categoria === 'RACAO_QUENTE' && tipo === 'QR') { // QR
                                 rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA`;
                                 rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
                                 rowData.valorC = registro.total_qr;
@@ -1339,17 +1349,20 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
                       {/* Parte Laranja (Combustivel) - Exibe apenas se for a RM Fornecedora */}
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-                        {nomeOM === nomeRM && totaisOM.totalDieselLitros > 0 
+                        {/* Linha 1332: Total de OD da RM Fornecedora */}
+                        {nomeOM === nomeRM 
                           ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
                           : ''}
                       </td>
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-                        {nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0 
+                        {/* Linha 1337: Total de Gasolina da RM Fornecedora */}
+                        {nomeOM === nomeRM 
                           ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` 
                           : ''}
                       </td>
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-                        {nomeOM === nomeRM && totaisOM.total_combustivel > 0 
+                        {/* Linha 1342: Valor Total de Combustível da RM Fornecedora */}
+                        {nomeOM === nomeRM 
                           ? formatCurrency(totaisOM.total_combustivel) 
                           : ''}
                       </td>
@@ -1376,14 +1389,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 // ========== TOTAL GERAL ==========
                 ...(() => {
                   // Totais de combustível por tipo (para exibição na parte laranja)
-                  const totalDiesel = gruposPorOM[nomeRM]?.linhasClasseIII
-                    .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL')
-                    .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
-                    
-                  const totalGasolina = gruposPorOM[nomeRM]?.linhasClasseIII
-                    .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
-                    .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
-                    
+                  // Usando os totais gerais calculados no useMemo
+                  const totalDiesel = totalDieselLitrosGeral;
+                  const totalGasolina = totalGasolinaLitrosGeral;
                   const totalValorCombustivelFinal = totalValorCombustivel;
 
                   return [
@@ -1393,11 +1401,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_30)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_39)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_GND3_ND)}</td>
-                      {/* Total Geral Litros OD */}
+                      {/* Linha 1387: Total Geral Litros OD */}
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : ''}</td>
-                      {/* Total Geral Litros GAS */}
+                      {/* Linha 1388: Total Geral Litros GAS */}
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : ''}</td>
-                      {/* Total Geral Valor Combustível */}
+                      {/* Linha 1389: Total Geral Valor Combustível */}
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalValorCombustivelFinal > 0 ? formatCurrency(totalValorCombustivelFinal) : ''}</td>
                       <td style={{ backgroundColor: 'white' }}></td>
                     </tr>,
@@ -1406,6 +1414,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     <tr key="total-geral-final-row" className="total-geral-final-row">
                       <td colSpan={6} style={{ backgroundColor: '#E8E8E8', border: '1px solid #000', borderRight: 'none' }}></td>
                       <td className="text-center font-bold" style={{ whiteSpace: 'nowrap', backgroundColor: '#E8E8E8', border: '1px solid #000' }}>VALOR TOTAL</td>
+                      {/* Linha 1397: Valor Total Solicitado (inclui combustível) */}
                       <td className="text-center font-bold" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
                       <td style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}></td>
                     </tr>,
