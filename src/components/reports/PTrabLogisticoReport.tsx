@@ -258,6 +258,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   
   // NOVO: Total Combustível é a soma dos valores das linhas desagregadas de Combustível na RM
   const totalValorCombustivel = useMemo(() => {
+    // O cálculo deve somar o total_combustivel de TODAS as OMs, mas o total_combustivel só é preenchido na RM
+    // Vamos usar a lógica que soma apenas os valores das linhas desagregadas de Combustível na RM
     const rmGroup = gruposPorOM[nomeRM];
     if (!rmGroup) return 0;
     return rmGroup.linhasClasseIII
@@ -266,6 +268,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   }, [gruposPorOM, nomeRM]);
   
   const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39;
+  // O valor total solicitado inclui o GND3 (33.90.30 + 33.90.39) + o valor total do combustível (que é GND3, mas é segregado na tabela)
   const valorTotalSolicitado = totalGeral_GND3_ND + totalValorCombustivel;
   
   const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
@@ -833,18 +836,21 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         // Combustível (Apenas na RM)
         const isRM = nomeOM === nomeRM;
         
+        // F - LITROS OD
         subtotalRow.getCell('F').value = isRM && totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
         subtotalRow.getCell('F').alignment = dataCenterMiddleAlignment;
         subtotalRow.getCell('F').font = headerFontStyle;
         subtotalRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         subtotalRow.getCell('F').border = cellBorder;
         
+        // G - LITROS GAS
         subtotalRow.getCell('G').value = isRM && totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
         subtotalRow.getCell('G').alignment = dataCenterMiddleAlignment;
         subtotalRow.getCell('G').font = headerFontStyle;
         subtotalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         subtotalRow.getCell('G').border = cellBorder;
         
+        // H - PREÇO TOTAL COMBUSTÍVEL
         subtotalRow.getCell('H').value = isRM && totaisOM.total_combustivel > 0 ? totaisOM.total_combustivel : '';
         subtotalRow.getCell('H').alignment = dataCenterMonetaryAlignment;
         subtotalRow.getCell('H').font = headerFontStyle;
@@ -924,18 +930,21 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
         .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
         
+      // F - LITROS OD (Total Geral)
       totalGeralSomaRow.getCell('F').value = totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : '';
       totalGeralSomaRow.getCell('F').alignment = dataCenterMiddleAlignment;
       totalGeralSomaRow.getCell('F').font = headerFontStyle;
       totalGeralSomaRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       totalGeralSomaRow.getCell('F').border = cellBorder;
       
+      // G - LITROS GAS (Total Geral)
       totalGeralSomaRow.getCell('G').value = totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : '';
       totalGeralSomaRow.getCell('G').alignment = dataCenterMiddleAlignment;
       totalGeralSomaRow.getCell('G').font = headerFontStyle;
       totalGeralSomaRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       totalGeralSomaRow.getCell('G').border = cellBorder;
       
+      // H - PREÇO TOTAL COMBUSTÍVEL (Total Geral)
       totalGeralSomaRow.getCell('H').value = totalValorCombustivel;
       totalGeralSomaRow.getCell('H').alignment = dataCenterMonetaryAlignment;
       totalGeralSomaRow.getCell('H').font = headerFontStyle;
@@ -1328,7 +1337,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_30)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_39)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
-                      {/* Parte Laranja (Combustivel) */}
+                      {/* Parte Laranja (Combustivel) - Exibe apenas se for a RM Fornecedora */}
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
                         {nomeOM === nomeRM && totaisOM.totalDieselLitros > 0 
                           ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
@@ -1384,8 +1393,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_30)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_39)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_GND3_ND)}</td>
+                      {/* Total Geral Litros OD */}
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : ''}</td>
+                      {/* Total Geral Litros GAS */}
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : ''}</td>
+                      {/* Total Geral Valor Combustível */}
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalValorCombustivelFinal > 0 ? formatCurrency(totalValorCombustivelFinal) : ''}</td>
                       <td style={{ backgroundColor: 'white' }}></td>
                     </tr>,
