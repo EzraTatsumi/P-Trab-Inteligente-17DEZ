@@ -112,7 +112,7 @@ src/components/CurrencyInput.tsx
 src/components/RefLPCFormSection.tsx
 src/components/OmUploadConfirmDialog.tsx
 src/components/ConsolidationNumberDialog.tsx
-#REMOVIDO: src/components/PTrabCostSummary.tsx
+src/components/PTrabCostSummary.tsx
 src/components/AIChatDrawer.tsx
 src/components/ManageSharingDialog.tsx
 src/components/LinkPTrabDialog.tsx
