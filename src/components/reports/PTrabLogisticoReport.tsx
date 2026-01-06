@@ -456,9 +456,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       addHeaderRow(ptrabData.comando_militar_area.toUpperCase());
       
       let row = worksheet.getRow(currentRow); // Declaração única de 'row'
-      omExtensoRow.getCell(1).value = (ptrabData.nome_om_extenso || ptrabData.nome_om).toUpperCase();
-      omExtensoRow.getCell(1).font = titleFontStyle;
-      omExtensoRow.getCell(1).alignment = centerMiddleAlignment;
+      row.getCell(1).value = (ptrabData.nome_om_extenso || ptrabData.nome_om).toUpperCase();
+      row.getCell(1).font = titleFontStyle;
+      row.getCell(1).alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
@@ -846,7 +846,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         if (nomeOM === nomeRM) {
             row.getCell('F').value = totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
             row.getCell('G').value = totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
-            row.getCell('H').value = totaisOM.total_combustivel > 0 ? totaisOM.total_combustivel : '';
+            // FIX: Atribui o valor numérico diretamente para garantir a formatação monetária
+            row.getCell('H').value = totaisOM.total_combustivel; 
             
             ['F', 'G'].forEach(col => {
                 row.getCell(col).alignment = centerMiddleAlignment;
@@ -930,7 +931,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     
     row.getCell('F').value = totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : '';
     row.getCell('G').value = totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : '';
-    row.getCell('H').value = totalValorCombustivelFinal > 0 ? totalValorCombustivelFinal : '';
+    // FIX: Atribui o valor numérico diretamente para garantir a formatação monetária
+    row.getCell('H').value = totalValorCombustivelFinal;
     
     ['F', 'G'].forEach(col => {
         row.getCell(col).alignment = centerMiddleAlignment;
@@ -1361,7 +1363,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                           </td>
                           <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
                             {/* Coluna H: Valor Total de Combustível da RM Fornecedora */}
-                            {nomeOM === nomeRM && totaisOM.total_combustivel > 0
+                            {nomeOM === nomeRM
                               ? formatCurrency(totaisOM.total_combustivel) 
                               : ''}
                           </td>
@@ -1401,7 +1403,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_GND3_ND)}</td>
                         <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : ''}</td>
                         <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : ''}</td>
-                        <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalValorCombustivelFinal > 0 ? formatCurrency(totalValorCombustivelFinal) : ''}</td>
+                        <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{formatCurrency(totalValorCombustivelFinal)}</td>
                         <td style={{ backgroundColor: 'white' }}></td>
                       </tr>,
 
