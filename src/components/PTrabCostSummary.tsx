@@ -359,7 +359,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // 4. Processamento de Diárias (ND 33.90.15)
   let totalDiariasND15_TaxaEmbarque = 0; // Taxa de Embarque (valor_taxa_embarque)
   let totalDiariasND15_DiariaBase = 0; // Diárias (valor principal) (valor_nd_15 - valor_taxa_embarque)
-  let totalDiariasLogisticaND30 = 0; // NOVO: Para custos logísticos associados a diárias (e.g., passagens ND 30)
+  let totalDiariasLogisticaND30 = 0; // Custo Logístico (ND 30) associado a diárias (DEVE SER ZERO)
   let totalMilitaresDiarias = 0;
   let totalDiasViagem = 0; // Novo total
 
@@ -372,8 +372,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
           totalDiariasND15_TaxaEmbarque += taxaEmbarque;
           totalDiariasND15_DiariaBase += totalGeral - taxaEmbarque;
           
-          // Acumula o valor ND 30 real
-          totalDiariasLogisticaND30 += Number(record.valor_nd_30 || 0); 
+          // CORREÇÃO CRÍTICA: ND 30 de diárias deve ser ZERO para o resumo de custos
+          // totalDiariasLogisticaND30 += Number(record.valor_nd_30 || 0); // REMOVIDO
           
           totalMilitaresDiarias += Number(record.quantidade || 0);
           totalDiasViagem += Number(record.dias_operacao || 0);
@@ -383,11 +383,13 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // O total da Diária (ND 33.90.15) é a soma das duas subdivisões
   const totalDiarias = totalDiariasND15_TaxaEmbarque + totalDiariasND15_DiariaBase; 
     
-  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante) + Diárias ND 30
-  const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX + totalCombustivel + totalLubrificanteValor + totalDiariasLogisticaND30;
+  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
+  // CORREÇÃO: totalDiariasLogisticaND30 removido daqui
+  const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX + totalCombustivel + totalLubrificanteValor;
   
   // Total Operacional (Diárias + Outros Operacionais)
   const totalOutrosOperacionais = 0; // Placeholder para outros itens operacionais
+  // CORREÇÃO: totalOperacional é o total das diárias (ND 15)
   const totalOperacional = totalDiarias + totalOutrosOperacionais;
   
   // Novos totais (placeholders)
@@ -453,7 +455,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalDiarias,
     totalDiariasND15: totalDiariasND15_TaxaEmbarque, // Taxa de Embarque (ND 15)
     totalDiariasND30: totalDiariasND15_DiariaBase, // Diárias Base (ND 15) - Mantendo o nome confuso para compatibilidade de UI
-    totalDiariasLogisticaND30, // NOVO: O valor real de ND 30 das diárias
+    totalDiariasLogisticaND30: 0, // CORRIGIDO: Deve ser zero
     totalMilitaresDiarias,
     totalDiasViagem, // Novo: Total de dias de viagem
   };
@@ -1044,7 +1046,7 @@ export const PTrabCostSummary = ({
                     </AccordionItem>
                   </Accordion>
                   
-                  {/* Diárias ND 30 (Logística) */}
+                  {/* Diárias ND 30 (Logística) - AGORA SEMPRE ZERO */}
                   {totals.totalDiariasLogisticaND30 > 0 && (
                     <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-border/50 mt-1">
                         <span className="w-1/2 text-left font-semibold text-orange-500">Diárias (ND 30)</span>
