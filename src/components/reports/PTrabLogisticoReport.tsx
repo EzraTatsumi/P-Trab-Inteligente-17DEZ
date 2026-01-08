@@ -834,22 +834,22 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         // Combustível (Apenas na RM)
         const isRM = nomeOM === nomeRM;
         
-        // CORREÇÃO: Remove a verificação > 0 para garantir que '0 L OD' seja exibido se for a RM
-        subtotalRow.getCell('F').value = isRM ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
+        // CORREÇÃO: Usando ?? 0 para garantir que o valor seja sempre um número antes de formatar
+        subtotalRow.getCell('F').value = isRM ? `${formatNumber(totaisOM.totalDieselLitros ?? 0)} L OD` : '';
         subtotalRow.getCell('F').alignment = dataCenterMiddleAlignment;
         subtotalRow.getCell('F').font = headerFontStyle;
         subtotalRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         subtotalRow.getCell('F').border = cellBorder;
         
-        // CORREÇÃO: Remove a verificação > 0 para garantir que '0 L GAS' seja exibido se for a RM
-        subtotalRow.getCell('G').value = isRM ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
+        // CORREÇÃO: Usando ?? 0
+        subtotalRow.getCell('G').value = isRM ? `${formatNumber(totaisOM.totalGasolinaLitros ?? 0)} L GAS` : '';
         subtotalRow.getCell('G').alignment = dataCenterMiddleAlignment;
         subtotalRow.getCell('G').font = headerFontStyle;
         subtotalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         subtotalRow.getCell('G').border = cellBorder;
         
-        // CORREÇÃO: Remove a verificação > 0 para garantir que 'R$ 0,00' seja exibido se for a RM
-        subtotalRow.getCell('H').value = isRM ? totaisOM.total_combustivel : '';
+        // CORREÇÃO: Usando ?? 0 e garantindo que o valor seja atribuído se for RM
+        subtotalRow.getCell('H').value = isRM ? (totaisOM.total_combustivel ?? 0) : '';
         subtotalRow.getCell('H').alignment = dataCenterMonetaryAlignment;
         subtotalRow.getCell('H').font = headerFontStyle;
         subtotalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
@@ -1343,17 +1343,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             <>
                                 <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
                                     {isRMFornecedora
-                                    ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
+                                    ? `${formatNumber(totaisOM.totalDieselLitros ?? 0)} L OD` // Usando ?? 0
                                     : ''}
                                 </td>
                                 <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
                                     {isRMFornecedora
-                                    ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` 
+                                    ? `${formatNumber(totaisOM.totalGasolinaLitros ?? 0)} L GAS` // Usando ?? 0
                                     : ''}
                                 </td>
                                 <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
                                     {isRMFornecedora
-                                    ? formatCurrency(totaisOM.total_combustivel) 
+                                    ? formatCurrency(totaisOM.total_combustivel ?? 0) // Usando ?? 0
                                     : ''}
                                 </td>
                             </>
