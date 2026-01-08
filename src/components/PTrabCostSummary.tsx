@@ -1072,7 +1072,7 @@ export const PTrabCostSummary = ({
                               {formatNumber(totals.totalMilitaresDiarias)}
                             </span>
                             <span className="w-1/4 text-right font-medium text-background">
-                                {formatCurrency(0)}
+                                {/* Vazio */}
                             </span>
                           </div>
                           {/* Detalhe 2: Total de Dias de Viagem */}
@@ -1082,14 +1082,24 @@ export const PTrabCostSummary = ({
                               {formatNumber(totals.totalDiasViagem)} dias
                             </span>
                             <span className="w-1/4 text-right font-medium text-background">
-                                {formatCurrency(0)}
+                                {/* Vazio */}
                             </span>
                           </div>
-                          {/* Detalhe 3: Taxa de Embarque / Diárias (ND 15) */}
+                          {/* Detalhe 3: Taxa de Embarque (ND 15) */}
                           <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                            <span className="w-1/2 text-left font-semibold">Taxa de Embarque / Diárias (ND 15)</span>
+                            <span className="w-1/2 text-left font-semibold">Taxa de Embarque (ND 15)</span>
+                            <span className="w-1/4 text-right font-medium text-background">
+                                {/* Vazio */}
+                            </span>
                             <span className="w-1/4 text-right font-medium text-green-600">
                                 {formatCurrency(totals.totalDiariasND15)}
+                            </span>
+                          </div>
+                          {/* Detalhe 4: Diárias (ND 30) */}
+                          <div className="flex justify-between text-muted-foreground pt-1">
+                            <span className="w-1/2 text-left font-semibold">Diárias (ND 30)</span>
+                            <span className="w-1/4 text-right font-medium text-background">
+                                {/* Vazio */}
                             </span>
                             <span className="w-1/4 text-right font-medium text-green-600">
                                 {formatCurrency(totals.totalDiariasND30)}
