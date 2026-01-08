@@ -624,10 +624,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             
             if (isClasseI) { // Classe I (QS/QR)
                 const registro = (linha as LinhaTabela).registro as ClasseIRegistro;
+                const tipo = (linha as LinhaTabela).tipo;
                 const ug_qs_formatted = formatCodug(registro.ug_qs);
                 const ug_qr_formatted = formatCodug(registro.ug);
 
-                if ((linha as LinhaTabela).tipo === 'QS') {
+                if (tipo === 'QS') {
                     rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                     rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                     rowData.valorC = registro.total_qs;
@@ -1010,7 +1011,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow += 3;
       
       const cmtRow = worksheet.getRow(currentRow);
-      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
@@ -1335,16 +1336,19 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
                       {/* Parte Laranja (Combustivel) - AJUSTADO PARA EXIBIR 0 L OD/GAS E R$ 0,00 SE FOR RM */}
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
+                        {/* CORREÇÃO AQUI: Remover a verificação > 0 */}
                         {nomeOM === nomeRM 
                           ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
                           : ''}
                       </td>
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
+                        {/* CORREÇÃO AQUI: Remover a verificação > 0 */}
                         {nomeOM === nomeRM 
                           ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` 
                           : ''}
                       </td>
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
+                        {/* CORREÇÃO AQUI: Remover a verificação > 0 */}
                         {nomeOM === nomeRM 
                           ? formatCurrency(totaisOM.total_combustivel) 
                           : ''}
