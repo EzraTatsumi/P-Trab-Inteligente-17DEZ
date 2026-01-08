@@ -84,7 +84,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     }
   });
   
-  // 2. Fetch Classe II/V/VI/VII/VIII/IX records from their respective tables
+  // 2. Fetch Classes II, V, VI, VII, VIII, IX records from their respective tables
   const [
     { data: classeIIData, error: classeIIError },
     { data: classeVData, error: classeVError },
@@ -333,28 +333,28 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // Totais de Combustível (ND 33.90.30)
   const totalDieselValor = combustivelRecords
     .filter(r => r.tipo_combustivel === 'DIESEL' || r.tipo_combustivel === 'OD')
-    .reduce((sum, record) => sum + Number(record.valor_total || 0), 0);
+    .reduce((sum, record) => sum + Number(record.valor_total ?? 0), 0);
     
   const totalGasolinaValor = combustivelRecords
     .filter(r => r.tipo_combustivel === 'GASOLINA' || r.tipo_combustivel === 'GAS')
-    .reduce((sum, record) => sum + Number(record.valor_total || 0), 0);
+    .reduce((sum, record) => sum + Number(record.valor_total ?? 0), 0);
     
   const totalDieselLitros = combustivelRecords
     .filter(r => r.tipo_combustivel === 'DIESEL' || r.tipo_combustivel === 'OD')
-    .reduce((sum, record) => sum + Number(record.total_litros || 0), 0);
+    .reduce((sum, record) => sum + Number(record.total_litros ?? 0), 0);
     
   const totalGasolinaLitros = combustivelRecords
     .filter(r => r.tipo_combustivel === 'GASOLINA' || r.tipo_combustivel === 'GAS')
-    .reduce((sum, record) => sum + Number(record.total_litros || 0), 0);
+    .reduce((sum, record) => sum + Number(record.total_litros ?? 0), 0);
 
   const totalCombustivel = totalDieselValor + totalGasolinaValor;
   
   // Totais de Lubrificante (ND 33.90.30)
   const totalLubrificanteValor = lubrificanteRecords
-    .reduce((sum, record) => sum + Number(record.valor_total || 0), 0);
+    .reduce((sum, record) => sum + Number(record.valor_total ?? 0), 0);
     
   const totalLubrificanteLitros = lubrificanteRecords
-    .reduce((sum, record) => sum + Number(record.total_litros || 0), 0);
+    .reduce((sum, record) => sum + Number(record.total_litros ?? 0), 0);
     
   // 4. Processamento de Diárias (ND 33.90.15)
   let totalDiariasND15_TaxaEmbarque = 0; // Taxa de Embarque (valor_taxa_embarque)
@@ -384,7 +384,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const totalDiarias = totalDiariasND15_TaxaEmbarque + totalDiariasND15_DiariaBase; 
     
   // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
-  const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX + totalCombustivel + totalLubrificanteValor;
+  const totalLogisticoGeral = totalClasseI + totalClassesDiversas + totalClasseIII + totalCombustivel + totalLubrificanteValor;
   
   // Total Operacional (Diárias + Outros Operacionais)
   const totalOutrosOperacionais = 0; // Placeholder para outros itens operacionais
@@ -452,7 +452,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     // NOVO: Diárias
     totalDiarias,
     totalDiariasND15: totalDiariasND15_TaxaEmbarque, // Taxa de Embarque (ND 15)
-    totalDiariasND30: totalDiariasND15_DiariaBase, // Diárias Base (ND 15)
+    totalDiariasND30: totalDiariasND15_DiariaBase, // Diárias (valor principal)
     totalMilitaresDiarias,
     totalDiasViagem, // Novo: Total de dias de viagem
   };

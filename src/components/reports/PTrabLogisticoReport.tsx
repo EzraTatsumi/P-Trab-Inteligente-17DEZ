@@ -921,11 +921,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       totalGeralSomaRow.getCell('E').numFmt = 'R$ #,##0.00';
       
       const totalDiesel = gruposPorOM[nomeRM]?.linhasClasseIII
-        .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL')
+        .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL') // Filtra apenas Diesel
         .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
         
       const totalGasolina = gruposPorOM[nomeRM]?.linhasClasseIII
-        .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
+        .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA') // Filtra apenas Gasolina
         .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
         
       const totalValorCombustivelFinal = totalValorCombustivel;
