@@ -497,7 +497,8 @@ const PTrabManager = () => {
           }
 
           // SOMA TOTAL DA ABA LOGÍSTICA
-          totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII + totalDiariaND30;
+          // CORREÇÃO: Removendo totalDiariaND30 da soma Logística, pois Diária é totalmente ND 15 (Operacional).
+          totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII;
           
           // SOMA TOTAL DA ABA OPERACIONAL
           totalOperacionalCalculado = totalDiariaND15;
