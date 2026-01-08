@@ -361,7 +361,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, totalValorCombustivel, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo]);
+  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, totalValorSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo]);
 
   // NOVO: Função para abrir o diálogo de impressão do navegador
   const handlePrint = () => {
@@ -1299,7 +1299,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         }
                         
                         return (
-                            <tr key={index}>
+                            <tr key={`${nomeOM}-expense-${index}`} className="expense-row">
                                 <td className="col-despesas">
                                     {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
                                 </td>
@@ -1322,13 +1322,13 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     }),
                     
                     // Subtotal da OM
-                    <tr key={`subtotal-${omIndex}`} className="subtotal-row">
+                    <tr key={`${nomeOM}-subtotal`} className="subtotal-row">
                       <td colSpan={2} className="text-right font-bold">SOMA POR ND E GP DE DESPESA</td>
                       {/* Parte Azul (Natureza de Despesa) */}
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_30)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_39)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
-                      {/* Parte Laranja (Combustivel) */}
+                      {/* Parte Laranja (Combustivel) - APENAS SE FOR A RM */}
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
                         {nomeOM === nomeRM && totaisOM.totalDieselLitros > 0 
                           ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
@@ -1348,7 +1348,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     </tr>,
                     
                     // Total da OM
-                    <tr key={`total-${omIndex}`} className="subtotal-om-row">
+                    <tr key={`${nomeOM}-total`} className="subtotal-om-row">
                       <td colSpan={4} className="text-right font-bold">
                         VALOR TOTAL DO {nomeOM}
                       </td>
