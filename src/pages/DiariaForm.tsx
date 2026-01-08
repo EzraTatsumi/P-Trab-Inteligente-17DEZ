@@ -444,8 +444,8 @@ const DiariaForm = () => {
             quantidade: totals.totalMilitares,
             valor_taxa_embarque: totals.totalTaxaEmbarque,
             valor_total: totals.totalGeral,
-            valor_nd_30: 0, 
-            valor_nd_15: totals.totalGeral, 
+            valor_nd_30: 0, // CORRIGIDO: ND 30 é zero
+            valor_nd_15: totals.totalGeral, // CORRIGIDO: ND 15 é o total geral
             
             quantidades_por_posto: newFormData.quantidades_por_posto,
             detalhamento: memoria,
@@ -515,8 +515,8 @@ const DiariaForm = () => {
                 quantidade: calculos.totalMilitares,
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
-                valor_nd_30: 0, 
-                valor_nd_15: calculos.totalGeral, // CORRIGIDO: valor_nd_15 é o total geral
+                valor_nd_30: 0, // CORRIGIDO: ND 30 é zero
+                valor_nd_15: calculos.totalGeral, // CORRIGIDO: ND 15 é o total geral
                 
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
@@ -1166,7 +1166,7 @@ const DiariaForm = () => {
 
                                                             {/* Diárias Section (Multi-line breakdown) */}
                                                             <div className="grid grid-cols-3 gap-4 text-xs">
-                                                                <p className="font-medium text-muted-foreground col-span-1">{item.destinoLabel}</p>
+                                                                <p className="font-medium text-muted-foreground col-span-1">Diárias Base:</p>
                                                                 <div className="space-y-1 w-full col-span-2">
                                                                     {rankCalculationElements}
                                                                 </div>
@@ -1179,8 +1179,8 @@ const DiariaForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Destino Recurso:</p>
-                                                                <p className="font-medium">Taxa de Embarque:</p>
-                                                                <p className="font-medium">Diárias:</p>
+                                                                <p className="font-medium">Taxa de Embarque (ND 15):</p>
+                                                                <p className="font-medium">Diárias (ND 15):</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
@@ -1278,6 +1278,8 @@ const DiariaForm = () => {
                                                 <div className="space-y-3">
                                                     {omRegistros.map((registro) => {
                                                         const totalGeral = registro.valor_total;
+                                                        // CORRIGIDO: totalDiariaBase é o valor_nd_30 (que agora é 0) e Taxa de Embarque é valor_nd_15
+                                                        // Mas para fins de exibição, vamos usar os campos salvos:
                                                         const totalDiariaBase = totalGeral - (registro.valor_taxa_embarque || 0);
                                                         const totalTaxaEmbarque = registro.valor_taxa_embarque || 0;
                                                         
@@ -1339,7 +1341,7 @@ const DiariaForm = () => {
                                                                 {/* Detalhes da Alocação */}
                                                                 <div className="pt-2 border-t mt-2">
                                                                     <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">Diária:</span>
+                                                                        <span className="text-muted-foreground">Diária Base:</span>
                                                                         <span className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</span>
                                                                     </div>
                                                                     <div className="flex justify-between text-xs">
@@ -1347,8 +1349,8 @@ const DiariaForm = () => {
                                                                         <span className="font-medium text-green-600">{formatCurrency(totalTaxaEmbarque)}</span>
                                                                     </div>
                                                                     <div className="flex justify-between text-xs font-bold pt-1">
-                                                                        <span className="text-muted-foreground">Total:</span>
-                                                                        <span className="text-foreground">{formatCurrency(totalGeral)}</span>
+                                                                        <span className="text-muted-foreground">Total (ND 15):</span>
+                                                                        <span className="text-foreground">{formatCurrency(registro.valor_nd_15 || 0)}</span>
                                                                     </div>
                                                                 </div>
                                                             </Card>

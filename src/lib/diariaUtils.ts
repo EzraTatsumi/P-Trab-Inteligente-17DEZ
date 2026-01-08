@@ -195,6 +195,7 @@ export const generateDiariaMemoriaCalculo = (
     }
     
     // CABEÇALHO
+    // CORRIGIDO: ND 33.90.15
     const header = `33.90.15 - Custeio com Diárias de ${totalMilitares} ${militarText} ${omPreposition} ${organizacao}, para ${nr_viagens} ${viagemText} com duração de ${dias_operacao} ${diaText} em ${local_atividade}, durante a ${faseConcordancia} ${faseFormatada}.`;
 
     let detalhamentoValores = '';

@@ -125,7 +125,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .eq('p_trab_id', ptrabId),
     supabase
       .from('diaria_registros') // NOVO: Diárias
-      .select('valor_total, valor_nd_15, valor_nd_30, quantidade, dias_operacao') // Buscando ND 15 e ND 30
+      // CORRIGIDO: Buscando valor_nd_15 (total geral) e valor_taxa_embarque (para detalhamento)
+      .select('valor_total, valor_nd_15, valor_taxa_embarque, quantidade, dias_operacao') 
       .eq('p_trab_id', ptrabId),
   ]);
 
@@ -356,25 +357,31 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     .reduce((sum, record) => sum + Number(record.total_litros || 0), 0);
     
   // 4. Processamento de Diárias (ND 33.90.15)
-  let totalDiariasND15 = 0; // Taxa de Embarque
-  let totalDiariasND30 = 0; // Diárias (valor principal)
+  let totalDiariasND15_TaxaEmbarque = 0; // Taxa de Embarque (valor_taxa_embarque)
+  let totalDiariasND15_DiariaBase = 0; // Diárias (valor principal) (valor_nd_15 - valor_taxa_embarque)
+  let totalDiariasND30 = 0; // Deve ser 0
   let totalMilitaresDiarias = 0;
   let totalDiasViagem = 0; // Novo total
 
   if (!diariaError) {
       (diariaData || []).forEach(record => {
-          // ND 15 é a Taxa de Embarque
-          totalDiariasND15 += Number(record.valor_nd_15 || 0);
-          // ND 30 é o valor da Diária Base
-          totalDiariasND30 += Number(record.valor_nd_30 || 0);
+          // ND 15 é o total geral (Diária Base + Taxa de Embarque)
+          const totalGeral = Number(record.valor_nd_15 || 0);
+          const taxaEmbarque = Number(record.valor_taxa_embarque || 0);
+          
+          totalDiariasND15_TaxaEmbarque += taxaEmbarque;
+          totalDiariasND15_DiariaBase += totalGeral - taxaEmbarque;
+          
+          // totalDiariasND30 deve ser 0, mas vamos garantir que o campo valor_nd_30 do DB seja 0
+          totalDiariasND30 += Number(record.valor_nd_30 || 0); 
+          
           totalMilitaresDiarias += Number(record.quantidade || 0);
-          // O total de dias de viagem é a soma dos dias_operacao de cada registro
           totalDiasViagem += Number(record.dias_operacao || 0);
       });
   }
   
   // O total da Diária (ND 33.90.15) é a soma das duas subdivisões
-  const totalDiarias = totalDiariasND15 + totalDiariasND30; 
+  const totalDiarias = totalDiariasND15_TaxaEmbarque + totalDiariasND15_DiariaBase; 
     
   // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
   const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX + totalCombustivel + totalLubrificanteValor;
@@ -444,8 +451,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     
     // NOVO: Diárias
     totalDiarias,
-    totalDiariasND15, // Taxa de Embarque
-    totalDiariasND30, // Diárias (valor principal)
+    totalDiariasND15: totalDiariasND15_TaxaEmbarque, // Taxa de Embarque (ND 15)
+    totalDiariasND30: totalDiariasND15_DiariaBase, // Diárias Base (ND 15)
     totalMilitaresDiarias,
     totalDiasViagem, // Novo: Total de dias de viagem
   };
@@ -1095,9 +1102,9 @@ export const PTrabCostSummary = ({
                                 {formatCurrency(totals.totalDiariasND15)}
                             </span>
                           </div>
-                          {/* Detalhe 4: Diárias (ND 30) */}
+                          {/* Detalhe 4: Diárias Base (ND 15) */}
                           <div className="flex justify-between text-muted-foreground pt-1">
-                            <span className="w-1/2 text-left font-semibold">Diárias (ND 30)</span>
+                            <span className="w-1/2 text-left font-semibold">Diárias Base (ND 15)</span>
                             <span className="w-1/4 text-right font-medium text-background">
                                 {/* Vazio */}
                             </span>
