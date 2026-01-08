@@ -16,6 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { formatCurrency, formatNumber } from "@/lib/formatUtils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   PTrabData,
   ClasseIRegistro,
@@ -361,7 +363,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, totalValorSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo]);
+  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, valorTotalSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo]);
 
   // NOVO: Função para abrir o diálogo de impressão do navegador
   const handlePrint = () => {
@@ -1040,7 +1042,27 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, diasOperacao, totalGeral_33_90_30, totalGeral_33_90_39, totalValorCombustivel, valorTotalSolicitado, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo, generateClasseIIIMemoriaCalculo]);
+  }, [
+    ptrabData, 
+    diasOperacao, 
+    totalGeral_33_90_30, 
+    totalGeral_33_90_39, 
+    totalValorCombustivel, 
+    totalGeral_GND3_ND, // Adicionado explicitamente
+    valorTotalSolicitado, 
+    nomeRM, 
+    omsOrdenadas, 
+    gruposPorOM, 
+    calcularTotaisPorOM, 
+    fileSuffix, 
+    generateClasseIMemoriaCalculo, 
+    generateClasseIIMemoriaCalculo, 
+    generateClasseVMemoriaCalculo, 
+    generateClasseVIMemoriaCalculo, 
+    generateClasseVIIMemoriaCalculo, 
+    generateClasseVIIIMemoriaCalculo, 
+    generateClasseIIIMemoriaCalculo
+  ]);
 
 
   return (
