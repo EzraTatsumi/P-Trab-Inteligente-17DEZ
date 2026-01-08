@@ -56,11 +56,11 @@ interface PTrabLogisticoReportProps {
     total_33_90_39: number;
     total_parte_azul: number;
     total_combustivel: number;
-    total_gnd3: number;
     totalDieselLitros: number;
     totalGasolinaLitros: number;
     valorDiesel: number;
     valorGasolina: number;
+    total_gnd3: number;
   };
   fileSuffix: string; // NOVO PROP
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe I
@@ -835,21 +835,21 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         const hasFuelRecords = totaisOM.total_combustivel > 0;
         
         // AJUSTE EXCEL: Exibir 0 L OD se houver registros de combustível
-        subtotalRow.getCell('F').value = hasFuelRecords ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
+        subtotalRow.getCell('F').value = nomeOM === nomeRM && totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
         subtotalRow.getCell('F').alignment = dataCenterMiddleAlignment;
         subtotalRow.getCell('F').font = headerFontStyle;
         subtotalRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         subtotalRow.getCell('F').border = cellBorder;
         
         // AJUSTE EXCEL: Exibir 0 L GAS se houver registros de combustível
-        subtotalRow.getCell('G').value = hasFuelRecords ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
+        subtotalRow.getCell('G').value = nomeOM === nomeRM && totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
         subtotalRow.getCell('G').alignment = dataCenterMiddleAlignment;
         subtotalRow.getCell('G').font = headerFontStyle;
         subtotalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         subtotalRow.getCell('G').border = cellBorder;
         
         // AJUSTE EXCEL: Exibir R$ 0,00 se houver registros de combustível
-        subtotalRow.getCell('H').value = hasFuelRecords ? totaisOM.total_combustivel : '';
+        subtotalRow.getCell('H').value = nomeOM === nomeRM && totaisOM.total_combustivel > 0 ? totaisOM.total_combustivel : '';
         subtotalRow.getCell('H').alignment = dataCenterMonetaryAlignment;
         subtotalRow.getCell('H').font = headerFontStyle;
         subtotalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
@@ -1104,9 +1104,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   <th className="col-nd" style={{ backgroundColor: '#B4C7E7' }}>33.90.30</th>
                   <th className="col-nd" style={{ backgroundColor: '#B4C7E7' }}>33.90.39</th>
                   <th className="col-nd" style={{ backgroundColor: '#B4C7E7' }}>TOTAL</th>
-                  <th className="col-combustivel">LITROS</th>
-                  <th className="col-combustivel">PREÇO<br/>UNITÁRIO</th>
-                  <th className="col-combustivel">PREÇO<br/>TOTAL</th>
+                  <th className="col-combustivel" style={{ backgroundColor: '#F8CBAD' }}>LITROS</th>
+                  <th className="col-combustivel" style={{ backgroundColor: '#F8CBAD' }}>PREÇO<br/>UNITÁRIO</th>
+                  <th className="col-combustivel" style={{ backgroundColor: '#F8CBAD' }}>PREÇO<br/>TOTAL</th>
                 </tr>
             </thead>
             <tbody>
@@ -1335,23 +1335,23 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_30)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_39)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
-                      {/* Parte Laranja (Combustivel) - AJUSTADO PARA EXIBIR SE HOUVER REGISTROS DE COMBUSTÍVEL NESTE GRUPO */}
+                      {/* Parte Laranja (Combustivel) - AJUSTADO PARA EXIBIR SE FOR A RM FORNECEDORA */}
                       {(() => {
-                          const hasFuelRecords = totaisOM.total_combustivel > 0;
+                          const isRMFornecedora = nomeOM === nomeRM;
                           return (
                             <>
                                 <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-                                    {hasFuelRecords 
+                                    {isRMFornecedora && totaisOM.totalDieselLitros > 0
                                     ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
                                     : ''}
                                 </td>
                                 <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-                                    {hasFuelRecords 
+                                    {isRMFornecedora && totaisOM.totalGasolinaLitros > 0
                                     ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` 
                                     : ''}
                                 </td>
                                 <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-                                    {hasFuelRecords 
+                                    {isRMFornecedora && totaisOM.total_combustivel > 0
                                     ? formatCurrency(totaisOM.total_combustivel) 
                                     : ''}
                                 </td>
