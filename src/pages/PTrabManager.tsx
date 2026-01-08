@@ -481,26 +481,25 @@ const PTrabManager = () => {
             totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
           }
           
-          // 4. Fetch Diaria totals (33.90.15 and 33.90.30)
+          // 4. Fetch Diaria totals (33.90.15)
           const { data: diariaData, error: diariaError } = await supabase
             .from('diaria_registros')
-            .select('valor_nd_15, valor_nd_30')
+            .select('valor_nd_15')
             .eq('p_trab_id', ptrab.id);
 
           let totalDiariaND15 = 0;
-          let totalDiariaND30 = 0;
           
           if (diariaError) console.error("Erro ao carregar Diárias para PTrab", ptrab.numero_ptrab, diariaError);
           else {
               totalDiariaND15 = (diariaData || []).reduce((sum, record) => sum + (record.valor_nd_15 || 0), 0);
-              totalDiariaND30 = (diariaData || []).reduce((sum, record) => sum + (record.valor_nd_30 || 0), 0);
           }
 
           // SOMA TOTAL DA ABA LOGÍSTICA
-          // CORREÇÃO: Removendo totalDiariaND30 da soma Logística, pois Diária é totalmente ND 15 (Operacional).
+          // CORREÇÃO: O total logístico é a soma das Classes I, II, III, V, VI, VII, VIII e IX.
           totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII;
           
           // SOMA TOTAL DA ABA OPERACIONAL
+          // Diária é totalmente ND 15 (Operacional)
           totalOperacionalCalculado = totalDiariaND15;
           
           const isOwner = ptrab.user_id === user.id;
