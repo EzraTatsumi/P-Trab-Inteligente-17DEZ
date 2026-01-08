@@ -1093,15 +1093,8 @@ export const PTrabCostSummary = ({
                             </span>
                           </div>
                           
-                          {/* NOVO: Linha de Cabeçalho para os valores */}
-                          <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                            <span className="w-1/2 text-left font-semibold">ND 15</span>
-                            <span className="w-1/4 text-right font-semibold">Taxa Emb.</span>
-                            <span className="w-1/4 text-right font-semibold">Diárias Base</span>
-                          </div>
-                          
                           {/* NOVO: Linha de Detalhe Consolidada */}
-                          <div className="flex justify-between text-muted-foreground pt-1">
+                          <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
                             <span className="w-1/2 text-left font-semibold">Taxa de Embarque / Diárias (ND 15)</span>
                             <span className="w-1/4 text-right font-medium text-green-600">
                                 {formatCurrency(totals.totalDiariasND15)}
