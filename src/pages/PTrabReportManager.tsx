@@ -518,7 +518,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     }
     
     if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-        return generateClasseIXMemoriaCalculo(registro);
+        return generateClasseIXUtility(registro as any);
     }
     
     if (isClasseII) {
@@ -963,6 +963,12 @@ const PTrabReportManager = () => {
   }, [gruposPorOM]);
   
   const calcularTotaisPorOM = useCallback((grupo: GrupoOM, nomeOM: string) => {
+    
+    // --- LOG DE DEBUG INÍCIO ---
+    console.log(`[PTrabReportManager] Calculando totais para OM: ${nomeOM}`);
+    console.log(`[PTrabReportManager] Nome da RM (Referência): ${nomeRM}`);
+    // --- LOG DE DEBUG FIM ---
+    
     const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.total_qs, 0);
     const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + linha.registro.total_qr, 0);
     
@@ -998,7 +1004,9 @@ const PTrabReportManager = () => {
     const total_parte_azul = total_33_90_30 + total_33_90_39;
     
     // Combustível (Apenas na RM)
-    const combustivelDestaRM = (nomeOM === nomeRM) 
+    const isRM = nomeOM === nomeRM;
+    
+    const combustivelDestaRM = isRM 
       ? grupo.linhasClasseIII.filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL' || l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
       : [];
     
@@ -1019,6 +1027,14 @@ const PTrabReportManager = () => {
     const totalGasolinaLitros = combustivelDestaRM
       .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
       .reduce((acc, l) => acc + l.total_litros_linha, 0);
+
+    // --- LOG DE DEBUG FIM ---
+    console.log(`[PTrabReportManager] OM: ${nomeOM} | É RM: ${isRM}`);
+    console.log(`[PTrabReportManager] Total Combustível (R$): ${totalCombustivel}`);
+    console.log(`[PTrabReportManager] Total Diesel (L): ${totalDieselLitros}`);
+    console.log(`[PTrabReportManager] Total Gasolina (L): ${totalGasolinaLitros}`);
+    console.log(`[PTrabReportManager] Total GND3: ${total_gnd3}`);
+    // --- LOG DE DEBUG FIM ---
 
     return {
       total_33_90_30,
