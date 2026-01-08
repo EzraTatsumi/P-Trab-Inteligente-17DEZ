@@ -256,14 +256,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   const totalGeral_33_90_30 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '').total_33_90_30, 0), [gruposPorOM, calcularTotaisPorOM]);
   const totalGeral_33_90_39 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '').total_33_90_39, 0), [gruposPorOM, calcularTotaisPorOM]);
   
-  // NOVO: Total Combustível é a soma dos valores das linhas desagregadas de Combustível na RM
+  // FIX: Total Combustível é a soma dos valores das linhas desagregadas de Combustível em TODAS as OMs.
   const totalValorCombustivel = useMemo(() => {
-    const rmGroup = gruposPorOM[nomeRM];
-    if (!rmGroup) return 0;
-    return rmGroup.linhasClasseIII
+    return Object.values(gruposPorOM).reduce((acc, grupo) => {
+      return acc + grupo.linhasClasseIII
         .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL' || l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
         .reduce((acc, l) => acc + l.valor_total_linha, 0);
-  }, [gruposPorOM, nomeRM]);
+    }, 0);
+  }, [gruposPorOM]);
   
   const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39;
   const valorTotalSolicitado = totalGeral_GND3_ND + totalValorCombustivel;
@@ -831,25 +831,25 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         subtotalRow.getCell('E').border = cellBorder;
         subtotalRow.getCell('E').numFmt = 'R$ #,##0.00';
         
-        // Combustível (Apenas na RM)
-        const isRM = nomeOM === nomeRM;
+        // Combustível (Exibido se houver registros de combustível neste grupo OM)
+        const hasFuelRecords = totaisOM.total_combustivel > 0;
         
-        // AJUSTE EXCEL: Exibir 0 L OD se for RM, mesmo que o total seja 0
-        subtotalRow.getCell('F').value = isRM ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
+        // AJUSTE EXCEL: Exibir 0 L OD se houver registros de combustível
+        subtotalRow.getCell('F').value = hasFuelRecords ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
         subtotalRow.getCell('F').alignment = dataCenterMiddleAlignment;
         subtotalRow.getCell('F').font = headerFontStyle;
         subtotalRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         subtotalRow.getCell('F').border = cellBorder;
         
-        // AJUSTE EXCEL: Exibir 0 L GAS se for RM, mesmo que o total seja 0
-        subtotalRow.getCell('G').value = isRM ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
+        // AJUSTE EXCEL: Exibir 0 L GAS se houver registros de combustível
+        subtotalRow.getCell('G').value = hasFuelRecords ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
         subtotalRow.getCell('G').alignment = dataCenterMiddleAlignment;
         subtotalRow.getCell('G').font = headerFontStyle;
         subtotalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
         subtotalRow.getCell('G').border = cellBorder;
         
-        // AJUSTE EXCEL: Exibir R$ 0,00 se for RM, mesmo que o total seja 0
-        subtotalRow.getCell('H').value = isRM ? totaisOM.total_combustivel : '';
+        // AJUSTE EXCEL: Exibir R$ 0,00 se houver registros de combustível
+        subtotalRow.getCell('H').value = hasFuelRecords ? totaisOM.total_combustivel : '';
         subtotalRow.getCell('H').alignment = dataCenterMonetaryAlignment;
         subtotalRow.getCell('H').font = headerFontStyle;
         subtotalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
@@ -928,21 +928,22 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
         .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
         
-      // AJUSTE EXCEL: Exibir 0 L OD se for RM, mesmo que o total seja 0
+      const totalValorCombustivelFinal = totalValorCombustivel;
+
+      // AJUSTE EXCEL: Exibir totais de litros e valor total de combustível na linha de soma geral
       totalGeralSomaRow.getCell('F').value = `${formatNumber(totalDiesel)} L OD`;
       totalGeralSomaRow.getCell('F').alignment = dataCenterMiddleAlignment;
       totalGeralSomaRow.getCell('F').font = headerFontStyle;
       totalGeralSomaRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       totalGeralSomaRow.getCell('F').border = cellBorder;
       
-      // AJUSTE EXCEL: Exibir 0 L GAS se for RM, mesmo que o total seja 0
       totalGeralSomaRow.getCell('G').value = `${formatNumber(totalGasolina)} L GAS`;
       totalGeralSomaRow.getCell('G').alignment = dataCenterMiddleAlignment;
       totalGeralSomaRow.getCell('G').font = headerFontStyle;
       totalGeralSomaRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       totalGeralSomaRow.getCell('G').border = cellBorder;
       
-      totalGeralSomaRow.getCell('H').value = totalValorCombustivel;
+      totalGeralSomaRow.getCell('H').value = totalValorCombustivelFinal;
       totalGeralSomaRow.getCell('H').alignment = dataCenterMonetaryAlignment;
       totalGeralSomaRow.getCell('H').font = headerFontStyle;
       totalGeralSomaRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
@@ -1011,7 +1012,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow += 3;
       
       const cmtRow = worksheet.getRow(currentRow);
-      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'; // FIX: Removed extra single quote
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
@@ -1334,25 +1335,28 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_30)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_39)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
-                      {/* Parte Laranja (Combustivel) - AJUSTADO PARA EXIBIR 0 L OD/GAS E R$ 0,00 SE FOR RM */}
+                      {/* Parte Laranja (Combustivel) - AJUSTADO PARA EXIBIR SE HOUVER REGISTROS DE COMBUSTÍVEL NESTE GRUPO */}
+                      {/* Condição de exibição para HTML/PDF */}
+                      {(() => {
+                          const hasFuelRecords = totaisOM.total_combustivel > 0;
+                          return (
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-                        {/* CORREÇÃO AQUI: Remover a verificação > 0 */}
-                        {nomeOM === nomeRM 
+                        {hasFuelRecords 
                           ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
                           : ''}
                       </td>
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-                        {/* CORREÇÃO AQUI: Remover a verificação > 0 */}
-                        {nomeOM === nomeRM 
+                        {hasFuelRecords 
                           ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` 
                           : ''}
                       </td>
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
-                        {/* CORREÇÃO AQUI: Remover a verificação > 0 */}
-                        {nomeOM === nomeRM 
+                        {hasFuelRecords 
                           ? formatCurrency(totaisOM.total_combustivel) 
                           : ''}
                       </td>
+                          );
+                      })()}
                       <td></td>
                     </tr>,
                     
