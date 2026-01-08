@@ -54,7 +54,6 @@ import ShareLinkDialog from "@/components/ShareLinkDialog";
 import LinkPTrabDialog from "@/components/LinkPTrabDialog";
 import ManageSharingDialog from "@/components/ManageSharingDialog";
 import UnlinkPTrabDialog from "@/components/UnlinkPTrabDialog";
-import { fetchPTrabTotals } from "@/components/PTrabCostSummary"; // Importar a função de cálculo
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -398,21 +397,121 @@ const PTrabManager = () => {
 
       const pTrabsWithTotals: PTrab[] = await Promise.all(
         (typedPTrabsData || []).map(async (ptrab) => {
-          
-          // NOVO: Usar a função de cálculo consolidada
-          const totals = await fetchPTrabTotals(ptrab.id);
+          let totalOperacionalCalculado = 0;
+          let totalLogisticaCalculado = 0;
+          let totalMaterialPermanenteCalculado = 0;
+          let quantidadeRacaoOpCalculada = 0;
+          let quantidadeHorasVooCalculada = 0;
 
+          // 1. Fetch Classe I totals (33.90.30)
+          const { data: classeIData, error: classeIError } = await supabase
+            .from('classe_i_registros')
+            .select('total_qs, total_qr, quantidade_r2, quantidade_r3')
+            .eq('p_trab_id', ptrab.id);
+
+          let totalClasseI = 0;
+          if (classeIError) console.error("Erro ao carregar Classe I para PTrab", ptrab.numero_ptrab, classeIError);
+          else {
+            totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
+            quantidadeRacaoOpCalculada = (classeIData || []).reduce((sum, record) => sum + (record.quantidade_r2 || 0) + (record.quantidade_r3 || 0), 0);
+          }
+          
+          // 2. Fetch Classes II, V, VI, VII, VIII, IX totals (33.90.30 + 33.90.39)
+          const { data: classeIIData, error: classeIIError } = await supabase
+            .from('classe_ii_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+            
+          const { data: classeVData, error: classeVError } = await supabase
+            .from('classe_v_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+            
+          const { data: classeVIData, error: classeVIError } = await supabase
+            .from('classe_vi_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+            
+          const { data: classeVIIData, error: classeVIIError } = await supabase
+            .from('classe_vii_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+            
+          const { data: classeVIIISaudeData, error: classeVIIISaudeError } = await supabase
+            .from('classe_viii_saude_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+            
+          const { data: classeVIIIRemontaData, error: classeVIIIRemontaError } = await supabase
+            .from('classe_viii_remonta_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+            
+          const { data: classeIXData, error: classeIXError } = await supabase
+            .from('classe_ix_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+
+          let totalClassesDiversas = 0;
+          if (classeIIError) console.error("Erro ao carregar Classe II para PTrab", ptrab.numero_ptrab, classeIIError);
+          else totalClassesDiversas += (classeIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          if (classeVError) console.error("Erro ao carregar Classe V para PTrab", ptrab.numero_ptrab, classeVError);
+          else totalClassesDiversas += (classeVData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          if (classeVIError) console.error("Erro ao carregar Classe VI para PTrab", ptrab.numero_ptrab, classeVIError);
+          else totalClassesDiversas += (classeVIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          if (classeVIIError) console.error("Erro ao carregar Classe VII para PTrab", ptrab.numero_ptrab, classeVIIError);
+          else totalClassesDiversas += (classeVIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          if (classeVIIISaudeError) console.error("Erro ao carregar Classe VIII Saúde para PTrab", ptrab.numero_ptrab, classeVIIISaudeError);
+          else totalClassesDiversas += (classeVIIISaudeData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          if (classeVIIIRemontaError) console.error("Erro ao carregar Classe VIII Remonta para PTrab", ptrab.numero_ptrab, classeVIIIRemontaError);
+          else totalClassesDiversas += (classeVIIIRemontaData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          if (classeIXError) console.error("Erro ao carregar Classe IX para PTrab", ptrab.numero_ptrab, classeIXError);
+          else totalClassesDiversas += (classeIXData || []).reduce((sum, record) => sum + record.valor_total, 0);
+
+
+          // 3. Fetch Classe III totals (Combustível e Lubrificante)
+          const { data: classeIIIData, error: classeIIIError } = await supabase
+            .from('classe_iii_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+
+          let totalClasseIII = 0;
+          if (classeIIIError) console.error("Erro ao carregar Classe III para PTrab", ptrab.numero_ptrab, classeIIIError);
+          else {
+            totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          }
+          
+          // 4. Fetch Diaria totals (33.90.15 and 33.90.30)
+          const { data: diariaData, error: diariaError } = await supabase
+            .from('diaria_registros')
+            .select('valor_nd_15, valor_nd_30')
+            .eq('p_trab_id', ptrab.id);
+
+          let totalDiariaND15 = 0;
+          let totalDiariaND30 = 0;
+          
+          if (diariaError) console.error("Erro ao carregar Diárias para PTrab", ptrab.numero_ptrab, diariaError);
+          else {
+              totalDiariaND15 = (diariaData || []).reduce((sum, record) => sum + (record.valor_nd_15 || 0), 0);
+              totalDiariaND30 = (diariaData || []).reduce((sum, record) => sum + (record.valor_nd_30 || 0), 0);
+          }
+
+          // SOMA TOTAL DA ABA LOGÍSTICA
+          totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII + totalDiariaND30;
+          
+          // SOMA TOTAL DA ABA OPERACIONAL
+          totalOperacionalCalculado = totalDiariaND15;
+          
           const isOwner = ptrab.user_id === user.id;
           const isShared = !isOwner && (ptrab.shared_with || []).includes(user.id);
           
           return {
             ...ptrab,
-            // Usar os totais calculados corretamente
-            totalLogistica: totals.totalLogisticoGeral,
-            totalOperacional: totals.totalOperacional,
-            totalMaterialPermanente: totals.totalMaterialPermanente,
-            quantidadeRacaoOp: totals.totalRacoesOperacionaisGeral,
-            quantidadeHorasVoo: totals.totalAviacaoExercito, // Usando o campo correto para HV
+            totalLogistica: totalLogisticaCalculado,
+            totalOperacional: totalOperacionalCalculado,
+            totalMaterialPermanente: totalMaterialPermanenteCalculado,
+            quantidadeRacaoOp: quantidadeRacaoOpCalculada,
+            quantidadeHorasVoo: quantidadeHorasVooCalculada,
             isOwner: isOwner,
             isShared: isShared,
             hasPendingRequests: isOwner && ptrabsWithPendingRequests.has(ptrab.id),
@@ -663,6 +762,12 @@ const PTrabManager = () => {
           setLoading(false);
           return;
         }
+      }
+      
+      if (!formData.codug_om || !formData.rm_vinculacao || !formData.codug_rm_vinculacao) {
+        toast.error("A OM deve ser selecionada na lista para preencher os CODUGs e RM.");
+        setLoading(false);
+        return;
       }
       
       if (new Date(formData.periodo_fim) < new Date(formData.periodo_inicio)) {
@@ -2144,7 +2249,7 @@ const PTrabManager = () => {
             <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>
               Cancelar
             </AlertDialogCancel>
-          </DialogFooter>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
