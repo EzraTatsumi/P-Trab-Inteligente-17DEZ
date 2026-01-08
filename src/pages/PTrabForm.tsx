@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FileText, Package, Briefcase, ArrowLeft, Calendar, Users, MapPin, Loader2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import PTrabCostSummary, { fetchPTrabTotals } from "@/components/PTrabCostSummary";
+import { PTrabCostSummary, fetchPTrabTotals } from "@/components/PTrabCostSummary";
 import { CreditInputDialog } from "@/components/CreditInputDialog";
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -274,7 +274,7 @@ const PTrabForm = () => {
             {/* Resumo de Custos */}
             {ptrabId && (
               <PTrabCostSummary 
-                totals={totals} 
+                ptrabId={ptrabId} 
                 onOpenCreditDialog={() => setShowCreditDialog(true)}
                 creditGND3={credits.credit_gnd3}
                 creditGND4={credits.credit_gnd4}
