@@ -1,4 +1,3 @@
-0) nas linhas de subtotal da OM Fornecedora (RM) e no total geral, garantindo que os totais de combustível (litros e valor) sejam exibidos mesmo quando o valor calculado for zero.">
 import React, { useCallback, useRef, useMemo } from "react";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -625,10 +624,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             
             if (isClasseI) { // Classe I (QS/QR)
                 const registro = (linha as LinhaTabela).registro as ClasseIRegistro;
+                const tipo = (linha as LinhaTabela).tipo;
                 const ug_qs_formatted = formatCodug(registro.ug_qs);
                 const ug_qr_formatted = formatCodug(registro.ug);
 
-                if ((linha as LinhaTabela).tipo === 'QS') {
+                if (tipo === 'QS') {
                     rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                     rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                     rowData.valorC = registro.total_qs;
@@ -696,64 +696,64 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 rowData.detalhamentoValue = linhaClasseIII.memoria_calculo;
                 
             } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
-                const registro = (linha as LinhaClasseII).registro as ClasseIIRegistro;
-                const omDestinoRecurso = registro.organizacao;
-                const ugDestinoRecurso = formatCodug(registro.ug);
-                
-                let categoriaDetalhe = getClasseIILabel(registro.categoria); // Usar rótulo completo
-                
-                if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
-                    categoriaDetalhe = registro.animal_tipo;
-                }
+                            const registro = (linha as LinhaClasseII).registro as ClasseIIRegistro;
+                            const omDestinoRecurso = registro.organizacao;
+                            const ugDestinoRecurso = formatCodug(registro.ug);
                             
-                const omDetentora = registro.om_detentora || omDestinoRecurso;
-                const isDifferentOm = omDetentora !== omDestinoRecurso;
-                
-                // 1. Define o prefixo CLASSE X
-                let prefixoClasse = '';
-                if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                    prefixoClasse = 'CLASSE V';
-                } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
-                    prefixoClasse = 'CLASSE VI';
-                } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
-                    prefixoClasse = 'CLASSE VII';
-                } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
-                    prefixoClasse = 'CLASSE VIII';
-                } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                    prefixoClasse = 'CLASSE IX';
-                } else {
-                    prefixoClasse = 'CLASSE II';
-                }
-                
-                rowData.despesasValue = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
-                
-                // 2. Adiciona a OM Detentora se for diferente da OM de Destino
-                if (isDifferentOm) {
-                    rowData.despesasValue += `\n${omDetentora}`;
-                }
-                
-                rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
-                rowData.valorC = registro.valor_nd_30;
-                rowData.valorD = registro.valor_nd_39;
-                rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
-                
-                // 3. Prioriza o detalhamento customizado ou usa a função de memória unificada
-                if (registro.detalhamento_customizado) {
-                    rowData.detalhamentoValue = registro.detalhamento_customizado;
-                } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
-                } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
-                } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
-                } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseVIIMemoriaCalculo(registro);
-                } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseVIIIMemoriaCalculo(registro);
-                } else {
-                    const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
-                    rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
-                }
+                            let categoriaDetalhe = getClasseIILabel(registro.categoria); // Usar rótulo completo
+                            
+                            if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
+                                categoriaDetalhe = registro.animal_tipo;
+                            }
+                                
+                            const omDetentora = registro.om_detentora || omDestinoRecurso;
+                            const isDifferentOm = omDetentora !== omDestinoRecurso;
+                            
+                            // 1. Define o prefixo CLASSE X
+                            let prefixoClasse = '';
+                            if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                                prefixoClasse = 'CLASSE V';
+                            } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
+                                prefixoClasse = 'CLASSE VI';
+                            } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
+                                prefixoClasse = 'CLASSE VII';
+                            } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+                                prefixoClasse = 'CLASSE VIII';
+                            } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+                                prefixoClasse = 'CLASSE IX';
+                            } else {
+                                prefixoClasse = 'CLASSE II';
+                            }
+                            
+                            rowData.despesasValue = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
+                            
+                            // 2. Adiciona a OM Detentora se for diferente da OM de Destino
+                            if (isDifferentOm) {
+                                rowData.despesasValue += `\n${omDetentora}`;
+                            }
+                            
+                            rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
+                            rowData.valorC = registro.valor_nd_30;
+                            rowData.valorD = registro.valor_nd_39;
+                            rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
+                            
+                            // 3. Prioriza o detalhamento customizado ou usa a função de memória unificada
+                            if (registro.detalhamento_customizado) {
+                                rowData.detalhamentoValue = registro.detalhamento_customizado;
+                            } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+                                rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
+                            } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                                rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
+                            } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
+                                rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
+                            } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
+                                rowData.detalhamentoValue = generateClasseVIIMemoriaCalculo(registro);
+                            } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+                                rowData.detalhamentoValue = generateClasseVIIIMemoriaCalculo(registro);
+                            } else {
+                                const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
+                                rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
+                            }
             }
             
             // --- Renderização da Linha ---
@@ -930,14 +930,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         
       const totalValorCombustivelFinal = totalValorCombustivel;
 
-      // CORREÇÃO 3: Remove a verificação > 0 para garantir que '0 L OD' seja exibido
+      // CORREÇÃO: Remove a verificação > 0 para garantir que '0 L OD' seja exibido
       totalGeralSomaRow.getCell('F').value = `${formatNumber(totalDiesel)} L OD`;
       totalGeralSomaRow.getCell('F').alignment = dataCenterMiddleAlignment;
       totalGeralSomaRow.getCell('F').font = headerFontStyle;
       totalGeralSomaRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       totalGeralSomaRow.getCell('F').border = cellBorder;
       
-      // CORREÇÃO 3: Remove a verificação > 0 para garantir que '0 L GAS' seja exibido
+      // CORREÇÃO: Remove a verificação > 0 para garantir que '0 L GAS' seja exibido
       totalGeralSomaRow.getCell('G').value = `${formatNumber(totalGasolina)} L GAS`;
       totalGeralSomaRow.getCell('G').alignment = dataCenterMiddleAlignment;
       totalGeralSomaRow.getCell('G').font = headerFontStyle;
@@ -1399,7 +1399,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_30)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_39)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_GND3_ND)}</td>
-                      {/* CORREÇÃO: Removendo a verificação > 0 */}
+                      {/* CORREÇÃO: Removendo a verificação > 0 para garantir que '0 L OD' seja exibido */}
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{`${formatNumber(totalDiesel)} L OD`}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{`${formatNumber(totalGasolina)} L GAS`}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{formatCurrency(totalValorCombustivelFinal)}</td>
