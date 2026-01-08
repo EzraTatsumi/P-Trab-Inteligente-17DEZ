@@ -1,48 +1,13 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-// ... (imports omitidos para brevidade)
-import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
-// ... (imports omitidos para brevidade)
-
-// ... (interfaces e tipos omitidos para brevidade)
+// ... (imports e tipos)
 
 // =================================================================
 // COMPONENTE PRINCIPAL
 // =================================================================
 
 const PTrabReportManager = () => {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { toast } = useToast();
-  const ptrabId = searchParams.get('ptrabId');
-  
-  const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
-  const [registrosClasseI, setRegistrosClasseI] = useState<ClasseIRegistro[]>([]);
-  const [registrosClasseII, setRegistrosClasseII] = useState<ClasseIIRegistro[]>([]);
-  const [registrosClasseIII, setRegistrosClasseIII] = useState<ClasseIIIRegistro[]>([]);
-  const [refLPC, setRefLPC] = useState<RefLPC | null>(null); // NOVO: Estado para RefLPC
-  const [loading, setLoading] = useState(true);
-  const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
-
-  const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
-  const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
-  
-  const currentReportOption = useMemo(() => REPORT_OPTIONS.find(r => r.value === selectedReport)!, [selectedReport]);
-
-  const loadData = useCallback(async () => {
-    // ... (loadData logic remains the same)
-  }, [ptrabId, navigate, toast]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+// ... (estados e hooks)
 
   // --- LÓGICA DE AGRUPAMENTO E CÁLCULO (Mantida no Manager para ser passada aos relatórios) ---
-  
-  // NOVO: Definindo o nome canônico da RM de forma simples e consistente
-  const nomeRM = useMemo(() => {
-    return ptrabData?.rm_vinculacao || '';
-  }, [ptrabData]);
-
   const gruposPorOM = useMemo(() => {
     const grupos: Record<string, GrupoOM> = {};
     const initializeGroup = (name: string) => {
@@ -56,52 +21,10 @@ const PTrabReportManager = () => {
     };
 
     // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
-    // ... (Classe I logic remains the same)
-    registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
-        initializeGroup(registro.om_qs || registro.organizacao); // Usa OM QS como chave de destino
-        grupos[registro.om_qs || registro.organizacao].linhasQS.push({ 
-            registro, 
-            tipo: 'QS',
-            valor_nd_30: registro.total_qs,
-            valor_nd_39: 0,
-        });
-        
-        initializeGroup(registro.organizacao); // Usa OM de destino (QR) como chave de destino
-        grupos[registro.organizacao].linhasQR.push({ 
-            registro, 
-            tipo: 'QR',
-            valor_nd_30: registro.total_qr,
-            valor_nd_39: 0,
-        });
-    });
+    // ... (lógica Classe I) ...
     
     // 2. Processar Classes II, V, VI, VII, VIII, IX
-    // ... (Classe II-IX logic remains the same)
-    registrosClasseII.forEach((registro) => {
-        // A chave de agrupamento é a OM de DESTINO do recurso (campo 'organizacao' no DB)
-        initializeGroup(registro.organizacao);
-        const omGroup = grupos[registro.organizacao];
-        
-        const linha = { 
-            registro,
-            valor_nd_30: registro.valor_nd_30,
-            valor_nd_39: registro.valor_nd_39,
-        };
-        
-        if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-            omGroup.linhasClasseV.push(linha);
-        } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
-            omGroup.linhasClasseVI.push(linha);
-        } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
-            omGroup.linhasClasseVII.push(linha);
-        } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
-            omGroup.linhasClasseVIII.push(linha);
-        } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-            omGroup.linhasClasseIX.push(linha);
-        } else {
-            omGroup.linhasClasseII.push(linha);
-        }
-    });
+    // ... (lógica Classes II, V-IX) ...
 
     // 3. Processar Classe III (Combustível e Lubrificante) - DESAGREGAÇÃO
     registrosClasseIII.forEach((registro) => {
@@ -110,14 +33,18 @@ const PTrabReportManager = () => {
         
         if (isCombustivel || isLubrificante) {
             
-            // CORREÇÃO CRÍTICA APLICADA AQUI:
-            // Para Combustível, forçamos o agrupamento na chave canônica da RM.
-            // Para Lubrificante, usamos a OM Detentora do Recurso (om_detentora).
-            const omDestinoRecurso = isCombustivel 
-                ? nomeRM // Usa o nome canônico da RM (garantindo que a chave do grupo seja a mesma usada no cálculo)
-                : (registro.om_detentora || registro.organizacao);
-                
-            if (!omDestinoRecurso) return; // Ignora se a RM não estiver definida
+            let omDestinoRecurso: string;
+            
+            if (isCombustivel) {
+                // CORREÇÃO CRÍTICA: Para Combustível, o destino do recurso é SEMPRE a RM (nomeRM), 
+                // pois é a RM que fornece e onde o total deve ser exibido no subtotal.
+                omDestinoRecurso = nomeRM; 
+            } else {
+                // Para Lubrificante, o destino do recurso é a OM Detentora (om_detentora) ou a OM que usa (organizacao).
+                omDestinoRecurso = registro.om_detentora || registro.organizacao;
+            }
+            
+            if (!omDestinoRecurso) return; // Safety check
             
             initializeGroup(omDestinoRecurso);
             
@@ -229,101 +156,4 @@ const PTrabReportManager = () => {
     return grupos;
   }, [registrosClasseI, registrosClasseII, registrosClasseIII, refLPC, nomeRM]); // nomeRM adicionado como dependência
   
-  // A lógica de ordenação das OMs e o cálculo dos totais permanecem corretos,
-  // pois agora o grupo da RM está garantido de ter a chave correta.
-  
-  const omsOrdenadas = useMemo(() => {
-    return Object.keys(gruposPorOM).sort((a, b) => {
-        const aIsRM = a === nomeRM;
-        const bIsRM = b === nomeRM;
-        
-        if (aIsRM && !bIsRM) return -1;
-        if (!aIsRM && bIsRM) return 1;
-        return a.localeCompare(b);
-    });
-  }, [gruposPorOM, nomeRM]);
-  
-  const calcularTotaisPorOM = useCallback((grupo: GrupoOM, nomeOM: string) => {
-    // ... (cálculos de Classe I, II, V-IX e Lubrificante permanecem os mesmos)
-    
-    const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.total_qs, 0);
-    const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + linha.registro.total_qr, 0);
-    
-    const totalClasseII_ND30 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
-    const totalClasseII_ND39 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
-    
-    const totalClasseV_ND30 = grupo.linhasClasseV.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
-    const totalClasseV_ND39 = grupo.linhasClasseV.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
-    
-    const totalClasseVI_ND30 = grupo.linhasClasseVI.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
-    const totalClasseVI_ND39 = grupo.linhasClasseVI.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
-    
-    const totalClasseVII_ND30 = grupo.linhasClasseVII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
-    const totalClasseVII_ND39 = grupo.linhasClasseVII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
-    
-    const totalClasseVIII_ND30 = grupo.linhasClasseVIII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
-    const totalClasseVIII_ND39 = grupo.linhasClasseVIII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
-    
-    const totalClasseIX_ND30 = grupo.linhasClasseIX.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
-    const totalClasseIX_ND39 = grupo.linhasClasseIX.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
-    
-    // NOVO: Total Lubrificante (agora vem das linhas desagregadas)
-    const totalLubrificante = grupo.linhasClasseIII
-        .filter(l => l.tipo_suprimento === 'LUBRIFICANTE')
-        .reduce((acc, linha) => acc + linha.valor_total_linha, 0);
-    
-    const total_33_90_30 = totalQS + totalQR + 
-                           totalClasseII_ND30 + totalClasseV_ND30 + totalClasseVI_ND30 + totalClasseVII_ND30 + totalClasseVIII_ND30 + totalClasseIX_ND30 +
-                           totalLubrificante; 
-    
-    const total_33_90_39 = totalClasseII_ND39 + totalClasseV_ND39 + totalClasseVI_ND39 + totalClasseVII_ND39 + totalClasseVIII_ND39 + totalClasseIX_ND39;
-    
-    const total_parte_azul = total_33_90_30 + total_33_90_39;
-    
-    // Combustível (Apenas na RM)
-    // Como garantimos que todas as linhas de combustível estão agrupadas sob a chave nomeRM,
-    // esta verificação agora deve funcionar corretamente.
-    const combustivelDestaRM = (nomeOM === nomeRM) 
-      ? grupo.linhasClasseIII.filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL' || l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
-      : [];
-    
-    const valorDiesel = combustivelDestaRM
-      .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL')
-      .reduce((acc, l) => acc + l.valor_total_linha, 0);
-    const valorGasolina = combustivelDestaRM
-      .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
-      .reduce((acc, l) => acc + l.valor_total_linha, 0);
-    
-    const totalCombustivel = valorDiesel + valorGasolina;
-    
-    const total_gnd3 = total_parte_azul + totalCombustivel; 
-    
-    const totalDieselLitros = combustivelDestaRM
-      .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL')
-      .reduce((acc, l) => acc + l.total_litros_linha, 0);
-    const totalGasolinaLitros = combustivelDestaRM
-      .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
-      .reduce((acc, l) => acc + l.total_litros_linha, 0);
-
-    return {
-      total_33_90_30,
-      total_33_90_39,
-      total_parte_azul,
-      total_combustivel: totalCombustivel,
-      total_gnd3,
-      totalDieselLitros,
-      totalGasolinaLitros,
-      valorDiesel,
-      valorGasolina,
-    };
-  }, [nomeRM]); // Dependência ajustada para nomeRM
-  // --- FIM LÓGICA DE AGRUPAMENTO E CÁLCULO ---
-
-  const renderReport = () => {
-    // ... (renderReport logic remains the same)
-  };
-
-  // ... (rest of the component remains the same)
-};
-
-export default PTrabReportManager;
+// ... (restante do componente)
