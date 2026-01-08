@@ -480,9 +480,27 @@ const PTrabManager = () => {
           else {
             totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
           }
+          
+          // 4. Fetch Diaria totals (33.90.15 and 33.90.30)
+          const { data: diariaData, error: diariaError } = await supabase
+            .from('diaria_registros')
+            .select('valor_nd_15, valor_nd_30')
+            .eq('p_trab_id', ptrab.id);
+
+          let totalDiariaND15 = 0;
+          let totalDiariaND30 = 0;
+          
+          if (diariaError) console.error("Erro ao carregar Diárias para PTrab", ptrab.numero_ptrab, diariaError);
+          else {
+              totalDiariaND15 = (diariaData || []).reduce((sum, record) => sum + (record.valor_nd_15 || 0), 0);
+              totalDiariaND30 = (diariaData || []).reduce((sum, record) => sum + (record.valor_nd_30 || 0), 0);
+          }
 
           // SOMA TOTAL DA ABA LOGÍSTICA
-          totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII;
+          totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII + totalDiariaND30;
+          
+          // SOMA TOTAL DA ABA OPERACIONAL
+          totalOperacionalCalculado = totalDiariaND15;
           
           const isOwner = ptrab.user_id === user.id;
           const isShared = !isOwner && (ptrab.shared_with || []).includes(user.id);
