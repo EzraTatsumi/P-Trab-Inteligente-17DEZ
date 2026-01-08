@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 // Define the category constants
 const CATEGORIAS_CLASSE_II = ["Equipamento Individual", "Proteção Balística", "Material de Estacionamento"];
 const CATEGORIAS_CLASSE_V = ["Armt L", "Armt P", "IODCT", "DQBRN"];
-const CATEGORIAS_CLASSE_VI = ["Embarcação", "Equipamento de Engenharia"];
+const CATEGORIAS_CLASSE_VI = ["Embarcação", "Equipamento de Engenharia", "Gerador"];
 const CATEGORIAS_CLASSE_VII = ["Comunicações", "Informática"];
 const CATEGORIAS_CLASSE_VIII = ["Saúde", "Remonta/Veterinária"];
 const CATEGORIAS_CLASSE_IX = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"]; // NOVO
