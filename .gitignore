@@ -75,14 +75,14 @@ src/components/MarkdownAccordion.tsx
 src/components/MarkdownViewer.tsx
 src/components/HelpDialog.tsx
 src/components/ClasseIIIRegistryForm.tsx
-# REMOVIDO:src/hooks/useFormNavigation.ts
+src/hooks/useFormNavigation.ts
 src/hooks/use-mobile.tsx
 src/lib/creditUtils.ts
 
 # NOVAS EXCLUSÕES ADICIONAIS (UI e Páginas Estáticas)
 src/pages/UserProfilePage.tsx
 # REMOVIDO:src/components/reports/PTrabLogisticoReport.tsx
-# REMOVIDO:src/components/reports/PTrabRacaoOperacionalReport.tsx
+src/components/reports/PTrabRacaoOperacionalReport.tsx
 src/pages/ClasseIForm.tsx
 src/pages/ClasseIIForm.tsx
 src/pages/ClasseIIIForm.tsx
