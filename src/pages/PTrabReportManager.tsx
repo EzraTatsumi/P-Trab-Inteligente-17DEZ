@@ -179,9 +179,9 @@ interface GranularDisplayItem {
 
 export interface LinhaTabela {
   registro: ClasseIRegistro;
-  tipo: 'QS' | 'QR';
   valor_nd_30: number; // Adicionado para consistência
   valor_nd_39: number; // Adicionado para consistência
+  tipo: 'QS' | 'QR';
 }
 
 export interface LinhaClasseII {
@@ -834,8 +834,16 @@ const PTrabReportManager = () => {
         const isLubrificante = registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
         
         if (isCombustivel || isLubrificante) {
-            // A OM de destino do recurso (RM para Combustível, OM Detentora para Lubrificante)
-            const omDestinoRecurso = registro.om_detentora || registro.organizacao;
+            
+            let omDestinoRecurso: string;
+            if (isCombustivel) {
+                // Para Combustível, o destino do recurso é a OM fornecedora (RM), salva em om_detentora
+                omDestinoRecurso = registro.om_detentora || registro.organizacao; // Deve ser a RM
+            } else {
+                // Para Lubrificante, o destino do recurso é a OM detentora do equipamento
+                omDestinoRecurso = registro.organizacao;
+            }
+            
             initializeGroup(omDestinoRecurso);
             
             const itens = registro.itens_equipamentos || [];
@@ -890,8 +898,8 @@ const PTrabReportManager = () => {
                 let memoriaCalculo = "";
                 
                 // Para Combustível, a OM Destino Recurso é a RM de Fornecimento (om_detentora/ug_detentora)
-                const omDestinoCombustivel = registro.om_detentora || '';
-                const ugDestinoCombustivel = registro.ug_detentora || '';
+                const omFornecedora = registro.om_detentora || '';
+                const ugFornecedora = registro.ug_detentora || '';
                 
                 // Para Lubrificante, a OM Destino Recurso é a om_detentora/ug_detentora
                 const omDestinoLubrificante = registro.om_detentora || '';
@@ -924,8 +932,8 @@ const PTrabReportManager = () => {
                     memoriaCalculo = generateClasseIIIGranularUtility(
                         granularItem, 
                         refLPC, 
-                        isCombustivel ? omDestinoCombustivel : omDestinoLubrificante, 
-                        isCombustivel ? ugDestinoCombustivel : ugDestinoLubrificante
+                        isCombustivel ? omFornecedora : omDestinoLubrificante, 
+                        isCombustivel ? ugFornecedora : ugDestinoLubrificante
                     );
                 }
                 
@@ -1009,6 +1017,11 @@ const PTrabReportManager = () => {
     const combustivelDestaRM = isRM 
       ? grupo.linhasClasseIII.filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL' || l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
       : [];
+      
+    console.log(`[PTrabReportManager] Combustível Linhas Encontradas para ${nomeOM}:`, combustivelDestaRM.length);
+    if (combustivelDestaRM.length > 0) {
+        console.log(`[PTrabReportManager] Primeira Linha de Combustível:`, combustivelDestaRM[0]);
+    }
     
     const valorDiesel = combustivelDestaRM
       .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL')
