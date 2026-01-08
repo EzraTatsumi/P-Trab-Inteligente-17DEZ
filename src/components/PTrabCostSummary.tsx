@@ -125,8 +125,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .eq('p_trab_id', ptrabId),
     supabase
       .from('diaria_registros') // NOVO: Diárias
-      // CORRIGIDO: Buscando valor_nd_15 (total geral) e valor_taxa_embarque (para detalhamento)
-      .select('valor_total, valor_nd_15, valor_taxa_embarque, quantidade, dias_operacao') 
+      // CORRIGIDO: Adicionando valor_nd_30 à seleção
+      .select('valor_total, valor_nd_15, valor_nd_30, valor_taxa_embarque, quantidade, dias_operacao') 
       .eq('p_trab_id', ptrabId),
   ]);
 
@@ -359,7 +359,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // 4. Processamento de Diárias (ND 33.90.15)
   let totalDiariasND15_TaxaEmbarque = 0; // Taxa de Embarque (valor_taxa_embarque)
   let totalDiariasND15_DiariaBase = 0; // Diárias (valor principal) (valor_nd_15 - valor_taxa_embarque)
-  let totalDiariasND30 = 0; // Deve ser 0
+  let totalDiariasLogisticaND30 = 0; // NOVO: Para custos logísticos associados a diárias (e.g., passagens ND 30)
   let totalMilitaresDiarias = 0;
   let totalDiasViagem = 0; // Novo total
 
@@ -372,8 +372,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
           totalDiariasND15_TaxaEmbarque += taxaEmbarque;
           totalDiariasND15_DiariaBase += totalGeral - taxaEmbarque;
           
-          // totalDiariasND30 deve ser 0, mas vamos garantir que o campo valor_nd_30 do DB seja 0
-          totalDiariasND30 += Number(record.valor_nd_30 || 0); 
+          // Acumula o valor ND 30 real
+          totalDiariasLogisticaND30 += Number(record.valor_nd_30 || 0); 
           
           totalMilitaresDiarias += Number(record.quantidade || 0);
           totalDiasViagem += Number(record.dias_operacao || 0);
@@ -383,8 +383,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // O total da Diária (ND 33.90.15) é a soma das duas subdivisões
   const totalDiarias = totalDiariasND15_TaxaEmbarque + totalDiariasND15_DiariaBase; 
     
-  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
-  const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX + totalCombustivel + totalLubrificanteValor;
+  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante) + Diárias ND 30
+  const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX + totalCombustivel + totalLubrificanteValor + totalDiariasLogisticaND30;
   
   // Total Operacional (Diárias + Outros Operacionais)
   const totalOutrosOperacionais = 0; // Placeholder para outros itens operacionais
@@ -452,7 +452,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     // NOVO: Diárias
     totalDiarias,
     totalDiariasND15: totalDiariasND15_TaxaEmbarque, // Taxa de Embarque (ND 15)
-    totalDiariasND30: totalDiariasND15_DiariaBase, // Diárias Base (ND 15)
+    totalDiariasND30: totalDiariasND15_DiariaBase, // Diárias Base (ND 15) - Mantendo o nome confuso para compatibilidade de UI
+    totalDiariasLogisticaND30, // NOVO: O valor real de ND 30 das diárias
     totalMilitaresDiarias,
     totalDiasViagem, // Novo: Total de dias de viagem
   };
@@ -528,6 +529,7 @@ export const PTrabCostSummary = ({
       totalDiarias: 0,
       totalDiariasND15: 0, // Taxa de Embarque
       totalDiariasND30: 0, // Diárias (valor principal)
+      totalDiariasLogisticaND30: 0, // NOVO: Adiciona o novo campo
       totalMilitaresDiarias: 0,
       totalDiasViagem: 0, // Novo: Total de dias de viagem
     },
@@ -1041,6 +1043,19 @@ export const PTrabCostSummary = ({
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
+                  
+                  {/* Diárias ND 30 (Logística) */}
+                  {totals.totalDiariasLogisticaND30 > 0 && (
+                    <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                        <span className="w-1/2 text-left font-semibold text-orange-500">Diárias (ND 30)</span>
+                        <span className="w-1/4 text-right font-medium">
+                            {/* Vazio */}
+                        </span>
+                        <span className="w-1/4 text-right font-medium text-orange-600">
+                            {formatCurrency(totals.totalDiariasLogisticaND30)}
+                        </span>
+                    </div>
+                  )}
                   
                   {/* Outras Abas Logísticas (Placeholder) */}
                   {/* REMOVIDO: Não haverá valores para Classes IV e X */}
