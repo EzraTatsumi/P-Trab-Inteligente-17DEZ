@@ -248,7 +248,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     // Cabeçalho da Tabela (9 colunas)
     const headerRow1 = worksheet.getRow(currentRow);
-    headerRow1.getCell('A').value = 'DESPESAS'; // <-- ALTERADO AQUI
+    headerRow1.getCell('A').value = 'DESPESAS';
     headerRow1.getCell('B').value = 'OM (UGE)\nCODUG';
     headerRow1.getCell('C').value = 'NATUREZA DE DESPESA';
     headerRow1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO OPERACIONAL';
@@ -326,7 +326,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             const row = worksheet.getRow(currentRow);
             
             // A: DESPESAS
-            row.getCell('A').value = `CLASSE OPERACIONAL - DIÁRIAS\n${registro.local_atividade}`;
+            row.getCell('A').value = `DIÁRIAS`; // <-- SIMPLIFICADO AQUI
             row.getCell('A').alignment = leftMiddleAlignment; 
             
             // B: OM (UGE) CODUG
@@ -591,7 +591,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             <table className="ptrab-table-op">
               <thead>
                 <tr>
-                  <th rowSpan={2} className="col-despesas-op">DESPESAS</th> {/* <-- ALTERADO AQUI */}
+                  <th rowSpan={2} className="col-despesas-op">DESPESAS</th>
                   <th rowSpan={2} className="col-om-op">OM (UGE)<br/>CODUG</th>
                   <th colSpan={6} className="col-nd-group">NATUREZA DE DESPESA</th>
                   <th rowSpan={2} className="col-detalhamento-op">DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/>OBSERVAR A DIRETRIZ DE CUSTEIO OPERACIONAL</th>
@@ -628,8 +628,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             return (
                                 <tr key={registro.id} className="expense-row">
                                   <td className="col-despesas-op" style={{ verticalAlign: 'middle' }}> 
-                                    CLASSE OPERACIONAL - DIÁRIAS
-                                    <div className="text-[7pt] mt-1">Local: {registro.local_atividade}</div>
+                                    DIÁRIAS {/* <-- SIMPLIFICADO AQUI */}
                                   </td>
                                   <td className="col-om-op">
                                     <div>{registro.organizacao}</div>
