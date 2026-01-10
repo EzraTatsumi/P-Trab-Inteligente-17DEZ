@@ -82,7 +82,7 @@ src/lib/creditUtils.ts
 # NOVAS EXCLUSÕES ADICIONAIS (UI e Páginas Estáticas)
 src/pages/UserProfilePage.tsx
 # REMOVIDO:src/components/reports/PTrabLogisticoReport.tsx
-# REMOVIDO:src/components/reports/PTrabRacaoOperacionalReport.tsx
+src/components/reports/PTrabRacaoOperacionalReport.tsx
 src/pages/ClasseIForm.tsx
 src/pages/ClasseIIForm.tsx
 src/pages/ClasseIIIForm.tsx
@@ -95,7 +95,7 @@ src/pages/ClasseIXForm.tsx
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
 
 # src/lib/omUtils.ts
-# Removido: src/lib/ptrabUtils.ts
+src/lib/ptrabUtils.ts
 # src/lib/validationSchemas.ts
 
 # NOVAS EXCLUSÕES ADICIONAIS (UI e Páginas Estáticas)
@@ -132,7 +132,7 @@ src/pages/Login.tsx
 src/components/OmSelector.tsx
 src/components/SessionContextProvider.tsx
 src/hooks/useMilitaryOrganizations.ts
-# REMOVIDO: src/lib/badgeUtils.ts
+src/lib/badgeUtils.ts
 src/lib/classeIIIBadgeUtils.ts
 src/lib/classeIXUtils.ts
 src/data/classeIXData.ts
@@ -173,9 +173,9 @@ src/docs/Architecture.md
 src/docs/SecurityCompliance.md
 src/lib/ptrabNumberUtils.ts
 src/lib/errorUtils.ts
-# Removido: src/lib/ptrabUtils.ts
+src/lib/ptrabUtils.ts
 src/lib/utils.ts
 
 src/lib/omUtils.ts
-# REMOVIDO: src/lib/validationSchemas.ts
+src/lib/validationSchemas.ts
 src/lib/classeIUtils.ts
