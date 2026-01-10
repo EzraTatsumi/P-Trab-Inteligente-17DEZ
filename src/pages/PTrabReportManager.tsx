@@ -475,7 +475,7 @@ export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, ref
             const omDestinoRecurso = registro.om_detentora || '';
             const ugDestinoRecurso = registro.ug_detentora || '';
             
-            // Criar o item granular que representa o grupo de lubrificante daquela categoria
+            // Criar um item granular que representa o grupo de lubrificante daquela categoria
             const granularItem: GranularDisplayItem = {
                 id: `${registro.id}-${categoria}-LUBRIFICANTE`,
                 om_destino: registro.organizacao, // OM Detentora do Equipamento
@@ -1020,6 +1020,8 @@ const PTrabReportManager = () => {
   const calcularTotaisClasseIII = (linhas: LinhaClasseIII[]) => {
     let dieselLitros = 0;
     let gasolinaLitros = 0;
+    let valorDiesel = 0; // NOVO: Valor monetário Diesel
+    let valorGasolina = 0; // NOVO: Valor monetário Gasolina
     let valorTotalCombustivel = 0;
 
     linhas.forEach(linha => {
@@ -1027,18 +1029,22 @@ const PTrabReportManager = () => {
 
       if (linha.tipo_suprimento === 'COMBUSTIVEL_DIESEL') {
         dieselLitros += Number(linha.total_litros_linha || 0);
-        valorTotalCombustivel += Number(linha.valor_total_linha || 0);
+        valorDiesel += Number(linha.valor_total_linha || 0);
       }
 
       if (linha.tipo_suprimento === 'COMBUSTIVEL_GASOLINA') {
         gasolinaLitros += Number(linha.total_litros_linha || 0);
-        valorTotalCombustivel += Number(linha.valor_total_linha || 0);
+        valorGasolina += Number(linha.valor_total_linha || 0);
       }
     });
+    
+    valorTotalCombustivel = valorDiesel + valorGasolina;
 
     return {
       dieselLitros,
       gasolinaLitros,
+      valorDiesel,
+      valorGasolina,
       valorTotalCombustivel
     };
   };
@@ -1084,13 +1090,13 @@ const PTrabReportManager = () => {
     // CORREÇÃO AQUI: Usar a função robusta para identificar se a OM é a RM de fornecimento
     const isRMFornecedora = isRegiaoMilitar(nomeOM, nomeRM);
     
-    const { dieselLitros, gasolinaLitros, valorTotalCombustivel } = isRMFornecedora
+    const { dieselLitros, gasolinaLitros, valorTotalCombustivel, valorDiesel, valorGasolina } = isRMFornecedora
         ? calcularTotaisClasseIII(grupo.linhasClasseIII)
-        : { dieselLitros: 0, gasolinaLitros: 0, valorTotalCombustivel: 0 };
+        : { dieselLitros: 0, gasolinaLitros: 0, valorTotalCombustivel: 0, valorDiesel: 0, valorGasolina: 0 }; // Zera todos os campos
         
     const total_gnd3 = total_parte_azul + valorTotalCombustivel; 
     
-    // Log de validação (AÇÃO 3)
+    // Log de validação
     console.log('[PTrabReportManager] OM:', nomeOM, '| É RM:', isRMFornecedora);
     console.log('[PTrabReportManager] Total Combustível (R$):', valorTotalCombustivel);
     console.log('[PTrabReportManager] Total Diesel (L):', dieselLitros);
@@ -1105,8 +1111,8 @@ const PTrabReportManager = () => {
       total_gnd3,
       totalDieselLitros: dieselLitros,
       totalGasolinaLitros: gasolinaLitros,
-      valorDiesel: valorTotalCombustivel, // Simplificado, mas o valor total é a soma
-      valorGasolina: 0, // Não usado separadamente no total final, mas mantido para consistência
+      valorDiesel: valorDiesel, // CORRIGIDO: Passa o valor monetário do Diesel
+      valorGasolina: valorGasolina, // CORRIGIDO: Passa o valor monetário da Gasolina
     };
   }, [nomeRM]);
   // --- FIM LÓGICA DE AGRUPAMENTO E CÁLCULO ---
