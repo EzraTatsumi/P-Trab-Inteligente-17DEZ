@@ -380,102 +380,6 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
 };
 
 /**
- * Função unificada para gerar a memória de cálculo da Classe II, V, VI, VII, VIII e IX,
- * priorizando o customizado e usando os utilitários corretos.
- */
-export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isClasseII: boolean): string => {
-    // 0. Verificação de segurança
-    if (!registro || !registro.categoria) {
-        return "Registro inválido ou categoria ausente.";
-    }
-    
-    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
-      return registro.detalhamento_customizado;
-    }
-    
-    if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-        return generateClasseIXUtility(registro as any);
-    }
-    
-    if (isClasseII) {
-        // Se for Classe II (Intendência), usa o utilitário atualizado
-        return generateClasseIIUtility(
-            registro.categoria,
-            registro.itens_equipamentos,
-            registro.dias_operacao,
-            registro.om_detentora || registro.organizacao,
-            registro.ug_detentora || registro.ug,
-            registro.fase_atividade,
-            registro.efetivo || 0,
-            registro.valor_nd_30,
-            registro.valor_nd_39
-        );
-    }
-    
-    if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-        return generateClasseVUtility(
-            registro.categoria,
-            registro.itens_equipamentos,
-            registro.dias_operacao,
-            registro.om_detentora || registro.organizacao,
-            registro.ug_detentora || registro.ug,
-            registro.fase_atividade,
-            registro.efetivo || 0,
-            registro.valor_nd_30,
-            registro.valor_nd_39
-        );
-    }
-    
-    if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
-        return generateClasseVIUtility(
-            registro.categoria,
-            registro.itens_equipamentos,
-            registro.dias_operacao,
-            registro.om_detentora || registro.organizacao,
-            registro.ug_detentora || registro.ug,
-            registro.fase_atividade,
-            registro.efetivo || 0,
-            registro.valor_nd_30,
-            registro.valor_nd_39
-        );
-    }
-    
-    if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
-        return generateClasseVIIUtility(
-            registro.categoria,
-            registro.itens_equipamentos,
-            registro.dias_operacao,
-            registro.om_detentora || registro.organizacao,
-            registro.ug_detentora || registro.ug,
-            registro.fase_atividade,
-            registro.efetivo || 0,
-            registro.valor_nd_30,
-            registro.valor_nd_39
-        );
-    }
-    
-    // NOVO: Lógica para Classe VIII
-    if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
-        const itens = registro.categoria === 'Saúde' ? registro.itens_saude : registro.itens_remonta;
-        
-        return generateClasseVIIIUtility(
-            registro.categoria as 'Saúde' | 'Remonta/Veterinária',
-            itens,
-            registro.dias_operacao,
-            registro.om_detentora || registro.organizacao,
-            registro.ug_detentora || registro.ug,
-            registro.fase_atividade,
-            registro.efetivo || 0,
-            registro.valor_nd_30,
-            registro.valor_nd_39,
-            registro.animal_tipo
-        );
-    }
-    
-    return registro.detalhamento || "Memória de cálculo não disponível.";
-};
-
-/**
  * Função para gerar a memória de cálculo da Classe III (Combustível/Lubrificante)
  * no nível granular (o mesmo nível de detalhe da edição do usuário).
  */
@@ -602,7 +506,6 @@ export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, ref
     // Fallback para o detalhamento consolidado (se não for Combustível/Lubrificante)
     return registro.detalhamento || "Memória de cálculo não disponível.";
 };
-
 
 /**
  * Função unificada para gerar a memória de cálculo da Classe II, V, VI, VII, VIII e IX,
