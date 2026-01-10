@@ -162,6 +162,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const rightMiddleAlignment = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
     const leftTopAlignment = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
     const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
+    const leftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true }; // NOVO: Alinhamento Esquerda/Meio
     
     const cellBorder = {
       top: { style: 'thin' as const },
@@ -326,7 +327,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             
             // A: DESPESAS
             row.getCell('A').value = `CLASSE OPERACIONAL - DIÁRIAS\n${registro.local_atividade}`;
-            row.getCell('A').alignment = leftTopAlignment;
+            row.getCell('A').alignment = leftMiddleAlignment; // <-- USANDO leftMiddleAlignment
             
             // B: OM (UGE) CODUG
             row.getCell('B').value = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
@@ -363,7 +364,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             // I: DETALHAMENTO
             const memoria = generateDiariaMemoriaCalculo(registro, diretrizesOperacionais);
             row.getCell('I').value = memoria;
-            row.getCell('I').alignment = leftTopAlignment;
+            row.getCell('I').alignment = leftTopAlignment; // Permanece alinhado ao topo
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
             
             ['A', 'B', 'I'].forEach(col => {
@@ -626,7 +627,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             
                             return (
                                 <tr key={registro.id} className="expense-row">
-                                  <td className="col-despesas-op">
+                                  <td className="col-despesas-op" style={{ verticalAlign: 'middle' }}> {/* Ajuste de alinhamento vertical para o meio */}
                                     CLASSE OPERACIONAL - DIÁRIAS
                                     <div className="text-[7pt] mt-1">Local: {registro.local_atividade}</div>
                                   </td>
@@ -725,7 +726,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         .ptrab-table-op thead th { background-color: #D9D9D9; font-weight: bold; text-align: center; font-size: 9pt; }
         
         /* LARGURAS DE COLUNA FIXAS */
-        .col-despesas-op { width: 20%; text-align: left; vertical-align: top; }
+        .col-despesas-op { width: 20%; text-align: left; vertical-align: middle; } /* Alterado para middle */
         .col-om-op { width: 10%; text-align: center; vertical-align: top; }
         .col-nd-group { background-color: #D9D9D9; font-weight: bold; text-align: center; }
         .col-nd-op-small { 
@@ -802,6 +803,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
           .ptrab-table-op th, .ptrab-table-op td { border: 0.25pt solid #000 !important; } 
           .ptrab-table-op { border: 0.25pt solid #000 !important; }
           .ptrab-table-op td { vertical-align: top !important; } 
+          
+          /* Ajuste de alinhamento vertical para o meio na coluna de despesas no HTML/PDF */
+          .expense-row .col-despesas-op {
+              vertical-align: middle !important;
+          }
           
           /* NDs nas linhas de DADOS continuam azuis */
           .expense-row .col-nd-op-small { 
