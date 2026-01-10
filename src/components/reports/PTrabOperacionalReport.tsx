@@ -178,7 +178,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const corSubtotalOM = 'FFD9D9D9'; // Cinza para o subtotal OM (MANTIDO)
     const corGrandTotal = 'FFE8E8E8'; // Cinza claro para o total geral (MANTIDO)
     const corND = 'FFB4C7E7'; // Azul para as NDs (APENAS NAS LINHAS DE DADOS)
-    const corTotalDetalhamento = 'FFFFFFFF'; // Branco para o detalhamento (Célula D)
+    const corTotalDetalhamento = 'FFFFFFFF'; // Branco para o detalhamento (Célula D) - OBS: Não mais usado para subtotal/total
     const corSomaND = 'FFD9D9D9'; // Cinza para a linha de soma por ND (MANTIDO)
     // -------------------------------------------
 
@@ -326,7 +326,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             const row = worksheet.getRow(currentRow);
             
             // A: DESPESAS
-            row.getCell('A').value = `DIÁRIAS`; // <-- SIMPLIFICADO AQUI
+            row.getCell('A').value = `DIÁRIAS`; 
             row.getCell('A').alignment = leftMiddleAlignment; 
             
             // B: OM (UGE) CODUG
@@ -388,7 +388,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         subtotalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotalOM } }; // Cinza
         subtotalRow.getCell('A').border = cellBorder;
         
-        // Células C, D, E, F, G, H (NDs - MUDADO PARA CINZA)
+        // Células C, D, E, F, G, H (NDs - Cinza)
         subtotalRow.getCell('C').value = subtotalOM.nd15;
         subtotalRow.getCell('D').value = subtotalOM.nd30;
         subtotalRow.getCell('E').value = 0; // 33.90.33
@@ -405,11 +405,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             cell.numFmt = 'R$ #,##0.00';
         });
         
-        // Célula I (Branco)
+        // Célula I (MUDADO PARA CINZA)
         subtotalRow.getCell('I').value = '';
         subtotalRow.getCell('I').alignment = centerMiddleAlignment;
         subtotalRow.getCell('I').font = headerFontStyle;
-        subtotalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalDetalhamento } }; // Branco
+        subtotalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotalOM } }; // Cinza
         subtotalRow.getCell('I').border = cellBorder;
 
         currentRow++;
@@ -429,7 +429,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     totalGeralSomaRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSomaND } }; // Cinza
     totalGeralSomaRow.getCell('A').border = cellBorder;
 
-    // Células C, D, E, F, G, H (NDs - MUDADO PARA CINZA)
+    // Células C, D, E, F, G, H (NDs - Cinza)
     totalGeralSomaRow.getCell('C').value = totaisND.nd15;
     totalGeralSomaRow.getCell('D').value = totaisND.nd30;
     totalGeralSomaRow.getCell('E').value = totaisND.nd33;
@@ -446,11 +446,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         cell.numFmt = 'R$ #,##0.00';
     });
 
-    // Célula I (Branco)
+    // Célula I (MUDADO PARA CINZA)
     totalGeralSomaRow.getCell('I').value = '';
     totalGeralSomaRow.getCell('I').alignment = centerMiddleAlignment;
     totalGeralSomaRow.getCell('I').font = headerFontStyle;
-    totalGeralSomaRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalDetalhamento } }; // Branco
+    totalGeralSomaRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSomaND } }; // Cinza
     totalGeralSomaRow.getCell('I').border = cellBorder;
 
     currentRow++;
@@ -628,7 +628,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             return (
                                 <tr key={registro.id} className="expense-row">
                                   <td className="col-despesas-op" style={{ verticalAlign: 'middle' }}> 
-                                    DIÁRIAS {/* <-- SIMPLIFICADO AQUI */}
+                                    DIÁRIAS
                                   </td>
                                   <td className="col-om-op">
                                     <div>{registro.organizacao}</div>
@@ -660,7 +660,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(0)}</td>
                             <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(0)}</td>
                             <td className="col-nd-op-small text-center font-bold total-gnd3-cell" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(subtotalOM.totalGND3)}</td>
-                            <td></td>
+                            <td style={{ backgroundColor: '#D9D9D9', border: '1px solid #000' }}></td> {/* Coluna I agora Cinza */}
                         </tr>
                     </React.Fragment>
                 );
@@ -682,7 +682,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(totaisND.nd39)}</td>
                 <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(totaisND.nd00)}</td>
                 <td className="col-nd-op-small text-center font-bold total-gnd3-cell" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(totaisND.totalGND3)}</td>
-                <td></td>
+                <td style={{ backgroundColor: '#D9D9D9', border: '1px solid #000' }}></td> {/* Coluna I agora Cinza */}
               </tr>
               
               {/* Grand Total Row 2: VALOR TOTAL - Já estava em Cinza (#E8E8E8) */}
@@ -756,6 +756,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         .subtotal-om-row .col-nd-op-small {
             background-color: #D9D9D9 !important;
         }
+        /* Garante que a coluna I no subtotal seja cinza */
+        .subtotal-om-row td:last-child {
+            background-color: #D9D9D9 !important;
+        }
         
         /* Estilos para Total Geral */
         .total-geral-soma-row {
@@ -773,6 +777,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         }
         /* Garante que as NDs na soma geral sejam cinzas */
         .total-geral-soma-row .col-nd-op-small {
+            background-color: #D9D9D9 !important;
+        }
+        /* Garante que a coluna I na soma geral seja cinza */
+        .total-geral-soma-row td:last-child {
             background-color: #D9D9D9 !important;
         }
         
