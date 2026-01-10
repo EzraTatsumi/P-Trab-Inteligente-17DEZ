@@ -593,7 +593,12 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
           .ptrab-table-op thead { display: table-row-group; break-inside: avoid; break-after: auto; }
           .ptrab-table-op th, .ptrab-table-op td { border: 0.25pt solid #000 !important; } /* Borda mais fina para impressão */
           .ptrab-table-op { border: 0.25pt solid #000 !important; }
-          .ptrab-table-op td { vertical-align: top !important; } /* Alinhamento superior para células de dados */
+          
+          /* CORREÇÃO: Alinhamento vertical para as colunas de dados */
+          .ptrab-table-op td { vertical-align: middle !important; } /* Padrão para middle */
+          
+          /* Sobrescreve apenas o detalhamento para top */
+          .ptrab-table-op td.col-detalhamento-op { vertical-align: top !important; } 
           
           .print-avoid-break {
             page-break-before: avoid !important;
