@@ -409,11 +409,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             cell.numFmt = 'R$ #,##0.00';
         });
         
-        // Célula I (Branco)
+        // Célula I (CORRIGIDO: Deve ser cinza)
         subtotalRow.getCell('I').value = '';
         subtotalRow.getCell('I').alignment = centerMiddleAlignment;
         subtotalRow.getCell('I').font = headerFontStyle;
-        subtotalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalDetalhamento } }; // Branco
+        subtotalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotalOM } }; // Cinza
         subtotalRow.getCell('I').border = cellBorder;
 
         currentRow++;
@@ -450,11 +450,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         cell.numFmt = 'R$ #,##0.00';
     });
 
-    // Célula I (Branco)
+    // Célula I (CORRIGIDO: Deve ser cinza)
     totalGeralSomaRow.getCell('I').value = '';
     totalGeralSomaRow.getCell('I').alignment = centerMiddleAlignment;
     totalGeralSomaRow.getCell('I').font = headerFontStyle;
-    totalGeralSomaRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalDetalhamento } }; // Branco
+    totalGeralSomaRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSomaND } }; // Cinza
     totalGeralSomaRow.getCell('I').border = cellBorder;
 
     currentRow++;
@@ -482,7 +482,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     totalGeralFinalRow.getCell('H').border = cellBorder;
     totalGeralFinalRow.getCell('H').numFmt = 'R$ #,##0.00';
 
-    // Célula I: Vazia (Cinza Claro)
+    // Célula I: Vazia (CORRIGIDO: Deve ser cinza claro)
     totalGeralFinalRow.getCell('I').value = '';
     totalGeralFinalRow.getCell('I').alignment = centerMiddleAlignment;
     totalGeralFinalRow.getCell('I').font = headerFontStyle;
