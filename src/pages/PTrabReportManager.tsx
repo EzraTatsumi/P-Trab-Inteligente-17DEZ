@@ -475,7 +475,7 @@ export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, ref
             const omDestinoRecurso = registro.om_detentora || '';
             const ugDestinoRecurso = registro.ug_detentora || '';
             
-            // Criar um item granular que representa o grupo de lubrificante daquela categoria
+            // Criar o item granular que representa o grupo de lubrificante daquela categoria
             const granularItem: GranularDisplayItem = {
                 id: `${registro.id}-${categoria}-LUBRIFICANTE`,
                 om_destino: registro.organizacao, // OM Detentora do Equipamento
@@ -615,6 +615,41 @@ export const getTipoCombustivelLabel = (tipo: string) => {
         return 'GASOLINA';
     }
     return tipo;
+};
+
+// =================================================================
+// FUNÇÕES DE NORMALIZAÇÃO E IDENTIFICAÇÃO DA RM (AÇÕES 1 e 2)
+// =================================================================
+
+const normalizarNome = (valor?: string) =>
+  (valor || '')
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const isRegiaoMilitar = (nomeOM: string, nomeRM: string) => {
+  const om = normalizarNome(nomeOM);
+  const rm = normalizarNome(nomeRM);
+
+  // 1. Comparação direta (ex: "7A RM" === "7A RM")
+  if (om === rm) return true;
+
+  // 2. Heurística: OM é uma RM (ex: "7A RM" ou "10A RM")
+  if (/^\d+ª?\s*RM$/.test(om) || om.includes('REGIAO MILITAR')) return true;
+
+  // 3. Heurística: OM contém o nome da RM (útil se nomeRM for "7ª RM - Salvador")
+  if (rm.includes(om)) return true;
+
+  // 4. Heurística: OM começa com o número da RM (ex: "7A" em "7A RM")
+  const numRM = rm.match(/\d+/)?.[0];
+  if (numRM && om.startsWith(numRM)) {
+      // Verifica se a OM contém a sigla RM
+      if (om.includes('RM')) return true;
+  }
+
+  return false;
 };
 
 // =================================================================
@@ -969,9 +1004,12 @@ const PTrabReportManager = () => {
     const rmName = nomeRM;
     
     return oms.sort((a, b) => {
-        // Prioriza a RM de vinculação do PTrab
-        if (a === rmName && b !== rmName) return -1;
-        if (a !== rmName && b === rmName) return 1;
+        // Prioriza a RM de vinculação do PTrab usando a função robusta
+        const aIsRM = isRegiaoMilitar(a, rmName);
+        const bIsRM = isRegiaoMilitar(b, rmName);
+        
+        if (aIsRM && !bIsRM) return -1;
+        if (!aIsRM && bIsRM) return 1;
         
         // Ordena alfabeticamente as demais
         return a.localeCompare(b);
@@ -1043,20 +1081,21 @@ const PTrabReportManager = () => {
     const total_parte_azul = total_33_90_30 + total_33_90_39;
     
     // 2. Totais de Combustível (APENAS NA RM)
-    const isRM = nomeOM === nomeRM;
+    // CORREÇÃO AQUI: Usar a função robusta para identificar se a OM é a RM de fornecimento
+    const isRMFornecedora = isRegiaoMilitar(nomeOM, nomeRM);
     
-    const { dieselLitros, gasolinaLitros, valorTotalCombustivel } = isRM
+    const { dieselLitros, gasolinaLitros, valorTotalCombustivel } = isRMFornecedora
         ? calcularTotaisClasseIII(grupo.linhasClasseIII)
         : { dieselLitros: 0, gasolinaLitros: 0, valorTotalCombustivel: 0 };
         
     const total_gnd3 = total_parte_azul + valorTotalCombustivel; 
     
-    // Log de depuração (mantido para rastrear o problema)
-    console.log(`[PTrabReportManager] OM: ${nomeOM} | É RM: ${isRM}`);
-    console.log(`[PTrabReportManager] Total Combustível (R$): ${valorTotalCombustivel}`);
-    console.log(`[PTrabReportManager] Total Diesel (L): ${dieselLitros}`);
-    console.log(`[PTrabReportManager] Total Gasolina (L): ${gasolinaLitros}`);
-    console.log(`[PTrabReportManager] Total GND3: ${total_gnd3}`);
+    // Log de validação (AÇÃO 3)
+    console.log('[PTrabReportManager] OM:', nomeOM, '| É RM:', isRMFornecedora);
+    console.log('[PTrabReportManager] Total Combustível (R$):', valorTotalCombustivel);
+    console.log('[PTrabReportManager] Total Diesel (L):', dieselLitros);
+    console.log('[PTrabReportManager] Total Gasolina (L):', gasolinaLitros);
+    console.log('[PTrabReportManager] Total GND3:', total_gnd3);
 
     return {
       total_33_90_30,
