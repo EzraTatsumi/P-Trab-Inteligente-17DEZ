@@ -75,7 +75,7 @@ src/components/MarkdownAccordion.tsx
 src/components/MarkdownViewer.tsx
 src/components/HelpDialog.tsx
 src/components/ClasseIIIRegistryForm.tsx
-# REMOVIDO:src/hooks/useFormNavigation.ts
+src/hooks/useFormNavigation.ts
 src/hooks/use-mobile.tsx
 src/lib/creditUtils.ts
 
@@ -129,9 +129,9 @@ src/pages/Login.tsx
 # REMOVIDO:src/pages/PTrabManager.tsx
 # REMOVIDO:src/pages/PTrabForm.tsx
 # REMOVIDO: src/pages/PTrabReportManager.tsx
-# REMOVIDO: src/components/OmSelector.tsx
+src/components/OmSelector.tsx
 src/components/SessionContextProvider.tsx
-# REMOVIDO: src/hooks/useMilitaryOrganizations.ts
+src/hooks/useMilitaryOrganizations.ts
 # REMOVIDO: src/lib/badgeUtils.ts
 src/lib/classeIIIBadgeUtils.ts
 src/lib/classeIXUtils.ts
@@ -178,4 +178,4 @@ src/lib/utils.ts
 
 src/lib/omUtils.ts
 # REMOVIDO: src/lib/validationSchemas.ts
-# REMOVIDO: src/lib/classeIUtils.ts
+src/lib/classeIUtils.ts
