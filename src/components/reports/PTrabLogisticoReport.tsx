@@ -4,7 +4,7 @@ import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber, formatDateDDMMMAA, formatCodug } from "@/lib/formatUtils";
-import { FileSpreadsheet, Printer, Download } from "lucide-react";
+import { FileSpreadsheet, Printer, Download, Package, Utensils, Briefcase, HardHat, Plane, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -648,6 +648,18 @@ export const getTipoCombustivelLabel = (tipo: string) => {
     return tipo;
 };
 
+// Helper function to get the label for Classe III categories
+const getTipoEquipamentoLabel = (categoria: LinhaClasseIII['categoria_equipamento']) => {
+    switch (categoria) {
+        case 'GERADOR': return 'Gerador';
+        case 'EMBARCACAO': return 'Embarcação';
+        case 'EQUIPAMENTO_ENGENHARIA': return 'Equipamento de Engenharia';
+        case 'MOTOMECANIZACAO': return 'Motomecanização';
+        case 'LUBRIFICANTE': return 'Lubrificante';
+        default: return categoria;
+    }
+};
+
 // =================================================================
 // FUNÇÕES DE NORMALIZAÇÃO E IDENTIFICAÇÃO DA RM (AÇÕES 1 e 2)
 // =================================================================
@@ -679,33 +691,16 @@ const isRegiaoMilitar = (nomeOM: string, nomeRM: string) => {
 };
 
 // =================================================================
-// DEFINIÇÃO DOS RELATÓRIOS E RÓTULOS
+// FUNÇÕES DE FALLBACK (Para evitar erros de tipo no PTrabLogisticoReport.tsx)
 // =================================================================
 
-type ReportType = 
-  'logistico' | 
-  'racao_operacional' | 
-  'operacional' | 
-  'material_permanente' | 
-  'hora_voo' | 
-  'dor';
+const defaultGenerateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isClasseII: boolean) => registro.detalhamento || "Memória de cálculo não disponível.";
+const defaultGenerateClasseVMemoriaCalculo = (registro: ClasseIIRegistro) => registro.detalhamento || "Memória de cálculo não disponível.";
+const defaultGenerateClasseVIMemoriaCalculo = (registro: ClasseIIRegistro) => registro.detalhamento || "Memória de cálculo não disponível.";
+const defaultGenerateClasseVIIMemoriaCalculo = (registro: ClasseIIRegistro) => registro.detalhamento || "Memória de cálculo não disponível.";
+const defaultGenerateClasseVIIIMemoriaCalculo = (registro: ClasseIIRegistro) => registro.detalhamento || "Memória de cálculo não disponível.";
+const defaultGenerateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro) => registro.detalhamento || "Memória de cálculo não disponível.";
 
-interface ReportOption {
-    value: ReportType;
-    label: string;
-    icon: React.FC<any>;
-    iconClass: string;
-    fileSuffix: string;
-}
-
-const REPORT_OPTIONS: ReportOption[] = [
-  { value: 'logistico', label: 'P Trab Logístico', icon: Package, iconClass: 'text-orange-500', fileSuffix: 'Aba Log' },
-  { value: 'racao_operacional', label: 'P Trab Cl I - Ração Operacional', icon: Utensils, iconClass: 'text-orange-500', fileSuffix: 'Aba Rç Op' },
-  { value: 'operacional', label: 'P Trab Operacional', icon: Briefcase, iconClass: 'text-blue-500', fileSuffix: 'Aba Op' }, // NOVO
-  { value: 'material_permanente', label: 'P Trab Material Permanente', icon: HardHat, iconClass: 'text-green-500', fileSuffix: 'Aba Mat Perm' },
-  { value: 'hora_voo', label: 'P Trab Hora de Voo', icon: Plane, iconClass: 'text-purple-500', fileSuffix: 'Aba HV' },
-  { value: 'dor', label: 'DOR', icon: ClipboardList, iconClass: 'text-gray-500', fileSuffix: 'Aba DOR' },
-];
 
 // =================================================================
 // COMPONENTE PRINCIPAL
@@ -984,7 +979,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       hdr1.getCell('B').value = 'OM (UGE)\nCODUG';
       hdr1.getCell('C').value = 'NATUREZA DE DESPESA';
       hdr1.getCell('F').value = 'COMBUSTÍVEL';
-      hdr1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG';
+      hdr1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/>OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG';
       
       // Mesclagens
       worksheet.mergeCells(`A${headerRow1}:A${headerRow2}`);
@@ -1116,10 +1111,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             
             if (isClasseI) { // Classe I (QS/QR)
                 const registro = (linha as LinhaTabela).registro as ClasseIRegistro;
+                const tipo = (linha as LinhaTabela).tipo;
                 const ug_qs_formatted = formatCodug(registro.ug_qs);
                 const ug_qr_formatted = formatCodug(registro.ug);
 
-                if ((linha as LinhaTabela).tipo === 'QS') {
+                if (tipo === 'QS') {
                     rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                     rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                     rowData.valorC = registro.total_qs;
