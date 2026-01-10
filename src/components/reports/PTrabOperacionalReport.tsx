@@ -221,6 +221,8 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     currentRow++;
     
+    const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
+    
     const addInfoRow = (label: string, value: string) => {
         const row = worksheet.getRow(currentRow);
         
@@ -724,6 +726,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         .ptrab-table-op th, .ptrab-table-op td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; font-size: 8pt; } 
         .ptrab-table-op thead th { background-color: #D9D9D9; font-weight: bold; text-align: center; font-size: 9pt; }
         
+        .expense-row { page-break-inside: avoid; } /* Adicionado para evitar quebra dentro da linha */
         /* LARGURAS DE COLUNA FIXAS */
         .col-despesas-op { width: 20%; text-align: left; vertical-align: middle; } 
         .col-om-op { width: 10%; text-align: center; vertical-align: top; }
@@ -806,6 +809,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         @media print {
           @page { size: landscape; margin: 0.5cm; }
           body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
+          .expense-row { page-break-inside: avoid !important; } /* Reforço para impressão */
           .ptrab-table-op thead { display: table-row-group; break-inside: avoid; break-after: auto; }
           .ptrab-table-op th, .ptrab-table-op td { border: 0.25pt solid #000 !important; } 
           .ptrab-table-op { border: 0.25pt solid #000 !important; }

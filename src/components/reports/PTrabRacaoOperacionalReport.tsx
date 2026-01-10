@@ -490,7 +490,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
             </thead>
             <tbody>
               {racaoOperacionalConsolidada.map((linha, index) => (
-                <tr key={index}>
+                <tr key={index} className="expense-row">
                   <td className="col-despesas-op">
                     Ração Operacional de Combate
                   </td>
@@ -574,6 +574,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         .ptrab-table-op th, .ptrab-table-op td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; font-size: 8pt; } /* Fonte de dados reduzida para 8pt */
         .ptrab-table-op thead th { background-color: #D9D9D9; font-weight: bold; text-align: center; font-size: 9pt; }
         
+        .expense-row { page-break-inside: avoid; } /* Adicionado para evitar quebra dentro da linha */
         /* LARGURAS DE COLUNA FIXAS */
         .col-despesas-op { width: 25%; text-align: left; }
         .col-om-op { width: 15%; text-align: center; }
@@ -589,6 +590,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         @media print {
           @page { size: landscape; margin: 0.5cm; }
           body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
+          .expense-row { page-break-inside: avoid !important; } /* Reforço para impressão */
           .ptrab-print-container { padding: 0 !important; margin: 0 !important; }
           .ptrab-table-op thead { display: table-row-group; break-inside: avoid; break-after: auto; }
           .ptrab-table-op th, .ptrab-table-op td { border: 0.25pt solid #000 !important; } /* Borda mais fina para impressão */
