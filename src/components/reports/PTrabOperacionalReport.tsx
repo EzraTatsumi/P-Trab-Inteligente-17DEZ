@@ -164,6 +164,9 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
     const leftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true }; 
     
+    // NOVO: Alinhamento para dados (verticalmente centralizado)
+    const dataCenterMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
+    
     const cellBorder = {
       top: { style: 'thin' as const },
       left: { style: 'thin' as const },
@@ -331,17 +334,18 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             
             // B: OM (UGE) CODUG
             row.getCell('B').value = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
-            row.getCell('B').alignment = centerMiddleAlignment; // ALINHAMENTO VERTICAL MIDDLE
+            // APLICANDO ALINHAMENTO VERTICAL MIDDLE AQUI
+            row.getCell('B').alignment = dataCenterMiddleAlignment; 
             
             // C: 33.90.15 (Diárias)
             row.getCell('C').value = registro.valor_nd_15;
-            row.getCell('C').alignment = centerMiddleAlignment;
+            row.getCell('C').alignment = dataCenterMiddleAlignment;
             row.getCell('C').numFmt = 'R$ #,##0.00';
             row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; // Azul (Linha de dados)
             
             // D: 33.90.30 (Passagens Aéreas)
             row.getCell('D').value = registro.valor_nd_30;
-            row.getCell('D').alignment = centerMiddleAlignment;
+            row.getCell('D').alignment = dataCenterMiddleAlignment;
             row.getCell('D').numFmt = 'R$ #,##0.00';
             row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; // Azul (Linha de dados)
             
@@ -350,14 +354,14 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('F').value = 0;
             row.getCell('G').value = 0;
             ['E', 'F', 'G'].forEach(col => {
-                row.getCell(col).alignment = centerMiddleAlignment;
+                row.getCell(col).alignment = dataCenterMiddleAlignment;
                 row.getCell(col).numFmt = 'R$ #,##0.00';
                 row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; // Azul (Linha de dados)
             });
             
             // H: GND 3 (Total da linha)
             row.getCell('H').value = registro.valor_total;
-            row.getCell('H').alignment = centerMiddleAlignment;
+            row.getCell('H').alignment = dataCenterMiddleAlignment;
             row.getCell('H').numFmt = 'R$ #,##0.00';
             row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; // Azul (Linha de dados)
             
