@@ -331,7 +331,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             
             // B: OM (UGE) CODUG
             row.getCell('B').value = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
-            row.getCell('B').alignment = centerMiddleAlignment;
+            row.getCell('B').alignment = centerMiddleAlignment; // ALINHAMENTO VERTICAL MIDDLE
             
             // C: 33.90.15 (Diárias)
             row.getCell('C').value = registro.valor_nd_15;
@@ -367,6 +367,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('I').alignment = leftTopAlignment; // Permanece alinhado ao topo
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
             
+            // Aplica o estilo de fonte base e bordas
             ['A', 'B', 'I'].forEach(col => {
                 row.getCell(col).font = baseFontStyle;
             });
