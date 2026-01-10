@@ -334,7 +334,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             
             // B: OM (UGE) CODUG
             row.getCell('B').value = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
-            row.getCell('B').alignment = centerMiddleAlignment; // ALINHAMENTO VERTICAL MIDDLE
+            row.getCell('B').alignment = dataCenterMiddleAlignment; 
             
             // C: 33.90.15 (Diárias)
             row.getCell('C').value = registro.valor_nd_15;
@@ -644,10 +644,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                   <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.39 */}
                                   <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
                                   <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
-                                  <td className="col-detalhamento-op" style={{ fontSize: '6.5pt' }}>
-                                    <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                  <td className="col-detalhamento-op">
+                                    {/* Substituído <pre> por <div> para melhor compatibilidade de altura na impressão */}
+                                    <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
                                       {generateDiariaMemoriaCalculo(registro, diretrizesOperacionais)}
-                                    </pre>
+                                    </div>
                                   </td>
                                 </tr>
                             );
