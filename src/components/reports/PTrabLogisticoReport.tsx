@@ -60,8 +60,6 @@ interface PTrabLogisticoReportProps {
     total_gnd3: number;
     totalDieselLitros: number;
     totalGasolinaLitros: number;
-    valorDiesel: number;
-    valorGasolina: number;
   };
   fileSuffix: string; // NOVO PROP
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe I
@@ -225,8 +223,7 @@ const getTipoEquipamentoLabel = (tipo: string) => {
     }
 };
 
-// =================================================================
-// COMPONENTE PRINCIPAL
+// =ÇÃO PRINCIPAL
 // =================================================================
 
 const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
@@ -449,7 +446,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       const omExtensoRow = worksheet.getRow(currentRow);
       omExtensoRow.getCell(1).value = (ptrabData.nome_om_extenso || ptrabData.nome_om).toUpperCase();
       omExtensoRow.getCell(1).font = titleFontStyle;
-      omExtensoRow.getCell(1).alignment = centerMiddleAlignment;
+      omExtensoRow.getCell('A').alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
@@ -636,10 +633,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             
             if (isClasseI) { // Classe I (QS/QR)
                 const registro = (linha as LinhaTabela).registro as ClasseIRegistro;
+                const tipo = (linha as LinhaTabela).tipo;
                 const ug_qs_formatted = formatCodug(registro.ug_qs);
                 const ug_qr_formatted = formatCodug(registro.ug);
 
-                if ((linha as LinhaTabela).tipo === 'QS') {
+                if (tipo === 'QS') {
                     rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                     rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                     rowData.valorC = registro.total_qs;
@@ -1421,10 +1419,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
 
                     // Linha 2: Valor Total
                     <tr key="total-geral-final-row" className="total-geral-final-row">
-                      <td colSpan={6} style={{ backgroundColor: '#E8E8E8', border: '1px solid #000', borderRight: 'none' }}></td>
-                      <td className="text-center font-bold" style={{ whiteSpace: 'nowrap', backgroundColor: '#E8E8E8', border: '1px solid #000' }}>VALOR TOTAL</td>
+                      <td colSpan={6} className="text-right font-bold" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000', borderRight: 'none' }}>
+                        VALOR TOTAL
+                      </td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
-                      <td style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}></td>
+                      <td colSpan={2} style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}></td>
                     </tr>,
                     
                     // Linha 3: GND - 3 (dividida em 2 subdivisões)
@@ -1501,7 +1500,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         .ptrab-footer { margin-top: 3rem; text-align: center; }
         .signature-block { margin-top: 4rem; }
         
-        /* REGRAS ESPECÍFICAS DE IMPRESSÃO (MANTIDAS PARA GARANTIR O COMPORTAMENTO NATIVO) */
+        /* REGRAS ESPECÍFICAS DE IMPRESSÃO (CORREÇÃO DE ALINHAMENTO) */
         @media print {
           @page { size: landscape; margin: 0.5cm; }
           body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
@@ -1509,7 +1508,30 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           .ptrab-table thead { display: table-row-group; break-inside: avoid; break-after: auto; }
           .ptrab-table th, .ptrab-table td { border: 0.25pt solid #000 !important; } /* Borda mais fina para impressão */
           .ptrab-table { border: 0.25pt solid #000 !important; }
-          .ptrab-table td { vertical-align: top !important; } /* Alinhamento superior para células de dados */
+          
+          /* CORREÇÃO CRÍTICA: Força alinhamento vertical middle para as colunas de dados A a H */
+          .expense-row td:nth-child(1), /* Coluna A: DESPESAS */
+          .expense-row td:nth-child(2), /* Coluna B: OM/CODUG */
+          .expense-row td:nth-child(3), /* Coluna C: 33.90.30 */
+          .expense-row td:nth-child(4), /* Coluna D: 33.90.39 */
+          .expense-row td:nth-child(5), /* Coluna E: TOTAL ND */
+          .expense-row td:nth-child(6), /* Coluna F: LITROS */
+          .expense-row td:nth-child(7), /* Coluna G: PREÇO UNITÁRIO */
+          .expense-row td:nth-child(8) { /* Coluna H: PREÇO TOTAL */
+              vertical-align: middle !important;
+          }
+          
+          /* Coluna I (Detalhamento) deve ser top */
+          .expense-row .col-detalhamento {
+              vertical-align: top !important;
+          }
+          
+          /* Garante que as cores de fundo sejam impressas */
+          .subtotal-row td, .total-geral-soma-row td, .total-geral-final-row td,
+          .col-valor-natureza, .col-combustivel-data-filled {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+          }
           
           .print-avoid-break {
             page-break-before: avoid !important;
