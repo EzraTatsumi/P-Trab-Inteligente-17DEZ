@@ -35,8 +35,28 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   
   const diasOperacao = useMemo(() => calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim), [ptrabData]);
   
-  const totalDiariasGeral = useMemo(() => {
-    return registrosDiaria.reduce((sum, r) => sum + r.valor_total, 0);
+  // Calcula os totais gerais de cada ND com base nos registros de Diária
+  const totaisND = useMemo(() => {
+    const totals = {
+      nd15: 0, // Diárias (33.90.15)
+      nd30: 0, // Outras NDs (33.90.30) - Diárias Aéreas
+      nd33: 0, // 33.90.33 (Vazio por enquanto)
+      nd39: 0, // 33.90.39 (Vazio por enquanto)
+      nd00: 0, // 33.90.00 (Vazio por enquanto)
+    };
+
+    registrosDiaria.forEach(r => {
+      totals.nd15 += r.valor_nd_15;
+      totals.nd30 += r.valor_nd_30; // Diárias aéreas (passagens)
+      // Diárias não contribuem para 33.90.33, 33.90.39 ou 33.90.00
+    });
+
+    const totalGND3 = totals.nd15 + totals.nd30 + totals.nd33 + totals.nd39 + totals.nd00;
+    
+    return {
+      ...totals,
+      totalGND3,
+    };
   }, [registrosDiaria]);
   
   // Função para gerar o nome do arquivo (reutilizada do Logístico)
@@ -114,7 +134,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, totalDiariasGeral, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, registrosDiaria, diretrizesOperacionais, toast]);
+  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, registrosDiaria, diretrizesOperacionais, toast]);
 
   // Função para Imprimir (Abre a caixa de diálogo de impressão)
   const handlePrint = useCallback(() => {
@@ -122,17 +142,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   }, []);
 
   const exportExcel = useCallback(async () => {
-    if (registrosDiaria.length === 0) {
-        toast({ title: "Aviso", description: "Não há dados de Diárias para exportar.", variant: "default" });
-        return;
-    }
-
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('P Trab Operacional');
 
     // --- Definição de Estilos e Alinhamentos ---
     const centerMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
-    const rightMiddleAlignment = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
     const leftTopAlignment = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
     
     const cellBorder = {
@@ -147,8 +161,9 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
     const corHeader = 'FFD9D9D9'; // Cinza claro para o cabeçalho da tabela
     const corTotalA = 'FFD9D9D9'; // Cinza para o total (Célula A+B)
-    const corTotalC = 'FFB4C7E7'; // Azul para a quantidade (Célula C)
-    const corTotalD = 'FFFFFFFF'; // Branco para o detalhamento (Célula D)
+    const corTotalND = 'FFB4C7E7'; // Azul para as NDs
+    const corTotalGND3 = 'FFB4C7E7'; // Azul para GND 3
+    const corTotalDetalhamento = 'FFFFFFFF'; // Branco para o detalhamento (Célula D)
     // -------------------------------------------
 
     let currentRow = 1;
@@ -158,7 +173,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         row.getCell(1).value = text;
         row.getCell(1).font = titleFontStyle;
         row.getCell(1).alignment = centerMiddleAlignment;
-        worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+        worksheet.mergeCells(`A${currentRow}:I${currentRow}`); // Ajustado para 9 colunas
         currentRow++;
     };
     
@@ -170,21 +185,22 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     omExtensoRow.getCell(1).value = (ptrabData.nome_om_extenso || ptrabData.nome_om).toUpperCase();
     omExtensoRow.getCell(1).font = titleFontStyle;
     omExtensoRow.getCell(1).alignment = centerMiddleAlignment;
-    worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+    worksheet.mergeCells(`A${currentRow}:I${currentRow}`); // Ajustado para 9 colunas
     currentRow++;
     
     const fullTitleRow = worksheet.getRow(currentRow);
     fullTitleRow.getCell(1).value = `PLANO DE TRABALHO OPERACIONAL DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO ${ptrabData.nome_operacao.toUpperCase()}`;
     fullTitleRow.getCell(1).font = titleFontStyle;
     fullTitleRow.getCell(1).alignment = centerMiddleAlignment;
-    worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+    worksheet.mergeCells(`A${currentRow}:I${currentRow}`); // Ajustado para 9 colunas
     currentRow++;
 
     const shortTitleRow = worksheet.getRow(currentRow);
-    shortTitleRow.getCell(1).value = 'PLANO DE TRABALHO OPERACIONAL - DIÁRIAS';
+    // Título corrigido
+    shortTitleRow.getCell(1).value = 'PLANO DE TRABALHO OPERACIONAL'; 
     shortTitleRow.getCell(1).font = { ...titleFontStyle, underline: true };
     shortTitleRow.getCell(1).alignment = centerMiddleAlignment;
-    worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+    worksheet.mergeCells(`A${currentRow}:I${currentRow}`); // Ajustado para 9 colunas
     currentRow++;
     
     currentRow++;
@@ -200,7 +216,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         };
         
         row.getCell(1).alignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true };
-        worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+        worksheet.mergeCells(`A${currentRow}:I${currentRow}`); // Ajustado para 9 colunas
         currentRow++;
     };
     
@@ -214,21 +230,34 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     despesasRow.getCell(1).font = headerFontStyle;
     currentRow++;
     
-    // Cabeçalho da Tabela (4 colunas)
+    // Cabeçalho da Tabela (9 colunas)
     const headerRow = worksheet.getRow(currentRow);
     headerRow.getCell('A').value = 'DESPESAS OPERACIONAIS';
     headerRow.getCell('B').value = 'OM (UGE)\nCODUG';
-    headerRow.getCell('C').value = 'NATUREZA DE DESPESA\n(33.90.15)';
-    headerRow.getCell('D').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO OPERACIONAL';
+    
+    // Colunas de ND
+    headerRow.getCell('C').value = '33.90.15';
+    headerRow.getCell('D').value = '33.90.30';
+    headerRow.getCell('E').value = '33.90.33';
+    headerRow.getCell('F').value = '33.90.39';
+    headerRow.getCell('G').value = '33.90.00';
+    headerRow.getCell('H').value = 'GND 3';
+    
+    headerRow.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO OPERACIONAL';
     
     worksheet.columns = [
-        { width: 35 }, // A
-        { width: 20 }, // B
-        { width: 15 }, // C
-        { width: 70 }, // D
+        { width: 25 }, // A: DESPESAS
+        { width: 15 }, // B: OM (UGE) CODUG
+        { width: 10 }, // C: 33.90.15
+        { width: 10 }, // D: 33.90.30
+        { width: 10 }, // E: 33.90.33
+        { width: 10 }, // F: 33.90.39
+        { width: 10 }, // G: 33.90.00
+        { width: 10 }, // H: GND 3
+        { width: 50 }, // I: DETALHAMENTO
     ];
     
-    ['A', 'B', 'C', 'D'].forEach(col => {
+    ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
         const cell = headerRow.getCell(col);
         cell.style = {
             font: headerFontStyle,
@@ -239,7 +268,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     });
     currentRow++;
 
-    // Dados da Tabela
+    // Dados da Tabela (Apenas Diárias por enquanto)
     registrosDiaria.forEach(registro => {
         const row = worksheet.getRow(currentRow);
         
@@ -249,20 +278,39 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         
         // B: OM (UGE) CODUG
         row.getCell('B').value = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
-        row.getCell('B').alignment = centerTopAlignment;
+        row.getCell('B').alignment = centerMiddleAlignment;
         
-        // C: NATUREZA DE DESPESA (33.90.15)
+        // C: 33.90.15 (Diárias)
         row.getCell('C').value = registro.valor_nd_15;
         row.getCell('C').alignment = centerMiddleAlignment;
         row.getCell('C').numFmt = 'R$ #,##0.00';
         
-        // D: DETALHAMENTO
-        const memoria = generateDiariaMemoriaCalculo(registro, diretrizesOperacionais);
-        row.getCell('D').value = memoria;
-        row.getCell('D').alignment = leftTopAlignment;
-        row.getCell('D').font = { name: 'Arial', size: 6.5 };
+        // D: 33.90.30 (Passagens Aéreas)
+        row.getCell('D').value = registro.valor_nd_30;
+        row.getCell('D').alignment = centerMiddleAlignment;
+        row.getCell('D').numFmt = 'R$ #,##0.00';
         
-        ['A', 'B', 'C', 'D'].forEach(col => {
+        // E, F, G: Outras NDs (0 por enquanto)
+        row.getCell('E').value = 0;
+        row.getCell('F').value = 0;
+        row.getCell('G').value = 0;
+        ['E', 'F', 'G'].forEach(col => {
+            row.getCell(col).alignment = centerMiddleAlignment;
+            row.getCell(col).numFmt = 'R$ #,##0.00';
+        });
+        
+        // H: GND 3 (Total da linha)
+        row.getCell('H').value = registro.valor_total;
+        row.getCell('H').alignment = centerMiddleAlignment;
+        row.getCell('H').numFmt = 'R$ #,##0.00';
+        
+        // I: DETALHAMENTO
+        const memoria = generateDiariaMemoriaCalculo(registro, diretrizesOperacionais);
+        row.getCell('I').value = memoria;
+        row.getCell('I').alignment = leftTopAlignment;
+        row.getCell('I').font = { name: 'Arial', size: 6.5 };
+        
+        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
             row.getCell(col).border = cellBorder;
             row.getCell(col).font = baseFontStyle;
         });
@@ -280,20 +328,36 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     totalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalA } };
     totalRow.getCell('A').border = cellBorder;
     
-    // Célula C (Azul)
-    totalRow.getCell('C').value = totalDiariasGeral;
-    totalRow.getCell('C').alignment = centerMiddleAlignment;
-    totalRow.getCell('C').font = headerFontStyle;
-    totalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalC } };
-    totalRow.getCell('C').border = cellBorder;
-    totalRow.getCell('C').numFmt = 'R$ #,##0.00';
+    // Células C, D, E, F, G (NDs - Azul)
+    totalRow.getCell('C').value = totaisND.nd15;
+    totalRow.getCell('D').value = totaisND.nd30;
+    totalRow.getCell('E').value = totaisND.nd33;
+    totalRow.getCell('F').value = totaisND.nd39;
+    totalRow.getCell('G').value = totaisND.nd00;
     
-    // Célula D (Branco)
-    totalRow.getCell('D').value = '';
-    totalRow.getCell('D').alignment = centerMiddleAlignment;
-    totalRow.getCell('D').font = headerFontStyle;
-    totalRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalD } };
-    totalRow.getCell('D').border = cellBorder;
+    ['C', 'D', 'E', 'F', 'G'].forEach(col => {
+        const cell = totalRow.getCell(col);
+        cell.alignment = centerMiddleAlignment;
+        cell.font = headerFontStyle;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalND } };
+        cell.border = cellBorder;
+        cell.numFmt = 'R$ #,##0.00';
+    });
+    
+    // Célula H (GND 3 - Azul)
+    totalRow.getCell('H').value = totaisND.totalGND3;
+    totalRow.getCell('H').alignment = centerMiddleAlignment;
+    totalRow.getCell('H').font = headerFontStyle;
+    totalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalGND3 } };
+    totalRow.getCell('H').border = cellBorder;
+    totalRow.getCell('H').numFmt = 'R$ #,##0.00';
+    
+    // Célula I (Branco)
+    totalRow.getCell('I').value = '';
+    totalRow.getCell('I').alignment = centerMiddleAlignment;
+    totalRow.getCell('I').font = headerFontStyle;
+    totalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalDetalhamento } };
+    totalRow.getCell('I').border = cellBorder;
 
     currentRow++;
     
@@ -304,21 +368,21 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     localRow.getCell('A').value = `${ptrabData.local_om || 'Local'}, ${new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
     localRow.getCell('A').font = { name: 'Arial', size: 10 };
     localRow.getCell('A').alignment = centerMiddleAlignment;
-    worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+    worksheet.mergeCells(`A${currentRow}:I${currentRow}`); // Ajustado para 9 colunas
     currentRow += 3;
     
     const cmtRow = worksheet.getRow(currentRow);
     cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
     cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
     cmtRow.getCell('A').alignment = centerMiddleAlignment;
-    worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+    worksheet.mergeCells(`A${currentRow}:I${currentRow}`); // Ajustado para 9 colunas
     currentRow++;
     
     const cargoRow = worksheet.getRow(currentRow);
     cargoRow.getCell('A').value = `Comandante da ${ptrabData.nome_om_extenso || ptrabData.nome_om}`;
     cargoRow.getCell('A').font = { name: 'Arial', size: 9 };
     cargoRow.getCell('A').alignment = centerMiddleAlignment;
-    worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+    worksheet.mergeCells(`A${currentRow}:I${currentRow}`); // Ajustado para 9 colunas
 
     // Exportar
     const buffer = await workbook.xlsx.writeBuffer();
@@ -335,7 +399,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       description: "O relatório Operacional foi salvo com sucesso.",
       duration: 3000,
     });
-  }, [registrosDiaria, ptrabData, diasOperacao, totalDiariasGeral, fileSuffix, generateDiariaMemoriaCalculo, diretrizesOperacionais, toast]);
+  }, [registrosDiaria, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, diretrizesOperacionais, toast]);
 
 
   if (registrosDiaria.length === 0) {
@@ -384,7 +448,8 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
           <p className="text-[11pt] font-bold uppercase">
             Plano de Trabalho Operacional de Solicitação de Recursos Orçamentários e Financeiros Operação {ptrabData.nome_operacao}
           </p>
-          <p className="text-[11pt] font-bold uppercase underline">Plano de Trabalho Operacional - Diárias</p>
+          {/* Título corrigido */}
+          <p className="text-[11pt] font-bold uppercase underline">Plano de Trabalho Operacional</p>
         </div>
 
         <div className="ptrab-info">
@@ -400,14 +465,23 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             <table className="ptrab-table-op">
               <thead>
                 <tr>
-                  <th className="col-despesas-op">DESPESAS OPERACIONAIS</th>
-                  <th className="col-om-op">OM (UGE)<br/>CODUG</th>
-                  <th className="col-nd-op">NATUREZA DE DESPESA<br/>(33.90.15)</th>
-                  <th className="col-detalhamento-op">DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/>OBSERVAR A DIRETRIZ DE CUSTEIO OPERACIONAL</th>
+                  <th rowSpan={2} className="col-despesas-op">DESPESAS OPERACIONAIS</th>
+                  <th rowSpan={2} className="col-om-op">OM (UGE)<br/>CODUG</th>
+                  <th colSpan={6} className="col-nd-group">NATUREZA DE DESPESA (ND)</th>
+                  <th rowSpan={2} className="col-detalhamento-op">DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/>OBSERVAR A DIRETRIZ DE CUSTEIO OPERACIONAL</th>
+                </tr>
+                <tr>
+                    <th className="col-nd-op-small">33.90.15</th>
+                    <th className="col-nd-op-small">33.90.30</th>
+                    <th className="col-nd-op-small">33.90.33</th>
+                    <th className="col-nd-op-small">33.90.39</th>
+                    <th className="col-nd-op-small">33.90.00</th>
+                    <th className="col-nd-op-small">GND 3</th>
                 </tr>
             </thead>
             <tbody>
               {registrosDiaria.map((registro, index) => {
+                const totalLinha = registro.valor_nd_15 + registro.valor_nd_30; // Diárias só contribuem para 15 e 30 (passagens)
                 
                 return (
                     <tr key={index}>
@@ -419,9 +493,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                         <div>{registro.organizacao}</div>
                         <div>({formatCodug(registro.ug)})</div>
                       </td>
-                      <td className="col-nd-op">
-                        {formatCurrency(registro.valor_nd_15)}
-                      </td>
+                      <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_15)}</td>
+                      <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_30)}</td>
+                      <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.33 */}
+                      <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.39 */}
+                      <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
+                      <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
                       <td className="col-detalhamento-op" style={{ fontSize: '6.5pt' }}>
                         <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
                           {generateDiariaMemoriaCalculo(registro, diretrizesOperacionais)}
@@ -445,17 +522,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 >
                   TOTAL
                 </td>
-                <td 
-                  className="text-center font-bold" 
-                  style={{ 
-                    backgroundColor: '#B4C7E7', 
-                    color: '#000', 
-                    border: '1px solid #000',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  {formatCurrency(totalDiariasGeral)}
-                </td>
+                <td className="total-nd-cell">{formatCurrency(totaisND.nd15)}</td>
+                <td className="total-nd-cell">{formatCurrency(totaisND.nd30)}</td>
+                <td className="total-nd-cell">{formatCurrency(totaisND.nd33)}</td>
+                <td className="total-nd-cell">{formatCurrency(totaisND.nd39)}</td>
+                <td className="total-nd-cell">{formatCurrency(totaisND.nd00)}</td>
+                <td className="total-nd-cell total-gnd3-cell">{formatCurrency(totaisND.totalGND3)}</td>
                 <td 
                   style={{ 
                     backgroundColor: '#FFFFFF', 
@@ -498,10 +570,20 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         .ptrab-table-op thead th { background-color: #D9D9D9; font-weight: bold; text-align: center; font-size: 9pt; }
         
         /* LARGURAS DE COLUNA FIXAS */
-        .col-despesas-op { width: 25%; text-align: left; vertical-align: top; }
-        .col-om-op { width: 15%; text-align: center; vertical-align: top; }
-        .col-nd-op { width: 10%; text-align: center; vertical-align: top; background-color: #B4C7E7 !important; }
-        .col-detalhamento-op { width: 50%; text-align: left; vertical-align: top; }
+        .col-despesas-op { width: 20%; text-align: left; vertical-align: top; }
+        .col-om-op { width: 10%; text-align: center; vertical-align: top; }
+        .col-nd-group { background-color: #D9D9D9; font-weight: bold; text-align: center; }
+        .col-nd-op-small { width: 7%; text-align: center; vertical-align: middle; }
+        .col-detalhamento-op { width: 38%; text-align: left; vertical-align: top; }
+        
+        .total-gnd3-cell { background-color: #B4C7E7 !important; }
+        .total-nd-cell { 
+            background-color: #B4C7E7 !important; 
+            color: #000; 
+            border: 1px solid #000;
+            font-weight: bold;
+            text-align: center;
+        }
         
         .total-row-op { page-break-inside: avoid; font-weight: bold; } 
         
