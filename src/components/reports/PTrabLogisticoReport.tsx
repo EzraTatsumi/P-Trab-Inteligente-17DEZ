@@ -257,18 +257,28 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   const totalGeral_33_90_30 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '').total_33_90_30, 0), [gruposPorOM, calcularTotaisPorOM]);
   const totalGeral_33_90_39 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '').total_33_90_39, 0), [gruposPorOM, calcularTotaisPorOM]);
   
-  // NOVO: Total Combustível é a soma dos valores das linhas desagregadas de Combustível na RM
-  const totalValorCombustivel = useMemo(() => {
-    const rmGroup = gruposPorOM[nomeRM];
-    if (!rmGroup) return 0;
-    
-    // Usar a função calcularTotaisPorOM para obter o total de combustível da RM
-    const totaisRM = calcularTotaisPorOM(rmGroup, nomeRM);
-    return totaisRM.total_combustivel;
-  }, [gruposPorOM, nomeRM, calcularTotaisPorOM]);
+  // NOVO: Cálculo dos totais gerais de combustível (litros e valor)
+  const { totalDiesel, totalGasolina, totalValorCombustivelFinal } = useMemo(() => {
+    let totalDiesel = 0;
+    let totalGasolina = 0;
+    let totalValorCombustivelFinal = 0;
+
+    // Itera sobre todas as OMs e soma os totais de combustível (que só estarão preenchidos na RM fornecedora)
+    omsOrdenadas.forEach(nomeOM => {
+        const grupo = gruposPorOM[nomeOM];
+        if (grupo) {
+            const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
+            totalDiesel += totaisOM.totalDieselLitros;
+            totalGasolina += totaisOM.totalGasolinaLitros;
+            totalValorCombustivelFinal += totaisOM.total_combustivel;
+        }
+    });
+
+    return { totalDiesel, totalGasolina, totalValorCombustivelFinal };
+  }, [omsOrdenadas, gruposPorOM, calcularTotaisPorOM]);
   
   const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39;
-  const valorTotalSolicitado = totalGeral_GND3_ND + totalValorCombustivel;
+  const valorTotalSolicitado = totalGeral_GND3_ND + totalValorCombustivelFinal;
   
   const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
   
@@ -918,26 +928,24 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       totalGeralSomaRow.getCell('E').numFmt = 'R$ #,##0.00';
       
       // Totais de combustível por tipo (para exibição na parte laranja)
-      const rmGroup = gruposPorOM[nomeRM];
-      const totaisRM = rmGroup ? calcularTotaisPorOM(rmGroup, nomeRM) : { totalDieselLitros: 0, totalGasolinaLitros: 0, total_combustivel: 0 };
-      
-      const totalDiesel = totaisRM.totalDieselLitros;
-      const totalGasolina = totaisRM.totalGasolinaLitros;
-      const totalValorCombustivelFinal = totaisRM.total_combustivel;
+      // Usando as variáveis calculadas no useMemo
+      const totalDieselLitrosGeral = totalDiesel;
+      const totalGasolinaLitrosGeral = totalGasolina;
+      const totalValorCombustivelFinalGeral = totalValorCombustivelFinal;
         
-      totalGeralSomaRow.getCell('F').value = totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : '';
+      totalGeralSomaRow.getCell('F').value = totalDieselLitrosGeral > 0 ? `${formatNumber(totalDieselLitrosGeral)} L OD` : '';
       totalGeralSomaRow.getCell('F').alignment = dataCenterMiddleAlignment;
       totalGeralSomaRow.getCell('F').font = headerFontStyle;
       totalGeralSomaRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       totalGeralSomaRow.getCell('F').border = cellBorder;
       
-      totalGeralSomaRow.getCell('G').value = totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : '';
+      totalGeralSomaRow.getCell('G').value = totalGasolinaLitrosGeral > 0 ? `${formatNumber(totalGasolinaLitrosGeral)} L GAS` : '';
       totalGeralSomaRow.getCell('G').alignment = dataCenterMiddleAlignment;
       totalGeralSomaRow.getCell('G').font = headerFontStyle;
       totalGeralSomaRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       totalGeralSomaRow.getCell('G').border = cellBorder;
       
-      totalGeralSomaRow.getCell('H').value = totalValorCombustivelFinal;
+      totalGeralSomaRow.getCell('H').value = totalValorCombustivelFinalGeral;
       totalGeralSomaRow.getCell('H').alignment = dataCenterMonetaryAlignment;
       totalGeralSomaRow.getCell('H').font = headerFontStyle;
       totalGeralSomaRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
@@ -1046,7 +1054,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     diasOperacao, 
     totalGeral_33_90_30, 
     totalGeral_33_90_39, 
-    totalValorCombustivel, 
+    totalValorCombustivelFinal, // Usando o total geral
     totalGeral_GND3_ND, // Adicionado explicitamente
     valorTotalSolicitado, 
     nomeRM, 
@@ -1060,7 +1068,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     generateClasseVIMemoriaCalculo, 
     generateClasseVIIMemoriaCalculo, 
     generateClasseVIIIMemoriaCalculo, 
-    generateClasseIIIMemoriaCalculo
+    generateClasseIIIMemoriaCalculo,
+    totalDiesel, // Adicionado para o useCallback
+    totalGasolina, // Adicionado para o useCallback
   ]);
 
 
@@ -1388,12 +1398,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 // ========== TOTAL GERAL ==========
                 ...(() => {
                   // Totais de combustível por tipo (para exibição na parte laranja)
-                  const rmGroup = gruposPorOM[nomeRM];
-                  const totaisRM = rmGroup ? calcularTotaisPorOM(rmGroup, nomeRM) : { totalDieselLitros: 0, totalGasolinaLitros: 0, total_combustivel: 0 };
-                  
-                  const totalDiesel = totaisRM.totalDieselLitros;
-                  const totalGasolina = totaisRM.totalGasolinaLitros;
-                  const totalValorCombustivelFinal = totaisRM.total_combustivel;
+                  // Usando os totais gerais calculados no useMemo
+                  const totalDieselLitrosGeral = totalDiesel;
+                  const totalGasolinaLitrosGeral = totalGasolina;
+                  const totalValorCombustivelFinalGeral = totalValorCombustivelFinal;
 
                   return [
                     // Linha 1: Soma detalhada por ND e GP de Despesa
@@ -1402,9 +1410,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_30)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_39)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_GND3_ND)}</td>
-                      <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : ''}</td>
-                      <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : ''}</td>
-                      <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalValorCombustivelFinal > 0 ? formatCurrency(totalValorCombustivelFinal) : ''}</td>
+                      {/* F: LITROS DIESEL */}
+                      <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalDieselLitrosGeral > 0 ? `${formatNumber(totalDieselLitrosGeral)} L OD` : ''}</td>
+                      {/* G: LITROS GASOLINA */}
+                      <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalGasolinaLitrosGeral > 0 ? `${formatNumber(totalGasolinaLitrosGeral)} L GAS` : ''}</td>
+                      {/* H: PREÇO TOTAL COMBUSTÍVEL */}
+                      <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalValorCombustivelFinalGeral > 0 ? formatCurrency(totalValorCombustivelFinalGeral) : ''}</td>
                       <td style={{ backgroundColor: 'white' }}></td>
                     </tr>,
 
