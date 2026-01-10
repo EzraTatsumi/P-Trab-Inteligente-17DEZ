@@ -500,7 +500,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       const headerRow2 = currentRow + 1;
       
       const hdr1 = worksheet.getRow(headerRow1);
-      hdr1.getCell('A').value = 'DESPESAS\n(ORDENAR POR CLASSE DE SUBSISTÊNCIA)';
+      hdr1.getCell('A').value = 'DESPESAS'; // ALTERADO AQUI
       hdr1.getCell('B').value = 'OM (UGE)\nCODUG';
       hdr1.getCell('C').value = 'NATUREZA DE DESPESA';
       hdr1.getCell('F').value = 'COMBUSTÍVEL';
@@ -1118,7 +1118,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             <table className="ptrab-table">
               <thead>
                 <tr>
-                  <th rowSpan={2} className="col-despesas">DESPESAS<br/>(ORDENAR POR CLASSE DE SUBSISTÊNCIA)</th>
+                  <th rowSpan={2} className="col-despesas">DESPESAS</th> {/* ALTERADO AQUI */}
                   <th rowSpan={2} className="col-om">OM (UGE)<br/>CODUG</th>
                   <th colSpan={3} className="col-natureza-header">NATUREZA DE DESPESA</th>
                   <th colSpan={3} className="col-combustivel-header">COMBUSTÍVEL</th>
