@@ -178,7 +178,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const corSubtotalOM = 'FFD9D9D9'; // Cinza para o subtotal OM (MANTIDO)
     const corGrandTotal = 'FFE8E8E8'; // Cinza claro para o total geral (MANTIDO)
     const corND = 'FFB4C7E7'; // Azul para as NDs (APENAS NAS LINHAS DE DADOS)
-    const corTotalDetalhamento = 'FFFFFFFF'; // Branco para o detalhamento (Célula D) - OBS: Não mais usado para subtotal/total
+    const corTotalDetalhamento = 'FFFFFFFF'; // Branco para o detalhamento (Célula D)
     const corSomaND = 'FFD9D9D9'; // Cinza para a linha de soma por ND (MANTIDO)
     // -------------------------------------------
 
@@ -220,8 +220,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     currentRow++;
     
     currentRow++;
-    
-    const diasOperacao = calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
     
     const addInfoRow = (label: string, value: string) => {
         const row = worksheet.getRow(currentRow);
@@ -328,7 +326,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             const row = worksheet.getRow(currentRow);
             
             // A: DESPESAS
-            row.getCell('A').value = `DIÁRIAS`; 
+            row.getCell('A').value = `DIÁRIAS`; // <-- SIMPLIFICADO AQUI
             row.getCell('A').alignment = leftMiddleAlignment; 
             
             // B: OM (UGE) CODUG
@@ -390,7 +388,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         subtotalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotalOM } }; // Cinza
         subtotalRow.getCell('A').border = cellBorder;
         
-        // Células C, D, E, F, G, H (NDs - Cinza)
+        // Células C, D, E, F, G, H (NDs - MUDADO PARA CINZA)
         subtotalRow.getCell('C').value = subtotalOM.nd15;
         subtotalRow.getCell('D').value = subtotalOM.nd30;
         subtotalRow.getCell('E').value = 0; // 33.90.33
@@ -407,11 +405,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             cell.numFmt = 'R$ #,##0.00';
         });
         
-        // Célula I (MUDADO PARA CINZA)
+        // Célula I (Branco)
         subtotalRow.getCell('I').value = '';
         subtotalRow.getCell('I').alignment = centerMiddleAlignment;
         subtotalRow.getCell('I').font = headerFontStyle;
-        subtotalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotalOM } }; // Cinza
+        subtotalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalDetalhamento } }; // Branco
         subtotalRow.getCell('I').border = cellBorder;
 
         currentRow++;
@@ -431,7 +429,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     totalGeralSomaRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSomaND } }; // Cinza
     totalGeralSomaRow.getCell('A').border = cellBorder;
 
-    // Células C, D, E, F, G, H (NDs - Cinza)
+    // Células C, D, E, F, G, H (NDs - MUDADO PARA CINZA)
     totalGeralSomaRow.getCell('C').value = totaisND.nd15;
     totalGeralSomaRow.getCell('D').value = totaisND.nd30;
     totalGeralSomaRow.getCell('E').value = totaisND.nd33;
@@ -448,11 +446,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         cell.numFmt = 'R$ #,##0.00';
     });
 
-    // Célula I (MUDADO PARA CINZA)
+    // Célula I (Branco)
     totalGeralSomaRow.getCell('I').value = '';
     totalGeralSomaRow.getCell('I').alignment = centerMiddleAlignment;
     totalGeralSomaRow.getCell('I').font = headerFontStyle;
-    totalGeralSomaRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSomaND } }; // Cinza
+    totalGeralSomaRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalDetalhamento } }; // Branco
     totalGeralSomaRow.getCell('I').border = cellBorder;
 
     currentRow++;
@@ -630,7 +628,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             return (
                                 <tr key={registro.id} className="expense-row">
                                   <td className="col-despesas-op" style={{ verticalAlign: 'middle' }}> 
-                                    DIÁRIAS
+                                    DIÁRIAS {/* <-- SIMPLIFICADO AQUI */}
                                   </td>
                                   <td className="col-om-op">
                                     <div>{registro.organizacao}</div>
@@ -662,7 +660,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(0)}</td>
                             <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(0)}</td>
                             <td className="col-nd-op-small text-center font-bold total-gnd3-cell" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(subtotalOM.totalGND3)}</td>
-                            <td style={{ backgroundColor: '#D9D9D9', border: '1px solid #000' }}></td> {/* Coluna I agora Cinza */}
+                            <td></td>
                         </tr>
                     </React.Fragment>
                 );
@@ -684,7 +682,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(totaisND.nd39)}</td>
                 <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(totaisND.nd00)}</td>
                 <td className="col-nd-op-small text-center font-bold total-gnd3-cell" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(totaisND.totalGND3)}</td>
-                <td style={{ backgroundColor: '#D9D9D9', border: '1px solid #000' }}></td> {/* Coluna I agora Cinza */}
+                <td></td>
               </tr>
               
               {/* Grand Total Row 2: VALOR TOTAL - Já estava em Cinza (#E8E8E8) */}
@@ -726,7 +724,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         .ptrab-table-op th, .ptrab-table-op td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; font-size: 8pt; } 
         .ptrab-table-op thead th { background-color: #D9D9D9; font-weight: bold; text-align: center; font-size: 9pt; }
         
-        .expense-row { page-break-inside: avoid; } /* Adicionado para evitar quebra dentro da linha */
         /* LARGURAS DE COLUNA FIXAS */
         .col-despesas-op { width: 20%; text-align: left; vertical-align: middle; } 
         .col-om-op { width: 10%; text-align: center; vertical-align: top; }
@@ -759,10 +756,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         .subtotal-om-row .col-nd-op-small {
             background-color: #D9D9D9 !important;
         }
-        /* Garante que a coluna I no subtotal seja cinza */
-        .subtotal-om-row td:last-child {
-            background-color: #D9D9D9 !important;
-        }
         
         /* Estilos para Total Geral */
         .total-geral-soma-row {
@@ -780,10 +773,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         }
         /* Garante que as NDs na soma geral sejam cinzas */
         .total-geral-soma-row .col-nd-op-small {
-            background-color: #D9D9D9 !important;
-        }
-        /* Garante que a coluna I na soma geral seja cinza */
-        .total-geral-soma-row td:last-child {
             background-color: #D9D9D9 !important;
         }
         
@@ -809,7 +798,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         @media print {
           @page { size: landscape; margin: 0.5cm; }
           body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
-          .expense-row { page-break-inside: avoid !important; } /* Reforço para impressão */
           .ptrab-table-op thead { display: table-row-group; break-inside: avoid; break-after: auto; }
           .ptrab-table-op th, .ptrab-table-op td { border: 0.25pt solid #000 !important; } 
           .ptrab-table-op { border: 0.25pt solid #000 !important; }
