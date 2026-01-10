@@ -261,10 +261,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   const totalValorCombustivel = useMemo(() => {
     const rmGroup = gruposPorOM[nomeRM];
     if (!rmGroup) return 0;
-    return rmGroup.linhasClasseIII
-        .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL' || l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
-        .reduce((acc, l) => acc + l.valor_total_linha, 0);
-  }, [gruposPorOM, nomeRM]);
+    
+    // Usar a função calcularTotaisPorOM para obter o total de combustível da RM
+    const totaisRM = calcularTotaisPorOM(rmGroup, nomeRM);
+    return totaisRM.total_combustivel;
+  }, [gruposPorOM, nomeRM, calcularTotaisPorOM]);
   
   const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39;
   const valorTotalSolicitado = totalGeral_GND3_ND + totalValorCombustivel;
@@ -917,13 +918,13 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       totalGeralSomaRow.getCell('E').border = cellBorder;
       totalGeralSomaRow.getCell('E').numFmt = 'R$ #,##0.00';
       
-      const totalDiesel = gruposPorOM[nomeRM]?.linhasClasseIII
-        .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL')
-        .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
-        
-      const totalGasolina = gruposPorOM[nomeRM]?.linhasClasseIII
-        .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
-        .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
+      // Totais de combustível por tipo (para exibição na parte laranja)
+      const rmGroup = gruposPorOM[nomeRM];
+      const totaisRM = rmGroup ? calcularTotaisPorOM(rmGroup, nomeRM) : { totalDieselLitros: 0, totalGasolinaLitros: 0, total_combustivel: 0 };
+      
+      const totalDiesel = totaisRM.totalDieselLitros;
+      const totalGasolina = totaisRM.totalGasolinaLitros;
+      const totalValorCombustivelFinal = totaisRM.total_combustivel;
         
       totalGeralSomaRow.getCell('F').value = totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : '';
       totalGeralSomaRow.getCell('F').alignment = dataCenterMiddleAlignment;
@@ -937,7 +938,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       totalGeralSomaRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
       totalGeralSomaRow.getCell('G').border = cellBorder;
       
-      totalGeralSomaRow.getCell('H').value = totalValorCombustivel;
+      totalGeralSomaRow.getCell('H').value = totalValorCombustivelFinal;
       totalGeralSomaRow.getCell('H').alignment = dataCenterMonetaryAlignment;
       totalGeralSomaRow.getCell('H').font = headerFontStyle;
       totalGeralSomaRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
@@ -1388,15 +1389,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 // ========== TOTAL GERAL ==========
                 ...(() => {
                   // Totais de combustível por tipo (para exibição na parte laranja)
-                  const totalDiesel = gruposPorOM[nomeRM]?.linhasClasseIII
-                    .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL')
-                    .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
-                    
-                  const totalGasolina = gruposPorOM[nomeRM]?.linhasClasseIII
-                    .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
-                    .reduce((acc, l) => acc + l.total_litros_linha, 0) || 0;
-                    
-                  const totalValorCombustivelFinal = totalValorCombustivel;
+                  const rmGroup = gruposPorOM[nomeRM];
+                  const totaisRM = rmGroup ? calcularTotaisPorOM(rmGroup, nomeRM) : { totalDieselLitros: 0, totalGasolinaLitros: 0, total_combustivel: 0 };
+                  
+                  const totalDiesel = totaisRM.totalDieselLitros;
+                  const totalGasolina = totaisRM.totalGasolinaLitros;
+                  const totalValorCombustivelFinal = totaisRM.total_combustivel;
 
                   return [
                     // Linha 1: Soma detalhada por ND e GP de Despesa

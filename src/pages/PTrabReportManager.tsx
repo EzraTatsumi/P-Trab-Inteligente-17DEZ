@@ -199,7 +199,7 @@ export interface GrupoOM {
   linhasClasseVII: LinhaClasseII[];
   linhasClasseVIII: LinhaClasseII[];
   linhasClasseIX: LinhaClasseII[];
-  linhasClasseIII: LinhaClasseIII[]; // NOVO: Linhas desagregadas de Classe III
+  linhasClasseIII: LinhaClasseIII[]; // Inicializa a nova lista
 }
 
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
@@ -380,6 +380,102 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
 };
 
 /**
+ * Função unificada para gerar a memória de cálculo da Classe II, V, VI, VII, VIII e IX,
+ * priorizando o customizado e usando os utilitários corretos.
+ */
+export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isClasseII: boolean): string => {
+    // 0. Verificação de segurança
+    if (!registro || !registro.categoria) {
+        return "Registro inválido ou categoria ausente.";
+    }
+    
+    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
+      return registro.detalhamento_customizado;
+    }
+    
+    if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+        return generateClasseIXUtility(registro as any);
+    }
+    
+    if (isClasseII) {
+        // Se for Classe II (Intendência), usa o utilitário atualizado
+        return generateClasseIIUtility(
+            registro.categoria,
+            registro.itens_equipamentos,
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
+            registro.efetivo || 0,
+            registro.valor_nd_30,
+            registro.valor_nd_39
+        );
+    }
+    
+    if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+        return generateClasseVUtility(
+            registro.categoria,
+            registro.itens_equipamentos,
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
+            registro.efetivo || 0,
+            registro.valor_nd_30,
+            registro.valor_nd_39
+        );
+    }
+    
+    if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
+        return generateClasseVIUtility(
+            registro.categoria,
+            registro.itens_equipamentos,
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
+            registro.efetivo || 0,
+            registro.valor_nd_30,
+            registro.valor_nd_39
+        );
+    }
+    
+    if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
+        return generateClasseVIIUtility(
+            registro.categoria,
+            registro.itens_equipamentos,
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
+            registro.efetivo || 0,
+            registro.valor_nd_30,
+            registro.valor_nd_39
+        );
+    }
+    
+    // NOVO: Lógica para Classe VIII
+    if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+        const itens = registro.categoria === 'Saúde' ? registro.itens_saude : registro.itens_remonta;
+        
+        return generateClasseVIIIUtility(
+            registro.categoria as 'Saúde' | 'Remonta/Veterinária',
+            itens,
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
+            registro.efetivo || 0,
+            registro.valor_nd_30,
+            registro.valor_nd_39,
+            registro.animal_tipo
+        );
+    }
+    
+    return registro.detalhamento || "Memória de cálculo não disponível.";
+};
+
+/**
  * Função para gerar a memória de cálculo da Classe III (Combustível/Lubrificante)
  * no nível granular (o mesmo nível de detalhe da edição do usuário).
  */
@@ -430,6 +526,11 @@ export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, ref
                 // Para Combustível, a OM Destino Recurso é a RM de Fornecimento (om_detentora/ug_detentora)
                 const rmFornecimento = registro.om_detentora || '';
                 const codugRmFornecimento = registro.ug_detentora || '';
+                
+                // Recalcula os totais para o item granular (necessário para a memória)
+                const totals = calculateItemTotals(item, refLPC, registro.dias_operacao);
+                granularItem.valor_total = totals.valorCombustivel;
+                granularItem.total_litros = totals.totalLitros;
                 
                 finalMemoria += generateClasseIIIGranularUtility(
                     granularItem, 
@@ -970,13 +1071,36 @@ const PTrabReportManager = () => {
     });
   }, [gruposPorOM]);
   
+  // NOVO: Função para calcular os totais de Classe III (Combustível/Lubrificante)
+  const calcularTotaisClasseIII = (linhas: LinhaClasseIII[]) => {
+    let dieselLitros = 0;
+    let gasolinaLitros = 0;
+    let valorTotalCombustivel = 0;
+
+    linhas.forEach(linha => {
+      if (!linha) return;
+
+      if (linha.tipo_suprimento === 'COMBUSTIVEL_DIESEL') {
+        dieselLitros += Number(linha.total_litros_linha || 0);
+        valorTotalCombustivel += Number(linha.valor_total_linha || 0);
+      }
+
+      if (linha.tipo_suprimento === 'COMBUSTIVEL_GASOLINA') {
+        gasolinaLitros += Number(linha.total_litros_linha || 0);
+        valorTotalCombustivel += Number(linha.valor_total_linha || 0);
+      }
+    });
+
+    return {
+      dieselLitros,
+      gasolinaLitros,
+      valorTotalCombustivel
+    };
+  };
+
   const calcularTotaisPorOM = useCallback((grupo: GrupoOM, nomeOM: string) => {
     
-    // --- LOG DE DEBUG INÍCIO ---
-    console.log(`[PTrabReportManager] Calculando totais para OM: ${nomeOM}`);
-    console.log(`[PTrabReportManager] Nome da RM (Referência): ${nomeRM}`);
-    // --- LOG DE DEBUG FIM ---
-    
+    // 1. Totais de ND 30/39 (Classes I, II, V, VI, VII, VIII, IX + Lubrificante)
     const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.total_qs, 0);
     const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + linha.registro.total_qr, 0);
     
@@ -998,7 +1122,7 @@ const PTrabReportManager = () => {
     const totalClasseIX_ND30 = grupo.linhasClasseIX.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
     const totalClasseIX_ND39 = grupo.linhasClasseIX.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
     
-    // NOVO: Total Lubrificante (agora vem das linhas desagregadas)
+    // Lubrificante (ND 33.90.30)
     const totalLubrificante = grupo.linhasClasseIII
         .filter(l => l.tipo_suprimento === 'LUBRIFICANTE')
         .reduce((acc, linha) => acc + linha.valor_total_linha, 0);
@@ -1011,56 +1135,34 @@ const PTrabReportManager = () => {
     
     const total_parte_azul = total_33_90_30 + total_33_90_39;
     
-    // Combustível (Apenas na RM)
+    // 2. Totais de Combustível (APENAS NA RM)
     const isRM = nomeOM === nomeRM;
     
-    const combustivelDestaRM = isRM 
-      ? grupo.linhasClasseIII.filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL' || l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
-      : [];
-      
-    console.log(`[PTrabReportManager] Combustível Linhas Encontradas para ${nomeOM}:`, combustivelDestaRM.length);
-    if (combustivelDestaRM.length > 0) {
-        console.log(`[PTrabReportManager] Primeira Linha de Combustível:`, combustivelDestaRM[0]);
-    }
+    const { dieselLitros, gasolinaLitros, valorTotalCombustivel } = isRM
+        ? calcularTotaisClasseIII(grupo.linhasClasseIII)
+        : { dieselLitros: 0, gasolinaLitros: 0, valorTotalCombustivel: 0 };
+        
+    const total_gnd3 = total_parte_azul + valorTotalCombustivel; 
     
-    const valorDiesel = combustivelDestaRM
-      .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL')
-      .reduce((acc, l) => acc + l.valor_total_linha, 0);
-    const valorGasolina = combustivelDestaRM
-      .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
-      .reduce((acc, l) => acc + l.valor_total_linha, 0);
-    
-    const totalCombustivel = valorDiesel + valorGasolina;
-    
-    const total_gnd3 = total_parte_azul + totalCombustivel; 
-    
-    const totalDieselLitros = combustivelDestaRM
-      .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_DIESEL')
-      .reduce((acc, l) => acc + l.total_litros_linha, 0);
-    const totalGasolinaLitros = combustivelDestaRM
-      .filter(l => l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA')
-      .reduce((acc, l) => acc + l.total_litros_linha, 0);
-
-    // --- LOG DE DEBUG FIM ---
+    // Log de depuração (mantido para rastrear o problema)
     console.log(`[PTrabReportManager] OM: ${nomeOM} | É RM: ${isRM}`);
-    console.log(`[PTrabReportManager] Total Combustível (R$): ${totalCombustivel}`);
-    console.log(`[PTrabReportManager] Total Diesel (L): ${totalDieselLitros}`);
-    console.log(`[PTrabReportManager] Total Gasolina (L): ${totalGasolinaLitros}`);
+    console.log(`[PTrabReportManager] Total Combustível (R$): ${valorTotalCombustivel}`);
+    console.log(`[PTrabReportManager] Total Diesel (L): ${dieselLitros}`);
+    console.log(`[PTrabReportManager] Total Gasolina (L): ${gasolinaLitros}`);
     console.log(`[PTrabReportManager] Total GND3: ${total_gnd3}`);
-    // --- LOG DE DEBUG FIM ---
 
     return {
       total_33_90_30,
       total_33_90_39,
       total_parte_azul,
-      total_combustivel: totalCombustivel,
+      total_combustivel: valorTotalCombustivel,
       total_gnd3,
-      totalDieselLitros,
-      totalGasolinaLitros,
-      valorDiesel,
-      valorGasolina,
+      totalDieselLitros: dieselLitros,
+      totalGasolinaLitros: gasolinaLitros,
+      valorDiesel: valorTotalCombustivel, // Simplificado, mas o valor total é a soma
+      valorGasolina: 0, // Não usado separadamente no total final, mas mantido para consistência
     };
-  }, [registrosClasseIII, nomeRM]);
+  }, [nomeRM]);
   // --- FIM LÓGICA DE AGRUPAMENTO E CÁLCULO ---
 
   const renderReport = () => {
