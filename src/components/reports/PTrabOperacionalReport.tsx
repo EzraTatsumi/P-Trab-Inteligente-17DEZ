@@ -334,8 +334,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             
             // B: OM (UGE) CODUG
             row.getCell('B').value = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
-            // APLICANDO ALINHAMENTO VERTICAL MIDDLE AQUI
-            row.getCell('B').alignment = dataCenterMiddleAlignment; 
+            row.getCell('B').alignment = centerMiddleAlignment; // ALINHAMENTO VERTICAL MIDDLE
             
             // C: 33.90.15 (Diárias)
             row.getCell('C').value = registro.valor_nd_15;
@@ -632,7 +631,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             
                             return (
                                 <tr key={registro.id} className="expense-row">
-                                  <td className="col-despesas-op" style={{ verticalAlign: 'middle' }}> 
+                                  <td className="col-despesas-op"> 
                                     DIÁRIAS {/* <-- SIMPLIFICADO AQUI */}
                                   </td>
                                   <td className="col-om-op">
@@ -799,18 +798,33 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         .ptrab-footer { margin-top: 3rem; text-align: center; }
         .signature-block { margin-top: 4rem; display: inline-block; text-align: center; }
         
-        /* REGRAS ESPECÍFICAS DE IMPRESSÃO (MANTIDAS PARA GARANTIR O COMPORTAMENTO NATIVO) */
+        /* REGRAS ESPECÍFICAS DE IMPRESSÃO */
         @media print {
           @page { size: landscape; margin: 0.5cm; }
           body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
           .ptrab-table-op thead { display: table-row-group; break-inside: avoid; break-after: auto; }
           .ptrab-table-op th, .ptrab-table-op td { border: 0.25pt solid #000 !important; } 
           .ptrab-table-op { border: 0.25pt solid #000 !important; }
-          .ptrab-table-op td { vertical-align: top !important; } 
           
-          /* Ajuste de alinhamento vertical para o meio na coluna de despesas no HTML/PDF */
+          /* CORREÇÃO CRÍTICA: Força alinhamento vertical middle para as colunas de dados B a H */
+          .expense-row td:nth-child(2), /* Coluna B: OM/CODUG */
+          .expense-row td:nth-child(3), /* Coluna C: 33.90.15 */
+          .expense-row td:nth-child(4), /* Coluna D: 33.90.30 */
+          .expense-row td:nth-child(5), /* Coluna E: 33.90.33 */
+          .expense-row td:nth-child(6), /* Coluna F: 33.90.39 */
+          .expense-row td:nth-child(7), /* Coluna G: 33.90.00 */
+          .expense-row td:nth-child(8) { /* Coluna H: GND 3 */
+              vertical-align: middle !important;
+          }
+          
+          /* Coluna A (Despesas) também deve ser middle */
           .expense-row .col-despesas-op {
               vertical-align: middle !important;
+          }
+          
+          /* Coluna I (Detalhamento) deve ser top */
+          .expense-row .col-detalhamento-op {
+              vertical-align: top !important;
           }
           
           /* NDs nas linhas de DADOS continuam azuis */
