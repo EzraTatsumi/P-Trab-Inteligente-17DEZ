@@ -162,7 +162,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const rightMiddleAlignment = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
     const leftTopAlignment = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
     const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
-    const leftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true }; // NOVO: Alinhamento Esquerda/Meio
+    const leftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true }; 
     
     const cellBorder = {
       top: { style: 'thin' as const },
@@ -248,7 +248,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     // Cabeçalho da Tabela (9 colunas)
     const headerRow1 = worksheet.getRow(currentRow);
-    headerRow1.getCell('A').value = 'DESPESAS OPERACIONAIS';
+    headerRow1.getCell('A').value = 'DESPESAS'; // <-- ALTERADO AQUI
     headerRow1.getCell('B').value = 'OM (UGE)\nCODUG';
     headerRow1.getCell('C').value = 'NATUREZA DE DESPESA';
     headerRow1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO OPERACIONAL';
@@ -327,7 +327,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             
             // A: DESPESAS
             row.getCell('A').value = `CLASSE OPERACIONAL - DIÁRIAS\n${registro.local_atividade}`;
-            row.getCell('A').alignment = leftMiddleAlignment; // <-- USANDO leftMiddleAlignment
+            row.getCell('A').alignment = leftMiddleAlignment; 
             
             // B: OM (UGE) CODUG
             row.getCell('B').value = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
@@ -591,7 +591,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             <table className="ptrab-table-op">
               <thead>
                 <tr>
-                  <th rowSpan={2} className="col-despesas-op">DESPESAS OPERACIONAIS</th>
+                  <th rowSpan={2} className="col-despesas-op">DESPESAS</th> {/* <-- ALTERADO AQUI */}
                   <th rowSpan={2} className="col-om-op">OM (UGE)<br/>CODUG</th>
                   <th colSpan={6} className="col-nd-group">NATUREZA DE DESPESA</th>
                   <th rowSpan={2} className="col-detalhamento-op">DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/>OBSERVAR A DIRETRIZ DE CUSTEIO OPERACIONAL</th>
@@ -627,7 +627,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             
                             return (
                                 <tr key={registro.id} className="expense-row">
-                                  <td className="col-despesas-op" style={{ verticalAlign: 'middle' }}> {/* Ajuste de alinhamento vertical para o meio */}
+                                  <td className="col-despesas-op" style={{ verticalAlign: 'middle' }}> 
                                     CLASSE OPERACIONAL - DIÁRIAS
                                     <div className="text-[7pt] mt-1">Local: {registro.local_atividade}</div>
                                   </td>
@@ -726,7 +726,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         .ptrab-table-op thead th { background-color: #D9D9D9; font-weight: bold; text-align: center; font-size: 9pt; }
         
         /* LARGURAS DE COLUNA FIXAS */
-        .col-despesas-op { width: 20%; text-align: left; vertical-align: middle; } /* Alterado para middle */
+        .col-despesas-op { width: 20%; text-align: left; vertical-align: middle; } 
         .col-om-op { width: 10%; text-align: center; vertical-align: top; }
         .col-nd-group { background-color: #D9D9D9; font-weight: bold; text-align: center; }
         .col-nd-op-small { 
