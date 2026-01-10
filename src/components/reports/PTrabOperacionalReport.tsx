@@ -178,6 +178,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const corGrandTotal = 'FFE8E8E8'; // Cinza claro para o total geral
     const corND = 'FFB4C7E7'; // Azul para as NDs
     const corTotalDetalhamento = 'FFFFFFFF'; // Branco para o detalhamento (Célula D)
+    const corSomaND = 'FFD9D9D9'; // Cinza para a linha de soma por ND
     // -------------------------------------------
 
     let currentRow = 1;
@@ -314,8 +315,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         const subtotalOM = omRegistros.reduce((acc, r) => ({
             nd15: acc.nd15 + r.valor_nd_15,
             nd30: acc.nd30 + r.valor_nd_30,
+            nd33: 0, 
+            nd39: 0, 
+            nd00: 0, 
             totalGND3: acc.totalGND3 + r.valor_total,
-        }), { nd15: 0, nd30: 0, totalGND3: 0 });
+        }), { nd15: 0, nd30: 0, nd33: 0, nd39: 0, nd00: 0, totalGND3: 0 });
 
         omRegistros.forEach(registro => {
             const row = worksheet.getRow(currentRow);
@@ -413,27 +417,27 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     // Linha em branco para espaçamento
     currentRow++;
     
-    // Grand Total Row
-    const grandTotalRow = worksheet.getRow(currentRow);
-
-    // Célula A+B (Cinza Claro - E8E8E8)
-    grandTotalRow.getCell('A').value = 'TOTAL GERAL';
+    // ========== TOTAL GERAL ==========
+    
+    // Linha 1: SOMA POR ND E GP DE DESPESA
+    const totalGeralSomaRow = worksheet.getRow(currentRow);
+    totalGeralSomaRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
     worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
-    grandTotalRow.getCell('A').alignment = rightMiddleAlignment;
-    grandTotalRow.getCell('A').font = headerFontStyle;
-    grandTotalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corGrandTotal } }; // Cinza Claro
-    grandTotalRow.getCell('A').border = cellBorder;
+    totalGeralSomaRow.getCell('A').alignment = rightMiddleAlignment;
+    totalGeralSomaRow.getCell('A').font = headerFontStyle;
+    totalGeralSomaRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSomaND } }; // Cinza
+    totalGeralSomaRow.getCell('A').border = cellBorder;
 
     // Células C, D, E, F, G, H (NDs - Azul)
-    grandTotalRow.getCell('C').value = totaisND.nd15;
-    grandTotalRow.getCell('D').value = totaisND.nd30;
-    grandTotalRow.getCell('E').value = totaisND.nd33;
-    grandTotalRow.getCell('F').value = totaisND.nd39;
-    grandTotalRow.getCell('G').value = totaisND.nd00;
-    grandTotalRow.getCell('H').value = totaisND.totalGND3;
+    totalGeralSomaRow.getCell('C').value = totaisND.nd15;
+    totalGeralSomaRow.getCell('D').value = totaisND.nd30;
+    totalGeralSomaRow.getCell('E').value = totaisND.nd33;
+    totalGeralSomaRow.getCell('F').value = totaisND.nd39;
+    totalGeralSomaRow.getCell('G').value = totaisND.nd00;
+    totalGeralSomaRow.getCell('H').value = totaisND.totalGND3;
 
     ['C', 'D', 'E', 'F', 'G', 'H'].forEach(col => {
-        const cell = grandTotalRow.getCell(col);
+        const cell = totalGeralSomaRow.getCell(col);
         cell.alignment = centerMiddleAlignment;
         cell.font = headerFontStyle;
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; // Azul
@@ -442,11 +446,36 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     });
 
     // Célula I (Branco)
-    grandTotalRow.getCell('I').value = '';
-    grandTotalRow.getCell('I').alignment = centerMiddleAlignment;
-    grandTotalRow.getCell('I').font = headerFontStyle;
-    grandTotalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalDetalhamento } }; // Branco
-    grandTotalRow.getCell('I').border = cellBorder;
+    totalGeralSomaRow.getCell('I').value = '';
+    totalGeralSomaRow.getCell('I').alignment = centerMiddleAlignment;
+    totalGeralSomaRow.getCell('I').font = headerFontStyle;
+    totalGeralSomaRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalDetalhamento } }; // Branco
+    totalGeralSomaRow.getCell('I').border = cellBorder;
+
+    currentRow++;
+    
+    // Linha 2: VALOR TOTAL
+    const totalGeralFinalRow = worksheet.getRow(currentRow);
+    
+    // Mescla A até G (Cinza Claro)
+    worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
+    totalGeralFinalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corGrandTotal } };
+    totalGeralFinalRow.getCell('A').border = cellBorder;
+    
+    // Célula H: VALOR TOTAL (Cinza Claro)
+    totalGeralFinalRow.getCell('H').value = 'VALOR TOTAL';
+    totalGeralFinalRow.getCell('H').alignment = centerMiddleAlignment;
+    totalGeralFinalRow.getCell('H').font = headerFontStyle;
+    totalGeralFinalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corGrandTotal } };
+    totalGeralFinalRow.getCell('H').border = cellBorder;
+    
+    // Célula I: Valor Total GND 3 (Cinza Claro)
+    totalGeralFinalRow.getCell('I').value = totaisND.totalGND3;
+    totalGeralFinalRow.getCell('I').alignment = centerMiddleAlignment;
+    totalGeralFinalRow.getCell('I').font = headerFontStyle;
+    totalGeralFinalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corGrandTotal } };
+    totalGeralFinalRow.getCell('I').border = cellBorder;
+    totalGeralFinalRow.getCell('I').numFmt = 'R$ #,##0.00';
 
     currentRow++;
     
@@ -630,10 +659,15 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 );
               })}
               
-              {/* Grand Total Row */}
-              <tr className="grand-total-row">
-                <td colSpan={2} className="text-right font-bold" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}>
-                    TOTAL GERAL
+              {/* Linha em branco para espaçamento */}
+              <tr className="spacing-row">
+                <td colSpan={9} style={{ height: '10px', border: 'none', backgroundColor: 'transparent', borderLeft: 'none', borderRight: 'none' }}></td>
+              </tr>
+              
+              {/* Grand Total Row 1: SOMA POR ND E GP DE DESPESA */}
+              <tr className="total-geral-soma-row">
+                <td colSpan={2} className="text-right font-bold" style={{ backgroundColor: '#D9D9D9', border: '1px solid #000' }}>
+                    SOMA POR ND E GP DE DESPESA
                 </td>
                 <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisND.nd15)}</td>
                 <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisND.nd30)}</td>
@@ -642,6 +676,13 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisND.nd00)}</td>
                 <td className="col-nd-op-small text-center font-bold total-gnd3-cell" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisND.totalGND3)}</td>
                 <td></td>
+              </tr>
+              
+              {/* Grand Total Row 2: VALOR TOTAL */}
+              <tr className="total-geral-final-row">
+                <td colSpan={7} style={{ backgroundColor: '#E8E8E8', border: '1px solid #000', borderRight: 'none' }}></td>
+                <td className="text-center font-bold" style={{ whiteSpace: 'nowrap', backgroundColor: '#E8E8E8', border: '1px solid #000' }}>VALOR TOTAL</td>
+                <td className="text-center font-bold" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}>{formatCurrency(totaisND.totalGND3)}</td>
               </tr>
             </tbody>
             </table>
@@ -705,19 +746,37 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         }
         
         /* NOVO: Estilos para Total Geral */
-        .grand-total-row {
+        .total-geral-soma-row {
+            font-weight: bold;
+            page-break-inside: avoid;
+            background-color: #D9D9D9; /* Cinza */
+        }
+        .total-geral-soma-row td {
+            border: 1px solid #000 !important;
+            padding: 3px 4px;
+        }
+        .total-geral-soma-row td:nth-child(1) { /* Colspan 2 */
+            text-align: right;
+            background-color: #D9D9D9 !important;
+        }
+        
+        .total-geral-final-row {
             font-weight: bold;
             page-break-inside: avoid;
             background-color: #E8E8E8; /* Cinza Claro */
         }
-        .grand-total-row td {
+        .total-geral-final-row td {
             border: 1px solid #000 !important;
             padding: 3px 4px;
         }
-        .grand-total-row td:nth-child(1) { /* Colspan 2 */
+        .total-geral-final-row td:nth-child(1) { /* Colspan 7 */
             text-align: right;
             background-color: #E8E8E8 !important;
         }
+        
+        /* AJUSTE DE ALINHAMENTO DO RODAPÉ */
+        .ptrab-footer { margin-top: 3rem; text-align: center; }
+        .signature-block { margin-top: 4rem; display: inline-block; text-align: center; }
         
         /* REGRAS ESPECÍFICAS DE IMPRESSÃO (MANTIDAS PARA GARANTIR O COMPORTAMENTO NATIVO) */
         @media print {
@@ -743,7 +802,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
           }
-          .grand-total-row {
+          .total-geral-soma-row {
+              background-color: #D9D9D9 !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+          }
+          .total-geral-final-row {
               background-color: #E8E8E8 !important;
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
