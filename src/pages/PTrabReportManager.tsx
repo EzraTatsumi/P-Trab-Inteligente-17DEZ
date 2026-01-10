@@ -57,6 +57,7 @@ export interface PTrabData {
   nome_cmt_om?: string;
   local_om?: string;
   updated_at: string; // NOVO: Data de última atualização
+  rm_vinculacao: string; // Adicionado rm_vinculacao
 }
 
 // Usando o tipo importado para garantir consistência
@@ -680,7 +681,7 @@ const PTrabReportManager = () => {
     try {
       const { data: ptrab, error: ptrabError } = await supabase
         .from('p_trab')
-        .select('*, updated_at') // Incluir updated_at
+        .select('*, updated_at, rm_vinculacao') // Incluir rm_vinculacao
         .eq('id', ptrabId)
         .single();
 
@@ -726,7 +727,7 @@ const PTrabReportManager = () => {
         ...(classeIXData || []).map(r => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
       ];
 
-      setPtrabData(ptrab as PTrabData); // Casting para incluir updated_at
+      setPtrabData(ptrab as PTrabData); // Casting para incluir updated_at e rm_vinculacao
       setRegistrosClasseI((classeIData || []).map(r => ({
           ...r,
           // Mapeamento explícito de campos do DB (snake_case) para o tipo TS (camelCase)
@@ -958,21 +959,24 @@ const PTrabReportManager = () => {
     return grupos;
   }, [registrosClasseI, registrosClasseII, registrosClasseIII, refLPC]);
   
+  // CORREÇÃO: nomeRM agora usa a rm_vinculacao do PTrabData
   const nomeRM = useMemo(() => {
-    const oms = Object.keys(gruposPorOM);
-    return oms.find(om => om.includes('RM') || om.includes('R M')) || ptrabData?.rm_vinculacao || '';
-  }, [gruposPorOM, ptrabData]);
+    return ptrabData?.rm_vinculacao || '';
+  }, [ptrabData]);
 
   const omsOrdenadas = useMemo(() => {
-    return Object.keys(gruposPorOM).sort((a, b) => {
-        const aTemRM = a.includes('RM') || a.includes('R M');
-        const bTemRM = b.includes('RM') || b.includes('R M');
+    const oms = Object.keys(gruposPorOM);
+    const rmName = nomeRM;
+    
+    return oms.sort((a, b) => {
+        // Prioriza a RM de vinculação do PTrab
+        if (a === rmName && b !== rmName) return -1;
+        if (a !== rmName && b === rmName) return 1;
         
-        if (aTemRM && !bTemRM) return -1;
-        if (!aTemRM && bTemRM) return 1;
+        // Ordena alfabeticamente as demais
         return a.localeCompare(b);
     });
-  }, [gruposPorOM]);
+  }, [gruposPorOM, nomeRM]);
   
   // NOVO: Função para calcular os totais de Classe III (Combustível/Lubrificante)
   const calcularTotaisClasseIII = (linhas: LinhaClasseIII[]) => {
