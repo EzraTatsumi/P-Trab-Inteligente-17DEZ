@@ -392,8 +392,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     const rightTopAlignment = { horizontal: 'right' as const, vertical: 'top' as const, wrapText: true };
     
     // NOVOS ALINHAMENTOS PARA DADOS (Verticalmente Centralizado)
-    const dataLeftMiddleAlignmentFixed = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true };
-    const dataCenterMiddleAlignmentFixed = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
+    const dataLeftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true };
+    const dataCenterMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
     // Alterado para CenterMiddleAlignment para C, D, E e H
     const dataCenterMonetaryAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true }; 
     
@@ -573,9 +573,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow = headerRow2 + 1;
 
       // Reusable alignment styles for data
-      // CORRIGIDO: dataLeftMiddleAlignment e dataCenterMiddleAlignment
-      const dataLeftMiddleAlignmentFixed = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true };
-      const dataCenterMiddleAlignmentFixed = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
+      const dataTextStyle = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
       
       omsOrdenadas.forEach((nomeOM) => {
         const grupo = gruposPorOM[nomeOM];
@@ -616,8 +614,13 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         allExpenseLines.forEach((linha, index) => {
             const row = worksheet.getRow(currentRow);
             
+            // Type guards to determine the type of line
+            const isClasseI = 'tipo' in linha;
+            const isClasseIII = 'categoria_equipamento' in linha;
+            const isClasseII_IX = !isClasseI && !isClasseIII; // Must be LinhaClasseII
+
             // ADICIONANDO VERIFICAÇÃO DE SEGURANÇA AQUI
-            if (!linha || !row) return; // Adicionado check para 'row'
+            if (!linha) return;
             
             let rowData = {
                 despesasValue: '',
@@ -631,18 +634,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 precoTotalH: '',
             };
             
-            // Type guards to determine the type of line
-            const isClasseI = 'tipo' in linha;
-            const isClasseIII = 'categoria_equipamento' in linha;
-            const isClasseII_IX = !isClasseI && !isClasseIII; // Must be LinhaClasseII
-
             if (isClasseI) { // Classe I (QS/QR)
                 const registro = (linha as LinhaTabela).registro as ClasseIRegistro;
-                const tipo = (linha as LinhaTabela).tipo;
                 const ug_qs_formatted = formatCodug(registro.ug_qs);
                 const ug_qr_formatted = formatCodug(registro.ug);
 
-                if (tipo === 'QS') {
+                if ((linha as LinhaTabela).tipo === 'QS') {
                     rowData.despesasValue = `CLASSE I - SUBSISTÊNCIA\n${registro.organizacao}`;
                     rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`;
                     rowData.valorC = registro.total_qs;
@@ -782,16 +779,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             row.getCell('I').value = rowData.detalhamentoValue;
             
             // Estilos
-            
-            // Coluna A: DESPESAS (Left Horizontal, Middle Vertical)
-            row.getCell('A').alignment = dataLeftMiddleAlignmentFixed; // USANDO O NOVO ALINHAMENTO
-            row.getCell('A').font = baseFontStyle;
-            row.getCell('A').border = cellBorder;
-            
-            // Coluna B: OM (UGE) CODUG (Center Horizontal, Middle Vertical)
-            row.getCell('B').alignment = dataCenterMiddleAlignmentFixed; // USANDO O NOVO ALINHAMENTO
-            row.getCell('B').font = baseFontStyle;
-            row.getCell('B').border = cellBorder;
+            ['A', 'B'].forEach(col => {
+                row.getCell(col).alignment = dataTextStyle;
+                row.getCell(col).font = baseFontStyle;
+                row.getCell(col).border = cellBorder;
+            });
             
             ['C', 'D', 'E'].forEach(col => {
                 const cell = row.getCell(col);
@@ -822,86 +814,82 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         
         // Subtotal da OM
         const subtotalRow = worksheet.getRow(currentRow);
-        // Removida a verificação if (subtotalRow)
-        if (subtotalRow) { // Mantendo a verificação para evitar erros de tipo no TS, mas confiando que ExcelJS cria a linha
-            subtotalRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
-            worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
-            subtotalRow.getCell('A').alignment = rightMiddleAlignment;
-            subtotalRow.getCell('A').font = headerFontStyle;
-            subtotalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
-            subtotalRow.getCell('A').border = cellBorder;
-            
-            subtotalRow.getCell('C').value = totaisOM.total_33_90_30;
-            subtotalRow.getCell('C').alignment = dataCenterMonetaryAlignment;
-            subtotalRow.getCell('C').font = headerFontStyle;
-            subtotalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-            subtotalRow.getCell('C').border = cellBorder;
-            subtotalRow.getCell('C').numFmt = 'R$ #,##0.00';
-            
-            subtotalRow.getCell('D').value = totaisOM.total_33_90_39;
-            subtotalRow.getCell('D').alignment = dataCenterMonetaryAlignment;
-            subtotalRow.getCell('D').font = headerFontStyle;
-            subtotalRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-            subtotalRow.getCell('D').border = cellBorder;
-            subtotalRow.getCell('D').numFmt = 'R$ #,##0.00';
-            
-            subtotalRow.getCell('E').value = totaisOM.total_parte_azul;
-            subtotalRow.getCell('E').alignment = dataCenterMonetaryAlignment;
-            subtotalRow.getCell('E').font = headerFontStyle;
-            subtotalRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-            subtotalRow.getCell('E').border = cellBorder;
-            subtotalRow.getCell('E').numFmt = 'R$ #,##0.00';
-            
-            // Combustível
-            
-            subtotalRow.getCell('F').value = totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
-            subtotalRow.getCell('F').alignment = dataCenterMiddleAlignment;
-            subtotalRow.getCell('F').font = headerFontStyle;
-            subtotalRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-            subtotalRow.getCell('F').border = cellBorder;
-            
-            subtotalRow.getCell('G').value = totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
-            subtotalRow.getCell('G').alignment = dataCenterMiddleAlignment;
-            subtotalRow.getCell('G').font = headerFontStyle;
-            subtotalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-            subtotalRow.getCell('G').border = cellBorder;
-            
-            subtotalRow.getCell('H').value = totaisOM.total_combustivel > 0 ? totaisOM.total_combustivel : '';
-            subtotalRow.getCell('H').alignment = dataCenterMonetaryAlignment;
-            subtotalRow.getCell('H').font = headerFontStyle;
-            subtotalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-            subtotalRow.getCell('H').border = cellBorder;
-            subtotalRow.getCell('H').numFmt = 'R$ #,##0.00';
-            
-            subtotalRow.getCell('I').value = '';
-            subtotalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
-            subtotalRow.getCell('I').border = cellBorder;
-        }
-        currentRow++; // Incrementa sempre
+        subtotalRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
+        worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
+        subtotalRow.getCell('A').alignment = rightMiddleAlignment;
+        subtotalRow.getCell('A').font = headerFontStyle;
+        subtotalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+        subtotalRow.getCell('A').border = cellBorder;
+        
+        subtotalRow.getCell('C').value = totaisOM.total_33_90_30;
+        subtotalRow.getCell('C').alignment = dataCenterMonetaryAlignment;
+        subtotalRow.getCell('C').font = headerFontStyle;
+        subtotalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+        subtotalRow.getCell('C').border = cellBorder;
+        subtotalRow.getCell('C').numFmt = 'R$ #,##0.00';
+        
+        subtotalRow.getCell('D').value = totaisOM.total_33_90_39;
+        subtotalRow.getCell('D').alignment = dataCenterMonetaryAlignment;
+        subtotalRow.getCell('D').font = headerFontStyle;
+        subtotalRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+        subtotalRow.getCell('D').border = cellBorder;
+        subtotalRow.getCell('D').numFmt = 'R$ #,##0.00';
+        
+        subtotalRow.getCell('E').value = totaisOM.total_parte_azul;
+        subtotalRow.getCell('E').alignment = dataCenterMonetaryAlignment;
+        subtotalRow.getCell('E').font = headerFontStyle;
+        subtotalRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+        subtotalRow.getCell('E').border = cellBorder;
+        subtotalRow.getCell('E').numFmt = 'R$ #,##0.00';
+        
+        // Combustível (Apenas na RM) - CORRIGIDO: Remove a verificação 'isRM' e confia no valor > 0
+        
+        subtotalRow.getCell('F').value = totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
+        subtotalRow.getCell('F').alignment = dataCenterMiddleAlignment;
+        subtotalRow.getCell('F').font = headerFontStyle;
+        subtotalRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+        subtotalRow.getCell('F').border = cellBorder;
+        
+        subtotalRow.getCell('G').value = totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
+        subtotalRow.getCell('G').alignment = dataCenterMiddleAlignment;
+        subtotalRow.getCell('G').font = headerFontStyle;
+        subtotalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+        subtotalRow.getCell('G').border = cellBorder;
+        
+        subtotalRow.getCell('H').value = totaisOM.total_combustivel > 0 ? totaisOM.total_combustivel : '';
+        subtotalRow.getCell('H').alignment = dataCenterMonetaryAlignment;
+        subtotalRow.getCell('H').font = headerFontStyle;
+        subtotalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+        subtotalRow.getCell('H').border = cellBorder;
+        subtotalRow.getCell('H').numFmt = 'R$ #,##0.00';
+        
+        subtotalRow.getCell('I').value = '';
+        subtotalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+        subtotalRow.getCell('I').border = cellBorder;
+        
+        currentRow++;
         
         // Total da OM
         const totalOMRow = worksheet.getRow(currentRow);
-        // Removida a verificação if (totalOMRow)
-        if (totalOMRow) { // Mantendo a verificação para evitar erros de tipo no TS
-            totalOMRow.getCell('A').value = `VALOR TOTAL DO ${nomeOM}`;
-            worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
-            totalOMRow.getCell('A').alignment = rightMiddleAlignment;
-            totalOMRow.getCell('A').font = headerFontStyle;
-            totalOMRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
-            totalOMRow.getCell('A').border = cellBorder;
-            
-            totalOMRow.getCell('E').value = totaisOM.total_gnd3;
-            totalOMRow.getCell('E').alignment = dataCenterMonetaryAlignment;
-            totalOMRow.getCell('E').font = headerFontStyle;
-            totalOMRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
-            totalOMRow.getCell('E').border = cellBorder;
-            totalOMRow.getCell('E').numFmt = 'R$ #,##0.00';
-            
-            worksheet.mergeCells(`F${currentRow}:I${currentRow}`);
-            totalOMRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
-            totalOMRow.getCell('F').border = cellBorder;
-        }
-        currentRow++; // Incrementa sempre
+        totalOMRow.getCell('A').value = `VALOR TOTAL DO ${nomeOM}`;
+        worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+        totalOMRow.getCell('A').alignment = rightMiddleAlignment;
+        totalOMRow.getCell('A').font = headerFontStyle;
+        totalOMRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+        totalOMRow.getCell('A').border = cellBorder;
+        
+        totalOMRow.getCell('E').value = totaisOM.total_gnd3;
+        totalOMRow.getCell('E').alignment = dataCenterMonetaryAlignment;
+        totalOMRow.getCell('E').font = headerFontStyle;
+        totalOMRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+        totalOMRow.getCell('E').border = cellBorder;
+        totalOMRow.getCell('E').numFmt = 'R$ #,##0.00';
+        
+        worksheet.mergeCells(`F${currentRow}:I${currentRow}`);
+        totalOMRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+        totalOMRow.getCell('F').border = cellBorder;
+        
+        currentRow++;
       });
       
       // Linha em branco para espaçamento
@@ -911,114 +899,107 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       
       // Linha 1: Soma detalhada por ND e GP de Despesa
       const totalGeralSomaRow = worksheet.getRow(currentRow);
-      if (totalGeralSomaRow) {
-          totalGeralSomaRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
-          worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
-          totalGeralSomaRow.getCell('A').alignment = rightMiddleAlignment;
-          totalGeralSomaRow.getCell('A').font = headerFontStyle;
-          totalGeralSomaRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
-          totalGeralSomaRow.getCell('A').border = cellBorder;
-          
-          totalGeralSomaRow.getCell('C').value = totalGeral_33_90_30;
-          totalGeralSomaRow.getCell('C').alignment = dataCenterMonetaryAlignment;
-          totalGeralSomaRow.getCell('C').font = headerFontStyle;
-          totalGeralSomaRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-          totalGeralSomaRow.getCell('C').border = cellBorder;
-          totalGeralSomaRow.getCell('C').numFmt = 'R$ #,##0.00';
-          
-          totalGeralSomaRow.getCell('D').value = totalGeral_33_90_39;
-          totalGeralSomaRow.getCell('D').alignment = dataCenterMonetaryAlignment;
-          totalGeralSomaRow.getCell('D').font = headerFontStyle;
-          totalGeralSomaRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-          totalGeralSomaRow.getCell('D').border = cellBorder;
-          totalGeralSomaRow.getCell('D').numFmt = 'R$ #,##0.00';
-          
-          totalGeralSomaRow.getCell('E').value = totalGeral_GND3_ND;
-          totalGeralSomaRow.getCell('E').alignment = dataCenterMonetaryAlignment;
-          totalGeralSomaRow.getCell('E').font = headerFontStyle;
-          totalGeralSomaRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-          totalGeralSomaRow.getCell('E').border = cellBorder;
-          totalGeralSomaRow.getCell('E').numFmt = 'R$ #,##0.00';
-          
-          // Totais de combustível por tipo (para exibição na parte laranja)
-          const totalDieselLitrosGeral = totalDiesel;
-          const totalGasolinaLitrosGeral = totalGasolina;
-          const totalValorCombustivelFinalGeral = totalValorCombustivelFinal;
-            
-          totalGeralSomaRow.getCell('F').value = totalDieselLitrosGeral > 0 ? `${formatNumber(totalDieselLitrosGeral)} L OD` : '';
-          totalGeralSomaRow.getCell('F').alignment = dataCenterMiddleAlignment;
-          totalGeralSomaRow.getCell('F').font = headerFontStyle;
-          totalGeralSomaRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-          totalGeralSomaRow.getCell('F').border = cellBorder;
-          
-          totalGeralSomaRow.getCell('G').value = totalGasolinaLitrosGeral > 0 ? `${formatNumber(totalGasolinaLitrosGeral)} L GAS` : '';
-          totalGeralSomaRow.getCell('G').alignment = dataCenterMiddleAlignment;
-          totalGeralSomaRow.getCell('G').font = headerFontStyle;
-          totalGeralSomaRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-          totalGeralSomaRow.getCell('G').border = cellBorder;
-          
-          totalGeralSomaRow.getCell('H').value = totalValorCombustivelFinalGeral;
-          totalGeralSomaRow.getCell('H').alignment = dataCenterMonetaryAlignment;
-          totalGeralSomaRow.getCell('H').font = headerFontStyle;
-          totalGeralSomaRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-          totalGeralSomaRow.getCell('H').border = cellBorder;
-          totalGeralSomaRow.getCell('H').numFmt = 'R$ #,##0.00';
-          
-          totalGeralSomaRow.getCell('I').value = '';
-          totalGeralSomaRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
-          totalGeralSomaRow.getCell('I').border = cellBorder;
-      }
+      totalGeralSomaRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
+      worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
+      totalGeralSomaRow.getCell('A').alignment = rightMiddleAlignment;
+      totalGeralSomaRow.getCell('A').font = headerFontStyle;
+      totalGeralSomaRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+      totalGeralSomaRow.getCell('A').border = cellBorder;
+      
+      totalGeralSomaRow.getCell('C').value = totalGeral_33_90_30;
+      totalGeralSomaRow.getCell('C').alignment = dataCenterMonetaryAlignment;
+      totalGeralSomaRow.getCell('C').font = headerFontStyle;
+      totalGeralSomaRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      totalGeralSomaRow.getCell('C').border = cellBorder;
+      totalGeralSomaRow.getCell('C').numFmt = 'R$ #,##0.00';
+      
+      totalGeralSomaRow.getCell('D').value = totalGeral_33_90_39;
+      totalGeralSomaRow.getCell('D').alignment = dataCenterMonetaryAlignment;
+      totalGeralSomaRow.getCell('D').font = headerFontStyle;
+      totalGeralSomaRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      totalGeralSomaRow.getCell('D').border = cellBorder;
+      totalGeralSomaRow.getCell('D').numFmt = 'R$ #,##0.00';
+      
+      totalGeralSomaRow.getCell('E').value = totalGeral_GND3_ND;
+      totalGeralSomaRow.getCell('E').alignment = dataCenterMonetaryAlignment;
+      totalGeralSomaRow.getCell('E').font = headerFontStyle;
+      totalGeralSomaRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+      totalGeralSomaRow.getCell('E').border = cellBorder;
+      totalGeralSomaRow.getCell('E').numFmt = 'R$ #,##0.00';
+      
+      // Totais de combustível por tipo (para exibição na parte laranja)
+      // Usando as variáveis calculadas no useMemo
+      const totalDieselLitrosGeral = totalDiesel;
+      const totalGasolinaLitrosGeral = totalGasolina;
+      const totalValorCombustivelFinalGeral = totalValorCombustivelFinal;
+        
+      totalGeralSomaRow.getCell('F').value = totalDieselLitrosGeral > 0 ? `${formatNumber(totalDieselLitrosGeral)} L OD` : '';
+      totalGeralSomaRow.getCell('F').alignment = dataCenterMiddleAlignment;
+      totalGeralSomaRow.getCell('F').font = headerFontStyle;
+      totalGeralSomaRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      totalGeralSomaRow.getCell('F').border = cellBorder;
+      
+      totalGeralSomaRow.getCell('G').value = totalGasolinaLitrosGeral > 0 ? `${formatNumber(totalGasolinaLitrosGeral)} L GAS` : '';
+      totalGeralSomaRow.getCell('G').alignment = dataCenterMiddleAlignment;
+      totalGeralSomaRow.getCell('G').font = headerFontStyle;
+      totalGeralSomaRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      totalGeralSomaRow.getCell('G').border = cellBorder;
+      
+      totalGeralSomaRow.getCell('H').value = totalValorCombustivelFinalGeral;
+      totalGeralSomaRow.getCell('H').alignment = dataCenterMonetaryAlignment;
+      totalGeralSomaRow.getCell('H').font = headerFontStyle;
+      totalGeralSomaRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+      totalGeralSomaRow.getCell('H').border = cellBorder;
+      totalGeralSomaRow.getCell('H').numFmt = 'R$ #,##0.00';
+      
+      totalGeralSomaRow.getCell('I').value = '';
+      totalGeralSomaRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+      totalGeralSomaRow.getCell('I').border = cellBorder;
       
       currentRow++;
 
       // Linha 2: Valor Total
       const totalGeralFinalRow = worksheet.getRow(currentRow);
-      if (totalGeralFinalRow) {
-          worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
-          totalGeralFinalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
-          totalGeralFinalRow.getCell('A').border = cellBorder;
-          
-          totalGeralFinalRow.getCell('G').value = 'VALOR TOTAL';
-          totalGeralFinalRow.getCell('G').alignment = centerMiddleAlignment;
-          totalGeralFinalRow.getCell('G').font = headerFontStyle;
-          totalGeralFinalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
-          totalGeralFinalRow.getCell('G').border = cellBorder;
-          
-          totalGeralFinalRow.getCell('H').value = valorTotalSolicitado;
-          totalGeralFinalRow.getCell('H').alignment = dataCenterMonetaryAlignment;
-          totalGeralFinalRow.getCell('H').font = headerFontStyle;
-          totalGeralFinalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
-          totalGeralFinalRow.getCell('H').border = cellBorder;
-          totalGeralFinalRow.getCell('H').numFmt = 'R$ #,##0.00';
-          
-          totalGeralFinalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
-          totalGeralFinalRow.getCell('I').border = cellBorder;
-      }
+      worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
+      totalGeralFinalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+      totalGeralFinalRow.getCell('A').border = cellBorder;
+      
+      totalGeralFinalRow.getCell('G').value = 'VALOR TOTAL';
+      totalGeralFinalRow.getCell('G').alignment = centerMiddleAlignment;
+      totalGeralFinalRow.getCell('G').font = headerFontStyle;
+      totalGeralFinalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+      totalGeralFinalRow.getCell('G').border = cellBorder;
+      
+      totalGeralFinalRow.getCell('H').value = valorTotalSolicitado;
+      totalGeralFinalRow.getCell('H').alignment = dataCenterMonetaryAlignment;
+      totalGeralFinalRow.getCell('H').font = headerFontStyle;
+      totalGeralFinalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+      totalGeralFinalRow.getCell('H').border = cellBorder;
+      totalGeralFinalRow.getCell('H').numFmt = 'R$ #,##0.00';
+      
+      totalGeralFinalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+      totalGeralFinalRow.getCell('I').border = cellBorder;
       
       currentRow++;
       
       // Linha 3: GND - 3 (dividida em 2 subdivisões)
       const gnd3Row1 = worksheet.getRow(currentRow);
-      if (gnd3Row1) {
-          worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
-          gnd3Row1.getCell('H').value = 'GND - 3';
-          gnd3Row1.getCell('H').alignment = centerMiddleAlignment;
-          gnd3Row1.getCell('H').font = headerFontStyle;
-          gnd3Row1.getCell('H').border = { top: cellBorder.top, left: cellBorder.left, right: cellBorder.right };
-      }
+      worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
+      gnd3Row1.getCell('H').value = 'GND - 3';
+      gnd3Row1.getCell('H').alignment = centerMiddleAlignment;
+      gnd3Row1.getCell('H').font = headerFontStyle;
+      gnd3Row1.getCell('H').border = { top: cellBorder.top, left: cellBorder.left, right: cellBorder.right };
       
       currentRow++;
       
       // Segunda subdivisão: Valor Total
       const gnd3Row2 = worksheet.getRow(currentRow);
-      if (gnd3Row2) {
-          worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
-          gnd3Row2.getCell('H').value = valorTotalSolicitado;
-          gnd3Row2.getCell('H').alignment = dataCenterMonetaryAlignment;
-          gnd3Row2.getCell('H').font = headerFontStyle;
-          gnd3Row2.getCell('H').border = { bottom: cellBorder.bottom, left: cellBorder.left, right: cellBorder.right };
-          gnd3Row2.getCell('H').numFmt = 'R$ #,##0.00';
-      }
+      worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
+      gnd3Row2.getCell('H').value = valorTotalSolicitado;
+      gnd3Row2.getCell('H').alignment = dataCenterMonetaryAlignment;
+      gnd3Row2.getCell('H').font = headerFontStyle;
+      gnd3Row2.getCell('H').border = { bottom: cellBorder.bottom, left: cellBorder.left, right: cellBorder.right };
+      gnd3Row2.getCell('H').numFmt = 'R$ #,##0.00';
       
       currentRow++;
       
@@ -1026,30 +1007,24 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow += 2;
       
       const localRow = worksheet.getRow(currentRow);
-      if (localRow) {
-          localRow.getCell('A').value = `${ptrabData.local_om || 'Local'}, ${new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
-          localRow.getCell('A').font = { name: 'Arial', size: 10 };
-          localRow.getCell('A').alignment = centerMiddleAlignment;
-          worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
-      }
+      localRow.getCell('A').value = `${ptrabData.local_om || 'Local'}, ${new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+      localRow.getCell('A').font = { name: 'Arial', size: 10 };
+      localRow.getCell('A').alignment = centerMiddleAlignment;
+      worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow += 3;
       
       const cmtRow = worksheet.getRow(currentRow);
-      if (cmtRow) {
-          cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
-          cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
-          cmtRow.getCell('A').alignment = centerMiddleAlignment;
-          worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
-      }
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
+      cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
+      cmtRow.getCell('A').alignment = centerMiddleAlignment;
+      worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
       currentRow++;
       
       const cargoRow = worksheet.getRow(currentRow);
-      if (cargoRow) {
-          cargoRow.getCell('A').value = `Comandante da ${ptrabData.nome_om_extenso || ptrabData.nome_om}`;
-          cargoRow.getCell('A').font = { name: 'Arial', size: 9 };
-          cargoRow.getCell('A').alignment = centerMiddleAlignment;
-          worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
-      }
+      cargoRow.getCell('A').value = `Comandante da ${ptrabData.nome_om_extenso || ptrabData.nome_om}`;
+      cargoRow.getCell('A').font = { name: 'Arial', size: 9 };
+      cargoRow.getCell('A').alignment = centerMiddleAlignment;
+      worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
 
       // Exportar
       const buffer = await workbook.xlsx.writeBuffer();
@@ -1354,74 +1329,63 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             }
                         }
                         
-                        // --- Renderização da Linha ---
-                        row.getCell('A').value = rowData.despesasValue;
-                        row.getCell('B').value = rowData.omValue;
-                        row.getCell('C').value = rowData.valorC > 0 ? rowData.valorC : '';
-                        row.getCell('D').value = rowData.valorD > 0 ? rowData.valorD : '';
-                        row.getCell('E').value = rowData.valorE > 0 ? rowData.valorE : '';
-                        row.getCell('F').value = rowData.litrosF;
-                        row.getCell('G').value = rowData.precoUnitarioG;
-                        row.getCell('H').value = rowData.precoTotalH;
-                        row.getCell('I').value = rowData.detalhamentoValue;
-                        
-                        // Estilos
-                        
-                        // Coluna A: DESPESAS (Left Horizontal, Middle Vertical)
-                        row.getCell('A').alignment = dataLeftMiddleAlignmentFixed; // USANDO O NOVO ALINHAMENTO
-                        row.getCell('A').font = baseFontStyle;
-                        row.getCell('A').border = cellBorder;
-                        
-                        // Coluna B: OM (UGE) CODUG (Center Horizontal, Middle Vertical)
-                        row.getCell('B').alignment = dataCenterMiddleAlignmentFixed; // USANDO O NOVO ALINHAMENTO
-                        row.getCell('B').font = baseFontStyle;
-                        row.getCell('B').border = cellBorder;
-                        
-                        ['C', 'D', 'E'].forEach(col => {
-                            const cell = row.getCell(col);
-                            cell.alignment = dataCenterMonetaryAlignment;
-                            cell.font = baseFontStyle;
-                            cell.border = cellBorder;
-                            cell.numFmt = 'R$ #,##0.00'; // Formato monetário
-                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-                        });
-                        
-                        ['F', 'G', 'H'].forEach(col => {
-                            const cell = row.getCell(col);
-                            cell.alignment = dataCenterMonetaryAlignment;
-                            cell.font = baseFontStyle;
-                            cell.border = cellBorder;
-                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-                            if (col === 'H') {
-                                cell.numFmt = 'R$ #,##0.00'; // Formato monetário
-                            }
-                        });
-                        
-                        row.getCell('I').alignment = leftTopAlignment;
-                        row.getCell('I').font = { name: 'Arial', size: 6.5 }; // Fonte menor para detalhamento
-                        row.getCell('I').border = cellBorder;
-                        
-                        currentRow++;
-                    return null; // Retorna null para o map interno
-                    }).filter(Boolean), // Filtra nulos
+                        return (
+                            <tr key={`${nomeOM}-expense-${index}`} className="expense-row">
+                                <td className="col-despesas">
+                                    {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
+                                </td>
+                                <td className="col-om">
+                                    {rowData.omValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
+                                </td>
+                                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorC > 0 ? formatCurrency(rowData.valorC) : ''}</td>
+                                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorD > 0 ? formatCurrency(rowData.valorD) : ''}</td>
+                                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorE > 0 ? formatCurrency(rowData.valorE) : ''}</td>
+                                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{rowData.litrosF}</td>
+                                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{rowData.precoUnitarioG}</td>
+                                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{rowData.precoTotalH}</td>
+                                <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
+                                    <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                        {rowData.detalhamentoValue}
+                                    </pre>
+                                </td>
+                            </tr>
+                        );
+                    }),
                     
                     // Subtotal da OM
-                    <tr key={`subtotal-${nomeOM}`} className="subtotal-row">
-                      <td colSpan={2} className="text-right font-bold" style={{ backgroundColor: '#D3D3D3' }}>SOMA POR ND E GP DE DESPESA</td>
-                      <td className="col-valor-natureza">{formatCurrency(totaisOM.total_33_90_30)}</td>
-                      <td className="col-valor-natureza">{formatCurrency(totaisOM.total_33_90_39)}</td>
-                      <td className="col-valor-natureza">{formatCurrency(totaisOM.total_parte_azul)}</td>
-                      <td className="col-combustivel-data-filled">{totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : ''}</td>
-                      <td className="col-combustivel-data-filled">{totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : ''}</td>
-                      <td className="col-combustivel-data-filled">{totaisOM.total_combustivel > 0 ? formatCurrency(totaisOM.total_combustivel) : ''}</td>
-                      <td style={{ backgroundColor: '#D3D3D3' }}></td>
+                    <tr key={`${nomeOM}-subtotal`} className="subtotal-row">
+                      <td colSpan={2} className="text-right font-bold">SOMA POR ND E GP DE DESPESA</td>
+                      {/* Parte Azul (Natureza de Despesa) */}
+                      <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_30)}</td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_39)}</td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
+                      {/* Parte Laranja (Combustivel) - CORRIGIDO: Remove a verificação nomeOM === nomeRM */}
+                      <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
+                        {totaisOM.totalDieselLitros > 0 
+                          ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
+                          : ''}
+                      </td>
+                      <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
+                        {totaisOM.totalGasolinaLitros > 0 
+                          ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` 
+                          : ''}
+                      </td>
+                      <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
+                        {totaisOM.total_combustivel > 0 
+                          ? formatCurrency(totaisOM.total_combustivel) 
+                          : ''}
+                      </td>
+                      <td></td>
                     </tr>,
                     
                     // Total da OM
-                    <tr key={`total-${nomeOM}`} className="subtotal-om-row">
-                      <td colSpan={4} className="text-right font-bold" style={{ backgroundColor: '#E8E8E8' }}>VALOR TOTAL DO {nomeOM}</td>
-                      <td colSpan={1} className="text-center font-bold" style={{ backgroundColor: '#E8E8E8' }}>{formatCurrency(totaisOM.total_gnd3)}</td>
-                      <td colSpan={4} style={{ backgroundColor: '#E8E8E8' }}></td>
+                    <tr key={`${nomeOM}-total`} className="subtotal-om-row">
+                      <td colSpan={4} className="text-right font-bold">
+                        VALOR TOTAL DO {nomeOM}
+                      </td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#E8E8E8' }}>{formatCurrency(totaisOM.total_gnd3)}</td>
+                      <td colSpan={3}></td>
+                      <td></td>
                     </tr>
                   ];
                 }),
@@ -1442,17 +1406,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   return [
                     // Linha 1: Soma detalhada por ND e GP de Despesa
                     <tr key="total-geral-soma-row" className="total-geral-soma-row">
-                      <td colSpan={2} className="text-right font-bold" style={{ backgroundColor: '#D3D3D3' }}>SOMA POR ND E GP DE DESPESA</td>
-                      <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_30)}</td>
-                      <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_39)}</td>
-                      <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_GND3_ND)}</td>
+                      <td colSpan={2} className="text-right font-bold">SOMA POR ND E GP DE DESPESA</td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_30)}</td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_39)}</td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_GND3_ND)}</td>
                       {/* F: LITROS DIESEL */}
-                      <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{totalDieselLitrosGeral > 0 ? `${formatNumber(totalDieselLitrosGeral)} L OD` : ''}</td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalDieselLitrosGeral > 0 ? `${formatNumber(totalDieselLitrosGeral)} L OD` : ''}</td>
                       {/* G: LITROS GASOLINA */}
-                      <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{totalGasolinaLitrosGeral > 0 ? `${formatNumber(totalGasolinaLitrosGeral)} L GAS` : ''}</td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalGasolinaLitrosGeral > 0 ? `${formatNumber(totalGasolinaLitrosGeral)} L GAS` : ''}</td>
                       {/* H: PREÇO TOTAL COMBUSTÍVEL */}
-                      <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{totalValorCombustivelFinalGeral > 0 ? formatCurrency(totalValorCombustivelFinalGeral) : ''}</td>
-                      <td style={{ backgroundColor: '#D3D3D3' }}></td>
+                      <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalValorCombustivelFinalGeral > 0 ? formatCurrency(totalValorCombustivelFinalGeral) : ''}</td>
+                      <td style={{ backgroundColor: 'white' }}></td>
                     </tr>,
 
                     // Linha 2: Valor Total
