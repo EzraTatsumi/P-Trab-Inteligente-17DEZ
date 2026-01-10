@@ -299,7 +299,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     
     // Cabeçalho da Tabela (4 colunas)
     const headerRow = worksheet.getRow(currentRow);
-    headerRow.getCell('A').value = 'DESPESAS CLASSE I (SUBSISTÊNCIA)';
+    headerRow.getCell('A').value = 'DESPESAS'; // ALTERADO AQUI
     headerRow.getCell('B').value = 'OM (UGE)\nCODUG';
     headerRow.getCell('C').value = 'QUANTIDADE';
     headerRow.getCell('D').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG';
@@ -482,7 +482,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
             <table className="ptrab-table-op">
               <thead>
                 <tr>
-                  <th className="col-despesas-op">DESPESAS CLASSE I (SUBSISTÊNCIA)</th>
+                  <th className="col-despesas-op">DESPESAS</th> {/* ALTERADO AQUI */}
                   <th className="col-om-op">OM (UGE)<br/>CODUG</th>
                   <th className="col-quantidade-op">QUANTIDADE</th>
                   <th className="col-detalhamento-op">DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/>OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</th>
