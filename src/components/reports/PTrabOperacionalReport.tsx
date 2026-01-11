@@ -4,7 +4,7 @@ import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber, formatDateDDMMMAA, formatCodug, formatDate } from "@/lib/formatUtils";
-import { FileSpreadsheet, Printer, Download, Briefcase } from "lucide-react";
+import { FileSpreadsheet, Printer, Download, Briefcase, Package, Utensils, HardHat, Plane, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tables } from "@/integrations/supabase/types";
@@ -181,7 +181,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const corSubtotalOM = 'FFD9D9D9'; // Cinza para o subtotal OM (MANTIDO)
     const corGrandTotal = 'FFE8E8E8'; // Cinza claro para o total geral (MANTIDO)
     const corND = 'FFB4C7E7'; // Azul para as NDs (APENAS NAS LINHAS DE DADOS)
-    const corTotalDetalhamento = 'FFFFFFFF'; // Branco para o detalhamento (Célula D)
     const corSomaND = 'FFD9D9D9'; // Cinza para a linha de soma por ND (MANTIDO)
     // -------------------------------------------
 
@@ -251,10 +250,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     // Cabeçalho da Tabela (9 colunas)
     const headerRow1 = worksheet.getRow(currentRow);
-    headerRow1.getCell('A').value = 'DESPESAS';
-    headerRow1.getCell('B').value = 'OM (UGE)\nCODUG';
+    headerRow1.getCell('A').value = 'DESPESAS'; // CORRIGIDO
+    headerRow1.getCell('B').value = 'OM (UGE)\nCODUG'; // CORRIGIDO
     headerRow1.getCell('C').value = 'NATUREZA DE DESPESA';
-    headerRow1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO OPERACIONAL';
+    headerRow1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO OPERACIONAL'; // CORRIGIDO
     
     worksheet.mergeCells(`A${currentRow}:A${currentRow+1}`);
     worksheet.mergeCells(`B${currentRow}:B${currentRow+1}`);

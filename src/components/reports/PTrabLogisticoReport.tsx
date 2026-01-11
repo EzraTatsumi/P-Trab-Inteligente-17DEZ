@@ -4,7 +4,7 @@ import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber, formatDateDDMMMAA, formatCodug } from "@/lib/formatUtils";
-import { FileSpreadsheet, Printer, Download } from "lucide-react";
+import { FileSpreadsheet, Printer, Download, Package, Utensils, Briefcase, HardHat, Plane, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -648,6 +648,17 @@ export const getTipoCombustivelLabel = (tipo: string) => {
     return tipo;
 };
 
+export const getTipoEquipamentoLabel = (categoria: LinhaClasseIII['categoria_equipamento']): string => {
+    switch (categoria) {
+        case 'GERADOR': return 'Gerador';
+        case 'EMBARCACAO': return 'Embarcação';
+        case 'EQUIPAMENTO_ENGENHARIA': return 'Equipamento de Engenharia';
+        case 'MOTOMECANIZACAO': return 'Motomecanização';
+        case 'LUBRIFICANTE': return 'Lubrificante';
+        default: return categoria;
+    }
+};
+
 // =================================================================
 // FUNÇÕES DE NORMALIZAÇÃO E IDENTIFICAÇÃO DA RM (AÇÕES 1 e 2)
 // =================================================================
@@ -1188,7 +1199,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     rowData.precoTotalH = '';
                 }
                 
-                rowData.detalhamentoValue = linhaClasseIII.memoria_calculo;
+                rowData.detalhamentoValue = generateClasseIIIMemoriaCalculo(registro);
                 
             } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
                 const registro = (linha as LinhaClasseII).registro as ClasseIIRegistro;
@@ -1498,7 +1509,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow += 3;
       
       const cmtRow = worksheet.getRow(currentRow);
-      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
