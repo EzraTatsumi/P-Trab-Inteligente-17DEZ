@@ -181,7 +181,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const corSubtotalOM = 'FFD9D9D9'; // Cinza para o subtotal OM (MANTIDO)
     const corGrandTotal = 'FFE8E8E8'; // Cinza claro para o total geral (MANTIDO)
     const corND = 'FFB4C7E7'; // Azul para as NDs (APENAS NAS LINHAS DE DADOS)
-    const corTotalDetalhamento = 'FFFFFFFF'; // Branco para o detalhamento (Célula D)
     const corSomaND = 'FFD9D9D9'; // Cinza para a linha de soma por ND (MANTIDO)
     // -------------------------------------------
 
@@ -476,7 +475,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     // Célula H: Valor Total GND 3 (Cinza Claro)
     totalGeralFinalRow.getCell('H').value = totaisND.totalGND3;
-    totalGeralFinalRow.getCell('H').alignment = centerMiddleAlignment;
+    totalGeralFinalRow.getCell('H').alignment = dataCenterMiddleAlignment;
     totalGeralFinalRow.getCell('H').font = headerFontStyle;
     totalGeralFinalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corGrandTotal } };
     totalGeralFinalRow.getCell('H').border = cellBorder;
@@ -502,7 +501,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     currentRow += 3;
     
     const cmtRow = worksheet.getRow(currentRow);
-    cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
+    cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'; // CORRIGIDO: Removido o aspas simples extra
     cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
     cmtRow.getCell('A').alignment = centerMiddleAlignment;
     worksheet.mergeCells(`A${currentRow}:I${currentRow}`); // Ajustado para 9 colunas

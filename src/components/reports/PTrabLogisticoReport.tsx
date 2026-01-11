@@ -223,7 +223,8 @@ const getTipoEquipamentoLabel = (tipo: string) => {
     }
 };
 
-// =ÇÃO PRINCIPAL
+// =================================================================
+// COMPONENTE PRINCIPAL
 // =================================================================
 
 const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
@@ -370,7 +371,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, valorTotalSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo]);
+  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, valorTotalSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo, totalDiesel, totalGasolina, totalValorCombustivelFinal]);
 
   // NOVO: Função para abrir o diálogo de impressão do navegador
   const handlePrint = () => {
@@ -389,9 +390,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     const rightTopAlignment = { horizontal: 'right' as const, vertical: 'top' as const, wrapText: true };
     
     // NOVOS ALINHAMENTOS PARA DADOS (Verticalmente Centralizado)
-    const dataLeftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true };
-    const dataCenterMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
-    // Alterado para CenterMiddleAlignment para C, D, E e H
+    const dataTextStyle = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true }; // Alterado para middle
     const dataCenterMonetaryAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true }; 
     
     const cellBorder = {
@@ -570,7 +569,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow = headerRow2 + 1;
 
       // Reusable alignment styles for data
-      const dataTextStyle = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true }; // Alterado para middle
       
       omsOrdenadas.forEach((nomeOM) => {
         const grupo = gruposPorOM[nomeOM];
@@ -1012,7 +1010,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow += 3;
       
       const cmtRow = worksheet.getRow(currentRow);
-      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'';
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'; // CORRIGIDO: Removido o aspas simples extra
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
@@ -1328,48 +1326,29 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         }
                         
                         // --- Renderização da Linha ---
-                        row.getCell('A').value = rowData.despesasValue;
-                        row.getCell('B').value = rowData.omValue;
-                        row.getCell('C').value = rowData.valorC > 0 ? rowData.valorC : '';
-                        row.getCell('D').value = rowData.valorD > 0 ? rowData.valorD : '';
-                        row.getCell('E').value = rowData.valorE > 0 ? rowData.valorE : '';
-                        row.getCell('F').value = rowData.litrosF;
-                        row.getCell('G').value = rowData.precoUnitarioG;
-                        row.getCell('H').value = rowData.precoTotalH;
-                        row.getCell('I').value = rowData.detalhamentoValue;
+                        const totalLinhaND = rowData.valorC + rowData.valorD;
                         
-                        // Estilos
-                        ['A', 'B'].forEach(col => {
-                            row.getCell(col).alignment = dataTextStyle;
-                            row.getCell(col).font = baseFontStyle;
-                            row.getCell(col).border = cellBorder;
-                        });
-                        
-                        ['C', 'D', 'E'].forEach(col => {
-                            const cell = row.getCell(col);
-                            cell.alignment = dataCenterMonetaryAlignment;
-                            cell.font = baseFontStyle;
-                            cell.border = cellBorder;
-                            cell.numFmt = 'R$ #,##0.00'; // Formato monetário
-                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-                        });
-                        
-                        ['F', 'G', 'H'].forEach(col => {
-                            const cell = row.getCell(col);
-                            cell.alignment = dataCenterMonetaryAlignment;
-                            cell.font = baseFontStyle;
-                            cell.border = cellBorder;
-                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-                            if (col === 'H') {
-                                cell.numFmt = 'R$ #,##0.00'; // Formato monetário
-                            }
-                        });
-                        
-                        row.getCell('I').alignment = leftTopAlignment;
-                        row.getCell('I').font = { name: 'Arial', size: 6.5 }; // Fonte menor para detalhamento
-                        row.getCell('I').border = cellBorder;
-                        
-                        currentRow++;
+                        return (
+                            <tr key={`${nomeOM}-${index}`} className="expense-row">
+                                <td className="col-despesas">
+                                    <div style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{rowData.despesasValue}</div>
+                                </td>
+                                <td className="col-om">
+                                    <div style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{rowData.omValue}</div>
+                                </td>
+                                <td className="col-nd col-valor-natureza">{rowData.valorC > 0 ? formatCurrency(rowData.valorC) : ''}</td>
+                                <td className="col-nd col-valor-natureza">{rowData.valorD > 0 ? formatCurrency(rowData.valorD) : ''}</td>
+                                <td className="col-nd col-valor-natureza">{totalLinhaND > 0 ? formatCurrency(totalLinhaND) : ''}</td>
+                                <td className="col-combustivel col-combustivel-data">{rowData.litrosF}</td>
+                                <td className="col-combustivel col-combustivel-data">{rowData.precoUnitarioG}</td>
+                                <td className="col-combustivel col-combustivel-data-filled">{rowData.precoTotalH}</td>
+                                <td className="col-detalhamento">
+                                    <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                        {rowData.detalhamentoValue}
+                                    </div>
+                                </td>
+                            </tr>
+                        );
                     }),
                     
                     // Subtotal da OM
@@ -1379,7 +1358,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_30)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_39)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
-                      {/* Parte Laranja (Combustivel) - CORRIGIDO: Remove a verificação nomeOM === nomeRM */}
+                      {/* Parte Laranja (Combustivel) */}
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
                         {totaisOM.totalDieselLitros > 0 
                           ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
@@ -1418,7 +1397,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 // ========== TOTAL GERAL ==========
                 ...(() => {
                   // Totais de combustível por tipo (para exibição na parte laranja)
-                  // Usando os totais gerais calculados no useMemo
                   const totalDieselLitrosGeral = totalDiesel;
                   const totalGasolinaLitrosGeral = totalGasolina;
                   const totalValorCombustivelFinalGeral = totalValorCombustivelFinal;
