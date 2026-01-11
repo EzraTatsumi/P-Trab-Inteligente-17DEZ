@@ -473,8 +473,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         
         row.getCell(1).value = {
           richText: [
-            { text: label, font: titleFontStyle },
-            { text: ` ${value}`, font: { name: 'Arial', size: 11, bold: false } }
+            { text: label, font: headerFontStyle },
+            { text: ` ${value}`, font: { name: 'Arial', size: 9, bold: false } }
           ]
         };
         
@@ -490,14 +490,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       
       const despesasRow = worksheet.getRow(currentRow);
       despesasRow.getCell('A').value = '5. DESPESAS OPERACIONAIS:';
-      despesasRow.getCell('A').font = titleFontStyle;
+      despesasRow.getCell('A').font = headerFontStyle;
       currentRow++;
       
       const headerRow1 = currentRow;
       const headerRow2 = currentRow + 1;
       
       const hdr1 = worksheet.getRow(headerRow1);
-      hdr1.getCell('A').value = 'DESPESAS'; // ALTERADO AQUI
+      hdr1.getCell('A').value = 'DESPESAS'; 
       hdr1.getCell('B').value = 'OM (UGE)\nCODUG';
       hdr1.getCell('C').value = 'NATUREZA DE DESPESA';
       hdr1.getCell('F').value = 'COMBUSTÍVEL';
@@ -570,7 +570,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow = headerRow2 + 1;
 
       // Reusable alignment styles for data
-      const dataTextStyle = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
+      const dataTextStyle = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true }; // Alterado para middle
       
       omsOrdenadas.forEach((nomeOM) => {
         const grupo = gruposPorOM[nomeOM];
@@ -1012,7 +1012,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow += 3;
       
       const cmtRow = worksheet.getRow(currentRow);
-      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
@@ -1327,27 +1327,49 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             }
                         }
                         
-                        return (
-                            <tr key={`${nomeOM}-expense-${index}`} className="expense-row">
-                                <td className="col-despesas">
-                                    {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
-                                </td>
-                                <td className="col-om">
-                                    {rowData.omValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
-                                </td>
-                                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorC > 0 ? formatCurrency(rowData.valorC) : ''}</td>
-                                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorD > 0 ? formatCurrency(rowData.valorD) : ''}</td>
-                                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorE > 0 ? formatCurrency(rowData.valorE) : ''}</td>
-                                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{rowData.litrosF}</td>
-                                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{rowData.precoUnitarioG}</td>
-                                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{rowData.precoTotalH}</td>
-                                <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
-                                    <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                                        {rowData.detalhamentoValue}
-                                    </pre>
-                                </td>
-                            </tr>
-                        );
+                        // --- Renderização da Linha ---
+                        row.getCell('A').value = rowData.despesasValue;
+                        row.getCell('B').value = rowData.omValue;
+                        row.getCell('C').value = rowData.valorC > 0 ? rowData.valorC : '';
+                        row.getCell('D').value = rowData.valorD > 0 ? rowData.valorD : '';
+                        row.getCell('E').value = rowData.valorE > 0 ? rowData.valorE : '';
+                        row.getCell('F').value = rowData.litrosF;
+                        row.getCell('G').value = rowData.precoUnitarioG;
+                        row.getCell('H').value = rowData.precoTotalH;
+                        row.getCell('I').value = rowData.detalhamentoValue;
+                        
+                        // Estilos
+                        ['A', 'B'].forEach(col => {
+                            row.getCell(col).alignment = dataTextStyle;
+                            row.getCell(col).font = baseFontStyle;
+                            row.getCell(col).border = cellBorder;
+                        });
+                        
+                        ['C', 'D', 'E'].forEach(col => {
+                            const cell = row.getCell(col);
+                            cell.alignment = dataCenterMonetaryAlignment;
+                            cell.font = baseFontStyle;
+                            cell.border = cellBorder;
+                            cell.numFmt = 'R$ #,##0.00'; // Formato monetário
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+                        });
+                        
+                        ['F', 'G', 'H'].forEach(col => {
+                            const cell = row.getCell(col);
+                            cell.alignment = dataCenterMonetaryAlignment;
+                            cell.font = baseFontStyle;
+                            cell.border = cellBorder;
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+                            if (col === 'H') {
+                                cell.numFmt = 'R$ #,##0.00'; // Formato monetário
+                            }
+                        });
+                        
+                        row.getCell('I').alignment = leftTopAlignment;
+                        row.getCell('I').font = { name: 'Arial', size: 6.5 }; // Fonte menor para detalhamento
+                        row.getCell('I').border = cellBorder;
+                        
+                        currentRow++;
                     }),
                     
                     // Subtotal da OM
