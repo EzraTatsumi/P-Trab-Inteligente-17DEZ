@@ -17,80 +17,409 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  PTrabData,
-  ClasseIRegistro,
-  ClasseIIRegistro,
-  ClasseIIIRegistro,
-  LinhaClasseIII, // NOVO: Importando LinhaClasseIII
-  GrupoOM,
-  CLASSE_V_CATEGORIES,
-  CLASSE_VI_CATEGORIES,
-  CLASSE_VII_CATEGORIES,
-  CLASSE_VIII_CATEGORIES,
-  CLASSE_IX_CATEGORIES,
-  calculateDays,
-  formatDate,
-  formatFasesParaTexto,
-  getClasseIILabel,
-  generateClasseIXMemoriaCalculo,
-  calculateItemTotalClasseIX,
-  getTipoCombustivelLabel, // Importando a função corrigida do Manager
-} from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
+import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
+import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
+import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport"; // NOVO: Importar o relatório operacional
+import { 
+  generateRacaoQuenteMemoriaCalculo, 
+  generateRacaoOperacionalMemoriaCalculo,
+  calculateClasseICalculations,
+  ClasseIRegistro as ClasseIRegistroType,
+} from "@/lib/classeIUtils";
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
-import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils"; 
-import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils"; 
-import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils"; 
-import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils"; 
-import { RefLPC } from "@/types/refLPC"; // Importando RefLPC
+import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils";
+import { generateCategoryMemoriaCalculo as generateClasseIXUtility, calculateItemTotalClasseIX as calculateItemTotalClasseIXUtility } from "@/lib/classeIXUtils";
+import { generateGranularMemoriaCalculo as generateClasseIIIGranularUtility, calculateItemTotals } from "@/lib/classeIIIUtils";
+import { 
+  generateDiariaMemoriaCalculo as generateDiariaMemoriaCalculoUtility, 
+  calculateDiariaTotals,
+  DestinoDiaria,
+  QuantidadesPorPosto,
+} from "@/lib/diariaUtils"; // NOVO: Importar utilitários de Diária
+import { RefLPC } from "@/types/refLPC";
+import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
+import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
+import { Tables } from "@/integrations/supabase/types"; // Importar Tables
 
-interface PTrabLogisticoReportProps {
-  ptrabData: PTrabData;
-  registrosClasseI: ClasseIRegistro[];
-  registrosClasseII: ClasseIIRegistro[];
-  registrosClasseIII: ClasseIIIRegistro[];
-  nomeRM: string;
-  omsOrdenadas: string[];
-  gruposPorOM: Record<string, GrupoOM>;
-  calcularTotaisPorOM: (grupo: GrupoOM, nomeOM: string) => {
-    total_33_90_30: number;
-    total_33_90_39: number;
-    total_parte_azul: number;
-    total_combustivel: number;
-    total_gnd3: number;
-    totalDieselLitros: number;
-    totalGasolinaLitros: number;
-  };
-  fileSuffix: string; // NOVO PROP
-  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe I
-  generateClasseIMemoriaCalculo: (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP') => string;
-  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe II/V/VI/VII/VIII/IX
-  generateClasseIIMemoriaCalculo: (
-    registro: ClasseIIRegistro, 
-    isClasseII: boolean
-  ) => string;
-  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe V
-  generateClasseVMemoriaCalculo: (registro: any) => string;
-  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe VI
-  generateClasseVIMemoriaCalculo: (registro: any) => string;
-  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe VII
-  generateClasseVIIMemoriaCalculo: (registro: any) => string;
-  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe VIII
-  generateClasseVIIIMemoriaCalculo: (registro: any) => string;
-  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe III (granular)
-  generateClasseIIIMemoriaCalculo: (registro: ClasseIIIRegistro) => string;
+// =================================================================
+// TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
+// =================================================================
+
+export interface PTrabData {
+  id: string;
+  numero_ptrab: string;
+  comando_militar_area: string;
+  nome_om: string;
+  nome_om_extenso?: string;
+  nome_operacao: string;
+  periodo_inicio: string;
+  periodo_fim: string;
+  efetivo_empregado: string;
+  acoes: string;
+  status: string;
+  nome_cmt_om?: string;
+  local_om?: string;
+  updated_at: string;
+  rm_vinculacao: string;
 }
 
-// Implementação padrão (fallback) para generateClasseIIMemoriaCalculo
-const defaultGenerateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolean): string => {
-    // Verifica se existe detalhamento customizado primeiro
+// Usando o tipo importado para garantir consistência
+export type ClasseIRegistro = ClasseIRegistroType;
+
+// NOVO TIPO: DiariaRegistro
+export interface DiariaRegistro {
+  id: string;
+  organizacao: string;
+  ug: string;
+  dias_operacao: number;
+  destino: DestinoDiaria;
+  nr_viagens: number;
+  local_atividade: string;
+  quantidades_por_posto: QuantidadesPorPosto;
+  valor_total: number;
+  valor_nd_15: number;
+  valor_nd_30: number;
+  valor_taxa_embarque: number;
+  detalhamento: string;
+  detalhamento_customizado?: string | null;
+  fase_atividade: string;
+  is_aereo: boolean;
+}
+
+export interface ItemClasseIII {
+  item: string; // nome_equipamento
+  categoria: 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
+  consumo_fixo: number; // L/h or km/L
+  tipo_combustivel_fixo: 'GASOLINA' | 'DIESEL'; // GASOLINA or DIESEL
+  unidade_fixa: 'L/h' | 'km/L';
+  quantidade: number;
+  horas_dia: number;
+  distancia_percorrida: number;
+  quantidade_deslocamentos: number;
+  dias_utilizados: number;
+  // Lubricant fields (only for GERADOR, EMBARCACAO)
+  consumo_lubrificante_litro: number; // L/100h or L/h
+  preco_lubrificante: number; // R$/L
+  memoria_customizada?: string | null; // NOVO CAMPO
+}
+
+export interface ItemClasseII {
+  item: string;
+  quantidade: number;
+  valor_mnt_dia: number;
+  categoria: string;
+  memoria_customizada?: string | null;
+}
+
+export interface ItemClasseIX {
+  item: string;
+  quantidade: number;
+  valor_mnt_dia: number;
+  valor_acionamento_mensal: number;
+  categoria: string;
+  memoria_customizada?: string | null;
+}
+
+export interface ClasseIIRegistro {
+  id: string;
+  organizacao: string;
+  ug: string;
+  dias_operacao: number;
+  categoria: string;
+  itens_equipamentos: ItemClasseII[];
+  valor_total: number;
+  detalhamento: string;
+  detalhamento_customizado?: string | null;
+  fase_atividade?: string | null;
+  valor_nd_30: number;
+  valor_nd_39: number;
+  animal_tipo?: 'Equino' | 'Canino' | null;
+  quantidade_animais?: number;
+  itens_remonta?: any; // Usado para Classe VIII Remonta
+  itens_saude?: any; // Usado para Classe VIII Saúde
+  itens_motomecanizacao?: ItemClasseIX[];
+  om_detentora?: string | null;
+  ug_detentora?: string | null;
+  efetivo?: number;
+}
+
+export interface ClasseIIIRegistro {
+  id: string;
+  tipo_equipamento: string;
+  organizacao: string;
+  ug: string;
+  quantidade: number;
+  potencia_hp?: number;
+  horas_dia?: number;
+  dias_operacao: number;
+  consumo_hora?: number;
+  consumo_km_litro?: number;
+  km_dia?: number;
+  tipo_combustivel: string;
+  preco_litro: number;
+  tipo_equipamento_detalhe?: string;
+  total_litros: number;
+  valor_total: number;
+  detalhamento?: string;
+  detalhamento_customizado?: string | null;
+  itens_equipamentos?: ItemClasseIII[]; // Tipo corrigido
+  fase_atividade?: string; // Adicionado para Classe III
+  consumo_lubrificante_litro?: number; // Adicionado para Classe III
+  preco_lubrificante?: number; // Adicionado para Classe III
+  valor_nd_30: number; // Adicionado para Classe III
+  valor_nd_39: number; // Adicionado para Classe III
+  om_detentora?: string | null; // Adicionado para Classe III (OM Destino Recurso)
+  ug_detentora?: string | null; // Adicionado para Classe III (UG Destino Recurso)
+}
+
+// NOVO TIPO: Linha desagregada de Classe III para o relatório logístico
+export interface LinhaClasseIII {
+  registro: ClasseIIIRegistro;
+  categoria_equipamento: 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO' | 'LUBRIFICANTE';
+  tipo_suprimento: 'COMBUSTIVEL_GASOLINA' | 'COMBUSTIVEL_DIESEL' | 'LUBRIFICANTE';
+  valor_total_linha: number;
+  total_litros_linha: number;
+  preco_litro_linha: number;
+  memoria_calculo: string;
+}
+
+// NOVO TIPO: Estrutura granular para geração de memória da Classe III
+interface GranularDisplayItem {
+  id: string; 
+  om_destino: string; 
+  ug_destino: string; 
+  categoria: 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
+  suprimento_tipo: 'COMBUSTIVEL_GASOLINA' | 'COMBUSTIVEL_DIESEL' | 'LUBRIFICANTE';
+  valor_total: number;
+  total_litros: number;
+  preco_litro: number; 
+  dias_operacao: number;
+  fase_atividade: string;
+  valor_nd_30: number;
+  valor_nd_39: number;
+  original_registro: ClasseIIIRegistro;
+  detailed_items: ItemClasseIII[];
+}
+
+export interface LinhaTabela {
+  registro: ClasseIRegistro;
+  valor_nd_30: number; // Adicionado para consistência
+  valor_nd_39: number; // Adicionado para consistência
+  tipo: 'QS' | 'QR';
+}
+
+export interface LinhaClasseII {
+  registro: ClasseIIRegistro;
+  valor_nd_30: number; // Adicionado para consistência
+  valor_nd_39: number; // Adicionado para consistência
+}
+
+export interface GrupoOM {
+  linhasQS: LinhaTabela[];
+  linhasQR: LinhaTabela[];
+  linhasClasseII: LinhaClasseII[];
+  linhasClasseV: LinhaClasseII[];
+  linhasClasseVI: LinhaClasseII[];
+  linhasClasseVII: LinhaClasseII[];
+  linhasClasseVIII: LinhaClasseII[];
+  linhasClasseIX: LinhaClasseII[];
+  linhasClasseIII: LinhaClasseIII[]; // Inicializa a nova lista
+}
+
+export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
+export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"];
+export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
+export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
+export const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
+
+export const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString('pt-BR');
+};
+
+export const calculateDays = (inicio: string, fim: string) => {
+  const start = new Date(inicio);
+  const end = new Date(fim);
+  const diff = end.getTime() - start.getTime();
+  return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
+};
+
+export const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
+  if (!faseCSV) return 'operação';
+  
+  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
+  
+  if (fases.length === 0) return 'operação';
+  if (fases.length === 1) return fases[0];
+  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
+  
+  const ultimaFase = fases[fases.length - 1];
+  const demaisFases = fases.slice(0, -1).join(', ');
+  return `${demaisFases} e ${ultimaFase}`;
+};
+
+// Helper function to get the label for Classe II/V/VI/VII/VIII/IX categories
+export const getClasseIILabel = (category: string): string => {
+    switch (category) {
+        case 'Vtr Administrativa': return 'Viatura Administrativa';
+        case 'Vtr Operacional': return 'Viatura Operacional';
+        case 'Motocicleta': return 'Motocicleta';
+        case 'Vtr Blindada': return 'Viatura Blindada';
+        case 'Equipamento Individual': return 'Eqp Individual';
+        case 'Proteção Balística': return 'Prot Balística';
+        case 'Material de Estacionamento': return 'Mat Estacionamento';
+        case 'Armt L': return 'Armamento Leve';
+        case 'Armt P': return 'Armamento Pesado';
+        case 'IODCT': return 'IODCT';
+        case 'DQBRN': return 'DQBRN';
+        case 'Gerador': return 'Gerador';
+        case 'Embarcação': return 'Embarcação';
+        case 'Equipamento de Engenharia': return 'Eqp Engenharia';
+        case 'Comunicações': return 'Comunicações';
+        case 'Informática': return 'Informática';
+        case 'Saúde': return 'Saúde';
+        case 'Remonta/Veterinária': return 'Remonta/Veterinária';
+        default: return category;
+    }
+};
+
+// Exportando a função de cálculo de item da utilidade
+export const calculateItemTotalClasseIX = calculateItemTotalClasseIXUtility;
+
+// Função para gerar a memória de cálculo da Classe IX (agora usando o utilitário)
+export const generateClasseIXMemoriaCalculo = (registro: ClasseIIRegistro): string => {
     if (registro.detalhamento_customizado) {
-        return registro.detalhamento_customizado;
+      return registro.detalhamento_customizado;
     }
     
-    // Se for Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
-    if (isClasseII && registro.itens_equipamentos && registro.efetivo !== undefined) {
-        // Usa a função utilitária detalhada para Classe II
+    // Usa o utilitário importado
+    return generateClasseIXUtility(registro as any);
+};
+
+/**
+ * Função unificada para gerar a memória de cálculo da Classe I, priorizando o customizado.
+ */
+export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP'): string => {
+    if (registro.categoria === 'RACAO_OPERACIONAL') {
+        if (tipo === 'OP') {
+            if (registro.memoria_calculo_op_customizada && registro.memoria_calculo_op_customizada.trim().length > 0) {
+                return registro.memoria_calculo_op_customizada;
+            }
+            
+            return generateRacaoOperacionalMemoriaCalculo({
+                id: registro.id,
+                organizacao: registro.organizacao,
+                ug: registro.ug,
+                diasOperacao: registro.dias_operacao,
+                faseAtividade: registro.fase_atividade,
+                efetivo: registro.efetivo,
+                quantidadeR2: registro.quantidade_r2,
+                quantidadeR3: registro.quantidade_r3,
+                omQS: null, ugQS: null, nrRefInt: null, valorQS: null, valorQR: null,
+                calculos: {
+                    totalQS: 0, totalQR: 0, nrCiclos: 0, diasEtapaPaga: 0, diasEtapaSolicitada: 0, totalEtapas: 0,
+                    complementoQS: 0, etapaQS: 0, complementoQR: 0, etapaQR: 0,
+                },
+                categoria: 'RACAO_OPERACIONAL',
+            });
+        }
+        return "Memória não aplicável para Ração Operacional.";
+    }
+
+    // Lógica para Ração Quente (QS/QR)
+    if (tipo === 'QS') {
+        if (registro.memoriaQSCustomizada && registro.memoriaQSCustomizada.trim().length > 0) {
+            return registro.memoriaQSCustomizada;
+        }
+        const { qs } = generateRacaoQuenteMemoriaCalculo({
+            id: registro.id,
+            organizacao: registro.organizacao,
+            ug: registro.ug,
+            diasOperacao: registro.dias_operacao,
+            faseAtividade: registro.fase_atividade,
+            omQS: registro.om_qs,
+            ugQS: registro.ug_qs,
+            efetivo: registro.efetivo,
+            nrRefInt: registro.nr_ref_int,
+            valorQS: registro.valor_qs,
+            valorQR: registro.valor_qr,
+            calculos: {
+                totalQS: registro.total_qs,
+                totalQR: registro.total_qr,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int || 0, registro.valor_qs || 0, registro.valor_qr || 0).nrCiclos,
+                diasEtapaPaga: 0,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int || 0, registro.valor_qs || 0, registro.valor_qr || 0).diasEtapaSolicitada,
+                totalEtapas: 0,
+                complementoQS: registro.complemento_qs,
+                etapaQS: registro.etapa_qs,
+                complementoQR: registro.complemento_qr,
+                etapaQR: registro.etapa_qr,
+            },
+            quantidadeR2: 0,
+            quantidadeR3: 0,
+            categoria: 'RACAO_QUENTE',
+        });
+        return qs;
+    }
+
+    if (tipo === 'QR') {
+        if (registro.memoriaQRCustomizada && registro.memoriaQRCustomizada.trim().length > 0) {
+            return registro.memoriaQRCustomizada;
+        }
+        const { qr } = generateRacaoQuenteMemoriaCalculo({
+            id: registro.id,
+            organizacao: registro.organizacao,
+            ug: registro.ug,
+            diasOperacao: registro.dias_operacao,
+            faseAtividade: registro.fase_atividade,
+            omQS: registro.om_qs,
+            ugQS: registro.ug_qs,
+            efetivo: registro.efetivo,
+            nrRefInt: registro.nr_ref_int,
+            valorQS: registro.valor_qs,
+            valorQR: registro.valor_qr,
+            calculos: {
+                totalQS: registro.total_qs,
+                totalQR: registro.total_qr,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int || 0, registro.valor_qs || 0, registro.valor_qr || 0).nrCiclos,
+                diasEtapaPaga: 0,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int || 0, registro.valor_qs || 0, registro.valor_qr || 0).diasEtapaSolicitada,
+                totalEtapas: 0,
+                complementoQS: registro.complemento_qs,
+                etapaQS: registro.etapa_qs,
+                complementoQR: registro.complemento_qr,
+                etapaQR: registro.etapa_qr,
+            },
+            quantidadeR2: 0,
+            quantidadeR3: 0,
+            categoria: 'RACAO_QUENTE',
+        });
+        return qr;
+    }
+    
+    return "Memória de cálculo não encontrada.";
+};
+
+/**
+ * Função unificada para gerar a memória de cálculo da Classe II, V, VI, VII, VIII e IX,
+ * priorizando o customizado e usando os utilitários corretos.
+ */
+export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isClasseII: boolean): string => {
+    if (!registro || !registro.categoria) {
+        return "Registro inválido ou categoria ausente.";
+    }
+    
+    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
+      return registro.detalhamento_customizado;
+    }
+    
+    if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+        return generateClasseIXUtility(registro as any);
+    }
+    
+    if (isClasseII) {
         return generateClasseIIUtility(
             registro.categoria,
             registro.itens_equipamentos,
@@ -98,69 +427,41 @@ const defaultGenerateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolea
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
             registro.fase_atividade,
-            registro.efetivo,
+            registro.efetivo || 0,
             registro.valor_nd_30,
             registro.valor_nd_39
         );
     }
-    // Para outras classes (V, VI, VII, VIII) ou se os dados estiverem incompletos, retorna o detalhamento armazenado
-    return registro.detalhamento || "Memória de cálculo não disponível.";
-};
-
-// Implementação padrão (fallback) para generateClasseVMemoriaCalculo
-const defaultGenerateClasseVMemoriaCalculo = (registro: any): string => {
-    if (registro.detalhamento_customizado) {
-        return registro.detalhamento_customizado;
-    }
     
-    if (CLASSE_V_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos && registro.efetivo !== undefined) {
-        // Usa a função utilitária detalhada para Classe V
+    if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVUtility(
             registro.categoria,
             registro.itens_equipamentos,
             registro.dias_operacao,
-            registro.om_detentora || registro.organizacao, // Para Classe V, a OM Detentora é a OM de Destino
+            registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
             registro.fase_atividade,
-            registro.efetivo,
+            registro.efetivo || 0,
             registro.valor_nd_30,
             registro.valor_nd_39
         );
     }
-    return registro.detalhamento || "Memória de cálculo não disponível.";
-};
-
-// Implementação padrão (fallback) para generateClasseVIMemoriaCalculo
-const defaultGenerateClasseVIMemoriaCalculo = (registro: any): string => {
-    if (registro.detalhamento_customizado) {
-        return registro.detalhamento_customizado;
-    }
     
-    if (CLASSE_VI_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos) {
-        // Usa a função utilitária detalhada para Classe VI
+    if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVIUtility(
-            registro.categoria, // Categoria é o primeiro argumento
+            registro.categoria,
             registro.itens_equipamentos,
             registro.dias_operacao,
-            registro.om_detentora || registro.organizacao, // OM Detentora
-            registro.ug_detentora || registro.ug, // UG Detentora
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
             registro.fase_atividade,
-            registro.efetivo || 0, // Efetivo (embora não usado no cálculo, é necessário para a assinatura)
+            registro.efetivo || 0,
             registro.valor_nd_30,
             registro.valor_nd_39
         );
     }
-    return registro.detalhamento || "Memória de cálculo não disponível.";
-};
-
-// Implementação padrão (fallback) para generateClasseVIIMemoriaCalculo
-const defaultGenerateClasseVIIMemoriaCalculo = (registro: any): string => {
-    if (registro.detalhamento_customizado) {
-        return registro.detalhamento_customizado;
-    }
     
-    if (CLASSE_VII_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos) {
-        // Usa a função utilitária detalhada para Classe VII
+    if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVIIUtility(
             registro.categoria,
             registro.itens_equipamentos,
@@ -173,17 +474,8 @@ const defaultGenerateClasseVIIMemoriaCalculo = (registro: any): string => {
             registro.valor_nd_39
         );
     }
-    return registro.detalhamento || "Memória de cálculo não disponível.";
-};
-
-// Implementação padrão (fallback) para generateClasseVIIIMemoriaCalculo
-const defaultGenerateClasseVIIIMemoriaCalculo = (registro: any): string => {
-    if (registro.detalhamento_customizado) {
-        return registro.detalhamento_customizado;
-    }
     
     if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
-        // Para Classe VIII, os itens estão em itens_saude ou itens_remonta
         const itens = registro.categoria === 'Saúde' ? registro.itens_saude : registro.itens_remonta;
         
         return generateClasseVIIIUtility(
@@ -199,13 +491,147 @@ const defaultGenerateClasseVIIIMemoriaCalculo = (registro: any): string => {
             registro.animal_tipo
         );
     }
+    
     return registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
-// Implementação padrão (fallback) para generateClasseIIIMemoriaCalculo
-const defaultGenerateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro): string => {
-    // Se não for passada a função do Manager, retorna o detalhamento consolidado (fallback)
-    return registro.detalhamento_customizado || registro.detalhamento || "Memória de cálculo não disponível.";
+/**
+ * Função para gerar a memória de cálculo da Classe III (Combustível/Lubrificante)
+ * no nível granular (o mesmo nível de detalhe da edição do usuário).
+ */
+export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, refLPC: RefLPC | null): string => {
+    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
+        return registro.detalhamento_customizado;
+    }
+    
+    const itens = registro.itens_equipamentos || [];
+    
+    if (registro.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO') {
+        
+        let finalMemoria = "";
+        
+        const gruposPorCombustivel = itens.reduce((grupos, item) => {
+            const tipo = item.tipo_combustivel_fixo;
+            if (!grupos[tipo]) grupos[tipo] = [];
+            grupos[tipo].push(item);
+            return grupos;
+        }, {} as Record<'GASOLINA' | 'DIESEL', ItemClasseIII[]>);
+        
+        Object.entries(gruposPorCombustivel).forEach(([tipoCombustivel, itensGrupo]) => {
+            itensGrupo.forEach(item => {
+                if (item.memoria_customizada && item.memoria_customizada.trim().length > 0) {
+                    finalMemoria += item.memoria_customizada + "\n\n";
+                    return;
+                }
+                
+                const suprimento_tipo = item.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL';
+                
+                const granularItem: GranularDisplayItem = {
+                    id: `${registro.id}-${item.item}-${suprimento_tipo}`,
+                    om_destino: registro.organizacao,
+                    ug_destino: registro.ug,
+                    categoria: item.categoria,
+                    suprimento_tipo: suprimento_tipo,
+                    valor_total: 0,
+                    total_litros: 0,
+                    preco_litro: registro.preco_litro,
+                    dias_operacao: registro.dias_operacao,
+                    fase_atividade: registro.fase_atividade || '',
+                    valor_nd_30: registro.valor_nd_30,
+                    valor_nd_39: registro.valor_nd_39,
+                    original_registro: registro,
+                    detailed_items: [item],
+                };
+                
+                const rmFornecimento = registro.om_detentora || '';
+                const codugRmFornecimento = registro.ug_detentora || '';
+                
+                const totals = calculateItemTotals(item, refLPC, registro.dias_operacao);
+                granularItem.valor_total = totals.valorCombustivel;
+                granularItem.total_litros = totals.totalLitros;
+                
+                finalMemoria += generateClasseIIIGranularUtility(
+                    granularItem, 
+                    refLPC, 
+                    rmFornecimento, 
+                    codugRmFornecimento
+                ) + "\n\n";
+            });
+        });
+        
+        return finalMemoria.trim();
+        
+    } else if (registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO') {
+        
+        const gruposPorCategoria = itens.reduce((grupos, item) => {
+            const categoria = item.categoria;
+            if (!grupos[categoria]) grupos[categoria] = [];
+            grupos[categoria].push(item);
+            return grupos;
+        }, {} as Record<'GERADOR' | 'EMBARCACAO', ItemClasseIII[]>);
+        
+        let finalMemoria = "";
+        
+        Object.entries(gruposPorCategoria).forEach(([categoria, itensGrupo]) => {
+            const itemComMemoria = itensGrupo.find(i => !!i.memoria_customizada) || itensGrupo[0];
+            if (itemComMemoria && itemComMemoria.memoria_customizada && itemComMemoria.memoria_customizada.trim().length > 0) {
+                finalMemoria += itemComMemoria.memoria_customizada + "\n\n";
+                return;
+            }
+            
+            const omDestinoLubrificante = registro.om_detentora || '';
+            const ugDestinoLubrificante = registro.ug_detentora || '';
+            
+            const granularItem: GranularDisplayItem = {
+                id: `${registro.id}-${categoria}-LUBRIFICANTE`,
+                om_destino: registro.organizacao,
+                ug_destino: registro.ug,
+                categoria: categoria as any,
+                suprimento_tipo: 'LUBRIFICANTE',
+                valor_total: registro.valor_total,
+                total_litros: registro.total_litros,
+                preco_litro: 0,
+                dias_operacao: registro.dias_operacao,
+                fase_atividade: registro.fase_atividade || '',
+                valor_nd_30: registro.valor_nd_30,
+                valor_nd_39: registro.valor_nd_39,
+                original_registro: registro,
+                detailed_items: itensGrupo,
+            };
+            
+            finalMemoria += generateClasseIIIGranularUtility(
+                granularItem, 
+                refLPC, 
+                omDestinoLubrificante, 
+                ugDestinoLubrificante
+            ) + "\n\n";
+        });
+        
+        return finalMemoria.trim();
+    }
+    
+    return registro.detalhamento || "Memória de cálculo não disponível.";
+};
+
+/**
+ * Função unificada para gerar a memória de cálculo da Diária, priorizando o customizado.
+ */
+export const generateDiariaMemoriaCalculoUnificada = (
+    registro: DiariaRegistro, 
+    diretrizesOp: Tables<'diretrizes_operacionais'> | null
+): string => {
+    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
+        return registro.detalhamento_customizado;
+    }
+    
+    if (!diretrizesOp) {
+        return registro.detalhamento || "Diretrizes Operacionais ausentes. Memória de cálculo não gerada.";
+    }
+
+    // Recalcula os totais para garantir que a memória automática esteja atualizada com as diretrizes atuais
+    const totals = calculateDiariaTotals(registro, diretrizesOp);
+    
+    return generateDiariaMemoriaCalculoUtility(registro, diretrizesOp, totals);
 };
 
 
@@ -213,17 +639,76 @@ const defaultGenerateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro): st
 // FUNÇÕES AUXILIARES DE RÓTULO
 // =================================================================
 
-const getTipoEquipamentoLabel = (tipo: string) => {
-    switch (tipo) {
-        case 'GERADOR': return 'GERADOR';
-        case 'EMBARCACAO': return 'EMBARCAÇÃO';
-        case 'EQUIPAMENTO_ENGENHARIA': return 'EQUIPAMENTO DE ENGENHARIA';
-        case 'MOTOMECANIZACAO': return 'MOTOMECANIZAÇÃO';
-        default: return tipo;
+export const getTipoCombustivelLabel = (tipo: string) => {
+    if (tipo === 'DIESEL' || tipo === 'OD' || tipo === 'COMBUSTIVEL_DIESEL') {
+        return 'DIESEL';
+    } else if (tipo === 'GASOLINA' || tipo === 'GAS' || tipo === 'COMBUSTIVEL_GASOLINA') {
+        return 'GASOLINA';
     }
+    return tipo;
 };
 
-// =ÇÃO PRINCIPAL
+// =================================================================
+// FUNÇÕES DE NORMALIZAÇÃO E IDENTIFICAÇÃO DA RM (AÇÕES 1 e 2)
+// =================================================================
+
+const normalizarNome = (valor?: string) =>
+  (valor || '')
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const isRegiaoMilitar = (nomeOM: string, nomeRM: string) => {
+  const om = normalizarNome(nomeOM);
+  const rm = normalizarNome(nomeRM);
+
+  if (om === rm) return true;
+
+  if (/^\d+ª?\s*RM$/.test(om) || om.includes('REGIAO MILITAR')) return true;
+
+  if (rm.includes(om)) return true;
+
+  const numRM = rm.match(/\d+/)?.[0];
+  if (numRM && om.startsWith(numRM)) {
+      if (om.includes('RM')) return true;
+  }
+
+  return false;
+};
+
+// =================================================================
+// DEFINIÇÃO DOS RELATÓRIOS E RÓTULOS
+// =================================================================
+
+type ReportType = 
+  'logistico' | 
+  'racao_operacional' | 
+  'operacional' | 
+  'material_permanente' | 
+  'hora_voo' | 
+  'dor';
+
+interface ReportOption {
+    value: ReportType;
+    label: string;
+    icon: React.FC<any>;
+    iconClass: string;
+    fileSuffix: string;
+}
+
+const REPORT_OPTIONS: ReportOption[] = [
+  { value: 'logistico', label: 'P Trab Logístico', icon: Package, iconClass: 'text-orange-500', fileSuffix: 'Aba Log' },
+  { value: 'racao_operacional', label: 'P Trab Cl I - Ração Operacional', icon: Utensils, iconClass: 'text-orange-500', fileSuffix: 'Aba Rç Op' },
+  { value: 'operacional', label: 'P Trab Operacional', icon: Briefcase, iconClass: 'text-blue-500', fileSuffix: 'Aba Op' }, // NOVO
+  { value: 'material_permanente', label: 'P Trab Material Permanente', icon: HardHat, iconClass: 'text-green-500', fileSuffix: 'Aba Mat Perm' },
+  { value: 'hora_voo', label: 'P Trab Hora de Voo', icon: Plane, iconClass: 'text-purple-500', fileSuffix: 'Aba HV' },
+  { value: 'dor', label: 'DOR', icon: ClipboardList, iconClass: 'text-gray-500', fileSuffix: 'Aba DOR' },
+];
+
+// =================================================================
+// COMPONENTE PRINCIPAL
 // =================================================================
 
 const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
@@ -497,7 +982,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       const headerRow2 = currentRow + 1;
       
       const hdr1 = worksheet.getRow(headerRow1);
-      hdr1.getCell('A').value = 'DESPESAS'; // ALTERADO AQUI
+      // CORRIGIDO: Adicionando os textos completos
+      hdr1.getCell('A').value = 'DESPESAS'; 
       hdr1.getCell('B').value = 'OM (UGE)\nCODUG';
       hdr1.getCell('C').value = 'NATUREZA DE DESPESA';
       hdr1.getCell('F').value = 'COMBUSTÍVEL';
@@ -1264,7 +1750,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                                 rowData.precoTotalH = '';
                             }
                             
-                            rowData.detalhamentoValue = linhaClasseIII.memoria_calculo;
+                            rowData.detalhamentoValue = generateClasseIIIMemoriaCalculo(registro);
                             
                         } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
                             const registro = (linha as LinhaClasseII).registro as ClasseIIRegistro;
@@ -1414,7 +1900,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalGasolinaLitrosGeral > 0 ? `${formatNumber(totalGasolinaLitrosGeral)} L GAS` : ''}</td>
                       {/* H: PREÇO TOTAL COMBUSTÍVEL */}
                       <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalValorCombustivelFinalGeral > 0 ? formatCurrency(totalValorCombustivelFinalGeral) : ''}</td>
-                      <td style={{ backgroundColor: 'white' }}></td>
+                      <td style={{ backgroundColor: '#D3D3D3' }}></td>
                     </tr>,
 
                     // Linha 2: Valor Total
