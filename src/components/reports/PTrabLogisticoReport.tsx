@@ -60,8 +60,6 @@ interface PTrabLogisticoReportProps {
     total_gnd3: number;
     totalDieselLitros: number;
     totalGasolinaLitros: number;
-    valorDiesel: number;
-    valorGasolina: number;
   };
   fileSuffix: string; // NOVO PROP
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe I
@@ -225,8 +223,7 @@ const getTipoEquipamentoLabel = (tipo: string) => {
     }
 };
 
-// =================================================================
-// COMPONENTE PRINCIPAL
+// =ÇÃO PRINCIPAL
 // =================================================================
 
 const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
@@ -254,17 +251,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
 
   // 1. Recalcular Totais Gerais (para HTML/PDF)
-  const totalGeral_33_90_30 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => {
-    // Acessa o nome da OM de forma segura
-    const nomeOM = grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '';
-    return acc + calcularTotaisPorOM(grupo, nomeOM).total_33_90_30;
-  }, 0), [gruposPorOM, calcularTotaisPorOM]);
-  
-  const totalGeral_33_90_39 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => {
-    // Acessa o nome da OM de forma segura
-    const nomeOM = grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '';
-    return acc + calcularTotaisPorOM(grupo, nomeOM).total_33_90_39;
-  }, 0), [gruposPorOM, calcularTotaisPorOM]);
+  const totalGeral_33_90_30 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '').total_33_90_30, 0), [gruposPorOM, calcularTotaisPorOM]);
+  const totalGeral_33_90_39 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '').total_33_90_39, 0), [gruposPorOM, calcularTotaisPorOM]);
   
   // NOVO: Cálculo dos totais gerais de combustível (litros e valor)
   const { totalDiesel, totalGasolina, totalValorCombustivelFinal } = useMemo(() => {
@@ -277,17 +265,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         const grupo = gruposPorOM[nomeOM];
         if (grupo) {
             const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
-            // Apenas soma se a OM for a RM Fornecedora (onde o cálculo de combustível é feito)
-            if (nomeOM === nomeRM) {
-                totalDiesel += totaisOM.totalDieselLitros;
-                totalGasolina += totaisOM.totalGasolinaLitros;
-                totalValorCombustivelFinal += totaisOM.total_combustivel;
-            }
+            totalDiesel += totaisOM.totalDieselLitros;
+            totalGasolina += totaisOM.totalGasolinaLitros;
+            totalValorCombustivelFinal += totaisOM.total_combustivel;
         }
     });
 
     return { totalDiesel, totalGasolina, totalValorCombustivelFinal };
-  }, [omsOrdenadas, gruposPorOM, calcularTotaisPorOM, nomeRM]); // Adicionado nomeRM como dependência
+  }, [omsOrdenadas, gruposPorOM, calcularTotaisPorOM]);
   
   const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39;
   const valorTotalSolicitado = totalGeral_GND3_ND + totalValorCombustivelFinal;
@@ -385,7 +370,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, valorTotalSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo, totalDiesel, totalGasolina, totalValorCombustivelFinal]);
+  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, valorTotalSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo]);
 
   // NOVO: Função para abrir o diálogo de impressão do navegador
   const handlePrint = () => {
@@ -404,7 +389,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     const rightTopAlignment = { horizontal: 'right' as const, vertical: 'top' as const, wrapText: true };
     
     // NOVOS ALINHAMENTOS PARA DADOS (Verticalmente Centralizado)
-    const dataTextStyle = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true }; // Alterado para middle
+    const dataLeftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true };
+    const dataCenterMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
+    // Alterado para CenterMiddleAlignment para C, D, E e H
     const dataCenterMonetaryAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true }; 
     
     const cellBorder = {
@@ -486,8 +473,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         
         row.getCell(1).value = {
           richText: [
-            { text: label, font: headerFontStyle },
-            { text: ` ${value}`, font: { name: 'Arial', size: 9, bold: false } }
+            { text: label, font: titleFontStyle },
+            { text: ` ${value}`, font: { name: 'Arial', size: 11, bold: false } }
           ]
         };
         
@@ -503,14 +490,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       
       const despesasRow = worksheet.getRow(currentRow);
       despesasRow.getCell('A').value = '5. DESPESAS OPERACIONAIS:';
-      despesasRow.getCell('A').font = headerFontStyle;
+      despesasRow.getCell('A').font = titleFontStyle;
       currentRow++;
       
       const headerRow1 = currentRow;
       const headerRow2 = currentRow + 1;
       
       const hdr1 = worksheet.getRow(headerRow1);
-      hdr1.getCell('A').value = 'DESPESAS'; 
+      hdr1.getCell('A').value = 'DESPESAS'; // ALTERADO AQUI
       hdr1.getCell('B').value = 'OM (UGE)\nCODUG';
       hdr1.getCell('C').value = 'NATUREZA DE DESPESA';
       hdr1.getCell('F').value = 'COMBUSTÍVEL';
@@ -583,6 +570,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow = headerRow2 + 1;
 
       // Reusable alignment styles for data
+      const dataTextStyle = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
       
       omsOrdenadas.forEach((nomeOM) => {
         const grupo = gruposPorOM[nomeOM];
@@ -1339,27 +1327,24 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             }
                         }
                         
-                        // --- Renderização da Linha ---
-                        const totalLinhaND = rowData.valorC + rowData.valorD;
-                        
                         return (
-                            <tr key={`${nomeOM}-${index}`} className="expense-row">
+                            <tr key={`${nomeOM}-expense-${index}`} className="expense-row">
                                 <td className="col-despesas">
-                                    <div style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{rowData.despesasValue}</div>
+                                    {rowData.despesasValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
                                 </td>
                                 <td className="col-om">
-                                    <div style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{rowData.omValue}</div>
+                                    {rowData.omValue.split('\n').map((line, i) => <div key={i}>{line}</div>)}
                                 </td>
-                                <td className="col-nd col-valor-natureza">{rowData.valorC > 0 ? formatCurrency(rowData.valorC) : ''}</td>
-                                <td className="col-nd col-valor-natureza">{rowData.valorD > 0 ? formatCurrency(rowData.valorD) : ''}</td>
-                                <td className="col-nd col-valor-natureza">{totalLinhaND > 0 ? formatCurrency(totalLinhaND) : ''}</td>
-                                <td className="col-combustivel col-combustivel-data">{rowData.litrosF}</td>
-                                <td className="col-combustivel col-combustivel-data">{rowData.precoUnitarioG}</td>
-                                <td className="col-combustivel col-combustivel-data-filled">{rowData.precoTotalH}</td>
-                                <td className="col-detalhamento">
-                                    <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorC > 0 ? formatCurrency(rowData.valorC) : ''}</td>
+                                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorD > 0 ? formatCurrency(rowData.valorD) : ''}</td>
+                                <td className="col-valor-natureza" style={{ backgroundColor: '#B4C7E7' }}>{rowData.valorE > 0 ? formatCurrency(rowData.valorE) : ''}</td>
+                                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{rowData.litrosF}</td>
+                                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{rowData.precoUnitarioG}</td>
+                                <td className="col-combustivel-data-filled" style={{ backgroundColor: '#F8CBAD' }}>{rowData.precoTotalH}</td>
+                                <td className="col-detalhamento" style={{ fontSize: '6.5pt' }}>
+                                    <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
                                         {rowData.detalhamentoValue}
-                                    </div>
+                                    </pre>
                                 </td>
                             </tr>
                         );
@@ -1372,7 +1357,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_30)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_39)}</td>
                       <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
-                      {/* Parte Laranja (Combustivel) */}
+                      {/* Parte Laranja (Combustivel) - CORRIGIDO: Remove a verificação nomeOM === nomeRM */}
                       <td className="text-center font-bold border border-black" style={{ backgroundColor: '#F8CBAD' }}>
                         {totaisOM.totalDieselLitros > 0 
                           ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
@@ -1411,6 +1396,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 // ========== TOTAL GERAL ==========
                 ...(() => {
                   // Totais de combustível por tipo (para exibição na parte laranja)
+                  // Usando os totais gerais calculados no useMemo
                   const totalDieselLitrosGeral = totalDiesel;
                   const totalGasolinaLitrosGeral = totalGasolina;
                   const totalValorCombustivelFinalGeral = totalValorCombustivelFinal;
