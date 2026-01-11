@@ -60,6 +60,8 @@ interface PTrabLogisticoReportProps {
     total_gnd3: number;
     totalDieselLitros: number;
     totalGasolinaLitros: number;
+    valorDiesel: number;
+    valorGasolina: number;
   };
   fileSuffix: string; // NOVO PROP
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe I
@@ -252,8 +254,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
 
   // 1. Recalcular Totais Gerais (para HTML/PDF)
-  const totalGeral_33_90_30 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '').total_33_90_30, 0), [gruposPorOM, calcularTotaisPorOM]);
-  const totalGeral_33_90_39 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '').total_33_90_39, 0), [gruposPorOM, calcularTotaisPorOM]);
+  const totalGeral_33_90_30 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => {
+    // Acessa o nome da OM de forma segura
+    const nomeOM = grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '';
+    return acc + calcularTotaisPorOM(grupo, nomeOM).total_33_90_30;
+  }, 0), [gruposPorOM, calcularTotaisPorOM]);
+  
+  const totalGeral_33_90_39 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => {
+    // Acessa o nome da OM de forma segura
+    const nomeOM = grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '';
+    return acc + calcularTotaisPorOM(grupo, nomeOM).total_33_90_39;
+  }, 0), [gruposPorOM, calcularTotaisPorOM]);
   
   // NOVO: Cálculo dos totais gerais de combustível (litros e valor)
   const { totalDiesel, totalGasolina, totalValorCombustivelFinal } = useMemo(() => {
@@ -266,14 +277,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         const grupo = gruposPorOM[nomeOM];
         if (grupo) {
             const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
-            totalDiesel += totaisOM.totalDieselLitros;
-            totalGasolina += totaisOM.totalGasolinaLitros;
-            totalValorCombustivelFinal += totaisOM.total_combustivel;
+            // Apenas soma se a OM for a RM Fornecedora (onde o cálculo de combustível é feito)
+            if (nomeOM === nomeRM) {
+                totalDiesel += totaisOM.totalDieselLitros;
+                totalGasolina += totaisOM.totalGasolinaLitros;
+                totalValorCombustivelFinal += totaisOM.total_combustivel;
+            }
         }
     });
 
     return { totalDiesel, totalGasolina, totalValorCombustivelFinal };
-  }, [omsOrdenadas, gruposPorOM, calcularTotaisPorOM]);
+  }, [omsOrdenadas, gruposPorOM, calcularTotaisPorOM, nomeRM]); // Adicionado nomeRM como dependência
   
   const totalGeral_GND3_ND = totalGeral_33_90_30 + totalGeral_33_90_39;
   const valorTotalSolicitado = totalGeral_GND3_ND + totalValorCombustivelFinal;
@@ -1010,7 +1024,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow += 3;
       
       const cmtRow = worksheet.getRow(currentRow);
-      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'; // CORRIGIDO: Removido o aspas simples extra
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
