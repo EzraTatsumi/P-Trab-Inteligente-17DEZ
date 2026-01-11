@@ -250,7 +250,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     // Cabeçalho da Tabela (9 colunas)
     const headerRow1 = worksheet.getRow(currentRow);
-    headerRow1.getCell('A').value = 'DESPESAS'; // CORRIGIDO
+    headerRow1.getCell('A').value = 'DESPESAS'; // CORREÇÃO APLICADA AQUI
     headerRow1.getCell('B').value = 'OM (UGE)\nCODUG'; // CORRIGIDO
     headerRow1.getCell('C').value = 'NATUREZA DE DESPESA';
     headerRow1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO OPERACIONAL'; // CORRIGIDO

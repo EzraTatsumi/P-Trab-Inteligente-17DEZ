@@ -722,6 +722,44 @@ const REPORT_OPTIONS: ReportOption[] = [
 // COMPONENTE PRINCIPAL
 // =================================================================
 
+// Funções de fallback (para evitar erros de desestruturação)
+const defaultGenerateClasseIIMemoriaCalculo = (categoria: string, itens: any, dias: number, om: string, ug: string, fase: any, efetivo: number, nd30: number, nd39: number) => "Memória de cálculo não disponível.";
+const defaultGenerateClasseVMemoriaCalculo = (categoria: string, itens: any, dias: number, om: string, ug: string, fase: any, efetivo: number, nd30: number, nd39: number) => "Memória de cálculo não disponível.";
+const defaultGenerateClasseVIMemoriaCalculo = (categoria: string, itens: any, dias: number, om: string, ug: string, fase: any, efetivo: number, nd30: number, nd39: number) => "Memória de cálculo não disponível.";
+const defaultGenerateClasseVIIMemoriaCalculo = (categoria: string, itens: any, dias: number, om: string, ug: string, fase: any, efetivo: number, nd30: number, nd39: number) => "Memória de cálculo não disponível.";
+const defaultGenerateClasseVIIIMemoriaCalculo = (categoria: string, itens: any, dias: number, om: string, ug: string, fase: any, efetivo: number, nd30: number, nd39: number, animalTipo?: 'Equino' | 'Canino') => "Memória de cálculo não disponível.";
+const defaultGenerateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro) => "Memória de cálculo não disponível.";
+
+
+interface PTrabLogisticoReportProps {
+  ptrabData: PTrabData;
+  registrosClasseI: ClasseIRegistro[];
+  registrosClasseII: ClasseIIRegistro[];
+  registrosClasseIII: ClasseIIIRegistro[];
+  nomeRM: string;
+  omsOrdenadas: string[];
+  gruposPorOM: Record<string, GrupoOM>;
+  calcularTotaisPorOM: (grupo: GrupoOM, nomeOM: string) => {
+    total_33_90_30: number;
+    total_33_90_39: number;
+    total_parte_azul: number;
+    total_combustivel: number;
+    total_gnd3: number;
+    totalDieselLitros: number;
+    totalGasolinaLitros: number;
+    valorDiesel: number;
+    valorGasolina: number;
+  };
+  fileSuffix: string;
+  generateClasseIMemoriaCalculo: (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP') => string;
+  generateClasseIIMemoriaCalculo?: (categoria: string, itens: ItemClasseII[], dias: number, om: string, ug: string, fase: string | null | undefined, efetivo: number, nd30: number, nd39: number) => string;
+  generateClasseVMemoriaCalculo?: (registro: ClasseIIRegistro) => string;
+  generateClasseVIMemoriaCalculo?: (registro: ClasseIIRegistro) => string;
+  generateClasseVIIMemoriaCalculo?: (registro: ClasseIIRegistro) => string;
+  generateClasseVIIIMemoriaCalculo?: (registro: ClasseIIRegistro) => string;
+  generateClasseIIIMemoriaCalculo?: (registro: ClasseIIIRegistro) => string;
+}
+
 const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   ptrabData,
   registrosClasseI,
@@ -994,7 +1032,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       
       const hdr1 = worksheet.getRow(headerRow1);
       // CORRIGIDO: Adicionando os textos completos
-      hdr1.getCell('A').value = 'DESPESAS'; 
+      hdr1.getCell('A').value = 'DESPESAS'; // CORREÇÃO APLICADA AQUI
       hdr1.getCell('B').value = 'OM (UGE)\nCODUG';
       hdr1.getCell('C').value = 'NATUREZA DE DESPESA';
       hdr1.getCell('F').value = 'COMBUSTÍVEL';
