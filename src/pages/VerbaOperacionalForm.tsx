@@ -151,6 +151,22 @@ const VerbaOperacionalForm = () => {
     });
     
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
+    
+    // Efeito para definir o valor padrão (CIE) se não houver OM selecionada
+    useEffect(() => {
+        if (oms && !selectedOmId && formData.organizacao === "" && formData.ug === "") {
+            const cieOm = oms.find(om => om.nome_om === "CIE" && om.codug_om === "160.062");
+            if (cieOm) {
+                setSelectedOmId(cieOm.id);
+                setFormData(prev => ({
+                    ...prev,
+                    organizacao: cieOm.nome_om,
+                    ug: cieOm.codug_om,
+                }));
+            }
+        }
+    }, [oms, selectedOmId, formData.organizacao, formData.ug]);
+
 
     // =================================================================
     // CÁLCULOS E MEMÓRIA (MEMOIZED)
@@ -388,6 +404,19 @@ const VerbaOperacionalForm = () => {
         setRawTotalInput(numberToRawDigits(initialFormState.valor_total_solicitado));
         setRawND30Input(numberToRawDigits(initialFormState.valor_nd_30));
         setRawND39Input(numberToRawDigits(initialFormState.valor_nd_39));
+        
+        // Tenta redefinir para o padrão CIE
+        if (oms) {
+            const cieOm = oms.find(om => om.nome_om === "CIE" && om.codug_om === "160.062");
+            if (cieOm) {
+                setSelectedOmId(cieOm.id);
+                setFormData(prev => ({
+                    ...prev,
+                    organizacao: cieOm.nome_om,
+                    ug: cieOm.codug_om,
+                }));
+            }
+        }
     };
     
     const handleClearPending = () => {
@@ -737,7 +766,7 @@ const VerbaOperacionalForm = () => {
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    1. Dados da Organização
+                                    1. Dados da Organização (OM de Destino do Recurso)
                                 </h3>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -846,13 +875,13 @@ const VerbaOperacionalForm = () => {
                                             <div className="space-y-2 mb-4">
                                                 <Label>OM de Destino do Recurso *</Label>
                                                 <Input
-                                                    value={formData.organizacao}
+                                                    value={`${formData.organizacao} (${formatCodug(formData.ug)})`}
                                                     readOnly
                                                     disabled
                                                     className="font-medium text-base h-10"
                                                 />
                                                 <p className="text-xs text-muted-foreground">
-                                                    UG de Destino: {formatCodug(formData.ug)}
+                                                    A OM de destino é definida na Seção 1.
                                                 </p>
                                             </div>
                                             
