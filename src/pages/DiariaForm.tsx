@@ -97,9 +97,9 @@ const diariaSchema = z.object({
 const initialFormState = {
     organizacao: "",
     ug: "",
-    dias_operacao: 1,
+    dias_operacao: 0, // Alterado para 0 para iniciar vazio
     destino: 'bsb_capitais_especiais' as DestinoDiaria,
-    nr_viagens: 1,
+    nr_viagens: 0, // Alterado para 0 para iniciar vazio
     local_atividade: "",
     fase_atividade: "",
     is_aereo: false,
@@ -555,8 +555,8 @@ const DiariaForm = () => {
                 // selectedOmId: selectedOmId, // selectedOmId é gerenciado pelo estado pai, não pelo formData
                 fase_atividade: prev.fase_atividade,
                 // Resetar apenas os campos de cálculo
-                dias_operacao: 1,
-                nr_viagens: 1,
+                dias_operacao: 0, // Mantido como 0
+                nr_viagens: 0, // Mantido como 0
                 local_atividade: "",
                 quantidades_por_posto: initialFormState.quantidades_por_posto,
             }));
@@ -881,6 +881,7 @@ const DiariaForm = () => {
                                                                 id="dias_operacao"
                                                                 type="number"
                                                                 min={1}
+                                                                placeholder="Ex: 7"
                                                                 value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
                                                                 onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
                                                                 required
@@ -896,6 +897,7 @@ const DiariaForm = () => {
                                                                 id="nr_viagens"
                                                                 type="number"
                                                                 min={1}
+                                                                placeholder="Ex: 1"
                                                                 value={formData.nr_viagens === 0 ? "" : formData.nr_viagens}
                                                                 onChange={(e) => setFormData({ ...formData, nr_viagens: parseInt(e.target.value) || 0 })}
                                                                 required
