@@ -93,15 +93,12 @@ export const generateVerbaOperacionalMemoriaCalculo = (
     // CABEÇALHO
     const header = `${ndPrefix} - Solicitação de Verba Operacional para ${quantidade_equipes} ${equipeText} ${omPreposition} ${organizacao}, durante ${dias_operacao} ${diaText} de ${faseFormatada}, ${despesasDescricao}`;
 
-    // Detalhamento simplificado com a nova instrução
+    // Detalhamento simplificado
     const detalhamento = `
+
 O recurso precisa ser solicitado na Gestão Tesouro 0001, na ação 2866 (ação de caráter sigiloso).
 
-Alocação:
-- ND 33.90.30 (Material/Serviço): ${formatCurrency(valor_nd_30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valor_nd_39)}
-
-Valor Total Alocado: ${formatCurrency(valorTotal)}.
+Total: ${formatCurrency(valorTotal)}.
 `;
 
     return header + detalhamento;
