@@ -11,6 +11,7 @@ import { Tables } from "@/integrations/supabase/types";
 import {
   PTrabData,
   DiariaRegistro,
+  VerbaOperacionalRegistro, // IMPORTAR NOVO TIPO
   calculateDays,
 } from "@/pages/PTrabReportManager"; 
 import { DIARIA_RANKS_CONFIG } from "@/lib/diariaUtils";
@@ -18,49 +19,78 @@ import { DIARIA_RANKS_CONFIG } from "@/lib/diariaUtils";
 interface PTrabOperacionalReportProps {
   ptrabData: PTrabData;
   registrosDiaria: DiariaRegistro[];
+  registrosVerbaOperacional: VerbaOperacionalRegistro[]; // NOVO PROP
   diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
   fileSuffix: string;
   generateDiariaMemoriaCalculo: (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null) => string;
+  generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; // NOVO PROP
 }
 
 const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   ptrabData,
   registrosDiaria,
+  registrosVerbaOperacional, // NOVO PROP
   diretrizesOperacionais,
   fileSuffix,
   generateDiariaMemoriaCalculo,
+  generateVerbaOperacionalMemoriaCalculo, // NOVO PROP
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
   
   const diasOperacao = useMemo(() => calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim), [ptrabData]);
   
-  // NOVO: Agrupamento por OM
+  // NOVO: Agrupamento por OM (Diária e Verba Operacional)
   const registrosAgrupadosPorOM = useMemo(() => {
-    return registrosDiaria.reduce((acc, registro) => {
-        const omKey = `${registro.organizacao} (${registro.ug})`;
-        if (!acc[omKey]) {
-            acc[omKey] = [];
-        }
-        acc[omKey].push(registro);
-        return acc;
-    }, {} as Record<string, DiariaRegistro[]>);
-  }, [registrosDiaria]);
+    const groups: Record<string, { diarias: DiariaRegistro[], verbas: VerbaOperacionalRegistro[] }> = {};
 
-  // Calcula os totais gerais de cada ND com base nos registros de Diária
+    const initializeGroup = (om: string, ug: string) => {
+        const omKey = `${om} (${ug})`;
+        if (!groups[omKey]) {
+            groups[omKey] = { diarias: [], verbas: [] };
+        }
+        return groups[omKey];
+    };
+
+    // 1. Agrupar Diárias (OM de Destino)
+    registrosDiaria.forEach(registro => {
+        const group = initializeGroup(registro.organizacao, registro.ug);
+        group.diarias.push(registro);
+    });
+    
+    // 2. Agrupar Verba Operacional (OM Detentora do Recurso)
+    registrosVerbaOperacional.forEach(registro => {
+        // A OM Detentora é a OM de destino do recurso (om_detentora/ug_detentora)
+        const omDetentora = registro.om_detentora || registro.organizacao;
+        const ugDetentora = registro.ug_detentora || registro.ug;
+        
+        const group = initializeGroup(omDetentora, ugDetentora);
+        group.verbas.push(registro);
+    });
+    
+    return groups;
+  }, [registrosDiaria, registrosVerbaOperacional]);
+
+  // Calcula os totais gerais de cada ND com base nos registros de Diária e Verba Operacional
   const totaisND = useMemo(() => {
     const totals = {
       nd15: 0, // Diárias (33.90.15)
-      nd30: 0, // Outras NDs (33.90.30) - Diárias Aéreas
+      nd30: 0, // 33.90.30 (Passagens Aéreas + Verba Operacional ND 30)
       nd33: 0, // 33.90.33 (Vazio por enquanto)
-      nd39: 0, // 33.90.39 (Vazio por enquanto)
+      nd39: 0, // 33.90.39 (Verba Operacional ND 39)
       nd00: 0, // 33.90.00 (Vazio por enquanto)
     };
 
+    // 1. Diárias
     registrosDiaria.forEach(r => {
-      totals.nd15 += r.valor_nd_15;
-      totals.nd30 += r.valor_nd_30; // Diárias aéreas (passagens)
-      // Diárias não contribuem para 33.90.33, 33.90.39 ou 33.90.00
+      totals.nd15 += r.valor_nd_15; // Total Diária (Base + Taxa)
+      totals.nd30 += r.valor_nd_30; // Passagens Aéreas (deve ser 0, mas mantido por segurança)
+    });
+    
+    // 2. Verba Operacional
+    registrosVerbaOperacional.forEach(r => {
+        totals.nd30 += r.valor_nd_30;
+        totals.nd39 += r.valor_nd_39;
     });
 
     const totalGND3 = totals.nd15 + totals.nd30 + totals.nd33 + totals.nd39 + totals.nd00;
@@ -69,7 +99,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       ...totals,
       totalGND3,
     };
-  }, [registrosDiaria]);
+  }, [registrosDiaria, registrosVerbaOperacional]);
   
   // Função para gerar o nome do arquivo (reutilizada do Logístico)
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
@@ -146,7 +176,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, registrosDiaria, diretrizesOperacionais, toast]);
+  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, registrosDiaria, diretrizesOperacionais, toast, registrosVerbaOperacional, generateVerbaOperacionalMemoriaCalculo]);
 
   // Função para Imprimir (Abre a caixa de diálogo de impressão)
   const handlePrint = useCallback(() => {
@@ -331,12 +361,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     currentRow += 2; // Start data rows after the two header rows
 
     // Dados da Tabela (Agrupados por OM)
-    Object.entries(registrosAgrupadosPorOM).forEach(([omKey, omRegistros]) => {
+    Object.entries(registrosAgrupadosPorOM).forEach(([omKey, group]) => {
         const omName = omKey.split(' (')[0];
         const ug = omKey.split(' (')[1].replace(')', '');
         
         // Calculate subtotal for this OM
-        const subtotalOM = omRegistros.reduce((acc, r) => ({
+        const subtotalOM = group.diarias.reduce((acc, r) => ({
             nd15: acc.nd15 + r.valor_nd_15,
             nd30: acc.nd30 + r.valor_nd_30,
             nd33: 0, 
@@ -344,12 +374,21 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             nd00: 0, 
             totalGND3: acc.totalGND3 + r.valor_total,
         }), { nd15: 0, nd30: 0, nd33: 0, nd39: 0, nd00: 0, totalGND3: 0 });
+        
+        // Add Verba Operacional totals to subtotal
+        group.verbas.forEach(r => {
+            subtotalOM.nd30 += r.valor_nd_30;
+            subtotalOM.nd39 += r.valor_nd_39;
+            subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
+        });
 
-        omRegistros.forEach(registro => {
+        // --- 1. Render Diárias ---
+        group.diarias.forEach(registro => {
             const row = worksheet.getRow(currentRow);
+            const totalLinha = registro.valor_nd_15 + registro.valor_nd_30; // ND 15 + ND 30 (Passagens)
             
             // A: DESPESAS
-            row.getCell('A').value = `DIÁRIAS`; // <-- SIMPLIFICADO AQUI
+            row.getCell('A').value = `DIÁRIAS`; 
             row.getCell('A').alignment = leftMiddleAlignment; 
             
             // B: OM (UGE) CODUG
@@ -360,13 +399,13 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('C').value = registro.valor_nd_15;
             row.getCell('C').alignment = dataCenterMiddleAlignment;
             row.getCell('C').numFmt = 'R$ #,##0.00';
-            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; // Azul (Linha de dados)
+            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // D: 33.90.30 (Passagens Aéreas)
             row.getCell('D').value = registro.valor_nd_30;
             row.getCell('D').alignment = dataCenterMiddleAlignment;
             row.getCell('D').numFmt = 'R$ #,##0.00';
-            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; // Azul (Linha de dados)
+            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // E, F, G: Outras NDs (0 por enquanto)
             row.getCell('E').value = 0;
@@ -375,22 +414,22 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             ['E', 'F', 'G'].forEach(col => {
                 row.getCell(col).alignment = dataCenterMiddleAlignment;
                 row.getCell(col).numFmt = 'R$ #,##0.00';
-                row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; // Azul (Linha de dados)
+                row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             });
             
             // H: GND 3 (Total da linha)
-            row.getCell('H').value = registro.valor_total;
+            row.getCell('H').value = totalLinha;
             row.getCell('H').alignment = dataCenterMiddleAlignment;
             row.getCell('H').numFmt = 'R$ #,##0.00';
-            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; // Azul (Linha de dados)
+            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // I: DETALHAMENTO
             const memoria = generateDiariaMemoriaCalculo(registro, diretrizesOperacionais);
             row.getCell('I').value = memoria;
-            row.getCell('I').alignment = leftTopAlignment; // Permanece alinhado ao topo
+            row.getCell('I').alignment = leftTopAlignment; 
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
             
-            // Aplica o estilo de fonte base e bordas
+            // Apply base styles
             ['A', 'B', 'I'].forEach(col => {
                 row.getCell(col).font = baseFontStyle;
             });
@@ -401,6 +440,76 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             currentRow++;
         });
         
+        // --- 2. Render Verba Operacional ---
+        group.verbas.forEach(registro => {
+            const row = worksheet.getRow(currentRow);
+            const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
+            
+            // OM Detentora do Recurso
+            const omDetentora = registro.om_detentora || registro.organizacao;
+            const ugDetentora = registro.ug_detentora || registro.ug;
+            
+            // A: DESPESAS
+            row.getCell('A').value = `VERBA OPERACIONAL`; 
+            row.getCell('A').alignment = leftMiddleAlignment; 
+            
+            // B: OM (UGE) CODUG (OM Detentora do Recurso)
+            row.getCell('B').value = `${omDetentora}\n(${formatCodug(ugDetentora)})`;
+            row.getCell('B').alignment = dataCenterMiddleAlignment; 
+            
+            // C: 33.90.15 (0)
+            row.getCell('C').value = 0;
+            row.getCell('C').alignment = dataCenterMiddleAlignment;
+            row.getCell('C').numFmt = 'R$ #,##0.00';
+            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // D: 33.90.30 (Verba ND 30)
+            row.getCell('D').value = registro.valor_nd_30;
+            row.getCell('D').alignment = dataCenterMiddleAlignment;
+            row.getCell('D').numFmt = 'R$ #,##0.00';
+            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // E: 33.90.33 (0)
+            row.getCell('E').value = 0;
+            row.getCell('E').alignment = dataCenterMiddleAlignment;
+            row.getCell('E').numFmt = 'R$ #,##0.00';
+            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // F: 33.90.39 (Verba ND 39)
+            row.getCell('F').value = registro.valor_nd_39;
+            row.getCell('F').alignment = dataCenterMiddleAlignment;
+            row.getCell('F').numFmt = 'R$ #,##0.00';
+            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // G: 33.90.00 (0)
+            row.getCell('G').value = 0;
+            row.getCell('G').alignment = dataCenterMiddleAlignment;
+            row.getCell('G').numFmt = 'R$ #,##0.00';
+            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // H: GND 3 (Total da linha)
+            row.getCell('H').value = totalLinha;
+            row.getCell('H').alignment = dataCenterMiddleAlignment;
+            row.getCell('H').numFmt = 'R$ #,##0.00';
+            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // I: DETALHAMENTO
+            const memoria = generateVerbaOperacionalMemoriaCalculo(registro);
+            row.getCell('I').value = memoria;
+            row.getCell('I').alignment = leftTopAlignment; 
+            row.getCell('I').font = { name: 'Arial', size: 6.5 };
+            
+            // Apply base styles
+            ['A', 'B', 'I'].forEach(col => {
+                row.getCell(col).font = baseFontStyle;
+            });
+            
+            ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+                row.getCell(col).border = cellBorder;
+            });
+            currentRow++;
+        });
+
         // Subtotal Row for OM
         const subtotalRow = worksheet.getRow(currentRow);
         
@@ -415,9 +524,9 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         // Células C, D, E, F, G, H (NDs - MUDADO PARA CINZA)
         subtotalRow.getCell('C').value = subtotalOM.nd15;
         subtotalRow.getCell('D').value = subtotalOM.nd30;
-        subtotalRow.getCell('E').value = 0; // 33.90.33
-        subtotalRow.getCell('F').value = 0; // 33.90.39
-        subtotalRow.getCell('G').value = 0; // 33.90.00
+        subtotalRow.getCell('E').value = subtotalOM.nd33; // 33.90.33
+        subtotalRow.getCell('F').value = subtotalOM.nd39; // 33.90.39
+        subtotalRow.getCell('G').value = subtotalOM.nd00; // 33.90.00
         subtotalRow.getCell('H').value = subtotalOM.totalGND3; // GND 3 Total
         
         ['C', 'D', 'E', 'F', 'G', 'H'].forEach(col => {
@@ -549,10 +658,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       description: "O relatório Operacional foi salvo com sucesso.",
       duration: 3000,
     });
-  }, [registrosDiaria, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM]);
+  }, [registrosDiaria, registrosVerbaOperacional, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM]);
 
 
-  if (registrosDiaria.length === 0) {
+  if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0) {
     return (
       <Card className="mt-4">
         <CardHeader>
@@ -563,7 +672,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Nenhum registro de Diária encontrado para este P Trab.</p>
+            <p className="text-muted-foreground">Nenhum registro de Diária ou Verba Operacional encontrado para este P Trab.</p>
           </div>
         </CardContent>
       </Card>
@@ -610,7 +719,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
           <p className="info-item font-bold">5. DESPESAS OPERACIONAIS REALIZADAS OU A REALIZAR:</p>
         </div>
 
-        {registrosDiaria.length > 0 ? (
+        {registrosDiaria.length > 0 || registrosVerbaOperacional.length > 0 ? (
           <div className="ptrab-table-wrapper">
             <table className="ptrab-table-op">
               <thead>
@@ -630,12 +739,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 </tr>
             </thead>
             <tbody>
-              {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+              {Object.entries(registrosAgrupadosPorOM).map(([omKey, group]) => {
                 const omName = omKey.split(' (')[0];
                 const ug = omKey.split(' (')[1].replace(')', '');
                 
                 // Calculate subtotal for this OM
-                const subtotalOM = omRegistros.reduce((acc, r) => ({
+                const subtotalOM = group.diarias.reduce((acc, r) => ({
                     nd15: acc.nd15 + r.valor_nd_15,
                     nd30: acc.nd30 + r.valor_nd_30,
                     nd33: 0, 
@@ -643,16 +752,23 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                     nd00: 0, 
                     totalGND3: acc.totalGND3 + r.valor_total,
                 }), { nd15: 0, nd30: 0, nd33: 0, nd39: 0, nd00: 0, totalGND3: 0 });
+                
+                group.verbas.forEach(r => {
+                    subtotalOM.nd30 += r.valor_nd_30;
+                    subtotalOM.nd39 += r.valor_nd_39;
+                    subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
+                });
 
                 return (
                     <React.Fragment key={omKey}>
-                        {omRegistros.map((registro, index) => {
+                        {/* --- 1. Render Diárias --- */}
+                        {group.diarias.map((registro, index) => {
                             const totalLinha = registro.valor_nd_15 + registro.valor_nd_30;
                             
                             return (
-                                <tr key={registro.id} className="expense-row">
+                                <tr key={`diaria-${registro.id}`} className="expense-row">
                                   <td className="col-despesas-op"> 
-                                    DIÁRIAS {/* <-- SIMPLIFICADO AQUI */}
+                                    DIÁRIAS
                                   </td>
                                   <td className="col-om-op">
                                     <div>{registro.organizacao}</div>
@@ -665,9 +781,40 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                   <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
                                   <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
                                   <td className="col-detalhamento-op">
-                                    {/* Substituído <pre> por <div> para melhor compatibilidade de altura na impressão */}
                                     <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
                                       {generateDiariaMemoriaCalculo(registro, diretrizesOperacionais)}
+                                    </div>
+                                  </td>
+                                </tr>
+                            );
+                        })}
+                        
+                        {/* --- 2. Render Verba Operacional --- */}
+                        {group.verbas.map((registro, index) => {
+                            const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
+                            
+                            // OM Detentora do Recurso
+                            const omDetentora = registro.om_detentora || registro.organizacao;
+                            const ugDetentora = registro.ug_detentora || registro.ug;
+                            
+                            return (
+                                <tr key={`verba-${registro.id}`} className="expense-row">
+                                  <td className="col-despesas-op"> 
+                                    VERBA OPERACIONAL
+                                  </td>
+                                  <td className="col-om-op">
+                                    <div>{omDetentora}</div>
+                                    <div>({formatCodug(ugDetentora)})</div>
+                                  </td>
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.15 */}
+                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_30)}</td> {/* 33.90.30 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.33 */}
+                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_39)}</td> {/* 33.90.39 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
+                                  <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
+                                  <td className="col-detalhamento-op">
+                                    <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                      {generateVerbaOperacionalMemoriaCalculo(registro)}
                                     </div>
                                   </td>
                                 </tr>
@@ -681,9 +828,9 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             </td>
                             <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(subtotalOM.nd15)}</td>
                             <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(subtotalOM.nd30)}</td>
-                            <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(0)}</td>
-                            <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(0)}</td>
-                            <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(0)}</td>
+                            <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(subtotalOM.nd33)}</td>
+                            <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(subtotalOM.nd39)}</td>
+                            <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(subtotalOM.nd00)}</td>
                             <td className="col-nd-op-small text-center font-bold total-gnd3-cell" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(subtotalOM.totalGND3)}</td>
                             <td></td>
                         </tr>

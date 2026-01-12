@@ -41,6 +41,9 @@ import {
   DestinoDiaria,
   QuantidadesPorPosto,
 } from "@/lib/diariaUtils"; // NOVO: Importar utilitários de Diária
+import { 
+  generateVerbaOperacionalMemoriaCalculo as generateVerbaOperacionalMemoriaCalculoUtility,
+} from "@/lib/verbaOperacionalUtils"; // NOVO: Importar utilitários de Verba Operacional
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
@@ -89,6 +92,23 @@ export interface DiariaRegistro {
   detalhamento_customizado?: string | null;
   fase_atividade: string;
   is_aereo: boolean;
+}
+
+// NOVO TIPO: VerbaOperacionalRegistro
+export interface VerbaOperacionalRegistro {
+  id: string;
+  organizacao: string;
+  ug: string;
+  om_detentora: string | null;
+  ug_detentora: string | null;
+  dias_operacao: number;
+  quantidade_equipes: number;
+  valor_total_solicitado: number;
+  fase_atividade: string;
+  detalhamento: string;
+  detalhamento_customizado?: string | null;
+  valor_nd_30: number;
+  valor_nd_39: number;
 }
 
 export interface ItemClasseIII {
@@ -636,6 +656,20 @@ export const generateDiariaMemoriaCalculoUnificada = (
     return generateDiariaMemoriaCalculoUtility(registro, diretrizesOp, totals);
 };
 
+/**
+ * Função unificada para gerar a memória de cálculo da Verba Operacional, priorizando o customizado.
+ */
+export const generateVerbaOperacionalMemoriaCalculoUnificada = (
+    registro: VerbaOperacionalRegistro
+): string => {
+    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
+        return registro.detalhamento_customizado;
+    }
+    
+    // O cálculo da Verba Operacional é simples e não depende de diretrizes externas, apenas dos dados do registro.
+    return generateVerbaOperacionalMemoriaCalculo(registro as any);
+};
+
 
 // =================================================================
 // FUNÇÕES AUXILIARES DE RÓTULO
@@ -724,6 +758,7 @@ const PTrabReportManager = () => {
   const [registrosClasseII, setRegistrosClasseII] = useState<ClasseIIRegistro[]>([]);
   const [registrosClasseIII, setRegistrosClasseIII] = useState<ClasseIIIRegistro[]>([]);
   const [registrosDiaria, setRegistrosDiaria] = useState<DiariaRegistro[]>([]); // NOVO: Estado para Diárias
+  const [registrosVerbaOperacional, setRegistrosVerbaOperacional] = useState<VerbaOperacionalRegistro[]>([]); // NOVO: Estado para Verba Operacional
   const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null); // NOVO: Estado para Diretrizes Operacionais
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
   const [loading, setLoading] = useState(true);
@@ -768,6 +803,7 @@ const PTrabReportManager = () => {
         { data: classeIIIData },
         { data: refLPCData },
         { data: diariaData }, // NOVO: Fetch Diárias
+        { data: verbaOperacionalData }, // NOVO: Fetch Verba Operacional
       ] = await Promise.all([
         supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
         supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
@@ -779,6 +815,7 @@ const PTrabReportManager = () => {
         supabase.from('classe_iii_registros').select('*, detalhamento_customizado, itens_equipamentos, fase_atividade, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle(),
         supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId), // NOVO
+        supabase.from('verba_operacional_registros').select('*').eq('p_trab_id', ptrabId), // NOVO FETCH
       ]);
       
       // NOVO: Fetch Diretrizes Operacionais (necessário para gerar a memória de diária)
@@ -838,6 +875,16 @@ const PTrabReportManager = () => {
           valor_total: Number(r.valor_total || 0),
           is_aereo: r.is_aereo || false,
       })) as DiariaRegistro[]);
+      
+      // NOVO: Processar Verba Operacional
+      setRegistrosVerbaOperacional((verbaOperacionalData || []).map(r => ({
+          ...r,
+          valor_total_solicitado: Number(r.valor_total_solicitado || 0),
+          valor_nd_30: Number(r.valor_nd_30 || 0),
+          valor_nd_39: Number(r.valor_nd_39 || 0),
+          dias_operacao: r.dias_operacao || 0,
+          quantidade_equipes: r.quantidade_equipes || 0,
+      })) as VerbaOperacionalRegistro[]);
       
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -1167,9 +1214,11 @@ const PTrabReportManager = () => {
             <PTrabOperacionalReport
                 ptrabData={ptrabData}
                 registrosDiaria={registrosDiaria}
+                registrosVerbaOperacional={registrosVerbaOperacional} // PASSANDO NOVO PROP
                 diretrizesOperacionais={diretrizesOperacionais}
                 fileSuffix={fileSuffix}
                 generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
+                generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculoUnificada} // PASSANDO NOVO UTILITÁRIO
             />
         );
       case 'material_permanente':
