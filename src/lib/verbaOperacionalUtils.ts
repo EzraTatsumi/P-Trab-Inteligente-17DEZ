@@ -1,6 +1,9 @@
 import { formatCurrency, formatCodug, formatNumber } from "./formatUtils";
 import { formatFasesParaTexto } from "./diariaUtils"; 
 
+// Tolerância para comparação de valores monetários
+const ND_TOLERANCE = 0.01;
+
 // Type for Verba Operacional data
 interface VerbaOperacionalData {
   dias_operacao: number;
@@ -71,8 +74,24 @@ export const generateVerbaOperacionalMemoriaCalculo = (
     
     const valorTotal = valor_nd_30 + valor_nd_39;
     
-    // CABEÇALHO
-    const header = `33.90.30 / 33.90.39 - Solicitação de Verba Operacional para ${quantidade_equipes} ${equipeText} ${omPreposition} ${organizacao}, durante ${dias_operacao} ${diaText} de ${faseFormatada}.`;
+    // --- Lógica para determinar o prefixo ND dinâmico ---
+    const isND30Active = valor_nd_30 > ND_TOLERANCE;
+    const isND39Active = valor_nd_39 > ND_TOLERANCE;
+    
+    let ndPrefix = "";
+    if (isND30Active && isND39Active) {
+        ndPrefix = "33.90.30 / 33.90.39";
+    } else if (isND30Active) {
+        ndPrefix = "33.90.30";
+    } else if (isND39Active) {
+        ndPrefix = "33.90.39";
+    } else {
+        ndPrefix = "(Não Alocado)";
+    }
+    // --- Fim Lógica ND ---
+    
+    // CABEÇALHO (USANDO O PREFIXO DINÂMICO)
+    const header = `${ndPrefix} - Solicitação de Verba Operacional para ${quantidade_equipes} ${equipeText} ${omPreposition} ${organizacao}, durante ${dias_operacao} ${diaText} de ${faseFormatada}.`;
 
     // Detalhamento
     const detalhamento = `
