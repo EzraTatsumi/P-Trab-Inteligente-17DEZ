@@ -314,8 +314,12 @@ const VerbaOperacionalForm = () => {
             if (field === 'valor_total_solicitado') {
                 setRawTotalInput(digits);
                 newTotalValue = numericValue;
-                // When total changes, recalculate ND 30 based on existing ND 39
-                newND30Value = calculateND30(newTotalValue, newND39Value);
+                
+                // NOVO: Aloca o valor total solicitado integralmente na ND 39
+                newND39Value = newTotalValue;
+                newND30Value = 0; // ND 30 é a diferença (Total - ND 39)
+                
+                setRawND39Input(numberToRawDigits(newND39Value));
                 setRawND30Input(numberToRawDigits(newND30Value));
                 
             } else if (field === 'valor_nd_39') {
@@ -330,7 +334,7 @@ const VerbaOperacionalForm = () => {
                     toast.warning("O valor da ND 39 foi limitado ao Valor Total Solicitado.");
                 }
                 
-                // Calculate ND 30
+                // Calculate ND 30 (difference)
                 newND30Value = calculateND30(newTotalValue, newND39Value);
                 setRawND30Input(numberToRawDigits(newND30Value));
                 
