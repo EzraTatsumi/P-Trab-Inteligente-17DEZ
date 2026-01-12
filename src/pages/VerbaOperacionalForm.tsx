@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check } from "lucide-react";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -56,6 +56,12 @@ interface CalculatedVerbaOperacional extends TablesInsert<'verba_operacional_reg
     memoria_calculo_display: string; // A memória gerada
     totalGeral: number;
 }
+
+// Função para calcular ND 30 com base no Total Solicitado e ND 39
+const calculateND30 = (totalSolicitado: number, nd39Value: number): number => {
+    const nd30 = totalSolicitado - nd39Value;
+    return Math.max(0, nd30); // ND 30 não pode ser negativo
+};
 
 // Schema de validação para o formulário de Verba Operacional
 const verbaOperacionalSchema = z.object({
@@ -169,8 +175,19 @@ const VerbaOperacionalForm = () => {
                 };
             }
             
-            const totals = calculateVerbaOperacionalTotals(formData as any);
-            const memoria = generateVerbaOperacionalMemoriaCalculo(formData as any);
+            // Recalcular ND 30/39 para garantir que o cálculo reflita o estado atual
+            const totalSolicitado = formData.valor_total_solicitado;
+            const nd39Value = formData.valor_nd_39;
+            const nd30Value = calculateND30(totalSolicitado, nd39Value);
+            
+            const calculatedFormData = {
+                ...formData,
+                valor_nd_30: nd30Value,
+                valor_nd_39: nd39Value,
+            };
+
+            const totals = calculateVerbaOperacionalTotals(calculatedFormData as any);
+            const memoria = generateVerbaOperacionalMemoriaCalculo(calculatedFormData as any);
             
             return {
                 ...totals,
@@ -194,7 +211,7 @@ const VerbaOperacionalForm = () => {
             formData.dias_operacao !== stagedUpdate.dias_operacao ||
             formData.quantidade_equipes !== stagedUpdate.quantidade_equipes ||
             !areNumbersEqual(formData.valor_total_solicitado, stagedUpdate.valor_total_solicitado) ||
-            !areNumbersEqual(formData.valor_nd_30, stagedUpdate.valor_nd_30) ||
+            // ND 30 is calculated, we only need to check ND 39 input
             !areNumbersEqual(formData.valor_nd_39, stagedUpdate.valor_nd_39)
         ) {
             return true;
@@ -235,15 +252,47 @@ const VerbaOperacionalForm = () => {
     const handleCurrencyChange = (field: keyof typeof initialFormState, rawValue: string) => {
         const { numericValue, digits } = formatCurrencyInput(rawValue);
         
-        if (field === 'valor_total_solicitado') {
-            setRawTotalInput(digits);
-        } else if (field === 'valor_nd_30') {
-            setRawND30Input(digits);
-        } else if (field === 'valor_nd_39') {
-            setRawND39Input(digits);
-        }
-        
-        setFormData(prev => ({ ...prev, [field]: numericValue }));
+        setFormData(prev => {
+            let newFormData = { ...prev };
+            let newND30Value = prev.valor_nd_30;
+            let newND39Value = prev.valor_nd_39;
+            let newTotalValue = prev.valor_total_solicitado;
+
+            if (field === 'valor_total_solicitado') {
+                setRawTotalInput(digits);
+                newTotalValue = numericValue;
+                // When total changes, recalculate ND 30 based on existing ND 39
+                newND30Value = calculateND30(newTotalValue, newND39Value);
+                setRawND30Input(numberToRawDigits(newND30Value));
+                
+            } else if (field === 'valor_nd_39') {
+                setRawND39Input(digits);
+                newND39Value = numericValue;
+                
+                // ND 39 cannot exceed Total Solicitado
+                if (newTotalValue > 0 && newND39Value > newTotalValue) {
+                    newND39Value = newTotalValue;
+                    // Update raw input to reflect capped value
+                    setRawND39Input(numberToRawDigits(newND39Value)); 
+                    toast.warning("O valor da ND 39 foi limitado ao Valor Total Solicitado.");
+                }
+                
+                // Calculate ND 30
+                newND30Value = calculateND30(newTotalValue, newND39Value);
+                setRawND30Input(numberToRawDigits(newND30Value));
+                
+            } else {
+                // ND 30 is now read-only, so this branch should not be reached for ND 30 input.
+                return prev;
+            }
+            
+            return { 
+                ...newFormData, 
+                valor_total_solicitado: newTotalValue,
+                valor_nd_39: newND39Value,
+                valor_nd_30: newND30Value, 
+            };
+        });
     };
     
     // =================================================================
@@ -425,7 +474,17 @@ const VerbaOperacionalForm = () => {
         
         try {
             // 1. Validação Zod
-            verbaOperacionalSchema.parse(formData);
+            // Antes de validar, garantimos que ND 30 está sincronizado
+            const totalSolicitado = formData.valor_total_solicitado;
+            const nd39Value = formData.valor_nd_39;
+            const nd30Value = calculateND30(totalSolicitado, nd39Value);
+            
+            const dataToValidate = {
+                ...formData,
+                valor_nd_30: nd30Value,
+            };
+            
+            verbaOperacionalSchema.parse(dataToValidate);
             
             // 2. Validação de OM/UG
             const omDestino = oms?.find(om => om.id === selectedOmId);
@@ -435,8 +494,8 @@ const VerbaOperacionalForm = () => {
             }
             
             // 3. Preparar o objeto final (calculatedData)
-            const totals = calculateVerbaOperacionalTotals(formData as any);
-            const memoria = generateVerbaOperacionalMemoriaCalculo(formData as any);
+            const totals = calculateVerbaOperacionalTotals(dataToValidate as any);
+            const memoria = generateVerbaOperacionalMemoriaCalculo(dataToValidate as any);
             
             const calculatedData: CalculatedVerbaOperacional = {
                 tempId: editingId || Math.random().toString(36).substring(2, 9), 
@@ -450,7 +509,7 @@ const VerbaOperacionalForm = () => {
                 quantidade_equipes: formData.quantidade_equipes,
                 valor_total_solicitado: formData.valor_total_solicitado,
                 
-                // Campos calculados
+                // Campos calculados (usando os valores sincronizados)
                 valor_nd_30: totals.totalND30,
                 valor_nd_39: totals.totalND39,
                 
@@ -642,11 +701,14 @@ const VerbaOperacionalForm = () => {
                             formData.ug.length > 0 && 
                             formData.fase_atividade.length > 0;
 
+    // Verifica se o total alocado (ND 30 + ND 39) é igual ao total solicitado
+    const isAllocationCorrect = areNumbersEqual(formData.valor_total_solicitado, calculos.totalGeral);
+
     const isCalculationReady = isBaseFormReady &&
                               formData.dias_operacao > 0 &&
                               formData.quantidade_equipes > 0 &&
                               formData.valor_total_solicitado > 0 &&
-                              areNumbersEqual(formData.valor_total_solicitado, calculos.totalGeral);
+                              isAllocationCorrect;
     
     // Lógica para a Seção 3
     const itemsToDisplay = stagedUpdate ? [stagedUpdate] : pendingVerbas;
@@ -774,51 +836,77 @@ const VerbaOperacionalForm = () => {
                                             </CardContent>
                                         </Card>
                                         
-                                        {/* Alocação de NDs (Card) */}
-                                        <Card className="mt-4 rounded-lg">
-                                            <CardHeader className="py-2">
-                                                <CardTitle className="text-base font-semibold">Alocação de Natureza de Despesa (ND)</CardTitle>
+                                        {/* Alocação de NDs (Card) - MODIFICADO PARA O ESTILO DA IMAGEM */}
+                                        <Card className="mt-4 rounded-lg p-4 bg-background">
+                                            <h4 className="font-semibold text-base mb-4">
+                                                Alocação de Natureza de Despesa (ND) (Valor Total: {formatCurrency(formData.valor_total_solicitado)})
+                                            </h4>
+                                            
+                                            {/* OM Destino Display (Replicando o estilo da imagem) */}
+                                            <div className="space-y-2 mb-4">
+                                                <Label>OM de Destino do Recurso *</Label>
+                                                <Input
+                                                    value={formData.organizacao}
+                                                    readOnly
+                                                    disabled
+                                                    className="font-medium text-base h-10"
+                                                />
                                                 <p className="text-xs text-muted-foreground">
-                                                    Distribua o Valor Total Solicitado entre ND 33.90.30 e 33.90.39.
+                                                    UG de Destino: {formatCodug(formData.ug)}
                                                 </p>
-                                            </CardHeader>
-                                            <CardContent className="p-3 pt-1">
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="valor_nd_30">ND 33.90.30 (Material/Serviço)</Label>
-                                                        <CurrencyInput
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-4">
+                                                {/* ND 30 (Material/Serviço) - CALCULADO */}
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="valor_nd_30">ND 33.90.30 (Material/Serviço)</Label>
+                                                    <div className="relative">
+                                                        <Input
                                                             id="valor_nd_30"
-                                                            rawDigits={rawND30Input}
-                                                            onChange={(digits) => handleCurrencyChange('valor_nd_30', digits)}
-                                                            placeholder="0,00"
-                                                            disabled={!isPTrabEditable || isSaving}
+                                                            value={formatCurrency(formData.valor_nd_30)}
+                                                            readOnly
+                                                            disabled
+                                                            className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 h-12"
                                                         />
+                                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                                     </div>
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="valor_nd_39">ND 33.90.39 (Serviço)</Label>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Calculado por diferença (Total Solicitado - ND 39).
+                                                    </p>
+                                                </div>
+                                                
+                                                {/* ND 39 (Serviço) - EDITÁVEL */}
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="valor_nd_39">ND 33.90.39 (Serviço)</Label>
+                                                    <div className="relative">
                                                         <CurrencyInput
                                                             id="valor_nd_39"
                                                             rawDigits={rawND39Input}
                                                             onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
                                                             placeholder="0,00"
                                                             disabled={!isPTrabEditable || isSaving}
+                                                            className="pl-12 text-lg h-12"
                                                         />
+                                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                                     </div>
-                                                </div>
-                                                
-                                                <div className="flex justify-between items-center p-3 mt-4 bg-background rounded-lg border">
-                                                    <span className="font-bold text-sm">TOTAL ALOCADO (ND 30 + ND 39)</span>
-                                                    <span className={cn("font-extrabold text-lg", areNumbersEqual(formData.valor_total_solicitado, calculos.totalGeral) ? "text-primary" : "text-destructive")}>
-                                                        {formatCurrency(calculos.totalGeral)}
-                                                    </span>
-                                                </div>
-                                                
-                                                {!areNumbersEqual(formData.valor_total_solicitado, calculos.totalGeral) && (
-                                                    <p className="text-xs text-destructive mt-2">
-                                                        A soma das NDs deve ser igual ao Valor Total Solicitado ({formatCurrency(formData.valor_total_solicitado)}).
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Valor alocado para contratação de serviço.
                                                     </p>
-                                                )}
-                                            </CardContent>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
+                                                <span className="font-bold text-sm">TOTAL ALOCADO:</span>
+                                                <span className={cn("font-extrabold text-lg", isAllocationCorrect ? "text-primary" : "text-destructive")}>
+                                                    {formatCurrency(calculos.totalGeral)}
+                                                </span>
+                                            </div>
+                                            
+                                            {!isAllocationCorrect && (
+                                                <p className="text-xs text-destructive mt-2 text-center">
+                                                    A soma das NDs deve ser igual ao Valor Total Solicitado ({formatCurrency(formData.valor_total_solicitado)}).
+                                                </p>
+                                            )}
                                         </Card>
                                         
                                         {/* BOTÕES DE AÇÃO */}
