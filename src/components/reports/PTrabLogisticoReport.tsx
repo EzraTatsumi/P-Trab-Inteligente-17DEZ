@@ -498,11 +498,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       const headerRow2 = currentRow + 1;
       
       const hdr1 = worksheet.getRow(headerRow1);
-      hdr1.getCell('A').value = 'DESPESAS'; // ALTERADO AQUI
-      hdr1.getCell('B').value = 'OM (UGE)\nCODUG';
+      hdr1.getCell('A').value = 'DESPESAS'; // CORRIGIDO
+      hdr1.getCell('B').value = 'OM (UGE)\nCODUG'; // CORRIGIDO
       hdr1.getCell('C').value = 'NATUREZA DE DESPESA';
       hdr1.getCell('F').value = 'COMBUSTÍVEL';
-      hdr1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG';
+      hdr1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG'; // CORRIGIDO
       
       // Mesclagens
       worksheet.mergeCells(`A${headerRow1}:A${headerRow2}`);
