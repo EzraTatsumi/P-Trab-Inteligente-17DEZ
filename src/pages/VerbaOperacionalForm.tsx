@@ -60,10 +60,10 @@ interface CalculatedVerbaOperacional extends TablesInsert<'verba_operacional_reg
     ug_favorecida: string;
 }
 
-// Função para calcular ND 30 com base no Total Solicitado e ND 39
-const calculateND30 = (totalSolicitado: number, nd39Value: number): number => {
-    const nd30 = totalSolicitado - nd39Value;
-    return Math.max(0, nd30); // ND 30 não pode ser negativo
+// Função para calcular ND 39 com base no Total Solicitado e ND 30 (ND 39 é a dependente)
+const calculateND39 = (totalSolicitado: number, nd30Value: number): number => {
+    const nd39 = totalSolicitado - nd30Value;
+    return Math.max(0, nd39); // ND 39 não pode ser negativo
 };
 
 // Constantes para a OM Detentora padrão (CIE)
@@ -222,10 +222,10 @@ const VerbaOperacionalForm = () => {
                 };
             }
             
-            // Recalcular ND 30/39 para garantir que o cálculo reflita o estado atual
+            // Recalcular ND 39 (dependente) para garantir que o cálculo reflita o estado atual
             const totalSolicitado = formData.valor_total_solicitado;
-            const nd39Value = formData.valor_nd_39;
-            const nd30Value = calculateND30(totalSolicitado, nd39Value);
+            const nd30Value = formData.valor_nd_30; // ND 30 é o valor de input
+            const nd39Value = calculateND39(totalSolicitado, nd30Value); // ND 39 é a diferença
             
             const calculatedFormData = {
                 ...formData,
@@ -260,7 +260,7 @@ const VerbaOperacionalForm = () => {
             formData.dias_operacao !== stagedUpdate.dias_operacao ||
             formData.quantidade_equipes !== stagedUpdate.quantidade_equipes ||
             !areNumbersEqual(formData.valor_total_solicitado, stagedUpdate.valor_total_solicitado) ||
-            !areNumbersEqual(formData.valor_nd_39, stagedUpdate.valor_nd_39) ||
+            !areNumbersEqual(formData.valor_nd_30, stagedUpdate.valor_nd_30) || // Agora ND 30 é o campo de comparação
             formData.om_detentora !== stagedUpdate.om_detentora ||
             formData.ug_detentora !== stagedUpdate.ug_detentora ||
             formData.om_favorecida !== stagedUpdate.om_favorecida ||
@@ -315,39 +315,39 @@ const VerbaOperacionalForm = () => {
                 setRawTotalInput(digits);
                 newTotalValue = numericValue;
                 
-                // NOVO: Aloca o valor total solicitado integralmente na ND 39
-                newND39Value = newTotalValue;
-                newND30Value = 0; // ND 30 é a diferença (Total - ND 39)
+                // NOVO: Aloca o valor total solicitado integralmente na ND 30
+                newND30Value = newTotalValue;
+                newND39Value = 0; // ND 39 é a diferença (Total - ND 30)
                 
-                setRawND39Input(numberToRawDigits(newND39Value));
                 setRawND30Input(numberToRawDigits(newND30Value));
+                setRawND39Input(numberToRawDigits(newND39Value));
                 
-            } else if (field === 'valor_nd_39') {
-                setRawND39Input(digits);
-                newND39Value = numericValue;
+            } else if (field === 'valor_nd_30') {
+                setRawND30Input(digits);
+                newND30Value = numericValue;
                 
-                // ND 39 cannot exceed Total Solicitado
-                if (newTotalValue > 0 && newND39Value > newTotalValue) {
-                    newND39Value = newTotalValue;
+                // ND 30 cannot exceed Total Solicitado
+                if (newTotalValue > 0 && newND30Value > newTotalValue) {
+                    newND30Value = newTotalValue;
                     // Update raw input to reflect capped value
-                    setRawND39Input(numberToRawDigits(newND39Value)); 
-                    toast.warning("O valor da ND 39 foi limitado ao Valor Total Solicitado.");
+                    setRawND30Input(numberToRawDigits(newND30Value)); 
+                    toast.warning("O valor da ND 30 foi limitado ao Valor Total Solicitado.");
                 }
                 
-                // Calculate ND 30 (difference)
-                newND30Value = calculateND30(newTotalValue, newND39Value);
-                setRawND30Input(numberToRawDigits(newND30Value));
+                // Calculate ND 39 (difference)
+                newND39Value = calculateND39(newTotalValue, newND30Value);
+                setRawND39Input(numberToRawDigits(newND39Value));
                 
             } else {
-                // ND 30 is now read-only, so this branch should not be reached for ND 30 input.
+                // ND 39 is now read-only. This branch should not be reached for ND 39 input.
                 return prev;
             }
             
             return { 
                 ...newFormData, 
                 valor_total_solicitado: newTotalValue,
-                valor_nd_39: newND39Value,
-                valor_nd_30: newND30Value, 
+                valor_nd_30: newND30Value,
+                valor_nd_39: newND39Value, 
             };
         });
     };
@@ -575,12 +575,12 @@ const VerbaOperacionalForm = () => {
         try {
             // 1. Validação Zod
             const totalSolicitado = formData.valor_total_solicitado;
-            const nd39Value = formData.valor_nd_39;
-            const nd30Value = calculateND30(totalSolicitado, nd39Value);
+            const nd30Value = formData.valor_nd_30;
+            const nd39Value = calculateND39(totalSolicitado, nd30Value);
             
             const dataToValidate = {
                 ...formData,
-                valor_nd_30: nd30Value,
+                valor_nd_39: nd39Value,
             };
             
             verbaOperacionalSchema.parse(dataToValidate);
@@ -987,32 +987,14 @@ const VerbaOperacionalForm = () => {
                                                 </div>
                                                 
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    {/* ND 30 (Material/Serviço) - CALCULADO */}
+                                                    {/* ND 30 (Material/Serviço) - EDITÁVEL */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="valor_nd_30">ND 33.90.30 (Material/Serviço)</Label>
                                                         <div className="relative">
-                                                            <Input
-                                                                id="valor_nd_30"
-                                                                value={formatCurrency(formData.valor_nd_30)}
-                                                                readOnly
-                                                                disabled
-                                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 h-12"
-                                                            />
-                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
-                                                        </div>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Calculado por diferença (Total Solicitado - ND 39).
-                                                        </p>
-                                                    </div>
-                                                    
-                                                    {/* ND 39 (Serviço) - EDITÁVEL */}
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="valor_nd_39">ND 33.90.39 (Serviço)</Label>
-                                                        <div className="relative">
                                                             <CurrencyInput
-                                                                id="valor_nd_39"
-                                                                rawDigits={rawND39Input}
-                                                                onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
+                                                                id="valor_nd_30"
+                                                                rawDigits={rawND30Input}
+                                                                onChange={(digits) => handleCurrencyChange('valor_nd_30', digits)}
                                                                 placeholder="0,00"
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 className="pl-12 text-lg h-12"
@@ -1020,7 +1002,25 @@ const VerbaOperacionalForm = () => {
                                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">
-                                                            Valor alocado para contratação de serviço.
+                                                            Valor alocado para material ou serviço.
+                                                        </p>
+                                                    </div>
+                                                    
+                                                    {/* ND 39 (Serviço) - CALCULADO */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="valor_nd_39">ND 33.90.39 (Serviço)</Label>
+                                                        <div className="relative">
+                                                            <Input
+                                                                id="valor_nd_39"
+                                                                value={formatCurrency(formData.valor_nd_39)}
+                                                                readOnly
+                                                                disabled
+                                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 h-12"
+                                                            />
+                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Calculado por diferença (Total Solicitado - ND 30).
                                                         </p>
                                                     </div>
                                                 </div>
