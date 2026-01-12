@@ -992,9 +992,9 @@ const VerbaOperacionalForm = () => {
                                                 </div>
                                                 
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    {/* ND 30 (Material/Serviço) - EDITÁVEL */}
+                                                    {/* ND 30 (Material) - EDITÁVEL */}
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="valor_nd_30">ND 33.90.30 (Material/Serviço)</Label>
+                                                        <Label htmlFor="valor_nd_30">ND 33.90.30 (Material)</Label>
                                                         <div className="relative">
                                                             <CurrencyInput
                                                                 id="valor_nd_30"
@@ -1007,7 +1007,7 @@ const VerbaOperacionalForm = () => {
                                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">
-                                                            Valor alocado para material ou serviço.
+                                                            Valor alocado para material.
                                                         </p>
                                                     </div>
                                                     
@@ -1020,7 +1020,7 @@ const VerbaOperacionalForm = () => {
                                                                 value={formatCurrency(formData.valor_nd_39)}
                                                                 readOnly
                                                                 disabled
-                                                                className="pl-12 text-lg font-bold bg-blue-500/10 text-blue-600 disabled:opacity-100 h-12"
+                                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 h-12"
                                                             />
                                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                                         </div>
