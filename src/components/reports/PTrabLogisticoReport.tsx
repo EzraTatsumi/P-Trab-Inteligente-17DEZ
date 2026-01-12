@@ -563,7 +563,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               cell.font = headerFontStyle; // Garante letra preta
           }
           // Ajuste para garantir que as células mescladas não tenham valor na linha 2
-          if (col === 'A' || col === 'B' || col === 'I') {
+          //if (col === 'A' || col === 'B' || col === 'I') {
               cell.value = 'xxx';
           }
       });
