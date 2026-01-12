@@ -102,8 +102,8 @@ const verbaOperacionalSchema = z.object({
 const initialFormState = {
     om_favorecida: "", // OM Favorecida (do PTrab)
     ug_favorecida: "", // UG Favorecida (do PTrab)
-    dias_operacao: 0, // Alterado para 0
-    quantidade_equipes: 0, // Alterado para 0
+    dias_operacao: 0,
+    quantidade_equipes: 0,
     valor_total_solicitado: 0,
     fase_atividade: "",
     om_detentora: DEFAULT_OM_DETENTORA, // OM Destino do Recurso (Padrão CIE)
@@ -818,13 +818,16 @@ const VerbaOperacionalForm = () => {
                             formData.ug_detentora.length > 0 &&
                             formData.fase_atividade.length > 0;
 
+    // Verifica se os campos numéricos da Solicitação estão preenchidos
+    const isSolicitationDataReady = formData.dias_operacao > 0 &&
+                                    formData.quantidade_equipes > 0 &&
+                                    formData.valor_total_solicitado > 0;
+
     // Verifica se o total alocado (ND 30 + ND 39) é igual ao total solicitado
     const isAllocationCorrect = areNumbersEqual(formData.valor_total_solicitado, calculos.totalGeral);
 
     const isCalculationReady = isBaseFormReady &&
-                              formData.dias_operacao > 0 &&
-                              formData.quantidade_equipes > 0 &&
-                              formData.valor_total_solicitado > 0 &&
+                              isSolicitationDataReady &&
                               isAllocationCorrect;
     
     // Lógica para a Seção 3
@@ -956,80 +959,82 @@ const VerbaOperacionalForm = () => {
                                             </CardContent>
                                         </Card>
                                         
-                                        {/* Alocação de NDs (Card) */}
-                                        <Card className="mt-4 rounded-lg p-4 bg-background">
-                                            <h4 className="font-semibold text-base mb-4">
-                                                Alocação de Natureza de Despesa (ND) (Valor Total: {formatCurrency(formData.valor_total_solicitado)})
-                                            </h4>
-                                            
-                                            {/* OM Destino do Recurso (Detentora) - AGORA SELECIONÁVEL AQUI */}
-                                            <div className="space-y-2 mb-4">
-                                                <Label htmlFor="om_detentora">OM de Destino do Recurso *</Label>
-                                                <OmSelector
-                                                    selectedOmId={selectedOmDetentoraId}
-                                                    onChange={handleOmDetentoraChange}
-                                                    placeholder="Selecione a OM Detentora"
-                                                    disabled={!isPTrabEditable || isSaving}
-                                                    initialOmName={formData.om_detentora}
-                                                    initialOmUg={formData.ug_detentora}
-                                                />
-                                                <p className="text-xs text-muted-foreground">
-                                                    UG de Destino: {formatCodug(formData.ug_detentora)}
-                                                </p>
-                                            </div>
-                                            
-                                            <div className="grid grid-cols-2 gap-4">
-                                                {/* ND 30 (Material/Serviço) - CALCULADO */}
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="valor_nd_30">ND 33.90.30 (Material/Serviço)</Label>
-                                                    <div className="relative">
-                                                        <Input
-                                                            id="valor_nd_30"
-                                                            value={formatCurrency(formData.valor_nd_30)}
-                                                            readOnly
-                                                            disabled
-                                                            className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 h-12"
-                                                        />
-                                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
-                                                    </div>
+                                        {/* Alocação de NDs (Card) - RENDERIZAÇÃO CONDICIONAL */}
+                                        {isSolicitationDataReady && (
+                                            <Card className="mt-4 rounded-lg p-4 bg-background">
+                                                <h4 className="font-semibold text-base mb-4">
+                                                    Alocação de Natureza de Despesa (ND) (Valor Total: {formatCurrency(formData.valor_total_solicitado)})
+                                                </h4>
+                                                
+                                                {/* OM Destino do Recurso (Detentora) - AGORA SELECIONÁVEL AQUI */}
+                                                <div className="space-y-2 mb-4">
+                                                    <Label htmlFor="om_detentora">OM de Destino do Recurso *</Label>
+                                                    <OmSelector
+                                                        selectedOmId={selectedOmDetentoraId}
+                                                        onChange={handleOmDetentoraChange}
+                                                        placeholder="Selecione a OM Detentora"
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        initialOmName={formData.om_detentora}
+                                                        initialOmUg={formData.ug_detentora}
+                                                    />
                                                     <p className="text-xs text-muted-foreground">
-                                                        Calculado por diferença (Total Solicitado - ND 39).
+                                                        UG de Destino: {formatCodug(formData.ug_detentora)}
                                                     </p>
                                                 </div>
                                                 
-                                                {/* ND 39 (Serviço) - EDITÁVEL */}
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="valor_nd_39">ND 33.90.39 (Serviço)</Label>
-                                                    <div className="relative">
-                                                        <CurrencyInput
-                                                            id="valor_nd_39"
-                                                            rawDigits={rawND39Input}
-                                                            onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
-                                                            placeholder="0,00"
-                                                            disabled={!isPTrabEditable || isSaving}
-                                                            className="pl-12 text-lg h-12"
-                                                        />
-                                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    {/* ND 30 (Material/Serviço) - CALCULADO */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="valor_nd_30">ND 33.90.30 (Material/Serviço)</Label>
+                                                        <div className="relative">
+                                                            <Input
+                                                                id="valor_nd_30"
+                                                                value={formatCurrency(formData.valor_nd_30)}
+                                                                readOnly
+                                                                disabled
+                                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 h-12"
+                                                            />
+                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Calculado por diferença (Total Solicitado - ND 39).
+                                                        </p>
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Valor alocado para contratação de serviço.
-                                                    </p>
+                                                    
+                                                    {/* ND 39 (Serviço) - EDITÁVEL */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="valor_nd_39">ND 33.90.39 (Serviço)</Label>
+                                                        <div className="relative">
+                                                            <CurrencyInput
+                                                                id="valor_nd_39"
+                                                                rawDigits={rawND39Input}
+                                                                onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
+                                                                placeholder="0,00"
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                                className="pl-12 text-lg h-12"
+                                                            />
+                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Valor alocado para contratação de serviço.
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            
-                                            <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
-                                                <span className="font-bold text-sm">TOTAL ALOCADO:</span>
-                                                <span className={cn("font-extrabold text-lg", isAllocationCorrect ? "text-primary" : "text-destructive")}>
-                                                    {formatCurrency(calculos.totalGeral)}
-                                                </span>
-                                            </div>
-                                            
-                                            {!isAllocationCorrect && (
-                                                <p className="text-xs text-destructive mt-2 text-center">
-                                                    A soma das NDs deve ser igual ao Valor Total Solicitado ({formatCurrency(formData.valor_total_solicitado)}).
-                                                </p>
-                                            )}
-                                        </Card>
+                                                
+                                                <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
+                                                    <span className="font-bold text-sm">TOTAL ALOCADO:</span>
+                                                    <span className={cn("font-extrabold text-lg", isAllocationCorrect ? "text-primary" : "text-destructive")}>
+                                                        {formatCurrency(calculos.totalGeral)}
+                                                    </span>
+                                                </div>
+                                                
+                                                {!isAllocationCorrect && (
+                                                    <p className="text-xs text-destructive mt-2 text-center">
+                                                        A soma das NDs deve ser igual ao Valor Total Solicitado ({formatCurrency(formData.valor_total_solicitado)}).
+                                                    </p>
+                                                )}
+                                            </Card>
+                                        )}
                                         
                                         {/* BOTÕES DE AÇÃO */}
                                         <div className="flex justify-end gap-3 pt-4">
