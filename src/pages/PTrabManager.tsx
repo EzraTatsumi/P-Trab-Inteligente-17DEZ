@@ -495,12 +495,27 @@ const PTrabManager = () => {
               totalDiariaND15 = (diariaData || []).reduce((sum, record) => sum + (record.valor_nd_15 || 0), 0);
               totalDiariaND30 = (diariaData || []).reduce((sum, record) => sum + (record.valor_nd_30 || 0), 0);
           }
+          
+          // 5. Fetch Verba Operacional totals (33.90.30 and 33.90.39)
+          const { data: verbaOperacionalData, error: verbaOperacionalError } = await supabase
+            .from('verba_operacional_registros')
+            .select('valor_nd_30, valor_nd_39')
+            .eq('p_trab_id', ptrab.id);
+            
+          let totalVerbaOperacional = 0;
+          if (verbaOperacionalError) console.error("Erro ao carregar Verba Operacional para PTrab", ptrab.numero_ptrab, verbaOperacionalError);
+          else {
+              totalVerbaOperacional = (verbaOperacionalData || []).reduce((sum, record) => sum + (record.valor_nd_30 || 0) + (record.valor_nd_39 || 0), 0);
+          }
+
 
           // SOMA TOTAL DA ABA LOGÍSTICA
-          totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII + totalDiariaND30;
+          // Logística = Classe I + Classes Diversas + Classe III
+          totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII;
           
           // SOMA TOTAL DA ABA OPERACIONAL
-          totalOperacionalCalculado = totalDiariaND15;
+          // Operacional = Diárias (ND 15) + Verba Operacional
+          totalOperacionalCalculado = totalDiariaND15 + totalVerbaOperacional;
           
           const isOwner = ptrab.user_id === user.id;
           const isShared = !isOwner && (ptrab.shared_with || []).includes(user.id);
