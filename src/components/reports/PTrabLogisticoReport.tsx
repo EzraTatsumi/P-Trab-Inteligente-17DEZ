@@ -498,11 +498,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       const headerRow2 = currentRow + 1;
       
       const hdr1 = worksheet.getRow(headerRow1);
-      hdr1.getCell('A').value = 'DESPESAS'; // CORRIGIDO
-      hdr1.getCell('B').value = 'OM (UGE)\nCODUG'; // CORRIGIDO
+      // CORREÇÃO: Atribuir os valores corretos para A, B e I na primeira linha do cabeçalho
+      hdr1.getCell('A').value = 'DESPESAS'; 
+      hdr1.getCell('B').value = 'OM (UGE)\nCODUG'; 
       hdr1.getCell('C').value = 'NATUREZA DE DESPESA';
       hdr1.getCell('F').value = 'COMBUSTÍVEL';
-      hdr1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG'; // CORRIGIDO
+      hdr1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG'; 
       
       // Mesclagens
       worksheet.mergeCells(`A${headerRow1}:A${headerRow2}`);
@@ -889,7 +890,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         totalOMRow.getCell('E').border = cellBorder;
         totalOMRow.getCell('E').numFmt = 'R$ #,##0.00';
         
-        // F-I: Vazio (Cinza Claro)
+        // F-I: Vazio (Mesclado)
         worksheet.mergeCells(`F${currentRow}:I${currentRow}`);
         totalOMRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
         totalOMRow.getCell('F').border = cellBorder;
