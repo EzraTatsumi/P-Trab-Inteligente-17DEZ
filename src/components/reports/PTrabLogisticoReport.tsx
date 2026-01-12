@@ -1473,6 +1473,27 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         .ptrab-footer { margin-top: 3rem; text-align: center; }
         .signature-block { margin-top: 4rem; }
         
+        /* CORREÇÃO CRÍTICA: Cores e rótulos do cabeçalho */
+        .ptrab-table thead th {
+            background-color: #E8E8E8; /* Cinza Claro Padrão */
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        
+        /* Aplica cor AZUL para a seção NATUREZA DE DESPESA (C, D, E) */
+        .col-natureza-header,
+        .col-natureza-header + th,
+        .col-natureza-header + th + th {
+            background-color: #B4C7E7 !important;
+        }
+        
+        /* Aplica cor LARANJA para a seção COMBUSTÍVEL (F, G, H) */
+        .col-combustivel-header,
+        .col-combustivel-header + th,
+        .col-combustivel-header + th + th {
+            background-color: #F8CBAD !important;
+        }
+        
         /* REGRAS ESPECÍFICAS DE IMPRESSÃO (CORREÇÃO DE ALINHAMENTO) */
         @media print {
           @page { size: landscape; margin: 0.5cm; }
