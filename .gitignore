@@ -50,7 +50,7 @@ src/components/EmailVerificationDialog.tsx
 src/components/SignupDialog.tsx
 src/components/EmailConfirmationDialog.tsx
 
-# REMOVIDO: src/components/YearManagementDialog.tsx
+src/components/YearManagementDialog.tsx
 src/pages/PTrabExportImportPage.tsx
 src/components/ExportPasswordDialog.tsx
 src/components/ImportPTrabOptionsDialog.tsx
