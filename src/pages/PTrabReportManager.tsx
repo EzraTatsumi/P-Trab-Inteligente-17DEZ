@@ -667,7 +667,7 @@ export const generateVerbaOperacionalMemoriaCalculoUnificada = (
     }
     
     // O cálculo da Verba Operacional é simples e não depende de diretrizes externas, apenas dos dados do registro.
-    return generateVerbaOperacionalMemoriaCalculo(registro as any);
+    return generateVerbaOperacionalMemoriaCalculoUtility(registro as any);
 };
 
 
