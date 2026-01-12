@@ -108,8 +108,8 @@ const initialFormState = {
     fase_atividade: "",
     om_detentora: DEFAULT_OM_DETENTORA, // OM Destino do Recurso (Padrão CIE)
     ug_detentora: DEFAULT_UG_DETENTORA, // UG Destino do Recurso (Padrão 160.062)
-    valor_nd_30: 0,
-    valor_nd_39: 0,
+    valor_nd_30: 0, // Inicia zerado
+    valor_nd_39: 0, // Inicia zerado (será preenchido ao digitar o total solicitado)
 };
 
 // Função para comparar números de ponto flutuante com tolerância
@@ -315,11 +315,12 @@ const VerbaOperacionalForm = () => {
                 setRawTotalInput(digits);
                 newTotalValue = numericValue;
                 
-                // NOVO: Aloca o valor total solicitado integralmente na ND 30
-                newND30Value = newTotalValue;
-                newND39Value = 0; // ND 39 é a diferença (Total - ND 30)
+                // NOVO: Aloca o valor total solicitado integralmente na ND 39
+                newND39Value = newTotalValue;
                 
-                setRawND30Input(numberToRawDigits(newND30Value));
+                // ND 30 é mantida como está, mas recalculamos ND 39 com base nela
+                newND39Value = calculateND39(newTotalValue, newND30Value);
+                
                 setRawND39Input(numberToRawDigits(newND39Value));
                 
             } else if (field === 'valor_nd_30') {
@@ -464,6 +465,10 @@ const VerbaOperacionalForm = () => {
             // Dias e equipes são resetados para 0 (vazio)
             dias_operacao: 0,
             quantidade_equipes: 0,
+            // NDs e Total são resetados para 0
+            valor_total_solicitado: 0,
+            valor_nd_30: 0,
+            valor_nd_39: 0,
         }));
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
@@ -472,9 +477,9 @@ const VerbaOperacionalForm = () => {
         setStagedUpdate(null); 
         
         // Resetar inputs brutos
-        setRawTotalInput(numberToRawDigits(initialFormState.valor_total_solicitado));
-        setRawND30Input(numberToRawDigits(initialFormState.valor_nd_30));
-        setRawND39Input(numberToRawDigits(initialFormState.valor_nd_39));
+        setRawTotalInput(numberToRawDigits(0));
+        setRawND30Input(numberToRawDigits(0));
+        setRawND39Input(numberToRawDigits(0));
     };
     
     const handleClearPending = () => {
@@ -1015,7 +1020,7 @@ const VerbaOperacionalForm = () => {
                                                                 value={formatCurrency(formData.valor_nd_39)}
                                                                 readOnly
                                                                 disabled
-                                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 h-12"
+                                                                className="pl-12 text-lg font-bold bg-blue-500/10 text-blue-600 disabled:opacity-100 h-12"
                                                             />
                                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                                         </div>
