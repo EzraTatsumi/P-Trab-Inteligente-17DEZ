@@ -1419,7 +1419,7 @@ const VerbaOperacionalForm = () => {
                                 Confirmar Exclusão
                             </AlertDialogTitle>
                             <AlertDialogDescription>
-                                Tem certeza que deseja excluir o registro de Verba Operacional para a OM <span className="font-bold">{registroToDelete?.organizacao}</span>?
+                                Tem certeza que deseja excluir o registro de Verba Operacional para a OM <span className="font-bold">{registroToDelete?.organizacao}</span>? Esta ação é irreversível.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
