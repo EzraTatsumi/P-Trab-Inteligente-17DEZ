@@ -897,39 +897,8 @@ const VerbaOperacionalForm = () => {
                                     
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
                                         
-                                        {/* OM DESTINO DO RECURSO (DETENTORA) */}
-                                        <Card className="rounded-lg mb-4">
-                                            <CardHeader className="py-3">
-                                                <CardTitle className="text-base font-semibold">OM Destino do Recurso (Detentora) *</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="pt-2">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="om_detentora">OM Destino Recurso</Label>
-                                                        <OmSelector
-                                                            selectedOmId={selectedOmDetentoraId}
-                                                            onChange={handleOmDetentoraChange}
-                                                            placeholder="Selecione a OM Detentora"
-                                                            disabled={!isPTrabEditable || isSaving}
-                                                            initialOmName={formData.om_detentora}
-                                                            initialOmUg={formData.ug_detentora}
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="ug_detentora">UG Destino Recurso</Label>
-                                                        <Input
-                                                            id="ug_detentora"
-                                                            value={formatCodug(formData.ug_detentora)}
-                                                            disabled
-                                                            className="bg-muted/50"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                        
                                         {/* Dados da Solicitação */}
-                                        <Card className="rounded-lg">
+                                        <Card className="rounded-lg mb-4">
                                             <CardHeader className="py-3">
                                                 <CardTitle className="text-base font-semibold">Dados da Solicitação</CardTitle>
                                             </CardHeader>
@@ -988,14 +957,16 @@ const VerbaOperacionalForm = () => {
                                                 Alocação de Natureza de Despesa (ND) (Valor Total: {formatCurrency(formData.valor_total_solicitado)})
                                             </h4>
                                             
-                                            {/* OM Destino Display (CORRIGIDO: Usando om_detentora) */}
+                                            {/* OM Destino do Recurso (Detentora) - AGORA SELECIONÁVEL AQUI */}
                                             <div className="space-y-2 mb-4">
-                                                <Label>OM de Destino do Recurso *</Label>
-                                                <Input
-                                                    value={formData.om_detentora}
-                                                    readOnly
-                                                    disabled
-                                                    className="font-medium text-base h-10"
+                                                <Label htmlFor="om_detentora">OM de Destino do Recurso *</Label>
+                                                <OmSelector
+                                                    selectedOmId={selectedOmDetentoraId}
+                                                    onChange={handleOmDetentoraChange}
+                                                    placeholder="Selecione a OM Detentora"
+                                                    disabled={!isPTrabEditable || isSaving}
+                                                    initialOmName={formData.om_detentora}
+                                                    initialOmUg={formData.ug_detentora}
                                                 />
                                                 <p className="text-xs text-muted-foreground">
                                                     UG de Destino: {formatCodug(formData.ug_detentora)}
