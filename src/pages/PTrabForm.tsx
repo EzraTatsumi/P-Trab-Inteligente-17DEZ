@@ -60,7 +60,7 @@ const PTrabForm = () => {
     { id: "servico-grafico", name: "Serviço Gráfico" },
     { id: "passagem-aerea", name: "Passagem Aérea" },
     { id: "diaria", name: "Pagamento de Diárias" },
-    { id: "outros", name: "Outros" },
+    { id: "outros", name: "Verba Operacional" },
   ];
 
   // --- Lógica de Busca de Créditos (TanStack Query) ---
