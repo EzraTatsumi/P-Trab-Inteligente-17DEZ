@@ -996,21 +996,21 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       
       // Linha 3: GND - 3 (dividida em 2 subdivisões)
       const gnd3Row1 = worksheet.getRow(currentRow);
-      gnd3Row1.getCell('H').value = 'GND - 3';
-      gnd3Row1.getCell('H').alignment = centerMiddleAlignment;
-      gnd3Row1.getCell('H').font = headerFontStyle;
-      gnd3Row1.getCell('H').border = { top: cellBorder.top, left: cellBorder.left, right: cellBorder.right };
-      worksheet.mergeCells(`H${currentRow}:I${currentRow}`);
+      gnd3Row1.getCell('E').value = 'GND - 3'; // MOVIDO PARA COLUNA E
+      gnd3Row1.getCell('E').alignment = centerMiddleAlignment;
+      gnd3Row1.getCell('E').font = headerFontStyle;
+      gnd3Row1.getCell('E').border = { top: cellBorder.top, left: cellBorder.left, right: cellBorder.right };
+      worksheet.mergeCells(`E${currentRow}:I${currentRow}`); // MESCLADO E ATÉ I
       currentRow++;
       
       // Segunda subdivisão: Valor Total
       const gnd3Row2 = worksheet.getRow(currentRow);
-      gnd3Row2.getCell('H').value = valorTotalSolicitado;
-      gnd3Row2.getCell('H').alignment = centerMiddleAlignment;
-      gnd3Row2.getCell('H').font = headerFontStyle;
-      gnd3Row2.getCell('H').border = { bottom: cellBorder.bottom, left: cellBorder.left, right: cellBorder.right };
-      gnd3Row2.getCell('H').numFmt = 'R$ #,##0.00';
-      worksheet.mergeCells(`H${currentRow}:I${currentRow}`);
+      gnd3Row2.getCell('E').value = valorTotalSolicitado; // MOVIDO PARA COLUNA E
+      gnd3Row2.getCell('E').alignment = centerMiddleAlignment;
+      gnd3Row2.getCell('E').font = headerFontStyle;
+      gnd3Row2.getCell('E').border = { bottom: cellBorder.bottom, left: cellBorder.left, right: cellBorder.right };
+      gnd3Row2.getCell('E').numFmt = 'R$ #,##0.00';
+      worksheet.mergeCells(`E${currentRow}:I${currentRow}`); // MESCLADO E ATÉ I
       currentRow++;
       
       currentRow++;
@@ -1420,16 +1420,16 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 
                 {/* Linha 3: GND - 3 (dividida em 2 subdivisões) */}
                 <tr key="gnd3-row-1" style={{ backgroundColor: 'white' }}>
-                  <td colSpan={7} style={{ border: 'none' }}></td>
+                  <td colSpan={4} style={{ border: 'none' }}></td>
                   <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderTop: '1px solid #000', borderRight: '1px solid #000' }}>GND - 3</td>
-                  <td style={{ border: 'none' }}></td>
+                  <td colSpan={4} style={{ border: 'none' }}></td>
                 </tr>
                 
                 {/* Segunda subdivisão: Valor Total */}
                 <tr key="gnd3-row-2" style={{ backgroundColor: 'white' }}>
-                  <td colSpan={7} style={{ border: 'none' }}></td>
+                  <td colSpan={4} style={{ border: 'none' }}></td>
                   <td className="text-center font-bold" style={{ borderLeft: '1px solid #000', borderBottom: '1px solid #000', borderRight: '1px solid #000' }}>{formatCurrency(valorTotalSolicitado)}</td>
-                  <td style={{ border: 'none' }}></td>
+                  <td colSpan={4} style={{ border: 'none' }}></td>
                 </tr>
               </tbody>
             </table>
