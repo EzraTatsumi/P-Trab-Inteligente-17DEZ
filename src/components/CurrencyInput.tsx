@@ -10,7 +10,7 @@ interface CurrencyInputProps extends Omit<InputProps, 'value' | 'onChange' | 'on
   className?: string;
 }
 
-const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
+export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
   ({ rawDigits, onChange, placeholder = "0,00", className, ...props }, ref) => {
     
     // Calcula o valor formatado com base na prop rawDigits
