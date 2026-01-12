@@ -1,4 +1,3 @@
-void) and removing raw input states.">
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -126,7 +125,10 @@ const VerbaOperacionalForm = () => {
     // Estado para rastrear o ID da OM selecionada no OmSelector
     const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
     
-    // REMOVIDO: Estados para inputs monetários (rawTotalInput, rawND30Input, rawND39Input)
+    // Estado para inputs monetários
+    const [rawTotalInput, setRawTotalInput] = useState<string>(numberToRawDigits(initialFormState.valor_total_solicitado));
+    const [rawND30Input, setRawND30Input] = useState<string>(numberToRawDigits(initialFormState.valor_nd_30));
+    const [rawND39Input, setRawND39Input] = useState<string>(numberToRawDigits(initialFormState.valor_nd_39));
 
     // Dados mestres
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
@@ -230,9 +232,17 @@ const VerbaOperacionalForm = () => {
     // HANDLERS DE INPUT
     // =================================================================
     
-    // REMOVIDO: handleCurrencyChange (não é mais necessário, pois o CurrencyInput retorna o número)
-    
-    const handleCurrencyChange = (field: keyof typeof initialFormState, numericValue: number) => {
+    const handleCurrencyChange = (field: keyof typeof initialFormState, rawValue: string) => {
+        const { numericValue, digits } = formatCurrencyInput(rawValue);
+        
+        if (field === 'valor_total_solicitado') {
+            setRawTotalInput(digits);
+        } else if (field === 'valor_nd_30') {
+            setRawND30Input(digits);
+        } else if (field === 'valor_nd_39') {
+            setRawND39Input(digits);
+        }
+        
         setFormData(prev => ({ ...prev, [field]: numericValue }));
     };
     
@@ -324,6 +334,11 @@ const VerbaOperacionalForm = () => {
         setMemoriaEdit("");
         setSelectedOmId(undefined);
         setStagedUpdate(null); 
+        
+        // Resetar inputs brutos
+        setRawTotalInput(numberToRawDigits(initialFormState.valor_total_solicitado));
+        setRawND30Input(numberToRawDigits(initialFormState.valor_nd_30));
+        setRawND39Input(numberToRawDigits(initialFormState.valor_nd_39));
     };
     
     const handleClearPending = () => {
@@ -358,6 +373,11 @@ const VerbaOperacionalForm = () => {
         };
         setFormData(newFormData);
         
+        // Atualizar inputs brutos
+        setRawTotalInput(numberToRawDigits(newFormData.valor_total_solicitado));
+        setRawND30Input(numberToRawDigits(newFormData.valor_nd_30));
+        setRawND39Input(numberToRawDigits(newFormData.valor_nd_39));
+
         // 2. Calculate totals based on the *saved* record data
         const totals = calculateVerbaOperacionalTotals(newFormData as any);
         const memoria = generateVerbaOperacionalMemoriaCalculo(newFormData as any);
@@ -471,6 +491,11 @@ const VerbaOperacionalForm = () => {
                 valor_nd_30: 0,
                 valor_nd_39: 0,
             }));
+            
+            // Resetar inputs brutos
+            setRawTotalInput(numberToRawDigits(0));
+            setRawND30Input(numberToRawDigits(0));
+            setRawND39Input(numberToRawDigits(0));
             
             toast.info("Item de Verba Operacional adicionado à lista pendente.");
             
@@ -739,8 +764,8 @@ const VerbaOperacionalForm = () => {
                                                             <Label htmlFor="valor_total_solicitado">Valor Total Solicitado (R$) *</Label>
                                                             <CurrencyInput
                                                                 id="valor_total_solicitado"
-                                                                value={formData.valor_total_solicitado}
-                                                                onChange={(value) => handleCurrencyChange('valor_total_solicitado', value)}
+                                                                rawDigits={rawTotalInput}
+                                                                onChange={(digits) => handleCurrencyChange('valor_total_solicitado', digits)}
                                                                 placeholder="Ex: 1.500,00"
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 required
@@ -765,8 +790,8 @@ const VerbaOperacionalForm = () => {
                                                         <Label htmlFor="valor_nd_30">ND 33.90.30 (Material/Serviço)</Label>
                                                         <CurrencyInput
                                                             id="valor_nd_30"
-                                                            value={formData.valor_nd_30}
-                                                            onChange={(value) => handleCurrencyChange('valor_nd_30', value)}
+                                                            rawDigits={rawND30Input}
+                                                            onChange={(digits) => handleCurrencyChange('valor_nd_30', digits)}
                                                             placeholder="0,00"
                                                             disabled={!isPTrabEditable || isSaving}
                                                         />
@@ -775,8 +800,8 @@ const VerbaOperacionalForm = () => {
                                                         <Label htmlFor="valor_nd_39">ND 33.90.39 (Serviço)</Label>
                                                         <CurrencyInput
                                                             id="valor_nd_39"
-                                                            value={formData.valor_nd_39}
-                                                            onChange={(value) => handleCurrencyChange('valor_nd_39', value)}
+                                                            rawDigits={rawND39Input}
+                                                            onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
                                                             placeholder="0,00"
                                                             disabled={!isPTrabEditable || isSaving}
                                                         />
