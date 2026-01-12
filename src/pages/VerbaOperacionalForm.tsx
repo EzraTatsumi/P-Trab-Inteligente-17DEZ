@@ -843,7 +843,7 @@ const VerbaOperacionalForm = () => {
             <div className="max-w-6xl mx-auto space-y-6">
                 <Button variant="ghost" onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)} className="mb-4">
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Voltar para o P Trab
+                    Voltar
                 </Button>
 
                 <Card>
