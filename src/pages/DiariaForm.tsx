@@ -1200,7 +1200,7 @@ const DiariaForm = () => {
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
-                                                VALOR TOTAL PENDENTE
+                                                VALOR TOTAL DA OM
                                             </span>
                                             <span className="font-extrabold text-xl text-foreground">
                                                 {formatCurrency(isStagingUpdate ? stagedUpdate!.valor_total : totalPendingDiarias)}
