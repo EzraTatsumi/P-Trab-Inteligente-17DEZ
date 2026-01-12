@@ -139,7 +139,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .eq('p_trab_id', ptrabId),
     supabase // NOVO FETCH
       .from('verba_operacional_registros')
-      .select('valor_nd_30, valor_nd_39, valor_total_solicitado')
+      .select('valor_nd_30, valor_nd_39, valor_total_solicitado, dias_operacao, quantidade_equipes')
       .eq('p_trab_id', ptrabId),
   ]);
 
@@ -406,12 +406,16 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   let totalVerbaOperacionalND30 = 0;
   let totalVerbaOperacionalND39 = 0;
   let totalVerbaOperacional = 0;
+  let totalEquipesVerba = 0;
+  let totalDiasVerba = 0;
   
   (safeVerbaOperacionalData || []).forEach(record => {
       totalVerbaOperacionalND30 += Number(record.valor_nd_30 || 0);
       totalVerbaOperacionalND39 += Number(record.valor_nd_39 || 0);
       // O total da verba operacional é a soma das NDs alocadas
       totalVerbaOperacional += Number(record.valor_nd_30 || 0) + Number(record.valor_nd_39 || 0);
+      totalEquipesVerba += Number(record.quantidade_equipes || 0);
+      totalDiasVerba += Number(record.dias_operacao || 0);
   });
     
   // Soma de todas as classes diversas (II, V, VI, VII, VIII, IX)
@@ -496,6 +500,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalVerbaOperacional,
     totalVerbaOperacionalND30,
     totalVerbaOperacionalND39,
+    totalEquipesVerba, // NOVO
+    totalDiasVerba, // NOVO
   };
 };
 
@@ -575,6 +581,8 @@ export const PTrabCostSummary = ({
       totalVerbaOperacional: 0,
       totalVerbaOperacionalND30: 0,
       totalVerbaOperacionalND39: 0,
+      totalEquipesVerba: 0, // NOVO
+      totalDiasVerba: 0, // NOVO
     },
   });
   
@@ -1086,8 +1094,6 @@ export const PTrabCostSummary = ({
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
-                  
-                  {/* REMOVIDO: Verba Operacional (ND 30/39) - MOVIDO PARA ABA OPERACIONAL */}
                 </div>
 
                 {/* Aba Operacional (NOVO: Incluindo Diárias e Verba Operacional) */}
@@ -1169,22 +1175,35 @@ export const PTrabCostSummary = ({
                             </AccordionTrigger>
                             <AccordionContent className="pt-1 pb-0">
                                 <div className="space-y-1 pl-4 text-[10px]">
-                                    <div className="flex justify-between text-muted-foreground pt-1">
-                                        <span className="w-1/2 text-left font-semibold">ND 33.90.30 (Material)</span>
-                                        <span className="w-1/4 text-right font-medium text-green-600">
-                                            {formatCurrency(totals.totalVerbaOperacionalND30)}
+                                    {/* Detalhe 1: Total de Equipes */}
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span className="w-1/2 text-left">Total de Equipes</span>
+                                        <span className="w-1/4 text-right font-medium">
+                                            {formatNumber(totals.totalEquipesVerba)}
                                         </span>
                                         <span className="w-1/4 text-right font-medium text-background">
                                             {/* Vazio */}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between text-muted-foreground pt-1">
-                                        <span className="w-1/2 text-left font-semibold">ND 33.90.39 (Serviço)</span>
-                                        <span className="w-1/4 text-right font-medium text-blue-600">
-                                            {formatCurrency(totals.totalVerbaOperacionalND39)}
+                                    {/* Detalhe 2: Total de Dias */}
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span className="w-1/2 text-left">Total de Dias</span>
+                                        <span className="w-1/4 text-right font-medium">
+                                            {formatNumber(totals.totalDiasVerba)} dias
                                         </span>
                                         <span className="w-1/4 text-right font-medium text-background">
                                             {/* Vazio */}
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Linha de Detalhe Consolidada (ND 30 / ND 39) */}
+                                    <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                        <span className="w-1/2 text-left font-semibold">ND 30 / ND 39</span>
+                                        <span className="w-1/4 text-right font-medium text-green-600">
+                                            {formatCurrency(totals.totalVerbaOperacionalND30)}
+                                        </span>
+                                        <span className="w-1/4 text-right font-medium text-blue-600">
+                                            {formatCurrency(totals.totalVerbaOperacionalND39)}
                                         </span>
                                     </div>
                                 </div>
