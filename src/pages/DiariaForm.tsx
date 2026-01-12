@@ -778,7 +778,7 @@ const DiariaForm = () => {
             <div className="max-w-6xl mx-auto space-y-6">
                 <Button variant="ghost" onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)} className="mb-4">
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Voltar para o P Trab
+                    Voltar
                 </Button>
 
                 <Card>
@@ -1186,7 +1186,7 @@ const DiariaForm = () => {
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
-                                                                <p className="font-medium text-green-600">{formatCurrency(item.valor_taxa_embarque)}</p>
+                                                                <p className="font-medium text-green-600">{formatCurrency(totalTaxaEmbarque)}</p>
                                                                 <p className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</p>
                                                             </div>
                                                         </div>
@@ -1200,7 +1200,7 @@ const DiariaForm = () => {
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
-                                                VALOR TOTAL DA OM
+                                                VALOR TOTAL PENDENTE
                                             </span>
                                             <span className="font-extrabold text-xl text-foreground">
                                                 {formatCurrency(isStagingUpdate ? stagedUpdate!.valor_total : totalPendingDiarias)}
