@@ -102,8 +102,8 @@ const verbaOperacionalSchema = z.object({
 const initialFormState = {
     om_favorecida: "", // OM Favorecida (do PTrab)
     ug_favorecida: "", // UG Favorecida (do PTrab)
-    dias_operacao: 1,
-    quantidade_equipes: 1,
+    dias_operacao: 0, // Alterado para 0
+    quantidade_equipes: 0, // Alterado para 0
     valor_total_solicitado: 0,
     fase_atividade: "",
     om_detentora: DEFAULT_OM_DETENTORA, // OM Destino do Recurso (Padrão CIE)
@@ -457,6 +457,9 @@ const VerbaOperacionalForm = () => {
             // Mantém a OM Favorecida (do PTrab) se já estiver definida
             om_favorecida: ptrabData?.nome_om || "",
             ug_favorecida: ptrabData?.codug_om || "",
+            // Dias e equipes são resetados para 0 (vazio)
+            dias_operacao: 0,
+            quantidade_equipes: 0,
         }));
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
@@ -640,8 +643,8 @@ const VerbaOperacionalForm = () => {
                 om_detentora: DEFAULT_OM_DETENTORA,
                 ug_detentora: DEFAULT_UG_DETENTORA,
                 // Resetar apenas os campos de cálculo
-                dias_operacao: 1,
-                quantidade_equipes: 1,
+                dias_operacao: 0, // Resetado para 0
+                quantidade_equipes: 0, // Resetado para 0
                 valor_total_solicitado: 0,
                 valor_nd_30: 0,
                 valor_nd_39: 0,
@@ -911,6 +914,7 @@ const VerbaOperacionalForm = () => {
                                                                 id="dias_operacao"
                                                                 type="number"
                                                                 min={1}
+                                                                placeholder="Ex: 7"
                                                                 value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
                                                                 onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
                                                                 required
@@ -926,6 +930,7 @@ const VerbaOperacionalForm = () => {
                                                                 id="quantidade_equipes"
                                                                 type="number"
                                                                 min={1}
+                                                                placeholder="Ex: 1"
                                                                 value={formData.quantidade_equipes === 0 ? "" : formData.quantidade_equipes}
                                                                 onChange={(e) => setFormData({ ...formData, quantidade_equipes: parseInt(e.target.value) || 0 })}
                                                                 required
