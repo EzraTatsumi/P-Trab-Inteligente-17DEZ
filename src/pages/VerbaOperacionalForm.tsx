@@ -36,7 +36,7 @@ import * as z from "zod";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { cn } from "@/lib/utils"; 
-import { CurrencyInput } from "@/components/CurrencyInput"; // Componente para input monetário
+import CurrencyInput from "@/components/CurrencyInput"; // Componente para input monetário
 
 // Tipos de dados
 type VerbaOperacionalRegistro = Tables<'verba_operacional_registros'>;
@@ -401,8 +401,6 @@ const VerbaOperacionalForm = () => {
             
             detalhamento: memoria,
             detalhamento_customizado: registro.detalhamento_customizado || null, 
-            
-            // Campos de display para a lista pendente
             totalGeral: totals.totalGeral,
             memoria_calculo_display: memoria, 
         };
