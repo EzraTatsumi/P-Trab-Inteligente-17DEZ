@@ -554,6 +554,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           cell.style = headerStyle;
           cell.border = cellBorder;
           if (col === 'A' || col === 'B' || col === 'I') {
+              // CORREÇÃO: Garante que as células mescladas verticalmente na linha 2 fiquem vazias
+              cell.value = ''; 
               cell.fill = headerFillGray;
           } else if (col === 'C' || col === 'D' || col === 'E') {
               cell.fill = headerFillAzul;
@@ -561,10 +563,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           } else if (col === 'F' || col === 'G' || col === 'H') {
               cell.fill = headerFillLaranja;
               cell.font = headerFontStyle; // Garante letra preta
-          }
-          // Ajuste para garantir que as células mescladas não tenham valor na linha 2
-          if (col === 'A' || col === 'B' || col === 'I') {
-              cell.value = 'xxxERRO AQUIxxx';
           }
       });
       
@@ -704,14 +702,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     rowData.precoTotalH = '';
                 }
                 
-                rowData.detalhamentoValue = linhaClasseIII.memoria_calculo;
+                rowData.detalhamentoValue = generateClasseIIIMemoriaCalculo(registro);
                 
             } else if (isClasseII_IX) { // Classe II, V, VI, VII, VIII, IX
                 const registro = (linha as LinhaClasseII).registro as ClasseIIRegistro;
                 const omDestinoRecurso = registro.organizacao;
                 const ugDestinoRecurso = formatCodug(registro.ug);
                 
-                let categoriaDetalhe = getClasseIILabel(registro.categoria); // Usar rótulo completo
+                let categoriaDetalhe = getClasseIILabel(registro.categoria);
                 
                 if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                     categoriaDetalhe = registro.animal_tipo;
@@ -1134,10 +1132,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
 
                   // NOVO: Array de todas as linhas de despesa na ordem correta (I, II, III, V-IX)
                   const linhasClasseIIIOrdenadas = grupo.linhasClasseIII.sort((a, b) => {
+                      // Ordena Lubrificante antes de Combustível
                       if (a.tipo_suprimento === 'LUBRIFICANTE' && b.tipo_suprimento !== 'LUBRIFICANTE') return -1;
                       if (a.tipo_suprimento !== 'LUBRIFICANTE' && b.tipo_suprimento === 'LUBRIFICANTE') return 1;
+                      
+                      // Dentro de Combustível, ordena Diesel antes de Gasolina
                       if (a.tipo_suprimento === 'COMBUSTIVEL_DIESEL' && b.tipo_suprimento === 'COMBUSTIVEL_GASOLINA') return -1;
                       if (a.tipo_suprimento === 'COMBUSTIVEL_GASOLINA' && b.tipo_suprimento === 'COMBUSTIVEL_DIESEL') return 1;
+                      
+                      // Ordena por categoria de equipamento
                       return a.categoria_equipamento.localeCompare(b.categoria_equipamento);
                   });
                   
@@ -1364,7 +1367,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       
                       {/* Total da OM */}
                       <tr key={`${nomeOM}-total`} className="subtotal-om-row">
-                        <td colSpan={4} className="text-right font-bold">
+                        <td colSpan={4} className="text-right font-bold" style={{ backgroundColor: '#E8E8E8' }}>
                           VALOR TOTAL DO {nomeOM}
                         </td>
                         <td className="text-center font-bold" style={{ backgroundColor: '#E8E8E8' }}>{formatCurrency(totaisOM.total_gnd3)}</td>
