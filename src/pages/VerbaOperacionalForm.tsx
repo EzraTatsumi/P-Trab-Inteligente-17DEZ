@@ -1258,19 +1258,10 @@ const VerbaOperacionalForm = () => {
                                                                                 {registro.fase_atividade}
                                                                             </Badge>
                                                                         </div>
-                                                                        {/* APLICAÇÃO DO NOVO ESTILO */}
-                                                                        {isDifferentOmInView ? (
-                                                                            <div className="flex items-center gap-1 mt-1">
-                                                                                <AlertCircle className="h-4 w-4 text-red-600" />
-                                                                                <span className="text-sm font-medium text-red-600">
-                                                                                    Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
-                                                                                </span>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <p className="text-xs text-muted-foreground">
-                                                                                Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
-                                                                            </p>
-                                                                        )}
+                                                                        {/* Exibição simples da OM Detentora na Seção 4 */}
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                        </p>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="font-bold text-lg text-primary/80">
@@ -1342,6 +1333,9 @@ const VerbaOperacionalForm = () => {
                                         
                                         const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
                                         
+                                        // Verifica se a OM Detentora é diferente da OM Favorecida
+                                        const isDifferentOmInMemoria = registro.om_detentora !== registro.organizacao;
+
                                         return (
                                             <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                                                 
@@ -1357,9 +1351,19 @@ const VerbaOperacionalForm = () => {
                                                                 </Badge>
                                                             )}
                                                         </div>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Destino Recurso: {registro.om_detentora} (UG: {formatCodug(registro.ug_detentora)})
-                                                        </p>
+                                                        {/* NOVO LOCAL DO ALERTA VISUAL (Substituindo o p 1360) */}
+                                                        {isDifferentOmInMemoria ? (
+                                                            <div className="flex items-center gap-1 mt-1">
+                                                                <AlertCircle className="h-4 w-4 text-red-600" />
+                                                                <span className="text-sm font-medium text-red-600">
+                                                                    Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Destino Recurso: {registro.om_detentora} (UG: {formatCodug(registro.ug_detentora)})
+                                                            </p>
+                                                        )}
                                                     </div>
                                                     
                                                     <div className="flex items-center justify-end gap-2 shrink-0">
