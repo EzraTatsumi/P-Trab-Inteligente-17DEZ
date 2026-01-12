@@ -615,7 +615,7 @@ const VerbaOperacionalForm = () => {
                 quantidade_equipes: formData.quantidade_equipes,
                 valor_total_solicitado: formData.valor_total_solicitado,
                 
-                // Campos calculados (usando os valores sincronizados)
+                // Campos calculados
                 valor_nd_30: totals.totalND30,
                 valor_nd_39: totals.totalND39,
                 
@@ -1084,6 +1084,9 @@ const VerbaOperacionalForm = () => {
                                             const totalND30 = item.valor_nd_30;
                                             const totalND39 = item.valor_nd_39;
                                             
+                                            // Verifica se a OM Detentora é diferente da OM Favorecida
+                                            const isDifferentOmInView = item.om_detentora !== item.om_favorecida;
+
                                             return (
                                                 <Card 
                                                     key={item.tempId} 
@@ -1119,12 +1122,24 @@ const VerbaOperacionalForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
-                                                                <p className="font-medium">OM Destino Recurso:</p>
+                                                                {/* NOVO ESTILO APLICADO AQUI */}
+                                                                {isDifferentOmInView ? (
+                                                                    <div className="flex items-center gap-1 mt-1">
+                                                                        <AlertCircle className="h-4 w-4 text-red-600" />
+                                                                        <span className="text-sm font-medium text-red-600">
+                                                                            Destino Recurso: {item.om_detentora} ({formatCodug(item.ug_detentora)})
+                                                                        </span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="font-medium">OM Destino Recurso:</p>
+                                                                )}
                                                                 <p className="font-medium">Período / Equipes:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
-                                                                <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
+                                                                {!isDifferentOmInView && (
+                                                                    <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
+                                                                )}
                                                                 <p className="font-medium">{item.dias_operacao} dias / {item.quantidade_equipes} equipes</p>
                                                             </div>
                                                         </div>
@@ -1225,6 +1240,9 @@ const VerbaOperacionalForm = () => {
                                                     {omRegistros.map((registro) => {
                                                         const totalGeral = registro.valor_nd_30 + registro.valor_nd_39;
                                                         
+                                                        // Verifica se a OM Detentora é diferente da OM Favorecida
+                                                        const isDifferentOmInView = registro.om_detentora !== registro.organizacao;
+
                                                         return (
                                                             <Card 
                                                                 key={registro.id} 
@@ -1240,9 +1258,19 @@ const VerbaOperacionalForm = () => {
                                                                                 {registro.fase_atividade}
                                                                             </Badge>
                                                                         </div>
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
-                                                                        </p>
+                                                                        {/* APLICAÇÃO DO NOVO ESTILO */}
+                                                                        {isDifferentOmInView ? (
+                                                                            <div className="flex items-center gap-1 mt-1">
+                                                                                <AlertCircle className="h-4 w-4 text-red-600" />
+                                                                                <span className="text-sm font-medium text-red-600">
+                                                                                    Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                                </span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <p className="text-xs text-muted-foreground">
+                                                                                Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                            </p>
+                                                                        )}
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="font-bold text-lg text-primary/80">
