@@ -564,7 +564,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           }
           // Ajuste para garantir que as células mescladas não tenham valor na linha 2
           if (col === 'A' || col === 'B' || col === 'I') {
-              cell.value = '';
+              cell.value = 'xxx';
           }
       });
       
