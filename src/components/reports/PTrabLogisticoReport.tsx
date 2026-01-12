@@ -412,6 +412,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     const corSubtotal = 'FFD3D3D3'; // SOMA POR ND E GP DE DESPESA (Fundo cinza)
     const corTotalOM = 'FFE8E8E8'; // VALOR TOTAL DO OM (Fundo cinza muito claro)
     // -------------------------------------------
+    
+    // NOVOS OBJETOS DE PREENCHIMENTO (FILL)
+    const headerFillGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } }; // FFE8E8E8
+    const headerFillAzul = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } }; // FFB4C7E7
+    const headerFillLaranja = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } }; // FFF8CBAD
 
     try {
       const workbook = new ExcelJS.Workbook();
@@ -445,7 +450,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       addHeaderRow(ptrabData.comando_militar_area.toUpperCase());
       
       const omExtensoRow = worksheet.getRow(currentRow);
-      omExtensoRow.getCell(1).value = (ptrabData.nome_om_extenso || ptrabData.nome_om).toUpperCase();
+      omExtensoRow.getCell('A').value = (ptrabData.nome_om_extenso || ptrabData.nome_om).toUpperCase();
       omExtensoRow.getCell('A').font = titleFontStyle;
       omExtensoRow.getCell('A').alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
@@ -507,55 +512,53 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       const hdr1 = worksheet.getRow(headerRow1);
       const hdr2 = worksheet.getRow(headerRow2);
       
-      const headerStyle = {
-        font: headerFontStyle,
-        alignment: centerMiddleAlignment,
-        border: cellBorder
-      };
-      
-      // --- APLICAÇÃO DE ESTILOS E CORES EXPLÍCITAS ---
-      const headerFillGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } }; // FFE8E8E8
-      const headerFillAzul = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } }; // FFB4C7E7
-      const headerFillLaranja = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } }; // FFF8CBAD
-      
       const headerCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 
-      // 2️⃣ APLICAR ESTILOS NAS LINHAS (Garantindo que as células mescladas secundárias fiquem vazias)
+      // 4️⃣ Ajustar altura das linhas (ESSENCIAL p/ texto aparecer)
+      hdr1.height = 45;
+      hdr2.height = 35;
+
+      // 2️⃣ Aplicar estilos SEM `style =`
       headerCols.forEach(col => {
-          // Linha 1 (Âncora)
+          // Linha 1 – ÂNCORA
           const cell1 = hdr1.getCell(col);
-          cell1.style = headerStyle;
+          cell1.font = headerFontStyle;
+          cell1.alignment = centerMiddleAlignment;
           cell1.border = cellBorder;
-          if (col === 'A' || col === 'B' || col === 'I') {
+
+          if (['A', 'B', 'I'].includes(col)) {
               cell1.fill = headerFillGray;
-          } else if (col === 'C' || col === 'D' || col === 'E') {
+          } else if (['C', 'D', 'E'].includes(col)) {
               cell1.fill = headerFillAzul;
-          } else if (col === 'F' || col === 'G' || col === 'H') {
+          } else if (['F', 'G', 'H'].includes(col)) {
               cell1.fill = headerFillLaranja;
           }
-          
-          // Linha 2 (Secundária/Detalhe)
+
+          // Linha 2 – DETALHE
           const cell2 = hdr2.getCell(col);
-          cell2.style = headerStyle;
+          cell2.font = headerFontStyle;
+          cell2.alignment = centerMiddleAlignment;
           cell2.border = cellBorder;
-          
-          if (col === 'A' || col === 'B' || col === 'I') {
-              // Células mescladas verticalmente: Devem ser vazias e ter o fundo da âncora
-              cell2.value = ''; 
+
+          if (['A', 'B', 'I'].includes(col)) {
+              cell2.value = ''; // Explicitly clear value for merged cells
               cell2.fill = headerFillGray;
-          } else if (col === 'C' || col === 'D' || col === 'E') {
+          } else if (['C', 'D', 'E'].includes(col)) {
               cell2.fill = headerFillAzul;
-          } else if (col === 'F' || col === 'G' || col === 'H') {
+          } else if (['F', 'G', 'H'].includes(col)) {
               cell2.fill = headerFillLaranja;
           }
       });
       
-      // 3️⃣ SETAR VALORES SOMENTE NAS ÂNCORAS
+      // 3️⃣ Setar valores APÓS os estilos
       
       // Âncoras verticais (Linha 1)
       hdr1.getCell('A').value = 'DESPESAS';
       hdr1.getCell('B').value = 'OM (UGE)\nCODUG';
-      hdr1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG';
+      hdr1.getCell('I').value =
+        'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n' +
+        '(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\n' +
+        'OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG';
       
       // Âncoras horizontais (Linha 1)
       hdr1.getCell('C').value = 'NATUREZA DE DESPESA';
