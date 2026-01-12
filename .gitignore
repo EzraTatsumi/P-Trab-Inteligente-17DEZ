@@ -38,6 +38,8 @@ src/data/classeIIData.ts
 src/data/classeVIIData.ts
 src/data/classeVIIIData.ts
 src/data/classeIIIData.ts
+src/data/classeVIData.ts
+src/data/classeVData.ts
 src/assets/
 
 # EXCLUSÕES DE FUNCIONALIDADES FINALIZADAS
@@ -81,7 +83,7 @@ src/lib/creditUtils.ts
 
 # NOVAS EXCLUSÕES ADICIONAIS (UI e Páginas Estáticas)
 src/pages/UserProfilePage.tsx
-# REMOVIDO:src/components/reports/PTrabLogisticoReport.tsx
+src/components/reports/PTrabLogisticoReport.tsx
 src/components/reports/PTrabRacaoOperacionalReport.tsx
 src/pages/ClasseIForm.tsx
 src/pages/ClasseIIForm.tsx
