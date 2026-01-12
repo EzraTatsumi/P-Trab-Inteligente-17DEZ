@@ -497,27 +497,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       const headerRow1 = currentRow;
       const headerRow2 = currentRow + 1;
       
-      const hdr1 = worksheet.getRow(headerRow1);
-      hdr1.getCell('A').value = 'DESPESAS'; // ALTERADO AQUI
-      hdr1.getCell('B').value = 'OM (UGE)\nCODUG';
-      hdr1.getCell('C').value = 'NATUREZA DE DESPESA';
-      hdr1.getCell('F').value = 'COMBUSTÍVEL';
-      hdr1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG';
-      
-      // Mesclagens
+      // 1️⃣ MESCLAR PRIMEIRO
       worksheet.mergeCells(`A${headerRow1}:A${headerRow2}`);
       worksheet.mergeCells(`B${headerRow1}:B${headerRow2}`);
       worksheet.mergeCells(`C${headerRow1}:E${headerRow1}`);
       worksheet.mergeCells(`F${headerRow1}:H${headerRow1}`);
       worksheet.mergeCells(`I${headerRow1}:I${headerRow2}`);
       
+      const hdr1 = worksheet.getRow(headerRow1);
       const hdr2 = worksheet.getRow(headerRow2);
-      hdr2.getCell('C').value = '33.90.30';
-      hdr2.getCell('D').value = '33.90.39';
-      hdr2.getCell('E').value = 'TOTAL';
-      hdr2.getCell('F').value = 'LITROS';
-      hdr2.getCell('G').value = 'PREÇO\nUNITÁRIO';
-      hdr2.getCell('H').value = 'PREÇO\nTOTAL';
       
       const headerStyle = {
         font: headerFontStyle,
@@ -532,39 +520,54 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       
       const headerCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 
-      // Linha 1 do Cabeçalho (hdr1)
+      // 2️⃣ APLICAR ESTILOS NAS LINHAS (Garantindo que as células mescladas secundárias fiquem vazias)
       headerCols.forEach(col => {
-          const cell = hdr1.getCell(col);
-          cell.style = headerStyle;
-          cell.border = cellBorder;
+          // Linha 1 (Âncora)
+          const cell1 = hdr1.getCell(col);
+          cell1.style = headerStyle;
+          cell1.border = cellBorder;
           if (col === 'A' || col === 'B' || col === 'I') {
-              cell.fill = headerFillGray;
+              cell1.fill = headerFillGray;
           } else if (col === 'C' || col === 'D' || col === 'E') {
-              cell.fill = headerFillAzul;
-              cell.font = headerFontStyle; // Garante letra preta
+              cell1.fill = headerFillAzul;
           } else if (col === 'F' || col === 'G' || col === 'H') {
-              cell.fill = headerFillLaranja;
-              cell.font = headerFontStyle; // Garante letra preta
+              cell1.fill = headerFillLaranja;
+          }
+          
+          // Linha 2 (Secundária/Detalhe)
+          const cell2 = hdr2.getCell(col);
+          cell2.style = headerStyle;
+          cell2.border = cellBorder;
+          
+          if (col === 'A' || col === 'B' || col === 'I') {
+              // Células mescladas verticalmente: Devem ser vazias e ter o fundo da âncora
+              cell2.value = ''; 
+              cell2.fill = headerFillGray;
+          } else if (col === 'C' || col === 'D' || col === 'E') {
+              cell2.fill = headerFillAzul;
+          } else if (col === 'F' || col === 'G' || col === 'H') {
+              cell2.fill = headerFillLaranja;
           }
       });
-
-      // Linha 2 do Cabeçalho (hdr2)
-      headerCols.forEach(col => {
-          const cell = hdr2.getCell(col);
-          cell.style = headerStyle;
-          cell.border = cellBorder;
-          if (col === 'A' || col === 'B' || col === 'I') {
-              // CORREÇÃO: Garante que as células mescladas verticalmente na linha 2 fiquem vazias
-              cell.value = ''; 
-              cell.fill = headerFillGray;
-          } else if (col === 'C' || col === 'D' || col === 'E') {
-              cell.fill = headerFillAzul;
-              cell.font = headerFontStyle; // Garante letra preta
-          } else if (col === 'F' || col === 'G' || col === 'H') {
-              cell.fill = headerFillLaranja;
-              cell.font = headerFontStyle; // Garante letra preta
-          }
-      });
+      
+      // 3️⃣ SETAR VALORES SOMENTE NAS ÂNCORAS
+      
+      // Âncoras verticais (Linha 1)
+      hdr1.getCell('A').value = 'DESPESAS';
+      hdr1.getCell('B').value = 'OM (UGE)\nCODUG';
+      hdr1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG';
+      
+      // Âncoras horizontais (Linha 1)
+      hdr1.getCell('C').value = 'NATUREZA DE DESPESA';
+      hdr1.getCell('F').value = 'COMBUSTÍVEL';
+      
+      // Âncoras horizontais (Linha 2)
+      hdr2.getCell('C').value = '33.90.30';
+      hdr2.getCell('D').value = '33.90.39';
+      hdr2.getCell('E').value = 'TOTAL';
+      hdr2.getCell('F').value = 'LITROS';
+      hdr2.getCell('G').value = 'PREÇO\nUNITÁRIO';
+      hdr2.getCell('H').value = 'PREÇO\nTOTAL';
       
       currentRow = headerRow2 + 1;
 
@@ -718,7 +721,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 const omDetentora = registro.om_detentora || omDestinoRecurso;
                 const isDifferentOm = omDetentora !== omDestinoRecurso;
                 
-                // 1. Define o prefixo CLASSE X
                 let prefixoClasse = '';
                 if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
                     prefixoClasse = 'CLASSE V';
@@ -736,7 +738,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 
                 rowData.despesasValue = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
                 
-                // 2. Adiciona a OM Detentora se for diferente da OM de Destino
                 if (isDifferentOm) {
                     rowData.despesasValue += `\n${omDetentora}`;
                 }
@@ -746,7 +747,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 rowData.valorD = registro.valor_nd_39;
                 rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
                 
-                // 3. Prioriza o detalhamento customizado ou usa a função de memória unificada
                 if (registro.detalhamento_customizado) {
                     rowData.detalhamentoValue = registro.detalhamento_customizado;
                 } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
