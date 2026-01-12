@@ -763,34 +763,13 @@ const VerbaOperacionalForm = () => {
                     <CardContent>
                         <form onSubmit={handleStageCalculation} className="space-y-8">
                             
-                            {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
+                            {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO E FASE */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    1. Dados da Organização (OM de Destino do Recurso)
+                                    1. Dados da Atividade
                                 </h3>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-2 col-span-1">
-                                        <Label htmlFor="organizacao">OM de Destino do Recurso *</Label>
-                                        <OmSelector
-                                            selectedOmId={selectedOmId}
-                                            onChange={handleOmChange}
-                                            placeholder="Selecione a OM de Destino"
-                                            disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingVerbas.length > 0}
-                                            initialOmName={formData.organizacao}
-                                            initialOmUg={formData.ug}
-                                        />
-                                    </div>
-                                    <div className="space-y-2 col-span-1">
-                                        <Label htmlFor="ug">UG de Destino</Label>
-                                        <Input
-                                            id="ug"
-                                            value={formatCodug(formData.ug)}
-                                            disabled
-                                            className="bg-muted/50"
-                                        />
-                                    </div>
-                                    
                                     <div className="space-y-2 col-span-1">
                                         <Label htmlFor="fase_atividade">Fase da Atividade *</Label>
                                         <FaseAtividadeSelect
@@ -803,157 +782,157 @@ const VerbaOperacionalForm = () => {
                             </section>
 
                             {/* SEÇÃO 2: CONFIGURAR O ITEM (DIAS, EQUIPES, VALOR E ND) */}
-                            {isBaseFormReady && (
-                                <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        2. Configurar Item de Verba Operacional
-                                    </h3>
+                            <section className="space-y-4 border-b pb-6">
+                                <h3 className="text-lg font-semibold flex items-center gap-2">
+                                    2. Configurar Item de Verba Operacional
+                                </h3>
+                                
+                                <Card className="mt-6 bg-muted/50 rounded-lg p-4">
                                     
-                                    <Card className="mt-6 bg-muted/50 rounded-lg p-4">
-                                        
-                                        {/* Dados da Solicitação */}
-                                        <Card className="rounded-lg">
-                                            <CardHeader className="py-3">
-                                                <CardTitle className="text-base font-semibold">Dados da Solicitação</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="pt-2">
-                                                <div className="p-4 bg-background rounded-lg border">
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                        <div className="space-y-2 col-span-1">
-                                                            <Label htmlFor="dias_operacao">Período (Nr Dias) *</Label>
-                                                            <Input
-                                                                id="dias_operacao"
-                                                                type="number"
-                                                                min={1}
-                                                                value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
-                                                                onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
-                                                                required
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                                onKeyDown={handleEnterToNextField}
-                                                                onWheel={(e) => e.currentTarget.blur()}
-                                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-2 col-span-1">
-                                                            <Label htmlFor="quantidade_equipes">Quantidade de Equipes *</Label>
-                                                            <Input
-                                                                id="quantidade_equipes"
-                                                                type="number"
-                                                                min={1}
-                                                                value={formData.quantidade_equipes === 0 ? "" : formData.quantidade_equipes}
-                                                                onChange={(e) => setFormData({ ...formData, quantidade_equipes: parseInt(e.target.value) || 0 })}
-                                                                required
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                                onKeyDown={handleEnterToNextField}
-                                                                onWheel={(e) => e.currentTarget.blur()}
-                                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-2 col-span-1">
-                                                            <Label htmlFor="valor_total_solicitado">Valor Total Solicitado (R$) *</Label>
-                                                            <CurrencyInput
-                                                                id="valor_total_solicitado"
-                                                                rawDigits={rawTotalInput}
-                                                                onChange={(digits) => handleCurrencyChange('valor_total_solicitado', digits)}
-                                                                placeholder="Ex: 1.500,00"
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                                required
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                        
-                                        {/* Alocação de NDs (Card) - MODIFICADO PARA O ESTILO DA IMAGEM */}
-                                        <Card className="mt-4 rounded-lg p-4 bg-background">
-                                            <h4 className="font-semibold text-base mb-4">
-                                                Alocação de Natureza de Despesa (ND) (Valor Total: {formatCurrency(formData.valor_total_solicitado)})
-                                            </h4>
-                                            
-                                            {/* OM Destino Display (Replicando o estilo da imagem) */}
-                                            <div className="space-y-2 mb-4">
-                                                <Label>OM de Destino do Recurso *</Label>
-                                                <Input
-                                                    value={`${formData.organizacao} (${formatCodug(formData.ug)})`}
-                                                    readOnly
-                                                    disabled
-                                                    className="font-medium text-base h-10"
-                                                />
-                                                <p className="text-xs text-muted-foreground">
-                                                    A OM de destino é definida na Seção 1.
-                                                </p>
-                                            </div>
-                                            
-                                            <div className="grid grid-cols-2 gap-4">
-                                                {/* ND 30 (Material/Serviço) - CALCULADO */}
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="valor_nd_30">ND 33.90.30 (Material/Serviço)</Label>
-                                                    <div className="relative">
+                                    {/* Dados da Solicitação */}
+                                    <Card className="rounded-lg">
+                                        <CardHeader className="py-3">
+                                            <CardTitle className="text-base font-semibold">Dados da Solicitação</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-2">
+                                            <div className="p-4 bg-background rounded-lg border">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div className="space-y-2 col-span-1">
+                                                        <Label htmlFor="dias_operacao">Período (Nr Dias) *</Label>
                                                         <Input
-                                                            id="valor_nd_30"
-                                                            value={formatCurrency(formData.valor_nd_30)}
-                                                            readOnly
-                                                            disabled
-                                                            className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 h-12"
-                                                        />
-                                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Calculado por diferença (Total Solicitado - ND 39).
-                                                    </p>
-                                                </div>
-                                                
-                                                {/* ND 39 (Serviço) - EDITÁVEL */}
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="valor_nd_39">ND 33.90.39 (Serviço)</Label>
-                                                    <div className="relative">
-                                                        <CurrencyInput
-                                                            id="valor_nd_39"
-                                                            rawDigits={rawND39Input}
-                                                            onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
-                                                            placeholder="0,00"
+                                                            id="dias_operacao"
+                                                            type="number"
+                                                            min={1}
+                                                            value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
+                                                            onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
+                                                            required
                                                             disabled={!isPTrabEditable || isSaving}
-                                                            className="pl-12 text-lg h-12"
+                                                            onKeyDown={handleEnterToNextField}
+                                                            onWheel={(e) => e.currentTarget.blur()}
+                                                            className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                         />
-                                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Valor alocado para contratação de serviço.
-                                                    </p>
+                                                    <div className="space-y-2 col-span-1">
+                                                        <Label htmlFor="quantidade_equipes">Quantidade de Equipes *</Label>
+                                                        <Input
+                                                            id="quantidade_equipes"
+                                                            type="number"
+                                                            min={1}
+                                                            value={formData.quantidade_equipes === 0 ? "" : formData.quantidade_equipes}
+                                                            onChange={(e) => setFormData({ ...formData, quantidade_equipes: parseInt(e.target.value) || 0 })}
+                                                            required
+                                                            disabled={!isPTrabEditable || isSaving}
+                                                            onKeyDown={handleEnterToNextField}
+                                                            onWheel={(e) => e.currentTarget.blur()}
+                                                            className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2 col-span-1">
+                                                        <Label htmlFor="valor_total_solicitado">Valor Total Solicitado (R$) *</Label>
+                                                        <CurrencyInput
+                                                            id="valor_total_solicitado"
+                                                            rawDigits={rawTotalInput}
+                                                            onChange={(digits) => handleCurrencyChange('valor_total_solicitado', digits)}
+                                                            placeholder="Ex: 1.500,00"
+                                                            disabled={!isPTrabEditable || isSaving}
+                                                            required
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
-                                            
-                                            <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
-                                                <span className="font-bold text-sm">TOTAL ALOCADO:</span>
-                                                <span className={cn("font-extrabold text-lg", isAllocationCorrect ? "text-primary" : "text-destructive")}>
-                                                    {formatCurrency(calculos.totalGeral)}
-                                                </span>
-                                            </div>
-                                            
-                                            {!isAllocationCorrect && (
-                                                <p className="text-xs text-destructive mt-2 text-center">
-                                                    A soma das NDs deve ser igual ao Valor Total Solicitado ({formatCurrency(formData.valor_total_solicitado)}).
-                                                </p>
-                                            )}
-                                        </Card>
+                                        </CardContent>
+                                    </Card>
+                                    
+                                    {/* Alocação de NDs (Card) - MODIFICADO PARA O ESTILO DA IMAGEM */}
+                                    <Card className="mt-4 rounded-lg p-4 bg-background">
+                                        <h4 className="font-semibold text-base mb-4">
+                                            Alocação de Natureza de Despesa (ND) (Valor Total: {formatCurrency(formData.valor_total_solicitado)})
+                                        </h4>
                                         
-                                        {/* BOTÕES DE AÇÃO */}
-                                        <div className="flex justify-end gap-3 pt-4">
-                                            <Button 
-                                                type="submit" 
-                                                disabled={!isPTrabEditable || isSaving || !isCalculationReady}
-                                                className="w-full md:w-auto bg-primary hover:bg-primary/90"
-                                            >
-                                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                Salvar Item na Lista
-                                            </Button>
+                                        {/* OM Destino (OmSelector) - AGORA EDITÁVEL */}
+                                        <div className="space-y-2 mb-4">
+                                            <Label htmlFor="organizacao">OM de Destino do Recurso *</Label>
+                                            <OmSelector
+                                                selectedOmId={selectedOmId}
+                                                onChange={handleOmChange}
+                                                placeholder="Selecione a OM de Destino"
+                                                disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingVerbas.length > 0}
+                                                initialOmName={formData.organizacao}
+                                                initialOmUg={formData.ug}
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                UG de Destino: {formatCodug(formData.ug)}
+                                            </p>
                                         </div>
                                         
-                                    </Card> 
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {/* ND 30 (Material/Serviço) - CALCULADO */}
+                                            <div className="space-y-2">
+                                                <Label htmlFor="valor_nd_30">ND 33.90.30 (Material/Serviço)</Label>
+                                                <div className="relative">
+                                                    <Input
+                                                        id="valor_nd_30"
+                                                        value={formatCurrency(formData.valor_nd_30)}
+                                                        readOnly
+                                                        disabled
+                                                        className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 h-12"
+                                                    />
+                                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Calculado por diferença (Total Solicitado - ND 39).
+                                                </p>
+                                            </div>
+                                            
+                                            {/* ND 39 (Serviço) - EDITÁVEL */}
+                                            <div className="space-y-2">
+                                                <Label htmlFor="valor_nd_39">ND 33.90.39 (Serviço)</Label>
+                                                <div className="relative">
+                                                    <CurrencyInput
+                                                        id="valor_nd_39"
+                                                        rawDigits={rawND39Input}
+                                                        onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
+                                                        placeholder="0,00"
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        className="pl-12 text-lg h-12"
+                                                    />
+                                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Valor alocado para contratação de serviço.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
+                                            <span className="font-bold text-sm">TOTAL ALOCADO:</span>
+                                            <span className={cn("font-extrabold text-lg", isAllocationCorrect ? "text-primary" : "text-destructive")}>
+                                                {formatCurrency(calculos.totalGeral)}
+                                            </span>
+                                        </div>
+                                        
+                                        {!isAllocationCorrect && (
+                                            <p className="text-xs text-destructive mt-2 text-center">
+                                                A soma das NDs deve ser igual ao Valor Total Solicitado ({formatCurrency(formData.valor_total_solicitado)}).
+                                            </p>
+                                        )}
+                                    </Card>
                                     
-                                </section>
-                            )}
+                                    {/* BOTÕES DE AÇÃO */}
+                                    <div className="flex justify-end gap-3 pt-4">
+                                        <Button 
+                                            type="submit" 
+                                            disabled={!isPTrabEditable || isSaving || !isCalculationReady}
+                                            className="w-full md:w-auto bg-primary hover:bg-primary/90"
+                                        >
+                                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                            Salvar Item na Lista
+                                        </Button>
+                                    </div>
+                                    
+                                </Card> 
+                                
+                            </section>
                             
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
                             {itemsToDisplay.length > 0 && (
