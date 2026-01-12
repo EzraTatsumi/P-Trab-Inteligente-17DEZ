@@ -417,12 +417,14 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // Soma de todas as classes diversas (II, V, VI, VII, VIII, IX)
   const totalClassesDiversas = totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX;
     
-  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante) + Verba Operacional (ND 30/39)
-  const totalLogisticoGeral = totalClasseI + totalClassesDiversas + totalCombustivel + totalLubrificanteValor + totalVerbaOperacional; 
+  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
+  // REMOVIDO: totalVerbaOperacional
+  const totalLogisticoGeral = totalClasseI + totalClassesDiversas + totalCombustivel + totalLubrificanteValor; 
   
-  // Total Operacional (Diárias + Outros Operacionais)
+  // Total Operacional (Diárias + Verba Operacional + Outros Operacionais)
   const totalOutrosOperacionais = 0; // Placeholder para outros itens operacionais
-  const totalOperacional = totalDiarias + totalOutrosOperacionais;
+  // ADICIONADO: totalVerbaOperacional
+  const totalOperacional = totalDiarias + totalVerbaOperacional + totalOutrosOperacionais;
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
@@ -1085,21 +1087,10 @@ export const PTrabCostSummary = ({
                     </AccordionItem>
                   </Accordion>
                   
-                  {/* NOVO: Verba Operacional (ND 30/39) */}
-                  {totals.totalVerbaOperacional > 0 && (
-                    <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                        <span className="w-1/2 text-left font-semibold text-orange-600">Verba Operacional (ND 30/39)</span>
-                        <span className="w-1/4 text-right font-medium text-green-600">
-                            {formatCurrency(totals.totalVerbaOperacionalND30)}
-                        </span>
-                        <span className="w-1/4 text-right font-medium text-blue-600">
-                            {formatCurrency(totals.totalVerbaOperacionalND39)}
-                        </span>
-                    </div>
-                  )}
+                  {/* REMOVIDO: Verba Operacional (ND 30/39) - MOVIDO PARA ABA OPERACIONAL */}
                 </div>
 
-                {/* Aba Operacional (NOVO: Incluindo Diárias) */}
+                {/* Aba Operacional (NOVO: Incluindo Diárias e Verba Operacional) */}
                 <div className="space-y-3 border-l-4 border-blue-500 pl-3 pt-4">
                   <div className="flex items-center justify-between text-xs font-semibold text-blue-600 mb-2">
                     <div className="flex items-center gap-2">
@@ -1161,15 +1152,56 @@ export const PTrabCostSummary = ({
                     </AccordionItem>
                   </Accordion>
                   
-                  {/* Outros Operacionais (Placeholder) */}
-                  {totals.totalOperacional - totals.totalDiarias > 0 && (
+                  {/* NOVO: Verba Operacional (ND 30/39) - NEW LOCATION */}
+                  {totals.totalVerbaOperacional > 0 && (
+                    <Accordion type="single" collapsible className="w-full pt-1">
+                        <AccordionItem value="item-verba-operacional" className="border-b-0">
+                            <AccordionTrigger className="p-0 hover:no-underline">
+                                <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                                    <div className="flex items-center gap-1 text-foreground">
+                                        <ClipboardList className="h-3 w-3 text-blue-500" />
+                                        Verba Operacional
+                                    </div>
+                                    <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                        {formatCurrency(totals.totalVerbaOperacional)}
+                                    </span>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-1 pb-0">
+                                <div className="space-y-1 pl-4 text-[10px]">
+                                    <div className="flex justify-between text-muted-foreground pt-1">
+                                        <span className="w-1/2 text-left font-semibold">ND 33.90.30 (Material)</span>
+                                        <span className="w-1/4 text-right font-medium text-green-600">
+                                            {formatCurrency(totals.totalVerbaOperacionalND30)}
+                                        </span>
+                                        <span className="w-1/4 text-right font-medium text-background">
+                                            {/* Vazio */}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground pt-1">
+                                        <span className="w-1/2 text-left font-semibold">ND 33.90.39 (Serviço)</span>
+                                        <span className="w-1/4 text-right font-medium text-blue-600">
+                                            {formatCurrency(totals.totalVerbaOperacionalND39)}
+                                        </span>
+                                        <span className="w-1/4 text-right font-medium text-background">
+                                            {/* Vazio */}
+                                        </span>
+                                    </div>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                  )}
+                  
+                  {/* Outros Operacionais (Placeholder) - Adjusted logic */}
+                  {totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional > 0 && (
                     <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-border/50 mt-1">
                         <span className="w-1/2 text-left">Outros Itens Operacionais</span>
                         <span className="w-1/4 text-right font-medium">
                             {/* Vazio */}
                         </span>
                         <span className="w-1/4 text-right font-medium">
-                            {formatCurrency(totals.totalOperacional - totals.totalDiarias)}
+                            {formatCurrency(totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional)}
                         </span>
                     </div>
                   )}
