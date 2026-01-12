@@ -44,9 +44,21 @@ export const YearManagementDialog: React.FC<YearManagementDialogProps> = ({
   const [yearToDelete, setYearToDelete] = useState<number | null>(null);
 
   const nextYear = currentYear + 1;
+  
+  // CORREÇÃO: Lógica de validação para lidar com NaN e garantir que o ano seja futuro e único.
   const isTargetYearValid = useMemo(() => {
     const year = parseInt(targetYearInput);
-    return !isNaN(year) && year > currentYear && !availableYears.includes(year);
+    
+    // 1. Deve ser um número válido
+    if (isNaN(year)) return false;
+    
+    // 2. Deve ser um ano futuro (maior que o ano atual)
+    if (year <= currentYear) return false;
+    
+    // 3. Não pode já existir
+    if (availableYears.includes(year)) return false;
+    
+    return true;
   }, [targetYearInput, currentYear, availableYears]);
 
   const handleCopy = () => {
@@ -133,12 +145,12 @@ export const YearManagementDialog: React.FC<YearManagementDialogProps> = ({
                 <Label htmlFor="target-year">Criar para (Ano de Destino)</Label>
                 <Input
                   id="target-year"
-                  type="text" // Alterado para 'text' para remover setas e comportamento de setas direcionais
-                  inputMode="numeric" // Sugere teclado numérico em dispositivos móveis
-                  pattern="[0-9]*" // Sugere apenas dígitos
+                  type="text" 
+                  inputMode="numeric" 
+                  pattern="[0-9]*" 
+                  // CORREÇÃO: Se targetYearInput for vazio, exibe vazio.
                   value={targetYearInput}
                   onChange={(e) => {
-                    // Filtra a entrada para aceitar apenas dígitos
                     const value = e.target.value.replace(/[^0-9]/g, '');
                     setTargetYearInput(value);
                   }}
@@ -148,7 +160,8 @@ export const YearManagementDialog: React.FC<YearManagementDialogProps> = ({
               </div>
             </div>
             
-            {!isTargetYearValid && targetYearInput.length > 0 && (
+            {/* CORREÇÃO: Exibe a mensagem de erro apenas se houver tentativa de entrada */}
+            {targetYearInput.length > 0 && !isTargetYearValid && (
               <p className="text-sm text-destructive flex items-center gap-1">
                 <AlertTriangle className="h-4 w-4" />
                 O ano de destino deve ser futuro e não pode já existir.
