@@ -1020,7 +1020,7 @@ const VerbaOperacionalForm = () => {
                                                                 value={formatCurrency(formData.valor_nd_39)}
                                                                 readOnly
                                                                 disabled
-                                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 h-12"
+                                                                className="pl-12 text-lg font-bold bg-blue-500/10 text-blue-600 disabled:opacity-100 h-12"
                                                             />
                                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                                         </div>
@@ -1151,7 +1151,7 @@ const VerbaOperacionalForm = () => {
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
-                                                VALOR TOTAL PENDENTE
+                                                VALOR TOTAL DA OM
                                             </span>
                                             <span className="font-extrabold text-xl text-foreground">
                                                 {formatCurrency(isStagingUpdate ? stagedUpdate!.totalGeral : totalPendingVerbas)}
