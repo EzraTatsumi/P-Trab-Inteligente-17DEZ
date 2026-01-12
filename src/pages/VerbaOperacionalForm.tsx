@@ -845,10 +845,10 @@ const VerbaOperacionalForm = () => {
                 <Card>
                     <CardHeader>
                         <CardTitle>
-                            Verba Operacional (ND 30/39)
+                            Verba Operacional
                         </CardTitle>
                         <CardDescription>
-                            Solicitação de recursos para despesas operacionais diversas (Verba Operacional).
+                            Solicitação de recursos para despesas operacionais diversas.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
