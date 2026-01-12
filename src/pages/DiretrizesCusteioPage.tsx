@@ -246,21 +246,35 @@ const DiretrizesCusteioPage = () => {
 
       const years = data ? data.map(d => d.ano_referencia) : [];
       
-      // Garante que o ano atual (calendário) e o ano padrão (se existir) estejam na lista
-      const uniqueYears = Array.from(new Set([...years, currentYear, defaultYearId || 0])).filter(y => y > 0).sort((a, b) => b - a);
+      // Lógica de inclusão do ano atual:
+      // Inclui o currentYear APENAS se:
+      // 1. Ele for o defaultYearId (para garantir que o padrão seja editável)
+      // 2. OU se não houver NENHUM ano salvo (fallback para o default)
+      const yearsToInclude = new Set(years);
+      
+      if (defaultYearId && !yearsToInclude.has(defaultYearId)) {
+          yearsToInclude.add(defaultYearId);
+      }
+      
+      // Se não houver NENHUM ano salvo (years.length === 0), adiciona o ano atual como fallback
+      if (years.length === 0 && !yearsToInclude.has(currentYear)) {
+          yearsToInclude.add(currentYear);
+      }
+      
+      const uniqueYears = Array.from(yearsToInclude).filter(y => y > 0).sort((a, b) => b - a);
       setAvailableYears(uniqueYears);
 
-      // Determine the year to select: Default year > Most recent available year > Current year
+      // Determine the year to select: Default year > Most recent available year with data > Current year (fallback)
       let yearToSelect = currentYear;
       
       if (defaultYearId && uniqueYears.includes(defaultYearId)) {
           yearToSelect = defaultYearId;
-      } else if (uniqueYears.length > 0) {
-          yearToSelect = uniqueYears[0];
+      } else if (years.length > 0) {
+          yearToSelect = Math.max(...years); // Seleciona o ano mais recente que REALMENTE tem dados
       }
       
       // Only update selectedYear if it's different from the current state to avoid unnecessary re-renders/re-fetches
-      setSelectedYear(prevYear => prevYear !== yearToSelect ? yearToSelect : prevYear);
+      setSelectedYear(prevYear => prevYear !== yearToSelect ? yearToSelect : yearToSelect);
 
     } catch (error: any) {
       console.error("Erro ao carregar anos disponíveis:", error);
@@ -1260,6 +1274,14 @@ const DiretrizesCusteioPage = () => {
                     <span className="text-xs text-gray-500 ml-2">(Selecione este ano para editar o padrão)</span>
                   )}
                 </p>
+                
+                {/* NOVO AVISO DE FALLBACK */}
+                {availableYears.length === 1 && availableYears[0] === currentYear && !diretrizes.id && (
+                    <div className="mt-3 p-3 border border-yellow-500 bg-yellow-50 text-sm rounded-md">
+                        <p className="font-semibold text-yellow-700">Aviso:</p>
+                        <p className="text-yellow-700">Nenhum ano de referência cadastrado. Usando dados padrão iniciais para o ano {currentYear}. Salve para persistir.</p>
+                    </div>
+                )}
               </div>
 
               {/* SEÇÃO CLASSE I - ALIMENTAÇÃO */}
