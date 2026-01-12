@@ -1423,7 +1423,6 @@ const VerbaOperacionalForm = () => {
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                            <AlertDialogCancel disabled={handleDeleteMutation.isPending}>Cancelar</AlertDialogCancel>
                             <AlertDialogAction 
                                 onClick={() => registroToDelete && handleDeleteMutation.mutate(registroToDelete.id)}
                                 disabled={handleDeleteMutation.isPending}
@@ -1432,6 +1431,7 @@ const VerbaOperacionalForm = () => {
                                 {handleDeleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                 Excluir
                             </AlertDialogAction>
+                            <AlertDialogCancel disabled={handleDeleteMutation.isPending}>Cancelar</AlertDialogCancel>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
