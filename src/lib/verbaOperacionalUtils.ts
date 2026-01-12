@@ -59,12 +59,9 @@ export const generateVerbaOperacionalMemoriaCalculo = (
         dias_operacao, 
         quantidade_equipes, 
         organizacao, 
-        ug, 
         fase_atividade,
         valor_nd_30,
         valor_nd_39,
-        om_detentora,
-        ug_detentora,
     } = data;
     
     const omPreposition = getOmPreposition(organizacao);
@@ -96,10 +93,9 @@ export const generateVerbaOperacionalMemoriaCalculo = (
     // CABEÇALHO
     const header = `${ndPrefix} - Solicitação de Verba Operacional para ${quantidade_equipes} ${equipeText} ${omPreposition} ${organizacao}, durante ${dias_operacao} ${diaText} de ${faseFormatada}, ${despesasDescricao}`;
 
-    // Detalhamento simplificado
+    // Detalhamento simplificado com a nova instrução
     const detalhamento = `
-OM Favorecida: ${organizacao} (UG: ${formatCodug(ug)})
-OM Destino Recurso: ${om_detentora} (UG: ${formatCodug(ug_detentora)})
+O recurso precisa ser solicitado na Gestão Tesouro 0001, na ação 2866 (ação de caráter sigiloso).
 
 Alocação:
 - ND 33.90.30 (Material/Serviço): ${formatCurrency(valor_nd_30)}
