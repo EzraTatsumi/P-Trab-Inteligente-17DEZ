@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Input, InputProps } from "@/components/ui/input";
 import { formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
@@ -21,10 +23,11 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
     // Sync internal state when external value prop changes (e.g., initial load or reset)
     useEffect(() => {
       // Only update if the current numeric value derived from rawDigits doesn't match the prop value
-      if (numericValue !== value) {
+      // We use a small tolerance check here to prevent infinite loops due to floating point arithmetic
+      if (Math.abs(numericValue - value) > 0.001) {
         setRawDigits(numberToRawDigits(value));
       }
-    }, [value]);
+    }, [value, numericValue]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = e.target.value;
@@ -42,13 +45,14 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
     }, [onChange]);
 
     const handleInputBlur = useCallback(() => {
-      // No need for complex reformatting on blur, as formatCurrencyInput handles it automatically.
-      // We just ensure the parent state is updated (already done in handleInputChange).
-      // If the input is empty, we should ensure the value is 0.
+      // If the input is empty (rawDigits is empty), ensure the parent state is 0
       if (rawDigits.length === 0 && numericValue !== 0) {
         onChange(0);
       }
     }, [rawDigits, numericValue, onChange]);
+    
+    // Determine the display value: if rawDigits is empty, show empty string, otherwise show formatted value without R$
+    const displayValue = rawDigits.length === 0 ? '' : formatted.replace('R$ ', '');
 
     return (
       <div className="relative">
@@ -56,7 +60,7 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
           ref={ref}
           type="text"
           inputMode="decimal"
-          value={formatted} // Use the formatted string for display
+          value={displayValue} // Use the formatted string for display
           onChange={handleInputChange}
           onBlur={handleInputBlur}
           placeholder={placeholder}

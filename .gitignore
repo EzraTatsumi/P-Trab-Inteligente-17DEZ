@@ -111,7 +111,7 @@ src/components/ScrollIndicatorButton.tsx
 src/pages/Index.tsx
 src/pages/NotFound.tsx
 src/components/FeedbackDialog.tsx
-src/components/CurrencyInput.tsx
+# src/components/CurrencyInput.tsx # REMOVIDO DO IGNORE
 src/components/RefLPCFormSection.tsx
 src/components/OmUploadConfirmDialog.tsx
 src/components/ConsolidationNumberDialog.tsx
