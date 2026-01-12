@@ -94,6 +94,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     { data: classeVIIIRemontaData, error: classeVIIIRemontaError },
     { data: classeIXData, error: classeIXError }, // NOVO
     { data: diariaData, error: diariaError }, // NOVO: Diárias
+    { data: verbaOperacionalData, error: verbaOperacionalError }, // NOVO: Verba Operacional
   ] = await Promise.all([
     supabase
       .from('classe_ii_registros')
@@ -128,6 +129,10 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       // CORRIGIDO: Buscando valor_nd_15 (total geral) e valor_taxa_embarque (para detalhamento)
       .select('valor_total, valor_nd_15, valor_taxa_embarque, quantidade, dias_operacao') 
       .eq('p_trab_id', ptrabId),
+    supabase // NOVO FETCH
+      .from('verba_operacional_registros')
+      .select('valor_nd_30, valor_nd_39, valor_total_solicitado')
+      .eq('p_trab_id', ptrabId),
   ]);
 
   if (classeIIError) throw classeIIError;
@@ -138,6 +143,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   if (classeVIIIRemontaError) console.error("Erro ao carregar Classe VIII Remonta:", classeVIIIRemontaError);
   if (classeIXError) console.error("Erro ao carregar Classe IX:", classeIXError); // NOVO
   if (diariaError) console.error("Erro ao carregar Diárias:", diariaError); // NOVO
+  if (verbaOperacionalError) console.error("Erro ao carregar Verba Operacional:", verbaOperacionalError); // NEW ERROR CHECK
   
   const allClasseItemsData = [
     ...(classeIIData || []),
@@ -382,9 +388,23 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   
   // O total da Diária (ND 33.90.15) é a soma das duas subdivisões
   const totalDiarias = totalDiariasND15_TaxaEmbarque + totalDiariasND15_DiariaBase; 
+  
+  // 5. Processamento de Verba Operacional (ND 33.90.30 / 33.90.39)
+  let totalVerbaOperacionalND30 = 0;
+  let totalVerbaOperacionalND39 = 0;
+  let totalVerbaOperacional = 0;
+  
+  if (!verbaOperacionalError) {
+      (verbaOperacionalData || []).forEach(record => {
+          totalVerbaOperacionalND30 += Number(record.valor_nd_30 || 0);
+          totalVerbaOperacionalND39 += Number(record.valor_nd_39 || 0);
+          // O total da verba operacional é a soma das NDs alocadas
+          totalVerbaOperacional += Number(record.valor_nd_30 || 0) + Number(record.valor_nd_39 || 0);
+      });
+  }
     
-  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
-  const totalLogisticoGeral = totalClasseI + totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX + totalCombustivel + totalLubrificanteValor;
+  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante) + Verba Operacional (ND 30/39)
+  const totalLogisticoGeral = totalClasseI + totalClassesDiversas + totalClasseIII + totalVerbaOperacional; 
   
   // Total Operacional (Diárias + Outros Operacionais)
   const totalOutrosOperacionais = 0; // Placeholder para outros itens operacionais
@@ -455,6 +475,11 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalDiariasND30: totalDiariasND15_DiariaBase, // Diárias Base (ND 15)
     totalMilitaresDiarias,
     totalDiasViagem, // Novo: Total de dias de viagem
+    
+    // NOVO: Verba Operacional
+    totalVerbaOperacional,
+    totalVerbaOperacionalND30,
+    totalVerbaOperacionalND39,
   };
 };
 
@@ -530,6 +555,10 @@ export const PTrabCostSummary = ({
       totalDiariasND30: 0, // Diárias (valor principal)
       totalMilitaresDiarias: 0,
       totalDiasViagem: 0, // Novo: Total de dias de viagem
+      // NOVO: Verba Operacional
+      totalVerbaOperacional: 0,
+      totalVerbaOperacionalND30: 0,
+      totalVerbaOperacionalND39: 0,
     },
   });
   
@@ -1042,8 +1071,18 @@ export const PTrabCostSummary = ({
                     </AccordionItem>
                   </Accordion>
                   
-                  {/* Outras Abas Logísticas (Placeholder) */}
-                  {/* REMOVIDO: Não haverá valores para Classes IV e X */}
+                  {/* NOVO: Verba Operacional (ND 30/39) */}
+                  {totals.totalVerbaOperacional > 0 && (
+                    <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                        <span className="w-1/2 text-left font-semibold text-orange-600">Verba Operacional (ND 30/39)</span>
+                        <span className="w-1/4 text-right font-medium text-green-600">
+                            {formatCurrency(totals.totalVerbaOperacionalND30)}
+                        </span>
+                        <span className="w-1/4 text-right font-medium text-blue-600">
+                            {formatCurrency(totals.totalVerbaOperacionalND39)}
+                        </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Aba Operacional (NOVO: Incluindo Diárias) */}

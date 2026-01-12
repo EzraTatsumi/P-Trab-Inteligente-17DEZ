@@ -60,7 +60,7 @@ const PTrabForm = () => {
     { id: "servico-grafico", name: "Serviço Gráfico" },
     { id: "passagem-aerea", name: "Passagem Aérea" },
     { id: "diaria", name: "Pagamento de Diárias" },
-    { id: "outros", name: "Verba Operacional" },
+    { id: "verba-operacional", name: "Verba Operacional" }, // ID alterado para 'verba-operacional'
   ];
 
   // --- Lógica de Busca de Créditos (TanStack Query) ---
@@ -190,6 +190,8 @@ const PTrabForm = () => {
       navigate(`/ptrab/classe-ix?ptrabId=${ptrabId}`);
     } else if (itemId === 'diaria') {
       navigate(`/ptrab/diaria?ptrabId=${ptrabId}`);
+    } else if (itemId === 'verba-operacional') {
+      navigate(`/ptrab/verba-operacional?ptrabId=${ptrabId}`);
     } else {
       // Trata itens operacionais não implementados
       toast.info(`Funcionalidade '${itemName}' (Operacional) ainda não implementada.`);
