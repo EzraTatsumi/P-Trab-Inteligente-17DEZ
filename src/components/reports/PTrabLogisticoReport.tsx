@@ -371,7 +371,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, valorTotalSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo]);
+  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, valorTotalSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo, totalDiesel, totalGasolina, totalValorCombustivelFinal]);
 
   // NOVO: Função para abrir o diálogo de impressão do navegador
   const handlePrint = () => {
@@ -474,7 +474,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         
         row.getCell(1).value = {
           richText: [
-            { text: label, font: titleFontStyle },
+            { text: label, font: headerFontStyle },
             { text: ` ${value}`, font: { name: 'Arial', size: 11, bold: false } }
           ]
         };
@@ -577,6 +577,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         const grupo = gruposPorOM[nomeOM];
         const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
         
+        const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
+        
         if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasClasseV.length === 0 && grupo.linhasClasseVI.length === 0 && grupo.linhasClasseVII.length === 0 && grupo.linhasClasseVIII.length === 0 && grupo.linhasClasseIX.length === 0 && grupo.linhasClasseIII.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivel).length === 0)) {
           return;
         }
@@ -609,7 +611,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         ];
 
         // Renderizar todas as linhas de despesa (I, II, III, V-IX)
-        allExpenseLines.forEach((linha, index) => {
+        allExpenseLines.forEach((linha) => {
             const row = worksheet.getRow(currentRow);
             
             // Type guards to determine the type of line
@@ -1391,86 +1393,26 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         row.getCell('I').border = cellBorder;
                         
                         currentRow++;
-                    });
+                    }),
                     
                     // Subtotal da OM
-                    const subtotalRow = worksheet.getRow(currentRow);
-                    subtotalRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
-                    worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
-                    subtotalRow.getCell('A').alignment = rightMiddleAlignment;
-                    subtotalRow.getCell('A').font = headerFontStyle;
-                    subtotalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
-                    subtotalRow.getCell('A').border = cellBorder;
-                    
-                    subtotalRow.getCell('C').value = totaisOM.total_33_90_30;
-                    subtotalRow.getCell('C').alignment = dataCenterMonetaryAlignment;
-                    subtotalRow.getCell('C').font = headerFontStyle;
-                    subtotalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-                    subtotalRow.getCell('C').border = cellBorder;
-                    subtotalRow.getCell('C').numFmt = 'R$ #,##0.00';
-                    
-                    subtotalRow.getCell('D').value = totaisOM.total_33_90_39;
-                    subtotalRow.getCell('D').alignment = dataCenterMonetaryAlignment;
-                    subtotalRow.getCell('D').font = headerFontStyle;
-                    subtotalRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-                    subtotalRow.getCell('D').border = cellBorder;
-                    subtotalRow.getCell('D').numFmt = 'R$ #,##0.00';
-                    
-                    subtotalRow.getCell('E').value = totaisOM.total_parte_azul;
-                    subtotalRow.getCell('E').alignment = dataCenterMonetaryAlignment;
-                    subtotalRow.getCell('E').font = headerFontStyle;
-                    subtotalRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
-                    subtotalRow.getCell('E').border = cellBorder;
-                    subtotalRow.getCell('E').numFmt = 'R$ #,##0.00';
-                    
-                    // Combustível (Apenas na RM) - CORRIGIDO: Remove a verificação 'isRM' e confia no valor > 0
-                    
-                    subtotalRow.getCell('F').value = totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
-                    subtotalRow.getCell('F').alignment = dataCenterMiddleAlignment;
-                    subtotalRow.getCell('F').font = headerFontStyle;
-                    subtotalRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-                    subtotalRow.getCell('F').border = cellBorder;
-                    
-                    subtotalRow.getCell('G').value = totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
-                    subtotalRow.getCell('G').alignment = dataCenterMiddleAlignment;
-                    subtotalRow.getCell('G').font = headerFontStyle;
-                    subtotalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-                    subtotalRow.getCell('G').border = cellBorder;
-                    
-                    subtotalRow.getCell('H').value = totaisOM.total_combustivel > 0 ? totaisOM.total_combustivel : '';
-                    subtotalRow.getCell('H').alignment = dataCenterMonetaryAlignment;
-                    subtotalRow.getCell('H').font = headerFontStyle;
-                    subtotalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
-                    subtotalRow.getCell('H').border = cellBorder;
-                    subtotalRow.getCell('H').numFmt = 'R$ #,##0.00';
-                    
-                    subtotalRow.getCell('I').value = '';
-                    subtotalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
-                    subtotalRow.getCell('I').border = cellBorder;
-                    
-                    currentRow++;
+                    <tr key={`subtotal-${nomeOM}`} className="subtotal-row">
+                      <td colSpan={2} className="text-right font-bold" style={{ backgroundColor: '#D3D3D3' }}>SOMA POR ND E GP DE DESPESA</td>
+                      <td className="col-nd text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_30)}</td>
+                      <td className="col-nd text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_33_90_39)}</td>
+                      <td className="col-nd text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totaisOM.total_parte_azul)}</td>
+                      <td className="col-combustivel text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : ''}</td>
+                      <td className="col-combustivel text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : ''}</td>
+                      <td className="col-combustivel text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totaisOM.total_combustivel > 0 ? formatCurrency(totaisOM.total_combustivel) : ''}</td>
+                      <td style={{ backgroundColor: '#D3D3D3' }}></td>
+                    </tr>,
                     
                     // Total da OM
-                    const totalOMRow = worksheet.getRow(currentRow);
-                    totalOMRow.getCell('A').value = `VALOR TOTAL DO ${nomeOM}`;
-                    worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
-                    totalOMRow.getCell('A').alignment = rightMiddleAlignment;
-                    totalOMRow.getCell('A').font = headerFontStyle;
-                    totalOMRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
-                    totalOMRow.getCell('A').border = cellBorder;
-                    
-                    totalOMRow.getCell('E').value = totaisOM.total_gnd3;
-                    totalOMRow.getCell('E').alignment = dataCenterMonetaryAlignment;
-                    totalOMRow.getCell('E').font = headerFontStyle;
-                    totalOMRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
-                    totalOMRow.getCell('E').border = cellBorder;
-                    totalOMRow.getCell('E').numFmt = 'R$ #,##0.00';
-                    
-                    worksheet.mergeCells(`F${currentRow}:I${currentRow}`);
-                    totalOMRow.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
-                    totalOMRow.getCell('F').border = cellBorder;
-                    
-                    currentRow++;
+                    <tr key={`total-${nomeOM}`} className="subtotal-om-row">
+                      <td colSpan={4} className="text-right font-bold" style={{ backgroundColor: '#E8E8E8' }}>VALOR TOTAL DO {nomeOM}</td>
+                      <td className="col-nd text-center font-bold" style={{ backgroundColor: '#E8E8E8' }}>{formatCurrency(totaisOM.total_gnd3)}</td>
+                      <td colSpan={4} style={{ backgroundColor: '#E8E8E8' }}></td>
+                    </tr>
                   ];
                 }),
                 
@@ -1491,16 +1433,16 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     // Linha 1: Soma detalhada por ND e GP de Despesa
                     <tr key="total-geral-soma-row" className="total-geral-soma-row">
                       <td colSpan={2} className="text-right font-bold">SOMA POR ND E GP DE DESPESA</td>
-                      <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_30)}</td>
-                      <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_39)}</td>
-                      <td className="text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_GND3_ND)}</td>
+                      <td className="col-nd text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_30)}</td>
+                      <td className="col-nd text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_33_90_39)}</td>
+                      <td className="col-nd text-center font-bold" style={{ backgroundColor: '#B4C7E7' }}>{formatCurrency(totalGeral_GND3_ND)}</td>
                       {/* F: LITROS DIESEL */}
-                      <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalDieselLitrosGeral > 0 ? `${formatNumber(totalDieselLitrosGeral)} L OD` : ''}</td>
+                      <td className="col-combustivel text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalDieselLitrosGeral > 0 ? `${formatNumber(totalDieselLitrosGeral)} L OD` : ''}</td>
                       {/* G: LITROS GASOLINA */}
-                      <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalGasolinaLitrosGeral > 0 ? `${formatNumber(totalGasolinaLitrosGeral)} L GAS` : ''}</td>
+                      <td className="col-combustivel text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalGasolinaLitrosGeral > 0 ? `${formatNumber(totalGasolinaLitrosGeral)} L GAS` : ''}</td>
                       {/* H: PREÇO TOTAL COMBUSTÍVEL */}
-                      <td className="text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalValorCombustivelFinalGeral > 0 ? formatCurrency(totalValorCombustivelFinalGeral) : ''}</td>
-                      <td style={{ backgroundColor: 'white' }}></td>
+                      <td className="col-combustivel text-center font-bold" style={{ backgroundColor: '#F8CBAD' }}>{totalValorCombustivelFinalGeral > 0 ? formatCurrency(totalValorCombustivelFinalGeral) : ''}</td>
+                      <td style={{ backgroundColor: '#D3D3D3' }}></td>
                     </tr>,
 
                     // Linha 2: Valor Total
