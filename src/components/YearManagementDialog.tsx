@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,18 +10,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Copy, AlertTriangle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { cn } from '@/lib/utils';
+import { Loader2, Trash2, Copy, Settings } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface YearManagementDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   availableYears: number[];
-  currentYear: number;
-  onCopy: (sourceYear: number, targetYear: number) => void;
-  onDelete: (year: number) => void;
+  defaultYear: number | null;
+  onCopy: (sourceYear: number, targetYear: number) => Promise<void>;
+  onDelete: (year: number) => Promise<void>;
   loading: boolean;
 }
 
@@ -29,192 +28,193 @@ export const YearManagementDialog: React.FC<YearManagementDialogProps> = ({
   open,
   onOpenChange,
   availableYears,
-  currentYear,
+  defaultYear,
   onCopy,
   onDelete,
   loading,
 }) => {
-  const [selectedAction, setSelectedAction] = useState<'copy' | 'delete'>('copy');
+  const currentYear = new Date().getFullYear();
+  const nextYear = currentYear + 1;
   
-  // Copy/Create State
-  const [sourceYear, setSourceYear] = useState<number>(availableYears[0] || currentYear);
-  const [targetYearInput, setTargetYearInput] = useState<string>(String(currentYear + 1));
+  // Inicializa sourceYear com o ano mais recente disponível ou o ano atual
+  const initialSourceYear = availableYears.length > 0 ? Math.max(...availableYears) : currentYear;
   
-  // Delete State
+  const [sourceYear, setSourceYear] = useState<number | null>(initialSourceYear);
+  const [targetYear, setTargetYear] = useState<number | null>(nextYear);
   const [yearToDelete, setYearToDelete] = useState<number | null>(null);
 
-  const nextYear = currentYear + 1;
-  const isTargetYearValid = useMemo(() => {
-    const year = parseInt(targetYearInput);
-    return !isNaN(year) && year > currentYear && !availableYears.includes(year);
-  }, [targetYearInput, currentYear, availableYears]);
-
-  const handleCopy = () => {
-    const targetYear = parseInt(targetYearInput);
-    if (isTargetYearValid) {
-      onCopy(sourceYear, targetYear);
+  useEffect(() => {
+    if (open) {
+      // Reset states when opening the dialog
+      setSourceYear(availableYears.length > 0 ? Math.max(...availableYears) : currentYear);
+      setTargetYear(nextYear);
+      setYearToDelete(null);
     }
+  }, [open, availableYears]);
+
+  const handleCopy = async () => {
+    if (!sourceYear || !targetYear) {
+      toast.error("Selecione o ano de origem e o ano de destino.");
+      return;
+    }
+    if (sourceYear === targetYear) {
+      toast.error("O ano de origem e o ano de destino devem ser diferentes.");
+      return;
+    }
+    if (availableYears.includes(targetYear)) {
+      toast.error(`O ano ${targetYear} já possui diretrizes cadastradas. Exclua-o primeiro.`);
+      return;
+    }
+    
+    await onCopy(sourceYear, targetYear);
+    onOpenChange(false);
   };
 
-  const handleDelete = () => {
-    if (yearToDelete && yearToDelete !== currentYear) {
-      onDelete(yearToDelete);
+  const handleDelete = async () => {
+    if (!yearToDelete) {
+      toast.error("Selecione o ano que deseja excluir.");
+      return;
     }
+    if (yearToDelete === defaultYear) {
+      toast.error("Não é possível excluir o ano definido como padrão.");
+      return;
+    }
+    
+    await onDelete(yearToDelete);
+    onOpenChange(false);
   };
   
-  const handleOpen = (action: 'copy' | 'delete') => {
-    setSelectedAction(action);
-    setSourceYear(availableYears[0] || currentYear);
-    setTargetYearInput(String(currentYear + 1));
-    setYearToDelete(availableYears.length > 0 ? availableYears[0] : null);
-    onOpenChange(true);
+  const handleTargetYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    
+    if (value === "") {
+        setTargetYear(null);
+    } else {
+        // Remove caracteres não numéricos e tenta parsear
+        const cleanedValue = value.replace(/\D/g, '');
+        const numValue = parseInt(cleanedValue);
+        
+        if (!isNaN(numValue)) {
+            setTargetYear(numValue);
+        } else if (cleanedValue === "") {
+            // Se o usuário apagou tudo, mas o parseInt falhou (ex: só tinha um '-' ou '+')
+            setTargetYear(null);
+        }
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px]">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Copy className="h-5 w-5 text-primary" />
-            Gerenciar Anos de Diretriz
+            <Settings className="h-5 w-5" /> Gerenciar Anos de Diretriz
           </DialogTitle>
           <DialogDescription>
-            Crie uma nova diretriz copiando uma existente ou exclua uma diretriz antiga.
+            Crie novos anos copiando dados de um ano existente ou exclua diretrizes antigas.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <Button 
-            variant={selectedAction === 'copy' ? 'default' : 'outline'}
-            onClick={() => setSelectedAction('copy')}
-            disabled={loading}
-          >
-            <Plus className="mr-2 h-4 w-4" /> Criar Novo Ano
-          </Button>
-          <Button 
-            variant={selectedAction === 'delete' ? 'destructive' : 'outline'}
-            onClick={() => setSelectedAction('delete')}
-            disabled={loading || availableYears.length === 0}
-          >
-            <Trash2 className="mr-2 h-4 w-4" /> Excluir Ano
-          </Button>
-        </div>
-
-        {/* --- Ação: Criar Novo Ano --- */}
-        {selectedAction === 'copy' && (
-          <div className="space-y-4">
-            <Alert>
-              <Copy className="h-4 w-4" />
-              <AlertDescription>
-                Crie uma nova diretriz para um ano futuro, copiando todos os valores e itens do ano de origem.
-              </AlertDescription>
-            </Alert>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="source-year">Copiar de (Ano de Origem)</Label>
-                <Select
-                  value={String(sourceYear)}
-                  onValueChange={(val) => setSourceYear(parseInt(val))}
-                  disabled={loading || availableYears.length === 0}
-                >
-                  <SelectTrigger id="source-year">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableYears.map(year => (
-                      <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="target-year">Criar para (Ano de Destino)</Label>
-                <Input
-                  id="target-year"
-                  type="number"
-                  min={nextYear}
-                  value={targetYearInput}
-                  onChange={(e) => setTargetYearInput(e.target.value)}
-                  placeholder={String(nextYear)}
-                  disabled={loading}
-                />
-              </div>
-            </div>
-            
-            {!isTargetYearValid && targetYearInput.length > 0 && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertTriangle className="h-4 w-4" />
-                O ano de destino deve ser futuro e não pode já existir.
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* --- Ação: Excluir Ano --- */}
-        {selectedAction === 'delete' && (
-          <div className="space-y-4">
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                A exclusão é permanente e removerá **todas** as configurações (valores, itens Classe II e III) para o ano selecionado.
-              </AlertDescription>
-            </Alert>
-            
+        
+        {/* Seção de Cópia */}
+        <div className="space-y-4 border-b pb-4">
+          <h4 className="font-semibold flex items-center gap-2 text-lg text-primary">
+            <Copy className="h-4 w-4" /> Copiar Diretrizes
+          </h4>
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="year-to-delete">Ano a Excluir</Label>
+              <Label htmlFor="source-year">Copiar de (Ano de Origem)</Label>
               <Select
-                value={String(yearToDelete)}
-                onValueChange={(val) => setYearToDelete(parseInt(val))}
+                value={sourceYear?.toString() || ""}
+                onValueChange={(value) => setSourceYear(parseInt(value))}
                 disabled={loading || availableYears.length === 0}
               >
-                <SelectTrigger id="year-to-delete">
-                  <SelectValue />
+                <SelectTrigger id="source-year">
+                  <SelectValue placeholder="Selecione o ano" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableYears.map(year => (
-                    <SelectItem 
-                      key={year} 
-                      value={String(year)}
-                      disabled={year === currentYear} // Não permite excluir o ano atual
-                    >
-                      {year} {year === currentYear && "(Ano Atual - Não pode ser excluído)"}
+                  {availableYears.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year} {year === defaultYear && "(Padrão)"}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {availableYears.length === 0 && (
+                <p className="text-xs text-red-500">Nenhum ano salvo para copiar.</p>
+              )}
             </div>
-            
-            {yearToDelete === currentYear && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertTriangle className="h-4 w-4" />
-                Não é possível excluir a diretriz do ano atual.
-              </p>
+            <div className="space-y-2">
+              <Label htmlFor="target-year">Criar para (Ano de Destino)</Label>
+              <Input
+                id="target-year"
+                type="number"
+                min={nextYear}
+                placeholder={nextYear.toString()}
+                // Garante que o valor seja string vazia se for null, ou o número como string
+                value={targetYear === null ? "" : targetYear.toString()} 
+                onChange={handleTargetYearChange}
+                disabled={loading}
+                // Classes para remover as setas
+                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            </div>
+          </div>
+          <Button 
+            onClick={handleCopy} 
+            className="w-full" 
+            disabled={loading || !sourceYear || !targetYear || availableYears.includes(targetYear)}
+          >
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4" />}
+            Copiar e Criar Ano {targetYear}
+          </Button>
+        </div>
+        
+        {/* Seção de Exclusão */}
+        <div className="space-y-4">
+          <h4 className="font-semibold flex items-center gap-2 text-lg text-destructive">
+            <Trash2 className="h-4 w-4" /> Excluir Diretrizes
+          </h4>
+          <div className="space-y-2">
+            <Label htmlFor="delete-year">Ano a Excluir</Label>
+            <Select
+              value={yearToDelete?.toString() || ""}
+              onValueChange={(value) => setYearToDelete(parseInt(value))}
+              disabled={loading || availableYears.length === 0}
+            >
+              <SelectTrigger id="delete-year">
+                <SelectValue placeholder="Selecione o ano para exclusão" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableYears
+                  .filter(year => year !== defaultYear) // Não permite excluir o ano padrão
+                  .map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year} {year === defaultYear && "(Padrão)"}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            {availableYears.length === 0 && (
+                <p className="text-xs text-red-500">Nenhum ano salvo para excluir.</p>
+            )}
+            {yearToDelete === defaultYear && (
+                <p className="text-xs text-red-500">Não é possível excluir o ano padrão.</p>
             )}
           </div>
-        )}
+          <Button 
+            onClick={handleDelete} 
+            className="w-full" 
+            variant="destructive"
+            disabled={loading || !yearToDelete || yearToDelete === defaultYear}
+          >
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+            Excluir Diretrizes do Ano {yearToDelete}
+          </Button>
+        </div>
 
         <DialogFooter>
-          {selectedAction === 'copy' && (
-            <Button 
-              onClick={handleCopy} 
-              disabled={loading || !isTargetYearValid || availableYears.length === 0}
-            >
-              {loading ? "Copiando..." : "Criar Diretriz"}
-            </Button>
-          )}
-          {selectedAction === 'delete' && (
-            <Button 
-              variant="destructive" 
-              onClick={handleDelete} 
-              disabled={loading || !yearToDelete || yearToDelete === currentYear}
-            >
-              {loading ? "Excluindo..." : "Excluir Diretriz"}
-            </Button>
-          )}
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancelar
+            Fechar
           </Button>
         </DialogFooter>
       </DialogContent>
