@@ -1039,7 +1039,7 @@ const VerbaOperacionalForm = () => {
                                                 
                                                 {!isAllocationCorrect && (
                                                     <p className="text-xs text-destructive mt-2 text-center">
-                                                        A soma das NDs (30 e 39) deve ser igual ao Valor Total Solicitado ({formatCurrency(formData.valor_total_solicitado)}).
+                                                        A soma das NDs deve ser igual ao Valor Total Solicitado ({formatCurrency(formData.valor_total_solicitado)}).
                                                     </p>
                                                 )}
                                             </Card>
@@ -1240,13 +1240,9 @@ const VerbaOperacionalForm = () => {
                                                                                 {registro.fase_atividade}
                                                                             </Badge>
                                                                         </div>
-                                                                        {/* ALTERAÇÃO AQUI: Substituindo <p> por Alert */}
-                                                                        <Alert className="p-1 h-auto bg-transparent border-none text-xs text-destructive font-medium">
-                                                                            <AlertCircle className="h-3 w-3 mt-0.5" />
-                                                                            <AlertDescription className="p-0 text-xs">
-                                                                                Recurso destinado à OM: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
-                                                                            </AlertDescription>
-                                                                        </Alert>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                        </p>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="font-bold text-lg text-primary/80">
